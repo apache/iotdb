@@ -40,6 +40,11 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private long timeProcessed;
   private long timeTransferred;
 
+  private int disruptorSize;
+  private int extractorQueueSize;
+  private int bufferQueueSize;
+  private int connectorQueueSize;
+
   private final boolean shouldPrintMessage;
 
   public PipeHeartbeatEvent(String dataRegionId, boolean shouldPrintMessage) {
@@ -108,9 +113,28 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     timeTransferred = System.currentTimeMillis();
   }
 
+  /////////////////////////////// Queue size Reporting ///////////////////////////////
+
+  public void recordDisruptorSize(int size) {
+    disruptorSize = size;
+  }
+
+  public void recordExtractorQueueSize(int size) {
+    extractorQueueSize = size;
+  }
+
+  public void recordBufferQueueSize(int size) {
+    bufferQueueSize = size;
+  }
+
+  public void recordConnectorQueueSize(int size) {
+    connectorQueueSize = size;
+  }
+
   @Override
   public String toString() {
-    final String errorMessage = "error";
+    final String errorMessage = "Error";
+    final String unknownMessage = "Unknown";
 
     final String publishedToAssignedMessage =
         timeAssigned != 0 ? (timeAssigned - timePublished) + "ms" : errorMessage;
@@ -120,6 +144,14 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         timeTransferred != 0 ? (timeTransferred - timeProcessed) + "ms" : errorMessage;
     final String totalTimeMessage =
         timeTransferred != 0 ? (timeTransferred - timePublished) + "ms" : errorMessage;
+
+    final String disruptorSizeMessage = Integer.toString(disruptorSize);
+    final String extractorQueueSizeMessage =
+        timeAssigned != 0 ? Integer.toString(extractorQueueSize) : unknownMessage;
+    final String bufferQueueSizeMessage =
+        timeProcessed != 0 ? Integer.toString(bufferQueueSize) : unknownMessage;
+    final String connectorQueueSizeMessage =
+        timeProcessed != 0 ? Integer.toString(connectorQueueSize) : unknownMessage;
 
     return "PipeHeartbeatEvent{"
         + "pipeName='"
@@ -136,6 +168,14 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + processedToTransferredMessage
         + ", totalTimeCost="
         + totalTimeMessage
+        + ", disruptorSize="
+        + disruptorSizeMessage
+        + ", extractorQueueSize="
+        + extractorQueueSizeMessage
+        + ", bufferQueueSize="
+        + bufferQueueSizeMessage
+        + ", connectorQueueSize="
+        + connectorQueueSizeMessage
         + "}";
   }
 }
