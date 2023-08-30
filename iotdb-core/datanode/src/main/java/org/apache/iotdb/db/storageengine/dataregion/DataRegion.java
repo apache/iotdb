@@ -1935,6 +1935,9 @@ public class DataRegion implements IDataRegionForQuery {
             return true;
           }
         }
+        if (databaseName.contentEquals(device.getDevice())) {
+          return false;
+        }
         Pair<Long, Long> startAndEndTime =
             tsFileResource.getPossibleStartTimeAndEndTime(device, deviceMatchInfo);
         if (startAndEndTime == null) {

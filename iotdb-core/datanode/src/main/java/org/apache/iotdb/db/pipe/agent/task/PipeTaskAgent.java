@@ -843,6 +843,6 @@ public class PipeTaskAgent {
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
 
-    PipeInsertionDataNodeListener.getInstance().listenToHeartbeat();
+    PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 }

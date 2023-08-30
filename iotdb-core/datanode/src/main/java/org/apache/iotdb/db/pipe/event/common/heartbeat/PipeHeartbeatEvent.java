@@ -40,15 +40,19 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private long timeProcessed;
   private long timeTransferred;
 
-  public PipeHeartbeatEvent(String dataRegionId) {
+  private final boolean shouldPrintMessage;
+
+  public PipeHeartbeatEvent(String dataRegionId, boolean shouldPrintMessage) {
     super(null, null);
     this.dataRegionId = dataRegionId;
+    this.shouldPrintMessage = shouldPrintMessage;
   }
 
-  public PipeHeartbeatEvent(String dataRegionId, long timePublished) {
+  public PipeHeartbeatEvent(String dataRegionId, long timePublished, boolean shouldPrintMessage) {
     super(null, null);
     this.dataRegionId = dataRegionId;
     this.timePublished = timePublished;
+    this.shouldPrintMessage = shouldPrintMessage;
   }
 
   @Override
@@ -60,7 +64,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     // PipeName == null indicates that the event is the raw event at disruptor,
     // not the event copied and passed to the extractor
-    if (pipeName != null && LOGGER.isInfoEnabled()) {
+    if (shouldPrintMessage && pipeName != null && LOGGER.isInfoEnabled()) {
       LOGGER.info(this.toString());
     }
     return true;
@@ -74,7 +78,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
-    return new PipeHeartbeatEvent(dataRegionId, timePublished);
+    return new PipeHeartbeatEvent(dataRegionId, timePublished, shouldPrintMessage);
   }
 
   @Override

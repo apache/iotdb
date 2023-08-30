@@ -170,8 +170,10 @@ public class PointPriorityReader {
    * Add a new overlapped page.
    *
    * @throws IOException if io errors occurred
+   * @return whether page is added into the queue
    */
-  public void addNewPage(PageElement pageElement) throws IOException {
+  public boolean addNewPageIfPageNotEmpty(PageElement pageElement)
+      throws IOException, IllegalPathException, WriteProcessException {
     if (currentPointElement != null) {
       nextPointInOtherPage = Math.min(nextPointInOtherPage, pageElement.startTime);
       if (currentPoint.getTimestamp() >= nextPointInOtherPage) {
@@ -179,6 +181,14 @@ public class PointPriorityReader {
         currentPointElement = null;
       }
     }
-    pointQueue.add(new PointElement(pageElement));
+    PointElement pointElement = new PointElement(pageElement);
+    boolean pageIsNotEmpty = pointElement.timeValuePair != null;
+    if (pageIsNotEmpty) {
+      pointQueue.add(pointElement);
+    } else {
+      removePage.call(pageElement);
+    }
+
+    return pageIsNotEmpty;
   }
 }
