@@ -253,11 +253,12 @@ public abstract class AbstractEnv implements BaseEnv {
     testWorking(nodeStatusMap -> nodeStatusMap.values().stream().allMatch("Running"::equals));
   }
 
-  public void testWorkingOneUnknownThreeRunning() {
+  public void testWorkingOneUnknownOtherRunning() {
     testWorking(
         nodeStatus -> {
           Map<String, Integer> count = countNodeStatus(nodeStatus);
-          return count.getOrDefault("Unknown", 0) == 1 && count.getOrDefault("Running", 0) == 3;
+          return count.getOrDefault("Unknown", 0) == 1
+              && count.getOrDefault("Running", 0) == nodeStatus.size() - 1;
         });
   }
 

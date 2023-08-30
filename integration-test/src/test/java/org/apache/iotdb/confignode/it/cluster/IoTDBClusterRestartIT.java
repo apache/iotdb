@@ -38,6 +38,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.apache.thrift.TException;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -58,7 +59,10 @@ public class IoTDBClusterRestartIT {
 
   private static final int testReplicationFactor = 2;
 
-  public void setUp(int configNodeNum, int dataNodeNum) {
+  private static final int testConfigNodeNum = 3, testDataNodeNum = 2;
+
+  @Before
+  public void setUp() {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -69,8 +73,7 @@ public class IoTDBClusterRestartIT {
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor);
 
-    // Init 2C2D cluster environment
-    EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
+    EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
   }
 
   @After
@@ -80,8 +83,6 @@ public class IoTDBClusterRestartIT {
 
   @Test
   public void clusterRestartTest() throws InterruptedException {
-    final int testConfigNodeNum = 2, testDataNodeNum = 2;
-    setUp(testConfigNodeNum, testDataNodeNum);
     // Shutdown all cluster nodes
     for (int i = 0; i < testConfigNodeNum; i++) {
       EnvFactory.getEnv().shutdownConfigNode(i);
@@ -107,8 +108,6 @@ public class IoTDBClusterRestartIT {
   @Test
   public void clusterRestartAfterUpdateDataNodeTest()
       throws InterruptedException, ClientManagerException, IOException, TException {
-    final int testConfigNodeNum = 2, testDataNodeNum = 2;
-    setUp(testConfigNodeNum, testDataNodeNum);
     // Shutdown all DataNodes
     for (int i = 0; i < testDataNodeNum; i++) {
       EnvFactory.getEnv().shutdownDataNode(i);
@@ -159,8 +158,6 @@ public class IoTDBClusterRestartIT {
 
   @Test
   public void clusterRestartWithoutSeedConfigNode() {
-    final int testConfigNodeNum = 3, testDataNodeNum = 1;
-    setUp(testConfigNodeNum, testDataNodeNum);
     // shutdown all 3 ConfigNodes
     for (int i = testConfigNodeNum - 1; i >= 0; i--) {
       EnvFactory.getEnv().shutdownConfigNode(i);
@@ -171,7 +168,7 @@ public class IoTDBClusterRestartIT {
       EnvFactory.getEnv().startConfigNode(i);
     }
     logger.info("Restarted");
-    ((AbstractEnv) EnvFactory.getEnv()).testWorkingOneUnknownThreeRunning();
+    ((AbstractEnv) EnvFactory.getEnv()).testWorkingOneUnknownOtherRunning();
     logger.info("Working without Seed-ConfigNode");
   }
 }
