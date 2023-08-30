@@ -141,6 +141,12 @@ public class IoTDBPipeLifeCycleIT {
       }
 
       assertDataOnReceiver(receiverEnv, expectedResSet);
+
+      Assert.assertEquals(
+              TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      expectedResSet.add("3,3.0,");
+      assertDataOnReceiver(receiverEnv, expectedResSet);
     }
   }
 
