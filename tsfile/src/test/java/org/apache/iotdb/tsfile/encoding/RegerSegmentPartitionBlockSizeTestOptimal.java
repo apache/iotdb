@@ -368,11 +368,10 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
         // delta to Regression
         for (int j = 1; j < block_size; j++) {
             int epsilon_r =
-                    ts_block.get(j).get(0)
-                            - (int) ((double) theta0_r + (double) theta1_r * (double) ts_block.get(j - 1).get(0));
+                    (int) (ts_block.get(j).get(0)
+                                                -  (theta0_r + theta1_r * (float) ts_block.get(j - 1).get(0)));
             int epsilon_v =
-                    ts_block.get(j).get(1)
-                            - (int) ((double) theta0_v + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
+                    (int) (ts_block.get(j).get(1)  -  ( theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
 
             //      int epsilon_r = ts_block.get(j).get(0) - (int) (theta0_r + theta1_r *
             // (double)ts_block.get(j-1).get(0));
@@ -421,15 +420,14 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
             //      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
             //      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
             int epsilon_r =
-                    ts_block.get(j).get(0)
-                            - (int)
-                            ((double) (theta0_r + timestamp_delta_min)
-                                    + (double) theta1_r * (double) ts_block.get(j - 1).get(0));
+                    (int) (ts_block.get(j).get(0)  -
+                                                ( (theta0_r + timestamp_delta_min)
+                                                        +  theta1_r * (float) ts_block.get(j - 1).get(0)));
             int epsilon_v =
-                    ts_block.get(j).get(1)
-                            - (int)
-                            ((double) (theta0_v + value_delta_min)
-                                    + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
+                    (int) (ts_block.get(j).get(1)
+                                                -
+                                                ((theta0_v + value_delta_min)
+                                                        +  theta1_v * (float) ts_block.get(j - 1).get(1)));
 //            System.out.println("getBitWith(epsilon_r) :"+getBitWith(epsilon_r));
 //            System.out.println("getBitWith(epsilon_v) :"+getBitWith(epsilon_v));
 
@@ -557,11 +555,11 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
         // delta to Regression
         for (int j = 1; j < block_size; j++) {
             int epsilon_r =
-                    ts_block.get(j).get(0)
-                            - (int) ((double) theta0_r + (double) theta1_r * (double) ts_block.get(j - 1).get(0));
+                    (int) (ts_block.get(j).get(0)
+                                                -  (theta0_r + theta1_r * (float) ts_block.get(j - 1).get(0)));
             int epsilon_v =
-                    ts_block.get(j).get(1)
-                            - (int) ((double) theta0_v + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
+                    (int) (ts_block.get(j).get(1)
+                                                - (theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
 
             //      int epsilon_r = ts_block.get(j).get(0) - (int) (theta0_r + theta1_r *
             // (double)ts_block.get(j-1).get(0));
@@ -610,15 +608,15 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
             //      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
             //      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
             int epsilon_r =
-                    ts_block.get(j).get(0)
-                            - (int)
-                            ((double) (theta0_r + timestamp_delta_min)
-                                    + (double) theta1_r * (double) ts_block.get(j - 1).get(0));
+                    (int) (ts_block.get(j).get(0)
+                                                -
+                                                ( (theta0_r + timestamp_delta_min)
+                                                        +  theta1_r * (float) ts_block.get(j - 1).get(0)));
             int epsilon_v =
-                    ts_block.get(j).get(1)
-                            - (int)
-                            ((double) (theta0_v + value_delta_min)
-                                    + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
+                    (int) (ts_block.get(j).get(1)
+                                                -
+                                                ( (theta0_v + value_delta_min)
+                                                        + theta1_v * (float) ts_block.get(j - 1).get(1)));
 //            System.out.println("getBitWith(epsilon_r) :"+getBitWith(epsilon_r));
 //            System.out.println("getBitWith(epsilon_v) :"+getBitWith(epsilon_v));
 
@@ -2979,11 +2977,10 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
 
                 int i_star;
                 int j_star;
-                ArrayList<Integer> alpha_list = new ArrayList<>();
+                ArrayList<Integer> alpha_list;
 
-//            System.out.println("raw_length: "+raw_length);
-//            System.out.println("------------------------------------------------------- ");
                 int choose = min3(time_length.get(0), raw_length.get(0), reorder_length.get(0));
+
                 if (choose == 0) {
                     raw_length = time_length;
                     quickSort(ts_block, 0, 0, block_size - 1);
@@ -3074,10 +3071,9 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
 
 
                 ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, theta, result2);
+//                System.out.println(cur_encoded_result.size());
                 encoded_result.addAll(cur_encoded_result);
 
-//        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, theta, result2);
-//        encoded_result.addAll(cur_encoded_result);
             }
         } else {
             if (length_value < length_time) { // order by value performs better
@@ -3087,25 +3083,26 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                 System.out.println("type1");
             }
             for (int i = 0; i < block_num; i++) {
-//            for (int i = 0; i < 1; i++) {
+//            for (int i = 1; i < 2; i++) {
                 ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
-//        ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
                 for (int j = 0; j < block_size; j++) {
                     ts_block.add(data.get(j + i * block_size));
-//          ts_block_reorder.add(data.get(j + i * block_size));
+          ts_block_reorder.add(data.get(j + i * block_size));
                 }
 
                 ArrayList<Integer> result2 = new ArrayList<>();
                 //      result2.add(1);
                 splitTimeStamp3(ts_block, result2);
-                quickSort(ts_block, 0, 0, block_size - 1);
+//                quickSort(ts_block, 0, 0, block_size - 1);
                 ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
                 ArrayList<Float> theta = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, theta, segment_size);
                 ArrayList<ArrayList<Integer>> bit_width_segments_time = segmentBitPacking(ts_block_delta, block_size, segment_size);
                 raw_length.set(0, encodeSegment2Bytes(ts_block_delta, bit_width_segments_time, raw_length, segment_size, theta, result2).size());
-
+//                System.out.println(theta);
+//                System.out.println(ts_block_delta);
                 // value-order
                 quickSort(ts_block, 1, 0, block_size - 1);
 
@@ -3140,7 +3137,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
 
 
                 int choose = min3(partition_length.get(0), reorder_length.get(0), raw_length.get(0));
-                ArrayList<Integer> alpha_list = new ArrayList<>();
+                ArrayList<Integer> alpha_list;
                 if (choose == 0) {
                     raw_length = partition_length;
                     ts_block = ts_block_partition;
@@ -3154,10 +3151,11 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                     theta = theta_reorder;
                     alpha_list = getIStar(ts_block, block_size, 1, theta, k);
                 } else {
-                    quickSort(ts_block, 0, 0, block_size - 1);
+                    ts_block = ts_block_reorder;
+//                    quickSort(ts_block, 0, 0, block_size - 1);
                     alpha_list = getIStar(ts_block, block_size, 0, theta, k);
                 }
-
+//                System.out.println(ts_block);
                 ArrayList<Integer> beta_list;
                 beta_list = new ArrayList<>();
                 for (int alpha : alpha_list) {
@@ -3172,7 +3170,6 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                         break;
                     }
                     ArrayList<ArrayList<Integer>> all_length = new ArrayList<>();
-//                        System.out.println("theta: "+theta);
 
                     for (int isMoveable_i : isMoveable) {
                         ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
@@ -3185,11 +3182,9 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                         all_length.add(tmp);
 
                     }
-//                        System.out.println("theta: "+theta);
                     quickSort(all_length, 1, 0, all_length.size() - 1);
                     if (all_length.get(0).get(1) <= raw_length.get(0)) {
                         moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
-//                            System.out.println("alpha: "+alpha_list.get(all_length.get(0).get(0)));
                         getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
                     } else {
                         break;
@@ -3208,8 +3203,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                     isMoveable = isMovable(alpha_list, beta_list);
                 }
                 ts_block_delta = getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
-//                System.out.println("length_after: "+ raw_length.get(0));
-
+//                System.out.println(ts_block_delta);
                 ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
                 int segment_n = (block_size - 1) / segment_size;
                 for (int segment_i = 0; segment_i < segment_n; segment_i++) {
@@ -3233,6 +3227,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                 }
 
                 ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, theta, result2);
+//                System.out.println(cur_encoded_result.size());
                 encoded_result.addAll(cur_encoded_result);
 
             }
@@ -3611,7 +3606,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
 
         output_path_list.add(parent_dir + "\\CS-Sensors_ratio.csv"); // 0
         dataset_block_size.add(1024);
-        dataset_k.add(6);
+        dataset_k.add(5);
         output_path_list.add(parent_dir + "\\Metro-Traffic_ratio.csv");// 1
         dataset_block_size.add(512);
         dataset_k.add(7);
@@ -3623,13 +3618,13 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
         dataset_k.add(1);
         output_path_list.add(parent_dir + "\\GW-Magnetic_ratio.csv"); //4
         dataset_block_size.add(128);
-        dataset_k.add(3);
+        dataset_k.add(6);
         output_path_list.add(parent_dir + "\\TY-Fuel_ratio.csv");//5
         dataset_block_size.add(64);
-        dataset_k.add(2);
+        dataset_k.add(5);
         output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
         dataset_block_size.add(128);
-        dataset_k.add(3);
+        dataset_k.add(4);
         output_path_list.add(parent_dir + "\\Vehicle-Charge_ratio.csv");//7
         dataset_block_size.add(512);
         dataset_k.add(8);
@@ -3644,10 +3639,10 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
         dataset_k.add(9);
         output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
         dataset_block_size.add(512);
-        dataset_k.add(4);
+        dataset_k.add(5);
 
-//    for (int file_i = 10; file_i < 11; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+    for (int file_i = 3; file_i < 4; file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -3676,7 +3671,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
 //        double ratio_sum = 0;
             for (File f : tempList) {
                 System.out.println(f);
-//                for (int block_size_exp = 9; block_size_exp >= 9; block_size_exp--) {
+//                for (int block_size_exp = 7; block_size_exp >= 7; block_size_exp--) {
                 for (int block_size_exp = 10; block_size_exp >= 4; block_size_exp--) {
                     int block_size = (int) Math.pow(2, block_size_exp);
                     System.out.println(block_size);
