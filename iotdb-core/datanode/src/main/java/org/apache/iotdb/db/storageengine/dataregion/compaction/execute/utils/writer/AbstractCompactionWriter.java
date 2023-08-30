@@ -176,9 +176,9 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId) throws IOException;
 
   public abstract boolean flushAlignedChunk(
-      Chunk timeChunk,
+      LazyChunkLoader timeChunkLoader,
       IChunkMetadata timeChunkMetadata,
-      List<Chunk> valueChunks,
+      List<LazyChunkLoader> valueChunkLoaders,
       List<IChunkMetadata> valueChunkMetadatas,
       int subTaskId)
       throws IOException;
@@ -198,9 +198,9 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   @SuppressWarnings("squid:S2445")
   protected void flushAlignedChunkToFileWriter(
       CompactionTsFileWriter targetWriter,
-      Chunk timeChunk,
+      LazyChunkLoader timeChunkLoader,
       IChunkMetadata timeChunkMetadata,
-      List<Chunk> valueChunks,
+      List<LazyChunkLoader> valueChunkLoaders,
       List<IChunkMetadata> valueChunkMetadatas,
       int subTaskId)
       throws IOException {
@@ -213,12 +213,14 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       targetWriter.markStartingWritingAligned();
 
       // flush time chunk
+
+      Chunk timeChunk = timeChunkLoader.loadChunk();
       targetWriter.writeChunk(timeChunk, (ChunkMetadata) timeChunkMetadata);
 
       // flush value chunks
-      for (int i = 0; i < valueChunks.size(); i++) {
-        Chunk valueChunk = valueChunks.get(i);
-        if (valueChunk == null) {
+      for (int i = 0; i < valueChunkLoaders.size(); i++) {
+        LazyChunkLoader readValueChunk = valueChunkLoaders.get(i);
+        if (readValueChunk == null) {
           // sub sensor does not exist in current file or value chunk has been deleted completely
           ValueChunkWriter valueChunkWriter = alignedChunkWriter.getValueChunkWriterByIndex(i);
           targetWriter.writeEmptyValueChunk(
@@ -229,6 +231,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
               Statistics.getStatsByType(valueChunkWriter.getDataType()));
           continue;
         }
+        Chunk valueChunk = readValueChunk.loadChunk();
         targetWriter.writeChunk(valueChunk, (ChunkMetadata) valueChunkMetadatas.get(i));
       }
 

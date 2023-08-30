@@ -54,9 +54,9 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
 
   @Override
   public boolean flushAlignedChunk(
-      Chunk timeChunk,
+      LazyChunkLoader timeChunkLoader,
       IChunkMetadata timeChunkMetadata,
-      List<Chunk> valueChunks,
+      List<LazyChunkLoader> valueChunkLoaders,
       List<IChunkMetadata> valueChunkMetadatas,
       int subTaskId) {
     throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");

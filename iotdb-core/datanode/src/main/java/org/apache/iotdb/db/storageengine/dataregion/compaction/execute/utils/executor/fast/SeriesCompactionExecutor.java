@@ -183,9 +183,9 @@ public abstract class SeriesCompactionExecutor {
     if (isAligned) {
       success =
           compactionWriter.flushAlignedChunk(
-              chunkMetadataElement.chunk,
+              chunkMetadataElement.timeChunkLoader,
               ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata).getTimeChunkMetadata(),
-              chunkMetadataElement.valueChunks,
+              chunkMetadataElement.valueChunkLoaders,
               ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
                   .getValueChunkMetadataList(),
               subTaskId);

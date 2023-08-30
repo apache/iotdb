@@ -93,9 +93,9 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
    */
   @Override
   public boolean flushAlignedChunk(
-      Chunk timeChunk,
+      LazyChunkLoader timeChunkLoader,
       IChunkMetadata timeChunkMetadata,
-      List<Chunk> valueChunks,
+      List<LazyChunkLoader> valueChunkLoaders,
       List<IChunkMetadata> valueChunkMetadatas,
       int subTaskId)
       throws IOException {
@@ -109,9 +109,9 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
     flushAlignedChunkToFileWriter(
         targetFileWriters.get(fileIndex),
-        timeChunk,
+        timeChunkLoader,
         timeChunkMetadata,
-        valueChunks,
+        valueChunkLoaders,
         valueChunkMetadatas,
         subTaskId);
 

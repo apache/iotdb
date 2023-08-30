@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.LazyChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -249,7 +250,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
     List<List<ByteBuffer>> compressedValuePageDatas = new ArrayList<>();
 
     // deserialize time chunk
-    Chunk timeChunk = chunkMetadataElement.chunk;
+    Chunk timeChunk = chunkMetadataElement.timeChunkLoader.loadChunk();
 
     ChunkReader chunkReader = new ChunkReader(timeChunk);
     ByteBuffer chunkDataBuffer = timeChunk.getData();
@@ -268,15 +269,19 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
     }
 
     // deserialize value chunks
-    List<Chunk> valueChunks = chunkMetadataElement.valueChunks;
-    for (int i = 0; i < valueChunks.size(); i++) {
-      Chunk valueChunk = valueChunks.get(i);
-      if (valueChunk == null) {
+    List<LazyChunkLoader> readValueChunks = chunkMetadataElement.valueChunkLoaders;
+    List<Chunk> valueChunks = new ArrayList<>(readValueChunks.size());
+    for (int i = 0; i < readValueChunks.size(); i++) {
+      LazyChunkLoader readValueChunk = readValueChunks.get(i);
+      if (readValueChunk == null) {
         // value chunk has been deleted completely
+        valueChunks.add(null);
         valuePageHeaders.add(null);
         compressedValuePageDatas.add(null);
         continue;
       }
+      Chunk valueChunk = readValueChunk.loadChunk();
+      valueChunks.add(valueChunk);
       chunkReader = new ChunkReader(valueChunk);
       chunkDataBuffer = valueChunk.getData();
       chunkHeader = valueChunk.getHeader();
@@ -335,39 +340,39 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
     updateSummary(chunkMetadataElement, ChunkStatus.READ_IN);
     AlignedChunkMetadata alignedChunkMetadata =
         (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
-    chunkMetadataElement.chunk =
-        readerCacheMap
-            .get(chunkMetadataElement.fileElement.resource)
-            .readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
-    List<Chunk> valueChunks = new ArrayList<>();
+    LazyChunkLoader timeChunkLoader =
+        new LazyChunkLoader(
+            readerCacheMap.get(chunkMetadataElement.fileElement.resource),
+            (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
+    List<LazyChunkLoader> valueChunkLoaders =
+        new ArrayList<>(alignedChunkMetadata.getValueChunkMetadataList().size());
     for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
       if (valueChunkMetadata == null || valueChunkMetadata.getStatistics().getCount() == 0) {
-        // value chunk has been deleted completely or is empty value chunk
-        valueChunks.add(null);
+        valueChunkLoaders.add(null);
         continue;
       }
-      valueChunks.add(
-          readerCacheMap
-              .get(chunkMetadataElement.fileElement.resource)
-              .readMemChunk((ChunkMetadata) valueChunkMetadata));
+      valueChunkLoaders.add(
+          new LazyChunkLoader(
+              readerCacheMap.get(chunkMetadataElement.fileElement.resource),
+              (ChunkMetadata) valueChunkMetadata));
     }
-    chunkMetadataElement.valueChunks = valueChunks;
+    chunkMetadataElement.timeChunkLoader = timeChunkLoader;
+    chunkMetadataElement.valueChunkLoaders = valueChunkLoaders;
     setForceDecoding(chunkMetadataElement);
   }
 
-  void setForceDecoding(ChunkMetadataElement chunkMetadataElement) {
-    if (timeColumnMeasurementSchema.getCompressor()
-            != chunkMetadataElement.chunk.getHeader().getCompressionType()
-        || timeColumnMeasurementSchema.getEncodingType()
-            != chunkMetadataElement.chunk.getHeader().getEncodingType()) {
+  void setForceDecoding(ChunkMetadataElement chunkMetadataElement) throws IOException {
+    ChunkHeader timeChunkHeader = chunkMetadataElement.timeChunkLoader.loadChunkHeader();
+    if (timeColumnMeasurementSchema.getCompressor() != timeChunkHeader.getCompressionType()
+        || timeColumnMeasurementSchema.getEncodingType() != timeChunkHeader.getEncodingType()) {
       chunkMetadataElement.needForceDecoding = true;
       return;
     }
-    for (Chunk chunk : chunkMetadataElement.valueChunks) {
-      if (chunk == null) {
+    for (LazyChunkLoader valueChunkLoader : chunkMetadataElement.valueChunkLoaders) {
+      if (valueChunkLoader == null) {
         continue;
       }
-      ChunkHeader header = chunk.getHeader();
+      ChunkHeader header = valueChunkLoader.loadChunkHeader();
       String measurementId = header.getMeasurementID();
       IMeasurementSchema measurementSchema = measurementSchemaMap.get(measurementId);
       if (measurementSchema == null) {
