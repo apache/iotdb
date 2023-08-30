@@ -41,7 +41,6 @@ import java.io.IOException;
 @Provider
 public class AuthorizationFilter implements ContainerRequestFilter {
 
-  private final AuthorityChecker authorizer = AuthorityChecker.getInstance();
   private final UserCache userCache = UserCache.getInstance();
   IoTDBRestServiceConfig config = IoTDBRestServiceDescriptor.getInstance().getConfig();
 
@@ -115,7 +114,7 @@ public class AuthorizationFilter implements ContainerRequestFilter {
     User user = new User();
     user.setUsername(split[0]);
     user.setPassword(split[1]);
-    TSStatus tsStatus = authorizer.checkUser(split[0], split[1]);
+    TSStatus tsStatus = AuthorityChecker.checkUser(split[0], split[1]);
     if (tsStatus.code != 200) {
       Response resp =
           Response.status(Status.UNAUTHORIZED)

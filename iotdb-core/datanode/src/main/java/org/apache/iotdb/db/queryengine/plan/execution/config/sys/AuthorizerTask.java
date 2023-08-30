@@ -31,7 +31,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 public class AuthorizerTask implements IConfigTask {
 
   private final AuthorStatement authorStatement;
-  private final AuthorityChecker authorityChecker = AuthorityChecker.getInstance();
 
   public AuthorizerTask(AuthorStatement authorStatement) {
     this.authorStatement = authorStatement;
@@ -42,9 +41,9 @@ public class AuthorizerTask implements IConfigTask {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
     if (authorStatement.getQueryType() == QueryType.WRITE) {
-      return authorityChecker.operatePermission(authorStatement);
+      return AuthorityChecker.operatePermission(authorStatement);
     } else {
-      return authorityChecker.queryPermission(authorStatement);
+      return AuthorityChecker.queryPermission(authorStatement);
     }
   }
 }

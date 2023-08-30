@@ -142,7 +142,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
                     break;
                   }
                 } else {
-                  return checkUserPrivilegeGrantOptFromConfigNode(username, path, permission);
+                  return checkUserPrivilegeGrantOptFromConfigNode(username, paths, permission);
                 }
               }
             }

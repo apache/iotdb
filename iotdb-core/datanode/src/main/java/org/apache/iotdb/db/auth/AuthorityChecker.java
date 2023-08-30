@@ -60,8 +60,8 @@ public class AuthorityChecker {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
-  public AuthorityChecker() {
-    // no need to construct.
+  private AuthorityChecker() {
+    // empty constructor
   }
 
   public static IAuthorityFetcher getAuthorityFetcher() {
@@ -177,12 +177,12 @@ public class AuthorityChecker {
   }
 
   public static boolean checkUserPrivilegeGrantOpt(
-      String username, PartialPath path, int permission) {
+      String username, List<PartialPath> paths, int permission) {
     long startTime = System.nanoTime();
     if (SUPER_USER.equals(username)) {
       return true;
     }
-    return authorityFetcher.checkUserPrivilegeGrantOpt(username, path, permission);
+    return authorityFetcher.checkUserPrivilegeGrantOpt(username, paths, permission);
   }
 
   public static PathPatternTree getAuthorizedPathTree(String userName, int permission)
