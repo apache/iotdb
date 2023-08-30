@@ -564,7 +564,7 @@ public class RegerSegmentBlockSize {
     }
 
     public static ArrayList<Byte> ReorderingRegressionEncoder(
-            ArrayList<ArrayList<Integer>> data, int block_size, int[] third_value) {
+            ArrayList<ArrayList<Integer>> data, int block_size, int[] third_value, int segment_size) {
         block_size++;
         ArrayList<Byte> encoded_result = new ArrayList<Byte>();
         int length_all = data.size();
@@ -591,12 +591,12 @@ public class RegerSegmentBlockSize {
             ArrayList<Float> theta = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, theta);
             ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
-            int segment_n = (block_size - 1) / 8;
+            int segment_n = (block_size - 1) / segment_size;
             for (int segment_i = 0; segment_i < segment_n; segment_i++) {
                 int bit_width_time = Integer.MIN_VALUE;
                 int bit_width_value = Integer.MIN_VALUE;
 
-                for (int data_i = segment_i * 8 + 1; data_i < (segment_i + 1) * 8 + 1; data_i++) {
+                for (int data_i = segment_i * segment_size + 1; data_i < (segment_i + 1) * segment_size + 1; data_i++) {
                     int cur_bit_width_time = getBitWith(ts_block_delta.get(data_i).get(0));
                     int cur_bit_width_value = getBitWith(ts_block_delta.get(data_i).get(1));
                     if (cur_bit_width_time > bit_width_time) {
@@ -613,7 +613,7 @@ public class RegerSegmentBlockSize {
             }
 
 
-            ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, 8, theta, result2);
+            ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, theta, result2);
 //            System.out.println(cur_encoded_result.size());
             encoded_result.addAll(cur_encoded_result);
 
@@ -1044,7 +1044,7 @@ public class RegerSegmentBlockSize {
                         long s = System.nanoTime();
                         ArrayList<Byte> buffer = new ArrayList<>();
                         for (int repeat = 0; repeat < repeatTime2; repeat++)
-                            buffer = ReorderingRegressionEncoder(data, block_size, dataset_third.get(file_i));
+                            buffer = ReorderingRegressionEncoder(data, block_size, dataset_third.get(file_i),16);
                         long e = System.nanoTime();
                         encodeTime += ((e - s) / repeatTime2);
                         compressed_size += buffer.size();
