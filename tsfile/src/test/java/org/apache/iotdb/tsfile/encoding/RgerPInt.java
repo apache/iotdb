@@ -774,16 +774,16 @@ public class RgerPInt{
       for (; j < alpha; j++) {
         // judge whether j is in hj and gj,  [j, alpha-1] and [alpha + 1, min{j+p,n}], [j + p + 1,
         // min{alpha+p,n}]
-        boolean is_contain_2p = false;
-        for (int hg_j = j; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        if (!is_contain_2p) {
-          continue;
-        }
+//        boolean is_contain_2p = false;
+//        for (int hg_j = j; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        if (!is_contain_2p) {
+//          continue;
+//        }
         ArrayList<Integer> b = adjustCase2(ts_block, alpha, j, coefficient, p);
         if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
@@ -796,16 +796,16 @@ public class RgerPInt{
       for (j = alpha + 2; j < alpha + p; j++) {
         // judge whether j is in hj and gj,  [j, min{alpha+p-1,n}] and [alpha + p, min{j+p-1,n}],
         // [alpha + 1, j - 1]
-        boolean is_contain_2p = false;
-        for (int hg_j = alpha + 1; hg_j < j + p && hg_j < block_size; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        if (!is_contain_2p) {
-          continue;
-        }
+//        boolean is_contain_2p = false;
+//        for (int hg_j = alpha + 1; hg_j < j + p && hg_j < block_size; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        if (!is_contain_2p) {
+//          continue;
+//        }
         ArrayList<Integer> b = adjustCase3(ts_block, alpha, j, coefficient, p);
         if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
@@ -816,23 +816,23 @@ public class RgerPInt{
         }
       }
       for (; j < block_size; j++) {
-        // judge whether j is in hj and gj,  [j, min{j+p-1,n}], [alpha + 1, min{alpha+p,n}]
-        boolean is_contain_2p = false;
-        for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        for (int hg_j = j; hg_j < j + p && hg_j < block_size; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        if (!is_contain_2p) {
-          continue;
-        }
+//        // judge whether j is in hj and gj,  [j, min{j+p-1,n}], [alpha + 1, min{alpha+p,n}]
+//        boolean is_contain_2p = false;
+//        for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        for (int hg_j = j; hg_j < j + p && hg_j < block_size; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        if (!is_contain_2p) {
+//          continue;
+//        }
         ArrayList<Integer> b = adjustCase4(ts_block, alpha, j, coefficient, p);
         if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
@@ -858,23 +858,23 @@ public class RgerPInt{
       ArrayList<Integer> b;
       int j = 0;
       for (; j < alpha - p; j++) {
-        // judge whether j is in hj and gj,  [j, j+p-1], [alpha + 1, min{alpha+p,n}]
-        boolean is_contain_2p = false;
-        for (int hg_j = j; hg_j < j + p; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        if (!is_contain_2p) {
-          continue;
-        }
+//        // judge whether j is in hj and gj,  [j, j+p-1], [alpha + 1, min{alpha+p,n}]
+//        boolean is_contain_2p = false;
+//        for (int hg_j = j; hg_j < j + p; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        if (!is_contain_2p) {
+//          continue;
+//        }
         b = adjustCase1(ts_block, alpha, j, coefficient, p);
         if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
@@ -885,18 +885,18 @@ public class RgerPInt{
         }
       }
       for (; j < alpha; j++) {
-        // judge whether j is in hj and gj,  [j, alpha-1] and [alpha + 1, min{j+p,n}], [j + p + 1,
-        // min{alpha+p,n}]
-        boolean is_contain_2p = false;
-        for (int hg_j = j; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        if (!is_contain_2p) {
-          continue;
-        }
+//        // judge whether j is in hj and gj,  [j, alpha-1] and [alpha + 1, min{j+p,n}], [j + p + 1,
+//        // min{alpha+p,n}]
+//        boolean is_contain_2p = false;
+//        for (int hg_j = j; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        if (!is_contain_2p) {
+//          continue;
+//        }
         b = adjustCase2(ts_block, alpha, j, coefficient, p);
         if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
@@ -907,18 +907,18 @@ public class RgerPInt{
         }
       }
       for (j = alpha + 2; j < alpha + p && j < block_size; j++) {
-        // judge whether j is in hj and gj,  [j, min{alpha+p-1,n}] and [alpha + p, min{j+p-1,n}],
-        // [alpha + 1, j - 1]
-        boolean is_contain_2p = false;
-        for (int hg_j = alpha + 1; hg_j < j + p && hg_j < block_size; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        if (!is_contain_2p) {
-          continue;
-        }
+//        // judge whether j is in hj and gj,  [j, min{alpha+p-1,n}] and [alpha + p, min{j+p-1,n}],
+//        // [alpha + 1, j - 1]
+//        boolean is_contain_2p = false;
+//        for (int hg_j = alpha + 1; hg_j < j + p && hg_j < block_size; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        if (!is_contain_2p) {
+//          continue;
+//        }
         b = adjustCase3(ts_block, alpha, j, coefficient, p);
         if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
@@ -929,23 +929,23 @@ public class RgerPInt{
         }
       }
       for (; j < block_size; j++) {
-        // judge whether j is in hj and gj,  [j, min{j+p-1,n}], [alpha + 1, min{alpha+p,n}]
-        boolean is_contain_2p = false;
-        for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        for (int hg_j = j; hg_j < j + p && hg_j < block_size; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        if (!is_contain_2p) {
-          continue;
-        }
+//        // judge whether j is in hj and gj,  [j, min{j+p-1,n}], [alpha + 1, min{alpha+p,n}]
+//        boolean is_contain_2p = false;
+//        for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        for (int hg_j = j; hg_j < j + p && hg_j < block_size; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        if (!is_contain_2p) {
+//          continue;
+//        }
         b = adjustCase4(ts_block, alpha, j, coefficient, p);
         if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
@@ -969,23 +969,23 @@ public class RgerPInt{
       ArrayList<Integer> b;
       int j = 0;
       for (; j < alpha - p; j++) {
-        // judge whether j is in hj and gj,  [j, j+p-1], [alpha + 1, min{alpha+p,n}]
-        boolean is_contain_2p = false;
-        for (int hg_j = j; hg_j < j + p; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        if (!is_contain_2p) {
-          continue;
-        }
+//        // judge whether j is in hj and gj,  [j, j+p-1], [alpha + 1, min{alpha+p,n}]
+//        boolean is_contain_2p = false;
+//        for (int hg_j = j; hg_j < j + p; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        if (!is_contain_2p) {
+//          continue;
+//        }
         b = adjustCase1(ts_block, alpha, j, coefficient, p);
         if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
@@ -996,18 +996,18 @@ public class RgerPInt{
         }
       }
       for (; j < alpha; j++) {
-        // judge whether j is in hj and gj,  [j, alpha-1] and [alpha + 1, min{j+p,n}], [j + p + 1,
-        // min{alpha+p,n}]
-        boolean is_contain_2p = false;
-        for (int hg_j = j; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        if (!is_contain_2p) {
-          continue;
-        }
+//        // judge whether j is in hj and gj,  [j, alpha-1] and [alpha + 1, min{j+p,n}], [j + p + 1,
+//        // min{alpha+p,n}]
+//        boolean is_contain_2p = false;
+//        for (int hg_j = j; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        if (!is_contain_2p) {
+//          continue;
+//        }
         b = adjustCase2(ts_block, alpha, j, coefficient, p);
         if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
@@ -1018,18 +1018,18 @@ public class RgerPInt{
         }
       }
       for (j = alpha + 2; j < alpha + p && j < block_size; j++) {
-        // judge whether j is in hj and gj,  [j, min{alpha+p-1,n}] and [alpha + p, min{j+p-1,n}],
-        // [alpha + 1, j - 1]
-        boolean is_contain_2p = false;
-        for (int hg_j = alpha + 1; hg_j < j + p && hg_j < block_size; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        if (!is_contain_2p) {
-          continue;
-        }
+//        // judge whether j is in hj and gj,  [j, min{alpha+p-1,n}] and [alpha + p, min{j+p-1,n}],
+//        // [alpha + 1, j - 1]
+//        boolean is_contain_2p = false;
+//        for (int hg_j = alpha + 1; hg_j < j + p && hg_j < block_size; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        if (!is_contain_2p) {
+//          continue;
+//        }
         b = adjustCase3(ts_block, alpha, j, coefficient, p);
         if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
@@ -1040,23 +1040,23 @@ public class RgerPInt{
         }
       }
       for (; j < block_size; j++) {
-        // judge whether j is in hj and gj,  [j, min{j+p-1,n}], [alpha + 1, min{alpha+p,n}]
-        boolean is_contain_2p = false;
-        for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        for (int hg_j = j; hg_j < j + p && hg_j < block_size; hg_j++) {
-          if (max_index.contains(hg_j)) {
-            is_contain_2p = true;
-            break;
-          }
-        }
-        if (!is_contain_2p) {
-          continue;
-        }
+//        // judge whether j is in hj and gj,  [j, min{j+p-1,n}], [alpha + 1, min{alpha+p,n}]
+//        boolean is_contain_2p = false;
+//        for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        for (int hg_j = j; hg_j < j + p && hg_j < block_size; hg_j++) {
+//          if (max_index.contains(hg_j)) {
+//            is_contain_2p = true;
+//            break;
+//          }
+//        }
+//        if (!is_contain_2p) {
+//          continue;
+//        }
         b = adjustCase4(ts_block, alpha, j, coefficient, p);
         if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
@@ -1951,7 +1951,7 @@ public class RgerPInt{
             ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
             ArrayList<Integer> new_length = new ArrayList<>();
             moveAlphaToBeta(new_ts_block, alpha_list.get(isMoveable_i), beta_list.get(isMoveable_i));
-            getEncodeBitsRegressionPNoTrain(new_ts_block, block_size, new_length, coefficient, segment_size);
+            getEncodeBitsRegressionPNoTrain(new_ts_block, block_size, new_length, coefficient, p);
             ArrayList<Integer> tmp = new ArrayList<>();
             tmp.add(isMoveable_i);
             tmp.add(new_length.get(0));
@@ -1963,7 +1963,7 @@ public class RgerPInt{
           if (all_length.get(0).get(1) <= raw_length.get(0)) {
             moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
 //                            System.out.println("alpha: "+alpha_list.get(all_length.get(0).get(0)));
-            getEncodeBitsRegressionPNoTrain(ts_block, block_size, raw_length, coefficient, segment_size);
+            getEncodeBitsRegressionPNoTrain(ts_block, block_size, raw_length, coefficient, p);
           } else {
             break;
           }
@@ -2112,7 +2112,7 @@ public class RgerPInt{
             ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
             ArrayList<Integer> new_length = new ArrayList<>();
             moveAlphaToBeta(new_ts_block, alpha_list.get(isMoveable_i), beta_list.get(isMoveable_i));
-            getEncodeBitsRegressionPNoTrain(new_ts_block, block_size, new_length, coefficient, segment_size);
+            getEncodeBitsRegressionPNoTrain(new_ts_block, block_size, new_length, coefficient, p);
             ArrayList<Integer> tmp = new ArrayList<>();
             tmp.add(isMoveable_i);
             tmp.add(new_length.get(0));
@@ -2124,7 +2124,7 @@ public class RgerPInt{
           if (all_length.get(0).get(1) <= raw_length.get(0)) {
             moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
 //                            System.out.println("alpha: "+alpha_list.get(all_length.get(0).get(0)));
-            getEncodeBitsRegressionPNoTrain(ts_block, block_size, raw_length, coefficient, segment_size);
+            getEncodeBitsRegressionPNoTrain(ts_block, block_size, raw_length, coefficient, p);
           } else {
             break;
           }
