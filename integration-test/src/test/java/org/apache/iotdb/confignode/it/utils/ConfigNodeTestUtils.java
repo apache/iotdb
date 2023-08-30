@@ -32,7 +32,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
@@ -334,12 +333,6 @@ public class ConfigNodeTestUtils {
     clusterParameters.setTagAttributeTotalSize(700);
     clusterParameters.setDatabaseLimitThreshold(-1);
     return clusterParameters;
-  }
-
-  public static TConfigNodeRestartReq generateTConfigNodeRestartReq(
-      String clusterName, int nodeId, ConfigNodeWrapper configNodeWrapper) {
-    return new TConfigNodeRestartReq(
-        clusterName, generateTConfigNodeLocation(nodeId, configNodeWrapper));
   }
 
   public static TDataNodeLocation generateTDataNodeLocation(

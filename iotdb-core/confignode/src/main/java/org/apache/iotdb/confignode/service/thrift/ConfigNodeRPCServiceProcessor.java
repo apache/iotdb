@@ -73,7 +73,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -592,16 +591,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         ConfigNodeConstant.GLOBAL_NAME,
         ConfigNodeDescriptor.getInstance().getConf().getClusterName());
     return StatusUtils.OK;
-  }
-
-  @Override
-  public TSStatus restartConfigNode(TConfigNodeRestartReq req) {
-    TSStatus status = configManager.restartConfigNode(req);
-
-    // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
-    LOGGER.info("Execute RestartConfigNodeRequest {} with result {}", req, status);
-
-    return status;
   }
 
   /** For leader to remove ConfigNode configuration in consensus layer */
