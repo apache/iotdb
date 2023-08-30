@@ -293,7 +293,7 @@ public class ConfigPlanExecutor {
   }
 
   public TSStatus executeNonQueryPlan(ConfigPhysicalPlan physicalPlan)
-      throws UnknownPhysicalPlanTypeException, AuthException {
+      throws UnknownPhysicalPlanTypeException {
     switch (physicalPlan.getType()) {
       case RegisterDataNode:
         return nodeInfo.registerDataNode((RegisterDataNodePlan) physicalPlan);

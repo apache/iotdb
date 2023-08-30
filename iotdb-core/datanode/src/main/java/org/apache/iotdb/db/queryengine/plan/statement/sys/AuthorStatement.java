@@ -220,7 +220,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case CREATE_USER:
         TSStatus status =
             AuthorityChecker.getTSStatus(
-                AuthorityChecker.SUPER_USER.equals(this.userName),
+                !AuthorityChecker.SUPER_USER.equals(this.userName),
                 "Cannot create user has same name with admin user");
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
@@ -252,6 +252,8 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case DROP_ROLE:
       case LIST_ROLE:
       case LIST_ROLE_PRIVILEGE:
+      case GRANT_USER_ROLE:
+      case REVOKE_USER_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
@@ -269,10 +271,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkGrantOption(userName, privilegeList, nodeNameList, authorType),
             "Has no permission to " + authorType);
-      case GRANT_USER_ROLE:
-      case REVOKE_USER_ROLE:
-        // TODO ?
-        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       default:
         throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }

@@ -238,6 +238,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE;
     } else if (procedure instanceof AlterLogicalViewProcedure) {
       return ProcedureType.ALTER_LOGICAL_VIEW_PROCEDURE;
+    } else if (procedure instanceof AuthOperationProcedure) {
+      return ProcedureType.AUTH_OPERATE_PROCEDURE;
     }
     return null;
   }

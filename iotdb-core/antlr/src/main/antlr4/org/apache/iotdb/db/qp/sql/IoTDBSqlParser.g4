@@ -846,12 +846,12 @@ alterUser
 
 // Grant User Privileges
 grantUser
-    : GRANT USER userName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)? (grantOpt)?
+    : GRANT privileges ON prefixPath (COMMA prefixPath)* TO USER userName=identifier (grantOpt)?
     ;
 
 // Grant Role Privileges
 grantRole
-    : GRANT ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)? (grantOpt)?
+    : GRANT privileges ON prefixPath (COMMA prefixPath)* TO ROLE roleName=identifier (grantOpt)?
     ;
 
 // Grant Option
@@ -866,12 +866,12 @@ grantRoleToUser
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE USER userName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
+    : REVOKE privileges ON prefixPath (COMMA prefixPath)* FROM USER userName=identifier
     ;
 
 // Revoke Role Privileges
 revokeRole
-    : REVOKE ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
+    : REVOKE privileges ON prefixPath (COMMA prefixPath)* FROM ROLE roleName=identifier
     ;
 
 // Revoke Role From User

@@ -31,8 +31,8 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
-import org.apache.iotdb.confignode.procedure.state.AuthOperationProcedureState;
+import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
+import org.apache.iotdb.confignode.procedure.state.auth.AuthOperationProcedureState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
@@ -49,11 +49,11 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
-import static org.apache.iotdb.confignode.procedure.state.AuthOperationProcedureState.DATANODE_AUTHCACHE_INVALIDING;
+import static org.apache.iotdb.confignode.procedure.state.auth.AuthOperationProcedureState.DATANODE_AUTHCACHE_INVALIDING;
 
-public class AuthOperationProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, AuthOperationProcedureState> {
+public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationProcedureState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(AuthOperationProcedure.class);
 
   private String user;
@@ -61,7 +61,7 @@ public class AuthOperationProcedure
 
   private AuthorPlan plan;
 
-  private int timeoutMS;
+  private long timeoutMS;
   private static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
 
@@ -99,14 +99,15 @@ public class AuthOperationProcedure
           req.setRoleName(role);
           Iterator<Pair<TDataNodeConfiguration, Long>> it = dataNodesToInvalid.iterator();
           while (it.hasNext()) {
-            if (it.next().getRight() + this.timeoutMS < System.currentTimeMillis()) {
+            Pair<TDataNodeConfiguration, Long> pair = it.next();
+            if (pair.getRight() + this.timeoutMS < System.currentTimeMillis()) {
               it.remove();
               continue;
             }
             status =
                 SyncDataNodeClientPool.getInstance()
                     .sendSyncRequestToDataNodeWithRetry(
-                        it.next().getLeft().getLocation().getInternalEndPoint(),
+                        pair.getLeft().getLocation().getInternalEndPoint(),
                         req,
                         DataNodeRequestType.INVALIDATE_PERMISSION_CACHE);
             if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -123,7 +124,7 @@ public class AuthOperationProcedure
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
         LOGGER.error("Fail when execute {} ", plan);
-        setFailure(new ProcedureException(e.getMessage()));
+        setFailure(new ProcedureException(e));
       } else {
         LOGGER.error("Retrievable error trying to execute plan {}, state: {}", plan, state, e);
         if (getCycles() > RETRY_THRESHOLD) {
@@ -203,7 +204,7 @@ public class AuthOperationProcedure
           ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(byteBuffer);
       this.datanodes.add(datanode);
     }
-    this.timeoutMS = ReadWriteIOUtils.readInt(byteBuffer);
+    this.timeoutMS = ReadWriteIOUtils.readLong(byteBuffer);
     try {
       ReadWriteIOUtils.readInt(byteBuffer);
       this.plan = (AuthorPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
@@ -221,6 +222,14 @@ public class AuthOperationProcedure
       return false;
     }
     AuthOperationProcedure that = (AuthOperationProcedure) o;
-    return plan.equals(that.plan) && datanodes.equals(that.datanodes);
+    return timeoutMS == that.timeoutMS
+        && Objects.equals(plan, that.plan)
+        && Objects.equals(dataNodesToInvalid, that.dataNodesToInvalid)
+        && Objects.equals(datanodes, that.datanodes);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(plan, timeoutMS, dataNodesToInvalid, datanodes);
   }
 }

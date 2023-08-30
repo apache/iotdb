@@ -115,7 +115,7 @@ public class ConfigRegionStateMachine
     TSStatus result;
     try {
       result = executor.executeNonQueryPlan(plan);
-    } catch (UnknownPhysicalPlanTypeException | AuthException e) {
+    } catch (UnknownPhysicalPlanTypeException e) {
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
@@ -334,7 +334,7 @@ public class ConfigRegionStateMachine
           ConfigPhysicalPlan nextPlan = logReader.next();
           try {
             executor.executeNonQueryPlan(nextPlan);
-          } catch (UnknownPhysicalPlanTypeException | AuthException e) {
+          } catch (UnknownPhysicalPlanTypeException e) {
             LOGGER.error(e.getMessage());
           }
         }

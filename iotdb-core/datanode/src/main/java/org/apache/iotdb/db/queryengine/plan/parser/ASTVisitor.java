@@ -2200,7 +2200,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     authorStatement.setPrivilegeList(privileges);
     authorStatement.setNodeNameList(nodeNameList);
-    authorStatement.setGrantOpt(!ctx.grantOpt().isEmpty());
+    authorStatement.setGrantOpt(ctx.grantOpt() != null);
     return authorStatement;
   }
 
@@ -2220,7 +2220,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorStatement.setPrivilegeList(privileges);
     authorStatement.setNodeNameList(nodeNameList);
-    authorStatement.setGrantOpt(!ctx.grantOpt().isEmpty());
+    authorStatement.setGrantOpt(ctx.grantOpt() != null);
     return authorStatement;
   }
 

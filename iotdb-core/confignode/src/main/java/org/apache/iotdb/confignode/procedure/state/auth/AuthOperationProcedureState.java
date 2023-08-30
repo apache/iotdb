@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state;
+package org.apache.iotdb.confignode.procedure.state.auth;
 
 public enum AuthOperationProcedureState {
   INIT,

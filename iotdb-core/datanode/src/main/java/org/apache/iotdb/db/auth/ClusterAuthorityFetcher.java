@@ -305,7 +305,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       TSStatus tsStatus = configNodeClient.operatePermission(authorizerReq);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        logger.error(
+        logger.warn(
             "Failed to execute {} in config node, status is {}.",
             AuthorType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
             tsStatus);

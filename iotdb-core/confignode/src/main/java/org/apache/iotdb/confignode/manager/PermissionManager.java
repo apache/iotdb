@@ -68,7 +68,7 @@ public class PermissionManager {
       } else {
         List<TDataNodeConfiguration> allDataNodes =
             configManager.getNodeManager().getRegisteredDataNodes();
-        tsStatus = configManager.getProcedureManager().OperateAuthPlan(authorPlan, allDataNodes);
+        tsStatus = configManager.getProcedureManager().operateAuthPlan(authorPlan, allDataNodes);
       }
       return tsStatus;
     } catch (ConsensusException e) {

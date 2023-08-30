@@ -886,7 +886,7 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus OperateAuthPlan(AuthorPlan authorPlan, List<TDataNodeConfiguration> dns) {
+  public TSStatus operateAuthPlan(AuthorPlan authorPlan, List<TDataNodeConfiguration> dns) {
     try {
       final long procedureId =
           executor.submitProcedure(new AuthOperationProcedure(authorPlan, dns));
