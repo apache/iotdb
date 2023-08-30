@@ -517,6 +517,10 @@ public class RgerPInt{
     coefficient.clear();
 
     terminate(ts_block, coefficient, p);
+//    coefficient.add(0);
+//    coefficient.add(0);
+//    coefficient.add(1);
+//    coefficient.add(1);
     ArrayList<Integer> tmp0 = new ArrayList<>();
     tmp0.add(ts_block.get(0).get(0));
     tmp0.add(ts_block.get(0).get(1));
@@ -2509,8 +2513,8 @@ public class RgerPInt{
 
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\p_int";
-    String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
+    String parent_dir = "E:\\encoding-reorder-my\\vldb\\compression_ratio\\p_int2";
+    String input_parent_dir = "E:\\encoding-reorder-my\\reorder\\iotdb_test_small\\";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<String> dataset_name = new ArrayList<>();
@@ -2589,8 +2593,8 @@ public class RgerPInt{
     dataset_block_size.add(512);
 
 
-    //      for(int file_i=3;file_i<4;file_i++){
-    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+    for(int file_i=11;file_i<12;file_i++){
+    //for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
@@ -2624,7 +2628,7 @@ public class RgerPInt{
       //        for(int p=2;p<3;p++) {
 
         for (File f : tempList) {
-          for (int p = 1; p < 10; p++) {
+          for (int p = 1; p < 2; p++) {
             System.out.println("p=" + p);
           //        ArrayList<Integer> flag = new ArrayList<>();
           //        flag.add(0);
@@ -2720,7 +2724,7 @@ public class RgerPInt{
             String.valueOf(compressed_size),
             String.valueOf(ratio)
           };
-          //          System.out.println(ratio);
+          System.out.println(ratio);
           writer.writeRecord(record);
           //          break;
         }

@@ -2,6 +2,7 @@ package org.apache.iotdb.tsfile.encoding;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
+import org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,7 +15,7 @@ import java.util.Stack;
 
 import static java.lang.Math.abs;
 
-public class QYRegerSegmentPartitionSegmentSize {
+public class QZRegerSegmentPartition {
   public static int getBitWith(int num) {
     if (num == 0) return 1;
     else return 32 - Integer.numberOfLeadingZeros(num);
@@ -301,69 +302,55 @@ public class QYRegerSegmentPartitionSegmentSize {
           ArrayList<ArrayList<Integer>> ts_block, ArrayList<Float> coefficient, int p) {
     int length = ts_block.size();
     assert length > p;
+    int size=length-p;
 
-    double[] resultCovariances_value = new double[p + 1];
-    double[] resultCovariances_timestamp = new double[p + 1];
-    for (int i = 0; i <= p; i++) {
-      resultCovariances_value[i] = 0;
-      resultCovariances_timestamp[i] = 0;
-      for (int j = 0; j < length - i; j++) {
-        if (j + i < length) {
-          resultCovariances_timestamp[i] += ts_block.get(j).get(0) * ts_block.get(j + i).get(0);
-          resultCovariances_value[i] += ts_block.get(j).get(1) * ts_block.get(j + i).get(1);
+    double[] param;
+    try{
+      OLSMultipleLinearRegression ols1 = new OLSMultipleLinearRegression();
+      double[][] X1 = new double[size][p];
+      double[] Y1 = new double[size];
+      for (int i = 0; i < size; i++) {
+        X1[i] = new double[p];
+        for (int j = 0; j < p; j++) {
+          X1[i][j] = ts_block.get(i + j).get(0);
         }
+        Y1[i] = ts_block.get(i + p).get(0);
       }
-      resultCovariances_timestamp[i] /= length - i;
-      resultCovariances_value[i] /= length - i;
+      ols1.newSampleData(Y1, X1);
+      param = ols1.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数(?)
+      //System.out.println(Arrays.toString(param));
+    }catch (Exception e){
+      param=new double[p+1];
+      for(int i=0;i<=p;i++){
+        param[i]=0;
+      }
     }
 
-    double[] epsilons_timestamp = new double[p + 1];
-    double[] epsilons_value = new double[p + 1];
-    double[] kappas_timestamp = new double[p + 1];
-    double[] kappas_value = new double[p + 1];
-    double[][] alphas_timestamp = new double[p + 1][p + 1];
-    double[][] alphas_value = new double[p + 1][p + 1];
-    // alphas_timestamp[i][j] denotes alpha_i^{(j)}
-    // alphas_value[i][j] denotes alpha_i^{(j)}
-    epsilons_timestamp[0] = resultCovariances_timestamp[0];
-    epsilons_value[0] = resultCovariances_value[0];
-    for (int i = 1; i <= p; i++) {
-      double tmpSum_timestamp = 0.0;
-      double tmpSum_value = 0.0;
-      for (int j = 1; j <= i - 1; j++) {
-        tmpSum_timestamp += alphas_timestamp[j][i - 1] * resultCovariances_timestamp[i - j];
-        tmpSum_value += alphas_value[j][i - 1] * resultCovariances_value[i - j];
-      }
-      if(epsilons_timestamp[i - 1]==0){
-        kappas_timestamp[i] =0;
-      }
-      else {
-        kappas_timestamp[i] = (resultCovariances_timestamp[i] - tmpSum_timestamp) / epsilons_timestamp[i - 1];
-      }
-      if(epsilons_value[i - 1]==0){
-        kappas_value[i] =0;
-      }
-      else{
-        kappas_value[i] = (resultCovariances_value[i] - tmpSum_value) / epsilons_value[i - 1];
-      }
-      alphas_timestamp[i][i] = kappas_timestamp[i];
-      alphas_value[i][i] = kappas_value[i];
-      if (i > 1) {
-        for (int j = 1; j <= i - 1; j++) {
-          alphas_timestamp[j][i] =
-                  alphas_timestamp[j][i - 1] - kappas_timestamp[i] * alphas_timestamp[i - j][i - 1];
-          alphas_value[j][i] =
-                  alphas_value[j][i - 1] - kappas_value[i] * alphas_value[i - j][i - 1];
+    double[] param2;
+    try{
+      OLSMultipleLinearRegression ols2 = new OLSMultipleLinearRegression();
+      double[][] X2 = new double[size][p];
+      double[] Y2 = new double[size];
+      for (int i = 0; i < size; i++) {
+        X2[i] = new double[p];
+        for (int j = 0; j < p; j++) {
+          X2[i][j] = ts_block.get(i + j).get(1);
         }
+        Y2[i] = ts_block.get(i + p).get(1);
       }
-      epsilons_timestamp[i] =
-              (1 - kappas_timestamp[i] * kappas_timestamp[i]) * epsilons_timestamp[i - 1];
-      epsilons_value[i] = (1 - kappas_value[i] * kappas_value[i]) * epsilons_value[i - 1];
+      ols2.newSampleData(Y2, X2);
+      param2 = ols2.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数(?)
+      //System.out.println(Arrays.toString(param2));
+    }catch (Exception exception){
+      param2=new double[p+1];
+      for(int i=0;i<=p;i++){
+        param2[i]=0;
+      }
     }
 
     for (int i = 0; i <= p; i++) {
-      coefficient.add((float) alphas_timestamp[i][p]);
-      coefficient.add((float) alphas_value[i][p]);
+      coefficient.add((float) param[i]);
+      coefficient.add((float) param2[i]);
     }
   }
 
@@ -3523,7 +3510,7 @@ public class QYRegerSegmentPartitionSegmentSize {
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
-    String parent_dir = "E:\\encoding-reorder-my\\vldb\\compression_ratio\\segment_size_q";
+    String parent_dir = "E:\\encoding-reorder-my\\vldb\\compression_ratio\\segment";
     String input_parent_dir = "E:\\encoding-reorder-my\\reorder\\iotdb_test_small\\";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
@@ -3580,7 +3567,7 @@ public class QYRegerSegmentPartitionSegmentSize {
 
     output_path_list.add(parent_dir + "\\CS-Sensors_ratio.csv"); // 0
     dataset_block_size.add(1024);
-    dataset_k.add(6);
+    dataset_k.add(5);
     output_path_list.add(parent_dir + "\\Metro-Traffic_ratio.csv");// 1
     dataset_block_size.add(512);
     dataset_k.add(7);
@@ -3592,13 +3579,13 @@ public class QYRegerSegmentPartitionSegmentSize {
     dataset_k.add(1);
     output_path_list.add(parent_dir + "\\GW-Magnetic_ratio.csv"); //4
     dataset_block_size.add(128);
-    dataset_k.add(3);
+    dataset_k.add(6);
     output_path_list.add(parent_dir + "\\TY-Fuel_ratio.csv");//5
     dataset_block_size.add(64);
-    dataset_k.add(2);
+    dataset_k.add(5);
     output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
     dataset_block_size.add(128);
-    dataset_k.add(3);
+    dataset_k.add(4);
     output_path_list.add(parent_dir + "\\Vehicle-Charge_ratio.csv");//7
     dataset_block_size.add(512);
     dataset_k.add(8);
@@ -3613,10 +3600,10 @@ public class QYRegerSegmentPartitionSegmentSize {
     dataset_k.add(9);
     output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
     dataset_block_size.add(512);
-    dataset_k.add(4);
+    dataset_k.add(5);
 
-    for (int file_i = 0; file_i < 12; file_i++) {
-//        for (int file_i = 4; file_i < input_path_list.size(); file_i++) {
+//    for (int file_i = 8; file_i < 9; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
       String inputPath = input_path_list.get(file_i);
       //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
@@ -3635,50 +3622,47 @@ public class QYRegerSegmentPartitionSegmentSize {
         "Decoding Time",
         "Points",
         "Compressed Size",
-              "Segment Size",
         "Compression Ratio"
       };
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
+//System.out.println(inputPath);
       for (File f : tempList) {
         System.out.println(f);
-        for(int segment_size_exp = 6;segment_size_exp>2;segment_size_exp--){
-        int segment_size = (int) Math.pow(2, segment_size_exp);
-        System.out.println(segment_size);
+        InputStream inputStream = Files.newInputStream(f.toPath());
+        CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+        ArrayList<ArrayList<Integer>> data = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> data_decoded = new ArrayList<>();
 
-          InputStream inputStream = Files.newInputStream(f.toPath());
-          CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-          ArrayList<ArrayList<Integer>> data = new ArrayList<>();
-          ArrayList<ArrayList<Integer>> data_decoded = new ArrayList<>();
-
-          // add a column to "data"
-          loader.readHeaders();
-          data.clear();
-          while (loader.readRecord()) {
-            ArrayList<Integer> tmp = new ArrayList<>();
-            tmp.add(Integer.valueOf(loader.getValues()[0]));
-            tmp.add(Integer.valueOf(loader.getValues()[1]));
-            data.add(tmp);
-          }
-          inputStream.close();
-          long encodeTime = 0;
-          long decodeTime = 0;
-          double ratio = 0;
-          double compressed_size = 0;
-          int repeatTime2 = 1;
-
-          for (int i = 0; i < repeatTime; i++) {
-            long s = System.nanoTime();
-            ArrayList<Byte> buffer = new ArrayList<>();
-            for (int repeat = 0; repeat < repeatTime2; repeat++)
-              buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i),dataset_third.get(file_i),segment_size, dataset_k.get(file_i));
-            long e = System.nanoTime();
-            encodeTime += ((e - s) / repeatTime2);
-            compressed_size += buffer.size();
-            double ratioTmp = (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
-            ratio += ratioTmp;
-            s = System.nanoTime();
+        // add a column to "data"
+        loader.readHeaders();
+        data.clear();
+        while (loader.readRecord()) {
+          ArrayList<Integer> tmp = new ArrayList<>();
+          tmp.add(Integer.valueOf(loader.getValues()[0]));
+          tmp.add(Integer.valueOf(loader.getValues()[1]));
+          //          tmp.add(Float.valueOf(loader.getValues()[0]).intValue());
+          //          tmp.add(Float.valueOf(loader.getValues()[1]).intValue());
+          data.add(tmp);
+        }
+        inputStream.close();
+        long encodeTime = 0;
+        long decodeTime = 0;
+        double ratio = 0;
+        double compressed_size = 0;
+        int repeatTime2 = 1;
+        for (int i = 0; i < repeatTime; i++) {
+          long s = System.nanoTime();
+          ArrayList<Byte> buffer = new ArrayList<>();
+          for (int repeat = 0; repeat < repeatTime2; repeat++)
+            buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i), 16, dataset_k.get(file_i));
+          long e = System.nanoTime();
+          encodeTime += ((e - s) / repeatTime2);
+          compressed_size += buffer.size();
+          double ratioTmp = (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
+          ratio += ratioTmp;
+          s = System.nanoTime();
 //          for(int repeat=0;repeat<1;repeat++)
 //            data_decoded = ReorderingRegressionDecoder(buffer);
 ////                    for(int p=0;p< data.size();p++){
@@ -3688,34 +3672,28 @@ public class QYRegerSegmentPartitionSegmentSize {
 ////          //              System.out.println(data_decoded.get(p).get(1));
 ////                      }
 ////                    }//||  Objects.equals(data.get(p).get(1), data_decoded.get(p).get(1))
-            e = System.nanoTime();
-            decodeTime += ((e - s) / repeatTime2);
-          }
-
-          ratio /= repeatTime;
-          compressed_size /= repeatTime;
-          encodeTime /= repeatTime;
-          decodeTime /= repeatTime;
-
-          String[] record = {
-                  f.toString(),
-                  "REGER",
-                  String.valueOf(encodeTime),
-                  String.valueOf(decodeTime),
-                  String.valueOf(data.size()),
-                  String.valueOf(compressed_size),
-                  String.valueOf(segment_size_exp),
-                  String.valueOf(ratio)
-          };
-          System.out.println(ratio);
-          writer.writeRecord(record);
-
+          e = System.nanoTime();
+          decodeTime += ((e - s) / repeatTime2);
         }
+
+        ratio /= repeatTime;
+        compressed_size /= repeatTime;
+        encodeTime /= repeatTime;
+        decodeTime /= repeatTime;
+
+        String[] record = {
+          f.toString(),
+          "REGER",
+          String.valueOf(encodeTime),
+          String.valueOf(decodeTime),
+          String.valueOf(data.size()),
+          String.valueOf(compressed_size),
+          String.valueOf(ratio)
+        };
+        System.out.println(ratio);
+        writer.writeRecord(record);
 //        break;
       }
-
-//System.out.println(inputPath);
-
       writer.close();
     }
   }

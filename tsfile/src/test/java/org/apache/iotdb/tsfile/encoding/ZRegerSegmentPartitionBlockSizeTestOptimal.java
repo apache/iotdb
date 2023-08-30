@@ -2,6 +2,7 @@ package org.apache.iotdb.tsfile.encoding;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
+import org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,7 +15,7 @@ import java.util.Stack;
 
 import static java.lang.Math.abs;
 
-public class YRegerSegmentPartitionBlockSizeTestOptimal {
+public class ZRegerSegmentPartitionBlockSizeTestOptimal {
     public static int getBitWith(int num) {
         if (num == 0) return 1;
         else return 32 - Integer.numberOfLeadingZeros(num);
@@ -301,69 +302,55 @@ public class YRegerSegmentPartitionBlockSizeTestOptimal {
             ArrayList<ArrayList<Integer>> ts_block, ArrayList<Float> coefficient, int p) {
         int length = ts_block.size();
         assert length > p;
+        int size=length-p;
 
-        double[] resultCovariances_value = new double[p + 1];
-        double[] resultCovariances_timestamp = new double[p + 1];
-        for (int i = 0; i <= p; i++) {
-            resultCovariances_value[i] = 0;
-            resultCovariances_timestamp[i] = 0;
-            for (int j = 0; j < length - i; j++) {
-                if (j + i < length) {
-                    resultCovariances_timestamp[i] += ts_block.get(j).get(0) * ts_block.get(j + i).get(0);
-                    resultCovariances_value[i] += ts_block.get(j).get(1) * ts_block.get(j + i).get(1);
+        double[] param;
+        try{
+            OLSMultipleLinearRegression ols1 = new OLSMultipleLinearRegression();
+            double[][] X1 = new double[size][p];
+            double[] Y1 = new double[size];
+            for (int i = 0; i < size; i++) {
+                X1[i] = new double[p];
+                for (int j = 0; j < p; j++) {
+                    X1[i][j] = ts_block.get(i + j).get(0);
                 }
+                Y1[i] = ts_block.get(i + p).get(0);
             }
-            resultCovariances_timestamp[i] /= length - i;
-            resultCovariances_value[i] /= length - i;
+            ols1.newSampleData(Y1, X1);
+            param = ols1.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数(?)
+            //System.out.println(Arrays.toString(param));
+        }catch (Exception e){
+            param=new double[p+1];
+            for(int i=0;i<=p;i++){
+                param[i]=0;
+            }
         }
 
-        double[] epsilons_timestamp = new double[p + 1];
-        double[] epsilons_value = new double[p + 1];
-        double[] kappas_timestamp = new double[p + 1];
-        double[] kappas_value = new double[p + 1];
-        double[][] alphas_timestamp = new double[p + 1][p + 1];
-        double[][] alphas_value = new double[p + 1][p + 1];
-        // alphas_timestamp[i][j] denotes alpha_i^{(j)}
-        // alphas_value[i][j] denotes alpha_i^{(j)}
-        epsilons_timestamp[0] = resultCovariances_timestamp[0];
-        epsilons_value[0] = resultCovariances_value[0];
-        for (int i = 1; i <= p; i++) {
-            double tmpSum_timestamp = 0.0;
-            double tmpSum_value = 0.0;
-            for (int j = 1; j <= i - 1; j++) {
-                tmpSum_timestamp += alphas_timestamp[j][i - 1] * resultCovariances_timestamp[i - j];
-                tmpSum_value += alphas_value[j][i - 1] * resultCovariances_value[i - j];
-            }
-            if(epsilons_timestamp[i - 1]==0){
-                kappas_timestamp[i] =0;
-            }
-            else {
-                kappas_timestamp[i] = (resultCovariances_timestamp[i] - tmpSum_timestamp) / epsilons_timestamp[i - 1];
-            }
-            if(epsilons_value[i - 1]==0){
-                kappas_value[i] =0;
-            }
-            else{
-                kappas_value[i] = (resultCovariances_value[i] - tmpSum_value) / epsilons_value[i - 1];
-            }
-            alphas_timestamp[i][i] = kappas_timestamp[i];
-            alphas_value[i][i] = kappas_value[i];
-            if (i > 1) {
-                for (int j = 1; j <= i - 1; j++) {
-                    alphas_timestamp[j][i] =
-                            alphas_timestamp[j][i - 1] - kappas_timestamp[i] * alphas_timestamp[i - j][i - 1];
-                    alphas_value[j][i] =
-                            alphas_value[j][i - 1] - kappas_value[i] * alphas_value[i - j][i - 1];
+        double[] param2;
+        try{
+            OLSMultipleLinearRegression ols2 = new OLSMultipleLinearRegression();
+            double[][] X2 = new double[size][p];
+            double[] Y2 = new double[size];
+            for (int i = 0; i < size; i++) {
+                X2[i] = new double[p];
+                for (int j = 0; j < p; j++) {
+                    X2[i][j] = ts_block.get(i + j).get(1);
                 }
+                Y2[i] = ts_block.get(i + p).get(1);
             }
-            epsilons_timestamp[i] =
-                    (1 - kappas_timestamp[i] * kappas_timestamp[i]) * epsilons_timestamp[i - 1];
-            epsilons_value[i] = (1 - kappas_value[i] * kappas_value[i]) * epsilons_value[i - 1];
+            ols2.newSampleData(Y2, X2);
+            param2 = ols2.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数(?)
+            //System.out.println(Arrays.toString(param2));
+        }catch (Exception exception){
+            param2=new double[p+1];
+            for(int i=0;i<=p;i++){
+                param2[i]=0;
+            }
         }
 
         for (int i = 0; i <= p; i++) {
-            coefficient.add((float) alphas_timestamp[i][p]);
-            coefficient.add((float) alphas_value[i][p]);
+            coefficient.add((float) param[i]);
+            coefficient.add((float) param2[i]);
         }
     }
 
