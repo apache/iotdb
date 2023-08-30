@@ -2,6 +2,7 @@ package org.apache.iotdb.tsfile.encoding;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
+import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 
 import java.io.File;
 import java.io.IOException;
@@ -376,7 +377,60 @@ public class RgerPFloat {
         }
     }
     // --------------------------------------  base function -----------------------------------------------------
+    public static ArrayList<ArrayList<Integer>> segmentBitPacking(ArrayList<ArrayList<Integer>> ts_block_delta, int block_size, int segment_size) {
+        ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
+        int segment_n = (block_size - 1) / segment_size;
+        for (int segment_i = 0; segment_i < segment_n; segment_i++) {
+            int bit_width_time = Integer.MIN_VALUE;
+            int bit_width_value = Integer.MIN_VALUE;
 
+            for (int data_i = segment_i * segment_size + 1; data_i < (segment_i + 1) * segment_size + 1; data_i++) {
+                int cur_bit_width_time = getBitWith(ts_block_delta.get(data_i).get(0));
+                int cur_bit_width_value = getBitWith(ts_block_delta.get(data_i).get(1));
+                if (cur_bit_width_time > bit_width_time) {
+                    bit_width_time = cur_bit_width_time;
+                }
+                if (cur_bit_width_value > bit_width_value) {
+                    bit_width_value = cur_bit_width_value;
+                }
+            }
+            ArrayList<Integer> bit_width = new ArrayList<>();
+            bit_width.add(bit_width_time);
+            bit_width.add(bit_width_value);
+            bit_width_segments.add(bit_width);
+        }
+
+        return bit_width_segments;
+    }
+    public static void moveAlphaToBeta(ArrayList<ArrayList<Integer>> ts_block, int alpha, int beta) {
+        ArrayList<Integer> tmp_tv = ts_block.get(alpha);
+        if (beta < alpha) {
+            for (int u = alpha - 1; u >= beta; u--) {
+                ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+                tmp_tv_cur.add(ts_block.get(u).get(0));
+                tmp_tv_cur.add(ts_block.get(u).get(1));
+                ts_block.set(u + 1, tmp_tv_cur);
+            }
+        } else {
+            for (int u = alpha + 1; u < beta; u++) {
+                ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+                tmp_tv_cur.add(ts_block.get(u).get(0));
+                tmp_tv_cur.add(ts_block.get(u).get(1));
+                ts_block.set(u - 1, tmp_tv_cur);
+            }
+            beta--;
+        }
+        ts_block.set(beta, tmp_tv);
+    }
+    private static ArrayList<Integer> isMovable(ArrayList<Integer> alpha_list, ArrayList<Integer> beta_list) {
+        ArrayList<Integer> isMoveable = new ArrayList<>();
+        for (int i = 0; i < alpha_list.size(); i++) {
+            if (alpha_list.get(i) != -1 && beta_list.get(i) != -1) {
+                isMoveable.add(i);
+            }
+        }
+        return isMoveable;
+    }
     private static ArrayList<ArrayList<Integer>> getEncodeBitsRegressionP(
             ArrayList<ArrayList<Integer>> ts_block,
             int block_size,
@@ -454,8 +508,8 @@ public class RgerPFloat {
         for (int j = block_size - 1; j >= p; j--) {
             float epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
             float epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
-            length += epsilon_r;
-            length += epsilon_v;
+            length += getBitWith((int) epsilon_r);
+            length += getBitWith((int) epsilon_v);
             ArrayList<Integer> tmp = new ArrayList<>();
             tmp.add((int) epsilon_r);
             tmp.add((int) epsilon_v);
@@ -475,39 +529,58 @@ public class RgerPFloat {
 
         return ts_block_delta;
     }
-
-    public static int getBetaP(
+    private static ArrayList<ArrayList<Integer>> getEncodeBitsRegressionPNoTrain(
             ArrayList<ArrayList<Integer>> ts_block,
-            int alpha,
             int block_size,
+            ArrayList<Integer> raw_length,
             ArrayList<Float> coefficient,
             int p) {
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
         int max_timestamp = Integer.MIN_VALUE;
+        int max_timestamp_i = -1;
         int max_value = Integer.MIN_VALUE;
-        int raw_timestamp_delta_max_index = -1;
-        int raw_value_delta_max_index = -1;
-
-        int raw_abs_sum = 0;
+        int max_value_i = -1;
         ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
-        coefficient.clear();
 
+        ArrayList<Integer> tmp0 = new ArrayList<>();
+        tmp0.add(ts_block.get(0).get(0));
+        tmp0.add(ts_block.get(0).get(1));
+        ts_block_delta.add(tmp0);
+        // regression residual
+        for (int j = 1; j < p; j++) {
+            float epsilon_r = (float) ((float) ts_block.get(j).get(0) - coefficient.get(0));
+            float epsilon_v = (float) ((float) ts_block.get(j).get(1) - coefficient.get(1));
+            for (int pi = 1; pi <= j; pi++) {
+                epsilon_r -= (float) (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
+                epsilon_v -= (float) (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
+            }
 
-        ArrayList<Integer> j_star_list = new ArrayList<>(); // beta list of min b phi alpha to j
-        ArrayList<Integer> max_index = new ArrayList<>();
-        int j_star = -1;
-
-        if (alpha == -1) {
-            return j_star;
+            //      if(epsilon_r<timestamp_delta_min){
+            //        timestamp_delta_min = epsilon_r;
+            //      }
+            //      if(epsilon_v<value_delta_min){
+            //        value_delta_min = epsilon_v;
+            //      }
+            //      if(epsilon_r>max_timestamp){
+            //        max_timestamp = epsilon_r;
+            //      }
+            //      if(epsilon_v>max_value){
+            //        max_value = epsilon_v;
+            //      }
+            ArrayList<Integer> tmp = new ArrayList<>();
+            tmp.add((int) epsilon_r);
+            tmp.add((int) epsilon_v);
+            ts_block_delta.add(tmp);
         }
-        terminate(ts_block, coefficient, p);
+
+        // regression residual
         for (int j = p; j < block_size; j++) {
             float epsilon_r = (float) ts_block.get(j).get(0) - coefficient.get(0);
             float epsilon_v = (float) ts_block.get(j).get(1) - coefficient.get(1);
             for (int pi = 1; pi <= p; pi++) {
-                epsilon_r -= (float) (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
-                epsilon_v -= (float) (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
+                epsilon_r -= coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0);
+                epsilon_v -= coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1);
             }
 
             if (epsilon_r < timestamp_delta_min) {
@@ -527,10 +600,87 @@ public class RgerPFloat {
             tmp.add((int) epsilon_v);
             ts_block_delta.add(tmp);
         }
-        for (int j = 0; j < block_size - p; j++) {
-            raw_abs_sum += ts_block_delta.get(j).get(0);
-            raw_abs_sum += ts_block_delta.get(j).get(1);
+        int length = 0 ;
+        for (int j = block_size - 1; j >= p; j--) {
+            float epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
+            float epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
+            length += getBitWith((int) epsilon_r);
+            length += getBitWith((int) epsilon_v);
+            ArrayList<Integer> tmp = new ArrayList<>();
+            tmp.add((int) epsilon_r);
+            tmp.add((int) epsilon_v);
+            ts_block_delta.set(j, tmp);
         }
+        int max_bit_width_interval = getBitWith(max_timestamp - timestamp_delta_min);
+        int max_bit_width_value = getBitWith(max_value - value_delta_min);
+//        int length = (max_bit_width_interval + max_bit_width_value) * (block_size - 1);
+        raw_length.clear();
+
+        raw_length.add(length);
+        raw_length.add(max_bit_width_interval);
+        raw_length.add(max_bit_width_value);
+
+        raw_length.add(timestamp_delta_min);
+        raw_length.add(value_delta_min);
+
+        return ts_block_delta;
+    }
+    public static int getBetaP(
+            ArrayList<ArrayList<Integer>> ts_block,
+            int alpha,
+            int block_size,
+            ArrayList<Integer> raw_length,
+            ArrayList<Float> coefficient,
+            int p) {
+        int timestamp_delta_min = Integer.MAX_VALUE;
+        int value_delta_min = Integer.MAX_VALUE;
+        int max_timestamp = Integer.MIN_VALUE;
+        int max_value = Integer.MIN_VALUE;
+        int raw_timestamp_delta_max_index = -1;
+        int raw_value_delta_max_index = -1;
+
+        int raw_abs_sum = raw_length.get(0);
+        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
+//        coefficient.clear();
+
+
+        ArrayList<Integer> j_star_list = new ArrayList<>(); // beta list of min b phi alpha to j
+        ArrayList<Integer> max_index = new ArrayList<>();
+        int j_star = -1;
+
+        if (alpha == -1) {
+            return j_star;
+        }
+//        terminate(ts_block, coefficient, p);
+//        for (int j = p; j < block_size; j++) {
+//            float epsilon_r = (float) ts_block.get(j).get(0) - coefficient.get(0);
+//            float epsilon_v = (float) ts_block.get(j).get(1) - coefficient.get(1);
+//            for (int pi = 1; pi <= p; pi++) {
+//                epsilon_r -= (float) (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
+//                epsilon_v -= (float) (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
+//            }
+//
+//            if (epsilon_r < timestamp_delta_min) {
+//                timestamp_delta_min = (int) epsilon_r;
+//            }
+//            if (epsilon_v < value_delta_min) {
+//                value_delta_min = (int) epsilon_v;
+//            }
+//            if (epsilon_r > max_timestamp) {
+//                max_timestamp = (int) epsilon_r;
+//            }
+//            if (epsilon_v > max_value) {
+//                max_value = (int) epsilon_v;
+//            }
+//            ArrayList<Integer> tmp = new ArrayList<>();
+//            tmp.add((int) epsilon_r);
+//            tmp.add((int) epsilon_v);
+//            ts_block_delta.add(tmp);
+//        }
+//        for (int j = 0; j < block_size - p; j++) {
+//            raw_abs_sum += ts_block_delta.get(j).get(0);
+//            raw_abs_sum += ts_block_delta.get(j).get(1);
+//        }
         // regression residual
         for (int j = p; j < block_size; j++) {
             float epsilon_r = (float) ts_block.get(j).get(0) - coefficient.get(0);
@@ -911,8 +1061,8 @@ public class RgerPFloat {
         }
         int length = 0;
         for (ArrayList<Integer> integers : ts_block_delta) {
-            length += (integers.get(0) - timestamp_delta_min);
-            length += (integers.get(1) - value_delta_min);
+            length += getBitWith(integers.get(0) - timestamp_delta_min);
+            length += getBitWith(integers.get(1) - value_delta_min);
         }
         ArrayList<Integer> b = new ArrayList<>();
         b.add(length);
@@ -974,8 +1124,8 @@ public class RgerPFloat {
         }
         int length = 0;
         for (ArrayList<Integer> integers : ts_block_delta) {
-            length += (integers.get(0) - timestamp_delta_min);
-            length += (integers.get(1) - value_delta_min);
+            length += getBitWith(integers.get(0) - timestamp_delta_min);
+            length += getBitWith(integers.get(1) - value_delta_min);
         }
         ArrayList<Integer> b = new ArrayList<>();
         b.add(length);
@@ -1033,8 +1183,8 @@ public class RgerPFloat {
         }
         int length = 0;
         for (ArrayList<Integer> integers : ts_block_delta) {
-            length += (integers.get(0) - timestamp_delta_min);
-            length += (integers.get(1) - value_delta_min);
+            length += getBitWith(integers.get(0) - timestamp_delta_min);
+            length += getBitWith(integers.get(1) - value_delta_min);
         }
         ArrayList<Integer> b = new ArrayList<>();
         b.add(length);
@@ -1092,8 +1242,8 @@ public class RgerPFloat {
         }
         int length = 0;
         for (ArrayList<Integer> integers : ts_block_delta) {
-            length += (integers.get(0) - timestamp_delta_min);
-            length += (integers.get(1) - value_delta_min);
+            length += getBitWith(integers.get(0) - timestamp_delta_min);
+            length += getBitWith(integers.get(1) - value_delta_min);
         }
         ArrayList<Integer> b = new ArrayList<>();
         b.add(length);
@@ -1146,8 +1296,8 @@ public class RgerPFloat {
         }
         int length = 0;
         for (ArrayList<Integer> integers : ts_block_delta) {
-            length += (integers.get(0) - timestamp_delta_min);
-            length += (integers.get(1) - value_delta_min);
+            length += getBitWith(integers.get(0) - timestamp_delta_min);
+            length += getBitWith(integers.get(1) - value_delta_min);
         }
         ArrayList<Integer> b = new ArrayList<>();
         b.add(length);
@@ -1236,7 +1386,143 @@ public class RgerPFloat {
 
         return i_star;
     }
+    public static ArrayList<Integer> getIStarPK(
+            ArrayList<ArrayList<Integer>> ts_block,
+            int block_size,
+            int index,
+            ArrayList<Float> coefficient,
+            int p,
+            int k) {
+        int timestamp_delta_max = Integer.MIN_VALUE;
+        int value_delta_max = Integer.MIN_VALUE;
+        int timestamp_delta_max_index = -1;
+        int value_delta_max_index = -1;
 
+        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
+        ArrayList<Integer> alpha_list = new ArrayList<>();
+        if (index == 0) {
+            for (int j = 1; j < p; j++) {
+                float epsilon_v_j = (float) ts_block.get(j).get(1) - coefficient.get(1);
+                for (int pi = 1; pi <= j; pi++) {
+                    epsilon_v_j -= coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1);
+
+                }
+                ArrayList<Integer> tmp = new ArrayList<>();
+                tmp.add(j);
+                tmp.add((int) epsilon_v_j);
+                ts_block_delta.add(tmp);
+            }
+            for (int j = p; j < block_size; j++) {
+                float epsilon_v_j = (float) ((float) ts_block.get(j).get(1) - coefficient.get(1));
+                for (int pi = 1; pi <= p; pi++) {
+                    epsilon_v_j -= (float) (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
+                }
+                ArrayList<Integer> tmp = new ArrayList<>();
+                tmp.add(j);
+                tmp.add((int) epsilon_v_j);
+                ts_block_delta.add(tmp);
+            }
+
+        } else if (index == 1) {
+            for (int j = 1; j < p; j++) {
+                float epsilon_r_j = (float) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+                for (int pi = 1; pi <= j; pi++) {
+                    epsilon_r_j -= (float) (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
+
+                }
+                ArrayList<Integer> tmp = new ArrayList<>();
+                tmp.add(j);
+                tmp.add((int) epsilon_r_j);
+                ts_block_delta.add(tmp);
+            }
+
+            for (int j = p; j < block_size; j++) {
+                float epsilon_r_j = (float) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+                for (int pi = 1; pi <= p; pi++) {
+                    epsilon_r_j -= (float) (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
+                }
+                ArrayList<Integer> tmp = new ArrayList<>();
+                tmp.add(j);
+                tmp.add((int) epsilon_r_j);
+                ts_block_delta.add(tmp);
+            }
+        }
+        quickSort(ts_block_delta, 1, 0, block_size - 2);
+        alpha_list.add(ts_block_delta.get(0).get(0));
+        for (int i = 0; i < k; i++) {
+            alpha_list.add(ts_block_delta.get(block_size - 2 - k).get(0));
+        }
+        return alpha_list;
+    }
+    public static ArrayList<Integer> getIStarPK(
+            ArrayList<ArrayList<Integer>> ts_block,
+            int block_size,
+            ArrayList<Integer> raw_length,
+            ArrayList<Float> coefficient,
+            int p,
+            int k) {
+        int timestamp_delta_min = Integer.MAX_VALUE;
+        int value_delta_min = Integer.MAX_VALUE;
+        int timestamp_delta_max = Integer.MIN_VALUE;
+        int value_delta_max = Integer.MIN_VALUE;
+        int timestamp_delta_max_index = -1;
+        int value_delta_max_index = -1;
+        ArrayList<Integer> alpha_list = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> ts_block_delta_time = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> ts_block_delta_value = new ArrayList<>();
+
+        // regression residual
+        for (int j = 1; j < p; j++) {
+            float epsilon_r = (float) ((float) ts_block.get(j).get(0) - coefficient.get(0));
+            float epsilon_v = (float) ((float) ts_block.get(j).get(1) - coefficient.get(1));
+            for (int pi = 1; pi <= j; pi++) {
+                epsilon_r -= (float) (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
+                epsilon_v -= (float) (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
+            }
+
+            ArrayList<Integer> tmp = new ArrayList<>();
+            tmp.add(j);
+            tmp.add((int) epsilon_r);
+            ts_block_delta_time.add(tmp);
+            tmp = new ArrayList<>();
+            tmp.add(j);
+            tmp.add((int) epsilon_v);
+            ts_block_delta_value.add(tmp);
+        }
+
+        // regression residual
+        for (int j = p; j < block_size; j++) {
+            float epsilon_r = (float) ((float) ts_block.get(j).get(0) - coefficient.get(0));
+            float epsilon_v = (float) ((float) ts_block.get(j).get(1) - coefficient.get(1));
+            for (int pi = 1; pi <= p; pi++) {
+                epsilon_r -= (float) (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
+                epsilon_v -= (float) (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
+            }
+
+            ArrayList<Integer> tmp = new ArrayList<>();
+            tmp.add(j);
+            tmp.add((int) epsilon_r);
+            ts_block_delta_time.add(tmp);
+            tmp = new ArrayList<>();
+            tmp.add(j);
+            tmp.add((int) epsilon_v);
+            ts_block_delta_value.add(tmp);
+        }
+        quickSort(ts_block_delta_time, 1, 0, block_size - 2);
+        alpha_list.add(ts_block_delta_time.get(0).get(0));
+        for (int i = 0; i < k; i++) {
+            alpha_list.add(ts_block_delta_time.get(block_size - 2 - k).get(0));
+        }
+
+        quickSort(ts_block_delta_value, 1, 0, block_size - 2);
+        if (!alpha_list.contains(ts_block_delta_value.get(0).get(0)))
+            alpha_list.add(ts_block_delta_value.get(0).get(0));
+        for (int i = 0; i < k; i++) {
+            if (!alpha_list.contains(ts_block_delta_value.get(block_size - 2 - k).get(0)))
+                alpha_list.add(ts_block_delta_value.get(block_size - 2 - k).get(0));
+        }
+        return alpha_list;
+    }
     public static int getIStarP(
             ArrayList<ArrayList<Integer>> ts_block,
             int block_size,
@@ -1430,7 +1716,7 @@ public class RgerPFloat {
     }
 
     public static ArrayList<Byte> ReorderingRegressionEncoder(
-            ArrayList<ArrayList<Integer>> data, int block_size, int[] third_value,int segment_size ,int p) {
+            ArrayList<ArrayList<Integer>> data, int block_size, int[] third_value,int segment_size ,int p, int k) {
         for (int i = 0; i < p; i++)
             block_size++;
         ArrayList<Byte> encoded_result = new ArrayList<Byte>();
@@ -1487,21 +1773,25 @@ public class RgerPFloat {
             ArrayList<Integer> raw_length = new ArrayList<>();
             ArrayList<Float> coefficient = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegressionP(ts_block_time, block_size, raw_length, coefficient, p);
-            length_time += encode2Bytes(ts_block_delta, raw_length, coefficient, result1, p).size();
+            ArrayList<ArrayList<Integer>> bit_width_segments = segmentBitPacking(ts_block_delta, block_size, segment_size);
+            length_time += encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, coefficient, result1,p).size();
 
             ArrayList<Integer> result2 = new ArrayList<>();
             splitTimeStamp3(ts_block_value, result2);
             ArrayList<Integer> raw_length_value = new ArrayList<>();
             ArrayList<Float> coefficient_value = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta_value = getEncodeBitsRegressionP(ts_block_value, block_size, raw_length_value, coefficient_value, p);
-            length_value += encode2Bytes(ts_block_delta_value, raw_length_value, coefficient_value, result2, p).size();
+            ArrayList<ArrayList<Integer>> bit_width_segments_value = segmentBitPacking(ts_block_delta_value, block_size, segment_size);
+            length_value += encodeSegment2Bytes(ts_block_delta_value, bit_width_segments_value, raw_length_value, segment_size, coefficient_value, result2,p).size();
 
             ArrayList<Integer> result3 = new ArrayList<>();
             splitTimeStamp3(ts_block_partition, result3);
             ArrayList<Integer> raw_length_partition = new ArrayList<>();
             ArrayList<Float> coefficient_partition = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegressionP(ts_block_partition, block_size, raw_length_partition, coefficient_partition, p);
-            length_partition += encode2Bytes(ts_block_delta_partition, raw_length_partition, coefficient_partition, result3, p).size();
+            ArrayList<ArrayList<Integer>> bit_width_segments_partition = segmentBitPacking(ts_block_delta_partition, block_size, segment_size);
+            length_partition += encodeSegment2Bytes(ts_block_delta_partition, bit_width_segments_partition, raw_length_partition, segment_size, coefficient_partition, result3,p).size();
+
         }
         if (length_partition < length_time && length_partition < length_value) { // partition performs better
             data = data_partition;
@@ -1523,6 +1813,8 @@ public class RgerPFloat {
                 ArrayList<Float> coefficient = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta =
                         getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient ,p);
+                ArrayList<ArrayList<Integer>> bit_width_segments_partition = segmentBitPacking(ts_block_delta, block_size, segment_size);
+                raw_length.set(0, encodeSegment2Bytes(ts_block_delta, bit_width_segments_partition, raw_length, segment_size, coefficient, result2,p).size());
 
 
                 // time-order
@@ -1531,6 +1823,8 @@ public class RgerPFloat {
                 ArrayList<Float> coefficient_time = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta_time =
                         getEncodeBitsRegressionP(ts_block, block_size, time_length, coefficient_time, p);
+                ArrayList<ArrayList<Integer>> bit_width_segments_time = segmentBitPacking(ts_block_delta_time, block_size, segment_size);
+                time_length.set(0, encodeSegment2Bytes(ts_block_delta_time, bit_width_segments_time, time_length, segment_size, coefficient_time, result2,p).size());
 
                 // value-order
                 quickSort(ts_block, 1, 0, block_size - 1);
@@ -1540,73 +1834,79 @@ public class RgerPFloat {
                 ArrayList<Float> coefficient_reorder = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta_reorder =
                         getEncodeBitsRegressionP(ts_block, block_size, reorder_length, coefficient_reorder, p);
+                ArrayList<ArrayList<Integer>> bit_width_segments_value = segmentBitPacking(ts_block_delta_reorder, block_size, segment_size);
+                reorder_length.set(0, encodeSegment2Bytes(ts_block_delta_reorder, bit_width_segments_value, reorder_length, segment_size, coefficient_reorder, result2,p).size());
 
                 int i_star;
                 int j_star;
+                ArrayList<Integer> alpha_list = new ArrayList<>();
                 int choose = min3(time_length.get(0),raw_length.get(0),reorder_length.get(0));
                 if(choose == 0){
                     raw_length = time_length;
                     quickSort(ts_block, 0, 0, block_size - 1);
                     coefficient = coefficient_time;
                     ts_block_delta = ts_block_delta_time;
-                    i_star = getIStarP(ts_block, block_size, 0, coefficient,p);
+                    alpha_list = getIStarPK(ts_block, block_size, 0, coefficient,p, k);
                 } else if (choose == 1) {
                     ts_block = ts_block_reorder;
-                    i_star = getIStarP(ts_block, block_size, 0, coefficient,p);
+                    alpha_list = getIStarPK(ts_block, block_size, 0, coefficient,p, k);
                 }else {
                     raw_length = reorder_length;
                     coefficient = coefficient_reorder;
                     ts_block_delta = ts_block_delta_reorder;
-                    i_star = getIStarP(ts_block, block_size, 1, coefficient,p);
+                    alpha_list = getIStarPK(ts_block, block_size, 1, coefficient,p,k);
                 }
-                j_star = getBetaP(ts_block, i_star, block_size, coefficient, p);
-
+                ArrayList<Integer> beta_list;
+                beta_list = new ArrayList<>();
+                for (int alpha : alpha_list) {
+                    beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, segment_size));
+                }
+                ArrayList<Integer> isMoveable = isMovable(alpha_list, beta_list);
                 int adjust_count = 0;
-                while (j_star != -1 && i_star != -1) {
+                while (isMoveable.size() != 0) {
                     if (adjust_count < block_size / 2 && adjust_count <= 33) {
                         adjust_count++;
                     } else {
                         break;
                     }
-                    ArrayList<ArrayList<Integer>> old_ts_block =
-                            (ArrayList<ArrayList<Integer>>) ts_block.clone();
-                    ArrayList<Integer> old_length = (ArrayList<Integer>) raw_length.clone();
+                    ArrayList<ArrayList<Integer>> all_length = new ArrayList<>();
+//                        System.out.println("theta: "+theta);
 
-                    ArrayList<Integer> tmp_tv = ts_block.get(i_star);
-                    if (j_star < i_star) {
-                        for (int u = i_star - 1; u >= j_star; u--) {
-                            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-                            tmp_tv_cur.add(ts_block.get(u).get(0));
-                            tmp_tv_cur.add(ts_block.get(u).get(1));
-                            ts_block.set(u + 1, tmp_tv_cur);
-                        }
-                    } else {
-                        for (int u = i_star + 1; u < j_star; u++) {
-                            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-                            tmp_tv_cur.add(ts_block.get(u).get(0));
-                            tmp_tv_cur.add(ts_block.get(u).get(1));
-                            ts_block.set(u - 1, tmp_tv_cur);
-                        }
-                        j_star--;
+                    for (int isMoveable_i : isMoveable) {
+                        ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+                        ArrayList<Integer> new_length = new ArrayList<>();
+                        moveAlphaToBeta(new_ts_block, alpha_list.get(isMoveable_i), beta_list.get(isMoveable_i));
+                        getEncodeBitsRegressionPNoTrain(new_ts_block, block_size, new_length, coefficient, segment_size);
+                        ArrayList<Integer> tmp = new ArrayList<>();
+                        tmp.add(isMoveable_i);
+                        tmp.add(new_length.get(0));
+                        all_length.add(tmp);
+
                     }
-                    ts_block.set(j_star, tmp_tv);
-
-                    getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient, p);
-//        System.out.println("old_length"+old_length);
-//        System.out.println("raw_length"+raw_length);
-                    if (old_length.get(0) < raw_length.get(0)) {
-                        ts_block = old_ts_block;
+//                        System.out.println("theta: "+theta);
+                    quickSort(all_length, 1, 0, all_length.size() - 1);
+                    if (all_length.get(0).get(1) <= raw_length.get(0)) {
+                        moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
+//                            System.out.println("alpha: "+alpha_list.get(all_length.get(0).get(0)));
+                        getEncodeBitsRegressionPNoTrain(ts_block, block_size, raw_length, coefficient, segment_size);
+                    } else {
                         break;
                     }
-                    //        System.out.println("adjust_count" + adjust_count);
-//        System.out.println("i_star"+i_star);
-                    i_star = getIStarP(ts_block, block_size, raw_length, coefficient, p);
-                    if (i_star == j_star) break;
-                    j_star = getBetaP(ts_block, i_star, block_size, coefficient, p);
-
+                    alpha_list = getIStarPK(ts_block, block_size, raw_length, coefficient, p, k);
+                    int alpha_size = alpha_list.size();
+                    for (int alpha_i = alpha_size - 1; alpha_i >= 0; alpha_i--) {
+                        if (beta_list.contains(alpha_list.get(alpha_i))) {
+                            alpha_list.remove(alpha_i);
+                        }
+                    }
+                    beta_list = new ArrayList<>();
+                    for (int alpha : alpha_list) {
+                        beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, segment_size));
+                    }
+                    isMoveable = isMovable(alpha_list, beta_list);
                 }
 
-                ts_block_delta = getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient, p);
+                ts_block_delta = getEncodeBitsRegressionPNoTrain(ts_block, block_size, raw_length, coefficient, p);
                 ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
                 int segment_n = (block_size - p) / segment_size;
                 for (int segment_i = 0; segment_i < segment_n; segment_i++) {
@@ -1661,12 +1961,17 @@ public class RgerPFloat {
                 ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
                 ArrayList<Float> coefficient = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient, p);
+                ArrayList<ArrayList<Integer>> bit_width_segments_time = segmentBitPacking(ts_block_delta, block_size, segment_size);
+                raw_length.set(0, encodeSegment2Bytes(ts_block_delta, bit_width_segments_time, raw_length, segment_size, coefficient, result2,p).size());
+
                 // value-order
                 quickSort(ts_block, 1, 0, block_size - 1);
 
                 ArrayList<Integer> reorder_length = new ArrayList<>();
                 ArrayList<Float> coefficient_reorder = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegressionP( ts_block, block_size, reorder_length, coefficient_reorder, p);
+                ArrayList<ArrayList<Integer>> bit_width_segments_value = segmentBitPacking(ts_block_delta_reorder, block_size, segment_size);
+                reorder_length.set(0, encodeSegment2Bytes(ts_block_delta_reorder, bit_width_segments_value, reorder_length, segment_size, coefficient_reorder, result2, p).size());
 
                 for (ArrayList<Integer> datum : ts_block) {
                     if (datum.get(1) > third_value[third_value.length - 1]) {
@@ -1688,17 +1993,81 @@ public class RgerPFloat {
                 ArrayList<Integer> partition_length = new ArrayList<>();
                 ArrayList<Float> coefficient_partition = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegressionP( ts_block_partition, block_size, partition_length, coefficient_partition, p);
+                ArrayList<ArrayList<Integer>> bit_width_segments_partition = segmentBitPacking(ts_block_delta_partition, block_size, segment_size);
+                partition_length.set(0, encodeSegment2Bytes(ts_block_delta_partition, bit_width_segments_partition, partition_length, segment_size, coefficient_partition, result2, p).size());
+
+
+
                 int choose = min3(partition_length.get(0),reorder_length.get(0),raw_length.get(0));
+                ArrayList<Integer> alpha_list = new ArrayList<>();
                 if(choose == 0){
                     raw_length = partition_length;
+                    ts_block = ts_block_partition;
                     ts_block_delta = ts_block_delta_partition;
                     coefficient =  coefficient_partition;
+                    alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, k, p);
                 } else if (choose == 1) {
                     raw_length = reorder_length;
+                    quickSort(ts_block, 1, 0, block_size - 1);
                     ts_block_delta = ts_block_delta_reorder;
                     coefficient =  coefficient_reorder;
+                    alpha_list = getIStarPK(ts_block, block_size, 1, coefficient, k, p);
+                }else {
+                    quickSort(ts_block, 0, 0, block_size - 1);
+                    alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, k, p);
+                }
+                ArrayList<Integer> beta_list;
+                beta_list = new ArrayList<>();
+                for (int alpha : alpha_list) {
+                    beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, segment_size));
+                }
+                ArrayList<Integer> isMoveable = isMovable(alpha_list, beta_list);
+                int adjust_count = 0;
+                while (isMoveable.size() != 0) {
+                    if (adjust_count < block_size / 2 && adjust_count <= 33) {
+                        adjust_count++;
+                    } else {
+                        break;
+                    }
+                    ArrayList<ArrayList<Integer>> all_length = new ArrayList<>();
+//                        System.out.println("theta: "+theta);
+
+                    for (int isMoveable_i : isMoveable) {
+                        ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+                        ArrayList<Integer> new_length = new ArrayList<>();
+                        moveAlphaToBeta(new_ts_block, alpha_list.get(isMoveable_i), beta_list.get(isMoveable_i));
+                        getEncodeBitsRegressionPNoTrain(new_ts_block, block_size, new_length, coefficient, segment_size);
+                        ArrayList<Integer> tmp = new ArrayList<>();
+                        tmp.add(isMoveable_i);
+                        tmp.add(new_length.get(0));
+                        all_length.add(tmp);
+
+                    }
+//                        System.out.println("theta: "+theta);
+                    quickSort(all_length, 1, 0, all_length.size() - 1);
+                    if (all_length.get(0).get(1) <= raw_length.get(0)) {
+                        moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
+//                            System.out.println("alpha: "+alpha_list.get(all_length.get(0).get(0)));
+                        getEncodeBitsRegressionPNoTrain(ts_block, block_size, raw_length, coefficient, segment_size);
+                    } else {
+                        break;
+                    }
+                    alpha_list = getIStarPK(ts_block, block_size, raw_length, coefficient,p, k);
+                    int alpha_size = alpha_list.size();
+                    for (int alpha_i = alpha_size - 1; alpha_i >= 0; alpha_i--) {
+                        if (beta_list.contains(alpha_list.get(alpha_i))) {
+                            alpha_list.remove(alpha_i);
+                        }
+                    }
+                    beta_list = new ArrayList<>();
+                    for (int alpha : alpha_list) {
+                        beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, segment_size));
+                    }
+                    isMoveable = isMovable(alpha_list, beta_list);
                 }
 
+
+                ts_block_delta = getEncodeBitsRegressionPNoTrain(ts_block, block_size, raw_length, coefficient, p);
 
                 ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
                 int segment_n = (block_size - p) / segment_size;
@@ -2064,10 +2433,28 @@ public class RgerPFloat {
         return data;
     }
 
+    public static double[] dataStandardization(double array[]){
+        StandardDeviation deviation =new StandardDeviation();
+        for(int i=0;i<array.length;i++){
+            array[i]=array[i];
+        }
+        return array;
+    }
+    public static double[][] dataStandardizationDouble(double arrays[][]){
+        double [][] result = new double[arrays[0].length][arrays.length];
+        for(int i=0;i<arrays.length;i++){
+            double[] doubles = dataStandardization(arrays[i]);
+            for(int k=0;k<result.length;k++){
+                result[k][i]=doubles[k];
+            }
+        }
+        return result;
+    }
+
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-        String parent_dir = "E:\\encoding-reorder-xjzgithub\\vldb\\compression_ratio\\p_float";
-        String input_parent_dir = "E:\\encoding-reorder-xjzgithub\\reorder\\iotdb_test_small\\";
+        String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\p_float";
+        String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
@@ -2212,7 +2599,7 @@ public class RgerPFloat {
                         long s = System.nanoTime();
                         ArrayList<Byte> buffer = new ArrayList<>();
                         for (int repeat_i = 0; repeat_i < 1; repeat_i++)
-                            buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i), 8, p);
+                            buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i), 8, p,3);
 
 
                         long e = System.nanoTime();
