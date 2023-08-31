@@ -135,7 +135,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public Tablet convertToTablet() {
-    if (!shouldParsePattern()) {
+    if (!shouldParsePatternOrTime()) {
       return tablet;
     }
 

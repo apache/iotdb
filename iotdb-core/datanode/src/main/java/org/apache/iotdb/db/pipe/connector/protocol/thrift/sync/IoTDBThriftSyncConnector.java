@@ -185,7 +185,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       return;
     }
 
-    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePattern()) {
+    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
       transfer((tabletInsertionEvent).parseEventWithPattern());
       return;
     }
