@@ -3212,10 +3212,14 @@ public class RegerSegmentPartitionBlockSizeTest {
                         ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
                         moveAlphaToBeta(new_ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
                         ArrayList<Integer> new_length = new ArrayList<>();
-                        getEncodeBitsRegressionNoTrain(new_ts_block, block_size, new_length, theta, segment_size);
+                        ts_block_delta = getEncodeBitsRegression(new_ts_block, block_size, new_length, theta, segment_size);
+                        ArrayList<ArrayList<Integer>> bit_width_segments= segmentBitPacking(ts_block_delta, block_size, segment_size);
+                        new_length.set(0, encodeSegment2Bytes(ts_block_delta, bit_width_segments, new_length, segment_size, theta, result2).size());
+
                         if(new_length.get(0) <= raw_length.get(0)){
                             raw_length = new_length;
-                            moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
+                            ts_block  = (ArrayList<ArrayList<Integer>>) new_ts_block.clone();
+//                            moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
                         }else {
                             break;
                         }
@@ -3243,7 +3247,7 @@ public class RegerSegmentPartitionBlockSizeTest {
                     }
                     isMoveable = isMovable(alpha_list, beta_list);
                 }
-//                ts_block_delta = getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
+                ts_block_delta = getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
 //                System.out.println("length_after: "+ raw_length.get(0));
                 ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
                 int segment_n = (block_size - 1) / segment_size;
@@ -3393,11 +3397,16 @@ public class RegerSegmentPartitionBlockSizeTest {
 //                        getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
 //                        raw_length = new_length_list.get(all_length.get(0).get(0));
                         ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+                        moveAlphaToBeta(new_ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
                         ArrayList<Integer> new_length = new ArrayList<>();
-                        getEncodeBitsRegressionNoTrain(new_ts_block, block_size, new_length, theta, segment_size);
+                        ts_block_delta = getEncodeBitsRegression(new_ts_block, block_size, new_length, theta, segment_size);
+                        ArrayList<ArrayList<Integer>> bit_width_segments= segmentBitPacking(ts_block_delta, block_size, segment_size);
+                        new_length.set(0, encodeSegment2Bytes(ts_block_delta, bit_width_segments, new_length, segment_size, theta, result2).size());
+
                         if(new_length.get(0) <= raw_length.get(0)){
                             raw_length = new_length;
-                            moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
+                            ts_block  = (ArrayList<ArrayList<Integer>>) new_ts_block.clone();
+//                            moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
                         }else {
                             break;
                         }
