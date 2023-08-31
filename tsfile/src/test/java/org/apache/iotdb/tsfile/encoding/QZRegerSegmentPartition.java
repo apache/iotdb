@@ -366,13 +366,12 @@ public class QZRegerSegmentPartition {
     ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
     theta.clear();
 
-    ArrayList<Float> coefficient = new ArrayList<>();
-    terminate(ts_block, coefficient, 1);
+    terminate(ts_block, theta, 1);
 
-    float theta0_r = coefficient.get(0);
-    float theta1_r = coefficient.get(2);
-    float theta0_v = coefficient.get(1);
-    float theta1_v = coefficient.get(3);
+    float theta0_r = theta.get(0);
+    float theta1_r = theta.get(2);
+    float theta0_v = theta.get(1);
+    float theta1_v = theta.get(3);
 
 
     ArrayList<Integer> tmp0 = new ArrayList<>();

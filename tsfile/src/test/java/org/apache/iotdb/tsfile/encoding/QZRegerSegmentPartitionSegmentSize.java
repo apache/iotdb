@@ -366,13 +366,12 @@ public class QZRegerSegmentPartitionSegmentSize {
     ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
     theta.clear();
 
-    ArrayList<Float> coefficient = new ArrayList<>();
-    terminate(ts_block, coefficient, 1);
+    terminate(ts_block, theta, 1);
 
-    float theta0_r = coefficient.get(0);
-    float theta1_r = coefficient.get(2);
-    float theta0_v = coefficient.get(1);
-    float theta1_v = coefficient.get(3);
+    float theta0_r = theta.get(0);
+    float theta1_r = theta.get(2);
+    float theta0_v = theta.get(1);
+    float theta1_v = theta.get(3);
 
 
     ArrayList<Integer> tmp0 = new ArrayList<>();
@@ -2837,6 +2836,9 @@ public class QZRegerSegmentPartitionSegmentSize {
       }
 
       ArrayList<ArrayList<Integer>> bit_width_segments = segmentBitPacking(ts_block_delta, remaining_length + supple_length, segment_size);
+
+      System.out.println(bit_width_segments);
+
       length_time += encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, theta, result1).size();
 
 
@@ -3510,7 +3512,7 @@ public class QZRegerSegmentPartitionSegmentSize {
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
-    String parent_dir = "E:\\encoding-reorder-my\\vldb\\compression_ratio\\segment_size_q";
+    String parent_dir = "E:\\encoding-reorder-my\\vldb\\compression_ratio\\segment_size_qz";
     String input_parent_dir = "E:\\encoding-reorder-my\\reorder\\iotdb_test_small\\";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
@@ -3602,7 +3604,7 @@ public class QZRegerSegmentPartitionSegmentSize {
     dataset_block_size.add(512);
     dataset_k.add(4);
 
-    for (int file_i = 0; file_i < 12; file_i++) {
+    for (int file_i = 6; file_i < 12; file_i++) {
 //        for (int file_i = 4; file_i < input_path_list.size(); file_i++) {
       String inputPath = input_path_list.get(file_i);
       //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);

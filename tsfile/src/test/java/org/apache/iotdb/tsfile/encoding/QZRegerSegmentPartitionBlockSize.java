@@ -366,13 +366,12 @@ public class QZRegerSegmentPartitionBlockSize {
         ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
         theta.clear();
 
-        ArrayList<Float> coefficient = new ArrayList<>();
-        terminate(ts_block, coefficient, 1);
+        terminate(ts_block, theta, 1);
 
-        float theta0_r = coefficient.get(0);
-        float theta1_r = coefficient.get(2);
-        float theta0_v = coefficient.get(1);
-        float theta1_v = coefficient.get(3);
+        float theta0_r = theta.get(0);
+        float theta1_r = theta.get(2);
+        float theta0_v = theta.get(1);
+        float theta1_v = theta.get(3);
 
 
         ArrayList<Integer> tmp0 = new ArrayList<>();
@@ -3510,7 +3509,7 @@ public class QZRegerSegmentPartitionBlockSize {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
-        String parent_dir = "E:\\encoding-reorder-my\\vldb\\compression_ratio\\block_size";
+        String parent_dir = "E:\\encoding-reorder-my\\vldb\\compression_ratio\\block_size_qz";
         String input_parent_dir = "E:\\encoding-reorder-my\\reorder\\iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -3634,7 +3633,7 @@ public class QZRegerSegmentPartitionBlockSize {
             for (File f : tempList) {
                 System.out.println(f);
 //                for (int block_size_exp = 7; block_size_exp >= 7; block_size_exp--) {
-                for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
+                for (int block_size_exp = 10; block_size_exp >= 4; block_size_exp--) {
                     int block_size = (int) Math.pow(2, block_size_exp);
                     System.out.println(block_size);
 
