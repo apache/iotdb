@@ -42,7 +42,6 @@ import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
@@ -124,17 +123,17 @@ public class ConfigNode implements ConfigNodeMBean {
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
 
-        int configNodeId;
-        if (!SystemPropertiesUtils.isSeedConfigNode()) {
-          // The non-seed-ConfigNodes should send restart request and be checked (ip and port) by
-          // leader before initConsensusManager
-          sendRestartConfigNodeRequest();
-          configNodeId = CONF.getConfigNodeId();
-        } else {
-          configNodeId = SEED_CONFIG_NODE_ID;
-        }
+        int configNodeId = CONF.getConfigNodeId();
         configManager.initConsensusManager();
-
+        while (configManager.getConsensusManager().getLeader() == null) {
+          LOGGER.info("Leader has not been elected yet, wait for 1 second");
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn("Unexpected interruption during waiting for leader election.");
+          }
+        }
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until ConfigNode is fully available
@@ -358,39 +357,6 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.error(
         "The current ConfigNode can't send register request to the ConfigNode-leader after all retries!");
     stop();
-  }
-
-  private void sendRestartConfigNodeRequest() throws StartupException {
-
-    TConfigNodeRestartReq req =
-        new TConfigNodeRestartReq(
-            CONF.getClusterName(), generateConfigNodeLocation(CONF.getConfigNodeId()));
-
-    TEndPoint targetConfigNode = CONF.getTargetConfigNode();
-    if (targetConfigNode == null) {
-      LOGGER.error(
-          "Please set the cn_target_config_node_list parameter in iotdb-confignode.properties file.");
-      throw new StartupException("The targetConfigNode setting in conf is empty");
-    }
-
-    for (int retry = 0; retry < STARTUP_RETRY_NUM; retry++) {
-      TSStatus status =
-          (TSStatus)
-              SyncConfigNodeClientPool.getInstance()
-                  .sendSyncRequestToConfigNodeWithRetry(
-                      targetConfigNode, req, ConfigNodeRequestType.RESTART_CONFIG_NODE);
-
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info("Registration request of current ConfigNode is accepted.");
-        return;
-      } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        targetConfigNode = status.getRedirectNode();
-        LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
-      } else {
-        throw new StartupException(status.getMessage());
-      }
-      startUpSleep("Register ConfigNode failed! ");
-    }
   }
 
   private TConfigNodeLocation generateConfigNodeLocation(int configNodeId) {
