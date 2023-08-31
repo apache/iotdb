@@ -3715,6 +3715,7 @@ public class QRegerSegmentPartitionBlockSize {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
+        // 移动后的新位置变成新的最小值没考虑，没有设置移动后cost的下限
         String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\block_size_test";
         String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -3808,8 +3809,8 @@ public class QRegerSegmentPartitionBlockSize {
         dataset_block_size.add(512);
         dataset_k.add(5);
 
-//    for (int file_i = 3; file_i < 4; file_i++) {
-        for (int file_i = 3; file_i < input_path_list.size(); file_i++) {
+    for (int file_i = 4; file_i < 5; file_i++) {
+//        for (int file_i = 3; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
