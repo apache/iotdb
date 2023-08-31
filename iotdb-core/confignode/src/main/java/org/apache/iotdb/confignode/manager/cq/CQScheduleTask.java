@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.cq;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
@@ -30,6 +29,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -50,18 +50,7 @@ public class CQScheduleTask implements Runnable {
   // ms is 1
   // us is 1_000
   // ns is 1_000_000
-  private static final long FACTOR;
-
-  static {
-    String timestampPrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
-    if ("us".equals(timestampPrecision)) {
-      FACTOR = 1_000;
-    } else if ("ns".equals(timestampPrecision)) {
-      FACTOR = 1_000_000;
-    } else {
-      FACTOR = 1;
-    }
-  }
+  private static final long FACTOR = TimestampPrecisionUtils.getFactor();
 
   private final String cqId;
   private final long everyInterval;

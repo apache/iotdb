@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
-import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -89,6 +88,4 @@ public interface IPartitionFetcher {
 
   /** Invalid all partition cache */
   void invalidAllCache();
-
-  ModelInformation getModelInformation(String modelId);
 }

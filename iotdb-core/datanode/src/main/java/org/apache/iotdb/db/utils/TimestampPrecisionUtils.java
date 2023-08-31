@@ -23,8 +23,10 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import java.util.concurrent.TimeUnit;
 
 public class TimestampPrecisionUtils {
-  private static final String timestampPrecision =
+  private static final String TIMESTAMP_PRECISION =
       CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+
+  private static final long FACTOR;
 
   @FunctionalInterface
   private interface ConvertFunction<T1, T2, R> {
@@ -34,24 +36,32 @@ public class TimestampPrecisionUtils {
   private static final ConvertFunction<Long, TimeUnit, Long> convertFunction;
 
   static {
-    switch (timestampPrecision) {
+    switch (TIMESTAMP_PRECISION) {
       case "ms":
         convertFunction = TimeUnit.MILLISECONDS::convert;
-        break;
-      case "ns":
-        convertFunction = TimeUnit.NANOSECONDS::convert;
+        FACTOR = 1_000_000L;
         break;
       case "us":
         convertFunction = TimeUnit.MICROSECONDS::convert;
+        FACTOR = 1_000L;
+        break;
+      case "ns":
+        convertFunction = TimeUnit.NANOSECONDS::convert;
+        FACTOR = 1L;
         break;
         // this case will never reach
       default:
         convertFunction = null;
+        FACTOR = 0;
     }
   }
 
   /** convert specific precision timestamp to current precision timestamp */
   public static long convertToCurrPrecision(long sourceTime, TimeUnit sourceUnit) {
     return convertFunction.apply(sourceTime, sourceUnit);
+  }
+
+  public static long getFactor() {
+    return FACTOR;
   }
 }

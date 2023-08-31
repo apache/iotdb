@@ -222,6 +222,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
+  private final IModelFetcher modelFetcher;
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
@@ -229,6 +230,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public AnalyzeVisitor(IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
+    this.modelFetcher = ModelFetcher.getInstance();
   }
 
   @Override
@@ -361,7 +363,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             queryStatement.getSelectComponent().getResultColumns().get(0).getExpression();
     String modelId = modelInferenceExpression.getFunctionAttributes().get(MODEL_ID);
 
-    ModelInformation modelInformation = partitionFetcher.getModelInformation(modelId);
+    ModelInformation modelInformation = modelFetcher.getModelInformation(modelId);
     if (modelInformation == null || !modelInformation.available()) {
       throw new SemanticException("Model " + modelId + " is not available");
     }

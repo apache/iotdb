@@ -89,7 +89,6 @@ public class ModelManager {
       String inputTypeListStr = options.get(INPUT_TYPE_LIST);
       List<TSDataType> inputTypeList =
           Arrays.stream(inputTypeListStr.substring(1, inputTypeListStr.length() - 1).split(","))
-              .sequential()
               .map(s -> TSDataType.valueOf(s.toUpperCase().trim()))
               .collect(Collectors.toList());
 
@@ -97,7 +96,6 @@ public class ModelManager {
       List<Integer> predictIndexList =
           Arrays.stream(
                   predictIndexListStr.substring(1, predictIndexListStr.length() - 1).split(","))
-              .sequential()
               .map(s -> Integer.valueOf(s.trim()))
               .collect(Collectors.toList());
 
