@@ -1159,6 +1159,10 @@ public class RegerSegmentPartitionBlockSizeTest {
         value_delta_i =
                 ts_block.get(0).get(1)
                         - (int) (theta0_v + theta1_v * (float) ts_block.get(j - 1).get(1));
+        if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+            return adjust0MinChange( ts_block, raw_length,  j, theta,  segment_size);
+        }
+
         length += getBitWith(timestamp_delta_i-timestamp_delta_min);
         length += getBitWith(value_delta_i-value_delta_min);
 
@@ -1168,7 +1172,9 @@ public class RegerSegmentPartitionBlockSizeTest {
         value_delta_i =
                 ts_block.get(j + 1).get(1)
                         - (int) (theta0_v + theta1_v * (float) ts_block.get(0).get(1));
-
+        if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+            return adjust0MinChange( ts_block, raw_length,  j, theta,  segment_size);
+        }
         length += getBitWith(timestamp_delta_i-timestamp_delta_min);
         length += getBitWith(value_delta_i-value_delta_min);
 
@@ -1378,7 +1384,9 @@ public class RegerSegmentPartitionBlockSizeTest {
         value_delta_i =
                 ts_block.get(0).get(1)
                         - (int) (theta0_v + theta1_v * (float) ts_block.get(block_size - 1).get(1));
-
+        if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+            return adjust0n1MinChange( ts_block, raw_length,  theta,  segment_size);
+        }
         length += getBitWith(timestamp_delta_i-timestamp_delta_min);
         length += getBitWith(value_delta_i-value_delta_min);
 
@@ -1640,6 +1648,10 @@ public class RegerSegmentPartitionBlockSizeTest {
                 ts_block.get(j).get(1)
                         - (int) (theta0_v + theta1_v * (float) ts_block.get(block_size - 1).get(1));
 
+        if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+            return adjustnMinChange( ts_block, raw_length, j,  theta,  segment_size);
+        }
+
         length += getBitWith(timestamp_delta_i-timestamp_delta_min);
         length += getBitWith(value_delta_i-value_delta_min);
         timestamp_delta_i =
@@ -1648,6 +1660,10 @@ public class RegerSegmentPartitionBlockSizeTest {
         value_delta_i =
                 ts_block.get(block_size - 1).get(1)
                         - (int) (theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
+
+        if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+            return adjustnMinChange( ts_block, raw_length, j,  theta,  segment_size);
+        }
 
         length += getBitWith(timestamp_delta_i-timestamp_delta_min);
         length += getBitWith(value_delta_i-value_delta_min);
@@ -1859,7 +1875,9 @@ public class RegerSegmentPartitionBlockSizeTest {
         value_delta_i =
                 ts_block.get(0).get(1)
                         - (int) (theta0_v + theta1_v * (float) ts_block.get(block_size - 1).get(1));
-
+        if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+            return adjustn0MinChange( ts_block, raw_length, theta,  segment_size);
+        }
         length += getBitWith(timestamp_delta_i-timestamp_delta_min);
         length += getBitWith(value_delta_i-value_delta_min);
 
@@ -2044,7 +2062,7 @@ public class RegerSegmentPartitionBlockSizeTest {
         return b;
     }
     private static ArrayList<Integer> adjustAlphaToJMinChangeNo(
-            ArrayList<ArrayList<Integer>> ts_block,  ArrayList<Integer> raw_length,int alpha, int j, ArrayList<Float> theta, int segment_size) {
+            ArrayList<ArrayList<Integer>> ts_block,  ArrayList<Integer> raw_length, int alpha, int j, ArrayList<Float> theta, int segment_size) {
 
         int block_size = ts_block.size();
         assert alpha != block_size - 1;
@@ -2097,25 +2115,34 @@ public class RegerSegmentPartitionBlockSizeTest {
         value_delta_i =
                 ts_block.get(alpha ).get(1)
                         - (int) (theta0_v + theta1_v * (float) ts_block.get(j - 1).get(1));
-
+        if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+            return adjustAlphaToJMinChange( ts_block, raw_length, alpha, j, theta,  segment_size);
+        }
         length += getBitWith(timestamp_delta_i-timestamp_delta_min);
         length += getBitWith(value_delta_i-value_delta_min);
+
         timestamp_delta_i =
                 ts_block.get(j).get(0)
                         - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha).get(0));
         value_delta_i =
                 ts_block.get(j).get(1)
                         - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha).get(1));
+        if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+            return adjustAlphaToJMinChange( ts_block, raw_length, alpha, j, theta,  segment_size);
+        }
 
         length += getBitWith(timestamp_delta_i-timestamp_delta_min);
         length += getBitWith(value_delta_i-value_delta_min);
+
         timestamp_delta_i =
                 ts_block.get(alpha).get(0)
                         - (int) (theta0_t + theta1_t * (float) ts_block.get(j-1).get(0));
         value_delta_i =
                 ts_block.get(alpha).get(1)
                         - (int) (theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
-
+        if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+            return adjustAlphaToJMinChange( ts_block, raw_length, alpha, j, theta,  segment_size);
+        }
         length += getBitWith(timestamp_delta_i-timestamp_delta_min);
         length += getBitWith(value_delta_i-value_delta_min);
 
@@ -2334,7 +2361,9 @@ public class RegerSegmentPartitionBlockSizeTest {
         value_delta_i =
                 ts_block.get(alpha + 1).get(1)
                         - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha - 1).get(1));
-
+        if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+            return adjustTo0MinChange( ts_block, raw_length, alpha,  theta,  segment_size);
+        }
         length += getBitWith(timestamp_delta_i-timestamp_delta_min);
         length += getBitWith(value_delta_i-value_delta_min);
         timestamp_delta_i =
@@ -2343,7 +2372,9 @@ public class RegerSegmentPartitionBlockSizeTest {
         value_delta_i =
                 ts_block.get(0).get(1)
                         - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha).get(1));
-
+        if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+            return adjustTo0MinChange( ts_block, raw_length, alpha,  theta,  segment_size);
+        }
         length += getBitWith(timestamp_delta_i-timestamp_delta_min);
         length += getBitWith(value_delta_i-value_delta_min);
 
@@ -2552,7 +2583,9 @@ public class RegerSegmentPartitionBlockSizeTest {
         value_delta_i =
                 ts_block.get(alpha + 1).get(1)
                         - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha - 1).get(1));
-
+        if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+            return adjustTonMinChange( ts_block, raw_length, alpha,  theta,  segment_size);
+        }
         length += getBitWith(timestamp_delta_i-timestamp_delta_min);
         length += getBitWith(value_delta_i-value_delta_min);
         timestamp_delta_i =
@@ -2561,7 +2594,9 @@ public class RegerSegmentPartitionBlockSizeTest {
         value_delta_i =
                 ts_block.get(alpha).get(1)
                         - (int) (theta0_v + theta1_v * (float) ts_block.get(block_size-1).get(1));
-
+        if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+            return adjustTonMinChange( ts_block, raw_length, alpha,  theta,  segment_size);
+        }
         length += getBitWith(timestamp_delta_i-timestamp_delta_min);
         length += getBitWith(value_delta_i-value_delta_min);
 
@@ -3824,7 +3859,7 @@ public class RegerSegmentPartitionBlockSizeTest {
         dataset_block_size.add(512);
         dataset_k.add(5);
 
-    for (int file_i = 4; file_i < 5; file_i++) {
+    for (int file_i = 3; file_i < 4; file_i++) {
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
