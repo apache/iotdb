@@ -125,20 +125,19 @@ public class AuthorInfo implements SnapshotProcessor {
     List<Integer> failedList = new ArrayList<>();
     try {
       if (paths.isEmpty()) {
-        if (authorizer.checkUserPrivileges(username, null, permission)) {
-          status = true;
+        status = authorizer.checkUserPrivileges(username, null, permission);
+      } else {
+        int pos = 0;
+        for (PartialPath path : paths) {
+          if (!checkOnePath(username, path, permission)) {
+            failedList.add(pos);
+            continue;
+          }
+          pos++;
         }
-      }
-      int pos = 0;
-      for (PartialPath path : paths) {
-        if (!checkOnePath(username, path, permission)) {
-          failedList.add(pos);
-          continue;
+        if (failedList.size() == paths.size()) {
+          status = false;
         }
-        pos++;
-      }
-      if (failedList.size() == paths.size()) {
-        status = false;
       }
     } catch (AuthException e) {
       status = false;
