@@ -3428,7 +3428,7 @@ public class RegerSegmentPartitionBlockSizeTest {
                     }
                     isMoveable = isMovable(alpha_list, beta_list);
                 }
-//                ts_block_delta = getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
+                ts_block_delta = getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
 //                System.out.println(ts_block_delta);
                 ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
                 int segment_n = (block_size - 1) / segment_size;
