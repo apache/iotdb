@@ -2578,7 +2578,7 @@ public class RgerPDouble{
     output_path_list.add(output_parent_dir + "\\EPM-Education_ratio.csv");//11
     dataset_block_size.add(512);
 
-    for (int file_i = 10; file_i < 11; file_i++) {
+    for (int file_i = 3; file_i < 4; file_i++) {
 //    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
       String inputPath = input_path_list.get(file_i);
@@ -2709,7 +2709,7 @@ public class RgerPDouble{
                   String.valueOf(compressed_size),
                   String.valueOf(ratio)
           };
-          //          System.out.println(ratio);
+                    System.out.println(ratio);
           writer.writeRecord(record);
           //          break;
         }

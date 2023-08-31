@@ -3275,7 +3275,7 @@ public class QRegerSegmentPartitionBlockSize {
 
 
                 ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, theta, result2);
-//                System.out.println(cur_encoded_result.size());
+                System.out.println(cur_encoded_result.size());
                 encoded_result.addAll(cur_encoded_result);
 
             }
@@ -3287,7 +3287,7 @@ public class QRegerSegmentPartitionBlockSize {
                 System.out.println("type1");
             }
             for (int i = 0; i < block_num; i++) {
-//            for (int i = 0; i < 1; i++) {
+//            for (int i = 1; i < 2; i++) {
                 ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
@@ -3456,7 +3456,7 @@ public class QRegerSegmentPartitionBlockSize {
                 }
 
                 ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, theta, result2);
-//                System.out.println(cur_encoded_result.size());
+                System.out.println(cur_encoded_result.size());
                 encoded_result.addAll(cur_encoded_result);
 
             }
@@ -3778,7 +3778,7 @@ public class QRegerSegmentPartitionBlockSize {
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
         // 移动后的新位置变成新的最小值没考虑，没有设置移动后cost的下限
-        String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\block_size_test";
+        String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\block_size_test_new";
         String input_parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -3832,46 +3832,47 @@ public class QRegerSegmentPartitionBlockSize {
 
         for (int i = 0; i < dataset_name.size(); i++) {
             input_path_list.add(input_parent_dir + dataset_name.get(i));
+            dataset_k.add(1);
         }
 
         output_path_list.add(parent_dir + "\\CS-Sensors_ratio.csv"); // 0
         dataset_block_size.add(1024);
-        dataset_k.add(5);
+//        dataset_k.add(5);
         output_path_list.add(parent_dir + "\\Metro-Traffic_ratio.csv");// 1
         dataset_block_size.add(512);
-        dataset_k.add(7);
+//        dataset_k.add(7);
         output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
         dataset_block_size.add(512);
-        dataset_k.add(7);
+//        dataset_k.add(7);
         output_path_list.add(parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
         dataset_block_size.add(1024);
-        dataset_k.add(1);
+//        dataset_k.add(1);
         output_path_list.add(parent_dir + "\\GW-Magnetic_ratio.csv"); //4
         dataset_block_size.add(128);
-        dataset_k.add(6);
+//        dataset_k.add(6);
         output_path_list.add(parent_dir + "\\TY-Fuel_ratio.csv");//5
         dataset_block_size.add(64);
-        dataset_k.add(5);
+//        dataset_k.add(5);
         output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
         dataset_block_size.add(128);
-        dataset_k.add(4);
+//        dataset_k.add(4);
         output_path_list.add(parent_dir + "\\Vehicle-Charge_ratio.csv");//7
         dataset_block_size.add(512);
-        dataset_k.add(8);
+//        dataset_k.add(8);
         output_path_list.add(parent_dir + "\\Nifty-Stocks_ratio.csv");//8
         dataset_block_size.add(256);
-        dataset_k.add(1);
+//        dataset_k.add(1);
         output_path_list.add(parent_dir + "\\TH-Climate_ratio.csv");//9
         dataset_block_size.add(512);
-        dataset_k.add(2);
+//        dataset_k.add(2);
         output_path_list.add(parent_dir + "\\TY-Transport_ratio.csv");//10
         dataset_block_size.add(512);
-        dataset_k.add(9);
+//        dataset_k.add(9);
         output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
         dataset_block_size.add(512);
-        dataset_k.add(5);
+//        dataset_k.add(5);
 
-    for (int file_i = 5; file_i < 6; file_i++) {
+    for (int file_i = 11; file_i < 12; file_i++) {
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
@@ -3901,7 +3902,7 @@ public class QRegerSegmentPartitionBlockSize {
 //        double ratio_sum = 0;
             for (File f : tempList) {
                 System.out.println(f);
-//                for (int block_size_exp = 6; block_size_exp >= 6; block_size_exp--) {
+//                for (int block_size_exp = 13; block_size_exp >= 13; block_size_exp--) {
                 for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
                     int block_size = (int) Math.pow(2, block_size_exp);
                     System.out.println(block_size);

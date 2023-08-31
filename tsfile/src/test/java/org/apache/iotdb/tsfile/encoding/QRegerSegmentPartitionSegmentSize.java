@@ -3837,7 +3837,7 @@ public class QRegerSegmentPartitionSegmentSize {
     dataset_block_size.add(1024);
 //    dataset_k.add(5);
     output_path_list.add(output_parent_dir + "\\Metro-Traffic_ratio.csv");// 1
-    dataset_block_size.add(512);
+    dataset_block_size.add(128);
 //    dataset_k.add(7);
     output_path_list.add(output_parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
     dataset_block_size.add(512);
@@ -3864,13 +3864,13 @@ public class QRegerSegmentPartitionSegmentSize {
     dataset_block_size.add(512);
 //    dataset_k.add(2);
     output_path_list.add(output_parent_dir + "\\TY-Transport_ratio.csv");//10
-    dataset_block_size.add(512);
+    dataset_block_size.add(1024);
 //    dataset_k.add(9);
     output_path_list.add(output_parent_dir + "\\EPM-Education_ratio.csv");//11
     dataset_block_size.add(512);
 //    dataset_k.add(5);
-//    for (int file_i = 3; file_i < 4; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+    for (int file_i = 8; file_i < 9; file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
       String inputPath = input_path_list.get(file_i);
       //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
       String Output = output_path_list.get(file_i);

@@ -586,7 +586,7 @@ public class RegerSegmentBlockSize {
             ArrayList<Integer> result2 = new ArrayList<>();
             //      result2.add(1);
             splitTimeStamp3(ts_block, result2);
-
+            quickSort(ts_block, 0, 0, block_size - 1);
             ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
             ArrayList<Float> theta = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, theta);
@@ -983,7 +983,7 @@ public class RegerSegmentBlockSize {
         output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
         dataset_block_size.add(512);
 
-//    for (int file_i = 3; file_i < 4; file_i++) {
+//    for (int file_i = 11; file_i < 12; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
@@ -1013,7 +1013,7 @@ public class RegerSegmentBlockSize {
 //        double ratio_sum = 0;
             for (File f : tempList) {
                 System.out.println(f);
-//                for (int block_size_exp = 7; block_size_exp >= 7; block_size_exp--) {
+//                for (int block_size_exp = 13; block_size_exp >= 13; block_size_exp--) {
                 for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
                 int block_size = (int) Math.pow(2, block_size_exp);
                 System.out.println(block_size);
@@ -1084,7 +1084,7 @@ public class RegerSegmentBlockSize {
                     writer.writeRecord(record);
 
                 }
-//        break;
+        break;
             }
 //        System.out.println(5/ratio_sum);
             writer.close();

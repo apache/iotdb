@@ -1571,6 +1571,7 @@ public class RegerSegmentSegmentSize {
         ArrayList<Integer> result2 = new ArrayList<>();
         //      result2.add(1);
         splitTimeStamp3(ts_block, result2);
+        quickSort(ts_block, 0, 0, block_size - 1);
         ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
         ArrayList<Float> theta = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_delta =   getEncodeBitsRegression(ts_block, block_size, raw_length, theta, segment_size);
@@ -1909,8 +1910,8 @@ public class RegerSegmentSegmentSize {
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
-    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\segment_size_only_segment";
-    String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
+    String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\segment_size_only_segment";
+    String input_parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<String> dataset_name = new ArrayList<>();
@@ -1966,30 +1967,30 @@ public class RegerSegmentSegmentSize {
     output_path_list.add(parent_dir + "\\CS-Sensors_ratio.csv"); // 0
     dataset_block_size.add(1024);
     output_path_list.add(parent_dir + "\\Metro-Traffic_ratio.csv");// 1
-    dataset_block_size.add(2048);
-    output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
-    dataset_block_size.add(256);
-    output_path_list.add(parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
     dataset_block_size.add(128);
+    output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
+    dataset_block_size.add(512);
+    output_path_list.add(parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
+    dataset_block_size.add(1024);
     output_path_list.add(parent_dir + "\\GW-Magnetic_ratio.csv"); //4
     dataset_block_size.add(128);
     output_path_list.add(parent_dir + "\\TY-Fuel_ratio.csv");//5
-    dataset_block_size.add(128);
+    dataset_block_size.add(64);
     output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
-    dataset_block_size.add(256);
+    dataset_block_size.add(128);
     output_path_list.add(parent_dir + "\\Vehicle-Charge_ratio.csv");//7
     dataset_block_size.add(512);
     output_path_list.add(parent_dir + "\\Nifty-Stocks_ratio.csv");//8
-    dataset_block_size.add(512);
+    dataset_block_size.add(256);
     output_path_list.add(parent_dir + "\\TH-Climate_ratio.csv");//9
-    dataset_block_size.add(1024);
+    dataset_block_size.add(512);
     output_path_list.add(parent_dir + "\\TY-Transport_ratio.csv");//10
     dataset_block_size.add(1024);
     output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
-    dataset_block_size.add(64);
+    dataset_block_size.add(512);
 
-//    for (int file_i = 3; file_i < 4; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+    for (int file_i = 10; file_i < 11; file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
       String inputPath = input_path_list.get(file_i);
       //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
       String Output = output_path_list.get(file_i);

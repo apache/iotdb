@@ -2618,7 +2618,7 @@ public class RgerPFloat {
         dataset_block_size.add(512);
 
 
-        for (int file_i = 10; file_i < 11; file_i++) {
+        for (int file_i = 3; file_i < 4; file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
