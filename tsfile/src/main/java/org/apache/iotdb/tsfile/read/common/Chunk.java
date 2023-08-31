@@ -158,4 +158,8 @@ public class Chunk {
   public void setFromOldFile(boolean isFromOldFile) {
     this.isFromOldFile = isFromOldFile;
   }
+
+  public void releaseChunkDataBuffer() {
+    this.chunkData = null;
+  }
 }
