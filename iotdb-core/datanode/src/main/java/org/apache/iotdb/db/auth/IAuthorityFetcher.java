@@ -40,7 +40,7 @@ public interface IAuthorityFetcher {
 
   boolean checkUserPrivilegeGrantOpt(String username, List<PartialPath> paths, int permission);
 
-  PathPatternTree getAuthizedPatternTree(String username, int permission) throws AuthException;
+  PathPatternTree getAuthorizedPatternTree(String username, int permission) throws AuthException;
 
   SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement);
 

@@ -199,24 +199,24 @@ public class AuthorInfo implements SnapshotProcessor {
           authorizer.deleteRole(roleName);
           break;
         case GrantRole:
-          for (int i : permissions) {
-            if (nodeNameList == null) {
-              authorizer.grantPrivilegeToRole(roleName, null, i, grantOpt);
+          for (int permission : permissions) {
+            if (!PrivilegeType.isPathRelevant(permission)) {
+              authorizer.grantPrivilegeToRole(roleName, null, permission, grantOpt);
               continue;
             }
             for (PartialPath path : nodeNameList) {
-              authorizer.grantPrivilegeToRole(roleName, path, i, grantOpt);
+              authorizer.grantPrivilegeToRole(roleName, path, permission, grantOpt);
             }
           }
           break;
         case GrantUser:
-          for (int i : permissions) {
-            if (nodeNameList == null) {
-              authorizer.grantPrivilegeToUser(userName, null, i, grantOpt);
+          for (int permission : permissions) {
+            if (!PrivilegeType.isPathRelevant(permission)) {
+              authorizer.grantPrivilegeToUser(userName, null, permission, grantOpt);
               continue;
             }
             for (PartialPath path : nodeNameList) {
-              authorizer.grantPrivilegeToUser(userName, path, i, grantOpt);
+              authorizer.grantPrivilegeToUser(userName, path, permission, grantOpt);
             }
           }
           break;
@@ -224,24 +224,24 @@ public class AuthorInfo implements SnapshotProcessor {
           authorizer.grantRoleToUser(roleName, userName);
           break;
         case RevokeUser:
-          for (int i : permissions) {
-            if (nodeNameList == null) {
-              authorizer.revokePrivilegeFromUser(userName, null, i);
+          for (int permission : permissions) {
+            if (!PrivilegeType.isPathRelevant(permission)) {
+              authorizer.revokePrivilegeFromUser(userName, null, permission);
               continue;
             }
             for (PartialPath path : nodeNameList) {
-              authorizer.revokePrivilegeFromUser(userName, path, i);
+              authorizer.revokePrivilegeFromUser(userName, path, permission);
             }
           }
           break;
         case RevokeRole:
-          for (int i : permissions) {
-            if (nodeNameList == null) {
-              authorizer.revokePrivilegeFromRole(roleName, null, i);
+          for (int permission : permissions) {
+            if (!PrivilegeType.isPathRelevant(permission)) {
+              authorizer.revokePrivilegeFromRole(roleName, null, permission);
               continue;
             }
             for (PartialPath path : nodeNameList) {
-              authorizer.revokePrivilegeFromRole(roleName, path, i);
+              authorizer.revokePrivilegeFromRole(roleName, path, permission);
             }
           }
           break;
