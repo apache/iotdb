@@ -40,7 +40,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -266,6 +265,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       timePageHeaders.add(pageHeader);
       compressedTimePageDatas.add(compressedPageData);
     }
+    timeChunk.releaseChunkDataBuffer();
 
     // deserialize value chunks
     List<Chunk> valueChunks = chunkMetadataElement.valueChunks;
@@ -301,6 +301,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
           compressedValuePageDatas.get(i).add(compressedPageData);
         }
       }
+      valueChunk.releaseChunkDataBuffer();
     }
 
     // add aligned pages into page queue
@@ -322,12 +323,10 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
               alignedPageHeaders,
               compressedTimePageDatas.get(i),
               alignedPageDatas,
-              new AlignedChunkReader(timeChunk, valueChunks),
               chunkMetadataElement,
               i == timePageHeaders.size() - 1,
               chunkMetadataElement.priority));
     }
-    chunkMetadataElement.clearChunks();
   }
 
   @Override
