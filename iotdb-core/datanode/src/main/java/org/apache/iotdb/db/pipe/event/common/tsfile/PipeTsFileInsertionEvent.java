@@ -69,6 +69,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
     this.startTime = startTime;
     this.endTime = endTime;
+    if (hasTimeFilter()) {
+      this.isPatternAndTimeParsed = false;
+    }
 
     this.resource = resource;
     tsFile = resource.getTsFile();
@@ -89,6 +92,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
             });
       }
     }
+    // check again after register close listener in case TsFile is closed during the process
+    isClosed.set(resource.isClosed());
   }
 
   public void waitForTsFileClose() throws InterruptedException {
@@ -174,7 +179,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     try {
       if (dataContainer == null) {
         waitForTsFileClose();
-        dataContainer = new TsFileInsertionDataContainer(tsFile, getPattern(), startTime, endTime);
+        dataContainer =
+            new TsFileInsertionDataContainer(
+                tsFile, getPattern(), startTime, endTime, pipeTaskMeta, this);
       }
       return dataContainer.toTabletInsertionEvents();
     } catch (InterruptedException e) {

@@ -30,41 +30,38 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import java.io.IOException;
 
-/** This class is a placeholder and should not be used. */
 public class DoNothingProcessor implements PipeProcessor {
-  private static final String PLACEHOLDER_ERROR_MSG =
-      "This class is a placeholder and should not be used.";
 
   @Override
   public void validate(PipeParameterValidator validator) {
-    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
+    // do nothing
   }
 
   @Override
   public void customize(
       PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
-    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
+    // do nothing
   }
 
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
       throws IOException {
-    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
+    eventCollector.collect(tabletInsertionEvent);
   }
 
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws IOException {
-    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
+    eventCollector.collect(tsFileInsertionEvent);
   }
 
   @Override
   public void process(Event event, EventCollector eventCollector) throws IOException {
-    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
+    eventCollector.collect(event);
   }
 
   @Override
   public void close() {
-    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
+    // do nothing
   }
 }

@@ -61,11 +61,11 @@ import java.util.TreeSet;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_RESULT_NODES;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_TEMPLATE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.INTERNAL_MNODE_TYPE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.NON_TEMPLATE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 
 // Since the ConfigMTree is all stored in memory, thus it is not restricted to manage MNode through
 // MTreeStore.

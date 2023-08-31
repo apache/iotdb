@@ -65,6 +65,8 @@ public class FunctionExpression extends Expression {
 
   private List<PartialPath> paths;
 
+  private List<Expression> countTimeExpressions;
+
   private String parametersString;
 
   public FunctionExpression(String functionName) {
@@ -80,6 +82,18 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     this.functionAttributes = functionAttributes;
     this.expressions = expressions;
+    this.countTimeExpressions = null;
+  }
+
+  public FunctionExpression(
+      String functionName,
+      LinkedHashMap<String, String> functionAttributes,
+      List<Expression> expressions,
+      List<Expression> countTimeExpressions) {
+    this.functionName = functionName;
+    this.functionAttributes = functionAttributes;
+    this.expressions = expressions;
+    this.countTimeExpressions = countTimeExpressions;
   }
 
   public FunctionExpression(ByteBuffer byteBuffer) {
@@ -274,6 +288,10 @@ public class FunctionExpression extends Expression {
       }
     }
     return paths;
+  }
+
+  public List<Expression> getCountTimeExpressions() {
+    return this.countTimeExpressions;
   }
 
   @Override

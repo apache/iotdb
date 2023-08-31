@@ -85,7 +85,7 @@ public class WALInsertNodeCacheTest {
       Thread.sleep(50);
     }
     // load by cache
-    assertEquals(node1, cache.get(position));
+    assertEquals(node1, cache.getInsertNode(position));
   }
 
   @Test
@@ -115,14 +115,14 @@ public class WALInsertNodeCacheTest {
     }
     // check batch load memTable1
     cache.addMemTable(memTable1.getMemTableId());
-    assertEquals(node1, cache.get(position1));
+    assertEquals(node1, cache.getInsertNode(position1));
     assertTrue(cache.contains(position1));
-    assertTrue(cache.contains(position2));
+    assertEquals(WALInsertNodeCache.getInstance().isBatchLoadEnabled(), cache.contains(position2));
     assertFalse(cache.contains(position3));
     // check batch load none
     cache.removeMemTable(memTable1.getMemTableId());
     cache.clear();
-    assertEquals(node1, cache.get(position1));
+    assertEquals(node1, cache.getInsertNode(position1));
     assertTrue(cache.contains(position1));
     assertFalse(cache.contains(position2));
     assertFalse(cache.contains(position3));

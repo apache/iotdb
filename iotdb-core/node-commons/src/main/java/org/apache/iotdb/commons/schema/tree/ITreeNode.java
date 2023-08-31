@@ -24,4 +24,8 @@ import java.io.Serializable;
 public interface ITreeNode extends Serializable {
 
   String getName();
+
+  default String getAlias() {
+    return null;
+  }
 }

@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
@@ -195,7 +196,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
             .updateRpcInstance(
-                conf.getClusterName(), NodeType.DATANODE, IoTDBConfig.SYSTEM_DATABASE);
+                conf.getClusterName(), NodeType.DATANODE, SchemaConstant.SYSTEM_DATABASE);
       }
     } else {
       logger.warn(
@@ -805,12 +806,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "dn_thrift_init_buffer_size", String.valueOf(conf.getThriftDefaultBufferSize()))));
-
-    conf.setFrequencyIntervalInMinute(
-        Integer.parseInt(
-            properties.getProperty(
-                "frequency_interval_in_minute",
-                String.valueOf(conf.getFrequencyIntervalInMinute()))));
 
     conf.setSlowQueryThreshold(
         Long.parseLong(
@@ -1574,13 +1569,6 @@ public class IoTDBDescriptor {
 
       // update tsfile-format config
       loadTsFileProps(properties);
-
-      // update frequency_interval_in_minute
-      conf.setFrequencyIntervalInMinute(
-          Integer.parseInt(
-              properties.getProperty(
-                  "frequency_interval_in_minute",
-                  Integer.toString(conf.getFrequencyIntervalInMinute()))));
       // update slow_query_threshold
       conf.setSlowQueryThreshold(
           Long.parseLong(

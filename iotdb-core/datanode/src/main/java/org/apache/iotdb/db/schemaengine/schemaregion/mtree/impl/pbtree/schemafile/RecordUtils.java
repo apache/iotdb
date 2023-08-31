@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;

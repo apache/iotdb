@@ -35,7 +35,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
   private static final long MAX_BLOCKING_TIME_MS =
       PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
 
-  private final BlockingQueue<E> pendingQueue;
+  protected final BlockingQueue<E> pendingQueue;
 
   protected BlockingPendingQueue(BlockingQueue<E> pendingQueue) {
     this.pendingQueue = pendingQueue;

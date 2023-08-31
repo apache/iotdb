@@ -42,7 +42,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -159,7 +158,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private static final String MSG_RECONNECTION_DATANODE_FAIL =
       "Failed to connect to ConfigNode %s from DataNode %s when executing %s, Exception:";
-  private static final int RETRY_INTERVAL_MS = 1000;
+  private static final int RETRY_INTERVAL_MS = 2000;
 
   private final ThriftClientProperty property;
 
@@ -307,7 +306,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         configLeader = null;
       }
       logger.warn(
-          "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not leader, try next node",
+          "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not "
+              + "leader or not ready yet, will try again later",
           configNode,
           config.getAddressAndPort());
       return true;
@@ -561,11 +561,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support registerConfigNode.");
-  }
-
-  @Override
-  public TSStatus restartConfigNode(TConfigNodeRestartReq req) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support restartConfigNode.");
   }
 
   @Override

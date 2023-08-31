@@ -76,34 +76,34 @@ public class BuiltinPipePluginTest {
     PipeProcessor processor = new DoNothingProcessor();
     try {
       processor.validate(mock(PipeParameterValidator.class));
-      Assert.fail();
     } catch (Exception ignored) {
+      Assert.fail();
     }
     try {
       processor.customize(
           mock(PipeParameters.class), mock(PipeProcessorRuntimeConfiguration.class));
-      Assert.fail();
     } catch (Exception ignored) {
+      Assert.fail();
     }
     try {
       processor.process(mock(TabletInsertionEvent.class), mock(EventCollector.class));
-      Assert.fail();
     } catch (Exception ignored) {
+      Assert.fail();
     }
     try {
       processor.process(mock(TsFileInsertionEvent.class), mock(EventCollector.class));
-      Assert.fail();
     } catch (Exception ignored) {
+      Assert.fail();
     }
     try {
       processor.process(mock(Event.class), mock(EventCollector.class));
-      Assert.fail();
     } catch (Exception ignored) {
+      Assert.fail();
     }
     try {
       processor.close();
-      Assert.fail();
     } catch (Exception ignored) {
+      Assert.fail();
     }
 
     PipeConnector connector = new DoNothingConnector();

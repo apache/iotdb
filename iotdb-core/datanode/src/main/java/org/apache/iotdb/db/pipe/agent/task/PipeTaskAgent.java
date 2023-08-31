@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.task.PipeBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTask;
 import org.apache.iotdb.db.pipe.task.PipeTaskBuilder;
@@ -841,5 +842,7 @@ public class PipeTaskAgent {
       throw new TException(e);
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
+
+    PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 }

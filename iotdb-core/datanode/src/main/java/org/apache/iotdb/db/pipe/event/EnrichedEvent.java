@@ -36,14 +36,17 @@ public abstract class EnrichedEvent implements Event {
 
   private final AtomicInteger referenceCount;
 
-  private final PipeTaskMeta pipeTaskMeta;
+  protected final PipeTaskMeta pipeTaskMeta;
 
   private final String pattern;
+  protected boolean isPatternAndTimeParsed;
 
   protected EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
     referenceCount = new AtomicInteger(0);
     this.pipeTaskMeta = pipeTaskMeta;
     this.pattern = pattern;
+    isPatternAndTimeParsed =
+        getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
   }
 
   /**
@@ -102,7 +105,7 @@ public abstract class EnrichedEvent implements Event {
    */
   public abstract boolean internallyDecreaseResourceReferenceCount(String holderMessage);
 
-  private void reportProgress() {
+  protected void reportProgress() {
     if (pipeTaskMeta != null) {
       pipeTaskMeta.updateProgressIndex(getProgressIndex());
     }
@@ -128,11 +131,17 @@ public abstract class EnrichedEvent implements Event {
     return pattern == null ? PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE : pattern;
   }
 
+  public boolean shouldParsePatternOrTime() {
+    return !isPatternAndTimeParsed;
+  }
+
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern);
 
   public void reportException(PipeRuntimeException pipeRuntimeException) {
-    PipeAgent.runtime().report(this.pipeTaskMeta, pipeRuntimeException);
+    if (pipeTaskMeta != null) {
+      PipeAgent.runtime().report(pipeTaskMeta, pipeRuntimeException);
+    }
   }
 
   public abstract boolean isGeneratedByPipe();

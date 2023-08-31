@@ -31,13 +31,17 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 public class ConcatDeviceAndBindSchemaForExpressionVisitor
     extends CartesianProductVisitor<ConcatDeviceAndBindSchemaForExpressionVisitor.Context> {
@@ -47,9 +51,9 @@ public class ConcatDeviceAndBindSchemaForExpressionVisitor
       FunctionExpression functionExpression, Context context) {
     List<List<Expression>> extendedExpressions = new ArrayList<>();
     for (Expression suffixExpression : functionExpression.getExpressions()) {
-      List<Expression> concatedExpression = process(suffixExpression, context);
-      if (concatedExpression != null && !concatedExpression.isEmpty()) {
-        extendedExpressions.add(concatedExpression);
+      List<Expression> concatExpression = process(suffixExpression, context);
+      if (concatExpression != null && !concatExpression.isEmpty()) {
+        extendedExpressions.add(concatExpression);
       }
 
       // We just process first input Expression of AggregationFunction,
@@ -62,6 +66,19 @@ public class ConcatDeviceAndBindSchemaForExpressionVisitor
             functionExpression.getFunctionName(), children, extendedExpressions);
         break;
       }
+    }
+
+    if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {
+      List<Expression> usedExpressions =
+          extendedExpressions.stream().flatMap(Collection::stream).collect(Collectors.toList());
+
+      Expression countTimeExpression =
+          new FunctionExpression(
+              COUNT_TIME,
+              new LinkedHashMap<>(),
+              Collections.singletonList(new TimestampOperand()),
+              usedExpressions);
+      return Collections.singletonList(countTimeExpression);
     }
 
     List<List<Expression>> childExpressionsList = new ArrayList<>();

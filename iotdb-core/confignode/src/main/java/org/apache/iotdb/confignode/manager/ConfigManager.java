@@ -105,7 +105,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -172,6 +171,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
@@ -360,11 +360,7 @@ public class ConfigManager implements IManager {
   @Override
   public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) {
     TSStatus status = confirmLeader();
-    // Notice: The Seed-ConfigNode must also have the privilege to do Node restart check.
-    // Otherwise, the IoTDB-cluster will not have the ability to restart from scratch.
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || ConfigNodeDescriptor.getInstance().isSeedConfigNode()
-        || SystemPropertiesUtils.isSeedConfigNode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       status =
           ClusterNodeStartUtils.confirmNodeRestart(
               NodeType.DataNode,
@@ -376,7 +372,6 @@ public class ConfigManager implements IManager {
         return nodeManager.updateDataNodeIfNecessary(req);
       }
     }
-
     return new TDataNodeRestartResp()
         .setStatus(status)
         .setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
@@ -664,8 +659,7 @@ public class ConfigManager implements IManager {
         new GetSchemaPartitionPlan(
             partitionSlotsMap.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> new ArrayList<>(e.getValue()))));
-    SchemaPartitionResp queryResult =
-        (SchemaPartitionResp) partitionManager.getSchemaPartition(getSchemaPartitionPlan);
+    SchemaPartitionResp queryResult = partitionManager.getSchemaPartition(getSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
     LOGGER.debug("GetSchemaPartition receive paths: {}, return: {}", relatedPaths, resp);
@@ -796,8 +790,7 @@ public class ConfigManager implements IManager {
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return resp.setStatus(status);
     }
-    DataPartitionResp queryResult =
-        (DataPartitionResp) partitionManager.getDataPartition(getDataPartitionPlan);
+    DataPartitionResp queryResult = partitionManager.getDataPartition(getDataPartitionPlan);
 
     resp = queryResult.convertToTDataPartitionTableResp();
 
@@ -1017,28 +1010,6 @@ public class ConfigManager implements IManager {
     return new TConfigNodeRegisterResp().setStatus(status).setConfigNodeId(ERROR_STATUS_NODE_ID);
   }
 
-  @Override
-  public TSStatus restartConfigNode(TConfigNodeRestartReq req) {
-    TSStatus status = confirmLeader();
-    // Notice: The Seed-ConfigNode must also have the privilege to do Node restart check.
-    // Otherwise, the IoTDB-cluster will not have the ability to restart from scratch.
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || ConfigNodeDescriptor.getInstance().isSeedConfigNode()
-        || SystemPropertiesUtils.isSeedConfigNode()) {
-      status =
-          ClusterNodeStartUtils.confirmNodeRestart(
-              NodeType.ConfigNode,
-              req.getClusterName(),
-              req.getConfigNodeLocation().getConfigNodeId(),
-              req.getConfigNodeLocation(),
-              this);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
-      }
-    }
-    return status;
-  }
-
   public TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req) {
     final String errorPrefix = "Reject register, please ensure that the parameter ";
     final String errorSuffix = " is consistent with the Seed-ConfigNode.";
@@ -1137,7 +1108,7 @@ public class ConfigManager implements IManager {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn("Unexpected interruption during retry creating peer for consensus group");
-      } catch (Exception e) {
+      } catch (ConsensusException e) {
         LOGGER.error("Failed to create peer for consensus group", e);
         break;
       }
@@ -1670,7 +1641,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? pipeManager.getPipeTaskCoordinator().getAllPipeInfo()
-        : new TGetAllPipeInfoResp().setStatus(status);
+        : new TGetAllPipeInfoResp(status, Collections.emptyList());
   }
 
   @Override
