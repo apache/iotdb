@@ -48,6 +48,9 @@ jobs:
           docker images
       - name: Install IoTDB python client requirements
         run: pip3 install -r iotdb-client/client-py/requirements_dev.txt
+      - name: Check code style
+        shell: base
+        run: black iotdb-client/client-py/ --check
       - name: Integration test
         shell: bash
         run: |
