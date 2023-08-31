@@ -267,7 +267,10 @@ public class WALNode implements IWALNode {
     public void run() {
       // The intent of the loop execution here is to try to get as many memTable flush or snapshot
       // as possible when the valid information ratio is less than the configured value.
-      while (recursionTime < MAX_RECURSION_TIME) {
+      // In addition, if the disk space used by wal exceeds the limit threshold, resulting in a
+      // write rejection, the task will continue to attempt to delete expired files until the
+      // threshold is no longer exceeded
+      while (recursionTime < MAX_RECURSION_TIME || WALManager.getInstance().shouldThrottle()) {
         // init delete outdated file task fields
         init();
 
@@ -282,8 +285,9 @@ public class WALNode implements IWALNode {
 
         // decide whether to snapshot or flush based on the effective info ration and throttle
         // threshold
-        if (!snapshotOrFlushMemTable()
-            && safelyDeletedSearchIndex != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
+        if (trySnapshotOrFlushMemTable()
+            && safelyDeletedSearchIndex != DEFAULT_SAFELY_DELETED_SEARCH_INDEX
+            && !WALManager.getInstance().shouldThrottle()) {
           return;
         }
         recursionTime++;
@@ -427,7 +431,7 @@ public class WALNode implements IWALNode {
      *
      * @return true if snapshot or flush is executed successfully
      */
-    private boolean snapshotOrFlushMemTable() {
+    private boolean trySnapshotOrFlushMemTable() {
       if (!shouldSnapshotOrFlush()) {
         return false;
       }
