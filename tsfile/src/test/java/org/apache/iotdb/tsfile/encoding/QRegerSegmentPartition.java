@@ -3777,8 +3777,9 @@ public class QRegerSegmentPartition {
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
-    String parent_dir = "E:\\encoding-reorder-my\\vldb\\compression_ratio\\segment";
-    String input_parent_dir = "E:\\encoding-reorder-my\\reorder\\iotdb_test_small\\";
+    String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\";
+    String output_parent_dir = parent_dir + "vldb\\compression_ratio\\segment_test";
+    String input_parent_dir = parent_dir + "reorder\\iotdb_test_small\\";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<String> dataset_name = new ArrayList<>();
@@ -3833,40 +3834,40 @@ public class QRegerSegmentPartition {
       dataset_k.add(1);
     }
 
-    output_path_list.add(parent_dir + "\\CS-Sensors_ratio.csv"); // 0
+    output_path_list.add(output_parent_dir + "\\CS-Sensors_ratio.csv"); // 0
     dataset_block_size.add(1024);
 //    dataset_k.add(5);
-    output_path_list.add(parent_dir + "\\Metro-Traffic_ratio.csv");// 1
+    output_path_list.add(output_parent_dir + "\\Metro-Traffic_ratio.csv");// 1
     dataset_block_size.add(512);
 //    dataset_k.add(7);
-    output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
+    output_path_list.add(output_parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
     dataset_block_size.add(512);
 //    dataset_k.add(7);
-    output_path_list.add(parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
+    output_path_list.add(output_parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
     dataset_block_size.add(1024);
 //    dataset_k.add(1);
-    output_path_list.add(parent_dir + "\\GW-Magnetic_ratio.csv"); //4
+    output_path_list.add(output_parent_dir + "\\GW-Magnetic_ratio.csv"); //4
     dataset_block_size.add(128);
 //    dataset_k.add(6);
-    output_path_list.add(parent_dir + "\\TY-Fuel_ratio.csv");//5
+    output_path_list.add(output_parent_dir + "\\TY-Fuel_ratio.csv");//5
     dataset_block_size.add(64);
 //    dataset_k.add(5);
-    output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
+    output_path_list.add(output_parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
     dataset_block_size.add(128);
 //    dataset_k.add(4);
-    output_path_list.add(parent_dir + "\\Vehicle-Charge_ratio.csv");//7
+    output_path_list.add(output_parent_dir + "\\Vehicle-Charge_ratio.csv");//7
     dataset_block_size.add(512);
 //    dataset_k.add(8);
-    output_path_list.add(parent_dir + "\\Nifty-Stocks_ratio.csv");//8
+    output_path_list.add(output_parent_dir + "\\Nifty-Stocks_ratio.csv");//8
     dataset_block_size.add(256);
 //    dataset_k.add(1);
-    output_path_list.add(parent_dir + "\\TH-Climate_ratio.csv");//9
+    output_path_list.add(output_parent_dir + "\\TH-Climate_ratio.csv");//9
     dataset_block_size.add(512);
 //    dataset_k.add(2);
-    output_path_list.add(parent_dir + "\\TY-Transport_ratio.csv");//10
+    output_path_list.add(output_parent_dir + "\\TY-Transport_ratio.csv");//10
     dataset_block_size.add(512);
 //    dataset_k.add(9);
-    output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
+    output_path_list.add(output_parent_dir + "\\EPM-Education_ratio.csv");//11
     dataset_block_size.add(512);
 //    dataset_k.add(5);
 
@@ -3931,8 +3932,8 @@ public class QRegerSegmentPartition {
           double ratioTmp = (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
           ratio += ratioTmp;
           s = System.nanoTime();
-          for(int repeat=0;repeat<1;repeat++)
-            data_decoded = ReorderingRegressionDecoder(buffer);
+//          for(int repeat=0;repeat<1;repeat++)
+//            data_decoded = ReorderingRegressionDecoder(buffer);
 ////                    for(int p=0;p< data.size();p++){
 ////                      if(!Objects.equals(data.get(p).get(1), data_decoded.get(p).get(1)) ){
 ////          //              System.out.println("sbbbb");
