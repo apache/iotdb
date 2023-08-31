@@ -493,10 +493,19 @@ public class QYRegerSegmentPartitionBlockSize {
         float theta0_v = theta.get(2);
         float theta1_v = theta.get(3);
 
+
         ArrayList<Integer> tmp0 = new ArrayList<>();
         tmp0.add(ts_block.get(0).get(0));
         tmp0.add(ts_block.get(0).get(1));
         ts_block_delta.add(tmp0);
+
+        ArrayList<ArrayList<Integer>> ts_block_delta_segment = new ArrayList<>();
+        ArrayList<Integer> tmp_segment = new ArrayList<>(2);
+        int max_interval_segment = Integer.MIN_VALUE;
+        int max_value_segment = Integer.MIN_VALUE;
+        tmp_segment.add(max_interval_segment);
+        tmp_segment.add(max_value_segment);
+
 
         // delta to Regression
         for (int j = 1; j < block_size; j++) {
@@ -524,6 +533,22 @@ public class QYRegerSegmentPartitionBlockSize {
             tmp.add(epsilon_r);
             tmp.add(epsilon_v);
             ts_block_delta.add(tmp);
+            if (epsilon_r > max_interval_segment) {
+                max_interval_segment = epsilon_r;
+                tmp_segment.set(0, max_interval_segment);
+            }
+            if (epsilon_v > max_value_segment) {
+                max_value_segment = epsilon_v;
+                tmp_segment.set(1, max_value_segment);
+            }
+            if (j % segment_size == 0) {
+                ts_block_delta_segment.add(tmp_segment);
+                tmp_segment = new ArrayList<>();
+                max_interval_segment = Integer.MIN_VALUE;
+                max_value_segment = Integer.MIN_VALUE;
+                tmp_segment.add(max_interval_segment);
+                tmp_segment.add(max_value_segment);
+            }
 
         }
 //
@@ -546,8 +571,15 @@ public class QYRegerSegmentPartitionBlockSize {
                             -
                             ( (theta0_v + value_delta_min)
                                     + theta1_v * (float) ts_block.get(j - 1).get(1)));
-            length += getBitWith(epsilon_r);
-            length += getBitWith(epsilon_v);
+//            System.out.println("getBitWith(epsilon_r) :"+getBitWith(epsilon_r));
+//            System.out.println("getBitWith(epsilon_v) :"+getBitWith(epsilon_v));
+
+//            length += getBitWith(epsilon_r);
+//            length += getBitWith(epsilon_v);
+//            length += epsilon_r;
+//            length += epsilon_v;
+//            length += getBitWith(epsilon_r);
+//            length += getBitWith(epsilon_v);
             if (epsilon_r > max_interval) {
                 max_interval = epsilon_r;
             }
@@ -559,7 +591,15 @@ public class QYRegerSegmentPartitionBlockSize {
             tmp.add(epsilon_v);
             ts_block_delta.set(j, tmp);
         }
+        for (ArrayList<Integer> segment_max : ts_block_delta_segment) {
+            length += getBitWith(segment_max.get(0) - timestamp_delta_min);
+            length += getBitWith(segment_max.get(1) - value_delta_min);
+        }
 
+//    System.out.println("timestamp_delta_min: "+timestamp_delta_min);
+//    System.out.println("value_delta_min: "+value_delta_min);
+
+//    System.out.println("max_interval: "+max_interval);
         int max_bit_width_interval = getBitWith(max_interval);
         int max_bit_width_value = getBitWith(max_value);
 
@@ -583,6 +623,7 @@ public class QYRegerSegmentPartitionBlockSize {
 
         return ts_block_delta;
     }
+
     public static int getBeta(
             ArrayList<ArrayList<Integer>> ts_block,
             int alpha,
@@ -2818,77 +2859,77 @@ public class QYRegerSegmentPartitionBlockSize {
 
         }
         int remaining_length = length_all - block_num * block_size;
-        if (remaining_length != 0 && remaining_length != 1) {
-            ArrayList<ArrayList<Integer>> ts_block_time = new ArrayList<>();
-            ArrayList<ArrayList<Integer>> ts_block_value = new ArrayList<>();
-            ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
-
-            for (int j = block_num * block_size; j < length_all; j++) {
-                ts_block_time.add(data.get(j));
-                ts_block_value.add(data_value.get(j));
-                ts_block_partition.add(data_partition.get(j));
-            }
-            int supple_length;
-            if (remaining_length % 8 == 0) {
-                supple_length = 1;
-            } else if (remaining_length % 8 == 1) {
-                supple_length = 0;
-            } else {
-                supple_length = 9 - remaining_length % 8;
-            }
-
-            ArrayList<Integer> result1 = new ArrayList<>();
-            splitTimeStamp3(ts_block_time, result1);
-            ArrayList<Integer> raw_length = new ArrayList<>();
-            ArrayList<Float> theta = new ArrayList<>();
-            ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression(ts_block_time, remaining_length, raw_length, theta, segment_size);
-            for (int s = 0; s < supple_length; s++) {
-                ArrayList<Integer> tmp = new ArrayList<>();
-                tmp.add(0);
-                tmp.add(0);
-                ts_block_delta.add(tmp);
-            }
-
-            ArrayList<ArrayList<Integer>> bit_width_segments = segmentBitPacking(ts_block_delta, remaining_length + supple_length, segment_size);
-            length_time += encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, theta, result1).size();
-
-
-            ArrayList<Integer> result2 = new ArrayList<>();
-            splitTimeStamp3(ts_block_value, result2);
-            ArrayList<Integer> raw_length_value = new ArrayList<>();
-            ArrayList<Float> theta_value = new ArrayList<>();
-            ArrayList<ArrayList<Integer>> ts_block_delta_value = getEncodeBitsRegression(ts_block_value, remaining_length, raw_length_value, theta_value, segment_size);
-            for (int s = 0; s < supple_length; s++) {
-                ArrayList<Integer> tmp = new ArrayList<>();
-                tmp.add(0);
-                tmp.add(0);
-                ts_block_delta_value.add(tmp);
-            }
-
-            ArrayList<ArrayList<Integer>> bit_width_segments_value = segmentBitPacking(ts_block_delta_value, remaining_length + supple_length, segment_size);
-            length_value += encodeSegment2Bytes(ts_block_delta_value, bit_width_segments_value, raw_length_value, segment_size, theta_value, result2).size();
-
-
-            ArrayList<Integer> result3 = new ArrayList<>();
-            splitTimeStamp3(ts_block_partition, result3);
-            ArrayList<Integer> raw_length_partition = new ArrayList<>();
-            ArrayList<Float> theta_partition = new ArrayList<>();
-            ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegression(ts_block_partition, remaining_length, raw_length_partition, theta_partition, segment_size);
-            for (int s = 0; s < supple_length; s++) {
-                ArrayList<Integer> tmp = new ArrayList<>();
-                tmp.add(0);
-                tmp.add(0);
-                ts_block_delta_partition.add(tmp);
-            }
-
-            ArrayList<ArrayList<Integer>> bit_width_segments_partition = segmentBitPacking(ts_block_delta_partition, remaining_length + supple_length, segment_size);
-            length_partition += encodeSegment2Bytes(ts_block_delta_partition, bit_width_segments_partition, raw_length_partition, segment_size, theta_partition, result3).size();
-
-
-//      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, theta, result2);
+//        if (remaining_length != 0 && remaining_length != 1) {
+//            ArrayList<ArrayList<Integer>> ts_block_time = new ArrayList<>();
+//            ArrayList<ArrayList<Integer>> ts_block_value = new ArrayList<>();
+//            ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
 //
-//      encoded_result.addAll(cur_encoded_result);
-        }
+//            for (int j = block_num * block_size; j < length_all; j++) {
+//                ts_block_time.add(data.get(j));
+//                ts_block_value.add(data_value.get(j));
+//                ts_block_partition.add(data_partition.get(j));
+//            }
+//            int supple_length;
+//            if (remaining_length % 8 == 0) {
+//                supple_length = 1;
+//            } else if (remaining_length % 8 == 1) {
+//                supple_length = 0;
+//            } else {
+//                supple_length = 9 - remaining_length % 8;
+//            }
+//
+//            ArrayList<Integer> result1 = new ArrayList<>();
+//            splitTimeStamp3(ts_block_time, result1);
+//            ArrayList<Integer> raw_length = new ArrayList<>();
+//            ArrayList<Float> theta = new ArrayList<>();
+//            ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression(ts_block_time, remaining_length, raw_length, theta, segment_size);
+//            for (int s = 0; s < supple_length; s++) {
+//                ArrayList<Integer> tmp = new ArrayList<>();
+//                tmp.add(0);
+//                tmp.add(0);
+//                ts_block_delta.add(tmp);
+//            }
+//
+//            ArrayList<ArrayList<Integer>> bit_width_segments = segmentBitPacking(ts_block_delta, remaining_length + supple_length, segment_size);
+//            length_time += encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, theta, result1).size();
+//
+//
+//            ArrayList<Integer> result2 = new ArrayList<>();
+//            splitTimeStamp3(ts_block_value, result2);
+//            ArrayList<Integer> raw_length_value = new ArrayList<>();
+//            ArrayList<Float> theta_value = new ArrayList<>();
+//            ArrayList<ArrayList<Integer>> ts_block_delta_value = getEncodeBitsRegression(ts_block_value, remaining_length, raw_length_value, theta_value, segment_size);
+//            for (int s = 0; s < supple_length; s++) {
+//                ArrayList<Integer> tmp = new ArrayList<>();
+//                tmp.add(0);
+//                tmp.add(0);
+//                ts_block_delta_value.add(tmp);
+//            }
+//
+//            ArrayList<ArrayList<Integer>> bit_width_segments_value = segmentBitPacking(ts_block_delta_value, remaining_length + supple_length, segment_size);
+//            length_value += encodeSegment2Bytes(ts_block_delta_value, bit_width_segments_value, raw_length_value, segment_size, theta_value, result2).size();
+//
+//
+//            ArrayList<Integer> result3 = new ArrayList<>();
+//            splitTimeStamp3(ts_block_partition, result3);
+//            ArrayList<Integer> raw_length_partition = new ArrayList<>();
+//            ArrayList<Float> theta_partition = new ArrayList<>();
+//            ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegression(ts_block_partition, remaining_length, raw_length_partition, theta_partition, segment_size);
+//            for (int s = 0; s < supple_length; s++) {
+//                ArrayList<Integer> tmp = new ArrayList<>();
+//                tmp.add(0);
+//                tmp.add(0);
+//                ts_block_delta_partition.add(tmp);
+//            }
+//
+//            ArrayList<ArrayList<Integer>> bit_width_segments_partition = segmentBitPacking(ts_block_delta_partition, remaining_length + supple_length, segment_size);
+//            length_partition += encodeSegment2Bytes(ts_block_delta_partition, bit_width_segments_partition, raw_length_partition, segment_size, theta_partition, result3).size();
+//
+//
+////      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, theta, result2);
+////
+////      encoded_result.addAll(cur_encoded_result);
+//        }
         System.out.println("length_partition: " + length_partition);
         System.out.println("length_time: " + length_time);
         System.out.println("length_value: " + length_value);
@@ -2960,12 +3001,14 @@ public class QYRegerSegmentPartitionBlockSize {
                     ts_block_delta = ts_block_delta_reorder;
                     alpha_list = getIStar(ts_block,min_index, block_size, 1, theta, k);
                 }
-                ArrayList<Integer> beta_list;
-                beta_list = new ArrayList<>();
+                ArrayList<Integer> beta_list= new ArrayList<>();
+                ArrayList<ArrayList<Integer>> new_length_list = new ArrayList<>();
 
 
                 for (int alpha : alpha_list) {
-                    beta_list.add(getBeta(ts_block, alpha, min_index,block_size, raw_length, theta, segment_size));
+                    ArrayList<Integer> new_length = (ArrayList<Integer>) raw_length.clone();
+                    beta_list.add(getBeta(ts_block, alpha, min_index,block_size, new_length, theta, segment_size));
+                    new_length_list.add(new_length);
                 }
                 ArrayList<Integer> isMoveable = isMovable(alpha_list, beta_list);
                 int adjust_count = 0;
@@ -2979,22 +3022,30 @@ public class QYRegerSegmentPartitionBlockSize {
 //                        System.out.println("theta: "+theta);
 
                     for (int isMoveable_i : isMoveable) {
-                        ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
-                        ArrayList<Integer> new_length = new ArrayList<>();
-                        moveAlphaToBeta(new_ts_block, alpha_list.get(isMoveable_i), beta_list.get(isMoveable_i));
-                        getEncodeBitsRegressionNoTrain(new_ts_block, block_size, new_length, theta, segment_size);
+//                        ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+//                        ArrayList<Integer> new_length = new ArrayList<>();
+//                        moveAlphaToBeta(new_ts_block, alpha_list.get(isMoveable_i), beta_list.get(isMoveable_i));
+//                        getEncodeBitsRegressionNoTrain(new_ts_block, block_size, new_length, theta, segment_size);
                         ArrayList<Integer> tmp = new ArrayList<>();
                         tmp.add(isMoveable_i);
-                        tmp.add(new_length.get(0));
+                        tmp.add(new_length_list.get(isMoveable_i).get(0));
                         all_length.add(tmp);
 
                     }
 //                        System.out.println("theta: "+theta);
                     quickSort(all_length, 1, 0, all_length.size() - 1);
                     if (all_length.get(0).get(1) <= raw_length.get(0)) {
-                        moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
-//                            System.out.println("alpha: "+alpha_list.get(all_length.get(0).get(0)));
-                        getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
+                        ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+                        moveAlphaToBeta(new_ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
+                        ArrayList<Integer> new_length = new ArrayList<>();
+                        getEncodeBitsRegressionNoTrain(new_ts_block, block_size, new_length, theta, segment_size);
+                        if(new_length.get(0) <= raw_length.get(0)){
+                            raw_length = new_length;
+                            moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
+                        }else {
+                            break;
+                        }
+//                        raw_length = new_length_list.get(all_length.get(0).get(0));
                     } else {
                         break;
                     }
@@ -3012,11 +3063,13 @@ public class QYRegerSegmentPartitionBlockSize {
                     beta_list = new ArrayList<>();
 
                     for (int alpha : alpha_list) {
+                        ArrayList<Integer> new_length = (ArrayList<Integer>) raw_length.clone();
                         beta_list.add(getBeta(ts_block,alpha, min_index,  block_size, raw_length, theta, segment_size));
+                        new_length_list.add(new_length);
                     }
                     isMoveable = isMovable(alpha_list, beta_list);
                 }
-                ts_block_delta = getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
+//                ts_block_delta = getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
 //                System.out.println("length_after: "+ raw_length.get(0));
                 ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
                 int segment_n = (block_size - 1) / segment_size;
@@ -3131,10 +3184,13 @@ public class QYRegerSegmentPartitionBlockSize {
 
 //                min_index.add(alpha_list.get(0));
 //                min_index.add(alpha_list.get(k+1));
-                ArrayList<Integer> beta_list;
-                beta_list = new ArrayList<>();
+                ArrayList<Integer> beta_list= new ArrayList<>();
+                ArrayList<ArrayList<Integer>> new_length_list = new ArrayList<>();
+
                 for (int alpha : alpha_list) {
-                    beta_list.add(getBeta(ts_block,alpha, min_index,  block_size, raw_length, theta, segment_size));
+                    ArrayList<Integer> new_length = (ArrayList<Integer>) raw_length.clone();
+                    beta_list.add(getBeta(ts_block, alpha, min_index,block_size, new_length, theta, segment_size));
+                    new_length_list.add(new_length);
                 }
                 ArrayList<Integer> isMoveable = isMovable(alpha_list, beta_list);
                 int adjust_count = 0;
@@ -3147,20 +3203,30 @@ public class QYRegerSegmentPartitionBlockSize {
                     ArrayList<ArrayList<Integer>> all_length = new ArrayList<>();
 
                     for (int isMoveable_i : isMoveable) {
-                        ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
-                        ArrayList<Integer> new_length = new ArrayList<>();
-                        moveAlphaToBeta(new_ts_block, alpha_list.get(isMoveable_i), beta_list.get(isMoveable_i));
-                        getEncodeBitsRegressionNoTrain(new_ts_block, block_size, new_length, theta, segment_size);
+//                        ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+//                        ArrayList<Integer> new_length = new ArrayList<>();
+//                        moveAlphaToBeta(new_ts_block, alpha_list.get(isMoveable_i), beta_list.get(isMoveable_i));
+//                        getEncodeBitsRegressionNoTrain(new_ts_block, block_size, new_length, theta, segment_size);
                         ArrayList<Integer> tmp = new ArrayList<>();
                         tmp.add(isMoveable_i);
-                        tmp.add(new_length.get(0));
+                        tmp.add(new_length_list.get(isMoveable_i).get(0));
                         all_length.add(tmp);
 
                     }
                     quickSort(all_length, 1, 0, all_length.size() - 1);
                     if (all_length.get(0).get(1) <= raw_length.get(0)) {
-                        moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
-                        getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
+//                        moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
+//                        getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
+//                        raw_length = new_length_list.get(all_length.get(0).get(0));
+                        ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+                        ArrayList<Integer> new_length = new ArrayList<>();
+                        getEncodeBitsRegressionNoTrain(new_ts_block, block_size, new_length, theta, segment_size);
+                        if(new_length.get(0) <= raw_length.get(0)){
+                            raw_length = new_length;
+                            moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
+                        }else {
+                            break;
+                        }
                     } else {
                         break;
                     }
@@ -3173,11 +3239,13 @@ public class QYRegerSegmentPartitionBlockSize {
                     }
                     beta_list = new ArrayList<>();
                     for (int alpha : alpha_list) {
-                        beta_list.add(getBeta(ts_block,alpha,min_index,  block_size, raw_length, theta, segment_size));
+                        ArrayList<Integer> new_length = (ArrayList<Integer>) raw_length.clone();
+                        beta_list.add(getBeta(ts_block, alpha, min_index,block_size, new_length, theta, segment_size));
+                        new_length_list.add(new_length);
                     }
                     isMoveable = isMovable(alpha_list, beta_list);
                 }
-                ts_block_delta = getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
+//                ts_block_delta = getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
 //                System.out.println(ts_block_delta);
                 ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
                 int segment_n = (block_size - 1) / segment_size;

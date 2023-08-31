@@ -13,9 +13,8 @@ import java.util.Objects;
 import java.util.Stack;
 
 import static java.lang.Math.abs;
-import static java.lang.Math.min;
 
-public class QRegerSegmentPartitionBlockSize {
+public class RegerSegmentPartitionBlockSizeTest {
     public static int getBitWith(int num) {
         if (num == 0) return 1;
         else return 32 - Integer.numberOfLeadingZeros(num);
@@ -3162,7 +3161,7 @@ public class QRegerSegmentPartitionBlockSize {
 //                        System.out.println("theta: "+theta);
 
                     for (int isMoveable_i : isMoveable) {
-                        ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+//                        ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
 //                        ArrayList<Integer> new_length = new ArrayList<>();
 //                        moveAlphaToBeta(new_ts_block, alpha_list.get(isMoveable_i), beta_list.get(isMoveable_i));
 //                        getEncodeBitsRegressionNoTrain(new_ts_block, block_size, new_length, theta, segment_size);
@@ -3175,10 +3174,17 @@ public class QRegerSegmentPartitionBlockSize {
 //                        System.out.println("theta: "+theta);
                     quickSort(all_length, 1, 0, all_length.size() - 1);
                     if (all_length.get(0).get(1) <= raw_length.get(0)) {
-                        moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
-//                            System.out.println("alpha: "+alpha_list.get(all_length.get(0).get(0)));
-                        raw_length = new_length_list.get(all_length.get(0).get(0));
-//                        getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
+                        ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+                        moveAlphaToBeta(new_ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
+                        ArrayList<Integer> new_length = new ArrayList<>();
+                        getEncodeBitsRegressionNoTrain(new_ts_block, block_size, new_length, theta, segment_size);
+                        if(new_length.get(0) <= raw_length.get(0)){
+                            raw_length = new_length;
+                            moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
+                        }else {
+                            break;
+                        }
+//                        raw_length = new_length_list.get(all_length.get(0).get(0));
                     } else {
                         break;
                     }
@@ -3348,9 +3354,18 @@ public class QRegerSegmentPartitionBlockSize {
                     }
                     quickSort(all_length, 1, 0, all_length.size() - 1);
                     if (all_length.get(0).get(1) <= raw_length.get(0)) {
-                        moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
+//                        moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
 //                        getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
-                        raw_length = new_length_list.get(all_length.get(0).get(0));
+//                        raw_length = new_length_list.get(all_length.get(0).get(0));
+                        ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+                        ArrayList<Integer> new_length = new ArrayList<>();
+                        getEncodeBitsRegressionNoTrain(new_ts_block, block_size, new_length, theta, segment_size);
+                        if(new_length.get(0) <= raw_length.get(0)){
+                            raw_length = new_length;
+                            moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
+                        }else {
+                            break;
+                        }
                     } else {
                         break;
                     }
@@ -3715,7 +3730,7 @@ public class QRegerSegmentPartitionBlockSize {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
-        String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\block_size_test";
+        String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\block_size_test_new";
         String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -3809,7 +3824,7 @@ public class QRegerSegmentPartitionBlockSize {
         dataset_k.add(5);
 
 //    for (int file_i = 3; file_i < 4; file_i++) {
-        for (int file_i = 3; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
