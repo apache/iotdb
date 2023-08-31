@@ -71,6 +71,64 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
     super.tearDown();
   }
 
+  public static void main(String[] args) throws IOException, InterruptedException, MetadataException, WriteProcessException, StorageEngineException {
+    FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTest t = new FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTest();
+    t.setUp();
+
+    t.test41();
+
+    t.tearDown();
+  }
+
+  @Test
+  public void test41() throws MetadataException, IOException, WriteProcessException {
+
+    List<String> list = new ArrayList<>();
+    for (int i = 0; i < 2000; i++) {
+      list.add("s" + i);
+    }
+    TimeRange[] file1Chunk1 =
+        new TimeRange[] {
+            new TimeRange(10000, 15000), new TimeRange(16000, 19000), new TimeRange(20000, 29000)
+        };
+    TsFileResource seqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            list,
+            new TimeRange[][] { file1Chunk1 },
+            TSEncoding.PLAIN,
+            CompressionType.LZ4,
+            true);
+    seqResources.add(seqResource1);
+
+    TimeRange[] file2Chunk1 =
+        new TimeRange[] {
+            new TimeRange(10000, 15000), new TimeRange(16000, 19000), new TimeRange(20000, 29000)
+        };
+    TsFileResource unseqResource =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            list,
+            new TimeRange[][] { file2Chunk1 },
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            true);
+    unseqResources.add(unseqResource);
+
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            seqResources,
+            unseqResources,
+            new FastCompactionPerformer(true),
+            new AtomicInteger(0),
+            0,
+            0);
+
+    Assert.assertTrue(task.start());
+  }
+
   @Test
   public void test1() throws MetadataException, IOException, WriteProcessException {
 

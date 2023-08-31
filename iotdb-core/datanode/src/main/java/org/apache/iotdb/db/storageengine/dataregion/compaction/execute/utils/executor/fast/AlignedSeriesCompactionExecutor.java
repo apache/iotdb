@@ -266,6 +266,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       timePageHeaders.add(pageHeader);
       compressedTimePageDatas.add(compressedPageData);
     }
+    timeChunk.releaseChunkDataBuffer();
 
     // deserialize value chunks
     List<Chunk> valueChunks = chunkMetadataElement.valueChunks;
@@ -301,6 +302,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
           compressedValuePageDatas.get(i).add(compressedPageData);
         }
       }
+      valueChunk.releaseChunkDataBuffer();
     }
 
     // add aligned pages into page queue
@@ -322,7 +324,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
               alignedPageHeaders,
               compressedTimePageDatas.get(i),
               alignedPageDatas,
-              new AlignedChunkReader(timeChunk, valueChunks),
+              new AlignedChunkReader(timeChunk, valueChunks, false),
               chunkMetadataElement,
               i == timePageHeaders.size() - 1,
               chunkMetadataElement.priority));

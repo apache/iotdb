@@ -148,4 +148,8 @@ public class Chunk {
   public Statistics getChunkStatistic() {
     return chunkStatistic;
   }
+
+  public void releaseChunkDataBuffer() {
+    this.chunkData = null;
+  }
 }
