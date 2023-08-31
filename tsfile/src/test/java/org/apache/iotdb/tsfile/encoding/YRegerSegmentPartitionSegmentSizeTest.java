@@ -3679,7 +3679,7 @@ public class YRegerSegmentPartitionSegmentSizeTest {
     dataset_block_size.add(512);
     dataset_k.add(4);
 
-    for (int file_i = 11; file_i < 12; file_i++) {
+    for (int file_i = 0; file_i < 11; file_i++) {
 //        for (int file_i = 4; file_i < input_path_list.size(); file_i++) {
       String inputPath = input_path_list.get(file_i);
       //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
