@@ -3548,8 +3548,8 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
-        String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\block_size";
-        String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
+        String parent_dir = "E:\\encoding-reorder-my\\vldb\\compression_ratio\\block_size";
+        String input_parent_dir = "E:\\encoding-reorder-my\\reorder\\iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
@@ -3702,7 +3702,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                         long s = System.nanoTime();
                         ArrayList<Byte> buffer = new ArrayList<>();
                         for (int repeat = 0; repeat < repeatTime2; repeat++)
-                            buffer = ReorderingRegressionEncoder(data, block_size, dataset_third.get(file_i), 8, dataset_k.get(file_i));
+                            buffer = ReorderingRegressionEncoder(data, block_size, dataset_third.get(file_i), 8, 1);
                         long e = System.nanoTime();
                         encodeTime += ((e - s) / repeatTime2);
                         compressed_size += buffer.size();

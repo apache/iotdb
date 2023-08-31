@@ -3551,8 +3551,8 @@ public class RegerSegmentPartitionSegmentSizeTest {
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
-    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\segment_size";
-    String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
+    String parent_dir = "E:\\encoding-reorder-my\\vldb\\compression_ratio\\segment_size";
+    String input_parent_dir = "E:\\encoding-reorder-my\\reorder\\iotdb_test_small\\";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<String> dataset_name = new ArrayList<>();
@@ -3643,8 +3643,8 @@ public class RegerSegmentPartitionSegmentSizeTest {
     dataset_block_size.add(512);
     dataset_k.add(4);
 
-    for (int file_i = 11; file_i < 12; file_i++) {
-//        for (int file_i = 4; file_i < input_path_list.size(); file_i++) {
+    //for (int file_i = 11; file_i < 12; file_i++) {
+    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
       String inputPath = input_path_list.get(file_i);
       //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
