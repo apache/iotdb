@@ -32,7 +32,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected String pattern;
-  protected boolean isForwardingPipeRequests;
+  protected boolean isForwardingPipeRequests = true;
 
   protected String pipeName;
   protected String dataRegionId;
@@ -54,10 +54,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         parameters.getStringOrDefault(
             PipeExtractorConstant.EXTRACTOR_PATTERN_KEY,
             PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
-    isForwardingPipeRequests =
-        parameters.getBooleanOrDefault(
-            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
 
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
