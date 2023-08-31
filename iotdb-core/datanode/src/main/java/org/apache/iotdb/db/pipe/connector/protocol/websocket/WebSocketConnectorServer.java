@@ -41,6 +41,7 @@ import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public class WebSocketConnectorServer extends WebSocketServer {
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
@@ -197,12 +198,6 @@ public class WebSocketConnectorServer extends WebSocketServer {
       payload.flip();
       this.broadcast(payload, Collections.singletonList(webSocket));
       eventMap.put(eventPair.getLeft(), eventPair.getRight());
-      String log =
-          String.format(
-              "Transferred a message to client %s:%d",
-              webSocket.getRemoteSocketAddress().getAddress().getHostName(),
-              webSocket.getRemoteSocketAddress().getPort());
-      LOGGER.info(log);
     } catch (InterruptedException e) {
       events.put(eventPair);
       Thread.currentThread().interrupt();
@@ -210,7 +205,6 @@ public class WebSocketConnectorServer extends WebSocketServer {
     } catch (Exception e) {
       events.put(eventPair);
       e.printStackTrace();
-      throw new PipeException(e.getMessage());
     }
   }
 }
