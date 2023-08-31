@@ -3126,6 +3126,7 @@ public class QRegerSegmentPartitionVaryingK {
                 ArrayList<Integer> result2 = new ArrayList<>();
                 //      result2.add(1);
                 splitTimeStamp3(ts_block, result2);
+                splitTimeStamp3(ts_block_reorder, result2);
 
                 // raw-order
                 ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
@@ -3285,7 +3286,7 @@ public class QRegerSegmentPartitionVaryingK {
                 System.out.println("type1");
             }
             for (int i = 0; i < block_num; i++) {
-//            for (int i = 1; i < 2; i++) {
+//            for (int i = 0; i < 1; i++) {
                 ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
@@ -3297,7 +3298,8 @@ public class QRegerSegmentPartitionVaryingK {
                 ArrayList<Integer> result2 = new ArrayList<>();
                 //      result2.add(1);
                 splitTimeStamp3(ts_block, result2);
-//                quickSort(ts_block, 0, 0, block_size - 1);
+                splitTimeStamp3(ts_block_reorder, result2);
+                quickSort(ts_block, 0, 0, block_size - 1);
                 ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
                 ArrayList<Float> theta = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, theta, segment_size);
@@ -3775,8 +3777,8 @@ public class QRegerSegmentPartitionVaryingK {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
-        String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\k_test";
-        String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
+        String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\k_test";
+        String input_parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
@@ -3854,8 +3856,8 @@ public class QRegerSegmentPartitionVaryingK {
         output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
         dataset_block_size.add(512);
 
-//    for (int file_i = 7; file_i < 8; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+    for (int file_i = 3; file_i < 4; file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -3886,7 +3888,7 @@ public class QRegerSegmentPartitionVaryingK {
                 System.out.println(f);
 //                for (int block_size_exp = 9; block_size_exp >= 9; block_size_exp--) {
 //                for (int k = 2; k >= 2; k--) {
-                for (int k = 10; k >= 1; k--) {
+                for (int k = 20; k >= 1; k-=4) {
 //                    int block_size = (int) Math.pow(2, block_size_exp);
                     System.out.println( "k :"+k);
 

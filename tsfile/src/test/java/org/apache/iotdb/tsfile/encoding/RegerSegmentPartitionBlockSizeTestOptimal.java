@@ -2949,6 +2949,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                 ArrayList<Integer> result2 = new ArrayList<>();
                 //      result2.add(1);
                 splitTimeStamp3(ts_block, result2);
+                splitTimeStamp3(ts_block_reorder, result2);
 
                 // raw-order
                 ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
@@ -3095,7 +3096,9 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                 ArrayList<Integer> result2 = new ArrayList<>();
                 //      result2.add(1);
                 splitTimeStamp3(ts_block, result2);
-//                quickSort(ts_block, 0, 0, block_size - 1);
+                splitTimeStamp3(ts_block_reorder, result2);
+
+                quickSort(ts_block, 0, 0, block_size - 1);
                 ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
                 ArrayList<Float> theta = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, theta, segment_size);
@@ -3152,7 +3155,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                     alpha_list = getIStar(ts_block, block_size, 1, theta, k);
                 } else {
                     ts_block = ts_block_reorder;
-//                    quickSort(ts_block, 0, 0, block_size - 1);
+                    quickSort(ts_block, 0, 0, block_size - 1);
                     alpha_list = getIStar(ts_block, block_size, 0, theta, k);
                 }
 //                System.out.println(ts_block);
@@ -3252,6 +3255,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
             }
             ArrayList<Integer> result2 = new ArrayList<>();
             splitTimeStamp3(ts_block, result2);
+            splitTimeStamp3(ts_block_reorder, result2);
 
             quickSort(ts_block, 0, 0, remaining_length - 1);
 

@@ -3126,6 +3126,7 @@ public class QRegerSegmentPartitionSegmentSize {
         ArrayList<Integer> result2 = new ArrayList<>();
         //      result2.add(1);
         splitTimeStamp3(ts_block, result2);
+        splitTimeStamp3(ts_block_reorder, result2);
 
         // raw-order
         ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
@@ -3285,7 +3286,7 @@ public class QRegerSegmentPartitionSegmentSize {
         System.out.println("type1");
       }
       for (int i = 0; i < block_num; i++) {
-//            for (int i = 1; i < 2; i++) {
+//            for (int i = 0; i < 1; i++) {
         ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
@@ -3297,7 +3298,8 @@ public class QRegerSegmentPartitionSegmentSize {
         ArrayList<Integer> result2 = new ArrayList<>();
         //      result2.add(1);
         splitTimeStamp3(ts_block, result2);
-//                quickSort(ts_block, 0, 0, block_size - 1);
+        splitTimeStamp3(ts_block_reorder, result2);
+        quickSort(ts_block, 0, 0, block_size - 1);
         ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
         ArrayList<Float> theta = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, theta, segment_size);

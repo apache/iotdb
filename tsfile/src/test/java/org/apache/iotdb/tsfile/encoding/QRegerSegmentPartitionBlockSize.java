@@ -3127,6 +3127,7 @@ public class QRegerSegmentPartitionBlockSize {
                 ArrayList<Integer> result2 = new ArrayList<>();
                 //      result2.add(1);
                 splitTimeStamp3(ts_block, result2);
+                splitTimeStamp3(ts_block_reorder, result2);
 
                 // raw-order
                 ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
@@ -3286,7 +3287,7 @@ public class QRegerSegmentPartitionBlockSize {
                 System.out.println("type1");
             }
             for (int i = 0; i < block_num; i++) {
-//            for (int i = 1; i < 2; i++) {
+//            for (int i = 0; i < 1; i++) {
                 ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
@@ -3298,7 +3299,8 @@ public class QRegerSegmentPartitionBlockSize {
                 ArrayList<Integer> result2 = new ArrayList<>();
                 //      result2.add(1);
                 splitTimeStamp3(ts_block, result2);
-//                quickSort(ts_block, 0, 0, block_size - 1);
+                splitTimeStamp3(ts_block_reorder, result2);
+                quickSort(ts_block, 0, 0, block_size - 1);
                 ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
                 ArrayList<Float> theta = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, theta, segment_size);
@@ -3776,8 +3778,8 @@ public class QRegerSegmentPartitionBlockSize {
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
         // 移动后的新位置变成新的最小值没考虑，没有设置移动后cost的下限
-        String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\block_size_test";
-        String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
+        String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\block_size_test";
+        String input_parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
@@ -3869,8 +3871,8 @@ public class QRegerSegmentPartitionBlockSize {
         dataset_block_size.add(512);
         dataset_k.add(5);
 
-    for (int file_i = 4; file_i < 5; file_i++) {
-//        for (int file_i = 3; file_i < input_path_list.size(); file_i++) {
+//    for (int file_i = 8; file_i < 9; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -3899,7 +3901,7 @@ public class QRegerSegmentPartitionBlockSize {
 //        double ratio_sum = 0;
             for (File f : tempList) {
                 System.out.println(f);
-//                for (int block_size_exp = 7; block_size_exp >= 7; block_size_exp--) {
+//                for (int block_size_exp = 6; block_size_exp >= 6; block_size_exp--) {
                 for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
                     int block_size = (int) Math.pow(2, block_size_exp);
                     System.out.println(block_size);
