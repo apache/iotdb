@@ -3356,8 +3356,8 @@ public class QRegerSegmentPartitionVaryingK {
                     theta = theta_reorder;
                     alpha_list = getIStar(ts_block,min_index, block_size, 1, theta, k);
                 } else {
-                    ts_block = ts_block_reorder;
-//                    quickSort(ts_block, 0, 0, block_size - 1);
+//                    ts_block = ts_block_reorder;
+                    quickSort(ts_block, 0, 0, block_size - 1);
                     alpha_list = getIStar(ts_block,min_index, block_size, 0, theta, k);
                 }
 //                System.out.println(ts_block);

@@ -3154,7 +3154,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                     theta = theta_reorder;
                     alpha_list = getIStar(ts_block, block_size, 1, theta, k);
                 } else {
-                    ts_block = ts_block_reorder;
+//                    ts_block = ts_block_reorder;
                     quickSort(ts_block, 0, 0, block_size - 1);
                     alpha_list = getIStar(ts_block, block_size, 0, theta, k);
                 }

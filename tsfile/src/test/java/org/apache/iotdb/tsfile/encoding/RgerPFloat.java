@@ -1878,6 +1878,7 @@ public class RgerPFloat {
                 ArrayList<Integer> result2 = new ArrayList<>();
                 //      result2.add(1);
                 splitTimeStamp3(ts_block, result2);
+                splitTimeStamp3(ts_block_reorder, result2);
 
                 ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
                 ArrayList<Float> coefficient = new ArrayList<>();
@@ -1935,7 +1936,7 @@ public class RgerPFloat {
                 ArrayList<Integer> isMoveable = isMovable(alpha_list, beta_list);
                 int adjust_count = 0;
                 while (isMoveable.size() != 0) {
-                    if (adjust_count < block_size / 2 && adjust_count <= 33) {
+                    if (adjust_count < block_size / 2 && adjust_count <= 20) {
                         adjust_count++;
                     } else {
                         break;
@@ -2017,16 +2018,17 @@ public class RgerPFloat {
             }
             for (int i = 0; i < block_num; i++) {
                 ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
-                ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+//                ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
                 for (int j = 0; j < block_size; j++) {
                     ts_block.add(data.get(j + i * block_size));
-                    ts_block_reorder.add(data.get(j + i * block_size));
+//                    ts_block_reorder.add(data.get(j + i * block_size));
                 }
 
                 ArrayList<Integer> result2 = new ArrayList<>();
                 //      result2.add(1);
                 splitTimeStamp3(ts_block, result2);
+//                splitTimeStamp3(ts_block_reorder, result2);
 
                 quickSort(ts_block, 0, 0, block_size - 1);
                 ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
@@ -2084,6 +2086,7 @@ public class RgerPFloat {
                     coefficient =  coefficient_reorder;
                     alpha_list = getIStarPK(ts_block, block_size, 1, coefficient ,p, k);
                 }else {
+//                    ts_block = ts_block_reorder;
                     quickSort(ts_block, 0, 0, block_size - 1);
                     alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, p, k);
                 }
@@ -2095,7 +2098,7 @@ public class RgerPFloat {
                 ArrayList<Integer> isMoveable = isMovable(alpha_list, beta_list);
                 int adjust_count = 0;
                 while (isMoveable.size() != 0) {
-                    if (adjust_count < block_size / 2 && adjust_count <= 33) {
+                    if (adjust_count < block_size / 2 && adjust_count <= 20) {
                         adjust_count++;
                     } else {
                         break;

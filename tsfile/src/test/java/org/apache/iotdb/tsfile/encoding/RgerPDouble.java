@@ -1869,6 +1869,7 @@ public class RgerPDouble{
         ArrayList<Integer> result2 = new ArrayList<>();
         //      result2.add(1);
         splitTimeStamp3(ts_block, result2);
+        splitTimeStamp3(ts_block_reorder, result2);
 
         ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
         ArrayList<Double> coefficient = new ArrayList<>();
