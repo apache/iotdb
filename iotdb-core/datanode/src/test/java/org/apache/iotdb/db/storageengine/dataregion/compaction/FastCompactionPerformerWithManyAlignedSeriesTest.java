@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -35,7 +36,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class FastCompactionPerformerWithManyAlignedSeriesTest extends AbstractCompactionTest {
 
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException, InterruptedException {
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
   }
 
@@ -50,7 +52,15 @@ public class FastCompactionPerformerWithManyAlignedSeriesTest extends AbstractCo
     createFiles(1, 1, 10000, 10000, 200000, 0, 10, 1, true, false);
     tsFileManager.addAll(unseqResources, false);
 
-    InnerSpaceCompactionTask task = new InnerSpaceCompactionTask(0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), new AtomicInteger(0), 0);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            unseqResources,
+            false,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
     try {
       boolean success = task.start();
       Assert.assertTrue(success);
