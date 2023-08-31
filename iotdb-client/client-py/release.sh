@@ -40,5 +40,5 @@ fi
 # See https://packaging.python.org/tutorials/packaging-projects/
 python3 setup.py sdist bdist_wheel
 if [ "$1" == "release" ]; then
-  twine upload --repository pypi dist/*
+  python3 -m twine upload  dist/*
 fi

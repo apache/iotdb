@@ -168,7 +168,7 @@
         </plugins>
         <resources>
             <resource>
-                <directory>${basedir}/.resources</directory>
+                <directory>${basedir}/resources</directory>
                 <includes>
                     <include>setup.py</include>
                 </includes>
