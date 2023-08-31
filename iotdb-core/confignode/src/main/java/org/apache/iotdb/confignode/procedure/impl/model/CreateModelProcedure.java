@@ -20,6 +20,8 @@
 package org.apache.iotdb.confignode.procedure.impl.model;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.mlnode.MLNodeClient;
+import org.apache.iotdb.commons.client.mlnode.MLNodeClientPool;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.model.exception.ModelManagementException;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
@@ -32,7 +34,6 @@ import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.model.CreateModelState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.protocol.client.MLNodeClient;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -107,7 +108,7 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
         case CONFIG_NODE_ACTIVE:
           LOGGER.info("Start to train model [{}] on ML Node", modelInformation.getModelId());
 
-          try (MLNodeClient client = new MLNodeClient()) {
+          try (MLNodeClient client = MLNodeClientPool.getInstance().borrowObject()) {
             TSStatus status = client.createTrainingTask(modelInformation, hyperparameters);
             if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               throw new TException(status.getMessage());

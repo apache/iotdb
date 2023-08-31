@@ -21,6 +21,8 @@ package org.apache.iotdb.confignode.procedure.impl.model;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.mlnode.MLNodeClient;
+import org.apache.iotdb.commons.client.mlnode.MLNodeClientPool;
 import org.apache.iotdb.commons.model.exception.ModelManagementException;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
@@ -31,7 +33,6 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.model.DropModelState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.db.protocol.client.MLNodeClient;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -116,7 +117,7 @@ public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
         case DATA_NODE_DROPPED:
           LOGGER.info("Start to drop model file [{}] on Ml Node", modelId);
 
-          try (MLNodeClient client = new MLNodeClient()) {
+          try (MLNodeClient client = MLNodeClientPool.getInstance().borrowObject()) {
             status = client.deleteModel(modelId);
             if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               throw new TException(status.getMessage());

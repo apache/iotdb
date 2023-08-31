@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.client;
+package org.apache.iotdb.commons.client.mlnode;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -34,6 +34,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
+import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.PooledObjectFactory;
+import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -62,7 +65,7 @@ public class MLNodeClient implements AutoCloseable {
 
   private final TsBlockSerde tsBlockSerde = new TsBlockSerde();
 
-  public MLNodeClient() throws TException {
+  private MLNodeClient() throws TException {
     TEndPoint endpoint = CommonDescriptor.getInstance().getConfig().getTargetMLNodeEndPoint();
     try {
       long connectionTimeout = ClientPoolProperty.DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
@@ -83,6 +86,10 @@ public class MLNodeClient implements AutoCloseable {
 
     TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     client = new IMLNodeRPCService.Client(protocolFactory.getProtocol(transport));
+  }
+
+  public TTransport getTransport() {
+    return transport;
   }
 
   public TSStatus createTrainingTask(
@@ -150,5 +157,33 @@ public class MLNodeClient implements AutoCloseable {
   @Override
   public void close() throws Exception {
     Optional.ofNullable(transport).ifPresent(TTransport::close);
+  }
+
+  public static class Factory implements PooledObjectFactory<MLNodeClient> {
+
+    @Override
+    public void activateObject(PooledObject<MLNodeClient> pooledObject) throws Exception {
+      // No special activation logic needed
+    }
+
+    @Override
+    public void passivateObject(PooledObject<MLNodeClient> pooledObject) throws Exception {
+      // No special passivation logic needed
+    }
+
+    @Override
+    public void destroyObject(PooledObject<MLNodeClient> pooledObject) throws Exception {
+      pooledObject.getObject().close();
+    }
+
+    @Override
+    public PooledObject<MLNodeClient> makeObject() throws Exception {
+      return new DefaultPooledObject<>(new MLNodeClient());
+    }
+
+    @Override
+    public boolean validateObject(PooledObject<MLNodeClient> pooledObject) {
+      return pooledObject.getObject() != null && pooledObject.getObject().getTransport().isOpen();
+    }
   }
 }

@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.ml;
 
+import org.apache.iotdb.commons.client.mlnode.MLNodeClient;
+import org.apache.iotdb.commons.client.mlnode.MLNodeClientPool;
 import org.apache.iotdb.db.exception.ModelInferenceProcessException;
-import org.apache.iotdb.db.protocol.client.MLNodeClient;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
@@ -36,7 +37,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.thrift.TException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -190,9 +190,9 @@ public class ForecastOperator implements ProcessOperator {
   private void submitForecastTask() {
     try {
       if (client == null) {
-        client = new MLNodeClient();
+        client = MLNodeClientPool.getInstance().borrowObject();
       }
-    } catch (TException e) {
+    } catch (Exception e) {
       throw new ModelInferenceProcessException(e.getMessage());
     }
 
@@ -218,7 +218,7 @@ public class ForecastOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    client.close();
+    MLNodeClientPool.getInstance().returnObject(client);
     if (forecastExecutionFuture != null) {
       forecastExecutionFuture.cancel(true);
     }
