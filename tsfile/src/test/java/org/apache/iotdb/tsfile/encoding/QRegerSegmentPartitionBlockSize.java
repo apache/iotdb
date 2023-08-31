@@ -3871,8 +3871,8 @@ public class QRegerSegmentPartitionBlockSize {
         dataset_block_size.add(512);
         dataset_k.add(5);
 
-//    for (int file_i = 8; file_i < 9; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+    for (int file_i = 5; file_i < 6; file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
             String Output = output_path_list.get(file_i);

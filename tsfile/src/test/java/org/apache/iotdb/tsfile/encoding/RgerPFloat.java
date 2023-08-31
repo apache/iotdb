@@ -29,7 +29,7 @@ public class RgerPFloat {
     public static int min3(int a, int b, int c) {
         if (a < b && a < c) {
             return 0;
-        } else if (b < c ) {
+        } else if (b < c) {
             return 1;
         } else {
             return 2;
@@ -310,7 +310,7 @@ public class RgerPFloat {
             ArrayList<ArrayList<Integer>> ts_block, ArrayList<Float> coefficient, int p) {
         int length = ts_block.size();
         assert length > p;
-        int size=length-p;
+        int size = length - p;
 
 //        boolean flag1=false;
 //        for(int i=0;i<ts_block.size();i++){
@@ -369,7 +369,7 @@ public class RgerPFloat {
 //        }
 
         double[] param;
-        try{
+        try {
             OLSMultipleLinearRegression ols1 = new OLSMultipleLinearRegression();
             double[][] X1 = new double[size][p];
             double[] Y1 = new double[size];
@@ -383,10 +383,10 @@ public class RgerPFloat {
             ols1.newSampleData(Y1, X1);
             param = ols1.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
             //System.out.println(Arrays.toString(param));
-        }catch (Exception e){
-            param=new double[p+1];
-            for(int i=0;i<=p;i++){
-                param[i]=0;
+        } catch (Exception e) {
+            param = new double[p + 1];
+            for (int i = 0; i <= p; i++) {
+                param[i] = 0;
             }
         }
 
@@ -414,7 +414,7 @@ public class RgerPFloat {
 //        }
 
         double[] param2;
-        try{
+        try {
             OLSMultipleLinearRegression ols2 = new OLSMultipleLinearRegression();
             double[][] X2 = new double[size][p];
             double[] Y2 = new double[size];
@@ -428,10 +428,10 @@ public class RgerPFloat {
             ols2.newSampleData(Y2, X2);
             param2 = ols2.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
             //System.out.println(Arrays.toString(param2));
-        }catch (Exception exception){
-            param2=new double[p+1];
-            for(int i=0;i<=p;i++){
-                param2[i]=0;
+        } catch (Exception exception) {
+            param2 = new double[p + 1];
+            for (int i = 0; i <= p; i++) {
+                param2[i] = 0;
             }
         }
 
@@ -467,6 +467,7 @@ public class RgerPFloat {
 
         return bit_width_segments;
     }
+
     public static void moveAlphaToBeta(ArrayList<ArrayList<Integer>> ts_block, int alpha, int beta) {
         ArrayList<Integer> tmp_tv = ts_block.get(alpha);
         if (beta < alpha) {
@@ -487,6 +488,7 @@ public class RgerPFloat {
         }
         ts_block.set(beta, tmp_tv);
     }
+
     private static ArrayList<Integer> isMovable(ArrayList<Integer> alpha_list, ArrayList<Integer> beta_list) {
         ArrayList<Integer> isMoveable = new ArrayList<>();
         for (int i = 0; i < alpha_list.size(); i++) {
@@ -496,6 +498,7 @@ public class RgerPFloat {
         }
         return isMoveable;
     }
+
     private static ArrayList<ArrayList<Integer>> getEncodeBitsRegressionP(
             ArrayList<ArrayList<Integer>> ts_block,
             int block_size,
@@ -573,7 +576,7 @@ public class RgerPFloat {
             tmp.add((int) epsilon_v);
             ts_block_delta.add(tmp);
         }
-        int length = 0 ;
+        int length = 0;
         for (int j = block_size - 1; j >= p; j--) {
             float epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
             float epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
@@ -598,6 +601,7 @@ public class RgerPFloat {
 
         return ts_block_delta;
     }
+
     private static ArrayList<ArrayList<Integer>> getEncodeBitsRegressionPNoTrain(
             ArrayList<ArrayList<Integer>> ts_block,
             int block_size,
@@ -669,7 +673,7 @@ public class RgerPFloat {
             tmp.add((int) epsilon_v);
             ts_block_delta.add(tmp);
         }
-        int length = 0 ;
+        int length = 0;
         for (int j = block_size - 1; j >= p; j--) {
             float epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
             float epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
@@ -694,6 +698,7 @@ public class RgerPFloat {
 
         return ts_block_delta;
     }
+
     public static int getBetaP(
             ArrayList<ArrayList<Integer>> ts_block,
             int alpha,
@@ -1456,6 +1461,7 @@ public class RgerPFloat {
 
         return i_star;
     }
+
     public static ArrayList<Integer> getIStarPK(
             ArrayList<ArrayList<Integer>> ts_block,
             int block_size,
@@ -1524,6 +1530,7 @@ public class RgerPFloat {
         }
         return alpha_list;
     }
+
     public static ArrayList<Integer> getIStarPK(
             ArrayList<ArrayList<Integer>> ts_block,
             int block_size,
@@ -1593,6 +1600,7 @@ public class RgerPFloat {
         }
         return alpha_list;
     }
+
     public static int getIStarP(
             ArrayList<ArrayList<Integer>> ts_block,
             int block_size,
@@ -1786,7 +1794,7 @@ public class RgerPFloat {
     }
 
     public static ArrayList<Byte> ReorderingRegressionEncoder(
-            ArrayList<ArrayList<Integer>> data, int block_size, int[] third_value,int segment_size ,int p, int k) {
+            ArrayList<ArrayList<Integer>> data, int block_size, int[] third_value, int segment_size, int p, int k) {
         for (int i = 0; i < p; i++)
             block_size++;
         ArrayList<Byte> encoded_result = new ArrayList<Byte>();
@@ -1844,7 +1852,7 @@ public class RgerPFloat {
             ArrayList<Float> coefficient = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegressionP(ts_block_time, block_size, raw_length, coefficient, p);
             ArrayList<ArrayList<Integer>> bit_width_segments = segmentBitPacking(ts_block_delta, block_size, segment_size);
-            length_time += encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, coefficient, result1,p).size();
+            length_time += encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, coefficient, result1, p).size();
 
             ArrayList<Integer> result2 = new ArrayList<>();
             splitTimeStamp3(ts_block_value, result2);
@@ -1852,7 +1860,7 @@ public class RgerPFloat {
             ArrayList<Float> coefficient_value = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta_value = getEncodeBitsRegressionP(ts_block_value, block_size, raw_length_value, coefficient_value, p);
             ArrayList<ArrayList<Integer>> bit_width_segments_value = segmentBitPacking(ts_block_delta_value, block_size, segment_size);
-            length_value += encodeSegment2Bytes(ts_block_delta_value, bit_width_segments_value, raw_length_value, segment_size, coefficient_value, result2,p).size();
+            length_value += encodeSegment2Bytes(ts_block_delta_value, bit_width_segments_value, raw_length_value, segment_size, coefficient_value, result2, p).size();
 
             ArrayList<Integer> result3 = new ArrayList<>();
             splitTimeStamp3(ts_block_partition, result3);
@@ -1860,7 +1868,7 @@ public class RgerPFloat {
             ArrayList<Float> coefficient_partition = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegressionP(ts_block_partition, block_size, raw_length_partition, coefficient_partition, p);
             ArrayList<ArrayList<Integer>> bit_width_segments_partition = segmentBitPacking(ts_block_delta_partition, block_size, segment_size);
-            length_partition += encodeSegment2Bytes(ts_block_delta_partition, bit_width_segments_partition, raw_length_partition, segment_size, coefficient_partition, result3,p).size();
+            length_partition += encodeSegment2Bytes(ts_block_delta_partition, bit_width_segments_partition, raw_length_partition, segment_size, coefficient_partition, result3, p).size();
 
         }
         if (length_partition < length_time && length_partition < length_value) { // partition performs better
@@ -1883,9 +1891,9 @@ public class RgerPFloat {
                 ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
                 ArrayList<Float> coefficient = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta =
-                        getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient ,p);
+                        getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient, p);
                 ArrayList<ArrayList<Integer>> bit_width_segments_partition = segmentBitPacking(ts_block_delta, block_size, segment_size);
-                raw_length.set(0, encodeSegment2Bytes(ts_block_delta, bit_width_segments_partition, raw_length, segment_size, coefficient, result2,p).size());
+                raw_length.set(0, encodeSegment2Bytes(ts_block_delta, bit_width_segments_partition, raw_length, segment_size, coefficient, result2, p).size());
 
 
                 // time-order
@@ -1895,7 +1903,7 @@ public class RgerPFloat {
                 ArrayList<ArrayList<Integer>> ts_block_delta_time =
                         getEncodeBitsRegressionP(ts_block, block_size, time_length, coefficient_time, p);
                 ArrayList<ArrayList<Integer>> bit_width_segments_time = segmentBitPacking(ts_block_delta_time, block_size, segment_size);
-                time_length.set(0, encodeSegment2Bytes(ts_block_delta_time, bit_width_segments_time, time_length, segment_size, coefficient_time, result2,p).size());
+                time_length.set(0, encodeSegment2Bytes(ts_block_delta_time, bit_width_segments_time, time_length, segment_size, coefficient_time, result2, p).size());
 
                 // value-order
                 quickSort(ts_block, 1, 0, block_size - 1);
@@ -1906,26 +1914,26 @@ public class RgerPFloat {
                 ArrayList<ArrayList<Integer>> ts_block_delta_reorder =
                         getEncodeBitsRegressionP(ts_block, block_size, reorder_length, coefficient_reorder, p);
                 ArrayList<ArrayList<Integer>> bit_width_segments_value = segmentBitPacking(ts_block_delta_reorder, block_size, segment_size);
-                reorder_length.set(0, encodeSegment2Bytes(ts_block_delta_reorder, bit_width_segments_value, reorder_length, segment_size, coefficient_reorder, result2,p).size());
+                reorder_length.set(0, encodeSegment2Bytes(ts_block_delta_reorder, bit_width_segments_value, reorder_length, segment_size, coefficient_reorder, result2, p).size());
 
                 int i_star;
                 int j_star;
                 ArrayList<Integer> alpha_list = new ArrayList<>();
-                int choose = min3(time_length.get(0),raw_length.get(0),reorder_length.get(0));
-                if(choose == 0){
+                int choose = min3(time_length.get(0), raw_length.get(0), reorder_length.get(0));
+                if (choose == 0) {
                     raw_length = time_length;
                     quickSort(ts_block, 0, 0, block_size - 1);
                     coefficient = coefficient_time;
                     ts_block_delta = ts_block_delta_time;
-                    alpha_list = getIStarPK(ts_block, block_size, 0, coefficient,p, k);
+                    alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, p, k);
                 } else if (choose == 1) {
                     ts_block = ts_block_reorder;
-                    alpha_list = getIStarPK(ts_block, block_size, 0, coefficient,p, k);
-                }else {
+                    alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, p, k);
+                } else {
                     raw_length = reorder_length;
                     coefficient = coefficient_reorder;
                     ts_block_delta = ts_block_delta_reorder;
-                    alpha_list = getIStarPK(ts_block, block_size, 1, coefficient,p,k);
+                    alpha_list = getIStarPK(ts_block, block_size, 1, coefficient, p, k);
                 }
                 ArrayList<Integer> beta_list;
                 beta_list = new ArrayList<>();
@@ -2035,14 +2043,14 @@ public class RgerPFloat {
                 ArrayList<Float> coefficient = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient, p);
                 ArrayList<ArrayList<Integer>> bit_width_segments_time = segmentBitPacking(ts_block_delta, block_size, segment_size);
-                raw_length.set(0, encodeSegment2Bytes(ts_block_delta, bit_width_segments_time, raw_length, segment_size, coefficient, result2,p).size());
+                raw_length.set(0, encodeSegment2Bytes(ts_block_delta, bit_width_segments_time, raw_length, segment_size, coefficient, result2, p).size());
 
                 // value-order
                 quickSort(ts_block, 1, 0, block_size - 1);
 
                 ArrayList<Integer> reorder_length = new ArrayList<>();
                 ArrayList<Float> coefficient_reorder = new ArrayList<>();
-                ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegressionP( ts_block, block_size, reorder_length, coefficient_reorder, p);
+                ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegressionP(ts_block, block_size, reorder_length, coefficient_reorder, p);
                 ArrayList<ArrayList<Integer>> bit_width_segments_value = segmentBitPacking(ts_block_delta_reorder, block_size, segment_size);
                 reorder_length.set(0, encodeSegment2Bytes(ts_block_delta_reorder, bit_width_segments_value, reorder_length, segment_size, coefficient_reorder, result2, p).size());
 
@@ -2051,9 +2059,9 @@ public class RgerPFloat {
                         ts_block_partition.add(datum);
                     }
                 }
-                for(int third_i = third_value.length - 1;third_i>0;third_i--){
+                for (int third_i = third_value.length - 1; third_i > 0; third_i--) {
                     for (ArrayList<Integer> datum : ts_block) {
-                        if (datum.get(1) <= third_value[third_i] && datum.get(1)>third_value[third_i-1]) {
+                        if (datum.get(1) <= third_value[third_i] && datum.get(1) > third_value[third_i - 1]) {
                             ts_block_partition.add(datum);
                         }
                     }
@@ -2065,27 +2073,26 @@ public class RgerPFloat {
                 }
                 ArrayList<Integer> partition_length = new ArrayList<>();
                 ArrayList<Float> coefficient_partition = new ArrayList<>();
-                ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegressionP( ts_block_partition, block_size, partition_length, coefficient_partition, p);
+                ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegressionP(ts_block_partition, block_size, partition_length, coefficient_partition, p);
                 ArrayList<ArrayList<Integer>> bit_width_segments_partition = segmentBitPacking(ts_block_delta_partition, block_size, segment_size);
                 partition_length.set(0, encodeSegment2Bytes(ts_block_delta_partition, bit_width_segments_partition, partition_length, segment_size, coefficient_partition, result2, p).size());
 
 
-
-                int choose = min3(partition_length.get(0),reorder_length.get(0),raw_length.get(0));
+                int choose = min3(partition_length.get(0), reorder_length.get(0), raw_length.get(0));
                 ArrayList<Integer> alpha_list = new ArrayList<>();
-                if(choose == 0){
+                if (choose == 0) {
                     raw_length = partition_length;
                     ts_block = ts_block_partition;
                     ts_block_delta = ts_block_delta_partition;
-                    coefficient =  coefficient_partition;
+                    coefficient = coefficient_partition;
                     alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, p, k);
                 } else if (choose == 1) {
                     raw_length = reorder_length;
                     quickSort(ts_block, 1, 0, block_size - 1);
                     ts_block_delta = ts_block_delta_reorder;
-                    coefficient =  coefficient_reorder;
-                    alpha_list = getIStarPK(ts_block, block_size, 1, coefficient ,p, k);
-                }else {
+                    coefficient = coefficient_reorder;
+                    alpha_list = getIStarPK(ts_block, block_size, 1, coefficient, p, k);
+                } else {
 //                    ts_block = ts_block_reorder;
                     quickSort(ts_block, 0, 0, block_size - 1);
                     alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, p, k);
@@ -2126,7 +2133,7 @@ public class RgerPFloat {
                     } else {
                         break;
                     }
-                    alpha_list = getIStarPK(ts_block, block_size, raw_length, coefficient,p, k);
+                    alpha_list = getIStarPK(ts_block, block_size, raw_length, coefficient, p, k);
                     int alpha_size = alpha_list.size();
                     for (int alpha_i = alpha_size - 1; alpha_i >= 0; alpha_i--) {
                         if (beta_list.contains(alpha_list.get(alpha_i))) {
@@ -2507,19 +2514,20 @@ public class RgerPFloat {
         return data;
     }
 
-    public static double[] dataStandardization(double array[]){
-        StandardDeviation deviation =new StandardDeviation();
-        for(int i=0;i<array.length;i++){
-            array[i]=array[i];
+    public static double[] dataStandardization(double array[]) {
+        StandardDeviation deviation = new StandardDeviation();
+        for (int i = 0; i < array.length; i++) {
+            array[i] = array[i];
         }
         return array;
     }
-    public static double[][] dataStandardizationDouble(double arrays[][]){
-        double [][] result = new double[arrays[0].length][arrays.length];
-        for(int i=0;i<arrays.length;i++){
+
+    public static double[][] dataStandardizationDouble(double arrays[][]) {
+        double[][] result = new double[arrays[0].length][arrays.length];
+        for (int i = 0; i < arrays.length; i++) {
             double[] doubles = dataStandardization(arrays[i]);
-            for(int k=0;k<result.length;k++){
-                result[k][i]=doubles[k];
+            for (int k = 0; k < result.length; k++) {
+                result[k][i] = doubles[k];
             }
         }
         return result;
@@ -2527,8 +2535,11 @@ public class RgerPFloat {
 
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-        String parent_dir = "E:\\encoding-reorder-my\\vldb\\compression_ratio\\p_float2";
-        String input_parent_dir = "E:\\encoding-reorder-my\\reorder\\iotdb_test_small\\";
+
+        String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\";
+        String output_parent_dir = parent_dir + "vldb\\compression_ratio\\p_float_test";
+        String input_parent_dir = parent_dir + "reorder\\iotdb_test_small\\";
+
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
@@ -2581,33 +2592,33 @@ public class RgerPFloat {
             input_path_list.add(input_parent_dir + dataset_name.get(i));
         }
 
-        output_path_list.add(parent_dir + "\\CS-Sensors_ratio.csv"); // 0
+        output_path_list.add(output_parent_dir + "\\CS-Sensors_ratio.csv"); // 0
         dataset_block_size.add(1024);
-        output_path_list.add(parent_dir + "\\Metro-Traffic_ratio.csv");// 1
+        output_path_list.add(output_parent_dir + "\\Metro-Traffic_ratio.csv");// 1
         dataset_block_size.add(512);
-        output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
+        output_path_list.add(output_parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
         dataset_block_size.add(512);
-        output_path_list.add(parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
+        output_path_list.add(output_parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
         dataset_block_size.add(1024);
-        output_path_list.add(parent_dir + "\\GW-Magnetic_ratio.csv"); //4
+        output_path_list.add(output_parent_dir + "\\GW-Magnetic_ratio.csv"); //4
         dataset_block_size.add(128);
-        output_path_list.add(parent_dir + "\\TY-Fuel_ratio.csv");//5
+        output_path_list.add(output_parent_dir + "\\TY-Fuel_ratio.csv");//5
         dataset_block_size.add(64);
-        output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
+        output_path_list.add(output_parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
         dataset_block_size.add(128);
-        output_path_list.add(parent_dir + "\\Vehicle-Charge_ratio.csv");//7
+        output_path_list.add(output_parent_dir + "\\Vehicle-Charge_ratio.csv");//7
         dataset_block_size.add(512);
-        output_path_list.add(parent_dir + "\\Nifty-Stocks_ratio.csv");//8
+        output_path_list.add(output_parent_dir + "\\Nifty-Stocks_ratio.csv");//8
         dataset_block_size.add(256);
-        output_path_list.add(parent_dir + "\\TH-Climate_ratio.csv");//9
+        output_path_list.add(output_parent_dir + "\\TH-Climate_ratio.csv");//9
         dataset_block_size.add(512);
-        output_path_list.add(parent_dir + "\\TY-Transport_ratio.csv");//10
+        output_path_list.add(output_parent_dir + "\\TY-Transport_ratio.csv");//10
         dataset_block_size.add(512);
-        output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
+        output_path_list.add(output_parent_dir + "\\EPM-Education_ratio.csv");//11
         dataset_block_size.add(512);
 
 
-        for (int file_i = 11; file_i < 12; file_i++) {
+        for (int file_i = 10; file_i < 11; file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -2639,10 +2650,10 @@ public class RgerPFloat {
 
             assert tempList != null;
 
-                for (File f : tempList) {
-                    for(int p=1;p<2;p++) {
-                    //for (int p = 1; p < 10; p++) {
-                        System.out.println("p=" + p);
+            for (File f : tempList) {
+//            for(int p=1;p<2;p++) {
+                for (int p = 1; p < 10; p++) {
+                    System.out.println("p=" + p);
 
                     //        ArrayList<Integer> flag = new ArrayList<>();
                     //        flag.add(0);
@@ -2673,7 +2684,7 @@ public class RgerPFloat {
                         long s = System.nanoTime();
                         ArrayList<Byte> buffer = new ArrayList<>();
                         for (int repeat_i = 0; repeat_i < 1; repeat_i++)
-                            buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i), 8, p,3);
+                            buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i), 8, p, 3);
 
 
                         long e = System.nanoTime();
@@ -2740,8 +2751,8 @@ public class RgerPFloat {
                     };
                     System.out.println(ratio);
                     writer.writeRecord(record);
-                    //          break;
-                }
+
+                }//          break;
             }
             writer.close();
         }
