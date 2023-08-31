@@ -27,7 +27,7 @@ rm -Rf dist
 rm -Rf iotdb_session.egg_info
 
 # (Re-)build generated code
-(cd ..; mvn clean package -pl client-py -am)
+(cd ../..; mvn clean package -pl iotdb-client/client-py -am)
 
 # Run Linting
 black .
