@@ -19,34 +19,62 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+
+import java.io.IOException;
+
 public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
 
-  /**
-   * The metadata algorithm is: maxChunkMetaDataSize * maxChunkNumber * fileSize * maxSeriesNumber
-   *
-   * @return estimate metadata memory cost
-   */
   @Override
-  public long calculatingMetadataMemoryCost(InnerCompactionTaskInfo taskInfo) {
-    return taskInfo.getFileInfoList().size()
-        * taskInfo.getMaxChunkMetadataNumInDevice()
-        * taskInfo.getMaxChunkMetadataSize()
-        * Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
+  public long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
+    long cost = 0;
+    // add ChunkMetadata size of MultiTsFileDeviceIterator
+    cost +=
+        Math.min(
+            taskInfo.getTotalChunkMetadataSize(),
+            taskInfo.getFileInfoList().size()
+                * taskInfo.getMaxChunkMetadataNumInDevice()
+                * taskInfo.getMaxChunkMetadataSize());
+
+    // add ChunkMetadata size of targetFileWriter
+    long sizeForFileWriter =
+        (long)
+            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
+                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
+    cost += sizeForFileWriter;
+
+    return cost;
   }
 
-  /**
-   * The data algorithm is: (targetChunkSize * fileSize * compressionRatio * maxSeriesNumber) +
-   * modsFileSize
-   *
-   * @return estimate data memory cost
-   */
   @Override
-  public long calculatingDataMemoryCost(InnerCompactionTaskInfo taskInfo) {
-    long cost =
-        config.getTargetChunkSize()
+  public long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) throws IOException {
+    if (taskInfo.getTotalChunkNum() == 0) {
+      return taskInfo.getModificationFileSize();
+    }
+    long maxConcurrentSeriesNum =
+        Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
+    long averageUncompressedChunkSize =
+        taskInfo.getTotalFileSize() * compressionRatio / taskInfo.getTotalChunkNum();
+
+    long maxConcurrentSeriesSizeOfTotalFiles =
+        averageUncompressedChunkSize
             * taskInfo.getFileInfoList().size()
-            * Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
-    cost += taskInfo.getModificationFileSize();
-    return cost;
+            * maxConcurrentSeriesNum
+            * taskInfo.getMaxChunkMetadataNumInSeries()
+            / compressionRatio;
+    long maxTargetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum;
+    long targetChunkWriterSize =
+        Math.min(maxConcurrentSeriesSizeOfTotalFiles, maxTargetChunkWriterSize);
+
+    long maxConcurrentChunkSizeFromSourceFile =
+        averageUncompressedChunkSize
+            * maxConcurrentSeriesNum
+            * calculatingMaxOverlapFileNumInSubCompactionTask(taskInfo.getResources());
+
+    return targetChunkWriterSize
+        + maxConcurrentChunkSizeFromSourceFile
+        + taskInfo.getModificationFileSize();
   }
 }
