@@ -69,6 +69,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
     this.startTime = startTime;
     this.endTime = endTime;
+    if (hasTimeFilter()) {
+      this.isPatternAndTimeParsed = false;
+    }
 
     this.resource = resource;
     tsFile = resource.getTsFile();
@@ -89,6 +92,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
             });
       }
     }
+    // check again after register close listener in case TsFile is closed during the process
+    isClosed.set(resource.isClosed());
   }
 
   public void waitForTsFileClose() throws InterruptedException {

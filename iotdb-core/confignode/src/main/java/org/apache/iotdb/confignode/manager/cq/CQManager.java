@@ -114,15 +114,6 @@ public class CQManager {
   }
 
   public void startCQScheduler() {
-    try {
-      /*
-        TODO: remove this after fixing IOTDB-6085
-        sleep here because IOTDB-6085: NullPointerException in readAsync when Ratis leader is changing
-      */
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
     lock.writeLock().lock();
     try {
       // 1. shutdown previous cq schedule thread pool
