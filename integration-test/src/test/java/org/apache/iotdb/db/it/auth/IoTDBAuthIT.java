@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it;
+package org.apache.iotdb.db.it.auth;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;

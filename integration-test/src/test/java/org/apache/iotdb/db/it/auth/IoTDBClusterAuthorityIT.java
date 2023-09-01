@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it;
+package org.apache.iotdb.db.it.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -505,11 +505,11 @@ public class IoTDBClusterAuthorityIT {
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Set<PrivilegeType> allPrivilegeTypes = PrivilegeType.ALL.getStorablePrivilege();
+      PrivilegeType[] allPrivilegeTypes = PrivilegeType.values();
       List<String> resultPrivilegeTypes =
           authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE);
-      Assert.assertEquals(allPrivilegeTypes.size(), resultPrivilegeTypes.size());
-      for (int i = 0; i < allPrivilegeTypes.size(); i++) {
+      Assert.assertEquals(allPrivilegeTypes.length, resultPrivilegeTypes.size());
+      for (int i = 0; i < allPrivilegeTypes.length; i++) {
         Assert.assertTrue(resultPrivilegeTypes.contains(PrivilegeType.values()[i].toString()));
       }
     } catch (Exception e) {
