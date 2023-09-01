@@ -31,7 +31,7 @@
     <description>Metrics interface for IoTDB</description>
     <properties>
         <snakeyaml.version>1.31</snakeyaml.version>
-        <reactor-netty-http.version>1.0.24</reactor-netty-http.version>
+        <reactor-netty-http.version>1.0.35</reactor-netty-http.version>
     </properties>
     <build>
         <plugins>
