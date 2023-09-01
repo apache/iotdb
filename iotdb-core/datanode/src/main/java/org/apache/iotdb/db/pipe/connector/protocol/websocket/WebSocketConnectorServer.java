@@ -41,7 +41,6 @@ import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 public class WebSocketConnectorServer extends WebSocketServer {
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
