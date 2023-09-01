@@ -520,8 +520,60 @@ public class IoTDBPipeExtractorIT {
   }
 
   @Test
-  public void testStartTimeAndEndTime() {
-    // TODO
+  public void testStartTimeAndEndTimeWorking() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (SyncConfigNodeIServiceClient client =
+                 (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      try (Connection connection = senderEnv.getConnection();
+           Statement statement = connection.createStatement()) {
+        statement.execute("insert into root.db.d1 (time, at1)" +
+                " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)");
+        statement.execute("flush");
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("extractor.history.enable", "true");
+      extractorAttributes.put("extractor.history.start-time", "1970-01-01T08:00:02+08:00");
+      extractorAttributes.put("extractor.history.end-time", "1970-01-01T08:00:04+08:00");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      TSStatus status =
+              client.createPipe(
+                      new TCreatePipeReq("p1", connectorAttributes)
+                              .setExtractorAttributes(extractorAttributes)
+                              .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      try (Connection connection = receiverEnv.getConnection();
+           Statement statement = connection.createStatement()) {
+        await()
+                .atMost(600, TimeUnit.SECONDS)
+                .untilAsserted(
+                        () ->
+                                TestUtils.assertResultSetEqual(
+                                        statement.executeQuery("select count(*) from root.**"),
+                                        "count(root.db.d1.at1),",
+                                        Collections.singleton("3,")));
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
   }
 
   private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, int count) {

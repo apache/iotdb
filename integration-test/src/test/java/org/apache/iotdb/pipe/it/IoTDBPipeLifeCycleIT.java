@@ -541,6 +541,6 @@ public class IoTDBPipeLifeCycleIT {
     for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
       env.startDataNode(i);
     }
-    ((AbstractEnv) env).testWorking();
+    ((AbstractEnv) env).testWorkingNoUnknown();
   }
 }
