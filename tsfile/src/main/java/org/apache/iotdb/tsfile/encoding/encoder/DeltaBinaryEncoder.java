@@ -81,6 +81,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
       writeValueToBytes(i);
     }
     int encodingLength = (int) Math.ceil((double) (writeIndex * writeWidth) / 8.0);
+//    System.out.println("writeWidth: "+writeWidth);
     out.write(encodingBlockBuffer, 0, encodingLength);
   }
 

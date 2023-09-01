@@ -1281,63 +1281,70 @@ public class RegerDelta {
   }
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-    String parent_dir =
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\delta_reordering_ratio";
+    String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\";
+    String output_parent_dir = parent_dir + "vldb\\compression_ratio\\sota_ratio";
+    String input_parent_dir = parent_dir + "reorder\\iotdb_test_small\\";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
+    ArrayList<String> dataset_name = new ArrayList<>();
     ArrayList<Integer> dataset_block_size = new ArrayList<>();
-    //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test");
-    //    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\test.csv");
-    //    dataset_block_size.add(1024);
 
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\EPM-Education");
-    output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");
-    dataset_block_size.add(512);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Vehicle-Charge");
-    output_path_list.add(parent_dir + "\\Vehicle-Charge_ratio.csv");
-    dataset_block_size.add(512);
+    dataset_name.add("CS-Sensors");
+    dataset_name.add("Metro-Traffic");
+    dataset_name.add("USGS-Earthquakes");
+    dataset_name.add("YZ-Electricity");
+    dataset_name.add("GW-Magnetic");
+    dataset_name.add("TY-Fuel");
+    dataset_name.add("Cyber-Vehicle");
+    dataset_name.add("Vehicle-Charge");
+    dataset_name.add("Nifty-Stocks");
+    dataset_name.add("TH-Climate");
+    dataset_name.add("TY-Transport");
+    dataset_name.add("EPM-Education");
 
-//    input_path_list.add(
-//        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\CS-Sensors");
-//    output_path_list.add(parent_dir + "\\CS-Sensors_ratio.csv");
-//    dataset_block_size.add(1024);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Metro-Traffic");
-    output_path_list.add(parent_dir + "\\Metro-Traffic_ratio.csv");
+
+    for (int i = 0; i < dataset_name.size(); i++) {
+      input_path_list.add(input_parent_dir + dataset_name.get(i));
+    }
+
+    output_path_list.add(output_parent_dir + "\\CS-Sensors_ratio.csv"); // 0
+    dataset_block_size.add(1024);
+//    dataset_k.add(5);
+    output_path_list.add(output_parent_dir + "\\Metro-Traffic_ratio.csv");// 1
     dataset_block_size.add(512);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Nifty-Stocks");
-    output_path_list.add(parent_dir + "\\Nifty-Stocks_ratio.csv");
-    dataset_block_size.add(256);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\USGS-Earthquakes");
-    output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");
+//    dataset_k.add(7);
+    output_path_list.add(output_parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
     dataset_block_size.add(512);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\Cyber-Vehicle");
-    output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv");
+//    dataset_k.add(7);
+    output_path_list.add(output_parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
+    dataset_block_size.add(512);
+//    dataset_k.add(1);
+    output_path_list.add(output_parent_dir + "\\GW-Magnetic_ratio.csv"); //4
     dataset_block_size.add(128);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\TH-Climate");
-    output_path_list.add(parent_dir + "\\TH-Climate_ratio.csv");
-    dataset_block_size.add(512);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\TY-Transport");
-    output_path_list.add(parent_dir + "\\TY-Transport_ratio.csv");
-    dataset_block_size.add(512);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\TY-Fuel");
-    output_path_list.add(parent_dir + "\\TY-Fuel_ratio.csv");
+//    dataset_k.add(6);
+    output_path_list.add(output_parent_dir + "\\TY-Fuel_ratio.csv");//5
     dataset_block_size.add(64);
-    input_path_list.add(
-        "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\GW-Magnetic");
-    output_path_list.add(parent_dir + "\\GW-Magnetic_ratio.csv");
+//    dataset_k.add(5);
+    output_path_list.add(output_parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
     dataset_block_size.add(128);
+//    dataset_k.add(4);
+    output_path_list.add(output_parent_dir + "\\Vehicle-Charge_ratio.csv");//7
+    dataset_block_size.add(512);
+//    dataset_k.add(8);
+    output_path_list.add(output_parent_dir + "\\Nifty-Stocks_ratio.csv");//8
+    dataset_block_size.add(256);
+//    dataset_k.add(1);
+    output_path_list.add(output_parent_dir + "\\TH-Climate_ratio.csv");//9
+    dataset_block_size.add(512);
+//    dataset_k.add(2);
+    output_path_list.add(output_parent_dir + "\\TY-Transport_ratio.csv");//10
+    dataset_block_size.add(512);
+//    dataset_k.add(9);
+    output_path_list.add(output_parent_dir + "\\EPM-Education_ratio.csv");//11
+    dataset_block_size.add(512);
 
-//        for(int file_i=0;file_i<1;file_i++){
-    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for(int file_i=3;file_i<4;file_i++){
+//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
       String inputPath = input_path_list.get(file_i);
       System.out.println(inputPath);

@@ -340,6 +340,7 @@ public class RegerSegmentBlockSize {
                             / (float) (m_reg * sum_squ_X_v - sum_X_v * sum_X_v);
         }
 
+
         ArrayList<Integer> tmp0 = new ArrayList<>();
         tmp0.add(ts_block.get(0).get(0));
         tmp0.add(ts_block.get(0).get(1));
@@ -348,11 +349,10 @@ public class RegerSegmentBlockSize {
         // delta to Regression
         for (int j = 1; j < block_size; j++) {
             int epsilon_r =
-                    (int) (ts_block.get(j).get(0)
-                                                - ( theta0_r +  theta1_r * (float) ts_block.get(j - 1).get(0)));
+                    (ts_block.get(j).get(0)
+                            - (int) (theta0_r + theta1_r * (float) ts_block.get(j - 1).get(0)));
             int epsilon_v =
-                    (int) (ts_block.get(j).get(1)
-                                                -  ( theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
+                    (ts_block.get(j).get(1)  - (int) ( theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
 
             //      int epsilon_r = ts_block.get(j).get(0) - (int) (theta0_r + theta1_r *
             // (double)ts_block.get(j-1).get(0));
@@ -371,45 +371,63 @@ public class RegerSegmentBlockSize {
             tmp.add(epsilon_r);
             tmp.add(epsilon_v);
             ts_block_delta.add(tmp);
+
+
+
         }
 //
 //    timestamp_delta_min -= 1;
 //    value_delta_min -= 1;
 
         int max_interval = Integer.MIN_VALUE;
-        int max_interval_i = -1;
         int max_value = Integer.MIN_VALUE;
-        int max_value_i = -1;
         int length = 0;
         for (int j = block_size - 1; j > 0; j--) {
             //      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
             //      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
-            int epsilon_r =
-                    (int) (ts_block.get(j).get(0)
-                                                -
-                                                ( (theta0_r + timestamp_delta_min)
-                                                        +  theta1_r * (float) ts_block.get(j - 1).get(0)));
-            int epsilon_v =
-                    (int) (ts_block.get(j).get(1)
-                                                -
-                                                ( (theta0_v + value_delta_min)
-                                                        +  theta1_v * (float) ts_block.get(j - 1).get(1)));
-            length += epsilon_r;
-            length += epsilon_v;
+            int epsilon_r =ts_block_delta.get(j).get(0) - timestamp_delta_min;
+//              (int) (ts_block.get(j).get(0)
+//                      -
+//                      ( (theta0_r + timestamp_delta_min)
+//                              +  theta1_r * (float) ts_block.get(j - 1).get(0)));
+            int epsilon_v =ts_block_delta.get(j).get(1) - value_delta_min;
+//              (int) (ts_block.get(j).get(1)
+//                      -
+//                      ( (theta0_v + value_delta_min)
+//                              + theta1_v * (float) ts_block.get(j - 1).get(1)));
+//            System.out.println("getBitWith(epsilon_r) :"+getBitWith(epsilon_r));
+//            System.out.println("getBitWith(epsilon_v) :"+getBitWith(epsilon_v));
+
+//            length += getBitWith(epsilon_r);
+//            length += getBitWith(epsilon_v);
+//            length += epsilon_r;
+//            length += epsilon_v;
+
+            length += getBitWith(epsilon_r);
+            length += getBitWith(epsilon_v);
             if (epsilon_r > max_interval) {
                 max_interval = epsilon_r;
-                max_interval_i = j;
             }
             if (epsilon_v > max_value) {
                 max_value = epsilon_v;
-                max_value_i = j;
             }
             ArrayList<Integer> tmp = new ArrayList<>();
             tmp.add(epsilon_r);
             tmp.add(epsilon_v);
             ts_block_delta.set(j, tmp);
-        }
 
+
+
+        }
+//        for (ArrayList<Integer> segment_max : ts_block_delta_segment) {
+//            length += getBitWith(segment_max.get(0) - timestamp_delta_min);
+//            length += getBitWith(segment_max.get(1) - value_delta_min);
+//        }
+
+//        for (ArrayList<Integer> segment_max : ts_block_delta_segment) {
+//            length += getBitWith(segment_max.get(0) - timestamp_delta_min);
+//            length += getBitWith(segment_max.get(1) - value_delta_min);
+//        }
 //    System.out.println("timestamp_delta_min: "+timestamp_delta_min);
 //    System.out.println("value_delta_min: "+value_delta_min);
 
@@ -437,7 +455,6 @@ public class RegerSegmentBlockSize {
 
         return ts_block_delta;
     }
-
     public static ArrayList<Byte> encode2Bytes(
             ArrayList<ArrayList<Integer>> ts_block,
             ArrayList<Integer> raw_length,
@@ -631,7 +648,9 @@ public class RegerSegmentBlockSize {
             ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
 
+            int min_time = data.get(block_num * block_size).get(0);
             for (int j = block_num * block_size; j < length_all; j++) {
+                data.get(j).set(0,data.get(j).get(0) - min_time);
                 ts_block.add(data.get(j));
                 ts_block_reorder.add(data.get(j));
             }
@@ -639,36 +658,63 @@ public class RegerSegmentBlockSize {
             splitTimeStamp3(ts_block, result2);
 
             quickSort(ts_block, 0, 0, remaining_length - 1);
-
+            int supple_length;
+            if (remaining_length % segment_size == 0) {
+                supple_length = 1;
+            } else if (remaining_length % segment_size == 1) {
+                supple_length = 0;
+            } else {
+                supple_length = segment_size + 1 - remaining_length % segment_size;
+            }
             // time-order
             ArrayList<Integer> raw_length =
                     new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-            ArrayList<Integer> i_star_ready = new ArrayList<>();
             ArrayList<Float> theta = new ArrayList<>();
             ArrayList<ArrayList<Integer>> ts_block_delta =  getEncodeBitsRegression(ts_block, remaining_length, raw_length, theta);
 
-            int supple_length;
-            if (remaining_length % 8 == 0) {
-                supple_length = 1;
-            } else if (remaining_length % 8 == 1) {
-                supple_length = 0;
-            } else {
-                supple_length = 9 - remaining_length % 8;
-            }
             for (int s = 0; s < supple_length; s++) {
                 ArrayList<Integer> tmp = new ArrayList<>();
                 tmp.add(0);
                 tmp.add(0);
                 ts_block_delta.add(tmp);
             }
-            ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, theta, result2);
+            ArrayList<ArrayList<Integer>> bit_width_segments_time = segmentBitPacking(ts_block_delta, remaining_length+supple_length, segment_size);
+
+//            raw_length.set(0, encodeSegment2Bytes(ts_block_delta, bit_width_segments_time, raw_length, segment_size, theta, result2).size());
+            ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments_time, raw_length, segment_size, theta, result2);
+
+//            ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, theta, result2);
 
             encoded_result.addAll(cur_encoded_result);
         }
 
         return encoded_result;
     }
+    public static ArrayList<ArrayList<Integer>> segmentBitPacking(ArrayList<ArrayList<Integer>> ts_block_delta, int block_size, int segment_size) {
+        ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
+        int segment_n = (block_size - 1) / segment_size;
+        for (int segment_i = 0; segment_i < segment_n; segment_i++) {
+            int bit_width_time = Integer.MIN_VALUE;
+            int bit_width_value = Integer.MIN_VALUE;
 
+            for (int data_i = segment_i * segment_size + 1; data_i < (segment_i + 1) * segment_size + 1; data_i++) {
+                int cur_bit_width_time = getBitWith(ts_block_delta.get(data_i).get(0));
+                int cur_bit_width_value = getBitWith(ts_block_delta.get(data_i).get(1));
+                if (cur_bit_width_time > bit_width_time) {
+                    bit_width_time = cur_bit_width_time;
+                }
+                if (cur_bit_width_value > bit_width_value) {
+                    bit_width_value = cur_bit_width_value;
+                }
+            }
+            ArrayList<Integer> bit_width = new ArrayList<>();
+            bit_width.add(bit_width_time);
+            bit_width.add(bit_width_value);
+            bit_width_segments.add(bit_width);
+        }
+
+        return bit_width_segments;
+    }
     private static ArrayList<Byte> encodeSegment2Bytes(ArrayList<ArrayList<Integer>> delta_segments, ArrayList<ArrayList<Integer>> bit_width_segments, ArrayList<Integer> raw_length, int segment_size, ArrayList<Float> theta, ArrayList<Integer> result2) {
         ArrayList<Byte> encoded_result = new ArrayList<>();
         int block_size = delta_segments.size();
@@ -983,8 +1029,8 @@ public class RegerSegmentBlockSize {
         output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
         dataset_block_size.add(512);
 
-//    for (int file_i = 11; file_i < 12; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+    for (int file_i = 4; file_i <5; file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -1013,7 +1059,7 @@ public class RegerSegmentBlockSize {
 //        double ratio_sum = 0;
             for (File f : tempList) {
                 System.out.println(f);
-//                for (int block_size_exp = 13; block_size_exp >= 13; block_size_exp--) {
+//                for (int block_size_exp = 11; block_size_exp >= 11; block_size_exp--) {
                 for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
                 int block_size = (int) Math.pow(2, block_size_exp);
                 System.out.println(block_size);
@@ -1084,7 +1130,7 @@ public class RegerSegmentBlockSize {
                     writer.writeRecord(record);
 
                 }
-        break;
+//        break;
             }
 //        System.out.println(5/ratio_sum);
             writer.close();

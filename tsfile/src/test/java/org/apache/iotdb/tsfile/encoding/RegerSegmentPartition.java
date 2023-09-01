@@ -369,10 +369,10 @@ public class RegerSegmentPartition {
     // delta to Regression
     for (int j = 1; j < block_size; j++) {
       int epsilon_r =
-              (int) (ts_block.get(j).get(0)
-                      -  (theta0_r + theta1_r * (float) ts_block.get(j - 1).get(0)));
+              (ts_block.get(j).get(0)
+                      - (int)  (theta0_r + theta1_r * (float) ts_block.get(j - 1).get(0)));
       int epsilon_v =
-              (int) (ts_block.get(j).get(1)  -  ( theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
+               (ts_block.get(j).get(1)  -(int)  ( theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
 
       //      int epsilon_r = ts_block.get(j).get(0) - (int) (theta0_r + theta1_r *
       // (double)ts_block.get(j-1).get(0));
@@ -421,13 +421,13 @@ public class RegerSegmentPartition {
       //      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
       //      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
       int epsilon_r =
-              (int) (ts_block.get(j).get(0)  -
-                      ( (theta0_r + timestamp_delta_min)
+              (ts_block.get(j).get(0)  -
+                      (int)   ( (theta0_r + timestamp_delta_min)
                               +  theta1_r * (float) ts_block.get(j - 1).get(0)));
       int epsilon_v =
-              (int) (ts_block.get(j).get(1)
+               (ts_block.get(j).get(1)
                       -
-                      ((theta0_v + value_delta_min)
+                      (int)   ((theta0_v + value_delta_min)
                               +  theta1_v * (float) ts_block.get(j - 1).get(1)));
 //            System.out.println("getBitWith(epsilon_r) :"+getBitWith(epsilon_r));
 //            System.out.println("getBitWith(epsilon_v) :"+getBitWith(epsilon_v));
@@ -556,11 +556,11 @@ public class RegerSegmentPartition {
     // delta to Regression
     for (int j = 1; j < block_size; j++) {
       int epsilon_r =
-              (int) (ts_block.get(j).get(0)
-                      -  (theta0_r + theta1_r * (float) ts_block.get(j - 1).get(0)));
+              (ts_block.get(j).get(0)
+                      -  (int) (theta0_r + theta1_r * (float) ts_block.get(j - 1).get(0)));
       int epsilon_v =
-              (int) (ts_block.get(j).get(1)
-                      - (theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
+              (ts_block.get(j).get(1)
+                      -  (int)(theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
 
       //      int epsilon_r = ts_block.get(j).get(0) - (int) (theta0_r + theta1_r *
       // (double)ts_block.get(j-1).get(0));
@@ -609,14 +609,14 @@ public class RegerSegmentPartition {
       //      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
       //      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
       int epsilon_r =
-              (int) (ts_block.get(j).get(0)
+              (ts_block.get(j).get(0)
                       -
-                      ( (theta0_r + timestamp_delta_min)
+                      (int)   ( (theta0_r + timestamp_delta_min)
                               +  theta1_r * (float) ts_block.get(j - 1).get(0)));
       int epsilon_v =
-              (int) (ts_block.get(j).get(1)
+               (ts_block.get(j).get(1)
                       -
-                      ( (theta0_v + value_delta_min)
+                      (int)  ( (theta0_v + value_delta_min)
                               + theta1_v * (float) ts_block.get(j - 1).get(1)));
 //            System.out.println("getBitWith(epsilon_r) :"+getBitWith(epsilon_r));
 //            System.out.println("getBitWith(epsilon_v) :"+getBitWith(epsilon_v));
@@ -2942,10 +2942,16 @@ public class RegerSegmentPartition {
         ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
+        int min_time = data.get(i * block_size).get(0);
         for (int j = 0; j < block_size; j++) {
+          data.get(j + i * block_size).set(0,data.get(j + i * block_size).get(0)-min_time);
           ts_block.add(data.get(j + i * block_size));
           ts_block_reorder.add(data.get(j + i * block_size));
         }
+//        for (int j = 0; j < block_size; j++) {
+//          ts_block.add(data.get(j + i * block_size));
+//          ts_block_reorder.add(data.get(j + i * block_size));
+//        }
 
         ArrayList<Integer> result2 = new ArrayList<>();
         //      result2.add(1);
@@ -3089,11 +3095,12 @@ public class RegerSegmentPartition {
         ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
+        int min_time = data.get(i * block_size).get(0);
         for (int j = 0; j < block_size; j++) {
+          data.get(j + i * block_size).set(0,data.get(j + i * block_size).get(0)-min_time);
           ts_block.add(data.get(j + i * block_size));
           ts_block_reorder.add(data.get(j + i * block_size));
         }
-
         ArrayList<Integer> result2 = new ArrayList<>();
         //      result2.add(1);
         splitTimeStamp3(ts_block, result2);
@@ -3624,7 +3631,7 @@ public class RegerSegmentPartition {
     dataset_block_size.add(512);
     dataset_k.add(7);
     output_path_list.add(output_parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
-    dataset_block_size.add(1024);
+    dataset_block_size.add(512);
     dataset_k.add(1);
     output_path_list.add(output_parent_dir + "\\GW-Magnetic_ratio.csv"); //4
     dataset_block_size.add(128);

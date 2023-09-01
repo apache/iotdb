@@ -361,10 +361,10 @@ public class QRegerSegmentPartitionSegmentSize {
     // delta to Regression
     for (int j = 1; j < block_size; j++) {
       int epsilon_r =
-              (int) (ts_block.get(j).get(0)
-                      -  (theta0_r + theta1_r * (float) ts_block.get(j - 1).get(0)));
+              (ts_block.get(j).get(0)
+                      - (int) (theta0_r + theta1_r * (float) ts_block.get(j - 1).get(0)));
       int epsilon_v =
-              (int) (ts_block.get(j).get(1)  -  ( theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
+              (ts_block.get(j).get(1)  - (int) ( theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
 
       //      int epsilon_r = ts_block.get(j).get(0) - (int) (theta0_r + theta1_r *
       // (double)ts_block.get(j-1).get(0));
@@ -397,15 +397,16 @@ public class QRegerSegmentPartitionSegmentSize {
     for (int j = block_size - 1; j > 0; j--) {
       //      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
       //      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
-      int epsilon_r =
-              (int) (ts_block.get(j).get(0)  -
-                      ( (theta0_r + timestamp_delta_min)
-                              +  theta1_r * (float) ts_block.get(j - 1).get(0)));
-      int epsilon_v =
-              (int) (ts_block.get(j).get(1)
-                      -
-                      ((theta0_v + value_delta_min)
-                              +  theta1_v * (float) ts_block.get(j - 1).get(1)));
+      int epsilon_r =ts_block_delta.get(j).get(0) - timestamp_delta_min;
+//              (int) (ts_block.get(j).get(0)
+//                      -
+//                      ( (theta0_r + timestamp_delta_min)
+//                              +  theta1_r * (float) ts_block.get(j - 1).get(0)));
+      int epsilon_v =ts_block_delta.get(j).get(1) - value_delta_min;
+//              (int) (ts_block.get(j).get(1)
+//                      -
+//                      ( (theta0_v + value_delta_min)
+//                              + theta1_v * (float) ts_block.get(j - 1).get(1)));
 //            System.out.println("getBitWith(epsilon_r) :"+getBitWith(epsilon_r));
 //            System.out.println("getBitWith(epsilon_v) :"+getBitWith(epsilon_v));
 
@@ -499,11 +500,11 @@ public class QRegerSegmentPartitionSegmentSize {
     // delta to Regression
     for (int j = 1; j < block_size; j++) {
       int epsilon_r =
-              (int) (ts_block.get(j).get(0)
-                      -  (theta0_r + theta1_r * (float) ts_block.get(j - 1).get(0)));
+              (ts_block.get(j).get(0)
+                      -  (int)(theta0_r + theta1_r * (float) ts_block.get(j - 1).get(0)));
       int epsilon_v =
-              (int) (ts_block.get(j).get(1)
-                      - (theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
+              (ts_block.get(j).get(1)
+                      - (int)(theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
 
       //      int epsilon_r = ts_block.get(j).get(0) - (int) (theta0_r + theta1_r *
       // (double)ts_block.get(j-1).get(0));
@@ -550,16 +551,16 @@ public class QRegerSegmentPartitionSegmentSize {
     for (int j = block_size - 1; j > 0; j--) {
       //      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
       //      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
-      int epsilon_r =
-              (int) (ts_block.get(j).get(0)
-                      -
-                      ( (theta0_r + timestamp_delta_min)
-                              +  theta1_r * (float) ts_block.get(j - 1).get(0)));
-      int epsilon_v =
-              (int) (ts_block.get(j).get(1)
-                      -
-                      ( (theta0_v + value_delta_min)
-                              + theta1_v * (float) ts_block.get(j - 1).get(1)));
+      int epsilon_r =ts_block_delta.get(j).get(0) - timestamp_delta_min;
+//              (int) (ts_block.get(j).get(0)
+//                      -
+//                      ( (theta0_r + timestamp_delta_min)
+//                              +  theta1_r * (float) ts_block.get(j - 1).get(0)));
+      int epsilon_v =ts_block_delta.get(j).get(1) - value_delta_min;
+//              (int) (ts_block.get(j).get(1)
+//                      -
+//                      ( (theta0_v + value_delta_min)
+//                              + theta1_v * (float) ts_block.get(j - 1).get(1)));
 //            System.out.println("getBitWith(epsilon_r) :"+getBitWith(epsilon_r));
 //            System.out.println("getBitWith(epsilon_v) :"+getBitWith(epsilon_v));
 
@@ -3118,7 +3119,9 @@ public class QRegerSegmentPartitionSegmentSize {
         ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
+        int min_time = data.get(i * block_size).get(0);
         for (int j = 0; j < block_size; j++) {
+          data.get(j + i * block_size).set(0,data.get(j + i * block_size).get(0)-min_time);
           ts_block.add(data.get(j + i * block_size));
           ts_block_reorder.add(data.get(j + i * block_size));
         }
@@ -3290,7 +3293,9 @@ public class QRegerSegmentPartitionSegmentSize {
         ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
+        int min_time = data.get(i * block_size).get(0);
         for (int j = 0; j < block_size; j++) {
+          data.get(j + i * block_size).set(0,data.get(j + i * block_size).get(0)-min_time);
           ts_block.add(data.get(j + i * block_size));
           ts_block_reorder.add(data.get(j + i * block_size));
         }
@@ -3474,7 +3479,9 @@ public class QRegerSegmentPartitionSegmentSize {
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
 
+      int min_time = data.get(block_num * block_size).get(0);
       for (int j = block_num * block_size; j < length_all; j++) {
+        data.get(j).set(0,data.get(j).get(0) - min_time);
         ts_block.add(data.get(j));
         ts_block_reorder.add(data.get(j));
       }
@@ -3482,51 +3489,36 @@ public class QRegerSegmentPartitionSegmentSize {
       splitTimeStamp3(ts_block, result2);
 
       quickSort(ts_block, 0, 0, remaining_length - 1);
-
+      int supple_length;
+      if (remaining_length % segment_size == 0) {
+        supple_length = 1;
+      } else if (remaining_length % segment_size == 1) {
+        supple_length = 0;
+      } else {
+        supple_length = segment_size + 1 - remaining_length % segment_size;
+      }
       // time-order
       ArrayList<Integer> raw_length =
               new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-      ArrayList<Integer> i_star_ready = new ArrayList<>();
       ArrayList<Float> theta = new ArrayList<>();
-      ArrayList<ArrayList<Integer>> ts_block_delta =
-              getEncodeBitsRegression(ts_block, remaining_length, raw_length, theta, segment_size);
+      ArrayList<ArrayList<Integer>> ts_block_delta =  getEncodeBitsRegression(ts_block, remaining_length, raw_length, theta,segment_size);
 
-      // value-order
-      quickSort(ts_block, 1, 0, remaining_length - 1);
-      ArrayList<Integer> reorder_length = new ArrayList<>();
-      ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
-      ArrayList<Float> theta_reorder = new ArrayList<>();
-      ArrayList<ArrayList<Integer>> ts_block_delta_reorder =
-              getEncodeBitsRegression(
-                      ts_block, remaining_length, reorder_length, theta_reorder, segment_size);
-
-      if (raw_length.get(0) <= reorder_length.get(0)) {
-        quickSort(ts_block, 0, 0, remaining_length - 1);
-      } else {
-        raw_length = reorder_length;
-        theta = theta_reorder;
-        quickSort(ts_block, 1, 0, remaining_length - 1);
-      }
-      ts_block_delta =
-              getEncodeBitsRegression(ts_block, remaining_length, raw_length, theta, segment_size);
-      int supple_length;
-      if (remaining_length % 8 == 0) {
-        supple_length = 1;
-      } else if (remaining_length % 8 == 1) {
-        supple_length = 0;
-      } else {
-        supple_length = 9 - remaining_length % 8;
-      }
       for (int s = 0; s < supple_length; s++) {
         ArrayList<Integer> tmp = new ArrayList<>();
         tmp.add(0);
         tmp.add(0);
         ts_block_delta.add(tmp);
       }
-      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, theta, result2);
+      ArrayList<ArrayList<Integer>> bit_width_segments_time = segmentBitPacking(ts_block_delta, remaining_length+supple_length, segment_size);
+
+//            raw_length.set(0, encodeSegment2Bytes(ts_block_delta, bit_width_segments_time, raw_length, segment_size, theta, result2).size());
+      ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments_time, raw_length, segment_size, theta, result2);
+
+//            ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, theta, result2);
 
       encoded_result.addAll(cur_encoded_result);
     }
+
     System.out.println("final: " + encoded_result.size());
     return encoded_result;
   }
@@ -3843,7 +3835,7 @@ public class QRegerSegmentPartitionSegmentSize {
     dataset_block_size.add(512);
 //    dataset_k.add(7);
     output_path_list.add(output_parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
-    dataset_block_size.add(1024);
+    dataset_block_size.add(256);
 //    dataset_k.add(1);
     output_path_list.add(output_parent_dir + "\\GW-Magnetic_ratio.csv"); //4
     dataset_block_size.add(128);
@@ -3869,7 +3861,7 @@ public class QRegerSegmentPartitionSegmentSize {
     output_path_list.add(output_parent_dir + "\\EPM-Education_ratio.csv");//11
     dataset_block_size.add(512);
 //    dataset_k.add(5);
-    for (int file_i = 8; file_i < 9; file_i++) {
+    for (int file_i = 3; file_i < 4; file_i++) {
 //        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
       String inputPath = input_path_list.get(file_i);
       //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
