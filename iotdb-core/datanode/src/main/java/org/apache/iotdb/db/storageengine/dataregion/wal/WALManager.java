@@ -172,6 +172,9 @@ public class WALManager implements IService {
   }
 
   private void deleteOutdatedFiles() {
+    // Normally, only need to delete the expired file once. When the WAL disk file size exceeds the
+    // threshold, the system continues to delete expired files until the disk size is smaller than
+    // the threshold.
     boolean firstLoop = true;
     while (firstLoop || shouldThrottle()) {
       List<WALNode> walNodes = walNodesManager.getNodesSnapshot();
