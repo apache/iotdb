@@ -78,6 +78,7 @@ public class PayloadFormatManager {
   }
 
   private static void buildMqttPluginMap() throws IOException {
+    // Initialize the list with all built-in PayloadFormatters.
     ServiceLoader<PayloadFormatter> payloadFormatters = ServiceLoader.load(PayloadFormatter.class);
     for (PayloadFormatter formatter : payloadFormatters) {
       if (formatter == null) {
@@ -90,6 +91,7 @@ public class PayloadFormatManager {
       logger.info("PayloadFormatManager(), find MQTT Payload Plugin {}.", pluginName);
     }
 
+    // Add all PayloadFormatters defined in the mqtt plugin directory.
     URL[] jarURLs = getPluginJarURLs(mqttDir);
     logger.debug("MQTT Plugin jarURLs: {}", jarURLs);
 

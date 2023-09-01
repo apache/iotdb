@@ -15,15 +15,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.db.protocol.mqtt;
+package org.apache.iotdb.connector.sparkplugb;
 
+import org.apache.iotdb.db.protocol.mqtt.Message;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import org.eclipse.tahu.protobuf.SparkplugBProto;
 import org.junit.Test;
-
-import java.nio.charset.StandardCharsets;
 
 import static org.junit.Assert.assertEquals;
 
@@ -32,20 +32,20 @@ public class SparkplugBPayloadFormatterTest {
   @Test
   public void formatJson() {
     String topic = "spBv1.0/Group ID/Message Type/Edge Node ID/Device ID";
-    String payload =
-        " {\n"
-            + "    \"timestamp\": 1486144502122,\n"
-            + "    \"metrics\": [{\n"
-            + "        \"name\": \"My Metric\",\n"
-            + "        \"alias\": 1,\n"
-            + "        \"timestamp\": 1479123452194,\n"
-            + "        \"dataType\": \"String\",\n"
-            + "        \"value\": \"Test\"\n"
-            + "    }],\n"
-            + "    \"seq\": 2\n"
-            + "}";
-
-    ByteBuf buf = Unpooled.copiedBuffer(payload, StandardCharsets.UTF_8);
+    SparkplugBProto.Payload payload =
+        SparkplugBProto.Payload.newBuilder()
+            .setTimestamp(1479123452194L)
+            .setSeq(2L)
+            .addMetrics(
+                SparkplugBProto.Payload.Metric.newBuilder()
+                    .setName("My Metric")
+                    .setAlias(1)
+                    .setTimestamp(1479123452194L)
+                    .setDatatype(SparkplugBProto.DataType.String.getNumber())
+                    .setStringValue("Test")
+                    .build())
+            .build();
+    ByteBuf buf = Unpooled.copiedBuffer(payload.toByteArray());
 
     SparkplugBPayloadFormatter formatter = new SparkplugBPayloadFormatter();
     Message message = formatter.format(topic, buf).get(0);
