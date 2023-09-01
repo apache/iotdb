@@ -16,15 +16,9 @@ import java.util.Stack;
 
 import static java.lang.Math.abs;
 
-public class RgerPFloat {
+public class RegerPFloat {
 
-    public static int zigzag(int num) {
-        if (num < 0) {
-            return 2 * (-num) - 1;
-        } else {
-            return 2 * num;
-        }
-    }
+
 
     public static int min3(int a, int b, int c) {
         if (a < b && a < c) {
@@ -73,74 +67,7 @@ public class RgerPFloat {
         }
         return dest;
     }
-
-    public static byte[] double2Bytes(double dou) {
-        long value = Double.doubleToRawLongBits(dou);
-        byte[] bytes = new byte[8];
-        for (int i = 0; i < 8; i++) {
-            bytes[i] = (byte) ((value >> 8 * i) & 0xff);
-        }
-        return bytes;
-    }
-
-    public static float bytes2float(ArrayList<Byte> b, int index) {
-        int l;
-        l = b.get(index);
-        l &= 0xff;
-        l |= ((long) b.get(index + 1) << 8);
-        l &= 0xffff;
-        l |= ((long) b.get(index + 2) << 16);
-        l &= 0xffffff;
-        l |= ((long) b.get(index + 3) << 24);
-        return Float.intBitsToFloat(l);
-    }
-
-    public static int bytes2BitWidth(ArrayList<Byte> encoded, int start, int num) {
-        int value = 0;
-        if (num > 4) {
-            System.out.println("bytes2Integer error");
-            return 0;
-        }
-        for (int i = 0; i < num; i++) {
-            value <<= 8;
-            int b = encoded.get(i + start) & 0xFF;
-            value |= b;
-        }
-        return value;
-    }
-
-    public static byte[] bitPacking(ArrayList<Integer> numbers, int bit_width) {
-        int block_num = numbers.size() / 8;
-        byte[] result = new byte[bit_width * block_num];
-        for (int i = 0; i < block_num; i++) {
-            for (int j = 0; j < bit_width; j++) {
-                int tmp_int = 0;
-                for (int k = 0; k < 8; k++) {
-                    tmp_int += (((numbers.get(i * 8 + k) >> j) % 2) << k);
-                }
-                //             System.out.println(Integer.toBinaryString(tmp_int));
-                result[i * bit_width + j] = (byte) tmp_int;
-            }
-        }
-        return result;
-    }
-
-    public static byte[] bitPacking(ArrayList<ArrayList<Integer>> numbers, int index, int bit_width) {
-        int block_num = numbers.size() / 8;
-        byte[] result = new byte[bit_width * block_num];
-        for (int i = 0; i < block_num; i++) {
-            for (int j = 0; j < bit_width; j++) {
-                int tmp_int = 0;
-                for (int k = 0; k < 8; k++) {
-                    tmp_int += (((numbers.get(i * 8 + k + 1).get(index) >> j) % 2) << k);
-                }
-                //        System.out.println(Integer.toBinaryString(tmp_int));
-                result[i * bit_width + j] = (byte) tmp_int;
-            }
-        }
-        return result;
-    }
-
+    
     public static byte[] bitPacking(ArrayList<ArrayList<Integer>> numbers, int index, int start, int block_num, int bit_width) {
         block_num = block_num / 8;
         byte[] result = new byte[bit_width * block_num];
@@ -160,7 +87,7 @@ public class RgerPFloat {
     public static ArrayList<Integer> decodebitPacking(
             ArrayList<Byte> encoded, int decode_pos, int bit_width, int min_delta, int block_size) {
         ArrayList<Integer> result_list = new ArrayList<>();
-        for (int i = 0; i < (block_size - 1) / 8; i++) { // bitpacking  纵向8个，bit width是多少列
+        for (int i = 0; i < (block_size - 1) / 8; i++) {
             int[] val8 = new int[8];
             for (int j = 0; j < 8; j++) {
                 val8[j] = 0;
@@ -201,13 +128,7 @@ public class RgerPFloat {
                     && arr.get(low).get(index ^ 1) <= tmp.get(index ^ 1)))) {
                 low++;
             }
-            //      while (low < high && (arr.get(high).get(index) >= tmp.get(index))) {
-            //        high--;
-            //      }
-            //      arr.set(low,arr.get(high));
-            //      while (low < high && (arr.get(low).get(index) <= tmp.get(index))) {
-            //        low++;
-            //      }
+
             arr.set(high, arr.get(low));
         }
         arr.set(low, tmp);
@@ -217,13 +138,11 @@ public class RgerPFloat {
     public static void quickSort(ArrayList<ArrayList<Integer>> arr, int index, int low, int high) {
         Stack<Integer> stack = new Stack<>();
         int mid = part(arr, index, low, high);
-        // 判断右半部分是否仅有一个数据
-        // 将边界入栈，需要注意左右部分都先压左边界或右边界。顺序需要相同，以防出栈时不好判断是low还是high，此方法先压左边界后压右边界
-        if (mid + 1 < high) {
+               if (mid + 1 < high) {
             stack.push(mid + 1);
             stack.push(high);
         }
-        // 判断左半部分是否仅有一个数据
+
         if (mid - 1 > low) {
             stack.push(low);
             stack.push(mid - 1);
@@ -255,7 +174,6 @@ public class RgerPFloat {
 
     public static void splitTimeStamp3(
             ArrayList<ArrayList<Integer>> ts_block, ArrayList<Integer> result) {
-        // int max_deviation = Integer.MIN_VALUE;
 
         int td_common = 0;
         for (int i = 1; i < ts_block.size(); i++) {
@@ -279,25 +197,21 @@ public class RgerPFloat {
             td_common = 1;
         }
 
-//    td = td_common;
+
 
         int t0 = ts_block.get(0).get(0);
         for (int i = 0; i < ts_block.size(); i++) {
             ArrayList<Integer> tmp = new ArrayList<>();
             int interval_i = (ts_block.get(i).get(0) - t0) / td_common;
-            // int deviation_i = ts_block.get(i).get(0) - t0 - interval_i * td;
-            //      tmp.add(t0+interval_i);
+
             tmp.add(interval_i);
             tmp.add(ts_block.get(i).get(1));
             ts_block.set(i, tmp);
 
-            // deviation_list.add(zigzag(deviation_i));
-            // if(zigzag(deviation_i)>max_deviation){
-            //  max_deviation = zigzag(deviation_i);
-            // }
+
         }
         ArrayList<Integer> tmp = new ArrayList<>();
-        // int deviation_i = ts_block.get(i).get(0) - t0 - interval_i * td;
+
         tmp.add(0);
         tmp.add(ts_block.get(0).get(1));
         ts_block.set(0, tmp);
@@ -312,61 +226,7 @@ public class RgerPFloat {
         assert length > p;
         int size = length - p;
 
-//        boolean flag1=false;
-//        for(int i=0;i<ts_block.size();i++){
-//            if(ts_block.get(i).get(0)!=0){
-//                flag1=true;
-//                break;
-//            }
-//        }
-//        int pre1=ts_block.get(0).get(0);
-//        boolean flag3=true;
-//        for(int i=1;i<ts_block.size();i++){
-//            if(ts_block.get(i).get(0)!=pre1){
-//                flag3=false;
-//                break;
-//            }
-//            pre1=ts_block.get(i).get(0);
-//        }
-//        boolean flag2=false;
-//        for(int i=0;i<ts_block.size();i++){
-//            if(ts_block.get(i).get(1)!=0){
-//                flag2=true;
-//                break;
-//            }
-//        }
-//        int pre2=ts_block.get(0).get(1);
-//        boolean flag4=true;
-//        for(int i=1;i<ts_block.size();i++){
-//            if(ts_block.get(i).get(1)!=pre2){
-//                flag4=false;
-//                break;
-//            }
-//            pre2=ts_block.get(i).get(1);
-//        }
 
-//        double[] param;
-//        if(flag1==true && flag3==false) {
-//            OLSMultipleLinearRegression ols1 = new OLSMultipleLinearRegression();
-//            double[][] X1 = new double[size][p];
-//            double[] Y1 = new double[size];
-//            for (int i = 0; i < size; i++) {
-//                X1[i] = new double[p];
-//                for (int j = 0; j < p; j++) {
-//                    X1[i][j] = ts_block.get(i + j).get(0);
-//                }
-//                Y1[i] = ts_block.get(i + p).get(0);
-//            }
-//            ols1.newSampleData(Y1, X1);
-//            param = ols1.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
-//            //System.out.println(Arrays.toString(param));
-//        }
-//        else{
-//            param=new double[p+1];
-//            for(int i=0;i<=p;i++){
-//                param[i]=0;
-//            }
-//        }
 
         double[] param;
         try {
@@ -390,28 +250,7 @@ public class RgerPFloat {
             }
         }
 
-//        double[] param2;
-//        if(flag2==true && flag4==false) {
-//            OLSMultipleLinearRegression ols2 = new OLSMultipleLinearRegression();
-//            double[][] X2 = new double[size][p];
-//            double[] Y2 = new double[size];
-//            for (int i = 0; i < size; i++) {
-//                X2[i] = new double[p];
-//                for (int j = 0; j < p; j++) {
-//                    X2[i][j] = ts_block.get(i + j).get(1);
-//                }
-//                Y2[i] = ts_block.get(i + p).get(1);
-//            }
-//            ols2.newSampleData(Y2, X2);
-//            param2 = ols2.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
-//            //System.out.println(Arrays.toString(param2));
-//        }
-//        else{
-//            param2=new double[p+1];
-//            for(int i=0;i<=p;i++){
-//                param2[i]=0;
-//            }
-//        }
+
 
         double[] param2;
         try {
@@ -515,10 +354,7 @@ public class RgerPFloat {
         coefficient.clear();
 
         terminate(ts_block, coefficient, p);
-//        coefficient.add(0.0F);
-//        coefficient.add(0.0F);
-//        coefficient.add(1.0F);
-//        coefficient.add(1.0F);
+
         ArrayList<Integer> tmp0 = new ArrayList<>();
         tmp0.add(ts_block.get(0).get(0));
         tmp0.add(ts_block.get(0).get(1));
@@ -532,18 +368,7 @@ public class RgerPFloat {
                 epsilon_v -= (float) (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
             }
 
-            //      if(epsilon_r<timestamp_delta_min){
-            //        timestamp_delta_min = epsilon_r;
-            //      }
-            //      if(epsilon_v<value_delta_min){
-            //        value_delta_min = epsilon_v;
-            //      }
-            //      if(epsilon_r>max_timestamp){
-            //        max_timestamp = epsilon_r;
-            //      }
-            //      if(epsilon_v>max_value){
-            //        max_value = epsilon_v;
-            //      }
+
             ArrayList<Integer> tmp = new ArrayList<>();
             tmp.add((int) epsilon_r);
             tmp.add((int) epsilon_v);
@@ -629,18 +454,7 @@ public class RgerPFloat {
                 epsilon_v -= (float) (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
             }
 
-            //      if(epsilon_r<timestamp_delta_min){
-            //        timestamp_delta_min = epsilon_r;
-            //      }
-            //      if(epsilon_v<value_delta_min){
-            //        value_delta_min = epsilon_v;
-            //      }
-            //      if(epsilon_r>max_timestamp){
-            //        max_timestamp = epsilon_r;
-            //      }
-            //      if(epsilon_v>max_value){
-            //        max_value = epsilon_v;
-            //      }
+
             ArrayList<Integer> tmp = new ArrayList<>();
             tmp.add((int) epsilon_r);
             tmp.add((int) epsilon_v);
@@ -686,7 +500,7 @@ public class RgerPFloat {
         }
         int max_bit_width_interval = getBitWith(max_timestamp - timestamp_delta_min);
         int max_bit_width_value = getBitWith(max_value - value_delta_min);
-//        int length = (max_bit_width_interval + max_bit_width_value) * (block_size - 1);
+
         raw_length.clear();
 
         raw_length.add(length);
@@ -714,8 +528,7 @@ public class RgerPFloat {
         int raw_value_delta_max_index = -1;
 
         int raw_abs_sum = raw_length.get(0);
-//        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
-//        coefficient.clear();
+
 
 
         ArrayList<Integer> j_star_list = new ArrayList<>(); // beta list of min b phi alpha to j
@@ -725,36 +538,7 @@ public class RgerPFloat {
         if (alpha == -1) {
             return j_star;
         }
-//        terminate(ts_block, coefficient, p);
-//        for (int j = p; j < block_size; j++) {
-//            float epsilon_r = (float) ts_block.get(j).get(0) - coefficient.get(0);
-//            float epsilon_v = (float) ts_block.get(j).get(1) - coefficient.get(1);
-//            for (int pi = 1; pi <= p; pi++) {
-//                epsilon_r -= (float) (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
-//                epsilon_v -= (float) (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
-//            }
-//
-//            if (epsilon_r < timestamp_delta_min) {
-//                timestamp_delta_min = (int) epsilon_r;
-//            }
-//            if (epsilon_v < value_delta_min) {
-//                value_delta_min = (int) epsilon_v;
-//            }
-//            if (epsilon_r > max_timestamp) {
-//                max_timestamp = (int) epsilon_r;
-//            }
-//            if (epsilon_v > max_value) {
-//                max_value = (int) epsilon_v;
-//            }
-//            ArrayList<Integer> tmp = new ArrayList<>();
-//            tmp.add((int) epsilon_r);
-//            tmp.add((int) epsilon_v);
-//            ts_block_delta.add(tmp);
-//        }
-//        for (int j = 0; j < block_size - p; j++) {
-//            raw_abs_sum += ts_block_delta.get(j).get(0);
-//            raw_abs_sum += ts_block_delta.get(j).get(1);
-//        }
+
         // regression residual
         for (int j = p; j < block_size; j++) {
             float epsilon_r = (float) ts_block.get(j).get(0) - coefficient.get(0);
@@ -768,26 +552,13 @@ public class RgerPFloat {
                 max_index.add(j);
             }
         }
-        //    System.out.println(raw_length);
-        //    System.out.println(raw_bit_width_timestamp);
-        //    System.out.println(raw_bit_width_value);
+
         // alpha <= p
         if (alpha < p) {
-            //      System.out.println("alpha == 1");
+
             int j = 0;
             for (; j < alpha; j++) {
-//                // judge whether j is in hj and gj,  [j, alpha-1] and [alpha + 1, min{j+p,n}], [j + p + 1,
-//                // min{alpha+p,n}]
-//                boolean is_contain_2p = false;
-//                for (int hg_j = j; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                if (!is_contain_2p) {
-//                    continue;
-//                }
+
                 ArrayList<Integer> b = adjustCase2(ts_block, alpha, j, coefficient, p);
                 if (b.get(0) < raw_abs_sum) {
                     raw_abs_sum = b.get(0);
@@ -798,18 +569,7 @@ public class RgerPFloat {
                 }
             }
             for (j = alpha + 2; j < alpha + p; j++) {
-//                // judge whether j is in hj and gj,  [j, min{alpha+p-1,n}] and [alpha + p, min{j+p-1,n}],
-//                // [alpha + 1, j - 1]
-//                boolean is_contain_2p = false;
-//                for (int hg_j = alpha + 1; hg_j < j + p && hg_j < block_size; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                if (!is_contain_2p) {
-//                    continue;
-//                }
+
                 ArrayList<Integer> b = adjustCase3(ts_block, alpha, j, coefficient, p);
                 if (b.get(0) < raw_abs_sum) {
                     raw_abs_sum = b.get(0);
@@ -820,23 +580,7 @@ public class RgerPFloat {
                 }
             }
             for (; j < block_size; j++) {
-//                // judge whether j is in hj and gj,  [j, min{j+p-1,n}], [alpha + 1, min{alpha+p,n}]
-//                boolean is_contain_2p = false;
-//                for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                for (int hg_j = j; hg_j < j + p && hg_j < block_size; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                if (!is_contain_2p) {
-//                    continue;
-//                }
+
                 ArrayList<Integer> b = adjustCase4(ts_block, alpha, j, coefficient, p);
                 if (b.get(0) < raw_abs_sum) {
                     raw_abs_sum = b.get(0);
@@ -851,34 +595,18 @@ public class RgerPFloat {
                 raw_abs_sum = b.get(0);
                 j_star_list.clear();
                 j_star_list.add(block_size);
-                //        System.out.println("j_star_list adjust0n1");
+
             } else if (b.get(0) == raw_abs_sum) {
                 j_star_list.add(block_size);
             }
 
         } // alpha == n
         else if (alpha < block_size && alpha >= block_size - p) {
-            //      System.out.println("alpha == n");
+
             ArrayList<Integer> b;
             int j = 0;
             for (; j < alpha - p; j++) {
-//                // judge whether j is in hj and gj,  [j, j+p-1], [alpha + 1, min{alpha+p,n}]
-//                boolean is_contain_2p = false;
-//                for (int hg_j = j; hg_j < j + p; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                if (!is_contain_2p) {
-//                    continue;
-//                }
+
                 b = adjustCase1(ts_block, alpha, j, coefficient, p);
                 if (b.get(0) < raw_abs_sum) {
                     raw_abs_sum = b.get(0);
@@ -889,18 +617,7 @@ public class RgerPFloat {
                 }
             }
             for (; j < alpha; j++) {
-//                // judge whether j is in hj and gj,  [j, alpha-1] and [alpha + 1, min{j+p,n}], [j + p + 1,
-//                // min{alpha+p,n}]
-//                boolean is_contain_2p = false;
-//                for (int hg_j = j; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                if (!is_contain_2p) {
-//                    continue;
-//                }
+
                 b = adjustCase2(ts_block, alpha, j, coefficient, p);
                 if (b.get(0) < raw_abs_sum) {
                     raw_abs_sum = b.get(0);
@@ -911,18 +628,7 @@ public class RgerPFloat {
                 }
             }
             for (j = alpha + 2; j < alpha + p && j < block_size; j++) {
-//                // judge whether j is in hj and gj,  [j, min{alpha+p-1,n}] and [alpha + p, min{j+p-1,n}],
-//                // [alpha + 1, j - 1]
-//                boolean is_contain_2p = false;
-//                for (int hg_j = alpha + 1; hg_j < j + p && hg_j < block_size; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                if (!is_contain_2p) {
-//                    continue;
-//                }
+
                 b = adjustCase3(ts_block, alpha, j, coefficient, p);
                 if (b.get(0) < raw_abs_sum) {
                     raw_abs_sum = b.get(0);
@@ -933,23 +639,7 @@ public class RgerPFloat {
                 }
             }
             for (; j < block_size; j++) {
-//                // judge whether j is in hj and gj,  [j, min{j+p-1,n}], [alpha + 1, min{alpha+p,n}]
-//                boolean is_contain_2p = false;
-//                for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                for (int hg_j = j; hg_j < j + p && hg_j < block_size; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                if (!is_contain_2p) {
-//                    continue;
-//                }
+
                 b = adjustCase4(ts_block, alpha, j, coefficient, p);
                 if (b.get(0) < raw_abs_sum) {
                     raw_abs_sum = b.get(0);
@@ -973,23 +663,7 @@ public class RgerPFloat {
             ArrayList<Integer> b;
             int j = 0;
             for (; j < alpha - p; j++) {
-//                // judge whether j is in hj and gj,  [j, j+p-1], [alpha + 1, min{alpha+p,n}]
-//                boolean is_contain_2p = false;
-//                for (int hg_j = j; hg_j < j + p; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                if (!is_contain_2p) {
-//                    continue;
-//                }
+
                 b = adjustCase1(ts_block, alpha, j, coefficient, p);
                 if (b.get(0) < raw_abs_sum) {
                     raw_abs_sum = b.get(0);
@@ -1000,18 +674,7 @@ public class RgerPFloat {
                 }
             }
             for (; j < alpha; j++) {
-//                // judge whether j is in hj and gj,  [j, alpha-1] and [alpha + 1, min{j+p,n}], [j + p + 1,
-//                // min{alpha+p,n}]
-//                boolean is_contain_2p = false;
-//                for (int hg_j = j; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                if (!is_contain_2p) {
-//                    continue;
-//                }
+
                 b = adjustCase2(ts_block, alpha, j, coefficient, p);
                 if (b.get(0) < raw_abs_sum) {
                     raw_abs_sum = b.get(0);
@@ -1022,18 +685,7 @@ public class RgerPFloat {
                 }
             }
             for (j = alpha + 2; j < alpha + p && j < block_size; j++) {
-//                // judge whether j is in hj and gj,  [j, min{alpha+p-1,n}] and [alpha + p, min{j+p-1,n}],
-//                // [alpha + 1, j - 1]
-//                boolean is_contain_2p = false;
-//                for (int hg_j = alpha + 1; hg_j < j + p && hg_j < block_size; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                if (!is_contain_2p) {
-//                    continue;
-//                }
+
                 b = adjustCase3(ts_block, alpha, j, coefficient, p);
                 if (b.get(0) < raw_abs_sum) {
                     raw_abs_sum = b.get(0);
@@ -1044,23 +696,7 @@ public class RgerPFloat {
                 }
             }
             for (; j < block_size; j++) {
-//                // judge whether j is in hj and gj,  [j, min{j+p-1,n}], [alpha + 1, min{alpha+p,n}]
-//                boolean is_contain_2p = false;
-//                for (int hg_j = alpha + 1; hg_j <= alpha + p && hg_j < block_size; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                for (int hg_j = j; hg_j < j + p && hg_j < block_size; hg_j++) {
-//                    if (max_index.contains(hg_j)) {
-//                        is_contain_2p = true;
-//                        break;
-//                    }
-//                }
-//                if (!is_contain_2p) {
-//                    continue;
-//                }
+
                 b = adjustCase4(ts_block, alpha, j, coefficient, p);
                 if (b.get(0) < raw_abs_sum) {
                     raw_abs_sum = b.get(0);
@@ -1079,7 +715,7 @@ public class RgerPFloat {
                 j_star_list.add(0);
             }
         }
-        //    System.out.println(j_star_list);
+
         if (j_star_list.size() != 0) {
             j_star = getIstarClose(alpha, j_star_list);
         }
@@ -1141,11 +777,7 @@ public class RgerPFloat {
         }
         ArrayList<Integer> b = new ArrayList<>();
         b.add(length);
-//    int max_bit_width_interval = getBitWith(max_timestamp - timestamp_delta_min);
-//    int max_bit_width_value = getBitWith(max_value - value_delta_min);
-//    ArrayList<Integer> b = new ArrayList<>();
-//    b.add(max_bit_width_interval);
-//    b.add(max_bit_width_value);
+
         return b;
     }
 
@@ -1873,8 +1505,7 @@ public class RgerPFloat {
         }
         if (length_partition < length_time && length_partition < length_value) { // partition performs better
             data = data_partition;
-            System.out.println("type3");
-//        for(int i=0;i<1;i++){
+
             for (int i = 0; i < block_num; i++) {
                 ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
@@ -1884,7 +1515,7 @@ public class RgerPFloat {
                 }
 
                 ArrayList<Integer> result2 = new ArrayList<>();
-                //      result2.add(1);
+
                 splitTimeStamp3(ts_block, result2);
                 splitTimeStamp3(ts_block_reorder, result2);
 
@@ -1916,8 +1547,7 @@ public class RgerPFloat {
                 ArrayList<ArrayList<Integer>> bit_width_segments_value = segmentBitPacking(ts_block_delta_reorder, block_size, segment_size);
                 reorder_length.set(0, encodeSegment2Bytes(ts_block_delta_reorder, bit_width_segments_value, reorder_length, segment_size, coefficient_reorder, result2, p).size());
 
-                int i_star;
-                int j_star;
+
                 ArrayList<Integer> alpha_list = new ArrayList<>();
                 int choose = min3(time_length.get(0), raw_length.get(0), reorder_length.get(0));
                 if (choose == 0) {
@@ -1963,11 +1593,10 @@ public class RgerPFloat {
                         all_length.add(tmp);
 
                     }
-//                        System.out.println("theta: "+theta);
+
                     quickSort(all_length, 1, 0, all_length.size() - 1);
                     if (all_length.get(0).get(1) <= raw_length.get(0)) {
                         moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
-//                            System.out.println("alpha: "+alpha_list.get(all_length.get(0).get(0)));
                         getEncodeBitsRegressionPNoTrain(ts_block, block_size, raw_length, coefficient, p);
                     } else {
                         break;
@@ -2013,30 +1642,25 @@ public class RgerPFloat {
                 ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, coefficient, result2, p);
                 encoded_result.addAll(cur_encoded_result);
 
-//        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, theta, result2);
-//        encoded_result.addAll(cur_encoded_result);
 
             }
         } else {
             if (length_value < length_time) { // order by value performs better
-                System.out.println("type2");
+
                 data = data_value;
-            } else {
-                System.out.println("type1");
             }
             for (int i = 0; i < block_num; i++) {
                 ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
-//                ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+
                 ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
                 for (int j = 0; j < block_size; j++) {
                     ts_block.add(data.get(j + i * block_size));
-//                    ts_block_reorder.add(data.get(j + i * block_size));
+
                 }
 
                 ArrayList<Integer> result2 = new ArrayList<>();
-                //      result2.add(1);
+
                 splitTimeStamp3(ts_block, result2);
-//                splitTimeStamp3(ts_block_reorder, result2);
 
                 quickSort(ts_block, 0, 0, block_size - 1);
                 ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
@@ -2111,7 +1735,7 @@ public class RgerPFloat {
                         break;
                     }
                     ArrayList<ArrayList<Integer>> all_length = new ArrayList<>();
-//                        System.out.println("theta: "+theta);
+
 
                     for (int isMoveable_i : isMoveable) {
                         ArrayList<ArrayList<Integer>> new_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
@@ -2124,11 +1748,11 @@ public class RgerPFloat {
                         all_length.add(tmp);
 
                     }
-//                        System.out.println("theta: "+theta);
+
                     quickSort(all_length, 1, 0, all_length.size() - 1);
                     if (all_length.get(0).get(1) <= raw_length.get(0)) {
                         moveAlphaToBeta(ts_block, alpha_list.get(all_length.get(0).get(0)), beta_list.get(all_length.get(0).get(0)));
-//                            System.out.println("alpha: "+alpha_list.get(all_length.get(0).get(0)));
+
                         getEncodeBitsRegressionPNoTrain(ts_block, block_size, raw_length, coefficient, p);
                     } else {
                         break;
@@ -2180,7 +1804,6 @@ public class RgerPFloat {
         }
 
 
-//    System.out.println("cur_bits:"+(encoded_result.size()*8L));
         int remaining_length = length_all - block_num * block_size;
         if (remaining_length == 1) {
             byte[] timestamp_end_bytes = int2Bytes(data.get(data.size() - 1).get(0));
@@ -2282,8 +1905,7 @@ public class RgerPFloat {
         for (int segment_i = 0; segment_i < segment_n; segment_i++) {
             int bit_width_time = bit_width_segments.get(segment_i).get(0);
             int bit_width_value = bit_width_segments.get(segment_i).get(1);
-//            System.out.println(bit_width_time);
-//            System.out.println(bit_width_value);
+
             byte[] timestamp_bytes = bitPacking(delta_segments, 0, segment_i * segment_size + 1, segment_size, bit_width_time);
             for (byte b : timestamp_bytes) encoded_result.add(b);
             byte[] value_bytes = bitPacking(delta_segments, 1, segment_i * segment_size + 1, segment_size, bit_width_value);
@@ -2373,26 +1995,12 @@ public class RgerPFloat {
             value_list = decodebitPacking(encoded, decode_pos, max_bit_width_value, 0, block_size);
             decode_pos += max_bit_width_value * (block_size - 1) / 8;
 
-            // int max_bit_width_deviation = bytes2Integer(encoded, decode_pos, 4);
-            // decode_pos += 4;
-            // deviation_list = decodebitPacking(encoded,decode_pos,max_bit_width_deviation,0,block_size);
-            // decode_pos += max_bit_width_deviation * (block_size - 1) / 8;
+
 
             int td_common = bytes2Integer(encoded, decode_pos, 4);
             decode_pos += 4;
 
-            //      for (int i = 0; i < block_size-1; i++) {
-            //        ArrayList<Integer> ts_block_tmp = new ArrayList<>();
-            //        ts_block_tmp.add(interval_list.get(i));
-            //        ts_block_tmp.add(value_list.get(i));
-            //        ts_block.add(ts_block_tmp);
-            //      }
 
-            //      ArrayList<Integer> tmp_data = new ArrayList<>();
-            //      int timestamp = r0 * td + d0;
-            //      tmp_data.add(timestamp);
-            //      tmp_data.add(value0);
-            //      data.add(tmp_data);
 
             int ti_pre = time0;
             int vi_pre = value0;
@@ -2405,10 +2013,7 @@ public class RgerPFloat {
                 value_list.set(i, vi);
                 vi_pre = vi;
 
-                // ArrayList<Integer> ts_block_tmp = new ArrayList<>();
-                // ts_block_tmp.add(time_list.get(i));
-                // ts_block_tmp.add(value_list.get(i));
-                // ts_block.add(ts_block_tmp);
+
             }
 
             ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
@@ -2416,8 +2021,7 @@ public class RgerPFloat {
             ts_block_tmp0.add(value0);
             ts_block.add(ts_block_tmp0);
             for (int i = 0; i < block_size - 1; i++) {
-                // int ti = (time_list.get(i) - time0) * td_common  + time0 +
-                // reverseZigzag(deviation_list.get(i));
+
                 int ti = (time_list.get(i) - time0) * td_common + time0;
                 ArrayList<Integer> ts_block_tmp = new ArrayList<>();
                 ts_block_tmp.add(ti);
@@ -2428,88 +2032,6 @@ public class RgerPFloat {
             quickSort(ts_block, 0, 0, block_size - 1);
             data.addAll(ts_block);
 
-            //      int ri_pre = interval0;
-            //      int vi_pre = value0;
-            //      ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
-            //      ts_block_tmp0.add(interval0);
-            //      ts_block_tmp0.add(value0);
-            //      ts_block.add(ts_block_tmp0);
-            //      for (int i = 0; i < block_size-1; i++) {
-            //        int ri = (int) (theta1_r * ri_pre + theta0_r + interval_list.get(i));
-            //        interval_list.set(i,ri);
-            //        ri_pre = ri;
-            //
-            //        int vi = (int) (theta1_v * vi_pre + theta0_v + value_list.get(i));
-            //        value_list.set(i,vi);
-            //        vi_pre = vi;
-            //
-            //        int dev; //zigzag
-            //        if (deviation_list.get(block_size-1 - i - 1) % 2 == 0) {
-            //          dev = deviation_list.get(block_size-1 - i - 1) / 2;
-            //        } else {
-            //          dev = -(deviation_list.get(block_size-1 - i - 1) + 1) / 2;
-            //        }
-            //        deviation_list.set(block_size-1 - i - 1,dev);
-            //
-            //        ArrayList<Integer> ts_block_tmp = new ArrayList<>();
-            //        ts_block_tmp.add(interval_list.get(i));
-            //        ts_block_tmp.add(value_list.get(i));
-            //        ts_block.add(ts_block_tmp);
-            //      }
-
-            //      for(int i=0;i<block_size-1;i++){
-            //        for(int j=0;j<block_size-1 -i -1;j++){
-            //          if(interval_list.get(j)>interval_list.get(j+1)){
-            //            int tmp_1 = interval_list.get(j);
-            //            interval_list.set(j,interval_list.get(j+1));
-            //            interval_list.set(j,tmp_1);
-            //            int tmp_2 = value_list.get(j);
-            //            value_list.set(j,value_list.get(j+1));
-            //            value_list.set(j,tmp_2);
-            //          }
-            //        }
-            //      }
-
-            // quickSort(ts_block, 0, 0, block_size-2);
-            // quickSort22(ts_block, 0, block_size-1);
-
-            //      for (int i = 0; i < block_size; i++) {
-            //        ArrayList<Integer> tmp_datai = new ArrayList<>();
-            //        tmp_datai.add(ts_block.get(i).get(0));
-            //        tmp_datai.add(ts_block.get(i).get(1));
-            //        ts_block.set(i,tmp_datai);
-            //      }
-
-            //      for (int i = 0; i < block_size; i++) {
-            //        ArrayList<Integer> tmp_datai = new ArrayList<>();
-            //        tmp_datai.add(interval_list.get(i) * td + deviation_list.get(i-1) + r0 * td);
-            //        tmp_datai.add(value_list.get(i));
-            //        data.add(tmp_datai);
-            //      }
-
-            //      for (int i = 0; i < block_size-1; i++) {
-            //        //int vi = vi_pre + value_list.get(i);
-            //        int vi = vi_pre + ts_block.get(i).get(1);
-            //        vi_pre = vi;
-            //
-            //        int ri = r0 * td + ts_block.get(i).get(0) * td;
-            //
-            //        int dev; //zigzag
-            //        if (deviation_list.get(block_size-1 - i - 1) % 2 == 0) {
-            //          dev = deviation_list.get(block_size-1 - i - 1) / 2;
-            //        } else {
-            //          dev = -(deviation_list.get(block_size-1 - i - 1) + 1) / 2;
-            //        }
-            //        int di = di_pre + dev;
-            //        di_pre = di;
-            //
-            //        int timestampi = ri + (di + d0);
-            //
-            //        ArrayList<Integer> tmp_datai = new ArrayList<>();
-            //        tmp_datai.add(timestampi);
-            //        tmp_datai.add(vi);
-            //        data.add(tmp_datai);
-            //      }
         }
         return data;
     }
@@ -2544,11 +2066,9 @@ public class RgerPFloat {
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
         ArrayList<Integer> dataset_block_size = new ArrayList<>();
-        ArrayList<Integer> dataset_mid = new ArrayList<>();
+
         ArrayList<int[]> dataset_third = new ArrayList<>();
-        //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test");
-        //    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\test.csv");
-        //    dataset_block_size.add(1024);
+
         dataset_name.add("CS-Sensors");
         dataset_name.add("Metro-Traffic");
         dataset_name.add("USGS-Earthquakes");
@@ -2622,8 +2142,6 @@ public class RgerPFloat {
 
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
-            System.out.println(inputPath);
-            //        String Output =  "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv";
 
             // speed
             int repeatTime = 1; // set repeat time
@@ -2651,14 +2169,11 @@ public class RgerPFloat {
             assert tempList != null;
 
             for (File f : tempList) {
-//            for(int p=1;p<2;p++) {
+
                 for (int p = 1; p < 10; p++) {
                     System.out.println("p=" + p);
 
-                    //        ArrayList<Integer> flag = new ArrayList<>();
-                    //        flag.add(0);
-                    //        flag.add(0);
-                    //        flag.add(0);
+
 
                     InputStream inputStream = Files.newInputStream(f.toPath());
                     CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
@@ -2693,45 +2208,10 @@ public class RgerPFloat {
                         double ratioTmp = (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
                         ratio += ratioTmp;
                         s = System.nanoTime();
-                        //          data_decoded =
-                        // ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
                         e = System.nanoTime();
                         decodeTime += ((e - s));
 
-                        //          for(int j=0;j<256;j++){
-                        //            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
-                        //              System.out.println("Wrong Time!");
-                        //              System.out.print(j);
-                        //              System.out.print(" ");
-                        //              System.out.print(data.get(j).get(0));
-                        //              System.out.print(" ");
-                        //              System.out.println(data_decoded.get(j).get(0));
-                        //            }
-                        //            else{
-                        //              System.out.println("Correct Time!");
-                        //              System.out.print(j);
-                        //              System.out.print(" ");
-                        //              System.out.print(data.get(j).get(0));
-                        //              System.out.print(" ");
-                        //              System.out.println(data_decoded.get(j).get(0));
-                        //            }
-                        //            if(!data.get(j).get(1).equals(data_decoded.get(j).get(1))){
-                        //              System.out.println("Wrong Value!");
-                        //              System.out.print(j);
-                        //              System.out.print(" ");
-                        //              System.out.print(data.get(j).get(1));
-                        //              System.out.print(" ");
-                        //              System.out.println(data_decoded.get(j).get(1));
-                        //            }
-                        //            else{
-                        //              System.out.println("Correct Value!");
-                        //              System.out.print(j);
-                        //              System.out.print(" ");
-                        //              System.out.print(data.get(j).get(1));
-                        //              System.out.print(" ");
-                        //              System.out.println(data_decoded.get(j).get(1));
-                        //            }
-                        //          }
+
                     }
 
                     ratio /= repeatTime;
@@ -2749,10 +2229,10 @@ public class RgerPFloat {
                             String.valueOf(compressed_size),
                             String.valueOf(ratio)
                     };
-                    System.out.println(ratio);
+
                     writer.writeRecord(record);
 
-                }//          break;
+                }
             }
             writer.close();
         }

@@ -14,7 +14,7 @@ import java.util.Stack;
 
 import static java.lang.Math.abs;
 
-public class RegerSegmentBlockSize {
+public class RegerBlockSizeWithoutReordering {
     public static int getBitWith(int num) {
         if (num == 0) return 1;
         else return 32 - Integer.numberOfLeadingZeros(num);
@@ -203,13 +203,7 @@ public class RegerSegmentBlockSize {
                     && arr.get(low).get(index ^ 1) <= tmp.get(index ^ 1)))) {
                 low++;
             }
-            //      while (low < high && (arr.get(high).get(index) >= tmp.get(index))) {
-            //        high--;
-            //      }
-            //      arr.set(low,arr.get(high));
-            //      while (low < high && (arr.get(low).get(index) <= tmp.get(index))) {
-            //        low++;
-            //      }
+
             arr.set(high, arr.get(low));
         }
         arr.set(low, tmp);
@@ -354,15 +348,8 @@ public class RegerSegmentBlockSize {
             int epsilon_v =
                     (ts_block.get(j).get(1)  - (int) ( theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
 
-            //      int epsilon_r = ts_block.get(j).get(0) - (int) (theta0_r + theta1_r *
-            // (double)ts_block.get(j-1).get(0));
-            //      int epsilon_v = ts_block.get(j).get(1) - (int) (theta0_v + theta1_v *
-            // (double)ts_block.get(j-1).get(1));
-
             if (epsilon_r < timestamp_delta_min) {
                 timestamp_delta_min = epsilon_r;
-//        System.out.println("timestamp_delta_min: "+timestamp_delta_min);
-//        System.out.println("j:"+j);
             }
             if (epsilon_v < value_delta_min) {
                 value_delta_min = epsilon_v;
@@ -375,33 +362,16 @@ public class RegerSegmentBlockSize {
 
 
         }
-//
-//    timestamp_delta_min -= 1;
-//    value_delta_min -= 1;
+
 
         int max_interval = Integer.MIN_VALUE;
         int max_value = Integer.MIN_VALUE;
         int length = 0;
         for (int j = block_size - 1; j > 0; j--) {
-            //      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
-            //      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
-            int epsilon_r =ts_block_delta.get(j).get(0) - timestamp_delta_min;
-//              (int) (ts_block.get(j).get(0)
-//                      -
-//                      ( (theta0_r + timestamp_delta_min)
-//                              +  theta1_r * (float) ts_block.get(j - 1).get(0)));
-            int epsilon_v =ts_block_delta.get(j).get(1) - value_delta_min;
-//              (int) (ts_block.get(j).get(1)
-//                      -
-//                      ( (theta0_v + value_delta_min)
-//                              + theta1_v * (float) ts_block.get(j - 1).get(1)));
-//            System.out.println("getBitWith(epsilon_r) :"+getBitWith(epsilon_r));
-//            System.out.println("getBitWith(epsilon_v) :"+getBitWith(epsilon_v));
 
-//            length += getBitWith(epsilon_r);
-//            length += getBitWith(epsilon_v);
-//            length += epsilon_r;
-//            length += epsilon_v;
+            int epsilon_r =ts_block_delta.get(j).get(0) - timestamp_delta_min;
+            int epsilon_v =ts_block_delta.get(j).get(1) - value_delta_min;
+
 
             length += getBitWith(epsilon_r);
             length += getBitWith(epsilon_v);
@@ -419,24 +389,11 @@ public class RegerSegmentBlockSize {
 
 
         }
-//        for (ArrayList<Integer> segment_max : ts_block_delta_segment) {
-//            length += getBitWith(segment_max.get(0) - timestamp_delta_min);
-//            length += getBitWith(segment_max.get(1) - value_delta_min);
-//        }
 
-//        for (ArrayList<Integer> segment_max : ts_block_delta_segment) {
-//            length += getBitWith(segment_max.get(0) - timestamp_delta_min);
-//            length += getBitWith(segment_max.get(1) - value_delta_min);
-//        }
-//    System.out.println("timestamp_delta_min: "+timestamp_delta_min);
-//    System.out.println("value_delta_min: "+value_delta_min);
-
-//    System.out.println("max_interval: "+max_interval);
         int max_bit_width_interval = getBitWith(max_interval);
         int max_bit_width_value = getBitWith(max_value);
 
-        // calculate error
-//    int length = (max_bit_width_interval + max_bit_width_value) * (block_size - 1);
+
         result.clear();
 
         result.add(length);
@@ -450,8 +407,6 @@ public class RegerSegmentBlockSize {
         theta.add(theta1_r);
         theta.add(theta0_v);
         theta.add(theta1_v);
-//    System.out.println(theta);
-
 
         return ts_block_delta;
     }
@@ -463,7 +418,6 @@ public class RegerSegmentBlockSize {
         ArrayList<Byte> encoded_result = new ArrayList<>();
 
 
-//    System.out.println(theta);
         // encode interval0 and value0
         byte[] interval0_byte = int2Bytes(ts_block.get(0).get(0));
         for (byte b : interval0_byte) encoded_result.add(b);
@@ -482,14 +436,12 @@ public class RegerSegmentBlockSize {
 
         // encode interval
         byte[] max_bit_width_interval_byte = int2Bytes(raw_length.get(1));
-//    System.out.println(raw_length.get(1));
         for (byte b : max_bit_width_interval_byte) encoded_result.add(b);
         byte[] timestamp_bytes = bitPacking(ts_block, 0, raw_length.get(1));
         for (byte b : timestamp_bytes) encoded_result.add(b);
 
         // encode value
         byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
-//    System.out.println(raw_length.get(2));
         for (byte b : max_bit_width_value_byte) encoded_result.add(b);
         byte[] value_bytes = bitPacking(ts_block, 1, raw_length.get(2));
         for (byte b : value_bytes) encoded_result.add(b);
@@ -515,16 +467,16 @@ public class RegerSegmentBlockSize {
         for (int i = 1; i < size; i++) {
             int cur_time = bit_width_segments.get(i).get(0);
             int cur_value = bit_width_segments.get(i).get(1);
-            if (cur_time != pre_time) { // 当前值与前一个值不同
+            if (cur_time != pre_time) {
                 ArrayList<Integer> tmp = new ArrayList<>();
                 tmp.add(count_of_time);
                 tmp.add(pre_time);
                 run_length_time.add(tmp);
                 pre_time = cur_time;
                 count_of_time = 0;
-            } else {// 当前值与前一个值相同
+            } else {
                 count_of_time++;
-                if (count_of_time == 256) { // 个数不能大于256
+                if (count_of_time == 256) {
                     ArrayList<Integer> tmp = new ArrayList<>();
                     tmp.add(count_of_time);
                     tmp.add(pre_time);
@@ -533,16 +485,16 @@ public class RegerSegmentBlockSize {
                 }
             }
 
-            if (cur_value != pre_value) { // 当前值与前一个值不同
+            if (cur_value != pre_value) {
                 ArrayList<Integer> tmp = new ArrayList<>();
                 tmp.add(count_of_value);
                 tmp.add(pre_value);
                 run_length_value.add(tmp);
                 pre_value = cur_value;
                 count_of_value = 0;
-            } else {// 当前值与前一个值相同
+            } else {
                 count_of_value++;
-                if (count_of_value == 256) { // 个数不能大于256
+                if (count_of_value == 256) {
                     ArrayList<Integer> tmp = new ArrayList<>();
                     tmp.add(count_of_value);
                     tmp.add(pre_value);
@@ -593,7 +545,7 @@ public class RegerSegmentBlockSize {
         byte[] block_size_byte = int2Bytes(block_size);
         for (byte b : block_size_byte) encoded_result.add(b);
 
-//        for (int i = 1; i < 2; i++) {
+
         for (int i = 0; i < block_num; i++) {
             ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
             for (int j = 0; j < block_size; j++) {
@@ -631,7 +583,6 @@ public class RegerSegmentBlockSize {
 
 
             ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, theta, result2);
-//            System.out.println(cur_encoded_result.size());
             encoded_result.addAll(cur_encoded_result);
 
         }
@@ -680,10 +631,7 @@ public class RegerSegmentBlockSize {
             }
             ArrayList<ArrayList<Integer>> bit_width_segments_time = segmentBitPacking(ts_block_delta, remaining_length+supple_length, segment_size);
 
-//            raw_length.set(0, encodeSegment2Bytes(ts_block_delta, bit_width_segments_time, raw_length, segment_size, theta, result2).size());
             ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments_time, raw_length, segment_size, theta, result2);
-
-//            ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, theta, result2);
 
             encoded_result.addAll(cur_encoded_result);
         }
@@ -739,8 +687,6 @@ public class RegerSegmentBlockSize {
         for (int segment_i = 0; segment_i < segment_n; segment_i++) {
             int bit_width_time = bit_width_segments.get(segment_i).get(0);
             int bit_width_value = bit_width_segments.get(segment_i).get(1);
-//            System.out.println(bit_width_time);
-//            System.out.println(bit_width_value);
             byte[] timestamp_bytes = bitPacking(delta_segments, 0, segment_i * segment_size + 1, segment_size, bit_width_time);
             for (byte b : timestamp_bytes) encoded_result.add(b);
             byte[] value_bytes = bitPacking(delta_segments, 1, segment_i * segment_size + 1, segment_size, bit_width_value);
@@ -834,10 +780,6 @@ public class RegerSegmentBlockSize {
             }
 
 
-//      int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
-//      decode_pos += 4;
-//      value_list = decodebitPacking(encoded, decode_pos, max_bit_width_value, 0, block_size);
-//      decode_pos += max_bit_width_value * (block_size - 1) / 8;
 
             int td_common = bytes2Integer(encoded, decode_pos, 4);
             decode_pos += 4;
@@ -949,18 +891,15 @@ public class RegerSegmentBlockSize {
     }
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-//        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
+
         String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\block_size_only_segment";
         String input_parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
         ArrayList<Integer> dataset_block_size = new ArrayList<>();
-        ArrayList<Integer> dataset_mid = new ArrayList<>();
         ArrayList<int[]> dataset_third = new ArrayList<>();
-        //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\test");
-        //    output_path_list.add("C:\\Users\\xiaoj\\Desktop\\test.csv");
-        //    dataset_block_size.add(1024);
+
         dataset_name.add("CS-Sensors");
         dataset_name.add("Metro-Traffic");
         dataset_name.add("USGS-Earthquakes");
@@ -1029,10 +968,8 @@ public class RegerSegmentBlockSize {
         output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
         dataset_block_size.add(512);
 
-    for (int file_i = 4; file_i <5; file_i++) {
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
-            //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
             int repeatTime = 1; // set repeat time
@@ -1055,14 +992,12 @@ public class RegerSegmentBlockSize {
             writer.writeRecord(head); // write header to output file
 
             assert tempList != null;
-//System.out.println(inputPath);
-//        double ratio_sum = 0;
+
             for (File f : tempList) {
-                System.out.println(f);
-//                for (int block_size_exp = 11; block_size_exp >= 11; block_size_exp--) {
+
                 for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
                 int block_size = (int) Math.pow(2, block_size_exp);
-                System.out.println(block_size);
+
 
                     InputStream inputStream = Files.newInputStream(f.toPath());
                     CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
@@ -1076,8 +1011,7 @@ public class RegerSegmentBlockSize {
                         ArrayList<Integer> tmp = new ArrayList<>();
                         tmp.add(Integer.valueOf(loader.getValues()[0]));
                         tmp.add(Integer.valueOf(loader.getValues()[1]));
-                        //          tmp.add(Float.valueOf(loader.getValues()[0]).intValue());
-                        //          tmp.add(Float.valueOf(loader.getValues()[1]).intValue());
+
                         data.add(tmp);
                     }
                     inputStream.close();
@@ -1097,15 +1031,6 @@ public class RegerSegmentBlockSize {
                         double ratioTmp = (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
                         ratio += ratioTmp;
                         s = System.nanoTime();
-                        //          for(int repeat=0;repeat<1;repeat++)
-                        //            data_decoded = ReorderingRegressionDecoder(buffer);
-                        //          for(int p=0;p< data.size();p++){
-                        //            if(!Objects.equals(data.get(p).get(1), data_decoded.get(p).get(1)) ){
-                        ////              System.out.println("sbbbb");
-                        ////              System.out.println(data.get(p).get(1));
-                        ////              System.out.println(data_decoded.get(p).get(1));
-                        //            }
-                        //          }//||  Objects.equals(data.get(p).get(1), data_decoded.get(p).get(1))
                         e = System.nanoTime();
                         decodeTime += ((e - s) / repeatTime2);
                     }
@@ -1126,13 +1051,10 @@ public class RegerSegmentBlockSize {
                             String.valueOf(ratio)
                     };
                     System.out.println(ratio);
-//                    ratio_sum += ratio;
                     writer.writeRecord(record);
 
                 }
-//        break;
             }
-//        System.out.println(5/ratio_sum);
             writer.close();
         }
     }
