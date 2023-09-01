@@ -270,7 +270,7 @@ public class WALNode implements IWALNode {
       // In addition, if the disk space used by wal exceeds the limit threshold, resulting in a
       // write rejection, the task will continue to attempt to delete expired files until the
       // threshold is no longer exceeded
-      while (recursionTime < MAX_RECURSION_TIME || WALManager.getInstance().shouldThrottle()) {
+      while (recursionTime < MAX_RECURSION_TIME) {
         // init delete outdated file task fields
         init();
 
