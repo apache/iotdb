@@ -67,7 +67,7 @@ public class RegerPFloat {
         }
         return dest;
     }
-    
+
     public static byte[] bitPacking(ArrayList<ArrayList<Integer>> numbers, int index, int start, int block_num, int bit_width) {
         block_num = block_num / 8;
         byte[] result = new byte[bit_width * block_num];
