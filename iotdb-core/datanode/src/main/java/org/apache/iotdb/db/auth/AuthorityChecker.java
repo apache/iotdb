@@ -30,7 +30,6 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -41,7 +40,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -132,32 +130,23 @@ public class AuthorityChecker {
       prompt.append(", ");
       prompt.append(pathList.get(noPermissionIndexList.get(i)));
     }
-    prompt.append(" ]");
+    prompt.append("]");
     return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(prompt.toString());
   }
 
   public static boolean checkFullPathPermission(
       String userName, PartialPath fullPath, int permission) {
     long startTime = System.nanoTime();
-    if (SUPER_USER.equals(userName)) {
-      return true;
-    }
     List<PartialPath> path = new ArrayList<>();
     path.add(fullPath);
     List<Integer> failIndex = authorityFetcher.checkUserPathPrivileges(userName, path, permission);
     PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
-    if (failIndex.isEmpty()) {
-      return true;
-    }
-    return false;
+    return failIndex.isEmpty();
   }
 
   public static List<Integer> checkFullPathListPermission(
       String userName, List<PartialPath> fullPaths, int permission) {
     long startTime = System.nanoTime();
-    if (SUPER_USER.equals(userName)) {
-      Collections.emptyList();
-    }
     List<Integer> failIndex =
         authorityFetcher.checkUserPathPrivileges(userName, fullPaths, permission);
     PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
@@ -167,55 +156,30 @@ public class AuthorityChecker {
   public static List<Integer> checkPatternPermission(
       String userName, List<PartialPath> pathPatterns, int permission) {
     long startTime = System.nanoTime();
-    if (SUPER_USER.equals(userName)) {
-      Collections.emptyList();
-    }
     List<Integer> failIndex =
         authorityFetcher.checkUserPathPrivileges(userName, pathPatterns, permission);
     PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     return failIndex;
   }
 
-  public static boolean checkUserPrivilegeGrantOpt(
-      String username, List<PartialPath> paths, int permission) {
-    long startTime = System.nanoTime();
-    if (SUPER_USER.equals(username)) {
-      return true;
-    }
-    return authorityFetcher.checkUserPrivilegeGrantOpt(username, paths, permission);
-  }
-
   public static PathPatternTree getAuthorizedPathTree(String userName, int permission)
       throws AuthException {
-    PathPatternTree pathTree = authorityFetcher.getAuthizedPatternTree(userName, permission);
-    return pathTree;
+    return authorityFetcher.getAuthorizedPatternTree(userName, permission);
   }
 
   public static boolean checkSystemPermission(String userName, int permission) {
     long startTime = System.nanoTime();
-    if (SUPER_USER.equals(userName)) {
-      return true;
-    }
     TSStatus status = authorityFetcher.checkUserSysPrivileges(userName, permission);
     PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return true;
-    }
-    return false;
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   public static boolean checkGrantOption(
-      String userName,
-      String[] privilegeList,
-      List<PartialPath> nodeNameList,
-      AuthorType authorType) {
+      String userName, String[] privilegeList, List<PartialPath> nodeNameList) {
     long startTime = System.nanoTime();
-    boolean grantOpt;
-    for (int i = 0; i < privilegeList.length; i++) {
-      grantOpt =
-          authorityFetcher.checkUserPrivilegeGrantOpt(
-              userName, nodeNameList, PrivilegeType.valueOf(privilegeList[i]).ordinal());
-      if (!grantOpt) {
+    for (String s : privilegeList) {
+      if (!authorityFetcher.checkUserPrivilegeGrantOpt(
+          userName, nodeNameList, PrivilegeType.valueOf(s).ordinal())) {
         return false;
       }
     }
