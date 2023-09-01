@@ -25,4 +25,4 @@ package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
  * pipe agent in the server module will replace this class with the real implementation when
  * initializing the IoTDB WebSocket connector.
  */
-public class IoTDBWebSocketConnector extends PlaceholderConnector {}
+public class WebSocketConnector extends PlaceholderConnector {}

@@ -129,6 +129,18 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         + ", dataRegionId='"
         + dataRegionId
         + '\''
+        + ", patternGranularity="
+        + patternGranularity
+        + '\''
+        + ", isForwardingPipeRequests="
+        + isForwardingPipeRequests
+        + '\''
+        + ", pipeName="
+        + pipeName
+        + '\''
+        + ", pipeTaskMeta="
+        + pipeTaskMeta
+        + '\''
         + '}';
   }
 }

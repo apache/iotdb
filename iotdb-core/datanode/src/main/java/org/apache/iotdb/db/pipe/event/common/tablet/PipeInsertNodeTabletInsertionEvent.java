@@ -220,6 +220,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         + progressIndex
         + ", isAligned="
         + isAligned
+        + ", isGeneratedByPipe="
+        + isGeneratedByPipe
         + '}';
   }
 }

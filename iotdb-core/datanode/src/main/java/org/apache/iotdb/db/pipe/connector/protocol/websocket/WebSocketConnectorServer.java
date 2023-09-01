@@ -43,16 +43,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.PriorityBlockingQueue;
 
-public class IoTDBWebSocketConnectorServer extends WebSocketServer {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBWebSocketConnectorServer.class);
+public class WebSocketConnectorServer extends WebSocketServer {
+  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
   private final PriorityBlockingQueue<Pair<Long, Event>> events =
       new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left));
-  private final IoTDBWebSocketConnector websocketConnectorIoTDB;
+  private final WebSocketConnector websocketConnectorIoTDB;
 
   private final ConcurrentMap<Long, Event> eventMap = new ConcurrentHashMap<>();
 
-  public IoTDBWebSocketConnectorServer(
-      InetSocketAddress address, IoTDBWebSocketConnector websocketConnectorIoTDB) {
+  public WebSocketConnectorServer(
+      InetSocketAddress address, WebSocketConnector websocketConnectorIoTDB) {
     super(address);
     this.websocketConnectorIoTDB = websocketConnectorIoTDB;
   }

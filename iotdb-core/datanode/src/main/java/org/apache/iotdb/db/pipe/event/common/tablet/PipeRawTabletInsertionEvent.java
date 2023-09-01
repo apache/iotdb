@@ -167,10 +167,24 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     return patternGranularity.equals(PipePatternGranularity.MEASUREMENT);
   }
 
-  /////////////////////////// convertToTablet ///////////////////////////
-
   @Override
   public boolean isAligned() {
     return isAligned;
+  }
+
+  /////////////////////////// Object ///////////////////////////
+
+  @Override
+  public String toString() {
+    return "PipeRawTabletInsertionEvent{"
+        + "tablet="
+        + tablet
+        + ", isAligned="
+        + isAligned
+        + ", sourceEvent="
+        + sourceEvent
+        + ", needToReport="
+        + needToReport
+        + '}';
   }
 }

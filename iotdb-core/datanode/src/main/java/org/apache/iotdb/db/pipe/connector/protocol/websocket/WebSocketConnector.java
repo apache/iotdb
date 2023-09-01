@@ -43,9 +43,9 @@ import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class IoTDBWebSocketConnector implements PipeConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBWebSocketConnector.class);
-  private IoTDBWebSocketConnectorServer server;
+public class WebSocketConnector implements PipeConnector {
+  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnector.class);
+  private WebSocketConnectorServer server;
   private int port;
 
   public final AtomicLong commitIdGenerator = new AtomicLong(0);
@@ -70,7 +70,7 @@ public class IoTDBWebSocketConnector implements PipeConnector {
   @Override
   public void handshake() throws Exception {
     if (server == null) {
-      server = new IoTDBWebSocketConnectorServer(new InetSocketAddress(port), this);
+      server = new WebSocketConnectorServer(new InetSocketAddress(port), this);
       server.start();
     }
   }
@@ -92,7 +92,7 @@ public class IoTDBWebSocketConnector implements PipeConnector {
     }
     long commitId = commitIdGenerator.incrementAndGet();
     ((EnrichedEvent) tabletInsertionEvent)
-        .increaseReferenceCount(IoTDBWebSocketConnector.class.getName());
+        .increaseReferenceCount(WebSocketConnector.class.getName());
     server.addEvent(new Pair<>(commitId, tabletInsertionEvent));
   }
 
@@ -106,7 +106,7 @@ public class IoTDBWebSocketConnector implements PipeConnector {
     }
     long commitId = commitIdGenerator.incrementAndGet();
     ((EnrichedEvent) tsFileInsertionEvent)
-        .increaseReferenceCount(IoTDBWebSocketConnector.class.getName());
+        .increaseReferenceCount(WebSocketConnector.class.getName());
     server.addEvent(new Pair<>(commitId, tsFileInsertionEvent));
   }
 
@@ -129,7 +129,7 @@ public class IoTDBWebSocketConnector implements PipeConnector {
                     .ifPresent(
                         event ->
                             event.decreaseReferenceCount(
-                                IoTDBWebSocketConnector.class.getName()))));
+                                WebSocketConnector.class.getName()))));
 
     while (!commitQueue.isEmpty()) {
       final Pair<Long, Runnable> committer = commitQueue.peek();
