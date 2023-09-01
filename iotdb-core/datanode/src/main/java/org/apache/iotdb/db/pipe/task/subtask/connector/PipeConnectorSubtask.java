@@ -21,6 +21,9 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.connector.protocol.airgap.IoTDBAirGapConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -53,6 +56,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
   // For input and output
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
   private final PipeConnector outputPipeConnector;
+  private boolean enableReceiverParsing = false;
 
   // For thread pool to execute callbacks
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
@@ -65,6 +69,12 @@ public class PipeConnectorSubtask extends PipeSubtask {
     super(taskID);
     this.inputPendingQueue = inputPendingQueue;
     this.outputPipeConnector = outputPipeConnector;
+
+    if (outputPipeConnector instanceof IoTDBThriftSyncConnector
+        || outputPipeConnector instanceof IoTDBThriftAsyncConnector
+        || outputPipeConnector instanceof IoTDBAirGapConnector) {
+      enableReceiverParsing = true;
+    }
   }
 
   @Override
@@ -107,8 +117,9 @@ public class PipeConnectorSubtask extends PipeSubtask {
         // Parse the pattern for TsFileInsertionEvent at the sender side if
         // there are pruning needed in tsFile and the parsed data amount is
         // small enough so that pruning before send is better.
-        if (event instanceof PipeTsFileInsertionEvent
-            && ((PipeTsFileInsertionEvent) event).betterParseAtSenderSide()) {
+        if (!enableReceiverParsing
+            || event instanceof PipeTsFileInsertionEvent
+                && ((PipeTsFileInsertionEvent) event).betterParseAtSenderSide()) {
           for (final TabletInsertionEvent tabletInsertionEvent :
               ((TsFileInsertionEvent) event).toTabletInsertionEvents()) {
             outputPipeConnector.transfer(tabletInsertionEvent);
