@@ -43,9 +43,9 @@ import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class WebSocketConnector implements PipeConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnector.class);
-  private WebSocketConnectorServer server;
+public class IoTDBWebSocketConnector implements PipeConnector {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBWebSocketConnector.class);
+  private IoTDBWebSocketConnectorServer server;
   private int port;
 
   public final AtomicLong commitIdGenerator = new AtomicLong(0);
@@ -54,7 +54,9 @@ public class WebSocketConnector implements PipeConnector {
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {}
+  public void validate(PipeParameterValidator validator) throws Exception {
+    // All the parameters are optional
+  }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
@@ -68,13 +70,15 @@ public class WebSocketConnector implements PipeConnector {
   @Override
   public void handshake() throws Exception {
     if (server == null) {
-      server = new WebSocketConnectorServer(new InetSocketAddress(port), this);
+      server = new IoTDBWebSocketConnectorServer(new InetSocketAddress(port), this);
       server.start();
     }
   }
 
   @Override
-  public void heartbeat() throws Exception {}
+  public void heartbeat() throws Exception {
+    // Server side, do not need to heartbeat
+  }
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) {
@@ -88,7 +92,7 @@ public class WebSocketConnector implements PipeConnector {
     }
     long commitId = commitIdGenerator.incrementAndGet();
     ((EnrichedEvent) tabletInsertionEvent)
-        .increaseReferenceCount(WebSocketConnector.class.getName());
+        .increaseReferenceCount(IoTDBWebSocketConnector.class.getName());
     server.addEvent(new Pair<>(commitId, tabletInsertionEvent));
   }
 
@@ -102,12 +106,14 @@ public class WebSocketConnector implements PipeConnector {
     }
     long commitId = commitIdGenerator.incrementAndGet();
     ((EnrichedEvent) tsFileInsertionEvent)
-        .increaseReferenceCount(WebSocketConnector.class.getName());
+        .increaseReferenceCount(IoTDBWebSocketConnector.class.getName());
     server.addEvent(new Pair<>(commitId, tsFileInsertionEvent));
   }
 
   @Override
-  public void transfer(Event event) throws Exception {}
+  public void transfer(Event event) throws Exception {
+    // Server side, do no need transfer
+  }
 
   @Override
   public void close() throws Exception {
@@ -122,7 +128,8 @@ public class WebSocketConnector implements PipeConnector {
                 Optional.ofNullable(enrichedEvent)
                     .ifPresent(
                         event ->
-                            event.decreaseReferenceCount(WebSocketConnector.class.getName()))));
+                            event.decreaseReferenceCount(
+                                IoTDBWebSocketConnector.class.getName()))));
 
     while (!commitQueue.isEmpty()) {
       final Pair<Long, Runnable> committer = commitQueue.peek();

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.config.PipePatternGranularity;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -39,14 +40,14 @@ public abstract class EnrichedEvent implements Event {
   protected final PipeTaskMeta pipeTaskMeta;
 
   private final String pattern;
-  protected boolean isPatternAndTimeParsed;
+  protected final PipePatternGranularity patternGranularity;
 
-  protected EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
+  protected EnrichedEvent(
+      PipeTaskMeta pipeTaskMeta, String pattern, PipePatternGranularity patternGranularity) {
     referenceCount = new AtomicInteger(0);
     this.pipeTaskMeta = pipeTaskMeta;
     this.pattern = pattern;
-    isPatternAndTimeParsed =
-        getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
+    this.patternGranularity = patternGranularity;
   }
 
   /**
@@ -131,12 +132,10 @@ public abstract class EnrichedEvent implements Event {
     return pattern == null ? PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE : pattern;
   }
 
-  public boolean shouldParsePatternOrTime() {
-    return !isPatternAndTimeParsed;
-  }
+  public abstract boolean shouldParsePatternOrTime();
 
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern);
+      PipeTaskMeta pipeTaskMeta, String pattern, PipePatternGranularity patternGranularity);
 
   public void reportException(PipeRuntimeException pipeRuntimeException) {
     if (pipeTaskMeta != null) {

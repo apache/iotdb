@@ -43,18 +43,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.PriorityBlockingQueue;
 
-public class WebSocketConnectorServer extends WebSocketServer {
-  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
+public class IoTDBWebSocketConnectorServer extends WebSocketServer {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBWebSocketConnectorServer.class);
   private final PriorityBlockingQueue<Pair<Long, Event>> events =
       new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left));
-  private final WebSocketConnector websocketConnector;
+  private final IoTDBWebSocketConnector websocketConnectorIoTDB;
 
   private final ConcurrentMap<Long, Event> eventMap = new ConcurrentHashMap<>();
 
-  public WebSocketConnectorServer(
-      InetSocketAddress address, WebSocketConnector websocketConnector) {
+  public IoTDBWebSocketConnectorServer(
+      InetSocketAddress address, IoTDBWebSocketConnector websocketConnectorIoTDB) {
     super(address);
-    this.websocketConnector = websocketConnector;
+    this.websocketConnectorIoTDB = websocketConnectorIoTDB;
   }
 
   @Override
@@ -152,7 +152,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private void handleAck(WebSocket webSocket, String s) {
     long commitId = Long.parseLong(s.replace("ACK:", ""));
     Event event = eventMap.remove(commitId);
-    websocketConnector.commit(
+    websocketConnectorIoTDB.commit(
         commitId, event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
     handleStart(webSocket);
   }

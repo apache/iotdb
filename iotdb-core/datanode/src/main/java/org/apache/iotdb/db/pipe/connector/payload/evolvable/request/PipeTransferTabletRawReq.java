@@ -202,11 +202,25 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferTabletRawReq toTPipeTransferReq(Tablet tablet, boolean isAligned)
-      throws IOException {
+  /**
+   * Construct a local TPipeTransferReq to reuse the statement logic. No need to serialize.
+   *
+   * @param tablet the tablet
+   * @param isAligned if the tablet is aligned
+   * @return the result Req
+   */
+  public static PipeTransferTabletRawReq toLocalTPipeTransferReq(Tablet tablet, boolean isAligned) {
     final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
 
     tabletReq.tablet = tablet;
+    tabletReq.isAligned = isAligned;
+
+    return tabletReq;
+  }
+
+  public static PipeTransferTabletRawReq toTPipeTransferReq(Tablet tablet, boolean isAligned)
+      throws IOException {
+    final PipeTransferTabletRawReq tabletReq = toLocalTPipeTransferReq(tablet, isAligned);
 
     tabletReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     tabletReq.type = PipeRequestType.TRANSFER_TABLET_RAW.getType();

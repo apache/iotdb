@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.config.PipePatternGranularity;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -48,8 +49,9 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       EnrichedEvent sourceEvent,
       boolean needToReport,
       PipeTaskMeta pipeTaskMeta,
-      String pattern) {
-    super(pipeTaskMeta, pattern);
+      String pattern,
+      PipePatternGranularity patternGranularity) {
+    super(pipeTaskMeta, pattern, patternGranularity);
     this.tablet = Objects.requireNonNull(tablet);
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
@@ -62,17 +64,24 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       PipeTaskMeta pipeTaskMeta,
       EnrichedEvent sourceEvent,
       boolean needToReport) {
-    this(tablet, isAligned, sourceEvent, needToReport, pipeTaskMeta, null);
+    this(
+        tablet,
+        isAligned,
+        sourceEvent,
+        needToReport,
+        pipeTaskMeta,
+        null,
+        PipePatternGranularity.UNKNOWN);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned) {
-    this(tablet, isAligned, null, false, null, null);
+    this(tablet, isAligned, null, false, null, null, PipePatternGranularity.DATABASE);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned, String pattern) {
-    this(tablet, isAligned, null, false, null, pattern);
+    this(tablet, isAligned, null, false, null, pattern, PipePatternGranularity.UNKNOWN);
   }
 
   @Override
@@ -99,9 +108,9 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern) {
+      PipeTaskMeta pipeTaskMeta, String pattern, PipePatternGranularity patternGranularity) {
     return new PipeRawTabletInsertionEvent(
-        tablet, isAligned, sourceEvent, needToReport, pipeTaskMeta, pattern);
+        tablet, isAligned, sourceEvent, needToReport, pipeTaskMeta, pattern, patternGranularity);
   }
 
   @Override
@@ -151,6 +160,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   public TabletInsertionEvent parseEventWithPattern() {
     return new PipeRawTabletInsertionEvent(
         convertToTablet(), isAligned, pipeTaskMeta, this, needToReport);
+  }
+
+  @Override
+  public boolean shouldParsePatternOrTime() {
+    return patternGranularity.equals(PipePatternGranularity.MEASUREMENT);
   }
 
   /////////////////////////// convertToTablet ///////////////////////////

@@ -24,12 +24,12 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealWithParseReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -186,11 +186,6 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       return;
     }
 
-    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
-      transfer((tabletInsertionEvent).parseEventWithPattern());
-      return;
-    }
-
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
@@ -218,13 +213,6 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       LOGGER.warn(
           "IoTDBAirGapConnector only support PipeTsFileInsertionEvent. Ignore {}.",
           tsFileInsertionEvent);
-      return;
-    }
-
-    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
-      for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
-        transfer(event);
-      }
       return;
     }
 
@@ -317,9 +305,22 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     }
 
     // 2. Transfer file seal signal, which means the file is transferred completely
-    if (!send(
-        socket,
-        PipeTransferFileSealReq.toTPipeTransferFileSealBytes(tsFile.getName(), tsFile.length()))) {
+    boolean success =
+        pipeTsFileInsertionEvent.shouldParsePatternOrTime()
+            ? send(
+                socket,
+                PipeTransferFileSealWithParseReq.toTPipeTransferFileSealWithParseBytes(
+                    tsFile.getName(),
+                    tsFile.length(),
+                    pipeTsFileInsertionEvent.getStartTime(),
+                    pipeTsFileInsertionEvent.getEndTime(),
+                    pipeTsFileInsertionEvent.getTsFilePattern()))
+            : send(
+                socket,
+                PipeTransferFileSealReq.toTPipeTransferFileSealBytes(
+                    tsFile.getName(), tsFile.length()));
+
+    if (!success) {
       throw new PipeException(String.format("Seal file %s error. Socket %s.", tsFile, socket));
     } else {
       LOGGER.info("Successfully transferred file {}.", tsFile);

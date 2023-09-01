@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.config.PipePatternGranularity;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -44,6 +45,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   // used to filter data
   private final long startTime;
   private final long endTime;
+  private final boolean needParseTime;
 
   private final TsFileResource resource;
   private File tsFile;
@@ -55,7 +57,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private TsFileInsertionDataContainer dataContainer;
 
   public PipeTsFileInsertionEvent(TsFileResource resource, boolean isGeneratedByPipe) {
-    this(resource, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    this(
+        resource,
+        isGeneratedByPipe,
+        null,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE,
+        false,
+        PipePatternGranularity.UNKNOWN);
   }
 
   public PipeTsFileInsertionEvent(
@@ -64,14 +74,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       PipeTaskMeta pipeTaskMeta,
       String pattern,
       long startTime,
-      long endTime) {
-    super(pipeTaskMeta, pattern);
+      long endTime,
+      boolean needParseTime,
+      PipePatternGranularity patternGranularity) {
+    super(pipeTaskMeta, pattern, patternGranularity);
 
     this.startTime = startTime;
     this.endTime = endTime;
-    if (hasTimeFilter()) {
-      this.isPatternAndTimeParsed = false;
-    }
+    this.needParseTime = needParseTime;
 
     this.resource = resource;
     tsFile = resource.getTsFile();
@@ -106,12 +116,25 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     }
   }
 
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public long getEndTime() {
+    return endTime;
+  }
+
+  public String getTsFilePattern() {
+    return getPattern();
+  }
+
   public File getTsFile() {
     return tsFile;
   }
 
-  public boolean hasTimeFilter() {
-    return startTime != Long.MIN_VALUE || endTime != Long.MAX_VALUE;
+  public boolean betterParseAtSenderSide() {
+    return needParseTime && patternGranularity.equals(PipePatternGranularity.DEVICE)
+        || patternGranularity.equals(PipePatternGranularity.MEASUREMENT);
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -162,14 +185,26 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern) {
+      PipeTaskMeta pipeTaskMeta, String pattern, PipePatternGranularity patternGranularity) {
     return new PipeTsFileInsertionEvent(
-        resource, isGeneratedByPipe, pipeTaskMeta, pattern, startTime, endTime);
+        resource,
+        isGeneratedByPipe,
+        pipeTaskMeta,
+        pattern,
+        startTime,
+        endTime,
+        needParseTime,
+        patternGranularity);
   }
 
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public boolean shouldParsePatternOrTime() {
+    return needParseTime || !patternGranularity.equals(PipePatternGranularity.DATABASE);
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////

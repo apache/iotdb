@@ -34,6 +34,8 @@ public enum PipeRequestType {
 
   TRANSFER_TABLET_BATCH((short) 6),
   TRANSFER_TABLET_BINARY((short) 7),
+
+  TRANSFER_FILE_SEAL_WITH_PATTERN((short) 8),
   ;
 
   private final short type;

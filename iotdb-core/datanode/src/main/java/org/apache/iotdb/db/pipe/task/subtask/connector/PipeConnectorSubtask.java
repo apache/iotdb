@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalExcep
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.DecoratingLock;
@@ -98,9 +99,23 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
     try {
       if (event instanceof TabletInsertionEvent) {
-        outputPipeConnector.transfer((TabletInsertionEvent) event);
+        outputPipeConnector.transfer(
+            ((EnrichedEvent) event).shouldParsePatternOrTime()
+                ? ((TabletInsertionEvent) event).parseEventWithPattern()
+                : event);
       } else if (event instanceof TsFileInsertionEvent) {
-        outputPipeConnector.transfer((TsFileInsertionEvent) event);
+        // Parse the pattern for TsFileInsertionEvent at the sender side if
+        // there are pruning needed in tsFile and the parsed data amount is
+        // small enough so that pruning before send is better.
+        if (event instanceof PipeTsFileInsertionEvent
+            && ((PipeTsFileInsertionEvent) event).betterParseAtSenderSide()) {
+          for (final TabletInsertionEvent tabletInsertionEvent :
+              ((TsFileInsertionEvent) event).toTabletInsertionEvents()) {
+            outputPipeConnector.transfer(tabletInsertionEvent);
+          }
+        } else {
+          outputPipeConnector.transfer((TsFileInsertionEvent) event);
+        }
       } else if (event instanceof PipeHeartbeatEvent) {
         try {
           outputPipeConnector.heartbeat();

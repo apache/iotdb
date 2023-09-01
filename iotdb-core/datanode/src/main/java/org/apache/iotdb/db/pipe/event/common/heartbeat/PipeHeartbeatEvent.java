@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.event.common.heartbeat;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.config.PipePatternGranularity;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 
@@ -43,13 +44,13 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private final boolean shouldPrintMessage;
 
   public PipeHeartbeatEvent(String dataRegionId, boolean shouldPrintMessage) {
-    super(null, null);
+    super(null, null, PipePatternGranularity.UNKNOWN);
     this.dataRegionId = dataRegionId;
     this.shouldPrintMessage = shouldPrintMessage;
   }
 
   public PipeHeartbeatEvent(String dataRegionId, long timePublished, boolean shouldPrintMessage) {
-    super(null, null);
+    super(null, null, PipePatternGranularity.UNKNOWN);
     this.dataRegionId = dataRegionId;
     this.timePublished = timePublished;
     this.shouldPrintMessage = shouldPrintMessage;
@@ -76,8 +77,13 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   }
 
   @Override
+  public boolean shouldParsePatternOrTime() {
+    return false;
+  }
+
+  @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern) {
+      PipeTaskMeta pipeTaskMeta, String pattern, PipePatternGranularity patternGranularity) {
     return new PipeHeartbeatEvent(dataRegionId, timePublished, shouldPrintMessage);
   }
 

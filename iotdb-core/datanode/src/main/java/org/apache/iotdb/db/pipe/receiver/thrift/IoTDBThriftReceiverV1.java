@@ -28,12 +28,14 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealWithParseReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.event.common.tsfile.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -47,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -60,6 +63,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -116,6 +121,11 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
           case TRANSFER_FILE_SEAL:
             return handleTransferFileSeal(
                 PipeTransferFileSealReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+          case TRANSFER_FILE_SEAL_WITH_PATTERN:
+            return handleTransferFileSealWithParse(
+                PipeTransferFileSealWithParseReq.fromTPipeTransferReq(req),
+                partitionFetcher,
+                schemaFetcher);
           default:
             break;
         }
@@ -440,6 +450,94 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       } else {
         LOGGER.warn(
             "Failed to seal file {}, because {}. Receiver id is {}.",
+            fileAbsolutePath,
+            status.getMessage(),
+            receiverId.get());
+      }
+      return new TPipeTransferResp(status);
+    } catch (IOException e) {
+      LOGGER.warn(
+          String.format(
+              "Failed to seal file %s from req %s. Receiver id is %d.",
+              writingFile, req, receiverId.get()),
+          e);
+      return new TPipeTransferResp(
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+              String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
+    } finally {
+      // If the writing file is not sealed successfully, the writing file will be deleted.
+      // All pieces of the writing file should be retransmitted by the sender.
+      closeCurrentWritingFileWriter();
+      deleteCurrentWritingFile();
+    }
+  }
+
+  private TPipeTransferResp handleTransferFileSealWithParse(
+      PipeTransferFileSealWithParseReq req,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
+    try {
+      if (!isWritingFileAvailable()) {
+        final TSStatus status =
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+                String.format(
+                    "Failed to seal file, because writing file %s is not available.",
+                    req.getFileName()));
+        LOGGER.warn(status.getMessage());
+        return new TPipeTransferResp(status);
+      }
+
+      if (!isFileExistedAndNameCorrect(req.getFileName())) {
+        final TSStatus status =
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+                String.format(
+                    "Failed to seal file %s, but writing file is %s.",
+                    req.getFileName(), writingFile));
+        LOGGER.warn(status.getMessage());
+        return new TPipeTransferResp(status);
+      }
+
+      if (!isWritingFileOffsetCorrect(req.getFileLength())) {
+        final TSStatus status =
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+                String.format(
+                    "Failed to seal file %s, because the length of file is not correct. "
+                        + "The original file has length %s, but receiver file has length %s.",
+                    req.getFileName(), req.getFileLength(), writingFileWriter.length()));
+        LOGGER.warn(status.getMessage());
+        return new TPipeTransferResp(status);
+      }
+
+      final String fileAbsolutePath = writingFile.getAbsolutePath();
+      writingFileWriter.close();
+      writingFileWriter = null;
+
+      List<InsertTabletStatement> statements = new ArrayList<>();
+      for (TabletInsertionEvent event :
+          new TsFileInsertionDataContainer(
+                  writingFile, req.getPattern(), req.getStartTime(), req.getEndTime())
+              .toTabletInsertionEvents()) {
+        statements.add(
+            PipeTransferTabletRawReq.toLocalTPipeTransferReq(
+                    event.convertToTablet(), event.isAligned())
+                .constructStatement());
+      }
+
+      InsertMultiTabletsStatement statement = new InsertMultiTabletsStatement();
+      statement.setInsertTabletStatementList(statements);
+      final TSStatus status = executeStatement(statement, partitionFetcher, schemaFetcher);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            "Seal file {} with parse successfully. Receiver id is {}.",
+            fileAbsolutePath,
+            receiverId.get());
+      } else {
+        LOGGER.warn(
+            "Failed to seal file {} with parse, because {}. Receiver id is {}.",
             fileAbsolutePath,
             status.getMessage(),
             receiverId.get());

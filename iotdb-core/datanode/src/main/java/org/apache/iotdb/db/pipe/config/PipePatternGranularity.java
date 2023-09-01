@@ -17,12 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
+package org.apache.iotdb.db.pipe.config;
 
-/**
- * This class is a placeholder and should not be initialized. It represents the IoTDB WebSocket
- * connector. There is a real implementation in the server module but cannot be imported here. The
- * pipe agent in the server module will replace this class with the real implementation when
- * initializing the IoTDB Thrift connector.
- */
-public class WebSocketConnector extends PlaceholderConnector {}
+public enum PipePatternGranularity {
+  DATABASE,
+  DEVICE,
+  MEASUREMENT,
+  UNKNOWN,
+}

@@ -26,13 +26,13 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftS
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealWithParseReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -185,11 +185,6 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       return;
     }
 
-    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
-      transfer((tabletInsertionEvent).parseEventWithPattern());
-      return;
-    }
-
     final int clientIndex = nextClientIndex();
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
@@ -223,13 +218,6 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       LOGGER.warn(
           "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.",
           tsFileInsertionEvent);
-      return;
-    }
-
-    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
-      for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
-        transfer(event);
-      }
       return;
     }
 
@@ -368,8 +356,17 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
     // 2. Transfer file seal signal, which means the file is transferred completely
     final TPipeTransferResp resp =
-        client.pipeTransfer(
-            PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
+        pipeTsFileInsertionEvent.shouldParsePatternOrTime()
+            ? client.pipeTransfer(
+                PipeTransferFileSealWithParseReq.toTPipeTransferReq(
+                    tsFile.getName(),
+                    tsFile.length(),
+                    pipeTsFileInsertionEvent.getStartTime(),
+                    pipeTsFileInsertionEvent.getEndTime(),
+                    pipeTsFileInsertionEvent.getTsFilePattern()))
+            : client.pipeTransfer(
+                PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
+
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()));

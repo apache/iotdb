@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.config.PipePatternGranularity;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -56,7 +57,14 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       ProgressIndex progressIndex,
       boolean isAligned,
       boolean isGeneratedByPipe) {
-    this(walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, null, null);
+    this(
+        walEntryHandler,
+        progressIndex,
+        isAligned,
+        isGeneratedByPipe,
+        null,
+        null,
+        PipePatternGranularity.UNKNOWN);
   }
 
   private PipeInsertNodeTabletInsertionEvent(
@@ -65,8 +73,9 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       boolean isAligned,
       boolean isGeneratedByPipe,
       PipeTaskMeta pipeTaskMeta,
-      String pattern) {
-    super(pipeTaskMeta, pattern);
+      String pattern,
+      PipePatternGranularity patternGranularity) {
+    super(pipeTaskMeta, pattern, patternGranularity);
     this.walEntryHandler = walEntryHandler;
     this.progressIndex = progressIndex;
     this.isAligned = isAligned;
@@ -128,14 +137,25 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern) {
+      PipeTaskMeta pipeTaskMeta, String pattern, PipePatternGranularity patternGranularity) {
     return new PipeInsertNodeTabletInsertionEvent(
-        walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, pipeTaskMeta, pattern);
+        walEntryHandler,
+        progressIndex,
+        isAligned,
+        isGeneratedByPipe,
+        pipeTaskMeta,
+        pattern,
+        patternGranularity);
   }
 
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public boolean shouldParsePatternOrTime() {
+    return patternGranularity.equals(PipePatternGranularity.MEASUREMENT);
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////

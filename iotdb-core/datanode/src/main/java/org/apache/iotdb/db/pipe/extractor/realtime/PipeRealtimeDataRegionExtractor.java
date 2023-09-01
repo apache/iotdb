@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.realtime;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.config.PipePatternGranularity;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
@@ -28,10 +29,14 @@ import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+
+import org.apache.commons.lang3.StringUtils;
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected String pattern;
+  protected PipePatternGranularity patternGranularity;
   protected boolean isForwardingPipeRequests;
 
   protected String pipeName;
@@ -97,6 +102,22 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public final PipeTaskMeta getPipeTaskMeta() {
     return pipeTaskMeta;
+  }
+
+  public final void updatePatternGranularity(String matchedDevice) {
+    int patternLevel = StringUtils.countMatches(pattern, TsFileConstant.PATH_SEPARATOR);
+    int deviceLevel = StringUtils.countMatches(matchedDevice, TsFileConstant.PATH_SEPARATOR);
+    if (patternLevel < deviceLevel) {
+      patternGranularity = PipePatternGranularity.DATABASE;
+    } else if (patternLevel == deviceLevel) {
+      patternGranularity = PipePatternGranularity.DEVICE;
+    } else {
+      patternGranularity = PipePatternGranularity.MEASUREMENT;
+    }
+  }
+
+  public final PipePatternGranularity getPatternGranularity() {
+    return patternGranularity;
   }
 
   @Override

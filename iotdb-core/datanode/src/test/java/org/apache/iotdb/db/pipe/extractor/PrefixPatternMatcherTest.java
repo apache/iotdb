@@ -24,7 +24,7 @@ import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfig
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMatcher;
+import org.apache.iotdb.db.pipe.extractor.realtime.matcher.PrefixPatternMatcher;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -45,15 +45,15 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class CachedSchemaPatternMatcherTest {
+public class PrefixPatternMatcherTest {
 
-  private CachedSchemaPatternMatcher matcher;
+  private PrefixPatternMatcher matcher;
   private ExecutorService executorService;
   private List<PipeRealtimeDataRegionExtractor> extractors;
 
   @Before
   public void setUp() {
-    matcher = new CachedSchemaPatternMatcher();
+    matcher = new PrefixPatternMatcher();
     executorService = Executors.newSingleThreadExecutor();
     extractors = new ArrayList<>();
   }

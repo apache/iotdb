@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.realtime;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.config.PipePatternGranularity;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
 
@@ -45,7 +46,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
     // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
-    super(null, pattern);
+    super(null, pattern, PipePatternGranularity.DATABASE);
 
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
@@ -57,11 +58,12 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       TsFileEpoch tsFileEpoch,
       Map<String, String[]> device2Measurements,
       PipeTaskMeta pipeTaskMeta,
-      String pattern) {
+      String pattern,
+      PipePatternGranularity patternGranularity) {
     // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
     // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
-    super(pipeTaskMeta, pattern);
+    super(pipeTaskMeta, pattern, patternGranularity);
 
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
@@ -117,15 +119,24 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     return event.getProgressIndex();
   }
 
+  // The PipeRealtimeEvent is only used in the realtime event extractor,
+  // which does not need to parse time of the event, so shouldParsePatternOrTime is always false.
+  @Override
+  public boolean shouldParsePatternOrTime() {
+    return false;
+  }
+
   @Override
   public PipeRealtimeEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern) {
+      PipeTaskMeta pipeTaskMeta, String pattern, PipePatternGranularity patternGranularity) {
     return new PipeRealtimeEvent(
-        event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(pipeTaskMeta, pattern),
+        event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+            pipeTaskMeta, pattern, patternGranularity),
         this.tsFileEpoch,
         this.device2Measurements,
         pipeTaskMeta,
-        pattern);
+        pattern,
+        patternGranularity);
   }
 
   @Override

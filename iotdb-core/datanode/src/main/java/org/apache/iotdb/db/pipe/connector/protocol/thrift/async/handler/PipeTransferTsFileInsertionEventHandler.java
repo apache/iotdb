@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealWithParseReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -90,8 +91,20 @@ public class PipeTransferTsFileInsertionEventHandler
 
     if (readLength == -1) {
       isSealSignalSent.set(true);
-      client.pipeTransfer(
-          PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()), this);
+      if (event.shouldParsePatternOrTime()) {
+        client.pipeTransfer(
+            PipeTransferFileSealWithParseReq.toTPipeTransferReq(
+                tsFile.getName(),
+                tsFile.length(),
+                event.getStartTime(),
+                event.getEndTime(),
+                event.getTsFilePattern()),
+            this);
+      } else {
+        client.pipeTransfer(
+            PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()), this);
+      }
+
       return;
     }
 

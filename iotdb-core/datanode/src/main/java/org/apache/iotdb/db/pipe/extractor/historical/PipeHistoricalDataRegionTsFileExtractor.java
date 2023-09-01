@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.extractor.historical;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.config.PipePatternGranularity;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -34,7 +35,9 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +46,7 @@ import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Queue;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
@@ -62,6 +66,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private int dataRegionId;
 
   private String pattern;
+  protected PipePatternGranularity patternGranularity;
 
   private long historicalDataExtractionStartTime; // Event time
   private long historicalDataExtractionEndTime; // Event time
@@ -176,7 +181,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                     resource ->
                         !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
-                            && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
+                            && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                            && devicesMatched(resource.getDevices()))
                 .map(
                     resource ->
                         new PipeTsFileInsertionEvent(
@@ -185,17 +191,20 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             pipeTaskMeta,
                             pattern,
                             historicalDataExtractionStartTime,
-                            historicalDataExtractionEndTime))
+                            historicalDataExtractionEndTime,
+                            !isTsFileResourceCoveredByTimeRange(resource),
+                            patternGranularity))
                 .collect(Collectors.toList());
         pendingQueue.addAll(sequenceFileInsertionEvents);
 
-        final Collection<PipeTsFileInsertionEvent> unsequenceFileInsertionEvents =
+        final Collection<PipeTsFileInsertionEvent> unSequenceFileInsertionEvents =
             tsFileManager.getTsFileList(false).stream()
                 .filter(
                     resource ->
                         !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
-                            && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
+                            && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                            && devicesMatched(resource.getDevices()))
                 .map(
                     resource ->
                         new PipeTsFileInsertionEvent(
@@ -204,9 +213,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             pipeTaskMeta,
                             pattern,
                             historicalDataExtractionStartTime,
-                            historicalDataExtractionEndTime))
+                            historicalDataExtractionEndTime,
+                            !isTsFileResourceCoveredByTimeRange(resource),
+                            patternGranularity))
                 .collect(Collectors.toList());
-        pendingQueue.addAll(unsequenceFileInsertionEvents);
+        pendingQueue.addAll(unSequenceFileInsertionEvents);
 
         pendingQueue.forEach(
             event ->
@@ -218,7 +229,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 + "sequence file count {}, unsequence file count {}",
             dataRegionId,
             sequenceFileInsertionEvents.size(),
-            unsequenceFileInsertionEvents.size());
+            unSequenceFileInsertionEvents.size());
       } finally {
         tsFileManager.readUnlock();
       }
@@ -227,9 +238,41 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     }
   }
 
+  public final boolean devicesMatched(Set<String> devices) {
+    for (String device : devices) {
+      // If device is root.test.a1 and pattern is root.test.a, match.
+      // else if device is root.test and pattern is root.test.b, match first and investigate the
+      // tsFile later.
+      if (device.startsWith(pattern)
+          || pattern.startsWith(device + TsFileConstant.PATH_SEPARATOR)) {
+        updatePatternGranularity(device);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Separate the update logic to make the code clearer
+  public final void updatePatternGranularity(String matchedDevice) {
+    int patternLevel = StringUtils.countMatches(pattern, TsFileConstant.PATH_SEPARATOR);
+    int deviceLevel = StringUtils.countMatches(matchedDevice, TsFileConstant.PATH_SEPARATOR);
+    if (patternLevel < deviceLevel) {
+      patternGranularity = PipePatternGranularity.DATABASE;
+    } else if (patternLevel == deviceLevel) {
+      patternGranularity = PipePatternGranularity.DEVICE;
+    } else {
+      patternGranularity = PipePatternGranularity.MEASUREMENT;
+    }
+  }
+
   private boolean isTsFileResourceOverlappedWithTimeRange(TsFileResource resource) {
     return !(resource.getFileEndTime() < historicalDataExtractionStartTime
         || historicalDataExtractionEndTime < resource.getFileStartTime());
+  }
+
+  private boolean isTsFileResourceCoveredByTimeRange(TsFileResource resource) {
+    return historicalDataExtractionStartTime < resource.getFileStartTime()
+        && historicalDataExtractionEndTime > resource.getFileEndTime();
   }
 
   private boolean isTsFileGeneratedAfterExtractionTimeLowerBound(TsFileResource resource) {

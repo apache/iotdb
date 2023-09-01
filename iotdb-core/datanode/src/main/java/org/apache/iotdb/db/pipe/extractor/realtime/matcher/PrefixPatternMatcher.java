@@ -35,16 +35,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
+public class PrefixPatternMatcher implements PipeDataRegionMatcher {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(CachedSchemaPatternMatcher.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PrefixPatternMatcher.class);
 
   private final ReentrantReadWriteLock lock;
 
   private final Set<PipeRealtimeDataRegionExtractor> extractors;
   private final Cache<String, Set<PipeRealtimeDataRegionExtractor>> deviceToExtractorsCache;
 
-  public CachedSchemaPatternMatcher() {
+  public PrefixPatternMatcher() {
     this.lock = new ReentrantReadWriteLock();
     this.extractors = new HashSet<>();
     this.deviceToExtractorsCache =
@@ -115,7 +115,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
         // 2. filter matched candidate extractors by measurements
         if (measurements.length == 0) {
-          // `measurements` is empty (only in case of tsfile event). match all extractors.
+          // `measurements` is empty (only in case of tsFile event). match all extractors.
           //
           // case 1: for example, pattern is root.a.b, device is root.a.b.c, measurement can be any.
           // in this case, the extractor can be matched without checking the measurements.
@@ -148,18 +148,12 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
                       continue;
                     }
 
-                    // for example, pattern is root.a.b.c, device is root.a.b and measurement is c
-                    // in this case, the extractor can be matched. other cases are not matched.
+                    // for example, pattern is root.a.b.c, device is root.a.b and measurement is c1
+                    // in this case, the extractor can be matched.
                     // please note that there should be a . between device and measurement.
-                    if (
-                    // low cost check comes first
-                    pattern.length() == device.length() + measurement.length() + 1
-                        // high cost check comes later
-                        && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
+                    if ((device + TsFileConstant.PATH_SEPARATOR + measurement)
+                        .startsWith(pattern)) {
                       matchedExtractors.add(extractor);
-                      // there would be no more matched extractors because the measurements are
-                      // unique
-                      break;
                     }
                   }
                 }
@@ -182,15 +176,13 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
     for (PipeRealtimeDataRegionExtractor extractor : extractors) {
       String pattern = extractor.getPattern();
-      if (
-      // for example, pattern is root.a.b and device is root.a.b.c
-      // in this case, the extractor can be matched without checking the measurements
-      (pattern.length() <= device.length() && device.startsWith(pattern))
-          // for example, pattern is root.a.b.c and device is root.a.b
-          // in this case, the extractor can be selected as candidate, but the measurements should
-          // be checked further
-          || (pattern.length() > device.length() && pattern.startsWith(device))) {
+      // If device is root.test.a1 and pattern is root.test.a, match.
+      // else if device is root.test and pattern is root.test.b, match first and investigate the
+      // tsFile later.
+      if (device.startsWith(pattern)
+          || pattern.startsWith(device + TsFileConstant.PATH_SEPARATOR)) {
         filteredExtractors.add(extractor);
+        extractor.updatePatternGranularity(device);
       }
     }
 

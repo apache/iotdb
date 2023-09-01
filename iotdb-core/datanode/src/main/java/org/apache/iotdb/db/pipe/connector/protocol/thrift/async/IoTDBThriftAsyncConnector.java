@@ -150,11 +150,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
-      transfer((tabletInsertionEvent).parseEventWithPattern());
-      return;
-    }
-
     final long requestCommitId = commitIdGenerator.incrementAndGet();
 
     if (isTabletBatchModeEnabled) {
@@ -283,13 +278,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       LOGGER.warn(
           "IoTDBThriftAsyncConnector only support PipeTsFileInsertionEvent. Current event: {}.",
           tsFileInsertionEvent);
-      return;
-    }
-
-    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
-      for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
-        transfer(event);
-      }
       return;
     }
 
