@@ -48,7 +48,7 @@ public class JSONPayloadFormatter implements PayloadFormatter {
   private static final Gson GSON = new GsonBuilder().create();
 
   @Override
-  public List<Message> format(String topic, ByteBuf payload) {
+  public List<Message> format(ByteBuf payload) {
     if (payload == null) {
       return new ArrayList<>();
     }

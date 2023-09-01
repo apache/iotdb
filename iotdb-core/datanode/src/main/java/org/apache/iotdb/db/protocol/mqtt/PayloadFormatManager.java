@@ -79,7 +79,8 @@ public class PayloadFormatManager {
 
   private static void buildMqttPluginMap() throws IOException {
     // Initialize the list with all built-in PayloadFormatters.
-    ServiceLoader<PayloadFormatter> payloadFormatters = ServiceLoader.load(PayloadFormatter.class);
+    ServiceLoader<PayloadFormatter> payloadFormatters =
+        ServiceLoader.load(PayloadFormatter.class, PayloadFormatManager.class.getClassLoader());
     for (PayloadFormatter formatter : payloadFormatters) {
       if (formatter == null) {
         logger.error("PayloadFormatManager(), formatter is null.");

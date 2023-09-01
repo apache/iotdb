@@ -19,7 +19,7 @@
 package org.apache.iotdb.connector.sparkplugb;
 
 import org.apache.iotdb.db.protocol.mqtt.Message;
-import org.apache.iotdb.db.protocol.mqtt.PayloadFormatter;
+import org.apache.iotdb.db.protocol.mqtt.PayloadFormatterV2;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -35,16 +35,16 @@ import java.util.TreeMap;
  * The SparkplugBPayloadFormatter is a special form of JSONPayloadFormatter that is able to process
  * messages in the SparkplugB format.
  */
-public class SparkplugBPayloadFormatter implements PayloadFormatter {
-  private static final String JSON_KEY_TIMESTAMP = "timestamp";
-  private static final String JSON_KEY_MEASUREMENTS = "metrics";
-  private static final String JSON_KEY_NAME = "name";
-  private static final String JSON_KEY_DATATYPE = "dataType";
-  private static final String JSON_KEY_VALUE = "value";
+public class SparkplugBPayloadFormatter implements PayloadFormatterV2 {
 
   @Override
   public String getName() {
     return "spB1.0";
+  }
+
+  @Override
+  public List<Message> format(ByteBuf rawPayload) {
+    throw new RuntimeException("SparkplugBPayloadFormatter needs V2 API");
   }
 
   @Override
@@ -53,7 +53,9 @@ public class SparkplugBPayloadFormatter implements PayloadFormatter {
       return new ArrayList<>();
     }
     try {
-      SparkplugBProto.Payload payload = SparkplugBProto.Payload.parseFrom(rawPayload.array());
+      byte[] bytes = new byte[rawPayload.readableBytes()];
+      rawPayload.duplicate().readBytes(bytes);
+      SparkplugBProto.Payload payload = SparkplugBProto.Payload.parseFrom(bytes);
       return processMessage(topic, payload);
     } catch (InvalidProtocolBufferException e) {
       throw new RuntimeException("Error parsing protobuf payload", e);
@@ -64,7 +66,10 @@ public class SparkplugBPayloadFormatter implements PayloadFormatter {
     Map<Long, Message> messages = new TreeMap<>();
     // Replace the prefix of "spB1.0" and replace that with "root" and replace all
     // segments of the MQTT topic path with escaped versions for IoTDB
-    String deviceId = "root.`" + topic.substring(topic.indexOf("/") + 1).replace("/", "`.`") + "`";
+    String deviceId =
+        "root.`"
+            + topic.substring(topic.indexOf("/") + 1).replace("/", "`.`").replace(" ", "_")
+            + "`";
     long messageTimestamp = payload.getTimestamp();
     for (SparkplugBProto.Payload.Metric metric : payload.getMetricsList()) {
       // Get the timestamp for the current measurement, if none exists, use that of the
@@ -76,7 +81,7 @@ public class SparkplugBPayloadFormatter implements PayloadFormatter {
       String measurementName = metric.getName();
       int sparkplugBDataType = metric.getDatatype();
       TSDataType measurementDataType = getTSDataTypeForSparkplugBDataType(sparkplugBDataType);
-      String measurementValue = metric.getStringValue();
+      String measurementValue = getStringValueForMetric(metric, sparkplugBDataType);
 
       // Group together measurements of the same time.
       if (!messages.containsKey(measurementTimestamp)) {
@@ -109,14 +114,11 @@ public class SparkplugBPayloadFormatter implements PayloadFormatter {
     }
     switch (dataType) {
       case Bytes:
-      case DataSet:
-      case DateTime:
       case File:
       case String:
       case Text:
       case Unknown:
       case UUID:
-      case Template:
         return TSDataType.TEXT;
       case Int8:
       case Int16:
@@ -127,6 +129,7 @@ public class SparkplugBPayloadFormatter implements PayloadFormatter {
       case Int64:
       case UInt32:
       case UInt64:
+      case DateTime:
         return TSDataType.INT64;
       case Float:
         return TSDataType.FLOAT;
@@ -134,7 +137,61 @@ public class SparkplugBPayloadFormatter implements PayloadFormatter {
         return TSDataType.DOUBLE;
       case Boolean:
         return TSDataType.BOOLEAN;
+      case DataSet:
+        // TODO: This is a pretty complex datatype ...
+      case Template:
+        // TODO: This is a pretty complex datatype ...
     }
     return TSDataType.TEXT;
+  }
+
+  protected String getStringValueForMetric(
+      SparkplugBProto.Payload.Metric metric, int sparkplugBDataType) {
+    SparkplugBProto.DataType dataType = SparkplugBProto.DataType.forNumber(sparkplugBDataType);
+    switch (dataType) {
+      case Bytes:
+        throw new RuntimeException("No idea how to read this");
+      case File:
+        throw new RuntimeException("No idea how to read this");
+      case String:
+        return metric.getStringValue();
+      case Text:
+        return metric.getStringValue();
+      case Unknown:
+        throw new RuntimeException("No idea how to read this");
+      case UUID:
+        return metric.getStringValue();
+      case Int8:
+        return Integer.toString(metric.getIntValue());
+      case Int16:
+        return Integer.toString(metric.getIntValue());
+      case Int32:
+        return Integer.toString(metric.getIntValue());
+      case UInt8:
+        return Integer.toString(metric.getIntValue());
+      case UInt16:
+        return Integer.toString(metric.getIntValue());
+      case Int64:
+        return Long.toString(metric.getLongValue());
+      case UInt32:
+        return Long.toString(metric.getLongValue());
+      case UInt64:
+        return Long.toString(metric.getLongValue());
+      case DateTime:
+        return Long.toString(metric.getLongValue());
+      case Float:
+        return Float.toString(metric.getFloatValue());
+      case Double:
+        return Double.toString(metric.getDoubleValue());
+      case Boolean:
+        return Boolean.toString(metric.getBooleanValue());
+      case DataSet:
+        // TODO: This is a pretty complex datatype ...
+        return "To be implemented";
+      case Template:
+        // TODO: This is a pretty complex datatype ...
+        return "To be implemented";
+    }
+    throw new RuntimeException("No idea how to read this");
   }
 }

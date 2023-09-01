@@ -65,10 +65,13 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
 
+  private final boolean useV2Api;
+
   public MPPPublishHandler(IoTDBConfig config) {
-    this.payloadFormat = PayloadFormatManager.getPayloadFormat(config.getMqttPayloadFormatter());
+    payloadFormat = PayloadFormatManager.getPayloadFormat(config.getMqttPayloadFormatter());
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
+    useV2Api = (payloadFormat instanceof PayloadFormatterV2);
   }
 
   @Override
@@ -119,7 +122,10 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         topic,
         payload);
 
-    List<Message> events = payloadFormat.format(topic, payload);
+    List<Message> events =
+        (useV2Api)
+            ? ((PayloadFormatterV2) payloadFormat).format(topic, payload)
+            : payloadFormat.format(payload);
     if (events == null) {
       return;
     }

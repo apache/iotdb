@@ -32,7 +32,7 @@ import java.util.List;
 public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
 
   @Override
-  public List<Message> format(String topic, ByteBuf payload) {
+  public List<Message> format(ByteBuf payload) {
     // Suppose the payload is a json format
     if (payload == null) {
       return Collections.emptyList();
