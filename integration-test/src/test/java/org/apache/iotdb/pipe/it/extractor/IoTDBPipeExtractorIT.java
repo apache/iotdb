@@ -527,13 +527,15 @@ public class IoTDBPipeExtractorIT {
     int receiverPort = receiverDataNode.getPort();
 
     try (SyncConfigNodeIServiceClient client =
-                 (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       try (Connection connection = senderEnv.getConnection();
-           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1 (time, at1)" +
-                " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)");
-        statement.execute("insert into root.db.d2 (time, at1)" +
-                " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)");
+          Statement statement = connection.createStatement()) {
+        statement.execute(
+            "insert into root.db.d1 (time, at1)"
+                + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)");
+        statement.execute(
+            "insert into root.db.d2 (time, at1)"
+                + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)");
         statement.execute("flush");
       } catch (SQLException e) {
         e.printStackTrace();
@@ -555,23 +557,24 @@ public class IoTDBPipeExtractorIT {
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
       TSStatus status =
-              client.createPipe(
-                      new TCreatePipeReq("p1", connectorAttributes)
-                              .setExtractorAttributes(extractorAttributes)
-                              .setProcessorAttributes(processorAttributes));
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       try (Connection connection = receiverEnv.getConnection();
-           Statement statement = connection.createStatement()) {
+          Statement statement = connection.createStatement()) {
         await()
-                .atMost(600, TimeUnit.SECONDS)
-                .untilAsserted(
-                        () ->
-                                TestUtils.assertResultSetEqual(
-                                        statement.executeQuery("select count(*) from root.**"),
-                                        "count(root.db.d1.at1),",
-                                        Collections.singleton("3,")));
+            .atMost(600, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    TestUtils.assertResultSetEqual(
+                        statement.executeQuery("select count(*) from root.**"),
+                        "count(root.db.d1.at1),",
+                        Collections.singleton("3,")));
       } catch (Exception e) {
         e.printStackTrace();
         fail(e.getMessage());
@@ -579,23 +582,24 @@ public class IoTDBPipeExtractorIT {
 
       extractorAttributes.remove("extractor.pattern");
       status =
-              client.createPipe(
-                      new TCreatePipeReq("p2", connectorAttributes)
-                              .setExtractorAttributes(extractorAttributes)
-                              .setProcessorAttributes(processorAttributes));
+          client.createPipe(
+              new TCreatePipeReq("p2", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
       try (Connection connection = receiverEnv.getConnection();
-           Statement statement = connection.createStatement()) {
+          Statement statement = connection.createStatement()) {
         await()
-                .atMost(600, TimeUnit.SECONDS)
-                .untilAsserted(
-                        () ->
-                                TestUtils.assertResultSetEqual(
-                                        statement.executeQuery("select count(*) from root.**"),
-                                        "count(root.db.d1.at1),count(root.db.d2.at1),",
-                                        Collections.singleton("3,3,")));
+            .atMost(600, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    TestUtils.assertResultSetEqual(
+                        statement.executeQuery("select count(*) from root.**"),
+                        "count(root.db.d1.at1),count(root.db.d2.at1),",
+                        Collections.singleton("3,3,")));
       } catch (Exception e) {
         e.printStackTrace();
         fail(e.getMessage());
