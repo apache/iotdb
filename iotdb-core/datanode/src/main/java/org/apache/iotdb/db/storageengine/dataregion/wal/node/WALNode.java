@@ -286,8 +286,7 @@ public class WALNode implements IWALNode {
         // decide whether to snapshot or flush based on the effective info ration and throttle
         // threshold
         if (trySnapshotOrFlushMemTable()
-            && safelyDeletedSearchIndex != DEFAULT_SAFELY_DELETED_SEARCH_INDEX
-            && !WALManager.getInstance().shouldThrottle()) {
+            && safelyDeletedSearchIndex != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
           return;
         }
         recursionTime++;
