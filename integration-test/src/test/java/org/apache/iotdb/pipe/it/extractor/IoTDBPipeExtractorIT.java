@@ -520,7 +520,7 @@ public class IoTDBPipeExtractorIT {
   }
 
   @Test
-  public void testStartTimeAndEndTimeWorking() throws Exception {
+  public void testStartTimeAndEndTimeWorkingWithOrWithoutPattern() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     String receiverIp = receiverDataNode.getIp();
@@ -532,6 +532,8 @@ public class IoTDBPipeExtractorIT {
            Statement statement = connection.createStatement()) {
         statement.execute("insert into root.db.d1 (time, at1)" +
                 " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)");
+        statement.execute("insert into root.db.d2 (time, at1)" +
+                " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)");
         statement.execute("flush");
       } catch (SQLException e) {
         e.printStackTrace();
@@ -542,6 +544,7 @@ public class IoTDBPipeExtractorIT {
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
+      extractorAttributes.put("extractor.pattern", "root.db.d1");
       extractorAttributes.put("extractor.history.enable", "true");
       extractorAttributes.put("extractor.history.start-time", "1970-01-01T08:00:02+08:00");
       extractorAttributes.put("extractor.history.end-time", "1970-01-01T08:00:04+08:00");
@@ -569,6 +572,30 @@ public class IoTDBPipeExtractorIT {
                                         statement.executeQuery("select count(*) from root.**"),
                                         "count(root.db.d1.at1),",
                                         Collections.singleton("3,")));
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      extractorAttributes.remove("extractor.pattern");
+      status =
+              client.createPipe(
+                      new TCreatePipeReq("p2", connectorAttributes)
+                              .setExtractorAttributes(extractorAttributes)
+                              .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
+
+      try (Connection connection = receiverEnv.getConnection();
+           Statement statement = connection.createStatement()) {
+        await()
+                .atMost(600, TimeUnit.SECONDS)
+                .untilAsserted(
+                        () ->
+                                TestUtils.assertResultSetEqual(
+                                        statement.executeQuery("select count(*) from root.**"),
+                                        "count(root.db.d1.at1),count(root.db.d2.at1),",
+                                        Collections.singleton("3,3,")));
       } catch (Exception e) {
         e.printStackTrace();
         fail(e.getMessage());
