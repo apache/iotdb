@@ -253,7 +253,7 @@ public class IoTDBSystemPermissionIT {
         "1603: The scheme of URI is not set, please specify the scheme of URI.",
         "test",
         "test123");
-    executeQuery("drop pipePlugin TestProcessor", "test", "test123");
+    executeNonQuery("drop pipePlugin TestProcessor", "test", "test123");
     executeQuery("show pipe plugins", "test", "test123");
   }
 
@@ -321,9 +321,9 @@ public class IoTDBSystemPermissionIT {
         "803: Only the admin user can perform this operation",
         "test",
         "test123");
-    assertNonQueryTestFail(
+    assertTestFail(
         "show version", "803: Only the admin user can perform this operation", "test", "test123");
-    assertNonQueryTestFail(
+    assertTestFail(
         "show regions", "803: Only the admin user can perform this operation", "test", "test123");
   }
 }
