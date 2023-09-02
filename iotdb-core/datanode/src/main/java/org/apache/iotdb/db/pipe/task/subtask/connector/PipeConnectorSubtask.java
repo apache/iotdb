@@ -112,7 +112,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
         outputPipeConnector.transfer(
             ((EnrichedEvent) event).shouldParsePatternOrTime()
                 ? ((TabletInsertionEvent) event).parseEventWithPattern()
-                : event);
+                : (TabletInsertionEvent) event);
       } else if (event instanceof TsFileInsertionEvent) {
         // Parse the pattern for TsFileInsertionEvent at the sender side if
         // there are pruning needed in tsFile and the parsed data amount is

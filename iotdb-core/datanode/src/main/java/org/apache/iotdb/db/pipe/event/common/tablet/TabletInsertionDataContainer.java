@@ -288,33 +288,18 @@ public class TabletInsertionDataContainer {
       Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
     final int originColumnSize = originMeasurementList.length;
 
-    // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
-    // in this case, all data can be matched without checking the measurements
-    if (pattern == null || pattern.length() <= deviceId.length() && deviceId.startsWith(pattern)) {
-      for (int i = 0; i < originColumnSize; i++) {
-        originColumnIndex2FilteredColumnIndexMapperList[i] = i;
+    int filteredCount = 0;
+
+    for (int i = 0; i < originColumnSize; i++) {
+      final String measurement = originMeasurementList[i];
+
+      // ignore null measurement for partial insert
+      if (measurement == null) {
+        continue;
       }
-    }
 
-    // case 2: for example, pattern is root.a.b.c and device is root.a.b
-    // in this case, we need to check the full path
-    else if (pattern.length() > deviceId.length() && pattern.startsWith(deviceId)) {
-      int filteredCount = 0;
-
-      for (int i = 0; i < originColumnSize; i++) {
-        final String measurement = originMeasurementList[i];
-
-        // ignore null measurement for partial insert
-        if (measurement == null) {
-          continue;
-        }
-
-        // low cost check comes first
-        if (pattern.length() == deviceId.length() + measurement.length() + 1
-            // high cost check comes later
-            && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
-          originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
-        }
+      if ((deviceId + TsFileConstant.PATH_SEPARATOR + measurement).startsWith(pattern)) {
+        originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
       }
     }
   }
