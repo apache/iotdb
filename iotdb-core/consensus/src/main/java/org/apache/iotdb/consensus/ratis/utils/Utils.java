@@ -289,5 +289,8 @@ public class Utils {
             : RaftServerConfigKeys.Read.Option.LINEARIZABLE;
     RaftServerConfigKeys.Read.setOption(properties, option);
     RaftServerConfigKeys.Read.setTimeout(properties, config.getRead().getReadTimeout());
+
+    RaftServerConfigKeys.setSleepDeviationThreshold(
+        properties, config.getUtils().getSleepDeviationThresholdMs());
   }
 }

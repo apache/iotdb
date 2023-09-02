@@ -29,8 +29,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 public class TsFileEpochManager {
@@ -39,7 +39,7 @@ public class TsFileEpochManager {
 
   private static final String[] EMPTY_MEASUREMENT_ARRAY = new String[0];
 
-  private final Map<String, TsFileEpoch> filePath2Epoch = new HashMap<>();
+  private final ConcurrentMap<String, TsFileEpoch> filePath2Epoch = new ConcurrentHashMap<>();
 
   public PipeRealtimeEvent bindPipeTsFileInsertionEvent(
       PipeTsFileInsertionEvent event, TsFileResource resource) {

@@ -51,7 +51,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -389,8 +388,6 @@ public interface IManager {
    * @return TConfigNodeRegisterResp
    */
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req);
-
-  TSStatus restartConfigNode(TConfigNodeRestartReq req);
 
   /**
    * Create peer in new node to build consensus group.
