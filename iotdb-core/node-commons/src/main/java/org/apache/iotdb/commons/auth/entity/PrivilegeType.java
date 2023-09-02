@@ -54,6 +54,10 @@ public enum PrivilegeType {
     return isPathRelevant;
   }
 
+  public static boolean isPathRelevant(int ordinal) {
+    return ordinal < 4;
+  }
+
   public static int getSysPriCount() {
     int size = 0;
     for (PrivilegeType item : PrivilegeType.values()) {

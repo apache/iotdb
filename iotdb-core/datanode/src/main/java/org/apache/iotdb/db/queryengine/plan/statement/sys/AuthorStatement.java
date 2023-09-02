@@ -218,12 +218,9 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   public TSStatus checkPermissionBeforeProcess(String userName) {
     switch (authorType) {
       case CREATE_USER:
-        TSStatus status =
-            AuthorityChecker.getTSStatus(
-                !AuthorityChecker.SUPER_USER.equals(this.userName),
-                "Cannot create user has same name with admin user");
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return status;
+        if (AuthorityChecker.SUPER_USER.equals(this.userName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot create user has same name with admin user");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -231,15 +228,28 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
             PrivilegeType.MANAGE_USER);
+
       case UPDATE_USER:
+        // users can change passwords of themselves
         if (AuthorityChecker.SUPER_USER.equals(userName) || this.userName.equals(userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
             PrivilegeType.MANAGE_USER);
-      case LIST_USER:
+
       case DROP_USER:
+        if (AuthorityChecker.SUPER_USER.equals(this.userName) || this.userName.equals(userName)) {
+          return AuthorityChecker.getTSStatus(false, "Cannot drop admin user or yourself");
+        }
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        return AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            PrivilegeType.MANAGE_USER);
+
+      case LIST_USER:
       case LIST_USER_PRIVILEGE:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -261,15 +271,25 @@ public class AuthorStatement extends Statement implements IConfigStatement {
             AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE.ordinal()),
             PrivilegeType.MANAGE_ROLE);
 
-      case GRANT_USER:
       case REVOKE_USER:
+        if (AuthorityChecker.SUPER_USER.equals(this.userName)) {
+          return AuthorityChecker.getTSStatus(false, "Cannot revoke privileges of admin user");
+        }
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        return AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkGrantOption(userName, privilegeList, nodeNameList),
+            "Has no permission to " + authorType);
+
+      case GRANT_USER:
       case GRANT_ROLE:
       case REVOKE_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkGrantOption(userName, privilegeList, nodeNameList, authorType),
+            AuthorityChecker.checkGrantOption(userName, privilegeList, nodeNameList),
             "Has no permission to " + authorType);
       default:
         throw new IllegalArgumentException("Unknown authorType: " + authorType);

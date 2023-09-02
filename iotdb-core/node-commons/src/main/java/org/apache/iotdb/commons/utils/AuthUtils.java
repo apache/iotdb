@@ -150,6 +150,15 @@ public class AuthUtils {
     }
   }
 
+  public static void validateSystemPermissionPath(String path) throws AuthException {
+    if (!path.equalsIgnoreCase("root.**")) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
+          String.format(
+              "Illegal seriesPath %s, seriesPath of system permission must be 'root.**'", path));
+    }
+  }
+
   public static void validatePatternPath(PartialPath path) throws AuthException {
     if (!path.hasWildcard()) {
       return;
@@ -182,36 +191,28 @@ public class AuthUtils {
   public static void validatePrivilege(PartialPath path, int privilegeId) throws AuthException {
     validatePrivilege(privilegeId);
     PrivilegeType type = PrivilegeType.values()[privilegeId];
-    if (path != null) {
-      validatePath(path);
-      switch (type) {
-        case READ_SCHEMA:
-        case WRITE_SCHEMA:
-        case READ_DATA:
-        case WRITE_DATA:
-          return;
-        default:
-          throw new AuthException(
-              TSStatusCode.UNKNOWN_AUTH_PRIVILEGE,
-              String.format("Illegal privilege %s on seriesPath", type));
-      }
-    } else {
-      switch (type) {
-        case MANAGE_DATABASE:
-        case MANAGE_USER:
-        case MANAGE_ROLE:
-        case USE_TRIGGER:
-        case USE_CQ:
-        case USE_PIPE:
-        case USE_UDF:
-        case EXTEND_TEMPLATE:
-        case MAINTAIN:
-        case AUDIT:
-          return;
-        default:
-          throw new AuthException(
-              TSStatusCode.UNKNOWN_AUTH_PRIVILEGE, String.format("Illegal privilege %s", type));
-      }
+    switch (type) {
+      case READ_SCHEMA:
+      case WRITE_SCHEMA:
+      case READ_DATA:
+      case WRITE_DATA:
+        validatePath(path);
+        return;
+      case MANAGE_DATABASE:
+      case MANAGE_USER:
+      case MANAGE_ROLE:
+      case USE_TRIGGER:
+      case USE_CQ:
+      case USE_PIPE:
+      case USE_UDF:
+      case EXTEND_TEMPLATE:
+      case MAINTAIN:
+      case AUDIT:
+        validateSystemPermissionPath(path.getFullPath());
+        return;
+      default:
+        throw new AuthException(
+            TSStatusCode.UNKNOWN_AUTH_PRIVILEGE, String.format("Illegal privilege %s", type));
     }
   }
 
