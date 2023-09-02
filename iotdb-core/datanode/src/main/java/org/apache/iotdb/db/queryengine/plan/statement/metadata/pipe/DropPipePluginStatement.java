@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.statement.metadata;
+package org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -32,26 +33,33 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import java.util.Collections;
 import java.util.List;
 
-public class ShowPipePluginsStatement extends ShowStatement implements IConfigStatement {
+public class DropPipePluginStatement extends Statement implements IConfigStatement {
 
-  public ShowPipePluginsStatement() {
+  private final String pluginName;
+
+  public DropPipePluginStatement(String pluginName) {
     super();
-    statementType = StatementType.SHOW_PIPEPLUGINS;
+    statementType = StatementType.DROP_PIPEPLUGIN;
+    this.pluginName = pluginName;
   }
 
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowPipePlugins(this, context);
+  public String getPluginName() {
+    return pluginName;
   }
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.READ;
+    return QueryType.WRITE;
   }
 
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitDropPipePlugin(this, context);
   }
 
   @Override
