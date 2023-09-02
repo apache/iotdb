@@ -289,6 +289,7 @@ public class TabletInsertionDataContainer {
     final int originColumnSize = originMeasurementList.length;
 
     int filteredCount = 0;
+    final String measurementPattern = pattern.replace(deviceId + TsFileConstant.PATH_SEPARATOR, "");
 
     for (int i = 0; i < originColumnSize; i++) {
       final String measurement = originMeasurementList[i];
@@ -298,7 +299,7 @@ public class TabletInsertionDataContainer {
         continue;
       }
 
-      if ((deviceId + TsFileConstant.PATH_SEPARATOR + measurement).startsWith(pattern)) {
+      if (measurement.startsWith(measurementPattern)) {
         originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
       }
     }

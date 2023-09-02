@@ -142,6 +142,9 @@ public class PrefixPatternMatcher implements PipeDataRegionMatcher {
                 // case 2: for example, pattern is root.a.b.c and device is root.a.b
                 // in this case, we need to check the full path
                 else {
+                  final String measurementPattern =
+                      pattern.replace(device + TsFileConstant.PATH_SEPARATOR, "");
+
                   for (final String measurement : measurements) {
                     // ignore null measurement for partial insert
                     if (measurement == null) {
@@ -151,8 +154,7 @@ public class PrefixPatternMatcher implements PipeDataRegionMatcher {
                     // for example, pattern is root.a.b.c, device is root.a.b and measurement is c1
                     // in this case, the extractor can be matched.
                     // please note that there should be a . between device and measurement.
-                    if ((device + TsFileConstant.PATH_SEPARATOR + measurement)
-                        .startsWith(pattern)) {
+                    if (measurement.startsWith(measurementPattern)) {
                       matchedExtractors.add(extractor);
                     }
                   }

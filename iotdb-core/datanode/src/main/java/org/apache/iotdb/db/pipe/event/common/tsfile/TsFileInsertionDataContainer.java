@@ -122,12 +122,11 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       // in this case, we need to check the full path
       else if (pattern.length() > deviceId.length() && pattern.startsWith(deviceId)) {
         final List<String> filteredMeasurements = new ArrayList<>();
+        final String measurementPattern =
+            pattern.replace(deviceId + TsFileConstant.PATH_SEPARATOR, "");
 
         for (final String measurement : entry.getValue()) {
-          // low cost check comes first
-          if (pattern.length() == deviceId.length() + measurement.length() + 1
-              // high cost check comes later
-              && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
+          if (measurement.startsWith(measurementPattern)) {
             filteredMeasurements.add(measurement);
           }
         }
