@@ -108,7 +108,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -1052,28 +1051,6 @@ public class ConfigManager implements IManager {
     }
 
     return new TConfigNodeRegisterResp().setStatus(status).setConfigNodeId(ERROR_STATUS_NODE_ID);
-  }
-
-  @Override
-  public TSStatus restartConfigNode(TConfigNodeRestartReq req) {
-    TSStatus status = confirmLeader();
-    // Notice: The Seed-ConfigNode must also have the privilege to do Node restart check.
-    // Otherwise, the IoTDB-cluster will not have the ability to restart from scratch.
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || ConfigNodeDescriptor.getInstance().isSeedConfigNode()
-        || SystemPropertiesUtils.isSeedConfigNode()) {
-      status =
-          ClusterNodeStartUtils.confirmNodeRestart(
-              NodeType.ConfigNode,
-              req.getClusterName(),
-              req.getConfigNodeLocation().getConfigNodeId(),
-              req.getConfigNodeLocation(),
-              this);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
-      }
-    }
-    return status;
   }
 
   public TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req) {

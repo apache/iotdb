@@ -140,7 +140,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   public Tablet convertToTablet() {
-    if (!shouldParsePattern()) {
+    if (!shouldParsePatternOrTime()) {
       return tablet;
     }
 

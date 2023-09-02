@@ -42,11 +42,12 @@ class IoTDBContainer(DockerContainer):
             self.get_container_host_ip(), self.get_exposed_port(6667), "root", "root"
         )
         session.open(False)
-        with session.execute_statement(
-                "SHOW CLUSTER"
-        ) as session_data_set:
+        with session.execute_statement("SHOW CLUSTER") as session_data_set:
             while session_data_set.has_next():
-                if session_data_set.next().get_fields()[2].get_string_value() != "Running":
+                if (
+                    session_data_set.next().get_fields()[2].get_string_value()
+                    != "Running"
+                ):
                     raise ContainerStartException("IoTDB is not started")
         session.close()
 
