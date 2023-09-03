@@ -876,7 +876,7 @@ revokeRole
 
 // Revoke Role From User
 revokeRoleFromUser
-    : REVOKE roleName=identifier FROM userName=identifier
+    : REVOKE ROLE roleName=identifier FROM userName=identifier
     ;
 
 // Drop User
@@ -901,12 +901,12 @@ listRole
 
 // List Privileges of Users On Specific Path
 listPrivilegesUser
-    : LIST PRIVILEGES USER userName=usernameWithRoot (ON prefixPath (COMMA prefixPath)*)?
+    : LIST PRIVILEGES OF USER userName=usernameWithRoot
     ;
 
 // List Privileges of Roles On Specific Path
 listPrivilegesRole
-    : LIST PRIVILEGES ROLE roleName=identifier (ON prefixPath (COMMA prefixPath)*)?
+    : LIST PRIVILEGES OF ROLE roleName=identifier
     ;
 
 privileges

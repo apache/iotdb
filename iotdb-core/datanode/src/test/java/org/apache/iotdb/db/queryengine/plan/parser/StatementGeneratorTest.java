@@ -90,11 +90,18 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.schemaengine.template.TemplateQueryType.SHOW_MEASUREMENTS;
 import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.SNAPPY;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 
 public class StatementGeneratorTest {
 
@@ -512,6 +519,11 @@ public class StatementGeneratorTest {
     assertEquals(StatementType.GRANT_USER_ROLE, roleDcl.getType());
     assertEquals("role1", roleDcl.getRoleName());
     assertEquals("user1", roleDcl.getUserName());
+
+    roleDcl = createAuthDclStmt("revoke role `role1` from `user1`;");
+    assertEquals(StatementType.GRANT_USER_ROLE, roleDcl.getType());
+    assertEquals("role1", roleDcl.getRoleName());
+    assertEquals("user1", roleDcl.getUserName());
   }
 
   @FunctionalInterface
@@ -519,10 +531,10 @@ public class StatementGeneratorTest {
     void checkParser(String privilege, String name, boolean isuser, String path, boolean grantOpt);
   }
 
+  /** This test will check grant/revoke simple privileg on/from paths. */
   @Test
   public void testNormalGrantRevoke() {
-    // 1. grant/revoke user/role privilege with/without grant option.
-    grantRevokeCheck test =
+    grantRevokeCheck testGrant =
         (privilege, name, isuser, path, grantOpt) -> {
           String sql = "grant %s on %s to %s %s %s ;";
           sql =
@@ -545,34 +557,229 @@ public class StatementGeneratorTest {
 
     String name = "test1";
     String path = "root.**";
+    String pathErr = "root.t1.**";
+    String pathsErr = "root.**, root.t1.**";
 
+    // 1. check simple privilege grant to user/role with/without grant option.
     for (PrivilegeType privilege : PrivilegeType.values()) {
-      test.checkParser(privilege.toString(), name, true, path, true);
-      test.checkParser(privilege.toString(), name, true, path, false);
-      test.checkParser(privilege.toString(), name, false, path, true);
-      test.checkParser(privilege.toString(), name, false, path, false);
+      testGrant.checkParser(privilege.toString(), name, true, path, true);
+      testGrant.checkParser(privilege.toString(), name, true, path, false);
+      testGrant.checkParser(privilege.toString(), name, false, path, true);
+      testGrant.checkParser(privilege.toString(), name, false, path, false);
+      // 2. if grant stmt has system privilege, path should be root.**
+      if (!privilege.isPathRelevant()) {
+        assertThrows(
+            SemanticException.class,
+            () ->
+                createAuthDclStmt(
+                    String.format("GRANT %s on %s to USER `user1`;", privilege, pathErr)));
+        assertThrows(
+            SemanticException.class,
+            () ->
+                createAuthDclStmt(
+                    String.format("GRANT %s on %s to USER `user1`;", privilege, pathsErr)));
+      }
+    }
+
+    grantRevokeCheck testRevoke =
+        (privilege, username, isuser, targtePath, grantOpt) -> {
+          String sql = "revoke %s on %s from %s %s";
+          sql = String.format(sql, privilege, targtePath, isuser ? "USER" : "ROLE", username);
+          AuthorStatement aclStmt = createAuthDclStmt(sql);
+          assertEquals(
+              isuser ? StatementType.REVOKE_USER_PRIVILEGE : StatementType.REVOKE_ROLE_PRIVILEGE,
+              aclStmt.getType());
+          assertEquals(path, aclStmt.getPaths().get(0).toString());
+          assertEquals(username, isuser ? aclStmt.getUserName() : aclStmt.getRoleName());
+          assertFalse(aclStmt.getGrantOpt());
+          assertEquals(privilege, aclStmt.getPrivilegeList()[0]);
+        };
+
+    // 3. check simple privilege revoke from user/role on simple path
+    for (PrivilegeType type : PrivilegeType.values()) {
+      testRevoke.checkParser(type.toString(), name, true, path, false);
+      testRevoke.checkParser(type.toString(), name, false, path, false);
+
+      // 4. check system privilege revoke from user on wrong paths.
+      if (!type.isPathRelevant()) {
+        assertThrows(
+            SemanticException.class,
+            () ->
+                createAuthDclStmt(
+                    String.format("revoke %s on %s FROM USER `user1`;", type, pathErr)));
+        assertThrows(
+            SemanticException.class,
+            () ->
+                createAuthDclStmt(
+                    String.format("revoke %s on %s FROM USER `user1`;", type, pathsErr)));
+      }
     }
   }
 
   @Test
   public void testComplexGrantRevoke() {
     // 1. test complex privilege on single path :"root.**"
-    String sql = "grant %s on root.** to user `user1` %s;";
     Set<String> allPriv = new HashSet<>();
     for (PrivilegeType type : PrivilegeType.values()) {
       allPriv.add(type.toString());
     }
 
     for (PrivilegeType type : PrivilegeType.values()) {
-      sql = String.format(sql, "ALL," + type.toString(), "with grant option");
-      AuthorStatement stmt = createAuthDclStmt(sql);
-      assertEquals(allPriv, new HashSet<>(Arrays.asList(stmt.getPrivilegeList())));
-      Assert.assertTrue(stmt.getGrantOpt());
+      {
+        AuthorStatement stmt =
+            createAuthDclStmt(
+                String.format("GRANT ALL,%s on root.** to USER `user1` with grant option", type));
+        assertEquals(allPriv, new HashSet<>(Arrays.asList(stmt.getPrivilegeList())));
+        Assert.assertTrue(stmt.getGrantOpt());
+        assertEquals(StatementType.GRANT_USER_PRIVILEGE, stmt.getType());
+      }
+      {
+        AuthorStatement stmt =
+            createAuthDclStmt(String.format("REVOKE ALL,%s on root.** from USER `user1`;", type));
+        assertEquals(allPriv, new HashSet<>(Arrays.asList(stmt.getPrivilegeList())));
+        assertEquals(StatementType.REVOKE_USER_PRIVILEGE, stmt.getType());
+      }
+      {
+        AuthorStatement stmt =
+            createAuthDclStmt(String.format("GRANT ALL,%s on root.** to ROLE `role1`;", type));
+        assertEquals(allPriv, new HashSet<>(Arrays.asList(stmt.getPrivilegeList())));
+        assertFalse(stmt.getGrantOpt());
+        assertEquals(StatementType.GRANT_ROLE_PRIVILEGE, stmt.getType());
+      }
     }
+
+    AuthorStatement stmt =
+        createAuthDclStmt("GRANT ALL ON root.** to user `user1` with grant option;");
+    assertEquals(allPriv, new HashSet<>(Arrays.asList(stmt.getPrivilegeList())));
+    Assert.assertTrue(stmt.getGrantOpt());
+    assertEquals(allPriv, new HashSet<>(Arrays.asList(stmt.getPrivilegeList())));
+
+    // 2. complex privilege on a single wrong path
+    assertThrows(
+        SemanticException.class,
+        () -> createAuthDclStmt("grant all on root.t1.** to USER `user1` with grant option;"));
+    assertThrows(
+        SemanticException.class,
+        () -> createAuthDclStmt("grant all on root.t1.** to ROLE `user1` with grant option;"));
+    assertThrows(
+        SemanticException.class,
+        () ->
+            createAuthDclStmt(
+                "grant all,READ_DATA on root.t1.** to USER `user1` with grant option"));
+    assertThrows(
+        SemanticException.class,
+        () ->
+            createAuthDclStmt(
+                "grant all,READ_DATA on root.t1.** to ROLE `user1` with grant option"));
+    assertThrows(
+        SemanticException.class,
+        () -> createAuthDclStmt("grant all on root.t1.** to USER `user1`;"));
+    assertThrows(
+        SemanticException.class,
+        () -> createAuthDclStmt("grant all on root.t1.** to ROLE `user1`;"));
+    assertThrows(
+        SemanticException.class,
+        () -> createAuthDclStmt("grant all,READ_DATA on root.t1.** to USER `user1`;"));
+    assertThrows(
+        SemanticException.class,
+        () -> createAuthDclStmt("grant all,READ_DATA on root.t1.** to ROLE `user1`;"));
+    assertThrows(
+        SemanticException.class,
+        () -> createAuthDclStmt("revoke all on root.t1.** from USER `user1`;"));
+    assertThrows(
+        SemanticException.class,
+        () -> createAuthDclStmt("revoke all on root.t1.** from ROLE `user1`;"));
+    assertThrows(
+        SemanticException.class,
+        () -> createAuthDclStmt("revoke all,READ_DATA on root.t1.** from USER `user1`;"));
+    assertThrows(
+        SemanticException.class,
+        () -> createAuthDclStmt("revoke all,READ_DATA on root.t1.** from ROLE `user1`;"));
+    try {
+      createAuthDclStmt("grant all on root.t1.**, root.** to USER `user1` with grant option;");
+    } catch (SemanticException e) {
+      assertEquals("[ALL] can only be set on path: root.**", e.getMessage());
+    }
+
+    try {
+      createAuthDclStmt("grant MANAGE_ROLE on root.t1.** to USER `user1` with grant option;");
+    } catch (SemanticException e) {
+      assertEquals("[MANAGE_ROLE] can only be set on path: root.**", e.getMessage());
+    }
+
+    // 3. complex privilege on complex paths.
+    assertThrows(
+        SemanticException.class,
+        () ->
+            createAuthDclStmt(
+                "grant all on root.t1.**, root.** to USER `user1` with grant option;"));
+    assertThrows(
+        SemanticException.class,
+        () ->
+            createAuthDclStmt(
+                "grant MANAGE_ROLE on root.t1.**, root.** to USER `user1` with grant option;"));
+
+    // 4.  READ privilege can be parsed successfully.
+    stmt = createAuthDclStmt("GRANT READ ON root.** TO USER `user1`;");
+    Set<String> readSet = new HashSet<>();
+    readSet.add("READ_DATA");
+    readSet.add("READ_SCHEMA");
+    assertEquals(readSet, new HashSet<>(Arrays.asList(stmt.getPrivilegeList())));
+
+    stmt = createAuthDclStmt("GRANT READ,READ_DATA ON root.** TO USER `user1`;");
+    assertEquals(readSet, new HashSet<>(Arrays.asList(stmt.getPrivilegeList())));
+
+    stmt = createAuthDclStmt("GRANT READ,READ_DATA ON root.**,root.t1.t2 TO USER `user1`;");
+    assertEquals(readSet, new HashSet<>(Arrays.asList(stmt.getPrivilegeList())));
+    assertEquals(2, stmt.getPaths().size());
+
+    // 5. WRITE privilege can be parsed successfully.
+    stmt = createAuthDclStmt("GRANT WRITE ON root.** TO USER `user1`;");
+    Set<String> writeSet = new HashSet<>();
+    writeSet.add("WRITE_DATA");
+    writeSet.add("WRITE_SCHEMA");
+    assertEquals(writeSet, new HashSet<>(Arrays.asList(stmt.getPrivilegeList())));
+
+    stmt = createAuthDclStmt("GRANT WRITE,WRITE_DATA ON root.** TO USER `user1`;");
+    assertEquals(writeSet, new HashSet<>(Arrays.asList(stmt.getPrivilegeList())));
+
+    stmt = createAuthDclStmt("GRANT WRITE,WRITE ON root.**,root.t1.t2 TO USER `user1`;");
+    assertEquals(writeSet, new HashSet<>(Arrays.asList(stmt.getPrivilegeList())));
+    assertEquals(2, stmt.getPaths().size());
   }
 
   @Test
-  public void testListThings() {}
+  public void testListThings() {
+    // 1. list user
+    AuthorStatement stmt = createAuthDclStmt("LIST USER;");
+    assertEquals(StatementType.LIST_USER, stmt.getType());
+    assertEquals(null, stmt.getRoleName());
+
+    // 2. list user of role
+    stmt = createAuthDclStmt("LIST USER OF ROLE `role1`;");
+    assertEquals(StatementType.LIST_USER, stmt.getType());
+    assertEquals("role1", stmt.getRoleName());
+
+    // 3. list role
+    stmt = createAuthDclStmt("LIST ROLE;");
+    assertEquals(StatementType.LIST_ROLE, stmt.getType());
+    assertEquals(null, stmt.getUserName());
+
+    // 4. list role of user
+    stmt = createAuthDclStmt("LIST ROLE OF USER `user1`;");
+    assertEquals(StatementType.LIST_ROLE, stmt.getType());
+    assertEquals("user1", stmt.getUserName());
+
+    // 5. list privileges of user
+    stmt = createAuthDclStmt("LIST PRIVILEGES OF USER `user1`;");
+    assertEquals(StatementType.LIST_USER_PRIVILEGE, stmt.getType());
+    assertEquals("user1", stmt.getUserName());
+
+    // 6. list privileges of role
+    stmt = createAuthDclStmt("LIST PRIVILEGES OF ROLE `role1`;");
+    assertEquals(StatementType.LIST_ROLE_PRIVILEGE, stmt.getType());
+    assertEquals("role1", stmt.getRoleName());
+  }
 
   // TODO: add more tests
 
