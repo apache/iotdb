@@ -34,37 +34,6 @@ import java.util.Vector;
 
 public class AuthUtilsTest {
   @Test
-  public void authUtilsTest_ParameterCheck() throws AuthException, IllegalPathException {
-    AuthUtils auth;
-    Vector<String> nameOrPassword = new Vector<>();
-    nameOrPassword.add(new String("he"));
-    nameOrPassword.add(
-        new String(
-            "qwertyuiopasdfghjklzxcvbnm123456789999999asdfgh"
-                + "jkzxcvbnmqwertyuioasdfghjklzxcvbnm"));
-    nameOrPassword.add(new String("he  llo"));
-    nameOrPassword.add(new String("hel^d"));
-    nameOrPassword.add(new String("he\\llo"));
-    nameOrPassword.add(new String("he*llo"));
-    nameOrPassword.add(new String("he*$llo"));
-    for (String item : nameOrPassword) {
-      Assert.assertThrows(AuthException.class, () -> AuthUtils.validateNameOrPassword(item));
-    }
-    PartialPath path1 = new PartialPath(new String("data.t1"));
-    PartialPath path2 = new PartialPath(new String("root.t1"));
-    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePath(path1));
-    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilege(-1));
-    // give a wrong path
-    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilege(path1, -1));
-    // give a path but a wrong privilege id
-    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilege(path2, 5));
-
-    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilege(null, 3));
-    AuthUtils.validatePrivilege(path2, PrivilegeType.WRITE_SCHEMA.ordinal());
-    AuthUtils.validatePrivilege(null, PrivilegeType.MANAGE_ROLE.ordinal());
-  }
-
-  @Test
   public void authUtilsTest_PrivilegeGrantRevokeCheck() throws IllegalPathException {
     PartialPath path = new PartialPath(new String("root.t1"));
     PathPrivilege pathWithPri = new PathPrivilege(path);

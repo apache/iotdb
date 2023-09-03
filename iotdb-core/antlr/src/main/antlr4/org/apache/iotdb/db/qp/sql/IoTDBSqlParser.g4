@@ -861,7 +861,7 @@ grantOpt
 
 // Grant User Role
 grantRoleToUser
-    : GRANT roleName=identifier TO userName=identifier
+    : GRANT ROLE roleName=identifier TO userName=identifier
     ;
 
 // Revoke User Privileges

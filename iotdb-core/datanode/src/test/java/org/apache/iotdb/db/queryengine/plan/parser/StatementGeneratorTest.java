@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.parser;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
@@ -52,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSc
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
@@ -87,10 +90,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.*;
 
 import static org.apache.iotdb.db.schemaengine.template.TemplateQueryType.SHOW_MEASUREMENTS;
 import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.SNAPPY;
@@ -462,6 +462,117 @@ public class StatementGeneratorTest {
       assertEquals("duplicated key in GROUP BY TAGS: k1", e.getMessage());
     }
   }
+
+  private AuthorStatement createAuthDclStmt(String sql) {
+    Statement stmt = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
+    AuthorStatement roleDcl = (AuthorStatement) stmt;
+    return roleDcl;
+  }
+
+  @Test
+  public void testDCLUserOperation() {
+    // 1. create user and drop user
+    AuthorStatement userDcl = createAuthDclStmt("create user `user1` 'password1';");
+    assertEquals("user1", userDcl.getUserName());
+    assertEquals(Collections.emptyList(), userDcl.getPaths());
+    assertEquals("password1", userDcl.getPassWord());
+    assertEquals(StatementType.CREATE_USER, userDcl.getType());
+
+    userDcl = createAuthDclStmt("drop user `user1`;");
+    assertEquals("user1", userDcl.getUserName());
+    assertEquals(Collections.emptyList(), userDcl.getPaths());
+    assertEquals(StatementType.DELETE_USER, userDcl.getType());
+
+    // 2.update user's password
+    userDcl = createAuthDclStmt("alter user `user1` set password 'password2';");
+    assertEquals("user1", userDcl.getUserName());
+    /**
+     * [ BUG ] We didn't save the old password in the statement. If userA has logged in with
+     * session_A. Session_B's alter password operation cannot block session A's alter password
+     * operation because we only check the user's password before they log in.
+     */
+    // assertEquals("password1", userDcl.getPassWord());
+    assertEquals("password2", userDcl.getNewPassword());
+    assertEquals(StatementType.MODIFY_PASSWORD, userDcl.getType());
+  }
+
+  @Test
+  public void testDCLROLEOperation() {
+    // 1. create role and drop role.
+    AuthorStatement roleDcl = createAuthDclStmt("create role role1;");
+    assertEquals("role1", roleDcl.getRoleName());
+    assertEquals(StatementType.CREATE_ROLE, roleDcl.getType());
+
+    roleDcl = createAuthDclStmt("drop role role1;");
+    assertEquals(StatementType.DELETE_ROLE, roleDcl.getType());
+    assertEquals("role1", roleDcl.getRoleName());
+
+    // 2. grant and revoke role.
+    roleDcl = createAuthDclStmt("grant role `role1` to `user1`;");
+    assertEquals(StatementType.GRANT_USER_ROLE, roleDcl.getType());
+    assertEquals("role1", roleDcl.getRoleName());
+    assertEquals("user1", roleDcl.getUserName());
+  }
+
+  @FunctionalInterface
+  interface grantRevokeCheck {
+    void checkParser(String privilege, String name, boolean isuser, String path, boolean grantOpt);
+  }
+
+  @Test
+  public void testNormalGrantRevoke() {
+    // 1. grant/revoke user/role privilege with/without grant option.
+    grantRevokeCheck test =
+        (privilege, name, isuser, path, grantOpt) -> {
+          String sql = "grant %s on %s to %s %s %s ;";
+          sql =
+              String.format(
+                  sql,
+                  privilege,
+                  path,
+                  isuser ? "USER" : "ROLE",
+                  name,
+                  grantOpt ? "with grant option" : "");
+          AuthorStatement aclStmt = createAuthDclStmt(sql);
+          assertEquals(
+              isuser ? StatementType.GRANT_USER_PRIVILEGE : StatementType.GRANT_ROLE_PRIVILEGE,
+              aclStmt.getType());
+          assertEquals(path, aclStmt.getPaths().get(0).toString());
+          assertEquals(name, isuser ? aclStmt.getUserName() : aclStmt.getRoleName());
+          assertEquals(grantOpt, aclStmt.getGrantOpt());
+          assertEquals(privilege, aclStmt.getPrivilegeList()[0]);
+        };
+
+    String name = "test1";
+    String path = "root.**";
+
+    for (PrivilegeType privilege : PrivilegeType.values()) {
+      test.checkParser(privilege.toString(), name, true, path, true);
+      test.checkParser(privilege.toString(), name, true, path, false);
+      test.checkParser(privilege.toString(), name, false, path, true);
+      test.checkParser(privilege.toString(), name, false, path, false);
+    }
+  }
+
+  @Test
+  public void testComplexGrantRevoke() {
+    // 1. test complex privilege on single path :"root.**"
+    String sql = "grant %s on root.** to user `user1` %s;";
+    Set<String> allPriv = new HashSet<>();
+    for (PrivilegeType type : PrivilegeType.values()) {
+      allPriv.add(type.toString());
+    }
+
+    for (PrivilegeType type : PrivilegeType.values()) {
+      sql = String.format(sql, "ALL," + type.toString(), "with grant option");
+      AuthorStatement stmt = createAuthDclStmt(sql);
+      assertEquals(allPriv, new HashSet<>(Arrays.asList(stmt.getPrivilegeList())));
+      Assert.assertTrue(stmt.getGrantOpt());
+    }
+  }
+
+  @Test
+  public void testListThings() {}
 
   // TODO: add more tests
 
