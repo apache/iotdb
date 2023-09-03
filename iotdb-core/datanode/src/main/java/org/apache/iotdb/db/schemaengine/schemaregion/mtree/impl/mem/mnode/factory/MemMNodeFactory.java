@@ -30,7 +30,9 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.B
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.DatabaseDeviceMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.DatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.DeviceMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.LogicalViewMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.MeasurementMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.LogicalViewInfo;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 @MNodeFactory
@@ -76,6 +78,6 @@ public class MemMNodeFactory implements IMNodeFactory<IMemMNode> {
   @Override
   public IMeasurementMNode<IMemMNode> createLogicalViewMNode(
       IDeviceMNode<IMemMNode> parent, String name, IMeasurementInfo measurementInfo) {
-    throw new UnsupportedOperationException("View is not supported.");
+    return new LogicalViewMNode(parent, name, ((LogicalViewInfo) measurementInfo).getExpression());
   }
 }
