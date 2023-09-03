@@ -24,8 +24,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
+import org.apache.commons.lang3.NotImplementedException;
 import org.eclipse.tahu.protobuf.SparkplugBProto;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +38,8 @@ import java.util.TreeMap;
  * messages in the SparkplugB format.
  */
 public class SparkplugBPayloadFormatter implements PayloadFormatterV2 {
+
+  private static final BigInteger TWO_64 = BigInteger.ONE.shiftLeft(64);
 
   @Override
   public String getName() {
@@ -148,37 +152,37 @@ public class SparkplugBPayloadFormatter implements PayloadFormatterV2 {
   protected String getStringValueForMetric(
       SparkplugBProto.Payload.Metric metric, int sparkplugBDataType) {
     SparkplugBProto.DataType dataType = SparkplugBProto.DataType.forNumber(sparkplugBDataType);
+    if (dataType == null) {
+      throw new RuntimeException("Datatype not provided");
+    }
     switch (dataType) {
       case Bytes:
-        throw new RuntimeException("No idea how to read this");
       case File:
-        throw new RuntimeException("No idea how to read this");
-      case String:
-        return metric.getStringValue();
-      case Text:
-        return metric.getStringValue();
       case Unknown:
         throw new RuntimeException("No idea how to read this");
+      case String:
+      case Text:
       case UUID:
         return metric.getStringValue();
       case Int8:
-        return Integer.toString(metric.getIntValue());
       case Int16:
-        return Integer.toString(metric.getIntValue());
       case Int32:
         return Integer.toString(metric.getIntValue());
       case UInt8:
-        return Integer.toString(metric.getIntValue());
+        return Integer.toString(metric.getIntValue() & 0x000000FF);
       case UInt16:
-        return Integer.toString(metric.getIntValue());
+        return Integer.toString(metric.getIntValue() & 0x0000FFFF);
       case Int64:
-        return Long.toString(metric.getLongValue());
-      case UInt32:
-        return Long.toString(metric.getLongValue());
-      case UInt64:
-        return Long.toString(metric.getLongValue());
       case DateTime:
         return Long.toString(metric.getLongValue());
+      case UInt32:
+        return Long.toString(metric.getLongValue() & 0x00000000FFFFFFFFL);
+      case UInt64:
+        BigInteger b = BigInteger.valueOf(metric.getLongValue());
+        if (b.signum() < 0) {
+          b = b.add(TWO_64);
+        }
+        return b.toString();
       case Float:
         return Float.toString(metric.getFloatValue());
       case Double:
@@ -187,10 +191,10 @@ public class SparkplugBPayloadFormatter implements PayloadFormatterV2 {
         return Boolean.toString(metric.getBooleanValue());
       case DataSet:
         // TODO: This is a pretty complex datatype ...
-        return "To be implemented";
+        throw new NotImplementedException("No idea how to read this");
       case Template:
         // TODO: This is a pretty complex datatype ...
-        return "To be implemented";
+        throw new NotImplementedException("No idea how to read this");
     }
     throw new RuntimeException("No idea how to read this");
   }
