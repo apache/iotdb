@@ -90,7 +90,7 @@ public class IoTDBPipeDataSyncIT {
       extractorAttributes.put("extractor.realtime.mode", "log");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
