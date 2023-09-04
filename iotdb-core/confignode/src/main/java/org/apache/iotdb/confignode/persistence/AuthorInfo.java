@@ -65,6 +65,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.commons.auth.entity.PrivilegeType.isPathRelevant;
+
 public class AuthorInfo implements SnapshotProcessor {
 
   // Works at config node.
@@ -199,7 +201,7 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case GrantRole:
           for (int permission : permissions) {
-            if (!PrivilegeType.isPathRelevant(permission)) {
+            if (!isPathRelevant(permission)) {
               authorizer.grantPrivilegeToRole(roleName, null, permission, grantOpt);
               continue;
             }
@@ -210,7 +212,7 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case GrantUser:
           for (int permission : permissions) {
-            if (!PrivilegeType.isPathRelevant(permission)) {
+            if (!isPathRelevant(permission)) {
               authorizer.grantPrivilegeToUser(userName, null, permission, grantOpt);
               continue;
             }
@@ -224,7 +226,7 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case RevokeUser:
           for (int permission : permissions) {
-            if (!PrivilegeType.isPathRelevant(permission)) {
+            if (!isPathRelevant(permission)) {
               authorizer.revokePrivilegeFromUser(userName, null, permission);
               continue;
             }
@@ -235,7 +237,7 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case RevokeRole:
           for (int permission : permissions) {
-            if (!PrivilegeType.isPathRelevant(permission)) {
+            if (!isPathRelevant(permission)) {
               authorizer.revokePrivilegeFromRole(roleName, null, permission);
               continue;
             }
@@ -459,7 +461,7 @@ public class AuthorInfo implements SnapshotProcessor {
       return resp;
     }
     try {
-      if (!paths.isEmpty()) {
+      if (isPathRelevant(permission)) {
         for (PartialPath path : paths) {
           if (user.checkPathPrivilegeGrantOpt(path, permission)) {
             status = true;
