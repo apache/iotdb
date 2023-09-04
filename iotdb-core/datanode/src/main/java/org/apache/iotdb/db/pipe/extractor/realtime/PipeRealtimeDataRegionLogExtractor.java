@@ -75,7 +75,9 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
   }
 
   private void extractHeartbeat(PipeRealtimeEvent event) {
-    if (pendingQueue.peekLast() instanceof PipeHeartbeatEvent) {
+    Event lastEvent = pendingQueue.peekLast();
+    if (lastEvent instanceof PipeRealtimeEvent
+        && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent) {
       // if the last event in the pending queue is a heartbeat event, we should not extract any more
       // heartbeat events to avoid OOM when the pipe is stopped.
       event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
