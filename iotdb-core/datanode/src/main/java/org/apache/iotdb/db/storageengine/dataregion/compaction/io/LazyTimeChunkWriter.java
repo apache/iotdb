@@ -124,6 +124,7 @@ public class LazyTimeChunkWriter extends TimeChunkWriter {
     }
     // write all pages of this column
     int writedSizeOfBuffer = 0;
+    int bufferSize = pageBuffer.size();
     while (!insertPagePositions.isEmpty()) {
       Integer size = insertPagePositions.peek();
       if (writedSizeOfBuffer < size) {
@@ -142,8 +143,17 @@ public class LazyTimeChunkWriter extends TimeChunkWriter {
       } else {
         insertPagePositions.removeFirst();
         LazyPageLoader pageLoader = pageLoaders.removeFirst();
+        if (pageLoader.isEmpty()) {
+          continue;
+        }
         writer.getIOWriterOut().write(pageLoader.loadPage());
       }
+    }
+    if (writedSizeOfBuffer != bufferSize) {
+      pageBuffer.writeTo(
+          writer.getIOWriterOut().wrapAsStream(),
+          writedSizeOfBuffer + 1,
+          bufferSize - writedSizeOfBuffer);
     }
 
     int dataSize = (int) (writer.getPos() - dataOffset);
