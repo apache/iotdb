@@ -28,7 +28,11 @@ public class TimePartitionUtils {
 
   public static TTimePartitionSlot getTimePartition(long time) {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
-    timePartitionSlot.setStartTime(time - time % timePartitionInterval);
+    if (time > 0 || time % timePartitionInterval == 0) {
+      timePartitionSlot.setStartTime(time / timePartitionInterval * timePartitionInterval);
+    } else {
+      timePartitionSlot.setStartTime((time / timePartitionInterval - 1) * timePartitionInterval);
+    }
     return timePartitionSlot;
   }
 

@@ -190,10 +190,16 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (times.length == 0) {
       return Collections.emptyList();
     }
-    long startTime =
-        (times[0] / TimePartitionUtils.timePartitionInterval)
-            * TimePartitionUtils.timePartitionInterval; // included
-    long endTime = startTime + TimePartitionUtils.timePartitionInterval; // excluded
+    long endTime;
+    if (times[0] > 0 || times[0] % TimePartitionUtils.timePartitionInterval == 0) {
+      endTime =
+          (times[0] / TimePartitionUtils.timePartitionInterval + 1)
+              * TimePartitionUtils.timePartitionInterval; // excluded
+    } else {
+      endTime =
+          (times[0] / TimePartitionUtils.timePartitionInterval)
+              * TimePartitionUtils.timePartitionInterval; // excluded
+    }
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(times[0]);
     int startLoc = 0; // included
 
@@ -208,10 +214,16 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         timePartitionSlots.add(timePartitionSlot);
         // next init
         startLoc = i;
-        startTime = endTime;
-        endTime =
-            (times[i] / TimePartitionUtils.timePartitionInterval + 1)
-                * TimePartitionUtils.timePartitionInterval;
+        if (times[0] > 0 || times[0] % TimePartitionUtils.timePartitionInterval == 0) {
+          endTime =
+              (times[i] / TimePartitionUtils.timePartitionInterval + 1)
+                  * TimePartitionUtils.timePartitionInterval;
+        } else {
+          endTime =
+              (times[i] / TimePartitionUtils.timePartitionInterval)
+                  * TimePartitionUtils.timePartitionInterval;
+        }
+
         timePartitionSlot = TimePartitionUtils.getTimePartition(times[i]);
       }
     }
