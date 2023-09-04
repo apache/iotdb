@@ -1,3 +1,5 @@
+#!/bin/bash
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,10 +17,15 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+function on_stop(){
+    bash /iotdb/sbin/stop-confignode.sh
+#   add 'stop mlnode' script
+}
 
--r requirements.txt
+trap 'on_stop' SIGTERM SIGKILL SIGQUIT SIGINT
 
-# Pytest to run tests
-pytest==7.2.0
-# Testcontainer
-testcontainers==3.4.2
+bash /iotdb/sbin/start-confignode.sh &
+sleep 5
+bash /iotdb/sbin/start-datanode.sh &
+sleep 5
+mlnode start
