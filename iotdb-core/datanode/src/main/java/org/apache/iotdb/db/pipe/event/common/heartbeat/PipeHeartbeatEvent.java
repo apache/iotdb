@@ -163,17 +163,16 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   @Override
   public String toString() {
-    final String errorMessage = "Error";
     final String unknownMessage = "Unknown";
 
     final String publishedToAssignedMessage =
-        timeAssigned != 0 ? (timeAssigned - timePublished) + "ms" : errorMessage;
+        timeAssigned != 0 ? (timeAssigned - timePublished) + "ms" : unknownMessage;
     final String assignedToProcessedMessage =
-        timeProcessed != 0 ? (timeProcessed - timeAssigned) + "ms" : errorMessage;
+        timeProcessed != 0 ? (timeProcessed - timeAssigned) + "ms" : unknownMessage;
     final String processedToTransferredMessage =
-        timeTransferred != 0 ? (timeTransferred - timeProcessed) + "ms" : errorMessage;
+        timeTransferred != 0 ? (timeTransferred - timeProcessed) + "ms" : unknownMessage;
     final String totalTimeMessage =
-        timeTransferred != 0 ? (timeTransferred - timePublished) + "ms" : errorMessage;
+        timeTransferred != 0 ? (timeTransferred - timePublished) + "ms" : unknownMessage;
 
     final String disruptorSizeMessage = Integer.toString(disruptorSize);
     final String extractorQueueSizeMessage =

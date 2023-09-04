@@ -80,19 +80,14 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
 
     Event lastEvent = pendingQueue.peekLast();
     if (lastEvent instanceof PipeRealtimeEvent
-        && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent) {
+            && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent
+            && (((PipeHeartbeatEvent) ((PipeRealtimeEvent) lastEvent).getEvent()).isShouldPrintMessage()
+            || !((PipeHeartbeatEvent) event.getEvent()).isShouldPrintMessage())) {
       // If the last event in the pending queue is a heartbeat event, we should not extract any more
       // heartbeat events to avoid OOM when the pipe is stopped.
       // Besides, the printable event has higher priority to stay in queue to enable metrics report.
-      if (((PipeHeartbeatEvent) ((PipeRealtimeEvent) lastEvent).getEvent())
-          .isShouldPrintMessage()) {
-        event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
-        return;
-      } else {
-        ((PipeRealtimeEvent) lastEvent)
-            .decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
-        pendingQueue.removeLast();
-      }
+      event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+      return;
     }
 
     if (!pendingQueue.waitedOffer(event)) {
