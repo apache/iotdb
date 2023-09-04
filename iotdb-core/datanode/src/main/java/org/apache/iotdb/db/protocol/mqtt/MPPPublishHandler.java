@@ -33,7 +33,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
-import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -142,20 +141,16 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
             DataNodeDevicePathCache.getInstance().getPartialPath(event.getDevice()));
         statement.setTime(event.getTimestamp());
         statement.setMeasurements(event.getMeasurements().toArray(new String[0]));
-        if (event.getDataTypes() == null) {
+        // If the formatter doesn't return the types, we need to infer them.
+        List<TSDataType> dataTypes = event.getDataTypes();
+        if (dataTypes == null) {
           statement.setDataTypes(new TSDataType[event.getMeasurements().size()]);
-          statement.setValues(event.getValues().toArray(new Object[0]));
           statement.setNeedInferType(true);
         } else {
-          List<TSDataType> dataTypes = event.getDataTypes();
-          List<String> values = event.getValues();
-          Object[] inferredValues = new Object[values.size()];
-          for (int i = 0; i < values.size(); ++i) {
-            inferredValues[i] = CommonUtils.parseValue(dataTypes.get(i), values.get(i));
-          }
           statement.setDataTypes(dataTypes.toArray(new TSDataType[0]));
-          statement.setValues(inferredValues);
         }
+        Object[] values = event.getValues().toArray(new Object[0]);
+        statement.setValues(values);
         statement.setAligned(false);
 
         tsStatus = AuthorityChecker.checkAuthority(statement, session);

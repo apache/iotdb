@@ -21,10 +21,10 @@ package org.apache.iotdb.connector.sparkplugb;
 import org.apache.iotdb.db.protocol.mqtt.Message;
 import org.apache.iotdb.db.protocol.mqtt.PayloadFormatterV2;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
-import org.apache.commons.lang3.NotImplementedException;
 import org.eclipse.tahu.protobuf.SparkplugBProto;
 
 import java.math.BigInteger;
@@ -85,7 +85,11 @@ public class SparkplugBPayloadFormatter implements PayloadFormatterV2 {
       String measurementName = metric.getName();
       int sparkplugBDataType = metric.getDatatype();
       TSDataType measurementDataType = getTSDataTypeForSparkplugBDataType(sparkplugBDataType);
-      String measurementValue = getStringValueForMetric(metric, sparkplugBDataType);
+      Object measurementValue = getValueForMetric(metric, sparkplugBDataType);
+      // Some types are not yet implemented ... we need to skip them.
+      if (measurementName.isEmpty() || measurementValue == null) {
+        continue;
+      }
 
       // Group together measurements of the same time.
       if (!messages.containsKey(measurementTimestamp)) {
@@ -142,6 +146,7 @@ public class SparkplugBPayloadFormatter implements PayloadFormatterV2 {
       case Boolean:
         return TSDataType.BOOLEAN;
       case DataSet:
+        // A metric can be thought of as an array of values for a set of fields.
         // TODO: This is a pretty complex datatype ...
       case Template:
         // TODO: This is a pretty complex datatype ...
@@ -149,7 +154,7 @@ public class SparkplugBPayloadFormatter implements PayloadFormatterV2 {
     return TSDataType.TEXT;
   }
 
-  protected String getStringValueForMetric(
+  protected Object getValueForMetric(
       SparkplugBProto.Payload.Metric metric, int sparkplugBDataType) {
     SparkplugBProto.DataType dataType = SparkplugBProto.DataType.forNumber(sparkplugBDataType);
     if (dataType == null) {
@@ -159,42 +164,45 @@ public class SparkplugBPayloadFormatter implements PayloadFormatterV2 {
       case Bytes:
       case File:
       case Unknown:
-        throw new RuntimeException("No idea how to read this");
+        // TODO: Implement this ...
+        return null;
       case String:
       case Text:
       case UUID:
-        return metric.getStringValue();
+        return Binary.valueOf(metric.getStringValue());
       case Int8:
       case Int16:
       case Int32:
-        return Integer.toString(metric.getIntValue());
+        return metric.getIntValue();
       case UInt8:
-        return Integer.toString(metric.getIntValue() & 0x000000FF);
+        return metric.getIntValue() & 0x000000FF;
       case UInt16:
-        return Integer.toString(metric.getIntValue() & 0x0000FFFF);
+        return metric.getIntValue() & 0x0000FFFF;
       case Int64:
       case DateTime:
-        return Long.toString(metric.getLongValue());
+        return metric.getLongValue();
       case UInt32:
-        return Long.toString(metric.getLongValue() & 0x00000000FFFFFFFFL);
+        return metric.getLongValue() & 0x00000000FFFFFFFFL;
       case UInt64:
-        BigInteger b = BigInteger.valueOf(metric.getLongValue());
+        /*BigInteger b = BigInteger.valueOf(metric.getLongValue());
         if (b.signum() < 0) {
           b = b.add(TWO_64);
-        }
-        return b.toString();
+        }*/
+        // TODO: Fix this ... this is not quite correct.
+        return metric.getLongValue();
       case Float:
-        return Float.toString(metric.getFloatValue());
+        return metric.getFloatValue();
       case Double:
-        return Double.toString(metric.getDoubleValue());
+        return metric.getDoubleValue();
       case Boolean:
-        return Boolean.toString(metric.getBooleanValue());
+        return metric.getBooleanValue();
       case DataSet:
-        // TODO: This is a pretty complex datatype ...
-        throw new NotImplementedException("No idea how to read this");
+        // A metric can be thought of as an array of values for a set of fields.
+        // TODO: Implement this ...
+        return null;
       case Template:
         // TODO: This is a pretty complex datatype ...
-        throw new NotImplementedException("No idea how to read this");
+        return null;
     }
     throw new RuntimeException("No idea how to read this");
   }

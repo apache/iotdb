@@ -24,6 +24,7 @@ import org.junit.Test;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class JSONPayloadFormatterTest {
 
@@ -45,7 +46,8 @@ public class JSONPayloadFormatterTest {
     assertEquals("root.sg.d1", message.getDevice());
     assertEquals(Long.valueOf(1586076045524L), message.getTimestamp());
     assertEquals("s1", message.getMeasurements().get(0));
-    assertEquals(0.530635D, Double.parseDouble(message.getValues().get(0)), 0);
+    assertTrue(message.getValues().get(0) instanceof String);
+    assertEquals(0.530635D, Double.parseDouble((String) message.getValues().get(0)), 0);
   }
 
   @Test
@@ -66,7 +68,8 @@ public class JSONPayloadFormatterTest {
     assertEquals("root.sg.d1", message.getDevice());
     assertEquals(Long.valueOf(1586076065526L), message.getTimestamp());
     assertEquals("s2", message.getMeasurements().get(1));
-    assertEquals(0.530695D, Double.parseDouble(message.getValues().get(1)), 0);
+    assertTrue(message.getValues().get(0) instanceof String);
+    assertEquals(0.530695D, Double.parseDouble((String) message.getValues().get(1)), 0);
   }
 
   @Test
@@ -95,7 +98,8 @@ public class JSONPayloadFormatterTest {
     assertEquals("root.sg.d2", message.getDevice());
     assertEquals(Long.valueOf(1586076065526L), message.getTimestamp());
     assertEquals("s3", message.getMeasurements().get(0));
-    assertEquals(0.530655D, Double.parseDouble(message.getValues().get(0)), 0);
+    assertTrue(message.getValues().get(0) instanceof String);
+    assertEquals(0.530655D, Double.parseDouble((String) message.getValues().get(0)), 0);
   }
 
   @Test
@@ -124,6 +128,7 @@ public class JSONPayloadFormatterTest {
     assertEquals("root.sg.d2", message.getDevice());
     assertEquals(Long.valueOf(1586076065526L), message.getTimestamp());
     assertEquals("s4", message.getMeasurements().get(1));
-    assertEquals(0.530695D, Double.parseDouble(message.getValues().get(1)), 0);
+    assertTrue(message.getValues().get(0) instanceof String);
+    assertEquals(0.530695D, Double.parseDouble((String) message.getValues().get(1)), 0);
   }
 }

@@ -28,7 +28,7 @@ public class Message {
   private Long timestamp;
   private List<String> measurements;
   private List<TSDataType> dataTypes;
-  private List<String> values;
+  private List<Object> values;
 
   public String getDevice() {
     return device;
@@ -62,11 +62,11 @@ public class Message {
     this.dataTypes = dataTypes;
   }
 
-  public List<String> getValues() {
+  public List<Object> getValues() {
     return values;
   }
 
-  public void setValues(List<String> values) {
+  public void setValues(List<Object> values) {
     this.values = values;
   }
 
