@@ -899,12 +899,12 @@ listRole
     : LIST ROLE (OF USER userName=usernameWithRoot)?
     ;
 
-// List Privileges of Users On Specific Path
+// List Privileges of Users
 listPrivilegesUser
     : LIST PRIVILEGES OF USER userName=usernameWithRoot
     ;
 
-// List Privileges of Roles On Specific Path
+// List Privileges of Roles
 listPrivilegesRole
     : LIST PRIVILEGES OF ROLE roleName=identifier
     ;

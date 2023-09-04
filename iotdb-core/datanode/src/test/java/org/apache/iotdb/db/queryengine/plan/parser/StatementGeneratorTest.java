@@ -531,7 +531,7 @@ public class StatementGeneratorTest {
     void checkParser(String privilege, String name, boolean isuser, String path, boolean grantOpt);
   }
 
-  /** This test will check grant/revoke simple privileg on/from paths. */
+  /** This test will check grant/revoke simple privilege on/from paths. */
   @Test
   public void testNormalGrantRevoke() {
     grantRevokeCheck testGrant =

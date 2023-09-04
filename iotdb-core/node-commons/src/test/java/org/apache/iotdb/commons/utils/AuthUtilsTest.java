@@ -47,7 +47,7 @@ public class AuthUtilsTest {
     PathPrivilege pathWithPri3 = new PathPrivilege(path3);
     pathWithPri3.grantPrivilege(PrivilegeType.READ_DATA.ordinal(), false);
 
-    /** root.t1 : read schema, read data root.t2 : write schema root.** : read data */
+    /** root.t1 : read schema, read data; root.t2 : write schema; root.** : read data */
     // Privilege list is empty.
     Assert.assertFalse(
         AuthUtils.checkPathPrivilege(path2, PrivilegeType.READ_SCHEMA.ordinal(), null));
@@ -56,13 +56,13 @@ public class AuthUtilsTest {
     privilegeList.add(pathWithPri);
     privilegeList.add(pathWithPri2);
     privilegeList.add(pathWithPri3);
-    Assert.assertFalse(
+    Assert.assertTrue(
         AuthUtils.checkPathPrivilege(path2, PrivilegeType.READ_SCHEMA.ordinal(), privilegeList));
     Assert.assertTrue(
         AuthUtils.checkPathPrivilege(path, PrivilegeType.READ_SCHEMA.ordinal(), privilegeList));
 
     pathWithPri.revokePrivilege(PrivilegeType.READ_SCHEMA.ordinal());
-    /** root.t1 : read data root.t2 : write schema root.** : read data */
+    /** root.t1 : read data; root.t2 : write schema ; root.** : read data */
     Assert.assertFalse(
         AuthUtils.checkPathPrivilege(path, PrivilegeType.READ_SCHEMA.ordinal(), privilegeList));
     Assert.assertTrue(

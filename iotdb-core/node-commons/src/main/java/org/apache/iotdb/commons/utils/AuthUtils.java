@@ -244,9 +244,17 @@ public class AuthUtils {
       return false;
     }
     for (PathPrivilege pathPrivilege : privilegeList) {
-      if (pathPrivilege.getPath().matchFullPath(path)
-          && pathPrivilege.getPrivileges().contains(privilegeId)) {
-        return true;
+      if (pathPrivilege.getPath().matchFullPath(path)) {
+        if (pathPrivilege.getPrivileges().contains(privilegeId)) {
+          return true;
+        }
+        if (privilegeId == PrivilegeType.READ_SCHEMA.ordinal()
+            && pathPrivilege.getPrivileges().contains(PrivilegeType.WRITE_SCHEMA.ordinal()))
+          return true;
+        if (privilegeId == PrivilegeType.READ_DATA.ordinal()
+            && pathPrivilege.getPrivileges().contains(PrivilegeType.WRITE_DATA.ordinal())) {
+          return true;
+        }
       }
     }
     return false;
