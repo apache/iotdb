@@ -65,13 +65,22 @@ public class PageHeader {
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 
+  // for compatibility, the previous implementation does not provide parameter 'hasStatistic'
   public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
+    return deserializeFrom(buffer, dataType, true);
+  }
+
+  public static PageHeader deserializeFrom(
+      ByteBuffer buffer, TSDataType dataType, boolean hasStatistic) {
     int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     if (uncompressedSize == 0) { // Empty Page
       return new PageHeader(0, 0, null);
     }
     int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
-    Statistics<? extends Serializable> statistics = Statistics.deserialize(buffer, dataType);
+    Statistics<? extends Serializable> statistics = null;
+    if (hasStatistic) {
+      statistics = Statistics.deserialize(buffer, dataType);
+    }
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 

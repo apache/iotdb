@@ -208,6 +208,21 @@ public class AlignedChunkData implements ChunkData {
     }
   }
 
+  @Override
+  public void writeDecodePage(long[] times, Object[] values, int start, int end)
+      throws IOException {
+    pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
+    satisfiedLengthQueue.offer(end - start);
+    // serialize needDecode==true
+    dataSize += ReadWriteIOUtils.write(true, stream);
+    dataSize += ReadWriteIOUtils.write(end - start, stream);
+
+    for (int i = start; i < end; i++) {
+      long time = times[i];
+      dataSize += ReadWriteIOUtils.write(time, stream);
+    }
+  }
+
   public void writeDecodeValuePage(long[] times, TsPrimitiveType[] values, TSDataType dataType)
       throws IOException {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
@@ -417,6 +432,11 @@ public class AlignedChunkData implements ChunkData {
   private void close() throws IOException {
     byteStream.close();
     stream.close();
+  }
+
+  @Override
+  public String firstMeasurement() {
+    return chunkHeaderList.get(0).getMeasurementID();
   }
 
   @Override

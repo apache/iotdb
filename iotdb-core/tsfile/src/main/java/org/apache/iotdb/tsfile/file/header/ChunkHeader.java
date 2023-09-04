@@ -321,4 +321,8 @@ public class ChunkHeader {
   public void increasePageNums(int i) {
     numOfPages += i;
   }
+
+  public boolean hasStatistic() {
+    return (getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER;
+  }
 }

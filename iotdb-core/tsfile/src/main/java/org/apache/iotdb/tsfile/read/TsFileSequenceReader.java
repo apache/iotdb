@@ -22,7 +22,6 @@ package org.apache.iotdb.tsfile.read;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 import org.apache.iotdb.tsfile.exception.TsFileStatisticsMistakesException;
@@ -59,6 +58,7 @@ import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TsFileUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -1397,15 +1397,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   public ByteBuffer readPage(PageHeader header, CompressionType type) throws IOException {
-    ByteBuffer buffer = readData(-1, header.getCompressedSize());
-    if (header.getUncompressedSize() == 0 || type == CompressionType.UNCOMPRESSED) {
-      return buffer;
-    } // FIXME if the buffer is not array-implemented.
-    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(type);
-    ByteBuffer uncompressedBuffer = ByteBuffer.allocate(header.getUncompressedSize());
-    unCompressor.uncompress(
-        buffer.array(), buffer.position(), buffer.remaining(), uncompressedBuffer.array(), 0);
-    return uncompressedBuffer;
+    return TsFileUtils.uncompressPage(header, type, readData(-1, header.getCompressedSize()));
   }
 
   /**

@@ -191,6 +191,40 @@ public class NonAlignedChunkData implements ChunkData {
     }
   }
 
+  public void writeDecodePage(long[] times, Object[] values, int start, int end)
+      throws IOException {
+    pageNumber += 1;
+    dataSize += ReadWriteIOUtils.write(true, stream);
+    dataSize += ReadWriteIOUtils.write(end - start, stream);
+
+    for (int i = start; i < end; i++) {
+      dataSize += ReadWriteIOUtils.write(times[i], stream);
+      switch (chunkHeader.getDataType()) {
+        case INT32:
+          dataSize += ReadWriteIOUtils.write((int) values[i], stream);
+          break;
+        case INT64:
+          dataSize += ReadWriteIOUtils.write((long) values[i], stream);
+          break;
+        case FLOAT:
+          dataSize += ReadWriteIOUtils.write((float) values[i], stream);
+          break;
+        case DOUBLE:
+          dataSize += ReadWriteIOUtils.write((double) values[i], stream);
+          break;
+        case BOOLEAN:
+          dataSize += ReadWriteIOUtils.write((boolean) values[i], stream);
+          break;
+        case TEXT:
+          dataSize += ReadWriteIOUtils.write((Binary) values[i], stream);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+      }
+    }
+  }
+
   private void deserializeTsFileData(InputStream stream) throws IOException, PageException {
     if (needDecodeChunk) {
       buildChunkWriter(stream);
@@ -281,6 +315,11 @@ public class NonAlignedChunkData implements ChunkData {
   private void close() throws IOException {
     byteStream.close();
     stream.close();
+  }
+
+  @Override
+  public String firstMeasurement() {
+    return chunkHeader.getMeasurementID();
   }
 
   @Override
