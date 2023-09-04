@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.LazyChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyChunkLoader;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 
@@ -55,7 +55,5 @@ public class ChunkMetadataElement {
 
   public void clearChunks() {
     chunk = null;
-    timeChunkLoader = null;
-    valueChunkLoaders = null;
   }
 }

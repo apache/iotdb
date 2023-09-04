@@ -261,11 +261,7 @@ public abstract class SeriesCompactionExecutor {
     if (isAligned) {
       success =
           compactionWriter.flushAlignedPage(
-              pageElement.pageData,
-              pageElement.pageHeader,
-              pageElement.valuePageDatas,
-              pageElement.valuePageHeaders,
-              subTaskId);
+              pageElement.timePageLoader, pageElement.valuePageLoaders, subTaskId);
     } else {
       success =
           compactionWriter.flushNonAlignedPage(

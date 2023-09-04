@@ -16,8 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.write.chunk;
 
+package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
+
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyPageLoader;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
@@ -30,6 +32,9 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.chunk.TimeChunkWriter;
+import org.apache.iotdb.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -40,7 +45,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AlignedChunkWriterImpl implements IChunkWriter {
+public class LazyAlignedChunkWriterImpl extends AlignedChunkWriterImpl {
 
   private TimeChunkWriter timeChunkWriter;
   private List<ValueChunkWriter> valueChunkWriterList;
@@ -49,12 +54,10 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   // Used for batch writing
   private long remainingPointsNumber;
 
-  public AlignedChunkWriterImpl() {}
-
   // TestOnly
-  public AlignedChunkWriterImpl(VectorMeasurementSchema schema) {
+  public LazyAlignedChunkWriterImpl(VectorMeasurementSchema schema) {
     timeChunkWriter =
-        new TimeChunkWriter(
+        new LazyTimeChunkWriter(
             schema.getMeasurementId(),
             schema.getCompressor(),
             schema.getTimeTSEncoding(),
@@ -68,7 +71,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     valueChunkWriterList = new ArrayList<>(valueMeasurementIdList.size());
     for (int i = 0; i < valueMeasurementIdList.size(); i++) {
       valueChunkWriterList.add(
-          new ValueChunkWriter(
+          new LazyValueChunkWriter(
               valueMeasurementIdList.get(i),
               schema.getCompressor(),
               valueTSDataTypeList.get(i),
@@ -87,10 +90,10 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
    * @param timeSchema time schema
    * @param valueSchemaList value schema list
    */
-  public AlignedChunkWriterImpl(
+  public LazyAlignedChunkWriterImpl(
       IMeasurementSchema timeSchema, List<IMeasurementSchema> valueSchemaList) {
     timeChunkWriter =
-        new TimeChunkWriter(
+        new LazyTimeChunkWriter(
             timeSchema.getMeasurementId(),
             timeSchema.getCompressor(),
             timeSchema.getEncodingType(),
@@ -99,7 +102,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     valueChunkWriterList = new ArrayList<>(valueSchemaList.size());
     for (int i = 0; i < valueSchemaList.size(); i++) {
       valueChunkWriterList.add(
-          new ValueChunkWriter(
+          new LazyValueChunkWriter(
               valueSchemaList.get(i).getMeasurementId(),
               valueSchemaList.get(i).getCompressor(),
               valueSchemaList.get(i).getType(),
@@ -118,13 +121,13 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
    *
    * @param schemaList value schema list
    */
-  public AlignedChunkWriterImpl(List<IMeasurementSchema> schemaList) {
+  public LazyAlignedChunkWriterImpl(List<IMeasurementSchema> schemaList) {
     TSEncoding timeEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
     TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
     CompressionType timeCompression = TSFileDescriptor.getInstance().getConfig().getCompressor();
     timeChunkWriter =
-        new TimeChunkWriter(
+        new LazyTimeChunkWriter(
             "",
             timeCompression,
             timeEncoding,
@@ -133,7 +136,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     valueChunkWriterList = new ArrayList<>(schemaList.size());
     for (int i = 0; i < schemaList.size(); i++) {
       valueChunkWriterList.add(
-          new ValueChunkWriter(
+          new LazyValueChunkWriter(
               schemaList.get(i).getMeasurementId(),
               schemaList.get(i).getCompressor(),
               schemaList.get(i).getType(),
@@ -348,9 +351,19 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     timeChunkWriter.writePageHeaderAndDataIntoBuff(data, header);
   }
 
+  public void writePageLoaderIntoTimeBuff(LazyPageLoader lazyPageLoader) throws PageException {
+    ((LazyTimeChunkWriter) timeChunkWriter).writeLazyPageLoaderIntoBuff(lazyPageLoader);
+  }
+
   public void writePageHeaderAndDataIntoValueBuff(
       ByteBuffer data, PageHeader header, int valueIndex) throws PageException {
     valueChunkWriterList.get(valueIndex).writePageHeaderAndDataIntoBuff(data, header);
+  }
+
+  public void writePageLoaderIntoValueBuff(LazyPageLoader lazyPageLoader, int valueIndex)
+      throws PageException {
+    LazyValueChunkWriter writer = (LazyValueChunkWriter) valueChunkWriterList.get(valueIndex);
+    writer.writeLazyPageLoaderIntoBuff(lazyPageLoader);
   }
 
   @Override
@@ -405,22 +418,15 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   @Override
   public boolean checkIsChunkSizeOverThreshold(
       long size, long pointNum, boolean returnTrueIfChunkEmpty) {
-    long totalSize = 0;
     if ((returnTrueIfChunkEmpty && timeChunkWriter.getPointNum() == 0)
         || (timeChunkWriter.getPointNum() >= pointNum
             || timeChunkWriter.estimateMaxSeriesMemSize() >= size)) {
       return true;
     }
-    totalSize += timeChunkWriter.estimateMaxSeriesMemSize();
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
       if (valueChunkWriter.estimateMaxSeriesMemSize() >= size) {
         return true;
       }
-      totalSize += valueChunkWriter.estimateMaxSeriesMemSize();
-    }
-    if (totalSize > 100 * 1024 * 1024) {
-      System.out.println(totalSize);
-      return true;
     }
     return false;
   }

@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyPageLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.io.LazyAlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -103,7 +106,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     if (isAlign) {
       // the first is time metadata and the rest is value metadata list
       chunkWriters[subTaskId] =
-          new AlignedChunkWriterImpl(measurementSchemaList.remove(0), measurementSchemaList);
+          new LazyAlignedChunkWriterImpl(measurementSchemaList.remove(0), measurementSchemaList);
       measurementId[subTaskId] = TsFileConstant.TIME_COLUMN_ID;
     } else {
       chunkWriters[subTaskId] = new ChunkWriterImpl(measurementSchemaList.get(0), true);
@@ -219,8 +222,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
       // flush value chunks
       for (int i = 0; i < valueChunkLoaders.size(); i++) {
-        LazyChunkLoader readValueChunk = valueChunkLoaders.get(i);
-        if (readValueChunk == null) {
+        LazyChunkLoader valueChunkLoader = valueChunkLoaders.get(i);
+        if (valueChunkLoader.isEmpty()) {
           // sub sensor does not exist in current file or value chunk has been deleted completely
           ValueChunkWriter valueChunkWriter = alignedChunkWriter.getValueChunkWriterByIndex(i);
           targetWriter.writeEmptyValueChunk(
@@ -231,7 +234,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
               Statistics.getStatsByType(valueChunkWriter.getDataType()));
           continue;
         }
-        Chunk valueChunk = readValueChunk.loadChunk();
+        Chunk valueChunk = valueChunkLoader.loadChunk();
         targetWriter.writeChunk(valueChunk, (ChunkMetadata) valueChunkMetadatas.get(i));
       }
 
@@ -258,35 +261,33 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   public abstract boolean flushAlignedPage(
-      ByteBuffer compressedTimePageData,
-      PageHeader timePageHeader,
-      List<ByteBuffer> compressedValuePageDatas,
-      List<PageHeader> valuePageHeaders,
-      int subTaskId)
+      LazyPageLoader timePageLoader, List<LazyPageLoader> valuePageLoaders, int subTaskId)
       throws IOException, PageException;
 
   protected void flushAlignedPageToChunkWriter(
       AlignedChunkWriterImpl alignedChunkWriter,
-      ByteBuffer compressedTimePageData,
-      PageHeader timePageHeader,
-      List<ByteBuffer> compressedValuePageDatas,
-      List<PageHeader> valuePageHeaders,
+      LazyPageLoader timePageLoader,
+      List<LazyPageLoader> valuePageLoaders,
       int subTaskId)
       throws IOException, PageException {
     // seal current page
     alignedChunkWriter.sealCurrentPage();
     // flush new time page to chunk writer directly
-    alignedChunkWriter.writePageHeaderAndDataIntoTimeBuff(compressedTimePageData, timePageHeader);
+    PageHeader timePageHeader = timePageLoader.getPageHeader();
+    //    alignedChunkWriter.writePageHeaderAndDataIntoTimeBuff(
+    //        timePageLoader.loadPage(), timePageHeader);
+    ((LazyAlignedChunkWriterImpl) alignedChunkWriter).writePageLoaderIntoTimeBuff(timePageLoader);
 
     // flush new value pages to chunk writer directly
-    for (int i = 0; i < valuePageHeaders.size(); i++) {
-      if (valuePageHeaders.get(i) == null) {
+    for (int i = 0; i < valuePageLoaders.size(); i++) {
+      LazyPageLoader valuePageLoader = valuePageLoaders.get(i);
+      if (valuePageLoader.isEmpty()) {
         // sub sensor does not exist in current file or value page has been deleted completely
         alignedChunkWriter.getValueChunkWriterByIndex(i).writeEmptyPageToPageBuffer();
-        continue;
+      } else {
+        ((LazyAlignedChunkWriterImpl) alignedChunkWriter)
+            .writePageLoaderIntoValueBuff(valuePageLoader, i);
       }
-      alignedChunkWriter.writePageHeaderAndDataIntoValueBuff(
-          compressedValuePageDatas.get(i), valuePageHeaders.get(i), i);
     }
 
     chunkPointNumArray[subTaskId] += timePageHeader.getStatistics().getCount();

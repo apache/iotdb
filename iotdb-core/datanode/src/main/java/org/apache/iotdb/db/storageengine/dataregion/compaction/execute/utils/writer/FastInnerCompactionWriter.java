@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyPageLoader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -33,6 +35,7 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
@@ -122,11 +125,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
    * @throws PageException if errors occurred when write data page header
    */
   public boolean flushAlignedPage(
-      ByteBuffer compressedTimePageData,
-      PageHeader timePageHeader,
-      List<ByteBuffer> compressedValuePageDatas,
-      List<PageHeader> valuePageHeaders,
-      int subTaskId)
+      LazyPageLoader timePageLoader, List<LazyPageLoader> valuePageLoaders, int subTaskId)
       throws IOException, PageException {
     boolean isUnsealedPageOverThreshold =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
@@ -134,6 +133,11 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     if (isUnsealedPageOverThreshold) {
       // seal page
       chunkWriters[subTaskId].sealCurrentPage();
+    }
+    PageHeader timePageHeader = timePageLoader.getPageHeader();
+    List<PageHeader> valuePageHeaders = new ArrayList<>(valuePageLoaders.size());
+    for (LazyPageLoader valuePageLoader : valuePageLoaders) {
+      valuePageHeaders.add(valuePageLoader.getPageHeader());
     }
     if (!isUnsealedPageOverThreshold
         || !checkIsAlignedPageLargeEnough(timePageHeader, valuePageHeaders)) {
@@ -143,10 +147,8 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
 
     flushAlignedPageToChunkWriter(
         (AlignedChunkWriterImpl) chunkWriters[subTaskId],
-        compressedTimePageData,
-        timePageHeader,
-        compressedValuePageDatas,
-        valuePageHeaders,
+        timePageLoader,
+        valuePageLoaders,
         subTaskId);
 
     isEmptyFile = false;
@@ -189,7 +191,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       return true;
     }
     for (LazyChunkLoader valueChunk : valueChunks) {
-      if (valueChunk == null) {
+      if (valueChunk.isEmpty()) {
         continue;
       }
       if (checkIsChunkLargeEnough(valueChunk.getChunkMetadata(), valueChunk.loadChunkHeader())) {

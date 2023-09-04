@@ -277,12 +277,20 @@ public class AlignedChunkReader implements IChunkReader {
   }
 
   /** Read data from compressed page data. Uncompress the page and decode it to tsblock data. */
-  public IPointReader getPagePointReader(
+  public static IPointReader getPagePointReader(
+      ChunkHeader timeChunkHeader,
+      List<ChunkHeader> valueChunkHeaderList,
+      List<List<TimeRange>> valueDeleteIntervalList,
       PageHeader timePageHeader,
       List<PageHeader> valuePageHeaders,
       ByteBuffer compressedTimePageData,
       List<ByteBuffer> compressedValuePageDatas)
       throws IOException {
+
+    IUnCompressor timeUnCompressor =
+        IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
+    Decoder timeDecoder =
+        Decoder.getDecoderByType(timeChunkHeader.getEncodingType(), TSDataType.INT64);
 
     // uncompress time page data
     ByteBuffer uncompressedTimePageData =
@@ -326,7 +334,7 @@ public class AlignedChunkReader implements IChunkReader {
     return alignedPageReader.getLazyPointReader();
   }
 
-  private ByteBuffer uncompressPageData(
+  private static ByteBuffer uncompressPageData(
       PageHeader pageHeader, IUnCompressor unCompressor, ByteBuffer compressedPageData)
       throws IOException {
     int compressedPageBodyLength = pageHeader.getCompressedSize();

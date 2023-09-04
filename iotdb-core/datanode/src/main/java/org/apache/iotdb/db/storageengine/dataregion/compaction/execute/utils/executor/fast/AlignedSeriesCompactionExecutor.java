@@ -26,29 +26,25 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subt
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyPageLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.LazyChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.tsfile.exception.write.PageException;
-import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -244,92 +240,48 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   @SuppressWarnings("squid:S3776")
   void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
     updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
-    List<PageHeader> timePageHeaders = new ArrayList<>();
-    List<ByteBuffer> compressedTimePageDatas = new ArrayList<>();
-    List<List<PageHeader>> valuePageHeaders = new ArrayList<>();
-    List<List<ByteBuffer>> compressedValuePageDatas = new ArrayList<>();
-
     // deserialize time chunk
-    Chunk timeChunk = chunkMetadataElement.timeChunkLoader.loadChunk();
+    ChunkMetadata timeChunkMetadata = chunkMetadataElement.timeChunkLoader.getChunkMetadata();
+    ChunkHeader chunkHeader = chunkMetadataElement.timeChunkLoader.loadChunkHeader();
 
-    ChunkReader chunkReader = new ChunkReader(timeChunk);
-    ByteBuffer chunkDataBuffer = timeChunk.getData();
-    ChunkHeader chunkHeader = timeChunk.getHeader();
-    while (chunkDataBuffer.remaining() > 0) {
-      // deserialize a PageHeader from chunkDataBuffer
-      PageHeader pageHeader;
-      if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, timeChunk.getChunkStatistic());
-      } else {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
-      }
-      ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-      timePageHeaders.add(pageHeader);
-      compressedTimePageDatas.add(compressedPageData);
-    }
+    CompactionTsFileReader reader =
+        (CompactionTsFileReader) readerCacheMap.get(chunkMetadataElement.fileElement.resource);
+    List<LazyPageLoader> timePageLoaders =
+        reader.getLazyPageLoadersOfChunk(timeChunkMetadata, chunkHeader);
 
     // deserialize value chunks
-    List<LazyChunkLoader> readValueChunks = chunkMetadataElement.valueChunkLoaders;
-    List<Chunk> valueChunks = new ArrayList<>(readValueChunks.size());
-    for (int i = 0; i < readValueChunks.size(); i++) {
-      LazyChunkLoader readValueChunk = readValueChunks.get(i);
-      if (readValueChunk == null) {
+    List<LazyChunkLoader> valueChunkLoaders = chunkMetadataElement.valueChunkLoaders;
+    List<List<LazyPageLoader>> valuePageLoaders = new ArrayList<>();
+
+    for (int i = 0; i < valueChunkLoaders.size(); i++) {
+      LazyChunkLoader valueChunkLoader = valueChunkLoaders.get(i);
+      if (valueChunkLoader.isEmpty()) {
         // value chunk has been deleted completely
-        valueChunks.add(null);
-        valuePageHeaders.add(null);
-        compressedValuePageDatas.add(null);
+        valuePageLoaders.add(Collections.emptyList());
         continue;
       }
-      Chunk valueChunk = readValueChunk.loadChunk();
-      valueChunks.add(valueChunk);
-      chunkReader = new ChunkReader(valueChunk);
-      chunkDataBuffer = valueChunk.getData();
-      chunkHeader = valueChunk.getHeader();
-
-      valuePageHeaders.add(new ArrayList<>());
-      compressedValuePageDatas.add(new ArrayList<>());
-      while (chunkDataBuffer.remaining() > 0) {
-        // deserialize a PageHeader from chunkDataBuffer
-        PageHeader pageHeader;
-        if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, valueChunk.getChunkStatistic());
-        } else {
-          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
-        }
-        if (pageHeader.getCompressedSize() == 0) {
-          // empty value page
-          valuePageHeaders.get(i).add(null);
-          compressedValuePageDatas.get(i).add(null);
-        } else {
-          ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-          valuePageHeaders.get(i).add(pageHeader);
-          compressedValuePageDatas.get(i).add(compressedPageData);
-        }
-      }
+      ChunkMetadata valueChunkMetadata = valueChunkLoader.getChunkMetadata();
+      ChunkHeader valueChunkHeader = valueChunkLoader.loadChunkHeader();
+      valuePageLoaders.add(reader.getLazyPageLoadersOfChunk(valueChunkMetadata, valueChunkHeader));
     }
 
     // add aligned pages into page queue
-    for (int i = 0; i < timePageHeaders.size(); i++) {
-      List<PageHeader> alignedPageHeaders = new ArrayList<>();
-      List<ByteBuffer> alignedPageDatas = new ArrayList<>();
-      for (int j = 0; j < valuePageHeaders.size(); j++) {
-        if (valuePageHeaders.get(j) == null) {
-          alignedPageHeaders.add(null);
-          alignedPageDatas.add(null);
+    for (int i = 0; i < timePageLoaders.size(); i++) {
+      List<LazyPageLoader> alignedPageLoaders = new ArrayList<>();
+      for (int j = 0; j < valuePageLoaders.size(); j++) {
+        if (valuePageLoaders.get(j).isEmpty()) {
+          alignedPageLoaders.add(new LazyPageLoader());
           continue;
         }
-        alignedPageHeaders.add(valuePageHeaders.get(j).get(i));
-        alignedPageDatas.add(compressedValuePageDatas.get(j).get(i));
+        alignedPageLoaders.add(valuePageLoaders.get(j).get(i));
       }
       pageQueue.add(
           new PageElement(
-              timePageHeaders.get(i),
-              alignedPageHeaders,
-              compressedTimePageDatas.get(i),
-              alignedPageDatas,
-              new AlignedChunkReader(timeChunk, valueChunks),
+              timePageLoaders.get(i).getPageHeader(),
+              timePageLoaders.get(i),
+              alignedPageLoaders,
               chunkMetadataElement,
-              i == timePageHeaders.size() - 1,
+              i == timePageLoaders.size() - 1,
               chunkMetadataElement.priority));
     }
     chunkMetadataElement.clearChunks();
@@ -348,13 +300,13 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
         new ArrayList<>(alignedChunkMetadata.getValueChunkMetadataList().size());
     for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
       if (valueChunkMetadata == null || valueChunkMetadata.getStatistics().getCount() == 0) {
-        valueChunkLoaders.add(null);
-        continue;
+        valueChunkLoaders.add(new LazyChunkLoader());
+      } else {
+        valueChunkLoaders.add(
+            new LazyChunkLoader(
+                readerCacheMap.get(chunkMetadataElement.fileElement.resource),
+                (ChunkMetadata) valueChunkMetadata));
       }
-      valueChunkLoaders.add(
-          new LazyChunkLoader(
-              readerCacheMap.get(chunkMetadataElement.fileElement.resource),
-              (ChunkMetadata) valueChunkMetadata));
     }
     chunkMetadataElement.timeChunkLoader = timeChunkLoader;
     chunkMetadataElement.valueChunkLoaders = valueChunkLoaders;
@@ -369,7 +321,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       return;
     }
     for (LazyChunkLoader valueChunkLoader : chunkMetadataElement.valueChunkLoaders) {
-      if (valueChunkLoader == null) {
+      if (valueChunkLoader.isEmpty()) {
         continue;
       }
       ChunkHeader header = valueChunkLoader.loadChunkHeader();

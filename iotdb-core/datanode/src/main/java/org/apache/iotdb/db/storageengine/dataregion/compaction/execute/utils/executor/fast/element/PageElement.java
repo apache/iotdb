@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyPageLoader;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -28,6 +32,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 @SuppressWarnings("squid:S1104")
@@ -35,18 +40,16 @@ public class PageElement {
 
   public PageHeader pageHeader;
 
-  public List<PageHeader> valuePageHeaders;
-
   public TsBlock batchData;
 
   // pointReader is used to replace batchData to get rid of huge memory cost by loading data point
   // in a lazy way
   public IPointReader pointReader;
 
-  // compressed page data
   public ByteBuffer pageData;
 
-  public List<ByteBuffer> valuePageDatas;
+  public LazyPageLoader timePageLoader;
+  public List<LazyPageLoader> valuePageLoaders;
 
   @SuppressWarnings("checkstyle:MemberNameCheck")
   public IChunkReader iChunkReader;
@@ -54,8 +57,6 @@ public class PageElement {
   public long priority;
 
   public long startTime;
-
-  public boolean isSelected = false;
 
   public boolean isLastPage;
 
@@ -83,19 +84,15 @@ public class PageElement {
   @SuppressWarnings("squid:S107")
   public PageElement(
       PageHeader timePageHeader,
-      List<PageHeader> valuePageHeaders,
-      ByteBuffer timePageData,
-      List<ByteBuffer> valuePageDatas,
-      AlignedChunkReader alignedChunkReader,
+      LazyPageLoader timePageLoader,
+      List<LazyPageLoader> valuePageLoaders,
       ChunkMetadataElement chunkMetadataElement,
       boolean isLastPage,
       long priority) {
     this.pageHeader = timePageHeader;
-    this.valuePageHeaders = valuePageHeaders;
-    this.pageData = timePageData;
-    this.valuePageDatas = valuePageDatas;
+    this.timePageLoader = timePageLoader;
+    this.valuePageLoaders = valuePageLoaders;
     this.priority = priority;
-    this.iChunkReader = alignedChunkReader;
     this.startTime = pageHeader.getStartTime();
     this.chunkMetadataElement = chunkMetadataElement;
     this.isLastPage = isLastPage;
@@ -103,10 +100,31 @@ public class PageElement {
   }
 
   public void deserializePage() throws IOException {
-    if (iChunkReader instanceof AlignedChunkReader) {
+    if (timePageLoader != null) {
+      ChunkHeader timeChunkHeader = chunkMetadataElement.timeChunkLoader.loadChunkHeader();
+      List<ChunkHeader> valueChunkHeaderList =
+          new ArrayList<>(chunkMetadataElement.valueChunkLoaders.size());
+      List<List<TimeRange>> valueDeleteIntervalList =
+          new ArrayList<>(chunkMetadataElement.valueChunkLoaders.size());
+      for (LazyChunkLoader valueChunkLoader : chunkMetadataElement.valueChunkLoaders) {
+        valueChunkHeaderList.add(valueChunkLoader.loadChunkHeader());
+        valueDeleteIntervalList.add(valueChunkLoader.getChunkMetadata().getDeleteIntervalList());
+      }
+      List<PageHeader> valuePageHeaders = new ArrayList<>();
+      List<ByteBuffer> valuePageDatas = new ArrayList<>();
+      for (LazyPageLoader valuePageLoader : valuePageLoaders) {
+        valuePageHeaders.add(valuePageLoader.getPageHeader());
+        valuePageDatas.add(valuePageLoader.loadPage());
+      }
       this.pointReader =
-          ((AlignedChunkReader) iChunkReader)
-              .getPagePointReader(pageHeader, valuePageHeaders, pageData, valuePageDatas);
+          AlignedChunkReader.getPagePointReader(
+              timeChunkHeader,
+              valueChunkHeaderList,
+              valueDeleteIntervalList,
+              timePageLoader.getPageHeader(),
+              valuePageHeaders,
+              timePageLoader.loadPage(),
+              valuePageDatas);
     } else {
       this.batchData = ((ChunkReader) iChunkReader).readPageData(pageHeader, pageData);
     }

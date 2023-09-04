@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader;
 
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -29,8 +29,8 @@ import java.nio.ByteBuffer;
 
 public class LazyChunkLoader {
 
-  private final TsFileSequenceReader reader;
-  private final ChunkMetadata chunkMetadata;
+  private TsFileSequenceReader reader;
+  private ChunkMetadata chunkMetadata;
   private ChunkHeader chunkHeaderCache;
 
   public LazyChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata) {
@@ -38,7 +38,12 @@ public class LazyChunkLoader {
     this.chunkMetadata = chunkMetadata;
   }
 
+  public LazyChunkLoader() {}
+
   public ChunkHeader loadChunkHeader() throws IOException {
+    if (reader == null) {
+      return null;
+    }
     if (chunkHeaderCache != null) {
       return chunkHeaderCache;
     }
@@ -49,6 +54,9 @@ public class LazyChunkLoader {
   }
 
   public Chunk loadChunk() throws IOException {
+    if (reader == null) {
+      return null;
+    }
     if (chunkHeaderCache == null) {
       return reader.readMemChunk(chunkMetadata);
     }
@@ -65,5 +73,9 @@ public class LazyChunkLoader {
 
   public ChunkMetadata getChunkMetadata() {
     return chunkMetadata;
+  }
+
+  public boolean isEmpty() {
+    return reader == null;
   }
 }
