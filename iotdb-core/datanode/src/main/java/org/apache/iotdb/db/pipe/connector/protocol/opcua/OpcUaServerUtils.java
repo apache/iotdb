@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -287,7 +288,9 @@ public class OpcUaServerUtils {
 
       // Source name --> Sensor path, like root.test.d_0.s_0
       eventNode.setSourceName(
-          tablet.deviceId + "." + tablet.getSchemas().get(columnIndex).getMeasurementId());
+          tablet.deviceId
+              + TsFileConstant.PATH_SEPARATOR
+              + tablet.getSchemas().get(columnIndex).getMeasurementId());
 
       // Source node --> Sensor type, like double
       eventNode.setSourceNode(convertToOpcDataType(dataType));
