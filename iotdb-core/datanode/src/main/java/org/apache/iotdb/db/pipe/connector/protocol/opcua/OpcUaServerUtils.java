@@ -77,14 +77,14 @@ import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.
  * OPC UA Server builder for IoTDB to send data. The coding style referenced ExampleServer.java in
  * Eclipse Milo.
  */
-public class IoTDBOpcUaServerUtils {
+public class OpcUaServerUtils {
 
   private static final String WILD_CARD_ADDRESS = "0.0.0.0";
   private static int eventId = 0;
 
-  public static OpcUaServer getIoTDBOpcUaServer(
+  public static OpcUaServer getOpcUaServer(
       int tcpBindPort, int httpsBindPort, String user, String password) throws Exception {
-    final Logger logger = LoggerFactory.getLogger(IoTDBOpcUaServerUtils.class);
+    final Logger logger = LoggerFactory.getLogger(OpcUaServerUtils.class);
 
     Path securityTempDir = Paths.get(System.getProperty("java.io.tmpdir"), "iotdb", "security");
     Files.createDirectories(securityTempDir);
@@ -94,9 +94,9 @@ public class IoTDBOpcUaServerUtils {
 
     File pkiDir = securityTempDir.resolve("pki").toFile();
 
-    LoggerFactory.getLogger(IoTDBOpcUaServerUtils.class)
+    LoggerFactory.getLogger(OpcUaServerUtils.class)
         .info("Security dir: {}", securityTempDir.toAbsolutePath());
-    LoggerFactory.getLogger(IoTDBOpcUaServerUtils.class)
+    LoggerFactory.getLogger(OpcUaServerUtils.class)
         .info("Security pki dir: {}", pkiDir.getAbsolutePath());
 
     IoTDBKeyStoreLoader loader =
@@ -278,7 +278,8 @@ public class IoTDBOpcUaServerUtils {
     BaseEventTypeNode eventNode =
         server
             .getEventFactory()
-            .createEvent(new NodeId(pseudoNameSpaceIndex, UUID.randomUUID()), Identifiers.BaseEventType);
+            .createEvent(
+                new NodeId(pseudoNameSpaceIndex, UUID.randomUUID()), Identifiers.BaseEventType);
     // Use eventNode here because other nodes doesn't support values and times simultaneously
     for (int columnIndex = 0; columnIndex < tablet.getSchemas().size(); ++columnIndex) {
 
@@ -302,6 +303,11 @@ public class IoTDBOpcUaServerUtils {
 
         // Message --> Value
         switch (dataType) {
+          case BOOLEAN:
+            eventNode.setMessage(
+                LocalizedText.english(
+                    Boolean.toString(((boolean[]) tablet.values[columnIndex])[rowIndex])));
+            break;
           case INT32:
             eventNode.setMessage(
                 LocalizedText.english(
@@ -346,6 +352,8 @@ public class IoTDBOpcUaServerUtils {
 
   private static NodeId convertToOpcDataType(TSDataType type) {
     switch (type) {
+      case BOOLEAN:
+        return Identifiers.Boolean;
       case INT32:
         return Identifiers.Int32;
       case INT64:
@@ -363,7 +371,7 @@ public class IoTDBOpcUaServerUtils {
     }
   }
 
-  private IoTDBOpcUaServerUtils() {
+  private OpcUaServerUtils() {
     // Utility Class
   }
 }

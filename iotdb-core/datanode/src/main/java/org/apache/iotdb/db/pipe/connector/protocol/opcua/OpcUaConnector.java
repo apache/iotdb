@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -47,9 +46,9 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
  * tablets, then eventNodes to send to the subscriber clients. Notice that there is no namespace
  * since the eventNodes do not need to be saved.
  */
-public class IoTDBOpcUaConnector implements PipeConnector {
+public class OpcUaConnector implements PipeConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBOpcUaConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaConnector.class);
 
   private OpcUaServer server;
 
@@ -76,7 +75,7 @@ public class IoTDBOpcUaConnector implements PipeConnector {
         parameters.getStringOrDefault(
             CONNECTOR_IOTDB_PASSWORD_KEY, CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
 
-    server = IoTDBOpcUaServerUtils.getIoTDBOpcUaServer(tcpBindPort, httpsBindPort, user, password);
+    server = OpcUaServerUtils.getOpcUaServer(tcpBindPort, httpsBindPort, user, password);
     server.startup();
   }
 
@@ -103,12 +102,7 @@ public class IoTDBOpcUaConnector implements PipeConnector {
       return;
     }
 
-    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePattern()) {
-      transfer(tabletInsertionEvent.parseEventWithPattern());
-      return;
-    }
-
-    IoTDBOpcUaServerUtils.transferTablet(server, tabletInsertionEvent.convertToTablet());
+    OpcUaServerUtils.transferTablet(server, tabletInsertionEvent.convertToTablet());
   }
 
   @Override
