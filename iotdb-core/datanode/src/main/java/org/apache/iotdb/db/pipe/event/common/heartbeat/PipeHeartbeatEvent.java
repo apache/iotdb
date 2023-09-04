@@ -23,10 +23,16 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.pipe.api.event.Event;
 
+import com.lmax.disruptor.RingBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Deque;
 
 public class PipeHeartbeatEvent extends EnrichedEvent {
 
@@ -94,41 +100,59 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   /////////////////////////////// Delay Reporting ///////////////////////////////
 
   public void bindPipeName(String pipeName) {
-    this.pipeName = pipeName;
+    if (shouldPrintMessage) {
+      this.pipeName = pipeName;
+    }
   }
 
   public void onPublished() {
-    timePublished = System.currentTimeMillis();
+    if (shouldPrintMessage) {
+      timePublished = System.currentTimeMillis();
+    }
   }
 
   public void onAssigned() {
-    timeAssigned = System.currentTimeMillis();
+    if (shouldPrintMessage) {
+      timeAssigned = System.currentTimeMillis();
+    }
   }
 
   public void onProcessed() {
-    timeProcessed = System.currentTimeMillis();
+    if (shouldPrintMessage) {
+      timeProcessed = System.currentTimeMillis();
+    }
   }
 
   public void onTransferred() {
-    timeTransferred = System.currentTimeMillis();
+    if (shouldPrintMessage) {
+      timeTransferred = System.currentTimeMillis();
+    }
   }
 
   /////////////////////////////// Queue size Reporting ///////////////////////////////
 
-  public void recordDisruptorSize(int size) {
-    disruptorSize = size;
+  public void recordDisruptorSize(RingBuffer<?> ringBuffer) {
+    if (shouldPrintMessage) {
+      disruptorSize = ringBuffer.getBufferSize() - (int) ringBuffer.remainingCapacity();
+    }
   }
 
-  public void recordExtractorQueueSize(int size) {
-    extractorQueueSize = size;
+  public void recordExtractorQueueSize(UnboundedBlockingPendingQueue<Event> pendingQueue) {
+    if (shouldPrintMessage) {
+      extractorQueueSize = pendingQueue.size();
+    }
   }
 
-  public void recordBufferQueueSize(int size) {
-    bufferQueueSize = size;
+  public void recordBufferQueueSize(Deque<Event> bufferQueue) {
+    if (shouldPrintMessage) {
+      bufferQueueSize = bufferQueue.size();
+    }
   }
 
-  public void recordConnectorQueueSize(int size) {
-    connectorQueueSize = size;
+  public void recordConnectorQueueSize(BoundedBlockingPendingQueue<Event> pendingQueue) {
+    if (shouldPrintMessage) {
+      connectorQueueSize = pendingQueue.size();
+    }
   }
 
   @Override

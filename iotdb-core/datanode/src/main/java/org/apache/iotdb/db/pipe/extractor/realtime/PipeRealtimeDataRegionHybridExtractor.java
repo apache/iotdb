@@ -156,7 +156,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
 
   private void extractHeartbeat(PipeRealtimeEvent event) {
     // Record the pending queue size before trying to put heartbeatEvent into queue
-    ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue.size());
+    ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
 
     if (pendingQueue.peekLast() instanceof PipeHeartbeatEvent) {
       // if the last event in the pending queue is a heartbeat event, we should not extract any more
