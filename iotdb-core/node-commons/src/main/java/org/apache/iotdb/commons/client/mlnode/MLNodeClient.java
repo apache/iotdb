@@ -21,8 +21,10 @@ package org.apache.iotdb.commons.client.mlnode;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.property.ClientPoolProperty;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.mlnode.rpc.thrift.IMLNodeRPCService;
 import org.apache.iotdb.mlnode.rpc.thrift.TCreateTrainingTaskReq;
@@ -35,11 +37,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import org.apache.commons.pool2.PooledObject;
-import org.apache.commons.pool2.PooledObjectFactory;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -53,39 +52,49 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public class MLNodeClient implements AutoCloseable {
+public class MLNodeClient implements AutoCloseable, ThriftClient {
 
   private static final Logger logger = LoggerFactory.getLogger(MLNodeClient.class);
 
-  private final TTransport transport;
-  private final IMLNodeRPCService.Client client;
+  private static final TEndPoint endPoint = MLNodeInfo.endPoint;
+
+  private TTransport transport;
+
+  private final ThriftClientProperty property;
+  private IMLNodeRPCService.Client client;
 
   public static final String MSG_CONNECTION_FAIL =
       "Fail to connect to MLNode. Please check status of MLNode";
 
   private final TsBlockSerde tsBlockSerde = new TsBlockSerde();
 
-  private MLNodeClient() throws TException {
-    TEndPoint endpoint = CommonDescriptor.getInstance().getConfig().getTargetMLNodeEndPoint();
+  ClientManager<TEndPoint, MLNodeClient> clientManager;
+
+  public MLNodeClient(
+      ThriftClientProperty property, ClientManager<TEndPoint, MLNodeClient> clientManager)
+      throws TException {
+    this.property = property;
+    this.clientManager = clientManager;
+    init();
+  }
+
+  private void init() throws TException {
     try {
-      long connectionTimeout = ClientPoolProperty.DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
       transport =
           new TFramedTransport.Factory()
               .getTransport(
                   new TSocket(
                       TConfigurationConst.defaultTConfiguration,
-                      endpoint.getIp(),
-                      endpoint.getPort(),
-                      (int) connectionTimeout));
+                      endPoint.getIp(),
+                      endPoint.getPort(),
+                      property.getConnectionTimeoutMs()));
       if (!transport.isOpen()) {
         transport.open();
       }
     } catch (TTransportException e) {
       throw new TException(MSG_CONNECTION_FAIL);
     }
-
-    TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
-    client = new IMLNodeRPCService.Client(protocolFactory.getProtocol(transport));
+    client = new IMLNodeRPCService.Client(property.getProtocolFactory().getProtocol(transport));
   }
 
   public TTransport getTransport() {
@@ -159,31 +168,45 @@ public class MLNodeClient implements AutoCloseable {
     Optional.ofNullable(transport).ifPresent(TTransport::close);
   }
 
-  public static class Factory implements PooledObjectFactory<MLNodeClient> {
+  @Override
+  public void invalidate() {
+    Optional.ofNullable(transport).ifPresent(TTransport::close);
+  }
 
-    @Override
-    public void activateObject(PooledObject<MLNodeClient> pooledObject) throws Exception {
-      // No special activation logic needed
+  @Override
+  public void invalidateAll() {
+    clientManager.clear(endPoint);
+  }
+
+  @Override
+  public boolean printLogWhenEncounterException() {
+    return property.isPrintLogWhenEncounterException();
+  }
+
+  public static class Factory extends ThriftClientFactory<TEndPoint, MLNodeClient> {
+
+    public Factory(
+        ClientManager<TEndPoint, MLNodeClient> clientClientManager,
+        ThriftClientProperty thriftClientProperty) {
+      super(clientClientManager, thriftClientProperty);
     }
 
     @Override
-    public void passivateObject(PooledObject<MLNodeClient> pooledObject) throws Exception {
-      // No special passivation logic needed
-    }
-
-    @Override
-    public void destroyObject(PooledObject<MLNodeClient> pooledObject) throws Exception {
+    public void destroyObject(TEndPoint tEndPoint, PooledObject<MLNodeClient> pooledObject)
+        throws Exception {
       pooledObject.getObject().close();
     }
 
     @Override
-    public PooledObject<MLNodeClient> makeObject() throws Exception {
-      return new DefaultPooledObject<>(new MLNodeClient());
+    public PooledObject<MLNodeClient> makeObject(TEndPoint tEndPoint) throws Exception {
+      return new DefaultPooledObject<>(new MLNodeClient(thriftClientProperty, clientManager));
     }
 
     @Override
-    public boolean validateObject(PooledObject<MLNodeClient> pooledObject) {
-      return pooledObject.getObject() != null && pooledObject.getObject().getTransport().isOpen();
+    public boolean validateObject(TEndPoint tEndPoint, PooledObject<MLNodeClient> pooledObject) {
+      return Optional.ofNullable(pooledObject.getObject().getTransport())
+          .map(TTransport::isOpen)
+          .orElse(false);
     }
   }
 }

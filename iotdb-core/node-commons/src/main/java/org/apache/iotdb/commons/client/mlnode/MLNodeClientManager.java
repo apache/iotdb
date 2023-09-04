@@ -19,25 +19,22 @@
 
 package org.apache.iotdb.commons.client.mlnode;
 
-import org.apache.commons.pool2.PooledObjectFactory;
-import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
+import org.apache.iotdb.commons.client.IClientManager;
 
-public class MLNodeClientPool extends GenericObjectPool<MLNodeClient> {
-  public MLNodeClientPool(PooledObjectFactory<MLNodeClient> factory) {
-    super(factory);
+public class MLNodeClientManager {
+  private MLNodeClientManager() {
+    // Empty constructor
   }
 
-  public static class MLNodeClientPoolHolder {
-
-    private static final MLNodeClientPool instance =
-        new MLNodeClientPool(new MLNodeClient.Factory());
-
-    private MLNodeClientPoolHolder() {
-      // Private constructor to prevent instantiation
-    }
+  private static final class MLNodeClientManagerHolder {
+    private static final IClientManager<TEndPoint, MLNodeClient> INSTANCE =
+        new IClientManager.Factory<TEndPoint, MLNodeClient>()
+            .createClientManager(new ClientPoolFactory.MLNodeClientPoolFactory());
   }
 
-  public static MLNodeClientPool getInstance() {
-    return MLNodeClientPoolHolder.instance;
+  public static IClientManager<TEndPoint, MLNodeClient> getInstance() {
+    return MLNodeClientManagerHolder.INSTANCE;
   }
 }

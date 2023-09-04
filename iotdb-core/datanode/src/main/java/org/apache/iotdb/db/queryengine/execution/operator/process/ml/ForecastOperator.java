@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.ml;
 
 import org.apache.iotdb.commons.client.mlnode.MLNodeClient;
-import org.apache.iotdb.commons.client.mlnode.MLNodeClientPool;
+import org.apache.iotdb.commons.client.mlnode.MLNodeClientManager;
+import org.apache.iotdb.commons.client.mlnode.MLNodeInfo;
 import org.apache.iotdb.db.exception.ModelInferenceProcessException;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -57,7 +58,6 @@ public class ForecastOperator implements ProcessOperator {
 
   private final TsBlockBuilder inputTsBlockBuilder;
 
-  private MLNodeClient client;
   private final ExecutorService modelInferenceExecutor;
   private ListenableFuture<TForecastResp> forecastExecutionFuture;
 
@@ -188,26 +188,25 @@ public class ForecastOperator implements ProcessOperator {
   }
 
   private void submitForecastTask() {
-    try {
-      if (client == null) {
-        client = MLNodeClientPool.getInstance().borrowObject();
-      }
-    } catch (Exception e) {
-      throw new ModelInferenceProcessException(e.getMessage());
-    }
 
     TsBlock inputTsBlock = inputTsBlockBuilder.build();
     inputTsBlock.reverse();
 
     forecastExecutionFuture =
         Futures.submit(
-            () ->
-                client.forecast(
+            () -> {
+              try (MLNodeClient client =
+                  MLNodeClientManager.getInstance().borrowClient(MLNodeInfo.endPoint)) {
+                return client.forecast(
                     modelPath,
                     inputTsBlock,
                     inputTypeList,
                     inputColumnNameList,
-                    expectedPredictLength),
+                    expectedPredictLength);
+              } catch (Exception e) {
+                throw new ModelInferenceProcessException(e.getMessage());
+              }
+            },
             modelInferenceExecutor);
   }
 
@@ -218,7 +217,6 @@ public class ForecastOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    MLNodeClientPool.getInstance().returnObject(client);
     if (forecastExecutionFuture != null) {
       forecastExecutionFuture.cancel(true);
     }
