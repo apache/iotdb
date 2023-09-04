@@ -36,8 +36,10 @@ public abstract class AuthorityInformationStatement extends Statement {
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
     try {
-      this.authorityScope =
-          AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA.ordinal());
+      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+        this.authorityScope =
+            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA.ordinal());
+      }
     } catch (AuthException e) {
       return new TSStatus(e.getCode().getStatusCode());
     }
