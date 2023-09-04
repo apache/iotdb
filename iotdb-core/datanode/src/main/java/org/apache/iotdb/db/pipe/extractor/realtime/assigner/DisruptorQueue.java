@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.extractor.realtime.assigner;
 
 import org.apache.iotdb.commons.concurrent.IoTDBDaemonThreadFactory;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
@@ -56,6 +58,10 @@ public class DisruptorQueue {
   }
 
   public void publish(PipeRealtimeEvent event) {
+    EnrichedEvent internalEvent = event.getEvent();
+    if (internalEvent instanceof PipeHeartbeatEvent) {
+      ((PipeHeartbeatEvent) internalEvent).recordDisruptorSize(ringBuffer);
+    }
     ringBuffer.publishEvent((container, sequence, o) -> container.setEvent(event), event);
   }
 
