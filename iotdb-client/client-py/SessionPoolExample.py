@@ -45,13 +45,13 @@ def prepare_data():
         "root.test.d1.s0",
         "root.test.d1.s1",
         "root.test.d1.s2",
-        "root.test.d1.s3"
+        "root.test.d1.s3",
     ]
     data_type_lst = [
         TSDataType.BOOLEAN,
         TSDataType.INT32,
         TSDataType.INT64,
-        TSDataType.FLOAT
+        TSDataType.FLOAT,
     ]
     encoding_lst = [TSEncoding.PLAIN for _ in range(len(data_type_lst))]
     compressor_lst = [Compressor.SNAPPY for _ in range(len(data_type_lst))]
@@ -76,11 +76,7 @@ def insert_data(num: int):
     device = ["root.test.d" + str(num)]
     measurements = ["s0", "s1", "s2"]
     values = [False, 10, 11]
-    data_types = [
-        TSDataType.BOOLEAN,
-        TSDataType.INT32,
-        TSDataType.INT64
-    ]
+    data_types = [TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT64]
     # Get a session from the pool
     session = session_pool.get_session()
     session.insert_records(device, [1], [measurements], [data_types], [values])
@@ -119,9 +115,14 @@ ip = "127.0.0.1"
 port = "6667"
 username = "root"
 password = "root"
-pool_config = PoolConfig(node_urls=["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"], user_name=username,
-                         password=password, fetch_size=1024,
-                         time_zone="UTC+8", max_retry=3)
+pool_config = PoolConfig(
+    node_urls=["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"],
+    user_name=username,
+    password=password,
+    fetch_size=1024,
+    time_zone="UTC+8",
+    max_retry=3,
+)
 max_pool_size = 5
 wait_timeout_in_ms = 3000
 
