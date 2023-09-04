@@ -163,7 +163,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent) {
       // if the last event in the pending queue is a heartbeat event, we should not extract any more
       // heartbeat events to avoid OOM when the pipe is stopped.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
       return;
     }
 
