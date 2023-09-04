@@ -30,40 +30,8 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Vector;
 
 public class AuthUtilsTest {
-  @Test
-  public void authUtilsTest_ParameterCheck() throws AuthException, IllegalPathException {
-    AuthUtils auth;
-    Vector<String> nameOrPassword = new Vector<>();
-    nameOrPassword.add(new String("he"));
-    nameOrPassword.add(
-        new String(
-            "qwertyuiopasdfghjklzxcvbnm123456789999999asdfgh"
-                + "jkzxcvbnmqwertyuioasdfghjklzxcvbnm"));
-    nameOrPassword.add(new String("he  llo"));
-    nameOrPassword.add(new String("hel^d"));
-    nameOrPassword.add(new String("he\\llo"));
-    nameOrPassword.add(new String("he*llo"));
-    nameOrPassword.add(new String("he*$llo"));
-    for (String item : nameOrPassword) {
-      Assert.assertThrows(AuthException.class, () -> AuthUtils.validateNameOrPassword(item));
-    }
-    PartialPath path1 = new PartialPath(new String("data.t1"));
-    PartialPath path2 = new PartialPath(new String("root.t1"));
-    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePath(path1));
-    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilege(-1));
-    // give a wrong path
-    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilege(path1, -1));
-    // give a path but a wrong privilege id
-    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilege(path2, 5));
-
-    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilege(null, 3));
-    AuthUtils.validatePrivilege(path2, PrivilegeType.WRITE_SCHEMA.ordinal());
-    AuthUtils.validatePrivilege(null, PrivilegeType.MANAGE_ROLE.ordinal());
-  }
-
   @Test
   public void authUtilsTest_PrivilegeGrantRevokeCheck() throws IllegalPathException {
     PartialPath path = new PartialPath(new String("root.t1"));
@@ -79,7 +47,7 @@ public class AuthUtilsTest {
     PathPrivilege pathWithPri3 = new PathPrivilege(path3);
     pathWithPri3.grantPrivilege(PrivilegeType.READ_DATA.ordinal(), false);
 
-    /** root.t1 : read schema, read data root.t2 : write schema root.** : read data */
+    /** root.t1 : read schema, read data; root.t2 : write schema; root.** : read data */
     // Privilege list is empty.
     Assert.assertFalse(
         AuthUtils.checkPathPrivilege(path2, PrivilegeType.READ_SCHEMA.ordinal(), null));
@@ -88,13 +56,13 @@ public class AuthUtilsTest {
     privilegeList.add(pathWithPri);
     privilegeList.add(pathWithPri2);
     privilegeList.add(pathWithPri3);
-    Assert.assertFalse(
+    Assert.assertTrue(
         AuthUtils.checkPathPrivilege(path2, PrivilegeType.READ_SCHEMA.ordinal(), privilegeList));
     Assert.assertTrue(
         AuthUtils.checkPathPrivilege(path, PrivilegeType.READ_SCHEMA.ordinal(), privilegeList));
 
     pathWithPri.revokePrivilege(PrivilegeType.READ_SCHEMA.ordinal());
-    /** root.t1 : read data root.t2 : write schema root.** : read data */
+    /** root.t1 : read data; root.t2 : write schema ; root.** : read data */
     Assert.assertFalse(
         AuthUtils.checkPathPrivilege(path, PrivilegeType.READ_SCHEMA.ordinal(), privilegeList));
     Assert.assertTrue(

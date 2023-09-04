@@ -861,7 +861,7 @@ grantOpt
 
 // Grant User Role
 grantRoleToUser
-    : GRANT roleName=identifier TO userName=identifier
+    : GRANT ROLE roleName=identifier TO userName=identifier
     ;
 
 // Revoke User Privileges
@@ -876,7 +876,7 @@ revokeRole
 
 // Revoke Role From User
 revokeRoleFromUser
-    : REVOKE roleName=identifier FROM userName=identifier
+    : REVOKE ROLE roleName=identifier FROM userName=identifier
     ;
 
 // Drop User
@@ -899,14 +899,14 @@ listRole
     : LIST ROLE (OF USER userName=usernameWithRoot)?
     ;
 
-// List Privileges of Users On Specific Path
+// List Privileges of Users
 listPrivilegesUser
-    : LIST PRIVILEGES USER userName=usernameWithRoot (ON prefixPath (COMMA prefixPath)*)?
+    : LIST PRIVILEGES OF USER userName=usernameWithRoot
     ;
 
-// List Privileges of Roles On Specific Path
+// List Privileges of Roles
 listPrivilegesRole
-    : LIST PRIVILEGES ROLE roleName=identifier (ON prefixPath (COMMA prefixPath)*)?
+    : LIST PRIVILEGES OF ROLE roleName=identifier
     ;
 
 privileges
