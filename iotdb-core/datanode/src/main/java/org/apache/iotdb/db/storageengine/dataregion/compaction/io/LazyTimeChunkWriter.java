@@ -128,17 +128,8 @@ public class LazyTimeChunkWriter extends TimeChunkWriter {
     while (!insertPagePositions.isEmpty()) {
       Integer size = insertPagePositions.peek();
       if (writedSizeOfBuffer < size) {
-        if (writedSizeOfBuffer == 0) {
-          pageBuffer.writeTo(
-              writer.getIOWriterOut().wrapAsStream(),
-              writedSizeOfBuffer,
-              size - writedSizeOfBuffer);
-        } else {
-          pageBuffer.writeTo(
-              writer.getIOWriterOut().wrapAsStream(),
-              writedSizeOfBuffer + 1,
-              size - writedSizeOfBuffer);
-        }
+        pageBuffer.writeTo(
+            writer.getIOWriterOut().wrapAsStream(), writedSizeOfBuffer, size - writedSizeOfBuffer);
         writedSizeOfBuffer = size;
       } else {
         insertPagePositions.removeFirst();
@@ -152,7 +143,7 @@ public class LazyTimeChunkWriter extends TimeChunkWriter {
     if (writedSizeOfBuffer != bufferSize) {
       pageBuffer.writeTo(
           writer.getIOWriterOut().wrapAsStream(),
-          writedSizeOfBuffer + 1,
+          writedSizeOfBuffer,
           bufferSize - writedSizeOfBuffer);
     }
 
