@@ -89,7 +89,7 @@ public abstract class BasicRoleManager implements IRoleManager {
   @Override
   public boolean grantPrivilegeToRole(
       String rolename, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
-    AuthUtils.validatePrivilege(path, privilegeId);
+    //    AuthUtils.validatePrivilege(path, privilegeId);
     lock.writeLock(rolename);
     try {
       Role role = getRole(rolename);
@@ -118,7 +118,7 @@ public abstract class BasicRoleManager implements IRoleManager {
   @Override
   public boolean revokePrivilegeFromRole(String rolename, PartialPath path, int privilegeId)
       throws AuthException {
-    AuthUtils.validatePrivilege(path, privilegeId);
+    //    AuthUtils.validatePrivilege(path, privilegeId);
     lock.writeLock(rolename);
     try {
       Role role = getRole(rolename);
