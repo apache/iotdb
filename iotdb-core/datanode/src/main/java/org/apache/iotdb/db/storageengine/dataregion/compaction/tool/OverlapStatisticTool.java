@@ -91,7 +91,6 @@ public class OverlapStatisticTool {
     String[] dataDirsParam = commandLine.getOptionValues(DATA_DIRS_ARG);
 
     if (dataDirsParam == null || dataDirsParam.length == 0) {
-      System.out.println(".");
       throw new RuntimeException("data_dirs must not be empty");
     }
     dataDirs = Arrays.asList(dataDirsParam);
@@ -134,37 +133,41 @@ public class OverlapStatisticTool {
     // 0. 预处理
     processDataDirs(dataDirs);
 
-    // 1. 构造最终结果集
-    OverlapStatistic statistic = new OverlapStatistic();
-    List<TimePartitionProcessTask> taskList = new ArrayList<>();
-    for (Map.Entry<String, Pair<List<String>, List<String>>> timePartitionFilesEntry :
-        timePartitionFileMap.entrySet()) {
-      String timePartition = timePartitionFilesEntry.getKey();
-      Pair<List<String>, List<String>> timePartitionFiles = timePartitionFilesEntry.getValue();
-      taskList.add(new TimePartitionProcessTask(timePartition, timePartitionFiles));
-    }
-    int workerNum = Math.min(taskList.size(), OverlapStatisticTool.workerNum);
-    TimePartitionProcessWorker[] workers = new TimePartitionProcessWorker[workerNum];
-    for (int i = 0; i < taskList.size(); i++) {
-      int workerIdx = i % workerNum;
-      TimePartitionProcessWorker worker = workers[workerIdx];
-      if (worker == null) {
-        worker = new TimePartitionProcessWorker();
-        workers[workerIdx] = worker;
-      }
-      worker.addTask(taskList.get(i));
-    }
+    int workerNum = Math.min(timePartitionFileMap.size(), OverlapStatisticTool.workerNum);
+    TimePartitionProcessWorker[] workers = constructWorkers(workerNum);
+
     CountDownLatch countDownLatch = new CountDownLatch(workerNum);
     for (TimePartitionProcessWorker worker : workers) {
       worker.run(countDownLatch);
     }
     countDownLatch.await();
+
+    OverlapStatistic statistic = new OverlapStatistic();
     for (TimePartitionProcessWorker worker : workers) {
       for (OverlapStatistic partialRet : worker.getWorkerResults()) {
         statistic.merge(partialRet);
       }
     }
     PrintUtil.printOneStatistics(statistic, "All EXECUTED");
+  }
+
+  public TimePartitionProcessWorker[] constructWorkers(int workerNum) {
+    TimePartitionProcessWorker[] workers = new TimePartitionProcessWorker[workerNum];
+
+    int workerIdx = 0;
+    for (Map.Entry<String, Pair<List<String>, List<String>>> timePartitionFilesEntry :
+        timePartitionFileMap.entrySet()) {
+      String timePartition = timePartitionFilesEntry.getKey();
+      Pair<List<String>, List<String>> timePartitionFiles = timePartitionFilesEntry.getValue();
+
+      if (workers[workerIdx] == null) {
+        workers[workerIdx] = new TimePartitionProcessWorker();
+      }
+
+      workers[workerIdx].addTask(new TimePartitionProcessTask(timePartition, timePartitionFiles));
+      workerIdx = (workerIdx + 1) % workerNum;
+    }
+    return workers;
   }
 
   private void processDataDirs(List<String> dataDirs) {

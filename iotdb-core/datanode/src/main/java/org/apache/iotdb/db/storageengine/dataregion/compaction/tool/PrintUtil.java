@@ -32,16 +32,6 @@ class PrintUtil {
   }
 
   private static void printProgressLog(String label, OverlapStatistic statistic) {
-
-    //    System.out.printf(
-    //        "Sequence file num: %d, Sequence file size: %.2fM\n",
-    //        statistic.totalSequenceFile, ((double) statistic.totalSequenceFileSize / 1024 /
-    // 1024));
-    //    System.out.printf(
-    //        "Unsequence file num: %d, Unsequence file size: %.2fM\n",
-    //        statistic.totalUnsequenceFile, (double) statistic.totalUnsequenceFileSize / 1024 /
-    // 1024);
-
     String[][] log = {
       {
         "File Number",
@@ -49,9 +39,9 @@ class PrintUtil {
         statistic.totalSequenceFile + "",
         statistic.totalUnsequenceFile + "",
         String.format(
-            "%.2f",
+            "%.2f%%",
             statistic.totalUnsequenceFile
-                * 1d
+                * 100d
                 / (statistic.totalSequenceFile + statistic.totalUnsequenceFile))
       },
       {
@@ -60,33 +50,10 @@ class PrintUtil {
         statistic.totalSequenceFileSize / MSize + "",
         statistic.totalUnsequenceFileSize / MSize + "",
         String.format(
-            "%.2f",
+            "%.2f%%",
             statistic.totalUnsequenceFileSize
-                * 1d
+                * 100d
                 / (statistic.totalSequenceFileSize + statistic.totalUnsequenceFileSize))
-      },
-      {
-        "Device Number",
-        statistic.totalChunkGroupsInSequenceFile + statistic.totalChunkGroupsInUnSequenceFile + "",
-        statistic.totalChunkGroupsInSequenceFile + "",
-        statistic.totalChunkGroupsInUnSequenceFile + "",
-        String.format(
-            "%.2f",
-            statistic.totalChunkGroupsInUnSequenceFile
-                * 1d
-                / (statistic.totalChunkGroupsInSequenceFile
-                    + statistic.totalChunkGroupsInUnSequenceFile))
-      },
-      {
-        "Sensor Number",
-        statistic.totalChunksInSequenceFile + statistic.totalChunksInUnSequenceFile + "",
-        statistic.totalChunksInSequenceFile + "",
-        statistic.totalChunksInUnSequenceFile + "",
-        String.format(
-            "%.2f",
-            statistic.totalChunksInUnSequenceFile
-                * 1d
-                / (statistic.totalChunksInSequenceFile + statistic.totalChunksInUnSequenceFile))
       },
       {
         "Duration",
@@ -96,9 +63,9 @@ class PrintUtil {
         statistic.sequenceMaxEndTime - statistic.sequenceMinStartTime + "",
         statistic.unSequenceMaxEndTime - statistic.unSequenceMinStartTime + "",
         String.format(
-            "%.2f",
+            "%.2f%%",
             (statistic.unSequenceMaxEndTime - statistic.unSequenceMinStartTime)
-                * 1d
+                * 100d
                 / (Math.max(statistic.sequenceMaxEndTime, statistic.unSequenceMaxEndTime)
                     - Math.min(statistic.sequenceMinStartTime, statistic.unSequenceMinStartTime)))
       }
