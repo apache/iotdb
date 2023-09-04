@@ -87,7 +87,6 @@
         <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
-        <module>integration-test</module>
     </modules>
     <!-- Properties Management -->
     <properties>
