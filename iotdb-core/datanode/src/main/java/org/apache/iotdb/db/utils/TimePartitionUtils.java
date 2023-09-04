@@ -40,6 +40,20 @@ public class TimePartitionUtils {
     return timePartitionInterval;
   }
 
+  public static long getTimePartitionUpperBound(long time) {
+    long upperBoundOfTimePartition;
+    if (time > 0 || time % TimePartitionUtils.timePartitionInterval == 0) {
+      upperBoundOfTimePartition =
+          (time / TimePartitionUtils.timePartitionInterval + 1)
+              * TimePartitionUtils.timePartitionInterval;
+    } else {
+      upperBoundOfTimePartition =
+          (time / TimePartitionUtils.timePartitionInterval)
+              * TimePartitionUtils.timePartitionInterval;
+    }
+    return upperBoundOfTimePartition;
+  }
+
   @TestOnly
   public static void setTimePartitionInterval(long timePartitionInterval) {
     TimePartitionUtils.timePartitionInterval = timePartitionInterval;

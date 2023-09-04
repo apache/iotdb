@@ -1838,7 +1838,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     boolean needLeftAll;
     boolean needRightAll;
-    long startTime;
     long endTime;
     TTimePartitionSlot timePartitionSlot;
     int index = 0;
@@ -1846,16 +1845,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     if (timeRangeList.get(0).getMin() == Long.MIN_VALUE) {
       needLeftAll = true;
-      startTime =
-          (timeRangeList.get(0).getMax() / TimePartitionUtils.timePartitionInterval)
-              * TimePartitionUtils.timePartitionInterval; // included
-      endTime = startTime + TimePartitionUtils.timePartitionInterval; // excluded
+      endTime = TimePartitionUtils.getTimePartitionUpperBound(timeRangeList.get(0).getMax());
       timePartitionSlot = TimePartitionUtils.getTimePartition(timeRangeList.get(0).getMax());
     } else {
-      startTime =
-          (timeRangeList.get(0).getMin() / TimePartitionUtils.timePartitionInterval)
-              * TimePartitionUtils.timePartitionInterval; // included
-      endTime = startTime + TimePartitionUtils.timePartitionInterval; // excluded
+      endTime = TimePartitionUtils.getTimePartitionUpperBound(timeRangeList.get(0).getMin());
       timePartitionSlot = TimePartitionUtils.getTimePartition(timeRangeList.get(0).getMin());
       needLeftAll = false;
     }
@@ -1874,9 +1867,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (curLeft >= endTime) {
         result.add(timePartitionSlot);
         // next init
-        endTime =
-            (curLeft / TimePartitionUtils.timePartitionInterval + 1)
-                * TimePartitionUtils.timePartitionInterval;
+        endTime = TimePartitionUtils.getTimePartitionUpperBound(curLeft);
         timePartitionSlot = TimePartitionUtils.getTimePartition(curLeft);
       } else if (curRight >= endTime) {
         result.add(timePartitionSlot);
