@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
@@ -359,6 +359,6 @@ public class PipeTsFileResourceManager {
   }
 
   public int getLinkedTsfileCount() {
-    return hardlinkOrCopiedFileToReferenceMap.size();
+    return hardlinkOrCopiedFileToPipeTsFileResourceMap.size();
   }
 }

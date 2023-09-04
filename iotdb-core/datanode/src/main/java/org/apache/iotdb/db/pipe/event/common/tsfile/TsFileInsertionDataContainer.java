@@ -20,14 +20,11 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -65,9 +62,10 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final EnrichedEvent sourceEvent; // used to report progress
 
   private boolean isSelfHoldReader = false;
-  private final PipeMemoryBlock allocatedMemoryBlock;
+  private PipeMemoryBlock
+      allocatedMemoryBlock; // only used when TsFileReader can't be created in cache
 
-  private final TsFileSequenceReader tsFileSequenceReader;
+  private TsFileSequenceReader tsFileSequenceReader;
   private final TsFileReader tsFileReader;
 
   private final Iterator<Map.Entry<String, List<String>>> deviceMeasurementsMapIterator;
@@ -99,16 +97,17 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     this.sourceEvent = sourceEvent;
 
     try {
-      allocatedMemoryBlock =
-              PipeResourceManager.memory()
-                      .forceAllocate(
-                              PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
-  
       tsFileSequenceReader = PipeResourceManager.tsfile().getTsFileSequenceReaderFromCache(tsFile);
       if (tsFileSequenceReader == null) {
         // TsFileSequenceReader is not in cache, we need to create it here and close it later.
         isSelfHoldReader = true;
-        LOGGER.info("TsFileSequenceReader not in cache, creating it.");
+        LOGGER.info(
+            "TsFileSequenceReader can't be created in cache, will create it outside of cache.");
+
+        allocatedMemoryBlock =
+            PipeResourceManager.memory()
+                .forceAllocate(
+                    PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
         tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
         tsFileReader = new TsFileReader(tsFileSequenceReader);
         deviceIsAlignedMap = readDeviceIsAlignedMap();
@@ -266,6 +265,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       LOGGER.warn("Failed to close TsFileSequenceReader", e);
     }
 
-    allocatedMemoryBlock.close();
+    if (allocatedMemoryBlock != null) {
+      allocatedMemoryBlock.close();
+    }
   }
 }
