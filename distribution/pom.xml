@@ -128,6 +128,12 @@
             <artifactId>spark-iotdb-connector_2.12</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>sparkplugb-connector</artifactId>
+            <version>${project.version}</version>
+            <classifier>jar-with-dependencies</classifier>
+        </dependency>
     </dependencies>
     <profiles>
         <profile>

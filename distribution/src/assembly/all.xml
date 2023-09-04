@@ -106,5 +106,6 @@
     <!--    </files>-->
     <componentDescriptors>
         <componentDescriptor>common-files.xml</componentDescriptor>
+        <componentDescriptor>sparkplugb-connector.xml</componentDescriptor>
     </componentDescriptors>
 </assembly>
