@@ -97,6 +97,12 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     return false;
   }
 
+  /////////////////////////////// Whether to print ///////////////////////////////
+
+  public boolean isShouldPrintMessage() {
+    return shouldPrintMessage;
+  }
+
   /////////////////////////////// Delay Reporting ///////////////////////////////
 
   public void bindPipeName(String pipeName) {
