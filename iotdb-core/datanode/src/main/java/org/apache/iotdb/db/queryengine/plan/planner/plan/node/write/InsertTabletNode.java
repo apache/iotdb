@@ -190,13 +190,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (times.length == 0) {
       return Collections.emptyList();
     }
-    long endTime;
+    long upperBoundOfTimePartition;
     if (times[0] > 0 || times[0] % TimePartitionUtils.timePartitionInterval == 0) {
-      endTime =
+      upperBoundOfTimePartition =
           (times[0] / TimePartitionUtils.timePartitionInterval + 1)
               * TimePartitionUtils.timePartitionInterval; // excluded
     } else {
-      endTime =
+      upperBoundOfTimePartition =
           (times[0] / TimePartitionUtils.timePartitionInterval)
               * TimePartitionUtils.timePartitionInterval; // excluded
     }
@@ -207,7 +207,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
     List<Integer> ranges = new ArrayList<>();
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
-      if (times[i] >= endTime) {
+      if (times[i] >= upperBoundOfTimePartition) {
         // a new range.
         ranges.add(startLoc); // included
         ranges.add(i); // excluded
@@ -215,11 +215,11 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         // next init
         startLoc = i;
         if (times[0] > 0 || times[0] % TimePartitionUtils.timePartitionInterval == 0) {
-          endTime =
+          upperBoundOfTimePartition =
               (times[i] / TimePartitionUtils.timePartitionInterval + 1)
                   * TimePartitionUtils.timePartitionInterval;
         } else {
-          endTime =
+          upperBoundOfTimePartition =
               (times[i] / TimePartitionUtils.timePartitionInterval)
                   * TimePartitionUtils.timePartitionInterval;
         }
