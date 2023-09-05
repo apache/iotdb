@@ -42,7 +42,7 @@ public class MergedTsFileSplitterTest extends TestBase {
     try {
       splitter.splitTsFileByDataPartition();
       for (TsFileData tsFileData : resultSet) {
-        // System.out.println(tsFileData);
+//         System.out.println(tsFileData);
       }
     } finally {
       splitter.close();
@@ -55,7 +55,6 @@ public class MergedTsFileSplitterTest extends TestBase {
     resultSet.add(data);
     if (resultSet.size() % 1000 == 0) {
       System.out.printf("%d chunks split\n", resultSet.size());
-      System.out.printf("Maxmem: %d, freemem: %d\n", Runtime.getRuntime().maxMemory(), Runtime.getRuntime().freeMemory());
     }
     return true;
   }
