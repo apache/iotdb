@@ -73,7 +73,7 @@ public class AlignedChunkReader implements IChunkReader {
    */
   public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList) {
     this.filter = null;
-    this.timeChunkDataBuffer =timeChunk.getData();
+    this.timeChunkDataBuffer = timeChunk.getData();
     this.valueDeleteIntervalList = new ArrayList<>();
     this.timeChunkHeader = timeChunk.getHeader();
     this.timeUnCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
