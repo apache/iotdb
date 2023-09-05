@@ -479,14 +479,6 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.isDataRegionRatisLogUnsafeFlushEnable()))
                 .trim()));
 
-    conf.setDataRegionRatisLogForceSyncNum(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "data_region_ratis_log_force_sync_num",
-                    String.valueOf(conf.getDataRegionRatisLogForceSyncNum()))
-                .trim()));
-
     conf.setConfigNodeRatisLogUnsafeFlushEnable(
         Boolean.parseBoolean(
             properties
@@ -565,6 +557,46 @@ public class ConfigNodeDescriptor {
                 .getProperty(
                     "data_region_ratis_grpc_leader_outstanding_appends_max",
                     String.valueOf(conf.getDataRegionRatisGrpcLeaderOutstandingAppendsMax()))
+                .trim()));
+
+    conf.setConfigNodeRatisGrpcLeaderOutstandingAppendsMax(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "config_node_ratis_grpc_leader_outstanding_appends_max",
+                    String.valueOf(conf.getConfigNodeRatisGrpcLeaderOutstandingAppendsMax()))
+                .trim()));
+
+    conf.setSchemaRegionRatisGrpcLeaderOutstandingAppendsMax(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "schema_region_ratis_grpc_leader_outstanding_appends_max",
+                    String.valueOf(conf.getSchemaRegionRatisGrpcLeaderOutstandingAppendsMax()))
+                .trim()));
+
+    conf.setDataRegionRatisLogForceSyncNum(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "data_region_ratis_log_force_sync_num",
+                    String.valueOf(conf.getDataRegionRatisLogForceSyncNum()))
+                .trim()));
+
+    conf.setConfigNodeRatisLogForceSyncNum(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "config_node_ratis_log_force_sync_num",
+                    String.valueOf(conf.getConfigNodeRatisLogForceSyncNum()))
+                .trim()));
+
+    conf.setSchemaRegionRatisLogForceSyncNum(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "schema_region_ratis_log_force_sync_num",
+                    String.valueOf(conf.getSchemaRegionRatisLogForceSyncNum()))
                 .trim()));
 
     conf.setDataRegionRatisRpcLeaderElectionTimeoutMinMs(
