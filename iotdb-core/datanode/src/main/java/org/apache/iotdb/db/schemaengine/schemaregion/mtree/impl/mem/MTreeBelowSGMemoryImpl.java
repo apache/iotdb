@@ -923,7 +923,7 @@ public class MTreeBelowSGMemoryImpl {
             showDevicesPlan.getPath(),
             store,
             showDevicesPlan.isPrefixMatch(),
-            SchemaConstant.ALL_MATCH_SCOPE) {
+            showDevicesPlan.getScope()) {
 
           protected IDeviceSchemaInfo collectEntity(IDeviceMNode<IMemMNode> node) {
             PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
@@ -992,7 +992,7 @@ public class MTreeBelowSGMemoryImpl {
             showTimeSeriesPlan.getPath(),
             store,
             showTimeSeriesPlan.isPrefixMatch(),
-            SchemaConstant.ALL_MATCH_SCOPE) {
+            showTimeSeriesPlan.getScope()) {
 
           protected ITimeSeriesSchemaInfo collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             return new ITimeSeriesSchemaInfo() {
@@ -1068,7 +1068,7 @@ public class MTreeBelowSGMemoryImpl {
             showNodesPlan.getPath(),
             store,
             showNodesPlan.isPrefixMatch(),
-            SchemaConstant.ALL_MATCH_SCOPE) {
+            showNodesPlan.getScope()) {
 
           protected INodeSchemaInfo collectMNode(IMemMNode node) {
             return new ShowNodesResult(

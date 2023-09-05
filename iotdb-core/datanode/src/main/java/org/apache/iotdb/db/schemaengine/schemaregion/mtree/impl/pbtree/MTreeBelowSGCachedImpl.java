@@ -1073,7 +1073,7 @@ public class MTreeBelowSGCachedImpl {
             showDevicesPlan.getPath(),
             store,
             showDevicesPlan.isPrefixMatch(),
-            SchemaConstant.ALL_MATCH_SCOPE) {
+            showDevicesPlan.getScope()) {
 
           protected IDeviceSchemaInfo collectEntity(IDeviceMNode<ICachedMNode> node) {
             PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
@@ -1142,7 +1142,7 @@ public class MTreeBelowSGCachedImpl {
             showTimeSeriesPlan.getPath(),
             store,
             showTimeSeriesPlan.isPrefixMatch(),
-            SchemaConstant.ALL_MATCH_SCOPE) {
+            showTimeSeriesPlan.getScope()) {
 
           protected ITimeSeriesSchemaInfo collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
             return new ITimeSeriesSchemaInfo() {
@@ -1218,7 +1218,7 @@ public class MTreeBelowSGCachedImpl {
             showNodesPlan.getPath(),
             store,
             showNodesPlan.isPrefixMatch(),
-            SchemaConstant.ALL_MATCH_SCOPE) {
+            showNodesPlan.getScope()) {
 
           protected INodeSchemaInfo collectMNode(ICachedMNode node) {
             return new ShowNodesResult(
