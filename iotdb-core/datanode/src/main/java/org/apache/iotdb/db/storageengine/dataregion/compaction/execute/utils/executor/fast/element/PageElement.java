@@ -107,14 +107,18 @@ public class PageElement {
       List<List<TimeRange>> valueDeleteIntervalList =
           new ArrayList<>(chunkMetadataElement.valueChunkLoaders.size());
       for (LazyChunkLoader valueChunkLoader : chunkMetadataElement.valueChunkLoaders) {
-        valueChunkHeaderList.add(valueChunkLoader.loadChunkHeader());
-        valueDeleteIntervalList.add(valueChunkLoader.getChunkMetadata().getDeleteIntervalList());
+        valueChunkHeaderList.add(
+            valueChunkLoader.isEmpty() ? null : valueChunkLoader.loadChunkHeader());
+        valueDeleteIntervalList.add(
+            valueChunkLoader.isEmpty()
+                ? null
+                : valueChunkLoader.getChunkMetadata().getDeleteIntervalList());
       }
       List<PageHeader> valuePageHeaders = new ArrayList<>();
       List<ByteBuffer> valuePageDatas = new ArrayList<>();
       for (LazyPageLoader valuePageLoader : valuePageLoaders) {
-        valuePageHeaders.add(valuePageLoader.getPageHeader());
-        valuePageDatas.add(valuePageLoader.loadPage());
+        valuePageHeaders.add(valuePageLoader.isEmpty() ? null : valuePageLoader.getPageHeader());
+        valuePageDatas.add(valuePageLoader.isEmpty() ? null : valuePageLoader.loadPage());
       }
       this.pointReader =
           AlignedChunkReader.getPagePointReader(
