@@ -62,8 +62,16 @@ public class ShowClusterDetailsTask implements IConfigTask {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(nodeId);
     builder.getColumnBuilder(1).writeBinary(new Binary(NODE_TYPE_CONFIG_NODE));
-    builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
-    builder.getColumnBuilder(3).writeBinary(new Binary(internalAddress));
+    if (nodeStatus == null) {
+      builder.getColumnBuilder(2).appendNull();
+    } else {
+      builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
+    }
+    if (internalAddress == null) {
+      builder.getColumnBuilder(3).appendNull();
+    } else {
+      builder.getColumnBuilder(3).writeBinary(new Binary(internalAddress));
+    }
     builder.getColumnBuilder(4).writeInt(internalPort);
     builder.getColumnBuilder(5).writeBinary(new Binary(Integer.toString(configConsensusPort)));
     builder.getColumnBuilder(6).writeBinary(new Binary(""));
@@ -71,8 +79,16 @@ public class ShowClusterDetailsTask implements IConfigTask {
     builder.getColumnBuilder(8).writeBinary(new Binary(""));
     builder.getColumnBuilder(9).writeBinary(new Binary(""));
     builder.getColumnBuilder(10).writeBinary(new Binary(""));
-    builder.getColumnBuilder(11).writeBinary(new Binary(versionInfo.getVersion()));
-    builder.getColumnBuilder(12).writeBinary(new Binary(versionInfo.getBuildInfo()));
+    if (versionInfo == null || versionInfo.getVersion() == null) {
+      builder.getColumnBuilder(11).appendNull();
+    } else {
+      builder.getColumnBuilder(11).writeBinary(new Binary(versionInfo.getVersion()));
+    }
+    if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+      builder.getColumnBuilder(12).appendNull();
+    } else {
+      builder.getColumnBuilder(12).writeBinary(new Binary(versionInfo.getBuildInfo()));
+    }
     builder.declarePosition();
   }
 
@@ -92,17 +108,37 @@ public class ShowClusterDetailsTask implements IConfigTask {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(nodeId);
     builder.getColumnBuilder(1).writeBinary(new Binary(NODE_TYPE_DATA_NODE));
-    builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
-    builder.getColumnBuilder(3).writeBinary(new Binary(internalAddress));
+    if (nodeStatus == null) {
+      builder.getColumnBuilder(2).appendNull();
+    } else {
+      builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
+    }
+    if (internalAddress == null) {
+      builder.getColumnBuilder(3).appendNull();
+    } else {
+      builder.getColumnBuilder(3).writeBinary(new Binary(internalAddress));
+    }
     builder.getColumnBuilder(4).writeInt(internalPort);
     builder.getColumnBuilder(5).writeBinary(new Binary(""));
-    builder.getColumnBuilder(6).writeBinary(new Binary(rpcAddress));
+    if (rpcAddress == null) {
+      builder.getColumnBuilder(6).appendNull();
+    } else {
+      builder.getColumnBuilder(6).writeBinary(new Binary(rpcAddress));
+    }
     builder.getColumnBuilder(7).writeBinary(new Binary(Integer.toString(rpcPort)));
     builder.getColumnBuilder(8).writeBinary(new Binary(Integer.toString(dataConsensusPort)));
     builder.getColumnBuilder(9).writeBinary(new Binary(Integer.toString(schemaConsensusPort)));
     builder.getColumnBuilder(10).writeBinary(new Binary(Integer.toString(mppPort)));
-    builder.getColumnBuilder(11).writeBinary(new Binary(versionInfo.getVersion()));
-    builder.getColumnBuilder(12).writeBinary(new Binary(versionInfo.getBuildInfo()));
+    if (versionInfo == null || versionInfo.getVersion() == null) {
+      builder.getColumnBuilder(11).appendNull();
+    } else {
+      builder.getColumnBuilder(11).writeBinary(new Binary(versionInfo.getVersion()));
+    }
+    if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+      builder.getColumnBuilder(12).appendNull();
+    } else {
+      builder.getColumnBuilder(12).writeBinary(new Binary(versionInfo.getBuildInfo()));
+    }
     builder.declarePosition();
   }
 

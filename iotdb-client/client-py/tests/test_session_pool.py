@@ -27,8 +27,16 @@ def test_session_pool():
     with IoTDBContainer(CONTAINER_NAME) as db:
         db: IoTDBContainer
         max_pool_size = 2
-        pool_config = PoolConfig(db.get_container_host_ip(), db.get_exposed_port(6667), "root", "root",
-                                 [], 1024, "Asia/Shanghai", 3)
+        pool_config = PoolConfig(
+            db.get_container_host_ip(),
+            db.get_exposed_port(6667),
+            "root",
+            "root",
+            [],
+            1024,
+            "Asia/Shanghai",
+            3,
+        )
         session_pool = create_session_pool(pool_config, max_pool_size, 3000)
         session = session_pool.get_session()
         assert session.is_open() is True
@@ -39,7 +47,11 @@ def test_session_pool():
             session_pool.get_session()
         except TimeoutError as e:
             timeout = True
-            assert str(e) == "Wait to get session timeout in SessionPool, current pool size: " + str(max_pool_size)
+            assert str(
+                e
+            ) == "Wait to get session timeout in SessionPool, current pool size: " + str(
+                max_pool_size
+            )
         assert timeout is True
 
         Thread(target=lambda: session_pool.put_back(session2)).start()
@@ -60,7 +72,10 @@ def test_session_pool():
             session_pool.put_back(session3)
         except ConnectionError as e:
             is_closed = True
-            assert str(e) == "SessionPool has already been closed, please close the session manually."
+            assert (
+                str(e)
+                == "SessionPool has already been closed, please close the session manually."
+            )
         assert is_closed is True
 
 
@@ -69,7 +84,9 @@ def test_session_pool_by_node_urls():
         db: IoTDBContainer
         node_url = db.get_container_host_ip() + ":" + str(db.get_exposed_port(6667))
         max_pool_size = 1
-        pool_config = PoolConfig(node_urls=[node_url], user_name="root", password="root")
+        pool_config = PoolConfig(
+            node_urls=[node_url], user_name="root", password="root"
+        )
         session_pool = create_session_pool(pool_config, max_pool_size, 3000)
 
         session = session_pool.get_session()
@@ -79,7 +96,11 @@ def test_session_pool_by_node_urls():
             session_pool.get_session()
         except TimeoutError as e:
             timeout = True
-            assert str(e) == "Wait to get session timeout in SessionPool, current pool size: " + str(max_pool_size)
+            assert str(
+                e
+            ) == "Wait to get session timeout in SessionPool, current pool size: " + str(
+                max_pool_size
+            )
 
         assert timeout is True
 
