@@ -104,9 +104,9 @@ public class WritePlanNodeSplitTest {
     for (int i = 0; i < seriesSlotPartitionNum; i++) {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap = new HashMap<>();
       for (int t = -2; t < 5; t++) {
-        long startTime = t * TimePartitionUtils.getTimePartitionInterval();
+        long startTime = t * TimePartitionUtils.getTimePartitionInterval() + 1;
         timePartitionSlotMap.put(
-            new TTimePartitionSlot(startTime),
+            TimePartitionUtils.getTimePartitionSlot(startTime),
             Collections.singletonList(
                 new TRegionReplicaSet(
                     new TConsensusGroupId(
@@ -150,7 +150,7 @@ public class WritePlanNodeSplitTest {
   }
 
   private int getRegionIdByTime(long startTime) {
-    return (int) (4 - (startTime / TimePartitionUtils.getTimePartitionInterval()));
+    return (int) (4 - ((startTime - 1) / TimePartitionUtils.getTimePartitionInterval()));
   }
 
   protected DataPartition getDataPartition(
@@ -311,9 +311,9 @@ public class WritePlanNodeSplitTest {
     Analysis analysis = new Analysis();
     analysis.setDataPartitionInfo(dataPartition);
 
-    List<WritePlanNode> insertTabletNodeList = insertRowsNode.splitByPartition(analysis);
+    List<WritePlanNode> insertRowsNodeList = insertRowsNode.splitByPartition(analysis);
 
-    Assert.assertEquals(8, insertTabletNodeList.size());
+    Assert.assertEquals(8, insertRowsNodeList.size());
   }
 
   @After
