@@ -317,6 +317,5 @@ public class Utils {
 
     final TimeDuration clientMaxRetryGap = getMaxRetrySleepTime(config.getClient());
     RaftServerConfigKeys.RetryCache.setExpiryTime(properties, clientMaxRetryGap);
-    RaftServerConfigKeys.RetryCache.setStatisticsExpiryTime(properties, clientMaxRetryGap);
   }
 }
