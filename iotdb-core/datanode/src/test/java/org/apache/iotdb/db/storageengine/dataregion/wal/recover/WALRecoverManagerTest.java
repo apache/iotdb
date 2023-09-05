@@ -151,7 +151,7 @@ public class WALRecoverManagerTest {
     List<Future<Void>> futures = new ArrayList<>();
     long firstWALVersionId = walBuffer.getCurrentWALFileVersion();
     for (int i = 0; i < threadsNum; ++i) {
-      IMemTable fakeMemTable = new PrimitiveMemTable();
+      IMemTable fakeMemTable = new PrimitiveMemTable(SG_NAME);
       long memTableId = fakeMemTable.getMemTableId();
       Callable<Void> writeTask =
           () -> {
@@ -185,7 +185,7 @@ public class WALRecoverManagerTest {
     Thread.sleep(1_000);
     // write normal .wal files
     long firstValidVersionId = walBuffer.getCurrentWALFileVersion();
-    IMemTable targetMemTable = new PrimitiveMemTable();
+    IMemTable targetMemTable = new PrimitiveMemTable(SG_NAME);
     WALEntry walEntry =
         new WALInfoEntry(targetMemTable.getMemTableId(), getInsertRowNode(DEVICE2_NAME, 4L), true);
     walBuffer.write(walEntry);
@@ -210,7 +210,7 @@ public class WALRecoverManagerTest {
     List<Future<Void>> futures = new ArrayList<>();
     long firstWALVersionId = walBuffer.getCurrentWALFileVersion();
     for (int i = 0; i < threadsNum; ++i) {
-      IMemTable fakeMemTable = new PrimitiveMemTable();
+      IMemTable fakeMemTable = new PrimitiveMemTable(SG_NAME);
       long memTableId = fakeMemTable.getMemTableId();
       Callable<Void> writeTask =
           () -> {
@@ -244,7 +244,7 @@ public class WALRecoverManagerTest {
     Thread.sleep(1_000);
     // write normal .wal files
     long firstValidVersionId = walBuffer.getCurrentWALFileVersion();
-    IMemTable targetMemTable = new PrimitiveMemTable();
+    IMemTable targetMemTable = new PrimitiveMemTable(SG_NAME);
     InsertRowNode insertRowNode = getInsertRowNode(DEVICE2_NAME, 4L);
     targetMemTable.insert(insertRowNode);
 
@@ -415,7 +415,7 @@ public class WALRecoverManagerTest {
     tsFileWithWALResource = new TsFileResource(fileWithWAL);
     UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileWithWALResource, true, performer -> assertFalse(performer.canWrite()));
+            tsFileWithWALResource, true, performer -> assertFalse(performer.canWrite()), SG_NAME);
     recoverManager.addRecoverPerformer(recoverPerformer);
     recoverListeners.add(recoverPerformer.getRecoverListener());
 
@@ -425,7 +425,10 @@ public class WALRecoverManagerTest {
     tsFileWithoutWALResource = new TsFileResource(fileWithoutWAL);
     recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileWithoutWALResource, true, performer -> assertFalse(performer.canWrite()));
+            tsFileWithoutWALResource,
+            true,
+            performer -> assertFalse(performer.canWrite()),
+            SG_NAME);
     recoverManager.addRecoverPerformer(recoverPerformer);
     recoverListeners.add(recoverPerformer.getRecoverListener());
 

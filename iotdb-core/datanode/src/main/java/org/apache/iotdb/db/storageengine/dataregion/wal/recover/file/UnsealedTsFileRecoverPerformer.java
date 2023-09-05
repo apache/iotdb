@@ -73,11 +73,12 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   public UnsealedTsFileRecoverPerformer(
       TsFileResource tsFileResource,
       boolean sequence,
-      Consumer<UnsealedTsFileRecoverPerformer> callbackAfterUnsealedTsFileRecovered) {
+      Consumer<UnsealedTsFileRecoverPerformer> callbackAfterUnsealedTsFileRecovered,
+      String database) {
     super(tsFileResource);
     this.sequence = sequence;
     this.callbackAfterUnsealedTsFileRecovered = callbackAfterUnsealedTsFileRecovered;
-    this.walRedoer = new TsFilePlanRedoer(tsFileResource, sequence);
+    this.walRedoer = new TsFilePlanRedoer(tsFileResource, sequence, database);
     this.recoverListener = new WALRecoverListener(tsFileResource.getTsFilePath());
   }
 

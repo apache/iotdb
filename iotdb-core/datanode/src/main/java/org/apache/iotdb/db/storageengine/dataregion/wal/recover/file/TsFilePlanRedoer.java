@@ -45,11 +45,12 @@ public class TsFilePlanRedoer {
   private final boolean sequence;
 
   // store data when redoing logs
-  private IMemTable recoveryMemTable = new PrimitiveMemTable();
+  private IMemTable recoveryMemTable;
 
-  public TsFilePlanRedoer(TsFileResource tsFileResource, boolean sequence) {
+  public TsFilePlanRedoer(TsFileResource tsFileResource, boolean sequence, String database) {
     this.tsFileResource = tsFileResource;
     this.sequence = sequence;
+    this.recoveryMemTable = new PrimitiveMemTable(database);
   }
 
   void redoDelete(DeleteDataNode deleteDataNode) throws IOException {

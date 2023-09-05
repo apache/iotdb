@@ -47,12 +47,12 @@ public class MemTableManager {
       throws WriteProcessException {
     if (CONFIG.isEnableMemControl()) {
       currentMemtableNumber++;
-      return new PrimitiveMemTable(CONFIG.isEnableMemControl());
+      return new PrimitiveMemTable(storageGroup, CONFIG.isEnableMemControl());
     }
 
     if (!reachMaxMemtableNumber()) {
       currentMemtableNumber++;
-      return new PrimitiveMemTable();
+      return new PrimitiveMemTable(storageGroup);
     }
 
     // wait until the total number of memtable is less than the system capacity
@@ -60,7 +60,7 @@ public class MemTableManager {
     while (true) {
       if (!reachMaxMemtableNumber()) {
         currentMemtableNumber++;
-        return new PrimitiveMemTable();
+        return new PrimitiveMemTable(storageGroup);
       }
       try {
         wait(WAIT_TIME);

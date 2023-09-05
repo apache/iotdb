@@ -24,21 +24,24 @@ import java.util.Map;
 
 public class PrimitiveMemTable extends AbstractMemTable {
 
-  public PrimitiveMemTable() {}
+  public PrimitiveMemTable(String database) {
+    super(database);
+  }
 
-  public PrimitiveMemTable(boolean enableMemControl) {
+  public PrimitiveMemTable(String database, boolean enableMemControl) {
+    super(database);
     this.disableMemControl = !enableMemControl;
   }
 
-  public PrimitiveMemTable(Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
-    super(memTableMap);
+  public PrimitiveMemTable(String database, Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
+    super(database, memTableMap);
   }
 
   @Override
   public IMemTable copy() {
     Map<IDeviceID, IWritableMemChunkGroup> newMap = new HashMap<>(getMemTableMap());
 
-    return new PrimitiveMemTable(newMap);
+    return new PrimitiveMemTable(getDatabase(), newMap);
   }
 
   @Override

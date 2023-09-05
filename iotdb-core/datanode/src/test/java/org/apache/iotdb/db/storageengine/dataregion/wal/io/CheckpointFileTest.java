@@ -41,6 +41,7 @@ import static org.junit.Assert.assertEquals;
 public class CheckpointFileTest {
   private final File checkpointFile =
       new File(TestConstant.BASE_OUTPUT_PATH.concat("_0.checkpoint"));
+  private static final String database = "root.test";
 
   @Before
   public void setUp() throws Exception {
@@ -58,7 +59,8 @@ public class CheckpointFileTest {
 
   @Test
   public void testReadNormalFile() throws IOException {
-    MemTableInfo fakeMemTableInfo = new MemTableInfo(new PrimitiveMemTable(), "fake.tsfile", 0);
+    MemTableInfo fakeMemTableInfo =
+        new MemTableInfo(new PrimitiveMemTable(database), "fake.tsfile", 0);
     List<Checkpoint> expectedCheckpoints = new ArrayList<>();
     expectedCheckpoints.add(
         new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, Collections.emptyList()));
@@ -101,7 +103,8 @@ public class CheckpointFileTest {
 
   @Test
   public void testReadBrokenFile() throws IOException {
-    MemTableInfo fakeMemTableInfo = new MemTableInfo(new PrimitiveMemTable(), "fake.tsfile", 0);
+    MemTableInfo fakeMemTableInfo =
+        new MemTableInfo(new PrimitiveMemTable(database), "fake.tsfile", 0);
     List<Checkpoint> expectedCheckpoints = new ArrayList<>();
     expectedCheckpoints.add(
         new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, Collections.emptyList()));

@@ -65,7 +65,8 @@ public abstract class AbstractMemTable implements IMemTable {
   private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
 
   /**
-   * The initial value is true because we want to calculate the text data size when recover memTable.
+   * The initial value is true because we want to calculate the text data size when recover
+   * memTable.
    */
   protected boolean disableMemControl = true;
 
@@ -95,13 +96,22 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private final long createdTime = System.currentTimeMillis();
 
+  private String database;
+
   private static final String METRIC_POINT_IN = "pointsIn";
 
   protected AbstractMemTable() {
+    this.database = null;
     this.memTableMap = new HashMap<>();
   }
 
-  protected AbstractMemTable(Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
+  protected AbstractMemTable(String database) {
+    this.database = database;
+    this.memTableMap = new HashMap<>();
+  }
+
+  protected AbstractMemTable(String database, Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
+    this.database = database;
     this.memTableMap = memTableMap;
   }
 
@@ -194,7 +204,9 @@ public abstract class AbstractMemTable implements IMemTable {
             Metric.QUANTITY.toString(),
             MetricLevel.CORE,
             Tag.NAME.toString(),
-            METRIC_POINT_IN);
+            METRIC_POINT_IN,
+            Tag.DATABASE.toString(),
+            database);
   }
 
   @Override
@@ -233,7 +245,9 @@ public abstract class AbstractMemTable implements IMemTable {
             Metric.QUANTITY.toString(),
             MetricLevel.CORE,
             Tag.NAME.toString(),
-            METRIC_POINT_IN);
+            METRIC_POINT_IN,
+            Tag.DATABASE.toString(),
+            database);
   }
 
   @Override
@@ -252,7 +266,9 @@ public abstract class AbstractMemTable implements IMemTable {
               Metric.QUANTITY.toString(),
               MetricLevel.CORE,
               Tag.NAME.toString(),
-              METRIC_POINT_IN);
+              METRIC_POINT_IN,
+              Tag.DATABASE.toString(),
+              database);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
@@ -274,7 +290,9 @@ public abstract class AbstractMemTable implements IMemTable {
               Metric.QUANTITY.toString(),
               MetricLevel.CORE,
               Tag.NAME.toString(),
-              METRIC_POINT_IN);
+              METRIC_POINT_IN,
+              Tag.DATABASE.toString(),
+              database);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
@@ -590,6 +608,12 @@ public abstract class AbstractMemTable implements IMemTable {
     buffer.putLong(totalPointsNumThreshold);
     buffer.putLong(maxPlanIndex);
     buffer.putLong(minPlanIndex);
+    if (database == null || database.isEmpty()) {
+      buffer.putInt(0);
+    } else {
+      buffer.putInt(database.length());
+      buffer.put(database.getBytes());
+    }
 
     buffer.putInt(memTableMap.size());
     for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
@@ -609,6 +633,12 @@ public abstract class AbstractMemTable implements IMemTable {
     totalPointsNumThreshold = stream.readLong();
     maxPlanIndex = stream.readLong();
     minPlanIndex = stream.readLong();
+    int databaseLength = stream.readInt();
+    if (databaseLength != 0) {
+      byte[] bytes = new byte[databaseLength];
+      stream.read(bytes);
+      database = new String(bytes);
+    }
 
     int memTableMapSize = stream.readInt();
     for (int i = 0; i < memTableMapSize; ++i) {
@@ -645,11 +675,17 @@ public abstract class AbstractMemTable implements IMemTable {
       if (isSignal) {
         memTable = new NotifyFlushMemTable();
       } else {
-        PrimitiveMemTable primitiveMemTable = new PrimitiveMemTable();
+        // database will be updated when deserialize
+        PrimitiveMemTable primitiveMemTable = new PrimitiveMemTable(null);
         primitiveMemTable.deserialize(stream);
         memTable = primitiveMemTable;
       }
       return memTable;
     }
+  }
+
+  @Override
+  public String getDatabase() {
+    return database;
   }
 }

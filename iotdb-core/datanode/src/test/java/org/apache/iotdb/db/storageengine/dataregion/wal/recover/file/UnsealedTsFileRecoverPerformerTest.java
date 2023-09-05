@@ -126,7 +126,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     // vsg processor is used to test IdTable, don't test IdTable here
     try (UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileResource, true, performer -> assertFalse(performer.canWrite()))) {
+            tsFileResource, true, performer -> assertFalse(performer.canWrite()), SG_NAME)) {
       recoverPerformer.startRecovery();
       assertTrue(recoverPerformer.hasCrashed());
       assertTrue(recoverPerformer.canWrite());
@@ -185,7 +185,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     // vsg processor is used to test IdTable, don't test IdTable here
     try (UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileResource, true, performer -> assertFalse(performer.canWrite()))) {
+            tsFileResource, true, performer -> assertFalse(performer.canWrite()), SG_NAME)) {
       recoverPerformer.startRecovery();
       assertTrue(recoverPerformer.hasCrashed());
       assertTrue(recoverPerformer.canWrite());
@@ -312,7 +312,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     // vsg processor is used to test IdTable, don't test IdTable here
     try (UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileResource, true, performer -> assertFalse(performer.canWrite()))) {
+            tsFileResource, true, performer -> assertFalse(performer.canWrite()), SG_NAME)) {
       recoverPerformer.startRecovery();
       assertTrue(recoverPerformer.hasCrashed());
       assertTrue(recoverPerformer.canWrite());

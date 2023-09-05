@@ -58,14 +58,18 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         engineStatistics,
         ISchemaEngineStatistics::getTotalSeriesNumber,
         Tag.NAME.toString(),
-        TIME_SERES_CNT);
+        TIME_SERES_CNT,
+        Tag.DATABASE.toString(),
+        "total");
     metricService.createAutoGauge(
         Metric.QUANTITY.toString(),
         MetricLevel.IMPORTANT,
         engineStatistics,
         ISchemaEngineStatistics::getTemplateSeriesNumber,
         Tag.NAME.toString(),
-        TEMPLATE_SERIES_CNT);
+        TEMPLATE_SERIES_CNT,
+        Tag.DATABASE.toString(),
+        "total");
     metricService.createAutoGauge(
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
@@ -112,12 +116,19 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), TIME_SERES_CNT);
+        MetricType.AUTO_GAUGE,
+        Metric.QUANTITY.toString(),
+        Tag.NAME.toString(),
+        TIME_SERES_CNT,
+        Tag.DATABASE.toString(),
+        "total");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.QUANTITY.toString(),
         Tag.NAME.toString(),
-        TEMPLATE_SERIES_CNT);
+        TEMPLATE_SERIES_CNT,
+        Tag.DATABASE.toString(),
+        "total");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.MEM.toString(),
