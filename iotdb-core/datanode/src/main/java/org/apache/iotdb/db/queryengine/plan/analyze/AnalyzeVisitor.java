@@ -2863,9 +2863,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             sourcePathOfAliasSeries = logicalViewSchema.getSourcePathIfWritable();
             deletePatternSet.add(sourcePathOfAliasSeries);
             deduplicatedDevicePaths.add(sourcePathOfAliasSeries.getDevice());
-          } else {
-            deletePatternSet.remove(measurementPath);
           }
+          deletePatternSet.remove(measurementPath);
         } else {
           deduplicatedDevicePaths.add(measurementPath.getDevice());
         }
