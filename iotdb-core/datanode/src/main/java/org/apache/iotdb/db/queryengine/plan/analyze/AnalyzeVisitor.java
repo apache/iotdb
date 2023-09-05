@@ -1873,7 +1873,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         result.add(timePartitionSlot);
         // next init
         timePartitionSlot = new TTimePartitionSlot(endTime);
-        endTime = endTime + TimePartitionUtils.timePartitionInterval;
+        endTime = endTime + TimePartitionUtils.getTimePartitionInterval();
       } else {
         index++;
       }

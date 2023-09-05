@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 public class TimePartitionUtils {
-  public static long timePartitionInterval =
+  private static long timePartitionInterval =
       CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
   public static TTimePartitionSlot getTimePartition(long time) {
