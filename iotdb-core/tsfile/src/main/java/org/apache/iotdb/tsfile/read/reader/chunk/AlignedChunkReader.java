@@ -72,12 +72,8 @@ public class AlignedChunkReader implements IChunkReader {
    * compaction.
    */
   public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList) {
-    this(timeChunk, valueChunkList, true);
-  }
-
-  public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList, boolean referChunkData) {
     this.filter = null;
-    this.timeChunkDataBuffer = referChunkData ? timeChunk.getData() : null;
+    this.timeChunkDataBuffer =timeChunk.getData();
     this.valueDeleteIntervalList = new ArrayList<>();
     this.timeChunkHeader = timeChunk.getHeader();
     this.timeUnCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
@@ -86,9 +82,7 @@ public class AlignedChunkReader implements IChunkReader {
     valueChunkList.forEach(
         chunk -> {
           valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
-          if (referChunkData) {
-            valueChunkDataBufferList.add(chunk == null ? null : chunk.getData());
-          }
+          valueChunkDataBufferList.add(chunk == null ? null : chunk.getData());
           valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
         });
   }
