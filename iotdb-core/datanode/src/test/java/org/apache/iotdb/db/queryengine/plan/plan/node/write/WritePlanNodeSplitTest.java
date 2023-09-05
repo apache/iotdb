@@ -100,10 +100,10 @@ public class WritePlanNodeSplitTest {
             new TEndPoint("127.0.0.1", 10740),
             new TEndPoint("127.0.0.1", 10760),
             new TEndPoint("127.0.0.1", 10750)));
-    // sg1 has 5 data regions
+    // sg1 has 7 data regions
     for (int i = 0; i < seriesSlotPartitionNum; i++) {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap = new HashMap<>();
-      for (int t = 0; t < 5; t++) {
+      for (int t = -2; t < 5; t++) {
         long startTime = t * TimePartitionUtils.getTimePartitionInterval();
         timePartitionSlotMap.put(
             new TTimePartitionSlot(startTime),
@@ -194,9 +194,11 @@ public class WritePlanNodeSplitTest {
     InsertTabletNode insertTabletNode = new InsertTabletNode(new PlanNodeId("plan node 1"));
 
     insertTabletNode.setDevicePath(new PartialPath("root.sg1.d1"));
-    insertTabletNode.setTimes(new long[] {1, 60, 120, 180, 270, 290, 360, 375, 440, 470});
+    insertTabletNode.setTimes(
+        new long[] {-200, -101, 1, 60, 120, 180, 270, 290, 360, 375, 440, 470});
     insertTabletNode.setDataTypes(new TSDataType[] {TSDataType.INT32});
-    insertTabletNode.setColumns(new Object[] {new int[] {10, 20, 30, 40, 50, 60, 70, 80, 90, 100}});
+    insertTabletNode.setColumns(
+        new Object[] {new int[] {-20, -10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100}});
 
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
     dataPartitionQueryParam.setDevicePath(insertTabletNode.getDevicePath().getFullPath());
@@ -209,7 +211,7 @@ public class WritePlanNodeSplitTest {
 
     List<WritePlanNode> insertTabletNodeList = insertTabletNode.splitByPartition(analysis);
 
-    Assert.assertEquals(5, insertTabletNodeList.size());
+    Assert.assertEquals(6, insertTabletNodeList.size());
     for (WritePlanNode insertNode : insertTabletNodeList) {
       InsertTabletNode tabletNode = (InsertTabletNode) insertNode;
       Assert.assertEquals(tabletNode.getTimes().length, 2);
