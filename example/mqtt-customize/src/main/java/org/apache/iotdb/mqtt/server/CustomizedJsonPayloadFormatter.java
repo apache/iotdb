@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.mqtt.server;
 
 import org.apache.iotdb.db.protocol.mqtt.Message;
@@ -23,9 +24,9 @@ import org.apache.iotdb.db.protocol.mqtt.PayloadFormatter;
 
 import io.netty.buffer.ByteBuf;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
@@ -34,10 +35,8 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
   public List<Message> format(ByteBuf payload) {
     // Suppose the payload is a json format
     if (payload == null) {
-      return null;
+      return Collections.emptyList();
     }
-
-    String json = payload.toString(StandardCharsets.UTF_8);
 
     // parse data from the json and generate Messages and put them into List<Message> ret
     List<Message> ret = new ArrayList<>();
@@ -56,7 +55,7 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
 
   @Override
   public String getName() {
-    // set the value of mqtt_payload_formatter in iotdb-engine.properties as the following string:
+    // set the value of mqtt_payload_formatter in iotdb-common.properties as the following string:
     return "CustomizedJson";
   }
 }

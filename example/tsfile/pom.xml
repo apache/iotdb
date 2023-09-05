@@ -24,11 +24,10 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-examples</artifactId>
-        <version>0.13.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <version>1.3.0-SNAPSHOT</version>
     </parent>
     <artifactId>tsfile-example</artifactId>
-    <name>tsfile-example</name>
+    <name>IoTDB: Example: TSFile</name>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>

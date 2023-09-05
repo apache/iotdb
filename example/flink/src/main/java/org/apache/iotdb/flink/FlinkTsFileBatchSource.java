@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.flink;
 
 import org.apache.iotdb.flink.tsfile.RowRowRecordParser;
@@ -29,6 +30,8 @@ import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.types.Row;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.Arrays;
@@ -37,6 +40,8 @@ import java.util.stream.Collectors;
 
 /** The example of reading TsFile via Flink DataSet API. */
 public class FlinkTsFileBatchSource {
+
+  private static Logger logger = LoggerFactory.getLogger(FlinkTsFileBatchSource.class);
 
   public static void main(String[] args) throws Exception {
     String path = "test.tsfile";
@@ -70,7 +75,7 @@ public class FlinkTsFileBatchSource {
     DataSet<Row> source = env.createInput(inputFormat);
     List<String> result = source.map(Row::toString).collect();
     for (String s : result) {
-      System.out.println(s);
+      logger.info(s);
     }
   }
 }

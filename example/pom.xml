@@ -24,14 +24,13 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.13.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <version>1.3.0-SNAPSHOT</version>
     </parent>
-    <packaging>pom</packaging>
     <artifactId>iotdb-examples</artifactId>
-    <name>IoTDB Examples</name>
+    <packaging>pom</packaging>
+    <name>IoTDB: Examples</name>
     <properties>
-        <zookeeper.version>3.4.6</zookeeper.version>
+        <zookeeper.version>3.4.14</zookeeper.version>
     </properties>
     <modules>
         <module>kafka</module>
@@ -47,6 +46,7 @@
         <module>udf</module>
         <module>trigger</module>
         <module>rabbitmq</module>
+        <module>rest-java-example</module>
     </modules>
     <build>
         <pluginManagement>
@@ -67,7 +67,7 @@
             <dependency>
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>kafka_2.10</artifactId>
-                <version>0.8.2.0</version>
+                <version>0.8.2.2</version>
                 <exclusions>
                     <exclusion>
                         <groupId>org.slf4j</groupId>
@@ -96,4 +96,12 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+    <profiles>
+        <profile>
+            <id>with-cpp</id>
+            <modules>
+                <module>client-cpp-example</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>

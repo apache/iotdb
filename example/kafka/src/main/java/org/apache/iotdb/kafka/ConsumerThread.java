@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.kafka;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -35,6 +36,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /** The class is Thread class of Consumer. ConsumerThread. */
+@SuppressWarnings({"squid:S1144"})
 public class ConsumerThread implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(ConsumerThread.class);
@@ -79,24 +81,26 @@ public class ConsumerThread implements Runnable {
         case BOOLEAN:
           values.add(Boolean.parseBoolean(valuesStr[i]));
           break;
+        default:
       }
     }
 
     pool.insertRecord(device, time, measurements, types, values);
   }
+
   /** insert data to IoTDB */
   private void insertDatas(List<String> datas)
       throws IoTDBConnectionException, StatementExecutionException {
     int size = datas.size();
     List<String> deviceIds = new ArrayList<>(size);
     List<Long> times = new ArrayList<>(size);
-    ;
+
     List<List<String>> measurementsList = new ArrayList<>(size);
-    ;
+
     List<List<TSDataType>> typesList = new ArrayList<>(size);
-    ;
+
     List<List<Object>> valuesList = new ArrayList<>(size);
-    ;
+
     for (String data : datas) {
       String[] dataArray = data.split(",");
       String device = dataArray[0];
@@ -129,6 +133,7 @@ public class ConsumerThread implements Runnable {
           case BOOLEAN:
             values.add(Boolean.parseBoolean(valuesStr[i]));
             break;
+          default:
         }
       }
       deviceIds.add(device);
@@ -147,8 +152,8 @@ public class ConsumerThread implements Runnable {
       do {
         ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(1));
         List<String> datas = new ArrayList<>(records.count());
-        for (ConsumerRecord<String, String> record : records) {
-          datas.add(record.value());
+        for (ConsumerRecord<String, String> consumerRecord : records) {
+          datas.add(consumerRecord.value());
         }
         insertDatas(datas);
       } while (true);

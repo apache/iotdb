@@ -25,10 +25,10 @@
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <baseDirectory>apache-iotdb-${project.version}-client-cpp-bin</baseDirectory>
+    <baseDirectory>apache-iotdb-${project.version}-client-cpp-${os.classifier}-bin</baseDirectory>
     <fileSets>
         <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/client-cpp/target/client-cpp-${project.version}-cpp-${os.classifier}</directory>
+            <directory>${maven.multiModuleProjectDirectory}/iotdb-client/client-cpp/target/client-cpp-${project.version}-cpp-${os.classifier}</directory>
             <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>
     </fileSets>

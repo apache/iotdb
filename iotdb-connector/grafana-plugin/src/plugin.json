@@ -1,0 +1,50 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/master/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "datasource",
+  "name": "Apache IoTDB",
+  "id": "apache-iotdb-datasource",
+  "metrics": true,
+  "backend": true,
+  "alerting": true,
+  "executable": "gpx_apache_iotdb_datasource",
+  "info": {
+    "description": "Apache IoTDB",
+    "author": {
+      "name": "the Apache Software Foundation (ASF)",
+      "url": "https://iotdb.apache.org/"
+    },
+    "keywords": [
+      "apache",
+      "iotdb",
+      "tsdb",
+      "timeseries",
+      "grafana",
+      "plugin"
+    ],
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [
+      {
+        "name": "Website",
+        "url": "https://iotdb.apache.org/"
+      },
+      {
+        "name": "Github",
+        "url": "https://github.com/apache/iotdb"
+      },
+      {
+        "name": "License",
+        "url": "https://github.com/apache/iotdb/blob/master/LICENSE"
+      }
+    ],
+    "screenshots": [{ "name": "addDataSource", "path": "img/addIoTDBDataSource.png" },{ "name": "showData", "path": "img/showData.png" }],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=9.3.0",
+    "plugins": []
+  }
+}

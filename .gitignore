@@ -25,6 +25,9 @@ derby-tsfile-db
 # build generated
 **/target/
 
+# build docker images
+tmp
+
 # intermediately generated locally
 
 tsfile-timeseries/src/main/resources/logback.out.out.xml
@@ -35,11 +38,25 @@ src/main/resources/metadata/mlog.txt
 tsfile-jdbc/src/main/resources/output/queryRes.csv
 
 *.txt
+!iotdb-client/client-py/requirements.txt
+!iotdb-client/client-py/requirements_dev.txt
+!iotdb-client/client-cpp/src/main/CMakeLists.txt
+!iotdb-client/client-cpp/src/test/CMakeLists.txt
+!example/rest-client-c-example/CMakeLists.txt
+!example/client-cpp-example/src/CMakeLists.txt
+!iotdb-core/mlnode/requirements.txt
+!iotdb-core/mlnode/requirements_dev.txt
+
 
 *.jar
+!trigger-example.jar
+!TriggerFireTimesCounter.jar
+!udf-example.jar
+
 *.gz
 *.tar.gz
 *.tar
+*.tokens
 #src/test/resources/logback.xml
 
 ### CSV ###
@@ -90,6 +107,7 @@ node_identifier
 
 ### temporary file of the distributed version ###
 remote/
+!integration-test/src/main/java/org/apache/iotdb/it/env/remote/
 
 # gitpod
 .theia/
@@ -101,15 +119,11 @@ classes/
 Makefile
 **/CMakeFiles/
 
-### cluster test data
-node1/
-node2/
-node3/
-
 # Exclude copied license
-/client-py/LICENSE
+iotdb-client/client-py/LICENSE
+iotdb-core/mlnode/LICENSE
 
 # ANTLR
-antlr/gen/
-antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/gen/
-antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.tokens
+iotdb-core/antlr/gen/
+iotdb-core/antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/gen/
+iotdb-core/antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.tokens

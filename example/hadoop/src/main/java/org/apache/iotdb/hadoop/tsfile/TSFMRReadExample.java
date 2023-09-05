@@ -16,15 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.*;
+import org.apache.hadoop.io.DoubleWritable;
+import org.apache.hadoop.io.MapWritable;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -35,11 +41,13 @@ import java.io.IOException;
  */
 public class TSFMRReadExample {
 
+  private static Logger logger = LoggerFactory.getLogger(TSFMRReadExample.class);
+
   public static void main(String[] args)
       throws IOException, ClassNotFoundException, TSFHadoopException {
 
     if (args.length != 3) {
-      System.out.println("Please give hdfs url, input path, output path");
+      logger.info("Please give hdfs url, input path, output path");
       return;
     }
     Path inputPath = new Path(args[1]);
@@ -47,7 +55,6 @@ public class TSFMRReadExample {
 
     Configuration configuration = new Configuration();
     // set file system configuration
-    // configuration.set("fs.defaultFS", HDFSURL);
     Job job = Job.getInstance(configuration);
 
     FileSystem fs = FileSystem.get(configuration);
@@ -90,9 +97,9 @@ public class TSFMRReadExample {
       throw new IOException(e.getMessage());
     }
     if (isSuccess) {
-      System.out.println("Execute successfully");
+      logger.info("Execute successfully");
     } else {
-      System.out.println("Execute unsuccessfully");
+      logger.info("Execute unsuccessfully");
     }
   }
 

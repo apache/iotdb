@@ -22,14 +22,13 @@
 
 # IoTDB
 [![Main Mac and Linux](https://github.com/apache/iotdb/actions/workflows/main-unix.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-unix.yml)
-[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)
-[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)
+[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)<!--[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)-->
 [![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
-![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
-![](https://img.shields.io/badge/java--language-1.8-blue.svg)
+![](https://img.shields.io/badge/platform-win%20%7C%20macos%20%7C%20linux-yellow.svg)
+![](https://img.shields.io/badge/java--language-1.8%20%7C%2011%20%7C%2017-blue.svg)
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
@@ -124,7 +123,7 @@ IoTDB提供了三种安装方法，您可以参考以下建议，选择最适合
 同时我们预先编译了一个Thrift编译器，并将其上传到了GitHub ，借助一个Maven插件，在编译时可以自动将其下载。
 该预编译的Thrift编译器在gcc8，Ubuntu, CentOS, MacOS下可以工作，但是在更低的gcc
 版本以及其他操作系统上尚未确认。
-如果您发现因为网络问题总是提示下载不到thrift文件，那么您需要手动下载，并并将编译器放置到目录`{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`。
+如果您发现因为网络问题总是提示下载不到thrift文件，那么您需要手动下载，并将编译器放置到目录`{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`。
 如果您放到其他地方，就需要在运行maven的命令中添加：`-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<你的thrift可执行文件路径>`。
 
 如果您对Maven足够熟悉，您也可以直接修改我们的根pom文件来避免每次编译都使用上述参数。
@@ -136,39 +135,54 @@ Thrift官方网址为：https://thrift.apache.org/
 git clone https://github.com/apache/iotdb.git
 ```
 
-默认的主分支是master分支，如果你想使用某个发布版本x.x.x，请切换分支:
+默认的主分支是master分支，如果你想使用某个发布版本x.x.x，请切换 tag:
 
-```
-git checkout release/x.x.x
-```
-
-从0.11.3开始，版本的标签风格改为vx.x.x：
 ```
 git checkout vx.x.x
 ```
 
-在 iotdb 根目录下执行 maven 编译:
+或者切换大版本所在分支，如 1.0 版本的分支为 rel/1.0
 
 ```
-> mvn clean package -DskipTests
+git checkout rel/x.x
 ```
+
+### 源码编译 IoTDB
+
+在 iotdb 根目录下执行:
+
+```
+> mvn clean package -pl distribution -am -DskipTests
+```
+
+编译完成后, IoTDB 二进制包将生成在: "distribution/target".
+
+### 只编译 cli
+
+在 iotdb 根目录下执行:
+
+```
+> mvn clean package -pl cli -am -DskipTests
+```
+
+编译完成后, IoTDB cli 将生成在 "cli/target".
+
+### 编译其他模块
 
 通过添加 `-P compile-cpp` 可以进行c++客户端API的编译。
 
-执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-all-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
-
-**注意："`thrift/target/generated-sources/thrift`"， "`thrift-sync/target/generated-sources/thrift`"，"`thrift-cluster/target/generated-sources/thrift`" 和 "`antlr/target/generated-sources/antlr4`" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。**
+**注意："`thrift/target/generated-sources/thrift`"， "`thrift-sync/target/generated-sources/thrift`"，"`thrift-cluster/target/generated-sources/thrift`"，"`thrift-influxdb/target/generated-sources/thrift`" 和  "`antlr/target/generated-sources/antlr4`" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。**
 
 **IDEA的操作方法：在上述maven命令编译好后，右键项目名称，选择"`Maven->Reload project`"，即可。**
 
 ### 配置
 
 配置文件在"conf"文件夹下
-* 环境配置模块(`iotdb-env.bat`, `iotdb-env.sh`),
-* 系统配置模块(`iotdb-engine.properties`)
+* 环境配置模块(`datanode-env.bat`, `datanode-env.sh`),
+* 系统配置模块(`iotdb-datanode.properties`)
 * 日志配置模块(`logback.xml`)。
 
-有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Appendix/Config-Manual.html)。
+有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/DataNode-Config-Manual.html)。
 
 ## 开始
 
@@ -176,21 +190,15 @@ git checkout vx.x.x
 
 ### 启动 IoTDB
 
-可以通过运行 sbin 文件夹下的 start-server 脚本启动 IoTDB。
+可以通过运行 sbin 文件夹下的 start-standalone 脚本启动 1C1D IoTDB。
 
 ```
 # Unix/OS X
-> nohup sbin/start-server.sh >/dev/null 2>&1 &
-or
-> nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
+> sbin/start-standalone.sh
 
 # Windows
-> sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
+> sbin\start-standalone.bat
 ```
-- "-c" and "-rpc_port" 都是可选的。
-- 选项 "-c" 指定了配置文件所在的文件夹。
-- 选项 "-rpc_port" 指定了启动的 rpc port。
-- 如果两个选项同时指定，那么*rpc_port*将会覆盖*conf_path*下面的配置。
 
 ### 使用 IoTDB
 
@@ -233,26 +241,26 @@ IoTDB>
 现在，让我们介绍创建 timeseries、插入数据和查询数据的方法。
 
 
-IoTDB中的数据组织为 timeseries。每个 timeseries 包含多个`数据-时间`对，由一个存储组拥有。
-在定义 timeseries 之前，我们应该先使用SET storage group来定义一个存储组，下面是一个例子:
+IoTDB中的数据组织为 timeseries。每个 timeseries 包含多个`数据-时间`对，由一个 database 拥有。
+在定义 timeseries 之前，我们应该先使用 CREATE DATABASE 来创建一个数据库，下面是一个例子:
 
 ```
-IoTDB> SET STORAGE GROUP TO root.ln
+IoTDB> CREATE DATABASE root.ln
 ```
 
-我们也可以使用`SHOW STORAGE GROUP`来检查正在创建的存储组:
+我们也可以使用`SHOW DATABASES`来检查已创建的数据库:
 
 ```
-IoTDB> SHOW STORAGE GROUP
-+-------------+
-|storage group|
-+-------------+
-|      root.ln|
-+-------------+
+IoTDB> SHOW DATABASES
++--------+
+|Database|
++--------+
+| root.ln|
++--------+
 Total line number = 1
 ```
 
-在设置存储组之后，我们可以使用CREATE TIMESERIES来创建一个新的TIMESERIES。
+在设置 database 之后，我们可以使用CREATE TIMESERIES来创建一个新的TIMESERIES。
 在创建 timeseries 时，我们应该定义它的数据类型和编码方案。这里我们创建两个 timeseries:
 
 
@@ -269,7 +277,7 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCO
 ```
 IoTDB> SHOW TIMESERIES
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                   timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
 |     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
@@ -282,7 +290,7 @@ Total line number = 2
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|              timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|              timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
@@ -353,7 +361,7 @@ or
 IoTDB> exit
 ```
 
-有关IoTDB SQL支持的命令的更多信息，请参见[SQL 参考文档](https://iotdb.apache.org/zh/UserGuide/Master/Appendix/SQL-Reference.html)。
+有关IoTDB SQL支持的命令的更多信息，请参见[用户指南](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html)。
 
 ### 停止 IoTDB
 
@@ -361,36 +369,15 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 ```
 # Unix/OS X
-> sbin/stop-server.sh
+> sbin/stop-standalone.sh
 
 # Windows
-> sbin\stop-server.bat
+> sbin\stop-standalone.bat
 ```
-
-## 只编译 server
-
-在 iotdb 根目录下执行:
-
-```
-> mvn clean package -pl server -am -DskipTests
-```
-
-编译完成后, IoTDB server 将生成在: "server/target/iotdb-server-{project.version}".
-
-
-## 只编译 cli
-
-在 iotdb 根目录下执行:
-
-```
-> mvn clean package -pl cli -am -DskipTests
-```
-
-编译完成后, IoTDB cli 将生成在 "cli/target/iotdb-cli-{project.version}".
 
 # 导入导出CSV工具
 
-查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/Master/System%20Tools/CSV%20Tool.html)
+查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/Master/Maintenance-Tools/CSV-Tool.html)
 
 # 常见编译错误
 查看 [常见编译错误](https://iotdb.apache.org/zh/Development/ContributeGuide.html#%E5%B8%B8%E8%A7%81%E7%BC%96%E8%AF%91%E9%94%99%E8%AF%AF)

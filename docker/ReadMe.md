@@ -27,6 +27,9 @@ Before v0.12, Apache IoTDB's docker image name and version format is:
 From 0.12 on, we release two images: one is for a single node, and the other is for the cluster mode.
 The format is: `apache/iotdb:0.<major>.<minor>-node` and `apache/iotdb:0.<major>.<minor>-cluster`.
 
+From 1.0.0, we split 3 kinds of images: datanode,confignode and all of them in one image called 1C1D. 
+The format is: `apache/iotdb:<version>-confignode`,`apache/iotdb:<version>-datanode` and `apache/iotdb:<version>-standalone`.
+
 ## The definition of tag "latest"
 Before v0.12, the "latest" tag will forward to the largest `apache/iotdb:0.<major>.<minor>`.
 
@@ -41,6 +44,21 @@ e.g.,
 
 ```shell
 docker build -t my-iotdb:<version> -f Dockerfile-<version>
+# for 1.0.0
+cd src/main/DockerCompose
+./do-docker-build.sh -t <target> -v <version>
+e.g.
+./do-docker-build.sh -t standalone -v 1.0.0
+```
+Notice:
+Make directory of src/main/target and put the zip file downloading from the official download page. 
+e.g.
+```shell
+$ ls -hl target/
+total 215M
+-rw-r--r-- 1 root root 75M Nov 30 20:04 apache-iotdb-1.0.0-all-bin.zip
+-rw-r--r-- 1 root root 69M Dec  1 17:12 apache-iotdb-1.0.0-confignode-bin.zip
+-rw-r--r-- 1 root root 73M Dec  1 17:13 apache-iotdb-1.0.0-datanode-bin.zip
 ```
 
 # How to run IoTDB server 
@@ -50,13 +68,13 @@ Actually, we maintain a repo on dockerhub, so that you can get the docker image 
 For example,
 
 ```shell
-docker run -d -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 apache/iotdb:<version>
+docker run -d --name iotdb -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 apache/iotdb:<version>
 ```
 
 ```shell
-docker run -d -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 -p 9003:9003 -p 40010:40010 apache/iotdb:<version>
+docker run -d --name iotdb -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 -p 9003:9003 -p 40010:40010 apache/iotdb:<version>
 ```
-
+Since 1.0.0, see [offical documents.](https://iotdb.apache.org/UserGuide/Master/QuickStart/WayToGetIoTDB.html)
 ## Port description
 
 By default, the ports that IoTDB uses are:
@@ -91,12 +109,12 @@ e.g.,
 ```shell
 $ docker ps
 CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                                                                                NAMES
-c82321c70137        apache/iotdb:<version>  "/iotdb/sbin/start-s…"   12 minutes ago      Up 12 minutes       0.0.0.0:6667->6667/tcp, 0.0.0.0:8181->8181/tcp, 5555/tcp, 0.0.0.0:31999->31999/tcp   elegant_germain
+c82321c70137        apache/iotdb:<version>  "/iotdb/sbin/start-s…"   12 minutes ago      Up 12 minutes       0.0.0.0:6667->6667/tcp, 0.0.0.0:8181->8181/tcp, 5555/tcp, 0.0.0.0:31999->31999/tcp   iotdb
 ```
 2. Use `docker exec` to attach the container:
 
 ```shell
-docker exec -it c82321c70137 /bin/bash
+docker exec -it iotdb /bin/bash
 ```
 
 Then, for the latest version (or, >=0.10.x), run `start-cli.sh`, for version 0.9.x and 0.8.1, run `start-client.sh`.
@@ -104,7 +122,7 @@ Then, for the latest version (or, >=0.10.x), run `start-cli.sh`, for version 0.9
 Or, 
 
 ```shell
-docker exec -it c82321c70137 start-cli.sh
+docker exec -it iotdb start-cli.sh
 ```
 
 # How to run IoTDB-grafana-connector

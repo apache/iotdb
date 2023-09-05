@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -46,6 +47,7 @@ public class TsFileForceAppendWrite {
     if (f.exists()) {
       Files.delete(f.toPath());
     }
+
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
 
       // add measurements into file schema
@@ -79,8 +81,16 @@ public class TsFileForceAppendWrite {
     }
 
     // open the closed file with ForceAppendTsFileWriter
-    ForceAppendTsFileWriter fwriter = new ForceAppendTsFileWriter(f);
-    fwriter.doTruncate();
+
+    try (ForceAppendTsFileWriter fwriter = new ForceAppendTsFileWriter(f)) {
+      fwriter.doTruncate();
+      write(fwriter);
+    } catch (Exception e) {
+      logger.error("ForceAppendTsFileWriter truncate or write error ", e);
+    }
+  }
+
+  private static void write(ForceAppendTsFileWriter fwriter) {
     try (TsFileWriter tsFileWriter1 = new TsFileWriter(fwriter)) {
       // add measurements into file schema
       for (int i = 0; i < 4; i++) {
@@ -110,6 +120,5 @@ public class TsFileForceAppendWrite {
     } catch (Exception e) {
       logger.error("meet error in TsFileWrite ", e);
     }
-    fwriter.close();
   }
 }

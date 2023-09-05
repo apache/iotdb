@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.flink;
 
 import org.apache.iotdb.flink.options.IoTDBSinkOptions;
@@ -61,7 +62,7 @@ public class FlinkIoTDBSink {
         new IoTDBSink(options, serializationSchema)
             // enable batching
             .withBatchSize(10)
-            // how many connectons to the server will be created for each parallelism
+            // how many connections to the server will be created for each parallelism
             .withSessionPoolSize(3);
 
     env.addSource(new SensorSource())
@@ -80,7 +81,7 @@ public class FlinkIoTDBSink {
     @Override
     public void run(SourceContext context) throws Exception {
       while (running) {
-        Map<String, String> tuple = new HashMap();
+        Map<String, String> tuple = new HashMap<>();
         tuple.put("device", "root.sg.d1");
         tuple.put("timestamp", String.valueOf(System.currentTimeMillis()));
         tuple.put("measurements", "s1");
