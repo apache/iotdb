@@ -254,7 +254,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     try {
       // check for semantic errors
       queryStatement.semanticCheck();
-      analysis.setStatement(queryStatement);
 
       if (queryStatement.isModelInferenceQuery()) {
         analyzeModelInference(analysis, queryStatement);

@@ -189,6 +189,7 @@ public enum TSStatusCode {
   // ML Model
   CREATE_MODEL_ERROR(1500),
   DROP_MODEL_ERROR(1501),
+  MODEL_EXIST_ERROR(1502),
   MLNODE_INTERNAL_ERROR(1510),
 
   // Pipe Plugin

@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.model.exception.ModelManagementException;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
@@ -75,60 +74,11 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
     try {
       switch (state) {
         case INIT:
-          LOGGER.info("Start to create model [{}]", modelInformation.getModelId());
-
-          ModelInfo modelInfo = env.getConfigManager().getModelManager().getModelInfo();
-          modelInfo.acquireModelTableLock();
-          String modelId = modelInformation.getModelId();
-          if (modelInfo.isModelExist(modelId)) {
-            throw new ModelManagementException(
-                String.format(
-                    "Failed to create model [%s], the same name model has been created", modelId));
-          }
-          setNextState(CreateModelState.VALIDATED);
+          createModel(env);
           break;
-
-        case VALIDATED:
-          ConfigManager configManager = env.getConfigManager();
-          modelId = modelInformation.getModelId();
-
-          LOGGER.info("Start to add model [{}] in ModelTable on Config Nodes", modelId);
-
-          TSStatus response =
-              configManager.getConsensusManager().write(new CreateModelPlan(modelInformation));
-          if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            throw new ModelManagementException(
-                String.format(
-                    "Failed to add model [%s] in ModelTable on Config Nodes: %s",
-                    modelId, response.getMessage()));
-          }
-
-          setNextState(CreateModelState.CONFIG_NODE_ACTIVE);
-          break;
-
-        case CONFIG_NODE_ACTIVE:
-          LOGGER.info("Start to train model [{}] on ML Node", modelInformation.getModelId());
-
-          try (MLNodeClient client =
-              MLNodeClientManager.getInstance().borrowClient(MLNodeInfo.endPoint)) {
-            TSStatus status = client.createTrainingTask(modelInformation, hyperparameters);
-            if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              throw new TException(status.getMessage());
-            }
-
-            setNextState(CreateModelState.ML_NODE_ACTIVE);
-          } catch (TException e) {
-            throw new ModelManagementException(
-                String.format(
-                    "Fail to start training model [%s] on ML Node: %s",
-                    modelInformation.getModelId(), e.getMessage()));
-          }
-          break;
-
         case ML_NODE_ACTIVE:
-          env.getConfigManager().getModelManager().getModelInfo().releaseModelTableLock();
+          trainModel();
           return Flow.NO_MORE_STATE;
-
         default:
           throw new UnsupportedOperationException(
               String.format("Unknown state during executing createModelProcedure, %s", state));
@@ -155,19 +105,47 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
     return Flow.HAS_MORE_STATE;
   }
 
+  private void createModel(ConfigNodeProcedureEnv env) throws ConsensusException {
+    LOGGER.info("Start to create model [{}]", modelInformation.getModelId());
+
+    ConfigManager configManager = env.getConfigManager();
+    TSStatus response =
+        configManager.getConsensusManager().write(new CreateModelPlan(modelInformation));
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new ModelManagementException(
+          String.format(
+              "Failed to add model [%s] in ModelTable on Config Nodes: %s",
+              modelInformation.getModelId(), response.getMessage()));
+    }
+    setNextState(CreateModelState.ML_NODE_ACTIVE);
+  }
+
+  private void trainModel() {
+    LOGGER.info("Start to train model [{}] on ML Node", modelInformation.getModelId());
+
+    try (MLNodeClient client =
+        MLNodeClientManager.getInstance().borrowClient(MLNodeInfo.endPoint)) {
+      TSStatus status = client.createTrainingTask(modelInformation, hyperparameters);
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new TException(status.getMessage());
+      }
+    } catch (Exception e) {
+      throw new ModelManagementException(
+          String.format(
+              "Fail to start training model [%s] on ML Node: %s",
+              modelInformation.getModelId(), e.getMessage()));
+    }
+  }
+
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, CreateModelState state)
       throws IOException, InterruptedException, ProcedureException {
     switch (state) {
       case INIT:
-        LOGGER.info("Start [INIT] rollback of model [{}]", modelInformation.getModelId());
-
-        env.getConfigManager().getModelManager().getModelInfo().releaseModelTableLock();
+        // do nothing
         break;
-
-      case VALIDATED:
+      case ML_NODE_ACTIVE:
         LOGGER.info("Start [VALIDATED] rollback of model [{}]", modelInformation.getModelId());
-
         try {
           env.getConfigManager()
               .getConsensusManager()
@@ -176,9 +154,18 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
           LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
         }
         break;
-
       default:
         break;
+    }
+    if (Objects.requireNonNull(state) == CreateModelState.INIT) {
+      LOGGER.info("Start [INIT] rollback of model [{}]", modelInformation.getModelId());
+      try {
+        env.getConfigManager()
+            .getConsensusManager()
+            .write(new DropModelPlan(modelInformation.getModelId()));
+      } catch (ConsensusException e) {
+        LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      }
     }
   }
 
