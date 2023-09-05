@@ -269,6 +269,8 @@ public class Utils {
     RaftServerConfigKeys.Log.setForceSyncNum(properties, config.getLog().getForceSyncNum());
     RaftServerConfigKeys.Log.setUnsafeFlushEnabled(
         properties, config.getLog().isUnsafeFlushEnabled());
+    RaftServerConfigKeys.Log.setCorruptionPolicy(
+        properties, RaftServerConfigKeys.Log.CorruptionPolicy.WARN_AND_RETURN);
 
     RaftServerConfigKeys.Log.Appender.setBufferByteLimit(
         properties, config.getLeaderLogAppender().getBufferByteLimit());
@@ -292,8 +294,5 @@ public class Utils {
 
     RaftServerConfigKeys.setSleepDeviationThreshold(
         properties, config.getUtils().getSleepDeviationThresholdMs());
-
-    RaftServerConfigKeys.Log.setCorruptionPolicy(
-        properties, RaftServerConfigKeys.Log.CorruptionPolicy.WARN_AND_RETURN);
   }
 }
