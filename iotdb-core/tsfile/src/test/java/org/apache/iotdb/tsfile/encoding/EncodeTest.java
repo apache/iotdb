@@ -80,13 +80,12 @@ public class EncodeTest {
 
       // select encoding algorithms
       TSEncoding[] encodingList = {
-        //            TSEncoding.PLAIN ,
+                    TSEncoding.PLAIN ,
         TSEncoding.TS_2DIFF,
         TSEncoding.RLE,
         TSEncoding.SPRINTZ,
         TSEncoding.GORILLA,
-        TSEncoding.RLBE,
-        TSEncoding.RAKE
+        TSEncoding.RLBE
       };
       // select compression algorithms
       CompressionType[] compressList = {
@@ -134,13 +133,6 @@ public class EncodeTest {
           data.clear();
           while (loader.readRecord()) {
             String v = loader.getValues()[index];
-            //          int ind = v.indexOf(".");
-            //          if (ind > -1) {
-            //            int len = v.substring(ind + 1).length();
-            //            if (len > max_precision) {
-            //              max_precision = len;
-            //            }
-            //          }
             data.add(v);
           }
           //        System.out.println(max_precision);
