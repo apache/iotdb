@@ -186,11 +186,6 @@ public class PathPatternTree {
         return;
       }
     }
-    if (curNode.isWildcard()) {
-      results.add(convertNodesToString(nodes));
-      nodes.remove(nodes.size() - 1);
-      return;
-    }
     for (PathPatternNode<Void, VoidSerializer> childNode : curNode.getChildren().values()) {
       searchDevicePattern(childNode, nodes, results);
     }
@@ -219,11 +214,6 @@ public class PathPatternTree {
         nodes.remove(nodes.size() - 1);
         return;
       }
-    }
-    if (curNode.isWildcard()) {
-      resultNodesSet.add(new ArrayList<>(nodes));
-      nodes.remove(nodes.size() - 1);
-      return;
     }
     for (PathPatternNode<Void, VoidSerializer> childNode : curNode.getChildren().values()) {
       searchDevicePath(childNode, nodes, resultNodesSet);
