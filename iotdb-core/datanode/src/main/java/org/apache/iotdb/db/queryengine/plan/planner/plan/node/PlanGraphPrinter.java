@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescr
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang3.Validate;
+import org.eclipse.jetty.util.StringUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -384,6 +385,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("LastQueryScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Series: %s", node.getSeriesPath()));
+    if (StringUtil.isNotBlank(node.getOutputViewPath())) {
+      boxValue.add(String.format("ViewPath: %s", node.getOutputViewPath()));
+    }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -397,6 +401,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
         String.format(
             "Series: %s%s",
             node.getSeriesPath().getDevice(), node.getSeriesPath().getMeasurementList()));
+    if (StringUtil.isNotBlank(node.getOutputViewPath())) {
+      boxValue.add(String.format("ViewPath: %s", node.getOutputViewPath()));
+    }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
