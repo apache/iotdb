@@ -108,6 +108,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     for (Map.Entry<String, List<String>> entry :
         tsFileSequenceReader.getDeviceMeasurementsMap().entrySet()) {
       final String deviceId = entry.getKey();
+      final String deviceIdWithSeparator = deviceId + TsFileConstant.PATH_SEPARATOR;
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
@@ -120,10 +121,10 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
       // case 2: for example, pattern is root.a.b.c and device is root.a.b
       // in this case, we need to check the full path
-      else if (pattern.length() > deviceId.length() && pattern.startsWith(deviceId)) {
+      else if (pattern.length() >= deviceIdWithSeparator.length()
+          && pattern.startsWith(deviceIdWithSeparator)) {
         final List<String> filteredMeasurements = new ArrayList<>();
-        final String measurementPattern =
-            pattern.replace(deviceId + TsFileConstant.PATH_SEPARATOR, "");
+        final String measurementPattern = pattern.replace(deviceIdWithSeparator, "");
 
         for (final String measurement : entry.getValue()) {
           if (measurement.startsWith(measurementPattern)) {

@@ -288,19 +288,33 @@ public class TabletInsertionDataContainer {
       Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
     final int originColumnSize = originMeasurementList.length;
 
-    int filteredCount = 0;
-    final String measurementPattern = pattern.replace(deviceId + TsFileConstant.PATH_SEPARATOR, "");
-
-    for (int i = 0; i < originColumnSize; i++) {
-      final String measurement = originMeasurementList[i];
-
-      // ignore null measurement for partial insert
-      if (measurement == null) {
-        continue;
+    final String deviceIdWithSeparator = deviceId + TsFileConstant.PATH_SEPARATOR;
+    // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
+    // in this case, all data can be matched without checking the measurements
+    if (pattern == null || pattern.length() <= deviceId.length() && deviceId.startsWith(pattern)) {
+      for (int i = 0; i < originColumnSize; i++) {
+        originColumnIndex2FilteredColumnIndexMapperList[i] = i;
       }
+    }
 
-      if (measurement.startsWith(measurementPattern)) {
-        originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
+    // case 2: for example, pattern is root.a.b.c and device is root.a.b
+    // in this case, we need to check the full path
+    else if (pattern.length() >= deviceIdWithSeparator.length()
+        && pattern.startsWith(deviceIdWithSeparator)) {
+      int filteredCount = 0;
+      final String measurementPattern = pattern.replace(deviceIdWithSeparator, "");
+
+      for (int i = 0; i < originColumnSize; i++) {
+        final String measurement = originMeasurementList[i];
+
+        // ignore null measurement for partial insert
+        if (measurement == null) {
+          continue;
+        }
+
+        if (measurement.startsWith(measurementPattern)) {
+          originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
+        }
       }
     }
   }
