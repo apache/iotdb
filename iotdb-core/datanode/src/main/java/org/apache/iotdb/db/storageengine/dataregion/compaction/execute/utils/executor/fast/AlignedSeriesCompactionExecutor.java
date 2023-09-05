@@ -250,19 +250,18 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
     // deserialize time chunk
     Chunk timeChunk = chunkMetadataElement.chunk;
 
-    ChunkReader timeChunkReader = new ChunkReader(timeChunk);
-    ByteBuffer timeChunkDataBuffer = timeChunk.getData();
-    ChunkHeader timeChunkHeader = timeChunk.getHeader();
-    while (timeChunkDataBuffer.remaining() > 0) {
+    ChunkReader chunkReader = new ChunkReader(timeChunk);
+    ByteBuffer chunkDataBuffer = timeChunk.getData();
+    ChunkHeader chunkHeader = timeChunk.getHeader();
+    while (chunkDataBuffer.remaining() > 0) {
       // deserialize a PageHeader from chunkDataBuffer
       PageHeader pageHeader;
-      if (((byte) (timeChunkHeader.getChunkType() & 0x3F))
-          == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-        pageHeader = PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunk.getChunkStatistic());
+      if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, timeChunk.getChunkStatistic());
       } else {
-        pageHeader = PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkHeader.getDataType());
+        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
       }
-      ByteBuffer compressedPageData = timeChunkReader.readPageDataWithoutUncompressing(pageHeader);
+      ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
       timePageHeaders.add(pageHeader);
       compressedTimePageDatas.add(compressedPageData);
     }
@@ -278,30 +277,26 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
         compressedValuePageDatas.add(null);
         continue;
       }
-      timeChunkReader = new ChunkReader(valueChunk);
-      timeChunkDataBuffer = valueChunk.getData();
-      timeChunkHeader = valueChunk.getHeader();
+      chunkReader = new ChunkReader(valueChunk);
+      chunkDataBuffer = valueChunk.getData();
+      chunkHeader = valueChunk.getHeader();
 
       valuePageHeaders.add(new ArrayList<>());
       compressedValuePageDatas.add(new ArrayList<>());
-      while (timeChunkDataBuffer.remaining() > 0) {
+      while (chunkDataBuffer.remaining() > 0) {
         // deserialize a PageHeader from chunkDataBuffer
         PageHeader pageHeader;
-        if (((byte) (timeChunkHeader.getChunkType() & 0x3F))
-            == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-          pageHeader =
-              PageHeader.deserializeFrom(timeChunkDataBuffer, valueChunk.getChunkStatistic());
+        if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, valueChunk.getChunkStatistic());
         } else {
-          pageHeader =
-              PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkHeader.getDataType());
+          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
         }
         if (pageHeader.getCompressedSize() == 0) {
           // empty value page
           valuePageHeaders.get(i).add(null);
           compressedValuePageDatas.get(i).add(null);
         } else {
-          ByteBuffer compressedPageData =
-              timeChunkReader.readPageDataWithoutUncompressing(pageHeader);
+          ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
           valuePageHeaders.get(i).add(pageHeader);
           compressedValuePageDatas.get(i).add(compressedPageData);
         }
