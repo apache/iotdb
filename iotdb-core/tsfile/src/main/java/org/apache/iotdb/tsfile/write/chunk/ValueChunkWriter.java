@@ -62,7 +62,7 @@ public class ValueChunkWriter {
   protected int numOfPages;
 
   /** write data into current page */
-  private ValuePageWriter pageWriter;
+  protected ValuePageWriter pageWriter;
 
   /** page size threshold. */
   private final long pageSizeThreshold;

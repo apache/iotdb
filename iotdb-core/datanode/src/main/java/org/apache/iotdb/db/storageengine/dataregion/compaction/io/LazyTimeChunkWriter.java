@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.chunk.TimeChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -119,12 +120,13 @@ public class LazyTimeChunkWriter extends TimeChunkWriter {
 
     long dataOffset = writer.getPos();
 
-    if (insertPagePositions.isEmpty()) {
-      writer.writeBytesToStream(pageBuffer);
-    }
-    // write all pages of this column
     int writedSizeOfBuffer = 0;
     int bufferSize = pageBuffer.size();
+    if (insertPagePositions.isEmpty()) {
+      writer.writeBytesToStream(pageBuffer);
+      writedSizeOfBuffer = bufferSize;
+    }
+    // write all pages of this column
     while (!insertPagePositions.isEmpty()) {
       Integer size = insertPagePositions.peek();
       if (writedSizeOfBuffer < size) {
@@ -159,6 +161,19 @@ public class LazyTimeChunkWriter extends TimeChunkWriter {
     }
 
     writer.endCurrentChunk();
+  }
+
+  public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
+    sealCurrentPage();
+    writeAllPagesOfChunkToTsFile(tsfileWriter);
+
+    // reinit this chunk writer
+    pageBuffer.reset();
+    numOfPages = 0;
+    sizeWithoutStatistic = 0;
+    firstPageStatistics = null;
+    sizeOfUnLoadPage = 0;
+    this.statistics = new TimeStatistics();
   }
 
   @Override

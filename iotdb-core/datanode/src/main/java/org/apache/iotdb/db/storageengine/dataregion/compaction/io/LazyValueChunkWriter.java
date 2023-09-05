@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -62,6 +63,24 @@ public class LazyValueChunkWriter extends ValueChunkWriter {
     super.writePageHeaderAndDataIntoBuff(data, header);
   }
 
+  @Override
+  public void writeEmptyPageToPageBuffer() throws IOException {
+    if (numOfPages == 1 && firstPageStatistics != null) {
+      // if the first page is not an empty page
+      byte[] b = pageBuffer.toByteArray();
+      pageBuffer.reset();
+      pageBuffer.write(b, 0, this.sizeWithoutStatistic);
+      firstPageStatistics.serialize(pageBuffer);
+      pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
+      firstPageStatistics = null;
+      if (!insertPagePositions.isEmpty()) {
+        insertPagePositions.set(0, pageBuffer.size());
+      }
+    }
+    pageWriter.writeEmptyPageIntoBuff(pageBuffer);
+    numOfPages++;
+  }
+
   public void writeLazyPageLoaderIntoBuff(LazyPageLoader lazyPageLoader) throws PageException {
     PageHeader header = lazyPageLoader.getPageHeader();
     // write the page header to pageBuffer
@@ -88,9 +107,9 @@ public class LazyValueChunkWriter extends ValueChunkWriter {
           pageBuffer.write(b, 0, this.sizeWithoutStatistic);
           firstPageStatistics.serialize(pageBuffer);
           pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
-        }
-        if (!insertPagePositions.isEmpty()) {
-          insertPagePositions.set(0, pageBuffer.size());
+          if (!insertPagePositions.isEmpty()) {
+            insertPagePositions.set(0, pageBuffer.size());
+          }
         }
         ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
         if (header.getUncompressedSize() != 0) {
@@ -159,12 +178,13 @@ public class LazyValueChunkWriter extends ValueChunkWriter {
 
     long dataOffset = writer.getPos();
 
-    if (insertPagePositions.isEmpty()) {
-      writer.writeBytesToStream(pageBuffer);
-    }
-    // write all pages of this column
     int writedSizeOfBuffer = 0;
     int bufferSize = pageBuffer.size();
+    if (insertPagePositions.isEmpty()) {
+      writer.writeBytesToStream(pageBuffer);
+      writedSizeOfBuffer = bufferSize;
+    }
+    // write all pages of this column
     while (!insertPagePositions.isEmpty()) {
       Integer size = insertPagePositions.peek();
       if (writedSizeOfBuffer < size) {
@@ -197,6 +217,19 @@ public class LazyValueChunkWriter extends ValueChunkWriter {
               + pageBuffer.size());
     }
     writer.endCurrentChunk();
+  }
+
+  public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
+    sealCurrentPage();
+    writeAllPagesOfChunkToTsFile(tsfileWriter);
+
+    // reinit this chunk writer
+    pageBuffer.reset();
+    numOfPages = 0;
+    sizeOfUnLoadPage = 0;
+    sizeWithoutStatistic = 0;
+    firstPageStatistics = null;
+    this.statistics = Statistics.getStatsByType(dataType);
   }
 
   @Override
