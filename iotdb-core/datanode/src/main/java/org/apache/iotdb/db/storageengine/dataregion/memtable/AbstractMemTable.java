@@ -65,7 +65,7 @@ public abstract class AbstractMemTable implements IMemTable {
   private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
 
   /**
-   * The initial value is true because we want calculate the text data size when recover memTable.
+   * The initial value is true because we want to calculate the text data size when recover memTable.
    */
   protected boolean disableMemControl = true;
 
