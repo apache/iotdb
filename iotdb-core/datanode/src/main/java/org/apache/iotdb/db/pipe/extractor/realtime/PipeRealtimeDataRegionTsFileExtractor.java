@@ -75,9 +75,17 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractHeartbeat(PipeRealtimeEvent event) {
-    if (pendingQueue.peekLast() instanceof PipeHeartbeatEvent) {
-      // if the last event in the pending queue is a heartbeat event, we should not extract any more
+    // Record the pending queue size before trying to put heartbeatEvent into queue
+    ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
+
+    Event lastEvent = pendingQueue.peekLast();
+    if (lastEvent instanceof PipeRealtimeEvent
+        && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent
+        && (((PipeHeartbeatEvent) ((PipeRealtimeEvent) lastEvent).getEvent()).isShouldPrintMessage()
+            || !((PipeHeartbeatEvent) event.getEvent()).isShouldPrintMessage())) {
+      // If the last event in the pending queue is a heartbeat event, we should not extract any more
       // heartbeat events to avoid OOM when the pipe is stopped.
+      // Besides, the printable event has higher priority to stay in queue to enable metrics report.
       event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
       return;
     }

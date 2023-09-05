@@ -45,6 +45,8 @@ import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -59,6 +61,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHistoricalDataRegionTsFileExtractor.class);
+
+  private static final Map<Integer, Long> DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP = new HashMap<>();
+  private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
 
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
@@ -90,6 +95,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
     dataRegionId = environment.getRegionId();
+    synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
+      DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.putIfAbsent(dataRegionId, 0L);
+    }
 
     pattern = parameters.getStringOrDefault(EXTRACTOR_PATTERN_KEY, EXTRACTOR_PATTERN_DEFAULT_VALUE);
 
@@ -138,7 +146,14 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     // If we don't invoke flushDataRegionAllTsFiles() in the realtime only mode, the data generated
     // between the creation time of the pipe the time when the pipe starts will be lost.
     if (historicalDataExtractionTimeLowerBound != Long.MIN_VALUE) {
-      flushDataRegionAllTsFiles();
+      synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
+        final long lastFlushedByPipeTime =
+            DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
+        if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
+          flushDataRegionAllTsFiles();
+          DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.replace(dataRegionId, System.currentTimeMillis());
+        }
+      }
     }
   }
 
@@ -168,7 +183,14 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     dataRegion.writeLock("Pipe: start to extract historical TsFile");
     try {
-      dataRegion.syncCloseAllWorkingTsFileProcessors();
+      synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
+        final long lastFlushedByPipeTime =
+            DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
+        if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
+          dataRegion.syncCloseAllWorkingTsFileProcessors();
+          DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.replace(dataRegionId, System.currentTimeMillis());
+        }
+      }
 
       final TsFileManager tsFileManager = dataRegion.getTsFileManager();
       tsFileManager.readLock();
@@ -179,7 +201,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             tsFileManager.getTsFileList(true).stream()
                 .filter(
                     resource ->
-                        !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+                        // Some resource may be not closed due to the control of
+                        // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
+                        resource.isClosed()
+                            && !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
                             && devicesMatched(resource.getDevices()))
@@ -201,7 +226,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             tsFileManager.getTsFileList(false).stream()
                 .filter(
                     resource ->
-                        !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+                        // Some resource may be not closed due to the control of
+                        // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
+                        resource.isClosed()
+                            && !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
                             && devicesMatched(resource.getDevices()))

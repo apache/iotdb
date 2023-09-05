@@ -17,27 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.connection;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
-import org.apache.iotdb.pipe.api.event.Event;
+public class Interval {
+  private long start;
+  private long end;
 
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.LinkedBlockingDeque;
-
-public class UnboundedBlockingPendingQueue<E extends Event> extends BlockingPendingQueue<E> {
-
-  private final BlockingDeque<E> pendingDeque;
-
-  public UnboundedBlockingPendingQueue() {
-    super(new LinkedBlockingDeque<>());
-    pendingDeque = (BlockingDeque<E>) pendingQueue;
+  public Interval(long start, long end) {
+    this.start = start;
+    this.end = end;
+    if (end < start) {
+      throw new IllegalArgumentException("end must greater than start");
+    }
   }
 
-  public E peekLast() {
-    return pendingDeque.peekLast();
+  public long getStart() {
+    return start;
   }
 
-  public E removeLast() {
-    return pendingDeque.removeLast();
+  public long getEnd() {
+    return end;
+  }
+
+  public void setStart(long start) {
+    this.start = start;
+  }
+
+  public void setEnd(long end) {
+    this.end = end;
   }
 }

@@ -43,6 +43,10 @@ public class PipeEventCollector implements EventCollector {
     if (event instanceof EnrichedEvent) {
       ((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName());
     }
+    if (event instanceof PipeHeartbeatEvent) {
+      ((PipeHeartbeatEvent) event).recordBufferQueueSize(bufferQueue);
+      ((PipeHeartbeatEvent) event).recordConnectorQueueSize(pendingQueue);
+    }
 
     while (!bufferQueue.isEmpty()) {
       final Event bufferedEvent = bufferQueue.peek();

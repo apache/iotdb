@@ -3,3 +3,5 @@
 /build/
 /dist/
 /apache_iotdb.egg-info
+/setup.py
+!/resources/setup/py

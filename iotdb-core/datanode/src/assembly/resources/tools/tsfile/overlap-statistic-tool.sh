@@ -1,6 +1,5 @@
 #!/bin/bash
 #
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -19,23 +18,34 @@
 # under the License.
 #
 
-# the python version must be python3.
-python3 --version
+echo ---------------------
+echo Starting Validating the TsFile
+echo ---------------------
 
-rm -Rf build
-rm -Rf dist
-rm -Rf iotdb_session.egg_info
+source "$(dirname "$0")/../../sbin/iotdb-common.sh"
+#get_iotdb_include and checkAllVariables is in iotdb-common.sh
+VARS=$(get_iotdb_include "$*")
+checkAllVariables
+export IOTDB_HOME="${IOTDB_HOME}/.."
+eval set -- "$VARS"
 
-# (Re-)build generated code
-(cd ../..; mvn clean package -pl iotdb-client/client-py -am)
-
-# Run unit tests
-if [ "$1" == "test" ]; then
-  pytest .
+if [ -n "$JAVA_HOME" ]; then
+    for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
+        if [ -x "$java" ]; then
+            JAVA="$java"
+            break
+        fi
+    done
+else
+    JAVA=java
 fi
 
-# See https://packaging.python.org/tutorials/packaging-projects/
-python3 setup.py sdist bdist_wheel
-if [ "$1" == "release" ]; then
-  python3 -m twine upload  dist/*
-fi
+CLASSPATH=""
+for f in ${IOTDB_HOME}/lib/*.jar; do
+  CLASSPATH=${CLASSPATH}":"$f
+done
+
+MAIN_CLASS=org.apache.iotdb.db.storageengine.dataregion.compaction.tool.OverlapStatisticTool
+
+"$JAVA" -Xmx16G -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+exit $?
