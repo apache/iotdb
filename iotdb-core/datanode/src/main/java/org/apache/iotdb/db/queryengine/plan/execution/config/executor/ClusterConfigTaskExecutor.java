@@ -2121,8 +2121,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     List<TSDataType> inputTypeList = new ArrayList<>();
     for (Expression outputExpression :
         analysis.getOutputExpressions().stream().map(Pair::getLeft).collect(Collectors.toList())) {
+      ResultColumn.ColumnType columnType =
+          ExpressionAnalyzer.identifyOutputColumnType(outputExpression, true);
       formattedSelect.addResultColumn(
-          new ResultColumn(ExpressionAnalyzer.removeRootPrefix(outputExpression)));
+          new ResultColumn(ExpressionAnalyzer.removeRootPrefix(outputExpression), columnType));
       inputTypeList.add(analysis.getType(outputExpression));
     }
     datasetStatement.setSelectComponent(formattedSelect);

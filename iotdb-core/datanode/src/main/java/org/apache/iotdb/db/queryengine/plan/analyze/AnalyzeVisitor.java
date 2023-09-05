@@ -383,7 +383,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       List<ResultColumn> newResultColumns = new ArrayList<>();
       for (Expression inputExpression : modelInferenceExpression.getExpressions()) {
-        newResultColumns.add(new ResultColumn(inputExpression));
+        newResultColumns.add(
+            new ResultColumn(inputExpression, ResultColumn.ColumnType.MODEL_INFERENCE));
       }
       queryStatement.getSelectComponent().setResultColumns(newResultColumns);
 

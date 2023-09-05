@@ -119,7 +119,9 @@ public class ConcatPathRewriter {
           ExpressionAnalyzer.concatExpressionWithSuffixPaths(
               resultColumn.getExpression(), prefixPaths, patternTree);
       for (Expression resultExpression : resultExpressions) {
-        resultColumns.add(new ResultColumn(resultExpression, resultColumn.getAlias()));
+        resultColumns.add(
+            new ResultColumn(
+                resultExpression, resultColumn.getAlias(), resultColumn.getColumnType()));
       }
     }
     return resultColumns;

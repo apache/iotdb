@@ -150,7 +150,8 @@ public class StatementGenerator {
       fromComponent.addPrefixPath(path);
     }
     selectComponent.addResultColumn(
-        new ResultColumn(new TimeSeriesOperand(new PartialPath("", false))));
+        new ResultColumn(
+            new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
 
     // set query filter
     GreaterEqualExpression leftPredicate =
@@ -192,7 +193,8 @@ public class StatementGenerator {
       fromComponent.addPrefixPath(path);
     }
     selectComponent.addResultColumn(
-        new ResultColumn(new TimeSeriesOperand(new PartialPath("", false))));
+        new ResultColumn(
+            new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
 
     QueryStatement lastQueryStatement = new QueryStatement();
 
@@ -239,7 +241,8 @@ public class StatementGenerator {
               new FunctionExpression(
                   aggregations.get(i).toString(),
                   new LinkedHashMap<>(),
-                  Collections.singletonList(new TimeSeriesOperand(selectPaths.get(i))))));
+                  Collections.singletonList(new TimeSeriesOperand(selectPaths.get(i)))),
+              ResultColumn.ColumnType.AGGREGATION));
     }
     queryStatement.setSelectComponent(selectComponent);
 

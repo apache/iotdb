@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.component;
 
-import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 
@@ -69,14 +68,16 @@ public class ResultColumn extends StatementNode {
 
   private final ColumnType columnType;
 
-  public ResultColumn(Expression expression, String alias) {
+  public ResultColumn(Expression expression, String alias, ColumnType columnType) {
     this.expression = expression;
     this.alias = alias;
-    this.columnType = ExpressionAnalyzer.identifyOutputColumnType(expression, true);
+    this.columnType = columnType;
   }
 
-  public ResultColumn(Expression expression) {
-    this(expression, null);
+  public ResultColumn(Expression expression, ColumnType columnType) {
+    this.expression = expression;
+    this.columnType = columnType;
+    this.alias = null;
   }
 
   public Expression getExpression() {
