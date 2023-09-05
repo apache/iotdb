@@ -47,7 +47,6 @@ public class TimePartitionProcessTask {
 
     OverlapStatistic partialRet =
         processSequenceSpaceAsync(fileTaskExecutor, unseqSpaceStatistics, timePartitionFiles.left);
-    // 更新并打印进度
     OverlapStatisticTool.outputInfolock.lock();
     OverlapStatisticTool.processedTimePartitionCount += 1;
     OverlapStatisticTool.processedSeqFileCount += partialRet.totalSequenceFile;
@@ -134,7 +133,6 @@ public class TimePartitionProcessTask {
         overlapStatistic.mergeSingleSequenceFileTaskResult(sequenceFileTaskSummary);
       } catch (Exception e) {
         e.printStackTrace();
-        // todo
       }
     }
     overlapStatistic.mergeUnSeqSpaceStatistics(unseqSpaceStatistics);

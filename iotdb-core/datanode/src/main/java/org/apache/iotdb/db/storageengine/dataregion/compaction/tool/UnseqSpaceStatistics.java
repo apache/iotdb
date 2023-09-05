@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class UnseqSpaceStatistics {
-  // 设备 -> 序列 -> 时间范围
   public long unsequenceFileNum = 0;
   public long unsequenceFileSize = 0;
 
@@ -37,7 +36,6 @@ public class UnseqSpaceStatistics {
 
   private Map<String, ITimeRange> chunkGroupStatisticMap = new HashMap<>();
 
-  // 更新某个设备的某个序列的时间范围
   public void updateMeasurement(String device, String measurementUID, Interval interval) {
     chunkStatisticMap
         .computeIfAbsent(device, key -> new HashMap<>())
