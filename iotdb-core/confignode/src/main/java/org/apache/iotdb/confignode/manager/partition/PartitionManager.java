@@ -1021,7 +1021,7 @@ public class PartitionManager {
     }
 
     if (req.isSetTimeStamp()) {
-      plan.setTimeSlotId(TimePartitionUtils.getTimePartition(req.getTimeStamp()));
+      plan.setTimeSlotId(TimePartitionUtils.getTimePartitionSlot(req.getTimeStamp()));
     }
     try {
       return (GetRegionIdResp) getConsensusManager().read(plan);

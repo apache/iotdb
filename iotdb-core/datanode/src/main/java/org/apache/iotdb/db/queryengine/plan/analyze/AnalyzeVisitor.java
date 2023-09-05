@@ -1846,10 +1846,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (timeRangeList.get(0).getMin() == Long.MIN_VALUE) {
       needLeftAll = true;
       endTime = TimePartitionUtils.getTimePartitionUpperBound(timeRangeList.get(0).getMax());
-      timePartitionSlot = TimePartitionUtils.getTimePartition(timeRangeList.get(0).getMax());
+      timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(timeRangeList.get(0).getMax());
     } else {
       endTime = TimePartitionUtils.getTimePartitionUpperBound(timeRangeList.get(0).getMin());
-      timePartitionSlot = TimePartitionUtils.getTimePartition(timeRangeList.get(0).getMin());
+      timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(timeRangeList.get(0).getMin());
       needLeftAll = false;
     }
 
@@ -1868,7 +1868,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         result.add(timePartitionSlot);
         // next init
         endTime = TimePartitionUtils.getTimePartitionUpperBound(curLeft);
-        timePartitionSlot = TimePartitionUtils.getTimePartition(curLeft);
+        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(curLeft);
       } else if (curRight >= endTime) {
         result.add(timePartitionSlot);
         // next init
@@ -1882,7 +1882,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     if (needRightAll) {
       TTimePartitionSlot lastTimePartitionSlot =
-          TimePartitionUtils.getTimePartition(timeRangeList.get(timeRangeList.size() - 1).getMin());
+          TimePartitionUtils.getTimePartitionSlot(
+              timeRangeList.get(timeRangeList.size() - 1).getMin());
       if (lastTimePartitionSlot.startTime != timePartitionSlot.startTime) {
         result.add(lastTimePartitionSlot);
       }

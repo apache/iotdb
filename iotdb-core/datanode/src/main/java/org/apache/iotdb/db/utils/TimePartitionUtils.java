@@ -26,7 +26,7 @@ public class TimePartitionUtils {
   private static long timePartitionInterval =
       CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
-  public static TTimePartitionSlot getTimePartition(long time) {
+  public static TTimePartitionSlot getTimePartitionSlot(long time) {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
     if (time > 0 || time % timePartitionInterval == 0) {
       timePartitionSlot.setStartTime(time / timePartitionInterval * timePartitionInterval);

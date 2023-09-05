@@ -191,7 +191,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       return Collections.emptyList();
     }
     long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(times[0]);
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
     int startLoc = 0; // included
 
     List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
@@ -206,7 +206,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         // next init
         startLoc = i;
         upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);
-        timePartitionSlot = TimePartitionUtils.getTimePartition(times[i]);
+        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
       }
     }
 
@@ -287,13 +287,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     List<TTimePartitionSlot> result = new ArrayList<>();
     long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(times[0]);
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       if (times[i] >= upperBoundOfTimePartition) {
         result.add(timePartitionSlot);
         // next init
         upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);
-        timePartitionSlot = TimePartitionUtils.getTimePartition(times[i]);
+        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
       }
     }
     result.add(timePartitionSlot);
