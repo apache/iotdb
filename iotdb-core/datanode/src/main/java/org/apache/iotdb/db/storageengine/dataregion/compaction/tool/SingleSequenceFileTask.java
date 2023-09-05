@@ -50,7 +50,7 @@ public class SingleSequenceFileTask implements Callable<SequenceFileTaskSummary>
     }
     summary.fileSize += f.length();
     try (TsFileStatisticReader reader = new TsFileStatisticReader(seqFile)) {
-      // 统计顺序文件的信息并更新到 overlapStatistic
+      // statistics sequence file information and updates to overlapStatistic
       List<TsFileStatisticReader.ChunkGroupStatistics> chunkGroupStatisticsList =
           reader.getChunkGroupStatisticsList();
       for (TsFileStatisticReader.ChunkGroupStatistics chunkGroupStatistics :

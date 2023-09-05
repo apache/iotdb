@@ -61,12 +61,11 @@ public class OverlapStatisticTool {
       new HashMap<>();
 
   public static void main(String[] args) throws InterruptedException {
-    // 1. 处理参数，从输入中获取数据目录的路径
+    // process parameters to get the path to the data directory from the input
     parseArgs(args);
 
     OverlapStatisticTool tool = new OverlapStatisticTool();
     long startTime = System.currentTimeMillis();
-    // 2. 进行计算
     tool.process(dataDirs);
     System.out.printf(
         "Total time cost: %.2fs\n", ((double) System.currentTimeMillis() - startTime) / 1000);
@@ -130,7 +129,6 @@ public class OverlapStatisticTool {
   }
 
   public void process(List<String> dataDirs) throws InterruptedException {
-    // 0. 预处理
     processDataDirs(dataDirs);
 
     int workerNum = Math.min(timePartitionFileMap.size(), OverlapStatisticTool.workerNum);
@@ -171,8 +169,8 @@ public class OverlapStatisticTool {
   }
 
   private void processDataDirs(List<String> dataDirs) {
-    // 1. 遍历所有的时间分区，构造 timePartitions
-    // 2. 统计顺序文件的总数
+    // 1. Traverse all time partitions and construct timePartitions
+    // 2. Count the total number of sequential files
     for (String dataDirPath : dataDirs) {
       File dataDir = new File(dataDirPath);
       if (!dataDir.exists() || !dataDir.isDirectory()) {
