@@ -34,6 +34,9 @@ public class PipeTsFileResourceManager {
 
   private final Map<String, Integer> hardlinkOrCopiedFileToReferenceMap = new HashMap<>();
 
+  /** Cache the File objects here to avoid redundancy */
+  private final Map<String, File> fileNameToFileMap = new HashMap<>();
+
   /**
    * given a file, create a hardlink or copy it to pipe dir, maintain a reference count for the
    * hardlink or copied file, and return the hardlink or copied file.
@@ -63,13 +66,14 @@ public class PipeTsFileResourceManager {
     // file in pipe dir. if so, increase reference count and return it
     final File hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file);
     if (increaseReferenceIfExists(hardlinkOrCopiedFile.getPath())) {
-      return hardlinkOrCopiedFile;
+      return fileNameToFileMap.get(hardlinkOrCopiedFile.getPath());
     }
 
     // if the file is not a hardlink or copied file, and there is no related hardlink or copied
     // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
     // the hardlink or copied file, and return the hardlink or copied file.
     hardlinkOrCopiedFileToReferenceMap.put(hardlinkOrCopiedFile.getPath(), 1);
+    fileNameToFileMap.put(hardlinkOrCopiedFile.getPath(), hardlinkOrCopiedFile);
     // if the file is a tsfile, create a hardlink in pipe dir and return it.
     // otherwise, copy the file (.mod or .resource) to pipe dir and return it.
     return isTsFile
@@ -161,6 +165,7 @@ public class PipeTsFileResourceManager {
     if (updatedReference != null && updatedReference == 0) {
       Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
       hardlinkOrCopiedFileToReferenceMap.remove(hardlinkOrCopiedFile.getPath());
+      fileNameToFileMap.remove(hardlinkOrCopiedFile.getPath());
     }
   }
 
