@@ -292,5 +292,8 @@ public class Utils {
 
     RaftServerConfigKeys.setSleepDeviationThreshold(
         properties, config.getUtils().getSleepDeviationThresholdMs());
+
+    RaftServerConfigKeys.Log.setCorruptionPolicy(
+        properties, RaftServerConfigKeys.Log.CorruptionPolicy.WARN_AND_RETURN);
   }
 }
