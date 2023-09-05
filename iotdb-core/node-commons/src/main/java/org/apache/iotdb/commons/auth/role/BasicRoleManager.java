@@ -97,9 +97,6 @@ public abstract class BasicRoleManager implements IRoleManager {
         throw new AuthException(
             TSStatusCode.ROLE_NOT_EXIST, String.format("No such role %s", rolename));
       }
-      if (role.hasPrivilege(path, privilegeId)) {
-        return false;
-      }
       if (path != null) {
         AuthUtils.validatePatternPath(path);
         role.addPathPrivilege(path, privilegeId, grantOpt);

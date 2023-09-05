@@ -562,7 +562,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
     PermissionInfoResp dataSet = (PermissionInfoResp) configManager.queryPermission(plan);
     TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
-    resp.setAuthorizerInfo(dataSet.getPermissionInfo());
+    resp.setMemberInfo(dataSet.getMemberList());
+    resp.setPermissionInfo(dataSet.getPermissionInfoResp());
     return resp;
   }
 
@@ -589,6 +590,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
     return configManager.checkUserPrivilegeGrantOpt(
         req.getUsername(), partialPath, req.getPermission());
+  }
+
+  @Override
+  public TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req) {
+    return configManager.checkRoleOfUser(req.getUserName(), req.getRoleName());
   }
 
   @Override

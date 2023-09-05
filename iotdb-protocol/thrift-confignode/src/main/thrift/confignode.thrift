@@ -308,7 +308,9 @@ struct TAuthorizerReq {
 
 struct TAuthorizerResp {
   1: required common.TSStatus status
-  2: optional map<string, list<string>> authorizerInfo
+  2: optional string tag
+  3: optional list<string> memberInfo
+  4: optional TPermissionInfoResp permissionInfo
 }
 
 struct TUserResp {
@@ -1037,6 +1039,9 @@ service IConfigNodeRPCService {
   TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
 
   TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req)
+
+  TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req)
+
 
 
   // ======================================================

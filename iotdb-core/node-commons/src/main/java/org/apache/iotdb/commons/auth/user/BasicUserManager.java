@@ -136,9 +136,6 @@ public abstract class BasicUserManager implements IUserManager {
         throw new AuthException(
             TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_ERROR, username));
       }
-      if (user.hasPrivilege(path, privilegeId)) {
-        return false;
-      }
       if (path != null) {
         AuthUtils.validatePatternPath(path);
         user.addPathPrivilege(path, privilegeId, grantOpt);

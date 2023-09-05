@@ -145,13 +145,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.NO_PERMISSION,
           "Invalid operation, administrator already has all privileges");
     }
-    if (!userManager.grantPrivilegeToUser(username, path, privilegeId, grantOpt)) {
-      throw new AuthException(
-          TSStatusCode.ALREADY_HAS_PRIVILEGE,
-          String.format(
-              "User %s already has %s on %s",
-              username, PrivilegeType.values()[privilegeId], (path != null ? path : "system")));
-    }
+    userManager.grantPrivilegeToUser(username, path, privilegeId, grantOpt);
   }
 
   @Override
