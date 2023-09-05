@@ -17,27 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.connection;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
-import org.apache.iotdb.pipe.api.event.Event;
+public interface ITimeRange {
 
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.LinkedBlockingDeque;
+  // Add a time period to the current time range object. The increase process requires maintenance
+  // of the current TimeRange to facilitate efficient overlap check in the future
+  void addInterval(Interval interval);
 
-public class UnboundedBlockingPendingQueue<E extends Event> extends BlockingPendingQueue<E> {
-
-  private final BlockingDeque<E> pendingDeque;
-
-  public UnboundedBlockingPendingQueue() {
-    super(new LinkedBlockingDeque<>());
-    pendingDeque = (BlockingDeque<E>) pendingQueue;
-  }
-
-  public E peekLast() {
-    return pendingDeque.peekLast();
-  }
-
-  public E removeLast() {
-    return pendingDeque.removeLast();
-  }
+  // Determines whether the incoming time range overlaps with the current time range
+  boolean isOverlapped(Interval interval);
 }

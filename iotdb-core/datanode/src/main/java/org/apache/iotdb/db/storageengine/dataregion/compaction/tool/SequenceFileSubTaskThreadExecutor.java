@@ -17,27 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.connection;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
-import org.apache.iotdb.pipe.api.event.Event;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.LinkedBlockingDeque;
+public class SequenceFileSubTaskThreadExecutor {
+  private ExecutorService executor;
 
-public class UnboundedBlockingPendingQueue<E extends Event> extends BlockingPendingQueue<E> {
-
-  private final BlockingDeque<E> pendingDeque;
-
-  public UnboundedBlockingPendingQueue() {
-    super(new LinkedBlockingDeque<>());
-    pendingDeque = (BlockingDeque<E>) pendingQueue;
+  public SequenceFileSubTaskThreadExecutor(int threadCount) {
+    executor = Executors.newFixedThreadPool(threadCount);
   }
 
-  public E peekLast() {
-    return pendingDeque.peekLast();
+  public Future<SequenceFileTaskSummary> submit(Callable<SequenceFileTaskSummary> task) {
+    return executor.submit(task);
   }
 
-  public E removeLast() {
-    return pendingDeque.removeLast();
+  public void shutdown() {
+    executor.shutdown();
   }
 }
