@@ -287,10 +287,10 @@ public class WritePlanNodeSplitTest {
 
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId("plan node 3"));
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 7; i++) {
       InsertRowNode insertRowNode = new InsertRowNode(new PlanNodeId("plan node 3"));
       insertRowNode.setDevicePath(new PartialPath(String.format("root.sg1.d%d", i)));
-      insertRowNode.setTime(i * TimePartitionUtils.getTimePartitionInterval());
+      insertRowNode.setTime((i - 2) * TimePartitionUtils.getTimePartitionInterval());
       insertRowsNode.addOneInsertRowNode(insertRowNode, 2 * i);
 
       insertRowNode = new InsertRowNode(new PlanNodeId("plan node 3"));
@@ -313,7 +313,7 @@ public class WritePlanNodeSplitTest {
 
     List<WritePlanNode> insertTabletNodeList = insertRowsNode.splitByPartition(analysis);
 
-    Assert.assertEquals(6, insertTabletNodeList.size());
+    Assert.assertEquals(8, insertTabletNodeList.size());
   }
 
   @After
