@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -28,6 +31,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 @SuppressWarnings("squid:S1104")
@@ -86,7 +90,6 @@ public class PageElement {
       List<PageHeader> valuePageHeaders,
       ByteBuffer timePageData,
       List<ByteBuffer> valuePageDatas,
-      AlignedChunkReader alignedChunkReader,
       ChunkMetadataElement chunkMetadataElement,
       boolean isLastPage,
       long priority) {
@@ -95,7 +98,6 @@ public class PageElement {
     this.pageData = timePageData;
     this.valuePageDatas = valuePageDatas;
     this.priority = priority;
-    this.iChunkReader = alignedChunkReader;
     this.startTime = pageHeader.getStartTime();
     this.chunkMetadataElement = chunkMetadataElement;
     this.isLastPage = isLastPage;
@@ -104,9 +106,23 @@ public class PageElement {
 
   public void deserializePage() throws IOException {
     if (iChunkReader instanceof AlignedChunkReader) {
+      List<ChunkHeader> valueChunkHeaderList =
+          new ArrayList<>(chunkMetadataElement.valueChunks.size());
+      List<List<TimeRange>> valueDeleteIntervalList =
+          new ArrayList<>(chunkMetadataElement.valueChunks.size());
+      for (Chunk valueChunk : chunkMetadataElement.valueChunks) {
+        valueChunkHeaderList.add(valueChunk == null ? null : valueChunk.getHeader());
+        valueDeleteIntervalList.add(valueChunk == null ? null : valueChunk.getDeleteIntervalList());
+      }
       this.pointReader =
-          ((AlignedChunkReader) iChunkReader)
-              .getPagePointReader(pageHeader, valuePageHeaders, pageData, valuePageDatas);
+          AlignedChunkReader.getPagePointReader(
+              chunkMetadataElement.chunk.getHeader(),
+              valueChunkHeaderList,
+              valueDeleteIntervalList,
+              pageHeader,
+              valuePageHeaders,
+              pageData,
+              valuePageDatas);
     } else {
       this.batchData = ((ChunkReader) iChunkReader).readPageData(pageHeader, pageData);
     }

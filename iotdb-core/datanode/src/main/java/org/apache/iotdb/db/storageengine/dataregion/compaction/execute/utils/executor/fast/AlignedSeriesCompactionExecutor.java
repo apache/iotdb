@@ -40,7 +40,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -251,18 +250,19 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
     // deserialize time chunk
     Chunk timeChunk = chunkMetadataElement.chunk;
 
-    ChunkReader chunkReader = new ChunkReader(timeChunk);
-    ByteBuffer chunkDataBuffer = timeChunk.getData();
-    ChunkHeader chunkHeader = timeChunk.getHeader();
-    while (chunkDataBuffer.remaining() > 0) {
+    ChunkReader timeChunkReader = new ChunkReader(timeChunk);
+    ByteBuffer timeChunkDataBuffer = timeChunk.getData();
+    ChunkHeader timeChunkHeader = timeChunk.getHeader();
+    while (timeChunkDataBuffer.remaining() > 0) {
       // deserialize a PageHeader from chunkDataBuffer
       PageHeader pageHeader;
-      if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, timeChunk.getChunkStatistic());
+      if (((byte) (timeChunkHeader.getChunkType() & 0x3F))
+          == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+        pageHeader = PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunk.getChunkStatistic());
       } else {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+        pageHeader = PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkHeader.getDataType());
       }
-      ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
+      ByteBuffer compressedPageData = timeChunkReader.readPageDataWithoutUncompressing(pageHeader);
       timePageHeaders.add(pageHeader);
       compressedTimePageDatas.add(compressedPageData);
     }
@@ -278,26 +278,30 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
         compressedValuePageDatas.add(null);
         continue;
       }
-      chunkReader = new ChunkReader(valueChunk);
-      chunkDataBuffer = valueChunk.getData();
-      chunkHeader = valueChunk.getHeader();
+      timeChunkReader = new ChunkReader(valueChunk);
+      timeChunkDataBuffer = valueChunk.getData();
+      timeChunkHeader = valueChunk.getHeader();
 
       valuePageHeaders.add(new ArrayList<>());
       compressedValuePageDatas.add(new ArrayList<>());
-      while (chunkDataBuffer.remaining() > 0) {
+      while (timeChunkDataBuffer.remaining() > 0) {
         // deserialize a PageHeader from chunkDataBuffer
         PageHeader pageHeader;
-        if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, valueChunk.getChunkStatistic());
+        if (((byte) (timeChunkHeader.getChunkType() & 0x3F))
+            == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+          pageHeader =
+              PageHeader.deserializeFrom(timeChunkDataBuffer, valueChunk.getChunkStatistic());
         } else {
-          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+          pageHeader =
+              PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkHeader.getDataType());
         }
         if (pageHeader.getCompressedSize() == 0) {
           // empty value page
           valuePageHeaders.get(i).add(null);
           compressedValuePageDatas.get(i).add(null);
         } else {
-          ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
+          ByteBuffer compressedPageData =
+              timeChunkReader.readPageDataWithoutUncompressing(pageHeader);
           valuePageHeaders.get(i).add(pageHeader);
           compressedValuePageDatas.get(i).add(compressedPageData);
         }
@@ -324,12 +328,10 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
               alignedPageHeaders,
               compressedTimePageDatas.get(i),
               alignedPageDatas,
-              new AlignedChunkReader(timeChunk, valueChunks, false),
               chunkMetadataElement,
               i == timePageHeaders.size() - 1,
               chunkMetadataElement.priority));
     }
-    chunkMetadataElement.clearChunks();
   }
 
   @Override
