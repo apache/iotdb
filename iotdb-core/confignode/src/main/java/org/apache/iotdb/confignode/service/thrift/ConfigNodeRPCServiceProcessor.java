@@ -564,6 +564,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
     resp.setMemberInfo(dataSet.getMemberList());
     resp.setPermissionInfo(dataSet.getPermissionInfoResp());
+    resp.setTag(dataSet.getTag());
     return resp;
   }
 

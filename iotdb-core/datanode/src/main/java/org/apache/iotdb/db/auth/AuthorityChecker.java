@@ -222,10 +222,10 @@ public class AuthorityChecker {
     if (listRoleUser) {
       headerList.add(new ColumnHeader(authResp.getTag(), TSDataType.TEXT));
     } else {
-      headerList.add(new ColumnHeader(new String("ROLE"), TSDataType.TEXT));
-      headerList.add(new ColumnHeader(new String("PATH"), TSDataType.TEXT));
-      headerList.add(new ColumnHeader(new String("PRIVILEGES"), TSDataType.TEXT));
-      headerList.add(new ColumnHeader(new String("GRANT OPTION"), TSDataType.TEXT));
+      headerList.add(new ColumnHeader(new String("  ROLE  "), TSDataType.TEXT));
+      headerList.add(new ColumnHeader(new String("  PATH  "), TSDataType.TEXT));
+      headerList.add(new ColumnHeader(new String("  PRIVILEGES  "), TSDataType.TEXT));
+      headerList.add(new ColumnHeader(new String("  GRANT OPTION  "), TSDataType.TEXT));
     }
 
     if (listRoleUser) {
@@ -236,12 +236,13 @@ public class AuthorityChecker {
       }
     } else {
       TUserResp user = authResp.getPermissionInfo().getUserInfo();
-      appendPriBuilder("", "", user.getSysPriSet(), user.getSysPriSetGrantOpt(), builder);
-      for (TPathPrivilege path : user.getPrivilegeList()) {
-        appendPriBuilder(
-            "", path.getPath().toString(), path.getPriSet(), path.getPriGrantOpt(), builder);
+      if (user != null) {
+        appendPriBuilder("", "", user.getSysPriSet(), user.getSysPriSetGrantOpt(), builder);
+        for (TPathPrivilege path : user.getPrivilegeList()) {
+          appendPriBuilder(
+              "", path.getPath().toString(), path.getPriSet(), path.getPriGrantOpt(), builder);
+        }
       }
-
       Iterator<Map.Entry<String, TRoleResp>> it =
           authResp.getPermissionInfo().getRoleInfo().entrySet().iterator();
       while (it.hasNext()) {

@@ -319,19 +319,22 @@ public class AuthorInfo implements SnapshotProcessor {
     TPermissionInfoResp resp = new TPermissionInfoResp();
     TRoleResp roleResp = new TRoleResp();
     roleResp.setRoleName(role.getName());
+    List<TPathPrivilege> pathList = new ArrayList<>();
     for (PathPrivilege path : role.getPathPrivilegeList()) {
       TPathPrivilege pathPri = new TPathPrivilege();
       pathPri.setPriGrantOpt(path.getGrantOpt());
       pathPri.setPriSet(path.getPrivileges());
       pathPri.setPath(path.getPath().toString());
-      roleResp.addToPrivilegeList(pathPri);
+      pathList.add(pathPri);
     }
+    roleResp.setPrivilegeList(pathList);
     roleResp.setSysPriSet(role.getSysPrivilege());
     roleResp.setSysPriSetGrantOpt(role.getSysPriGrantOpt());
     Map<String, TRoleResp> roleInfo = new HashMap<>();
     roleInfo.put(role.getName(), roleResp);
     result.setTag(IoTDBConstant.COLUMN_PRIVILEGE);
     resp.setRoleInfo(roleInfo);
+    resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfoResp(resp);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setMemberInfo(permissionInfo);
@@ -347,6 +350,7 @@ public class AuthorInfo implements SnapshotProcessor {
       return result;
     }
     TPermissionInfoResp resp = getUserPermissionInfo(plan.getUserName());
+    resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setTag(IoTDBConstant.COLUMN_PRIVILEGE);
     result.setPermissionInfoResp(resp);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
