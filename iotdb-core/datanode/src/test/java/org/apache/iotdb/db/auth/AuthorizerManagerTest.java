@@ -241,44 +241,8 @@ public class AuthorizerManagerTest {
     role.setPrivilegeList(Collections.singletonList(privRole));
     user.setRoleList(Collections.singletonList("role1"));
 
-    TPermissionInfoResp result = new TPermissionInfoResp();
-    TUserResp tUserResp = new TUserResp();
-    List<TPathPrivilege> userPrivilegeList = new ArrayList<>();
-    Map<String, TRoleResp> tRoleRespMap = new HashMap();
-    // User permission information
-    for (PathPrivilege pathPrivilege : user.getPathPrivilegeList()) {
-      TPathPrivilege pathPri = new TPathPrivilege();
-      pathPri.setPath(pathPrivilege.getPath().getFullPath());
-      pathPri.setPriSet(pathPrivilege.getPrivileges());
-      pathPri.setPriGrantOpt(pathPrivilege.getGrantOpt());
-      userPrivilegeList.add(pathPri);
-    }
-    tUserResp.setUsername(user.getName());
-    tUserResp.setPassword(user.getPassword());
-    tUserResp.setPrivilegeList(userPrivilegeList);
-    tUserResp.setSysPriSet(user.getSysPrivilege());
-    tUserResp.setSysPriSetGrantOpt(user.getSysPriGrantOpt());
-    tUserResp.setRoleList(user.getRoleList());
-    result.setUserInfo(tUserResp);
-    result.setRoleInfo(new HashMap<>());
-
-    TRoleResp tRoleResp = new TRoleResp();
-    tRoleResp.setRoleName(role.getName());
-    List<TPathPrivilege> rolePrivilegeList = new ArrayList<>();
-    for (PathPrivilege pathPrivilege : role.getPathPrivilegeList()) {
-      TPathPrivilege pathPri = new TPathPrivilege();
-      pathPri.setPath(pathPrivilege.getPath().getFullPath());
-      pathPri.setPriSet(pathPrivilege.getPrivileges());
-      pathPri.setPriGrantOpt(pathPrivilege.getGrantOpt());
-      rolePrivilegeList.add(pathPri);
-    }
-    tRoleResp.setPrivilegeList(rolePrivilegeList);
-    tRoleResp.setSysPriSetGrantOpt(role.getSysPriGrantOpt());
-    tRoleResp.setSysPriSet(role.getSysPrivilege());
-    tRoleRespMap.put(role.getName(), tRoleResp);
-    result.setRoleInfo(tRoleRespMap);
-
-    authorityFetcher.getAuthorCache().putUserCache("user1", authorityFetcher.cacheUser(result));
+    authorityFetcher.getAuthorCache().putUserCache("user1", user);
+    authorityFetcher.getAuthorCache().putRoleCache("role1", role);
 
     // for system priv. we have USE_PIPE grant option.
     Assert.assertTrue(

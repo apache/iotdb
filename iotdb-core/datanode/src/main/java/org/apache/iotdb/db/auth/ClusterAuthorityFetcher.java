@@ -151,9 +151,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           }
           return true;
         } else {
-          grantOpt =
-              user.getSysPrivilege().contains(permission)
-                  && user.getSysPriGrantOpt().contains(permission);
+          grantOpt = user.checkSysPriGrantOpt(permission);
           if (!grantOpt) {
             for (String roleName : user.getRoleList()) {
               Role role = iAuthorCache.getRoleCache(roleName);
