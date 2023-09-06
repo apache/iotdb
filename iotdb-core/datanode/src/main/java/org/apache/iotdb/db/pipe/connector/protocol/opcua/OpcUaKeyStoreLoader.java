@@ -40,7 +40,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-class IoTDBKeyStoreLoader {
+class OpcUaKeyStoreLoader {
 
   private static final Pattern IP_ADDR_PATTERN =
       Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$");
@@ -52,7 +52,7 @@ class IoTDBKeyStoreLoader {
   private X509Certificate serverCertificate;
   private KeyPair serverKeyPair;
 
-  IoTDBKeyStoreLoader load(Path baseDir, char[] password) throws Exception {
+  OpcUaKeyStoreLoader load(Path baseDir, char[] password) throws Exception {
     KeyStore keyStore = KeyStore.getInstance("PKCS12");
 
     File serverKeyStore = baseDir.resolve("iotdb-server.pfx").toFile();

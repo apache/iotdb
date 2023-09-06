@@ -19,34 +19,25 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig;
 import org.eclipse.milo.opcua.sdk.server.identity.CompositeValidator;
 import org.eclipse.milo.opcua.sdk.server.identity.UsernameIdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.identity.X509IdentityValidator;
-import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.BaseEventTypeNode;
 import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.ServerTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaNode;
 import org.eclipse.milo.opcua.sdk.server.util.HostnameUtil;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.StatusCodes;
-import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.UaRuntimeException;
 import org.eclipse.milo.opcua.stack.core.security.DefaultCertificateManager;
 import org.eclipse.milo.opcua.stack.core.security.DefaultTrustListManager;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.transport.TransportProfile;
-import org.eclipse.milo.opcua.stack.core.types.builtin.ByteString;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
-import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
 import org.eclipse.milo.opcua.stack.core.types.structured.BuildInfo;
 import org.eclipse.milo.opcua.stack.core.util.CertificateUtil;
@@ -66,7 +57,6 @@ import java.security.cert.X509Certificate;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig.USER_TOKEN_POLICY_ANONYMOUS;
@@ -78,15 +68,41 @@ import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.
  * OPC UA Server builder for IoTDB to send data. The coding style referenced ExampleServer.java in
  * Eclipse Milo.
  */
-public class OpcUaServerUtils {
+public class OpcUaServerBuilder {
 
-  private static final String WILD_CARD_ADDRESS = "0.0.0.0";
-  private static int eventId = 0;
+  private final String wildCardAddress = "0.0.0.0";
+  private final Logger logger = LoggerFactory.getLogger(OpcUaServerBuilder.class);
 
-  public static OpcUaServer getOpcUaServer(
-      int tcpBindPort, int httpsBindPort, String user, String password) throws Exception {
-    final Logger logger = LoggerFactory.getLogger(OpcUaServerUtils.class);
+  private int tcpBindPort;
+  private int httpsBindPort;
+  private String user;
+  private String password;
 
+  public OpcUaServerBuilder() {
+    // Empty constructor
+  }
+
+  public OpcUaServerBuilder setTcpBindPort(int tcpBindPort) {
+    this.tcpBindPort = tcpBindPort;
+    return this;
+  }
+
+  public OpcUaServerBuilder setHttpsBindPort(int httpsBindPort) {
+    this.httpsBindPort = httpsBindPort;
+    return this;
+  }
+
+  public OpcUaServerBuilder setUser(String user) {
+    this.user = user;
+    return this;
+  }
+
+  public OpcUaServerBuilder setPassword(String password) {
+    this.password = password;
+    return this;
+  }
+
+  public OpcUaServer build() throws Exception {
     Path securityTempDir = Paths.get(System.getProperty("java.io.tmpdir"), "iotdb", "security");
     Files.createDirectories(securityTempDir);
     if (!Files.exists(securityTempDir)) {
@@ -95,13 +111,13 @@ public class OpcUaServerUtils {
 
     File pkiDir = securityTempDir.resolve("pki").toFile();
 
-    LoggerFactory.getLogger(OpcUaServerUtils.class)
+    LoggerFactory.getLogger(OpcUaServerBuilder.class)
         .info("Security dir: {}", securityTempDir.toAbsolutePath());
-    LoggerFactory.getLogger(OpcUaServerUtils.class)
+    LoggerFactory.getLogger(OpcUaServerBuilder.class)
         .info("Security pki dir: {}", pkiDir.getAbsolutePath());
 
-    IoTDBKeyStoreLoader loader =
-        new IoTDBKeyStoreLoader().load(securityTempDir, password.toCharArray());
+    OpcUaKeyStoreLoader loader =
+        new OpcUaKeyStoreLoader().load(securityTempDir, password.toCharArray());
 
     DefaultCertificateManager certificateManager =
         new DefaultCertificateManager(loader.getServerKeyPair(), loader.getServerCertificate());
@@ -116,7 +132,7 @@ public class OpcUaServerUtils {
     SelfSignedHttpsCertificateBuilder httpsCertificateBuilder =
         new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
     httpsCertificateBuilder.setCommonName(HostnameUtil.getHostname());
-    HostnameUtil.getHostnames(WILD_CARD_ADDRESS).forEach(httpsCertificateBuilder::addDnsName);
+    HostnameUtil.getHostnames(wildCardAddress).forEach(httpsCertificateBuilder::addDnsName);
     X509Certificate httpsCertificate = httpsCertificateBuilder.build();
 
     DefaultServerCertificateValidator certificateValidator =
@@ -185,16 +201,16 @@ public class OpcUaServerUtils {
     return server;
   }
 
-  private static Set<EndpointConfiguration> createEndpointConfigurations(
+  private Set<EndpointConfiguration> createEndpointConfigurations(
       X509Certificate certificate, int tcpBindPort, int httpsBindPort) {
     Set<EndpointConfiguration> endpointConfigurations = new LinkedHashSet<>();
 
     List<String> bindAddresses = newArrayList();
-    bindAddresses.add(WILD_CARD_ADDRESS);
+    bindAddresses.add(wildCardAddress);
 
     Set<String> hostnames = new LinkedHashSet<>();
     hostnames.add(HostnameUtil.getHostname());
-    hostnames.addAll(HostnameUtil.getHostnames(WILD_CARD_ADDRESS));
+    hostnames.addAll(HostnameUtil.getHostnames(wildCardAddress));
 
     for (String bindAddress : bindAddresses) {
       for (String hostname : hostnames) {
@@ -249,7 +265,7 @@ public class OpcUaServerUtils {
     return endpointConfigurations;
   }
 
-  private static EndpointConfiguration buildTcpEndpoint(
+  private EndpointConfiguration buildTcpEndpoint(
       EndpointConfiguration.Builder base, int tcpBindPort) {
     return base.copy()
         .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
@@ -257,124 +273,11 @@ public class OpcUaServerUtils {
         .build();
   }
 
-  private static EndpointConfiguration buildHttpsEndpoint(
+  private EndpointConfiguration buildHttpsEndpoint(
       EndpointConfiguration.Builder base, int httpsBindPort) {
     return base.copy()
         .setTransportProfile(TransportProfile.HTTPS_UABINARY)
         .setBindPort(httpsBindPort)
         .build();
-  }
-
-  /**
-   * Transfer tablet into eventNodes and post it on the eventBus, so that they will be heard at the
-   * subscribers. Notice that an eventNode is reused to reduce object creation costs.
-   *
-   * @param server OpcUaServer
-   * @param tablet the tablet to send
-   * @throws UaException if failed to create event
-   */
-  public static void transferTablet(OpcUaServer server, Tablet tablet) throws UaException {
-    // There is no nameSpace, so that nameSpaceIndex is always 0
-    int pseudoNameSpaceIndex = 0;
-    BaseEventTypeNode eventNode =
-        server
-            .getEventFactory()
-            .createEvent(
-                new NodeId(pseudoNameSpaceIndex, UUID.randomUUID()), Identifiers.BaseEventType);
-    // Use eventNode here because other nodes doesn't support values and times simultaneously
-    for (int columnIndex = 0; columnIndex < tablet.getSchemas().size(); ++columnIndex) {
-
-      TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
-
-      // Source name --> Sensor path, like root.test.d_0.s_0
-      eventNode.setSourceName(
-          tablet.deviceId
-              + TsFileConstant.PATH_SEPARATOR
-              + tablet.getSchemas().get(columnIndex).getMeasurementId());
-
-      // Source node --> Sensor type, like double
-      eventNode.setSourceNode(convertToOpcDataType(dataType));
-
-      for (int rowIndex = 0; rowIndex < tablet.rowSize; ++rowIndex) {
-        // Filter null value
-        if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
-          continue;
-        }
-
-        // time --> timeStamp
-        eventNode.setTime(new DateTime(tablet.timestamps[rowIndex]));
-
-        // Message --> Value
-        switch (dataType) {
-          case BOOLEAN:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Boolean.toString(((boolean[]) tablet.values[columnIndex])[rowIndex])));
-            break;
-          case INT32:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Integer.toString(((int[]) tablet.values[columnIndex])[rowIndex])));
-            break;
-          case INT64:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Long.toString(((long[]) tablet.values[columnIndex])[rowIndex])));
-            break;
-          case FLOAT:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Float.toString(((float[]) tablet.values[columnIndex])[rowIndex])));
-            break;
-          case DOUBLE:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    Double.toString(((double[]) tablet.values[columnIndex])[rowIndex])));
-            break;
-          case TEXT:
-            eventNode.setMessage(
-                LocalizedText.english(
-                    ((Binary[]) tablet.values[columnIndex])[rowIndex].toString()));
-            break;
-          case VECTOR:
-          case UNKNOWN:
-          default:
-            throw new PipeRuntimeNonCriticalException(
-                "Unsupported data type: " + tablet.getSchemas().get(columnIndex).getType());
-        }
-
-        // Reset the eventId each time
-        eventNode.setEventId(ByteString.of(Integer.toString(eventId++).getBytes()));
-
-        // Send the event
-        server.getEventBus().post(eventNode);
-      }
-    }
-    eventNode.delete();
-  }
-
-  private static NodeId convertToOpcDataType(TSDataType type) {
-    switch (type) {
-      case BOOLEAN:
-        return Identifiers.Boolean;
-      case INT32:
-        return Identifiers.Int32;
-      case INT64:
-        return Identifiers.Int64;
-      case FLOAT:
-        return Identifiers.Float;
-      case DOUBLE:
-        return Identifiers.Double;
-      case TEXT:
-        return Identifiers.String;
-      case VECTOR:
-      case UNKNOWN:
-      default:
-        throw new PipeRuntimeNonCriticalException("Unsupported data type: " + type);
-    }
-  }
-
-  private OpcUaServerUtils() {
-    // Utility Class
   }
 }

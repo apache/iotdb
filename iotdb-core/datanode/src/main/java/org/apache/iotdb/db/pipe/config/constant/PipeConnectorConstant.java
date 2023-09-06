@@ -54,11 +54,11 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_WEBSOCKET_PORT_KEY = "connector.websocket.port";
   public static final int CONNECTOR_WEBSOCKET_PORT_DEFAULT_VALUE = 8080;
 
-  public static final String CONNECTOR_IOTDB_OPC_UA_TCP_BIND_PORT_KEY = "connector.tcp.port";
-  public static final int CONNECTOR_IOTDB_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE = 12686;
+  public static final String CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY = "connector.opcua.tcp.port";
+  public static final int CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE = 12686;
 
-  public static final String CONNECTOR_IOTDB_OPC_UA_HTTPS_BIND_PORT_KEY = "connector.https.port";
-  public static final int CONNECTOR_IOTDB_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE = 8443;
+  public static final String CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY = "connector.opcua.https.port";
+  public static final int CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE = 8443;
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");

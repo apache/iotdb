@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -27,19 +28,32 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
+import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.BaseEventTypeNode;
+import org.eclipse.milo.opcua.stack.core.Identifiers;
+import org.eclipse.milo.opcua.stack.core.UaException;
+import org.eclipse.milo.opcua.stack.core.types.builtin.ByteString;
+import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
+import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
+import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_OPC_UA_HTTPS_BIND_PORT_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_OPC_UA_TCP_BIND_PORT_KEY;
+import java.util.UUID;
+
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY;
 
 /**
  * Send data in IoTDB based on Opc Ua protocol, using Eclipse Milo. All data are converted into
@@ -52,6 +66,8 @@ public class OpcUaConnector implements PipeConnector {
 
   private OpcUaServer server;
 
+  private int eventId = 0;
+
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     // All the parameters are optional
@@ -62,12 +78,10 @@ public class OpcUaConnector implements PipeConnector {
       throws Exception {
     int tcpBindPort =
         parameters.getIntOrDefault(
-            CONNECTOR_IOTDB_OPC_UA_TCP_BIND_PORT_KEY,
-            CONNECTOR_IOTDB_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE);
+            CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY, CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE);
     int httpsBindPort =
         parameters.getIntOrDefault(
-            CONNECTOR_IOTDB_OPC_UA_HTTPS_BIND_PORT_KEY,
-            CONNECTOR_IOTDB_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE);
+            CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY, CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE);
 
     String user =
         parameters.getStringOrDefault(CONNECTOR_IOTDB_USER_KEY, CONNECTOR_IOTDB_USER_DEFAULT_VALUE);
@@ -75,7 +89,13 @@ public class OpcUaConnector implements PipeConnector {
         parameters.getStringOrDefault(
             CONNECTOR_IOTDB_PASSWORD_KEY, CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
 
-    server = OpcUaServerUtils.getOpcUaServer(tcpBindPort, httpsBindPort, user, password);
+    server =
+        new OpcUaServerBuilder()
+            .setTcpBindPort(tcpBindPort)
+            .setHttpsBindPort(httpsBindPort)
+            .setUser(user)
+            .setPassword(password)
+            .build();
     server.startup();
   }
 
@@ -103,11 +123,120 @@ public class OpcUaConnector implements PipeConnector {
     }
 
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      OpcUaServerUtils.transferTablet(
+      transferTablet(
           server, ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
     } else {
-      OpcUaServerUtils.transferTablet(
+      transferTablet(
           server, ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
+    }
+  }
+
+  /**
+   * Transfer tablet into eventNodes and post it on the eventBus, so that they will be heard at the
+   * subscribers. Notice that an eventNode is reused to reduce object creation costs.
+   *
+   * @param server OpcUaServer
+   * @param tablet the tablet to send
+   * @throws UaException if failed to create event
+   */
+  private void transferTablet(OpcUaServer server, Tablet tablet) throws UaException {
+    // There is no nameSpace, so that nameSpaceIndex is always 0
+    int pseudoNameSpaceIndex = 0;
+    BaseEventTypeNode eventNode =
+        server
+            .getEventFactory()
+            .createEvent(
+                new NodeId(pseudoNameSpaceIndex, UUID.randomUUID()), Identifiers.BaseEventType);
+    // Use eventNode here because other nodes doesn't support values and times simultaneously
+    for (int columnIndex = 0; columnIndex < tablet.getSchemas().size(); ++columnIndex) {
+
+      TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
+
+      // Source name --> Sensor path, like root.test.d_0.s_0
+      eventNode.setSourceName(
+          tablet.deviceId
+              + TsFileConstant.PATH_SEPARATOR
+              + tablet.getSchemas().get(columnIndex).getMeasurementId());
+
+      // Source node --> Sensor type, like double
+      eventNode.setSourceNode(convertToOpcDataType(dataType));
+
+      for (int rowIndex = 0; rowIndex < tablet.rowSize; ++rowIndex) {
+        // Filter null value
+        if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
+          continue;
+        }
+
+        // time --> timeStamp
+        eventNode.setTime(new DateTime(tablet.timestamps[rowIndex]));
+
+        // Message --> Value
+        switch (dataType) {
+          case BOOLEAN:
+            eventNode.setMessage(
+                LocalizedText.english(
+                    Boolean.toString(((boolean[]) tablet.values[columnIndex])[rowIndex])));
+            break;
+          case INT32:
+            eventNode.setMessage(
+                LocalizedText.english(
+                    Integer.toString(((int[]) tablet.values[columnIndex])[rowIndex])));
+            break;
+          case INT64:
+            eventNode.setMessage(
+                LocalizedText.english(
+                    Long.toString(((long[]) tablet.values[columnIndex])[rowIndex])));
+            break;
+          case FLOAT:
+            eventNode.setMessage(
+                LocalizedText.english(
+                    Float.toString(((float[]) tablet.values[columnIndex])[rowIndex])));
+            break;
+          case DOUBLE:
+            eventNode.setMessage(
+                LocalizedText.english(
+                    Double.toString(((double[]) tablet.values[columnIndex])[rowIndex])));
+            break;
+          case TEXT:
+            eventNode.setMessage(
+                LocalizedText.english(
+                    ((Binary[]) tablet.values[columnIndex])[rowIndex].toString()));
+            break;
+          case VECTOR:
+          case UNKNOWN:
+          default:
+            throw new PipeRuntimeNonCriticalException(
+                "Unsupported data type: " + tablet.getSchemas().get(columnIndex).getType());
+        }
+
+        // Reset the eventId each time
+        eventNode.setEventId(ByteString.of(Integer.toString(eventId++).getBytes()));
+
+        // Send the event
+        server.getEventBus().post(eventNode);
+      }
+    }
+    eventNode.delete();
+  }
+
+  private NodeId convertToOpcDataType(TSDataType type) {
+    switch (type) {
+      case BOOLEAN:
+        return Identifiers.Boolean;
+      case INT32:
+        return Identifiers.Int32;
+      case INT64:
+        return Identifiers.Int64;
+      case FLOAT:
+        return Identifiers.Float;
+      case DOUBLE:
+        return Identifiers.Double;
+      case TEXT:
+        return Identifiers.String;
+      case VECTOR:
+      case UNKNOWN:
+      default:
+        throw new PipeRuntimeNonCriticalException("Unsupported data type: " + type);
     }
   }
 
