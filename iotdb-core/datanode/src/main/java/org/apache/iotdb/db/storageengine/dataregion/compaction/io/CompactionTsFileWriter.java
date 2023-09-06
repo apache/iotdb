@@ -62,8 +62,16 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     long beforeOffset = this.getPos();
     chunkWriter.writeToFileWriter(this);
     long writtenDataSize = this.getPos() - beforeOffset;
-    if (writtenDataSize > 0) {
-      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire((int) writtenDataSize);
+    while (writtenDataSize > 0) {
+      if (writtenDataSize > Integer.MAX_VALUE) {
+        CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire(Integer.MAX_VALUE);
+        writtenDataSize -= Integer.MAX_VALUE;
+      } else {
+        CompactionTaskManager.getInstance()
+            .getMergeWriteRateLimiter()
+            .acquire((int) writtenDataSize);
+        break;
+      }
     }
     CompactionMetrics.getInstance()
         .recordWriteInfo(
