@@ -26,7 +26,7 @@ work_path=$(pwd | sed 's/\"//g')
 echo $work_path
 go get -u github.com/grafana/grafana-plugin-sdk-go
 go mod tidy
-check_results=$(go env | grep GOPATH= | sed 's/\"//g')
+check_results=$(go env | grep GOPATH= | sed 's/\"//g' | sed "s/\'//g")
 go_path=${check_results/GOPATH=/}
 cd $go_path/pkg/mod/github.com/magefile/mage@v1.14.0
 chmod 755 $go_path/pkg/mod/github.com/magefile/*
