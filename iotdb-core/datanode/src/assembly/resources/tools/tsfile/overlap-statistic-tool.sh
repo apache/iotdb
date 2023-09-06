@@ -17,19 +17,35 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-exists_env=$(go version | grep -c "go version")
-if [ $exists_env -eq 0 ]; then
-    echo "Need to install go environment"
-    exit 1
+
+echo ---------------------
+echo Starting Validating the TsFile
+echo ---------------------
+
+source "$(dirname "$0")/../../sbin/iotdb-common.sh"
+#get_iotdb_include and checkAllVariables is in iotdb-common.sh
+VARS=$(get_iotdb_include "$*")
+checkAllVariables
+export IOTDB_HOME="${IOTDB_HOME}/.."
+eval set -- "$VARS"
+
+if [ -n "$JAVA_HOME" ]; then
+    for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
+        if [ -x "$java" ]; then
+            JAVA="$java"
+            break
+        fi
+    done
+else
+    JAVA=java
 fi
-work_path=$(pwd | sed 's/\"//g')
-echo $work_path
-go get -u github.com/grafana/grafana-plugin-sdk-go
-go mod tidy
-check_results=$(go env | grep GOPATH= | sed 's/\"//g' | sed "s/\'//g")
-go_path=${check_results/GOPATH=/}
-cd $go_path/pkg/mod/github.com/magefile/mage@v1.15.0
-chmod 755 $go_path/pkg/mod/github.com/magefile/*
-go run $go_path/pkg/mod/github.com/magefile/mage@v1.15.0/bootstrap.go
-cd $work_path
-$go_path/bin/mage -v
+
+CLASSPATH=""
+for f in ${IOTDB_HOME}/lib/*.jar; do
+  CLASSPATH=${CLASSPATH}":"$f
+done
+
+MAIN_CLASS=org.apache.iotdb.db.storageengine.dataregion.compaction.tool.OverlapStatisticTool
+
+"$JAVA" -Xmx16G -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+exit $?
