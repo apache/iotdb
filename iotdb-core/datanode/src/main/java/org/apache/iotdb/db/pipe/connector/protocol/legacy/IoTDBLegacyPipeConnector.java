@@ -166,6 +166,19 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   }
 
   @Override
+  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+    } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+      doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+    } else {
+      throw new NotImplementedException(
+          "IoTDBLegacyPipeConnector only support "
+              + "PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
+    }
+  }
+
+  @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       throw new NotImplementedException(
@@ -182,22 +195,15 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     }
   }
 
-
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
-    } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
-    } else {
-      throw new NotImplementedException(
-              "IoTDBLegacyPipeConnector only support "
-                      + "PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
+  public void transfer(Event event) throws Exception {
+    if (!(event instanceof PipeHeartbeatEvent)) {
+      LOGGER.warn("IoTDBLegacyPipeConnector does not support transfer generic event: {}.", event);
     }
   }
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
-          throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     final Tablet tablet = pipeInsertNodeInsertionEvent.convertToTablet();
     if (pipeInsertNodeInsertionEvent.isAligned()) {
       sessionPool.insertAlignedTablet(tablet);
@@ -207,19 +213,12 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   }
 
   private void doTransfer(PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
-          throws PipeException, IoTDBConnectionException, StatementExecutionException {
+      throws PipeException, IoTDBConnectionException, StatementExecutionException {
     final Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
     if (pipeTabletInsertionEvent.isAligned()) {
       sessionPool.insertAlignedTablet(tablet);
     } else {
       sessionPool.insertTablet(tablet);
-    }
-  }
-
-  @Override
-  public void transfer(Event event) throws Exception {
-    if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn("IoTDBLegacyPipeConnector does not support transfer generic event: {}.", event);
     }
   }
 
