@@ -152,6 +152,7 @@ public class AuthorInfo implements SnapshotProcessor {
       }
     } else {
       result = AuthUtils.generateEmptyPermissionInfoResp();
+      result.setFailPos(failedList);
       result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
     }
     return result;
