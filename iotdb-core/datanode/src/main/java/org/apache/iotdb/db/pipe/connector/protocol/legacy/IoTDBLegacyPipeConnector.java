@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncCo
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -167,8 +168,8 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent
         || tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      final Tablet tablet = tabletInsertionEvent.convertToTablet();
-      if (tabletInsertionEvent.isAligned()) {
+      final Tablet tablet = ((PipeTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
+      if (((PipeTabletInsertionEvent) tabletInsertionEvent).isAligned()) {
         sessionPool.insertAlignedTablet(tablet);
       } else {
         sessionPool.insertTablet(tablet);
