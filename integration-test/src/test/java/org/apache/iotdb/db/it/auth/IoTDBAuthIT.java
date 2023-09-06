@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.auth;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -494,26 +495,35 @@ public class IoTDBAuthIT {
 
       ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER user1");
       String ans =
-          ",root.a.b, READ_SCHEMA, false, \n"
-              + "role1, root.a.b.c, WRITE_DATA, false, \n"
-              + "role1, root.a.b.c, READ_SCHEMA, false, \n"
+          ",root.a.b,READ_SCHEMA,false,\n"
+              + "role1,root.a.b.c,WRITE_DATA,false,\n"
+              + "role1,root.a.b.c,READ_SCHEMA,false,\n"
               + "role1,root.d.b.c,READ_SCHEMA,true,\n"
-              + "role, root.d.b.c,WRITE_DATA, true,\n";
+              + "role1,root.d.b.c,WRITE_DATA,true,\n";
       try {
         validateResultSet(resultSet, ans);
 
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.a.b.c");
-        ans = "role1,root.a.b.c : WRITE_DATA READ_SCHEMA,\n";
+        adminStmt.execute("REVOKE ROLE role1 from user1");
+
+        resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER user1");
+        ans = ",root.a.b,READ_SCHEMA,false,\n";
         validateResultSet(resultSet, ans);
-
-        adminStmt.execute("REVOKE role1 from user1");
-
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1");
-        ans = ",root.a.b : READ_SCHEMA,\n";
-        validateResultSet(resultSet, ans);
-
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.a.**");
-        ans = ",root.a.b : READ_SCHEMA,\n";
+        resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER root");
+        ans =
+            ",,MANAGE_USER,true,\n"
+                + ",,MANAGE_ROLE,true,\n"
+                + ",,USE_TRIGGER,true,\n"
+                + ",,USE_UDF,true,\n"
+                + ",,USE_CQ,true,\n"
+                + ",,USE_PIPE,true,\n"
+                + ",,EXTEND_TEMPLATE,true,\n"
+                + ",,MANAGE_DATABASE,true,\n"
+                + ",,MAINTAIN,true,\n"
+                + ",,AUDIT,true,\n"
+                + ",root.**,READ_DATA,true,\n"
+                + ",root.**,WRITE_DATA,true,\n"
+                + ",root.**,READ_SCHEMA,true,\n"
+                + ",root.**,WRITE_SCHEMA,true,\n";
         validateResultSet(resultSet, ans);
       } finally {
         resultSet.close();
@@ -531,30 +541,24 @@ public class IoTDBAuthIT {
 
     try {
       adminStmt.execute("CREATE ROLE role1");
-      ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1");
+      ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF ROLE role1");
       String ans = "";
       try {
         // not granted list role privilege, should return empty
         validateResultSet(resultSet, ans);
 
-        adminStmt.execute("GRANT ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.a.b.c");
-        adminStmt.execute("GRANT ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.d.b.c");
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1");
-        ans = "root.a.b.c : WRITE_DATA READ_SCHEMA,\n" + "root.d.b.c : WRITE_DATA READ_SCHEMA,\n";
+        adminStmt.execute("GRANT READ_SCHEMA,WRITE_DATA ON root.a.b.c TO ROLE role1");
+        adminStmt.execute(
+            "GRANT READ_SCHEMA,WRITE_DATA ON root.d.b.c TO ROLE role1 WITH GRANT OPTION");
+        resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF ROLE role1");
+        ans =
+            "role1,root.a.b.c,WRITE_DATA,false,\nrole1,root.a.b.c,READ_SCHEMA,false,\nrole1,root.d.b.c,READ_SCHEMA,true,\nrole1,root.d.b.c,WRITE_DATA,true,\n";
         validateResultSet(resultSet, ans);
 
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1 ON root.a.b.c");
-        ans = "root.a.b.c : WRITE_DATA READ_SCHEMA,\n";
-        validateResultSet(resultSet, ans);
+        adminStmt.execute("REVOKE READ_SCHEMA,WRITE_DATA ON root.a.b.c FROM ROLE role1");
 
-        adminStmt.execute("REVOKE ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.a.b.c");
-
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1");
-        ans = "root.d.b.c : WRITE_DATA READ_SCHEMA,\n";
-        validateResultSet(resultSet, ans);
-
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1 ON root.a.b.c");
-        ans = "";
+        resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF ROLE role1");
+        ans = "role1,root.d.b.c,WRITE_DATA,true,\n" + "role1,root.d.b.c,READ_SCHEMA,true,\n";
         validateResultSet(resultSet, ans);
       } finally {
         resultSet.close();
@@ -579,19 +583,19 @@ public class IoTDBAuthIT {
       adminStmt.execute("CREATE ROLE zhazha");
       adminStmt.execute("CREATE ROLE hakase");
 
-      adminStmt.execute("GRANT xijing TO chenduxiu");
-      adminStmt.execute("GRANT dalao TO chenduxiu");
-      adminStmt.execute("GRANT shenshi TO chenduxiu");
-      adminStmt.execute("GRANT zhazha TO chenduxiu");
-      adminStmt.execute("GRANT hakase TO chenduxiu");
+      adminStmt.execute("GRANT ROLE xijing TO chenduxiu");
+      adminStmt.execute("GRANT ROLE dalao TO chenduxiu");
+      adminStmt.execute("GRANT ROLE shenshi TO chenduxiu");
+      adminStmt.execute("GRANT ROLE zhazha TO chenduxiu");
+      adminStmt.execute("GRANT ROLE hakase TO chenduxiu");
 
       ResultSet resultSet = adminStmt.executeQuery("LIST ROLE OF USER chenduxiu");
       String ans = "xijing,\n" + "dalao,\n" + "shenshi,\n" + "zhazha,\n" + "hakase,\n";
       try {
         validateResultSet(resultSet, ans);
 
-        adminStmt.execute("REVOKE dalao FROM chenduxiu");
-        adminStmt.execute("REVOKE hakase FROM chenduxiu");
+        adminStmt.execute("REVOKE ROLE dalao FROM chenduxiu");
+        adminStmt.execute("REVOKE ROLE hakase FROM chenduxiu");
 
         resultSet = adminStmt.executeQuery("LIST ROLE OF USER chenduxiu");
         ans = "xijing,\n" + "shenshi,\n" + "zhazha,\n";
@@ -634,10 +638,10 @@ public class IoTDBAuthIT {
 
       for (int i = 0; i < members.length - 1; i++) {
         adminStmt.execute("CREATE USER " + members[i] + " 'a666666'");
-        adminStmt.execute("GRANT dalao TO  " + members[i]);
+        adminStmt.execute("GRANT ROLE dalao TO  " + members[i]);
       }
       adminStmt.execute("CREATE USER RiverSky 'a2333333'");
-      adminStmt.execute("GRANT zhazha TO RiverSky");
+      adminStmt.execute("GRANT ROLE zhazha TO RiverSky");
 
       ResultSet resultSet = adminStmt.executeQuery("LIST USER OF ROLE dalao");
       String ans =
@@ -662,7 +666,7 @@ public class IoTDBAuthIT {
         ans = "RiverSky,\n";
         validateResultSet(resultSet, ans);
 
-        adminStmt.execute("REVOKE zhazha from RiverSky");
+        adminStmt.execute("REVOKE ROLE zhazha from RiverSky");
         resultSet = adminStmt.executeQuery("LIST USER OF ROLE zhazha");
         ans = "";
         validateResultSet(resultSet, ans);
@@ -716,7 +720,7 @@ public class IoTDBAuthIT {
       try {
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("LIST USER"));
         // with list user privilege
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES MANAGE_USER on root.**");
+        adminStmt.execute("GRANT MANAGE_USER on root.** TO USER tempuser");
         ResultSet resultSet = userStmt.executeQuery("LIST USER");
         String ans =
             "root,\n"
@@ -831,5 +835,159 @@ public class IoTDBAuthIT {
         fail(e.getMessage());
       }
     }
+  }
+
+  @Test
+  public void testGrantAndGrantOpt() throws SQLException {
+    // 1. CREATE USER1. USER2. USER3
+    Connection adminCon = EnvFactory.getEnv().getConnection();
+    Statement adminStmt = adminCon.createStatement();
+    adminStmt.execute("CREATE USER user1 'password'");
+    adminStmt.execute("CREATE USER user2 'password'");
+    adminStmt.execute("CREATE USER user3 'password'");
+    adminStmt.execute("CREATE ROLE testRole");
+    adminStmt.execute("GRANT MANAGE_DATABASE ON root.** TO ROLE testRole WITH GRANT OPTION");
+    adminStmt.execute("GRANT READ_DATA ON root.t1.** TO ROLE testRole");
+    adminStmt.execute("GRANT READ_SCHEMA ON root.t3.t2.** TO ROLE testRole WITH GRANT OPTION");
+
+    // 2. USER1 has all privileges on root.**
+    for (PrivilegeType item : PrivilegeType.values()) {
+      String sql = "GRANT %s on root.** to USER user1";
+      adminStmt.execute(String.format(sql, item.toString()));
+    }
+    // 3.admin lists privileges of user1
+    ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER user1");
+    String ans =
+        ",,MANAGE_USER,false,\n"
+            + ",,MANAGE_ROLE,false,\n"
+            + ",,USE_TRIGGER,false,\n"
+            + ",,USE_UDF,false,\n"
+            + ",,USE_CQ,false,\n"
+            + ",,USE_PIPE,false,\n"
+            + ",,EXTEND_TEMPLATE,false,\n"
+            + ",,MANAGE_DATABASE,false,\n"
+            + ",,MAINTAIN,false,\n"
+            + ",,AUDIT,false,\n"
+            + ",root.**,READ_DATA,false,\n"
+            + ",root.**,WRITE_DATA,false,\n"
+            + ",root.**,READ_SCHEMA,false,\n"
+            + ",root.**,WRITE_SCHEMA,false,\n";
+    validateResultSet(resultSet, ans);
+
+    // 4. USER2 has all privilegs on root.** with grant option;
+    for (PrivilegeType item : PrivilegeType.values()) {
+      String sql = "GRANT %s on root.** to USER user2 with grant option";
+      adminStmt.execute(String.format(sql, item.toString()));
+    }
+    resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER user2");
+    ans =
+        ",,MANAGE_USER,true,\n"
+            + ",,MANAGE_ROLE,true,\n"
+            + ",,USE_TRIGGER,true,\n"
+            + ",,USE_UDF,true,\n"
+            + ",,USE_CQ,true,\n"
+            + ",,USE_PIPE,true,\n"
+            + ",,EXTEND_TEMPLATE,true,\n"
+            + ",,MANAGE_DATABASE,true,\n"
+            + ",,MAINTAIN,true,\n"
+            + ",,AUDIT,true,\n"
+            + ",root.**,READ_DATA,true,\n"
+            + ",root.**,WRITE_DATA,true,\n"
+            + ",root.**,READ_SCHEMA,true,\n"
+            + ",root.**,WRITE_SCHEMA,true,\n";
+    validateResultSet(resultSet, ans);
+
+    // now user1 has all privileges, user2 has all privileges with grant option, user3 doesn't have
+    // privileges
+
+    // 5. Login user1 to list user2 privileges will success
+    // user1 cannot grant any privilegs to user3
+    try (Connection userCon = EnvFactory.getEnv().getConnection("user1", "password");
+        Statement userStmt = userCon.createStatement()) {
+      try {
+        resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER user1");
+        ans =
+            ",,MANAGE_USER,false,\n"
+                + ",,MANAGE_ROLE,false,\n"
+                + ",,USE_TRIGGER,false,\n"
+                + ",,USE_UDF,false,\n"
+                + ",,USE_CQ,false,\n"
+                + ",,USE_PIPE,false,\n"
+                + ",,EXTEND_TEMPLATE,false,\n"
+                + ",,MANAGE_DATABASE,false,\n"
+                + ",,MAINTAIN,false,\n"
+                + ",,AUDIT,false,\n"
+                + ",root.**,READ_DATA,false,\n"
+                + ",root.**,WRITE_DATA,false,\n"
+                + ",root.**,READ_SCHEMA,false,\n"
+                + ",root.**,WRITE_SCHEMA,false,\n";
+        validateResultSet(resultSet, ans);
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("GRANT MANAGE_ROLE ON root.** TO USER user3"));
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("REVOKE MANAGE_ROLE ON root.** FROM USER user2"));
+      } finally {
+        userStmt.close();
+      }
+    }
+    // 6.Login user2 grant and revoke will success.
+    try (Connection userCon = EnvFactory.getEnv().getConnection("user2", "password");
+        Statement userStmt = userCon.createStatement()) {
+      try {
+        resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER user1");
+        validateResultSet(resultSet, ans);
+        userStmt.execute("GRANT MANAGE_ROLE ON root.** TO USER user3");
+        resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER user3");
+        ans = ",,MANAGE_ROLE,false,\n";
+        validateResultSet(resultSet, ans);
+
+        userStmt.execute("REVOKE MANAGE_ROLE ON root.** FROM USER user1");
+        resultSet = userStmt.executeQuery("LIST PRIVILEGES OF USER user1");
+        ans =
+            ",,MANAGE_USER,false,\n"
+                + ",,USE_TRIGGER,false,\n"
+                + ",,USE_UDF,false,\n"
+                + ",,USE_CQ,false,\n"
+                + ",,USE_PIPE,false,\n"
+                + ",,EXTEND_TEMPLATE,false,\n"
+                + ",,MANAGE_DATABASE,false,\n"
+                + ",,MAINTAIN,false,\n"
+                + ",,AUDIT,false,\n"
+                + ",root.**,READ_DATA,false,\n"
+                + ",root.**,WRITE_DATA,false,\n"
+                + ",root.**,READ_SCHEMA,false,\n"
+                + ",root.**,WRITE_SCHEMA,false,\n";
+        validateResultSet(resultSet, ans);
+      } finally {
+        userStmt.close();
+      }
+    }
+    adminStmt.execute("GRANT ROLE testRole TO user3");
+    // now user has:
+    // 1. MANAGE_ROLE
+    // 2. MANAGE_DATABASE with grant option
+    // 3. READ_DATA on root.t1.**
+    // 4. READ_SCHEMA on root.t3.t2.**
+
+    try (Connection userCon = EnvFactory.getEnv().getConnection("user3", "password");
+        Statement userStmt = userCon.createStatement()) {
+      try {
+        // because role's privilege
+        userStmt.execute("GRANT MANAGE_DATABASE ON root.** TO USER user1");
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("GRANT READ_DATA ON root.t1.** TO USER user1"));
+        userStmt.execute("GRANT READ_SCHEMA ON root.t3.t2.t3 TO USER user1");
+        Assert.assertThrows(
+            SQLException.class,
+            () -> userStmt.execute("GRANT READ_DATA ON root.t1.t2.t3 TO USER user1"));
+      } finally {
+        userStmt.close();
+      }
+    }
+
+    adminStmt.close();
   }
 }
