@@ -19,9 +19,13 @@
 package org.apache.iotdb.commons.auth.user;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.HashLock;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -83,6 +87,23 @@ public abstract class BasicUserManager implements IUserManager {
           CommonDescriptor.getInstance().getConfig().getAdminPassword(),
           true);
       setUserUseWaterMark(CommonDescriptor.getInstance().getConfig().getAdminName(), false);
+    }
+    admin = getUser(CommonDescriptor.getInstance().getConfig().getAdminName());
+    try {
+      PartialPath rootPath = new PartialPath(new String(IoTDBConstant.PATH_ROOT + ".**"));
+      PathPrivilege pathPri = new PathPrivilege();
+      pathPri.setPath(rootPath);
+      for (PrivilegeType item : PrivilegeType.values()) {
+        if(!item.isPathRelevant()) {
+          admin.getSysPrivilege().add(item.ordinal());
+          admin.getSysPriGrantOpt().add(item.ordinal());
+        }
+        pathPri.grantPrivilege(item.ordinal(),true);
+      }
+      admin.getPathPrivilegeList().add(pathPri);
+    } catch (IllegalPathException e) {
+      // This error only results in a lack of permissions for list.
+      logger.warn("Got an wrong path for root to init");
     }
     logger.info("Admin initialized");
   }
