@@ -26,6 +26,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsync
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
@@ -110,8 +111,9 @@ public class PipeConnectorSubtask extends PipeSubtask {
     try {
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer(
-            ((EnrichedEvent) event).shouldParsePatternOrTime()
-                ? ((TabletInsertionEvent) event).parseEventWithPattern()
+            (event instanceof PipeTabletInsertionEvent)
+                    && ((EnrichedEvent) event).shouldParsePatternOrTime()
+                ? ((PipeTabletInsertionEvent) event).parseEventWithPattern()
                 : (TabletInsertionEvent) event);
       } else if (event instanceof TsFileInsertionEvent) {
         // Parse the pattern for TsFileInsertionEvent at the sender side if

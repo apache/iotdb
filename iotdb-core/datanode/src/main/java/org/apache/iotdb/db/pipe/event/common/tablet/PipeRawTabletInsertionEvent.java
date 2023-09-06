@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
-public class PipeRawTabletInsertionEvent extends EnrichedEvent implements TabletInsertionEvent {
+public class PipeRawTabletInsertionEvent extends EnrichedEvent implements PipeTabletInsertionEvent {
 
   private final Tablet tablet;
   private final boolean isAligned;
@@ -142,6 +142,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     return dataContainer.processTablet(consumer);
   }
 
+  /////////////////////////// PipeTabletInsertionEvent ///////////////////////////
   @Override
   public Tablet convertToTablet() {
     if (!shouldParsePatternOrTime()) {

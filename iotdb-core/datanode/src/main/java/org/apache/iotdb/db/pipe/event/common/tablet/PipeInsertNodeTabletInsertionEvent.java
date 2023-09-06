@@ -40,7 +40,7 @@ import java.nio.ByteBuffer;
 import java.util.function.BiConsumer;
 
 public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
-    implements TabletInsertionEvent {
+    implements PipeTabletInsertionEvent {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
@@ -186,6 +186,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     }
   }
 
+  /////////////////////////// PipeTabletInsertionEvent ///////////////////////////
   @Override
   public Tablet convertToTablet() {
     try {
