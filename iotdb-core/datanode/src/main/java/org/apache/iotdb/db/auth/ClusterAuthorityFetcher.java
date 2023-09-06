@@ -361,6 +361,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     return iAuthorCache;
   }
 
+  @Override
   public void refreshToken() {
     long currentTime = System.currentTimeMillis();
     if (heartBeatTimeStamp == 0) {
