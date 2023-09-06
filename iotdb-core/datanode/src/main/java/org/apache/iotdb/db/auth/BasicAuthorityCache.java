@@ -101,4 +101,10 @@ public class BasicAuthorityCache implements IAuthorCache {
     }
     return true;
   }
+
+  @Override
+  public void invalidAllCache() {
+    userCache.invalidateAll();
+    roleCache.invalidateAll();
+  }
 }

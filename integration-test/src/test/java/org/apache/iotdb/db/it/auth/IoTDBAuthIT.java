@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it;
+package org.apache.iotdb.db.it.auth;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -485,35 +485,44 @@ public class IoTDBAuthIT {
 
     try {
       adminStmt.execute("CREATE USER user1 'password1'");
-      adminStmt.execute("GRANT USER user1 PRIVILEGES READ_SCHEMA ON root.a.b");
+      adminStmt.execute("GRANT READ_SCHEMA ON root.a.b TO USER user1");
       adminStmt.execute("CREATE ROLE role1");
-      adminStmt.execute("GRANT ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.a.b.c");
-      adminStmt.execute("GRANT ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.d.b.c");
-      adminStmt.execute("GRANT role1 TO user1");
+      adminStmt.execute("GRANT READ_SCHEMA,WRITE_DATA ON root.a.b.c TO ROLE role1");
+      adminStmt.execute(
+          "GRANT READ_SCHEMA,WRITE_DATA ON root.d.b.c TO ROLE role1 WITH GRANT OPTION");
+      adminStmt.execute("GRANT ROLE role1 TO user1");
 
-      ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1");
+      ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER user1");
       String ans =
-          ",root.a.b : READ_SCHEMA"
-              + ",\n"
-              + "role1,root.a.b.c : WRITE_DATA READ_SCHEMA"
-              + ",\n"
-              + "role1,root.d.b.c : WRITE_DATA READ_SCHEMA"
-              + ",\n";
+          ",root.a.b,READ_SCHEMA,false,\n"
+              + "role1,root.a.b.c,WRITE_DATA,false,\n"
+              + "role1,root.a.b.c,READ_SCHEMA,false,\n"
+              + "role1,root.d.b.c,READ_SCHEMA,true,\n"
+              + "role1,root.d.b.c,WRITE_DATA,true,\n";
       try {
         validateResultSet(resultSet, ans);
 
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.a.b.c");
-        ans = "role1,root.a.b.c : WRITE_DATA READ_SCHEMA,\n";
+        adminStmt.execute("REVOKE ROLE role1 from user1");
+
+        resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER user1");
+        ans = ",root.a.b,READ_SCHEMA,false,\n";
         validateResultSet(resultSet, ans);
-
-        adminStmt.execute("REVOKE role1 from user1");
-
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1");
-        ans = ",root.a.b : READ_SCHEMA,\n";
-        validateResultSet(resultSet, ans);
-
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.a.**");
-        ans = ",root.a.b : READ_SCHEMA,\n";
+        resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER root");
+        ans =
+            ",,MANAGE_USER,true,\n"
+                + ",,MANAGE_ROLE,true,\n"
+                + ",,USE_TRIGGER,true,\n"
+                + ",,USE_UDF,true,\n"
+                + ",,USE_CQ,true,\n"
+                + ",,USE_PIPE,true,\n"
+                + ",,EXTEND_TEMPLATE,true,\n"
+                + ",,MANAGE_DATABASE,true,\n"
+                + ",,MAINTAIN,true,\n"
+                + ",,AUDIT,true,\n"
+                + ",root.**,READ_DATA,true,\n"
+                + ",root.**,WRITE_DATA,true,\n"
+                + ",root.**,READ_SCHEMA,true,\n"
+                + ",root.**,WRITE_SCHEMA,true,\n";
         validateResultSet(resultSet, ans);
       } finally {
         resultSet.close();
@@ -531,16 +540,18 @@ public class IoTDBAuthIT {
 
     try {
       adminStmt.execute("CREATE ROLE role1");
-      ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1");
+      ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF ROLE role1");
       String ans = "";
       try {
         // not granted list role privilege, should return empty
         validateResultSet(resultSet, ans);
 
-        adminStmt.execute("GRANT ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.a.b.c");
-        adminStmt.execute("GRANT ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.d.b.c");
-        resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1");
-        ans = "root.a.b.c : WRITE_DATA READ_SCHEMA,\n" + "root.d.b.c : WRITE_DATA READ_SCHEMA,\n";
+        adminStmt.execute("GRANT READ_SCHEMA,WRITE_DATA ON root.a.b.c TO ROLE role1");
+        adminStmt.execute(
+            "GRANT READ_SCHEMA,WRITE_DATA ON root.d.b.c TO ROLE role1 WITH GRANT OPTION");
+        resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF ROLE role1");
+        ans =
+            "role1,root.a.b.c,WRITE_DATA,false,\nrole,root.a.b.c,READ_SCHEMA,false\nrole1,root.d.b.c,READ_SCHEMA,true\nrole1,root.d.b.c,WRITE_DATA,false\n";
         validateResultSet(resultSet, ans);
 
         resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1 ON root.a.b.c");

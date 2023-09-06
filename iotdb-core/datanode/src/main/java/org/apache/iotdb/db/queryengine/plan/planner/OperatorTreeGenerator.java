@@ -576,7 +576,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getLimit(),
             node.getOffset(),
             node.getSchemaFilter(),
-            node.getTemplateMap()));
+            node.getTemplateMap(),
+            node.getScope()));
   }
 
   @Override
@@ -599,7 +600,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getLimit(),
             node.getOffset(),
             node.isHasSgCol(),
-            node.getSchemaFilter()));
+            node.getSchemaFilter(),
+            node.getScope()));
   }
 
   @Override
@@ -648,7 +650,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return new SchemaCountOperator<>(
         node.getPlanNodeId(),
         operatorContext,
-        SchemaSourceFactory.getDeviceSchemaSource(node.getPath(), node.isPrefixPath()));
+        SchemaSourceFactory.getDeviceSchemaSource(
+            node.getPath(), node.isPrefixPath(), node.getScope()));
   }
 
   @Override
@@ -666,7 +669,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getPlanNodeId(),
         operatorContext,
         SchemaSourceFactory.getTimeSeriesSchemaCountSource(
-            node.getPath(), node.isPrefixPath(), node.getSchemaFilter(), node.getTemplateMap()));
+            node.getPath(),
+            node.isPrefixPath(),
+            node.getSchemaFilter(),
+            node.getTemplateMap(),
+            node.getScope()));
   }
 
   @Override
@@ -685,7 +692,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         operatorContext,
         node.getLevel(),
         SchemaSourceFactory.getTimeSeriesSchemaCountSource(
-            node.getPath(), node.isPrefixPath(), node.getSchemaFilter(), node.getTemplateMap()));
+            node.getPath(),
+            node.isPrefixPath(),
+            node.getSchemaFilter(),
+            node.getTemplateMap(),
+            node.getScope()));
   }
 
   @Override
@@ -702,7 +713,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return new SchemaQueryScanOperator<>(
         node.getPlanNodeId(),
         operatorContext,
-        SchemaSourceFactory.getNodeSchemaSource(node.getPrefixPath(), node.getLevel()));
+        SchemaSourceFactory.getNodeSchemaSource(
+            node.getPrefixPath(), node.getLevel(), node.getScope()));
   }
 
   @Override
@@ -2446,7 +2458,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getPlanNodeId(),
         operatorContext,
         SchemaSourceFactory.getPathsUsingTemplateSource(
-            node.getPathPatternList(), node.getTemplateId()));
+            node.getPathPatternList(), node.getTemplateId(), node.getScope()));
   }
 
   public Operator visitLogicalViewSchemaScan(
@@ -2463,7 +2475,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getPlanNodeId(),
         operatorContext,
         SchemaSourceFactory.getLogicalViewSchemaSource(
-            node.getPath(), node.getLimit(), node.getOffset(), node.getSchemaFilter()));
+            node.getPath(),
+            node.getLimit(),
+            node.getOffset(),
+            node.getSchemaFilter(),
+            node.getScope()));
   }
 
   public List<Operator> dealWithConsumeAllChildrenPipelineBreaker(

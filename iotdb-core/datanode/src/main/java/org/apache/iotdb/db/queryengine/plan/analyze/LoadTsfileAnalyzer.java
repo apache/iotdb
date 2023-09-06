@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
@@ -258,6 +262,26 @@ public class LoadTsfileAnalyzer {
         final String device = pair.left;
         final TimeseriesMetadata timeseriesMetadata = pair.right;
 
+        // check WRITE_DATA permission of timeseries
+        String userName = context.getSession().getUserName();
+        if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+          TSStatus status;
+          try {
+            status =
+                AuthorityChecker.getTSStatus(
+                    AuthorityChecker.checkFullPathPermission(
+                        userName,
+                        new PartialPath(device, timeseriesMetadata.getMeasurementId()),
+                        PrivilegeType.WRITE_DATA.ordinal()),
+                    PrivilegeType.WRITE_DATA);
+          } catch (IllegalPathException e) {
+            throw new RuntimeException(e);
+          }
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+          }
+        }
+
         final TSDataType dataType = timeseriesMetadata.getTsDataType();
         if (dataType.equals(TSDataType.VECTOR)) {
           tsfileDevice2IsAligned.put(device, true);
@@ -388,6 +412,10 @@ public class LoadTsfileAnalyzer {
 
     private void executeSetDatabaseStatement(Statement statement) throws LoadFileException {
       final long queryId = SessionManager.getInstance().requestQueryId();
+      TSStatus status = statement.checkPermissionBeforeProcess(context.getSession().getUserName());
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+      }
       final ExecutionResult result =
           Coordinator.getInstance()
               .execute(

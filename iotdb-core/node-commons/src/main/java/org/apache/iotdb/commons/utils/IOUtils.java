@@ -131,11 +131,9 @@ public class IOUtils {
       DataInputStream inputStream, String encoding, ThreadLocal<byte[]> strBufferLocal)
       throws IOException, IllegalPathException {
     String path = IOUtils.readString(inputStream, encoding, strBufferLocal);
-    int privilegeNum = inputStream.readInt();
     PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath(path));
-    for (int i = 0; i < privilegeNum; i++) {
-      pathPrivilege.getPrivileges().add(inputStream.readInt());
-    }
+    int privileges = inputStream.readInt();
+    pathPrivilege.setAllPrivileges(privileges);
     return pathPrivilege;
   }
 
@@ -156,10 +154,7 @@ public class IOUtils {
       ThreadLocal<ByteBuffer> encodingBufferLocal)
       throws IOException {
     writeString(outputStream, pathPrivilege.getPath().getFullPath(), encoding, encodingBufferLocal);
-    writeInt(outputStream, pathPrivilege.getPrivileges().size(), encodingBufferLocal);
-    for (Integer i : pathPrivilege.getPrivileges()) {
-      writeInt(outputStream, i, encodingBufferLocal);
-    }
+    writeInt(outputStream, pathPrivilege.getAllPrivileges(), encodingBufferLocal);
   }
 
   /**

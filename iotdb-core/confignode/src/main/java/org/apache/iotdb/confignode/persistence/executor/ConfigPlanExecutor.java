@@ -293,7 +293,7 @@ public class ConfigPlanExecutor {
   }
 
   public TSStatus executeNonQueryPlan(ConfigPhysicalPlan physicalPlan)
-      throws UnknownPhysicalPlanTypeException, AuthException {
+      throws UnknownPhysicalPlanTypeException {
     switch (physicalPlan.getType()) {
       case RegisterDataNode:
         return nodeInfo.registerDataNode((RegisterDataNodePlan) physicalPlan);
@@ -559,7 +559,8 @@ public class ConfigPlanExecutor {
     if (-1 == level) {
       // get child paths
       Pair<Set<TSchemaNode>, Set<PartialPath>> matchedChildInNextLevel =
-          clusterSchemaInfo.getChildNodePathInNextLevel(partialPath);
+          clusterSchemaInfo.getChildNodePathInNextLevel(
+              partialPath, getNodePathsPartitionPlan.getScope());
       alreadyMatchedNode = matchedChildInNextLevel.left;
       if (!partialPath.hasMultiLevelMatchWildcard()) {
         needMatchedNode = new HashSet<>();

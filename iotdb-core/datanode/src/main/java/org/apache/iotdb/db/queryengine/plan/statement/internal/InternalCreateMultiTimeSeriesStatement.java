@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.internal;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -48,6 +52,19 @@ public class InternalCreateMultiTimeSeriesStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     return new ArrayList<>(deviceMap.keySet());
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    List<PartialPath> checkedPaths = getPaths();
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathListPermission(
+            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA.ordinal()),
+        checkedPaths,
+        PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override

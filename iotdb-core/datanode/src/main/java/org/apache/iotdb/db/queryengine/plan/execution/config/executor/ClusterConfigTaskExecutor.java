@@ -67,6 +67,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
@@ -144,7 +145,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateFunctionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseStatement;
@@ -160,6 +160,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
@@ -327,10 +328,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TShowDatabaseResp resp = client.showDatabase(databasePathPattern);
+      TGetDatabaseReq req =
+          new TGetDatabaseReq(
+              databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize());
+      TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
       showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
-    } catch (ClientManagerException | TException e) {
+    } catch (IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -345,11 +349,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         Arrays.asList(countDatabaseStatement.getPathPattern().getNodes());
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TCountDatabaseResp resp = client.countMatchedDatabases(databasePathPattern);
+      TGetDatabaseReq req =
+          new TGetDatabaseReq(
+              databasePathPattern, countDatabaseStatement.getAuthorityScope().serialize());
+      TCountDatabaseResp resp = client.countMatchedDatabases(req);
       databaseNum = resp.getCount();
       // build TSBlock
       CountDatabaseTask.buildTSBlock(databaseNum, future);
-    } catch (ClientManagerException | TException e) {
+    } catch (IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -1126,16 +1133,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     Map<String, Long> databaseToTTL = new HashMap<>();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      ByteBuffer scope = showTTLStatement.getAuthorityScope().serialize();
       if (showTTLStatement.isAll()) {
         List<String> allStorageGroupPathPattern = Arrays.asList("root", "**");
-        TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(allStorageGroupPathPattern);
+        TGetDatabaseReq req = new TGetDatabaseReq(allStorageGroupPathPattern, scope);
+        TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(req);
         for (Map.Entry<String, TDatabaseSchema> entry : resp.getDatabaseSchemaMap().entrySet()) {
           databaseToTTL.put(entry.getKey(), entry.getValue().getTTL());
         }
       } else {
         for (PartialPath databasePath : databasePaths) {
           List<String> databasePathPattern = Arrays.asList(databasePath.getNodes());
-          TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(databasePathPattern);
+          TGetDatabaseReq req = new TGetDatabaseReq(databasePathPattern, scope);
+          TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(req);
           for (Map.Entry<String, TDatabaseSchema> entry : resp.getDatabaseSchemaMap().entrySet()) {
             if (!databaseToTTL.containsKey(entry.getKey())) {
               databaseToTTL.put(entry.getKey(), entry.getValue().getTTL());
@@ -1143,7 +1153,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         }
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     // build TSBlock
@@ -1320,11 +1330,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> showPathSetTemplate(
       ShowPathSetTemplateStatement showPathSetTemplateStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    String templateName = showPathSetTemplateStatement.getTemplateName();
     try {
       // Send request to some API server
       List<PartialPath> listPath =
-          ClusterTemplateManager.getInstance().getPathsSetTemplate(templateName);
+          ClusterTemplateManager.getInstance()
+              .getPathsSetTemplate(
+                  showPathSetTemplateStatement.getTemplateName(),
+                  showPathSetTemplateStatement.getAuthorityScope());
       // Build TSBlock
       ShowPathSetTemplateTask.buildTSBlock(listPath, future);
     } catch (Exception e) {

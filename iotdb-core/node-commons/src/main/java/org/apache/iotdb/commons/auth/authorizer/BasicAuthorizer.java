@@ -45,7 +45,7 @@ import java.util.Map;
 import java.util.Set;
 
 public abstract class BasicAuthorizer implements IAuthorizer, IService {
-
+  // works at config node.
   private static final Logger logger = LoggerFactory.getLogger(BasicAuthorizer.class);
   private static final Set<Integer> ADMIN_PRIVILEGES;
   private static final String NO_SUCH_ROLE_EXCEPTION = "No such role : %s";
@@ -138,23 +138,14 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public void grantPrivilegeToUser(String username, PartialPath path, int privilegeId)
-      throws AuthException {
-    PartialPath newPath = path;
+  public void grantPrivilegeToUser(
+      String username, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
     if (isAdmin(username)) {
       throw new AuthException(
           TSStatusCode.NO_PERMISSION,
           "Invalid operation, administrator already has all privileges");
     }
-    if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      newPath = AuthUtils.ROOT_PATH_PRIVILEGE_PATH;
-    }
-    if (!userManager.grantPrivilegeToUser(username, newPath, privilegeId)) {
-      throw new AuthException(
-          TSStatusCode.ALREADY_HAS_PRIVILEGE,
-          String.format(
-              "User %s already has %s on %s", username, PrivilegeType.values()[privilegeId], path));
-    }
+    userManager.grantPrivilegeToUser(username, path, privilegeId, grantOpt);
   }
 
   @Override
@@ -164,16 +155,12 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.NO_PERMISSION, "Invalid operation, administrator must have all privileges");
     }
-    PartialPath newPath = path;
-    if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      newPath = AuthUtils.ROOT_PATH_PRIVILEGE_PATH;
-    }
-    if (!userManager.revokePrivilegeFromUser(username, newPath, privilegeId)) {
+    if (!userManager.revokePrivilegeFromUser(username, path, privilegeId)) {
       throw new AuthException(
           TSStatusCode.NOT_HAS_PRIVILEGE,
           String.format(
               "User %s does not have %s on %s",
-              username, PrivilegeType.values()[privilegeId], path));
+              username, PrivilegeType.values()[privilegeId], path != null ? path : "system"));
     }
   }
 
@@ -200,7 +187,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           userManager.revokeRoleFromUser(roleName, user);
         } catch (AuthException e) {
           logger.warn(
-              "Error encountered when revoking a role {} from user {} after deletion, because {}",
+              "Error encountered when revoking a role {} from user {} after deletion",
               roleName,
               user,
               e);
@@ -210,13 +197,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public void grantPrivilegeToRole(String roleName, PartialPath path, int privilegeId)
-      throws AuthException {
-    PartialPath newPath = path;
-    if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      newPath = AuthUtils.ROOT_PATH_PRIVILEGE_PATH;
-    }
-    if (!roleManager.grantPrivilegeToRole(roleName, newPath, privilegeId)) {
+  public void grantPrivilegeToRole(
+      String roleName, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
+    if (!roleManager.grantPrivilegeToRole(roleName, path, privilegeId, grantOpt)) {
       throw new AuthException(
           TSStatusCode.ALREADY_HAS_PRIVILEGE,
           String.format(
@@ -227,11 +210,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void revokePrivilegeFromRole(String roleName, PartialPath path, int privilegeId)
       throws AuthException {
-    PartialPath newPath = path;
-    if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      newPath = AuthUtils.ROOT_PATH_PRIVILEGE_PATH;
-    }
-    if (!roleManager.revokePrivilegeFromRole(roleName, newPath, privilegeId)) {
+    if (!roleManager.revokePrivilegeFromRole(roleName, path, privilegeId)) {
       throw new AuthException(
           TSStatusCode.NOT_HAS_PRIVILEGE,
           String.format(
@@ -287,12 +266,12 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
     }
     // get privileges of the user
-    Set<Integer> privileges = user.getPrivileges(path);
+    Set<Integer> privileges = user.getPathPrivileges(path);
     // merge the privileges of the roles of the user
     for (String roleName : user.getRoleList()) {
       Role role = roleManager.getRole(roleName);
       if (role != null) {
-        privileges.addAll(role.getPrivileges(path));
+        privileges.addAll(role.getPathPrivileges(path));
       }
     }
     return privileges;
@@ -317,18 +296,87 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
     }
-    // get privileges of the user
-    if (user.checkPrivilege(path, privilegeId)) {
-      return true;
-    }
-    // merge the privileges of the roles of the user
-    for (String roleName : user.getRoleList()) {
-      Role role = roleManager.getRole(roleName);
-      if (role.checkPrivilege(path, privilegeId)) {
+    if (path != null) {
+      // get privileges of the user
+      if (user.checkPathPrivilege(path, privilegeId)) {
         return true;
       }
+      // merge the privileges of the roles of the user
+      for (String roleName : user.getRoleList()) {
+        Role role = roleManager.getRole(roleName);
+        if (role.checkPathPrivilege(path, privilegeId)) {
+          return true;
+        }
+      }
+    } else {
+      if (user.checkSysPrivilege(privilegeId)) {
+        return true;
+      }
+      for (String roleName : user.getRoleList()) {
+        Role role = roleManager.getRole(roleName);
+        if (role.checkSysPrivilege(privilegeId)) {
+          return true;
+        }
+      }
     }
+
     return false;
+  }
+
+  public boolean checkUserPrivilegeGrantOpt(String username, PartialPath path, int privilegeId)
+      throws AuthException {
+    User user = userManager.getUser(username);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
+    }
+    if (path == null) {
+      if (user.checkSysPrivilege(privilegeId)) {
+        if (user.getSysPriGrantOpt().contains(privilegeId)) {
+          return true;
+        }
+      }
+      if (user.getRoleList().isEmpty()) {
+        throw new AuthException(
+            TSStatusCode.NOT_HAS_PRIVILEGE,
+            String.format(
+                "Dont have privilege: %s to grant",
+                PrivilegeType.values()[privilegeId].toString()));
+      }
+      for (String roleName : user.getRoleList()) {
+        Role role = roleManager.getRole(roleName);
+        if (role.checkSysPrivilege(privilegeId) && role.getSysPriGrantOpt().contains(privilegeId)) {
+          return true;
+        }
+      }
+      throw new AuthException(
+          TSStatusCode.NOT_HAS_PRIVILEGE,
+          String.format(
+              "Dont have privilege: %s to grant", PrivilegeType.values()[privilegeId].toString()));
+
+    } else {
+      if (user.checkPathPrivilegeGrantOpt(path, privilegeId)) {
+        return true;
+      }
+      if (user.getRoleList().isEmpty()) {
+        throw new AuthException(
+            TSStatusCode.NOT_HAS_PRIVILEGE,
+            String.format(
+                "Dont have privilege: %s on path %s to grant",
+                PrivilegeType.values()[privilegeId].toString(), path.toString()));
+      }
+      for (String roleName : user.getRoleList()) {
+        Role role = roleManager.getRole(roleName);
+        if (role.checkPathPrivilegeGrantOpt(path, privilegeId)) {
+          return true;
+        }
+      }
+      throw new AuthException(
+          TSStatusCode.NOT_HAS_PRIVILEGE,
+          String.format(
+              "Dont have privilege: %s on path %s to grant",
+              PrivilegeType.values()[privilegeId].toString(), path.toString()));
+    }
   }
 
   @Override
