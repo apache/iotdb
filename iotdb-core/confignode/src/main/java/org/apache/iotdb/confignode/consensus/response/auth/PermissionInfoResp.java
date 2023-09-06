@@ -20,30 +20,54 @@
 package org.apache.iotdb.confignode.consensus.response.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.util.List;
-import java.util.Map;
 
 public class PermissionInfoResp implements DataSet {
 
   private TSStatus status;
 
-  private Map<String, List<String>> permissionInfo;
+  private String tag;
+  private List<String> memberList;
+
+  private TPermissionInfoResp permissionInfoResp;
 
   public PermissionInfoResp() {}
 
-  public PermissionInfoResp(TSStatus status, Map<String, List<String>> permissionInfo) {
+  public PermissionInfoResp(TSStatus status, String tag, List<String> info) {
     this.status = status;
-    this.permissionInfo = permissionInfo;
+    this.tag = tag;
+    this.memberList = info;
   }
 
-  public Map<String, List<String>> getPermissionInfo() {
-    return permissionInfo;
+  public PermissionInfoResp(TSStatus status) {
+    this.status = status;
   }
 
-  public void setPermissionInfo(Map<String, List<String>> permissionInfo) {
-    this.permissionInfo = permissionInfo;
+  public void setTag(String tag) {
+    this.tag = tag;
+  }
+
+  public String getTag() {
+    return tag;
+  }
+
+  public void setMemberInfo(List<String> info) {
+    this.memberList = info;
+  }
+
+  public List<String> getMemberList() {
+    return memberList;
+  }
+
+  public TPermissionInfoResp getPermissionInfoResp() {
+    return permissionInfoResp;
+  }
+
+  public void setPermissionInfoResp(TPermissionInfoResp resp) {
+    this.permissionInfoResp = resp;
   }
 
   public TSStatus getStatus() {

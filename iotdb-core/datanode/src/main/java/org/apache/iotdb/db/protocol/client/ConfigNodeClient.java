@@ -571,6 +571,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         () -> client.checkUserPrivilegeGrantOpt(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
+  public TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.checkRoleOfUser(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support registerConfigNode.");

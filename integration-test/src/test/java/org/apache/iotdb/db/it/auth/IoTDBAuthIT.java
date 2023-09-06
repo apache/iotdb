@@ -485,10 +485,10 @@ public class IoTDBAuthIT {
 
     try {
       adminStmt.execute("CREATE USER user1 'password1'");
-      adminStmt.execute("GRANT USER user1 PRIVILEGES READ_SCHEMA ON root.a.b");
+      adminStmt.execute("GRANT READ_SCHEMA ON root.a.b TO USER user1");
       adminStmt.execute("CREATE ROLE role1");
-      adminStmt.execute("GRANT ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.a.b.c");
-      adminStmt.execute("GRANT ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.d.b.c");
+      adminStmt.execute("GRANT READ_SCHEMA,WRITE_DATA ON root.a.b.c TO ROLE role1");
+      adminStmt.execute("GRANT READ_SCHEMA,WRITE_DATA ON root.d.b.c TO ROLE role1");
       adminStmt.execute("GRANT role1 TO user1");
 
       ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1");

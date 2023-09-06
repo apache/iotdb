@@ -36,7 +36,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.List;
 
 /** Manager permission read and operation. */
@@ -92,7 +91,7 @@ public class PermissionManager {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
-      return new PermissionInfoResp(res, Collections.emptyMap());
+      return new PermissionInfoResp(res);
     }
   }
 
@@ -117,5 +116,10 @@ public class PermissionManager {
   public TPermissionInfoResp checkUserPrivilegeGrantOpt(
       String username, List<PartialPath> paths, int permission) throws AuthException {
     return authorInfo.checkUserPrivilegeGrantOpt(username, paths, permission);
+  }
+
+  public TPermissionInfoResp checkRoleOfUser(String username, String rolename)
+      throws AuthException {
+    return authorInfo.checkRoleOfUser(username, rolename);
   }
 }
