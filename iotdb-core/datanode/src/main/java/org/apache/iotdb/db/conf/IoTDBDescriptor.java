@@ -2108,15 +2108,20 @@ public class IoTDBDescriptor {
 
     conf.setDataRatisConsensusLogUnsafeFlushEnable(ratisConfig.isDataLogUnsafeFlushEnable());
     conf.setSchemaRatisConsensusLogUnsafeFlushEnable(ratisConfig.isSchemaLogUnsafeFlushEnable());
+
     conf.setDataRatisConsensusLogForceSyncNum(ratisConfig.getDataRegionLogForceSyncNum());
+    conf.setSchemaRatisConsensusLogForceSyncNum(ratisConfig.getSchemaRegionLogForceSyncNum());
 
     conf.setDataRatisConsensusLogSegmentSizeMax(ratisConfig.getDataLogSegmentSizeMax());
     conf.setSchemaRatisConsensusLogSegmentSizeMax(ratisConfig.getSchemaLogSegmentSizeMax());
 
     conf.setDataRatisConsensusGrpcFlowControlWindow(ratisConfig.getDataGrpcFlowControlWindow());
     conf.setSchemaRatisConsensusGrpcFlowControlWindow(ratisConfig.getSchemaGrpcFlowControlWindow());
+
     conf.setDataRatisConsensusGrpcLeaderOutstandingAppendsMax(
         ratisConfig.getDataRegionGrpcLeaderOutstandingAppendsMax());
+    conf.setSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax(
+        ratisConfig.getSchemaRegionGrpcLeaderOutstandingAppendsMax());
 
     conf.setDataRatisConsensusLeaderElectionTimeoutMinMs(
         ratisConfig.getDataLeaderElectionTimeoutMin());
