@@ -92,7 +92,6 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           if (!user.checkPathPrivilege(path, permission)) {
             if (user.getRoleList().isEmpty()) {
               posList.add(pos);
-              continue;
             }
             boolean status = false;
             for (String rolename : user.getRoleList()) {
@@ -239,7 +238,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   private PathPatternTree fetchAuthizedPatternTree(String username, int permission)
       throws AuthException {
-    TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, null, permission);
+    TCheckUserPrivilegesReq req =
+        new TCheckUserPrivilegesReq(
+            username, AuthUtils.serializePartialPathList(Collections.emptyList()), permission);
     TAuthizedPatternTreeResp authizedPatternTree = new TAuthizedPatternTreeResp();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {

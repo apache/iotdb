@@ -131,7 +131,6 @@ public class AuthorInfo implements SnapshotProcessor {
         for (PartialPath path : paths) {
           if (!checkOnePath(username, path, permission)) {
             failedList.add(pos);
-            continue;
           }
           pos++;
         }
@@ -386,6 +385,7 @@ public class AuthorInfo implements SnapshotProcessor {
     pPtree.constructTree();
     resp.setUsername(username);
     resp.setPrivilegeId(permission);
+    resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
@@ -554,6 +554,7 @@ public class AuthorInfo implements SnapshotProcessor {
     }
     result.setUserInfo(tUserResp);
     result.setRoleInfo(tRoleRespMap);
+    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     return result;
   }
 }
