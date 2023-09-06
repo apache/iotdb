@@ -125,7 +125,7 @@ public class AuthorityChecker {
       List<Integer> noPermissionIndexList,
       List<PartialPath> pathList,
       PrivilegeType neededPrivilege) {
-    if (noPermissionIndexList.isEmpty()) {
+    if (noPermissionIndexList == null || noPermissionIndexList.isEmpty()) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
 
