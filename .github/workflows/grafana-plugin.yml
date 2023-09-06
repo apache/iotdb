@@ -12,6 +12,7 @@ on:
     branches:
       - master
       - "new_*"
+      - auth
     paths-ignore:
       - 'docs/**'
       - 'site/**'

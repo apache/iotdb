@@ -15,6 +15,7 @@ on:
       - master
       - 'rel/*'
       - "new_*"
+      - auth
     paths-ignore:
       - 'docs/**'
       - 'site/**'
