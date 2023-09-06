@@ -210,19 +210,19 @@ public class ConfigMTreeTest {
     root.setStorageGroup(new PartialPath("root.sg2"));
 
     Pair<List<PartialPath>, Set<PartialPath>> result =
-        root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false);
+        root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, ALL_MATCH_SCOPE);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 1, false);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 1, false, ALL_MATCH_SCOPE);
     Assert.assertEquals(2, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false, ALL_MATCH_SCOPE);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false, ALL_MATCH_SCOPE);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
@@ -231,7 +231,8 @@ public class ConfigMTreeTest {
     root.setStorageGroup(new PartialPath("root.sg"));
     root.setStorageGroup(new PartialPath("root.ln"));
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, true);
+    result =
+        root.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, true, ALL_MATCH_SCOPE);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(5, result.right.size());
     Assert.assertTrue(result.right.contains(new PartialPath("root.sg1")));

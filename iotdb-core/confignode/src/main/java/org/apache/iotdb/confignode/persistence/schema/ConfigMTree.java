@@ -383,11 +383,12 @@ public class ConfigMTree {
    * path pattern is used to match prefix path.
    */
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch, PathPatternTree scope)
+      throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
     try (MNodeAboveDBCollector<Void, IConfigMNode> collector =
         new MNodeAboveDBCollector<Void, IConfigMNode>(
-            root, pathPattern, store, isPrefixMatch, ALL_MATCH_SCOPE) {
+            root, pathPattern, store, isPrefixMatch, scope) {
           @Override
           protected Void collectMNode(IConfigMNode node) {
             result.add(getPartialPathFromRootToNode(node));
