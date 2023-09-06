@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
@@ -46,7 +47,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   public CachedSchemaPatternMatcher() {
     this.lock = new ReentrantReadWriteLock();
-    this.extractors = new HashSet<>();
+    this.extractors = new CopyOnWriteArraySet<>();
     this.deviceToExtractorsCache =
         Caffeine.newBuilder()
             .maximumSize(PipeConfig.getInstance().getPipeExtractorMatcherCacheSize())
