@@ -405,22 +405,15 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   @Override
   public boolean checkIsChunkSizeOverThreshold(
       long size, long pointNum, boolean returnTrueIfChunkEmpty) {
-    long totalSize = 0;
     if ((returnTrueIfChunkEmpty && timeChunkWriter.getPointNum() == 0)
         || (timeChunkWriter.getPointNum() >= pointNum
             || timeChunkWriter.estimateMaxSeriesMemSize() >= size)) {
       return true;
     }
-    totalSize += timeChunkWriter.estimateMaxSeriesMemSize();
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
       if (valueChunkWriter.estimateMaxSeriesMemSize() >= size) {
         return true;
       }
-      totalSize += valueChunkWriter.estimateMaxSeriesMemSize();
-    }
-    if (totalSize > 100 * 1024 * 1024) {
-      System.out.println(totalSize);
-      return true;
     }
     return false;
   }
