@@ -1029,6 +1029,23 @@ public class ConfigManager implements IManager {
     return resp;
   }
 
+  public TPermissionInfoResp checkRoleOfUser(String username, String rolename) {
+    TSStatus status = confirmLeader();
+    TPermissionInfoResp resp = new TPermissionInfoResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      try {
+        resp = permissionManager.checkRoleOfUser(username, rolename);
+      } catch (AuthException e) {
+        status.setCode(e.getCode().getStatusCode()).setMessage(e.getMessage());
+        resp.setStatus(status);
+        return resp;
+      }
+    } else {
+      resp.setStatus(status);
+    }
+    return resp;
+  }
+
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     final int ERROR_STATUS_NODE_ID = -1;

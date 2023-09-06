@@ -340,7 +340,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
             new IoTDBException(
                 authorizerResp.getStatus().message, authorizerResp.getStatus().code));
       } else {
-        AuthorityChecker.buildTSBlock(authorizerResp.getAuthorizerInfo(), future);
+        AuthorityChecker.buildTSBlock(authorizerResp, future);
       }
     } catch (ClientManagerException | TException e) {
       logger.error("Failed to connect to config node.");
@@ -417,6 +417,20 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
   }
 
+  @Override
+  public boolean checkRole(String userName, String roleName) {
+    checkCacheAvailable();
+    User user = iAuthorCache.getUserCache(userName);
+    if (user != null) {
+      if (user.isOpenIdUser() || user.getRoleList().contains(roleName)) {
+        return true;
+      }
+      return false;
+    } else {
+      return checkRoleFromConfigNode(userName, roleName);
+    }
+  }
+
   private TSStatus checkSysPriFromConfigNode(String username, int permission) {
     TCheckUserPrivilegesReq req =
         new TCheckUserPrivilegesReq(
@@ -460,6 +474,34 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
     }
     return permissionInfoResp.getFailPos();
+  }
+
+  private boolean checkRoleFromConfigNode(String username, String rolename) {
+    TAuthorizerReq req = new TAuthorizerReq();
+    req.setUserName(username);
+    req.setRoleName(rolename);
+    TPermissionInfoResp permissionInfoResp;
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      permissionInfoResp = configNodeClient.checkRoleOfUser(req);
+    } catch (ClientManagerException | TException e) {
+      logger.error("Failed to connect to config node.");
+      permissionInfoResp = new TPermissionInfoResp();
+      permissionInfoResp.setStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.EXECUTE_STATEMENT_ERROR, "Failed to connect to config node."));
+    }
+    if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      return true;
+    } else if (permissionInfoResp.getStatus().getCode()
+        == TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode()) {
+      iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      return false;
+    } else {
+      return false;
+    }
   }
 
   /** Cache user. */
