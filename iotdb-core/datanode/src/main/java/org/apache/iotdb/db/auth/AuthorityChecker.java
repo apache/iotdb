@@ -202,20 +202,19 @@ public class AuthorityChecker {
       TAuthorizerResp authResp, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> types = new ArrayList<>();
     boolean listRoleUser = false;
-    int columnNum = 0;
     if (authResp.tag.equals(IoTDBConstant.COLUMN_ROLE)
         || authResp.tag.equals(IoTDBConstant.COLUMN_USER)) {
       // if list role/user, just return 1 column.
-      columnNum = 1;
       listRoleUser = true;
+      types.add(TSDataType.TEXT);
     } else {
       // if list privilege, return : rolename, path, privilege, grant option
-      columnNum = 4;
+      types.add(TSDataType.TEXT);
+      types.add(TSDataType.TEXT);
+      types.add(TSDataType.TEXT);
+      types.add(TSDataType.BOOLEAN);
     }
 
-    for (int i = 0; i < columnNum; i++) {
-      types.add(TSDataType.TEXT);
-    }
     TsBlockBuilder builder = new TsBlockBuilder(types);
     List<ColumnHeader> headerList = new ArrayList<>();
 

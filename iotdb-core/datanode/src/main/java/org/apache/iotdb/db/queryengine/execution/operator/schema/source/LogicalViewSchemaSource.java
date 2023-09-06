@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
@@ -111,7 +112,9 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
 
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
-    return pathPattern.equals(ALL_MATCH_PATTERN);
+    return pathPattern.equals(ALL_MATCH_PATTERN)
+        && (schemaFilter == null)
+        && scope.equals(SchemaConstant.ALL_MATCH_SCOPE);
   }
 
   @Override
