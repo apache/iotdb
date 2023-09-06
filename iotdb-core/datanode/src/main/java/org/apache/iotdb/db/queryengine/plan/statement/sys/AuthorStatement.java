@@ -250,8 +250,15 @@ public class AuthorStatement extends Statement implements IConfigStatement {
             PrivilegeType.MANAGE_USER);
 
       case LIST_USER:
-      case LIST_USER_PRIVILEGE:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        return AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            PrivilegeType.MANAGE_USER);
+
+      case LIST_USER_PRIVILEGE:
+        if (AuthorityChecker.SUPER_USER.equals(userName) || userName.equals(this.userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
