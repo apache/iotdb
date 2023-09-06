@@ -41,6 +41,7 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -507,6 +508,73 @@ public class IoTDBPipeLifeCycleIT {
     }
   }
 
+  @Test
+  public void testReceiverRestartWhenTransferring() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      Thread t =
+          new Thread(
+              () -> {
+                try (Connection connection = senderEnv.getConnection();
+                    Statement statement = connection.createStatement()) {
+                  for (int i = 0; i < 10; ++i) {
+                    statement.execute(
+                        String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
+                    Thread.sleep(1000);
+                  }
+                } catch (SQLException e) {
+                  e.printStackTrace();
+                  fail(e.getMessage());
+                } catch (InterruptedException ignored) {
+                }
+              });
+      t.start();
+
+      restartCluster(receiverEnv);
+      t.join();
+
+      try (Connection connection = receiverEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        await()
+            .atMost(600, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    TestUtils.assertResultSetEqual(
+                        statement.executeQuery("select count(*) from root.**"),
+                        "count(root.sg1.d1.at1),",
+                        Collections.singleton("10,")));
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
   private void assertDataOnReceiver(BaseEnv receiverEnv, Set<String> expectedResSet) {
     try (Connection connection = receiverEnv.getConnection();
         Statement statement = connection.createStatement()) {
@@ -541,6 +609,6 @@ public class IoTDBPipeLifeCycleIT {
     for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
       env.startDataNode(i);
     }
-    ((AbstractEnv) env).testWorkingNoUnknown();
+    ((AbstractEnv) env).testWorking();
   }
 }
