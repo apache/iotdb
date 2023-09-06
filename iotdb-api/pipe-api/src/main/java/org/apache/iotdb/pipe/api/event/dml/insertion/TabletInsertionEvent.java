@@ -44,26 +44,4 @@ public interface TabletInsertionEvent extends Event {
    *     results collected by the RowCollector
    */
   Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer);
-
-  /**
-   * Convert the data contained to tablet.
-   *
-   * @return the result tablet
-   */
-  Tablet convertToTablet();
-
-  /**
-   * Parse the event to resolve its pattern. The parsing process is done in
-   * PipeRawTabletInsertionEvent.
-   *
-   * @return the converted PipeRawTabletInsertionEvent
-   */
-  TabletInsertionEvent parseEventWithPattern();
-
-  /**
-   * Return whether the tablet is aligned.
-   *
-   * @return true if the tablet is aligned
-   */
-  boolean isAligned();
 }

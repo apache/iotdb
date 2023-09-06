@@ -102,7 +102,13 @@ public class OpcUaConnector implements PipeConnector {
       return;
     }
 
-    OpcUaServerUtils.transferTablet(server, tabletInsertionEvent.convertToTablet());
+    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      OpcUaServerUtils.transferTablet(
+          server, ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
+    } else {
+      OpcUaServerUtils.transferTablet(
+          server, ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
+    }
   }
 
   @Override
