@@ -43,6 +43,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
@@ -163,12 +164,12 @@ public class ForecastOperator implements ProcessOperator {
   }
 
   private TsBlock modifyTimeColumn(TsBlock resultTsBlock) {
-    long delta = TimestampPrecisionUtils.getFactor();
-
     TsBlockBuilder newTsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
     TimeColumnBuilder timeColumnBuilder = newTsBlockBuilder.getTimeColumnBuilder();
     for (int i = 0; i < resultTsBlock.getPositionCount(); i++) {
-      timeColumnBuilder.writeLong(resultTsBlock.getTimeByIndex(i) / delta);
+      timeColumnBuilder.writeLong(
+          TimestampPrecisionUtils.convertToCurrPrecision(
+              resultTsBlock.getTimeByIndex(i), TimeUnit.NANOSECONDS));
       newTsBlockBuilder.declarePosition();
     }
     return newTsBlockBuilder.build().appendValueColumns(resultTsBlock.getValueColumns());
