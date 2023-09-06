@@ -81,6 +81,42 @@ public class LazyValueChunkWriter extends ValueChunkWriter {
     numOfPages++;
   }
 
+  public void writePageToPageBuffer() {
+    try {
+      if (numOfPages == 0) {
+        if (pageWriter.getStatistics().getCount() != 0) {
+          // record the firstPageStatistics if it is not empty page
+          this.firstPageStatistics = pageWriter.getStatistics();
+        }
+        this.sizeWithoutStatistic = pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, true);
+      } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
+        if (firstPageStatistics != null) { // Consider previous page is an empty page
+          byte[] b = pageBuffer.toByteArray();
+          pageBuffer.reset();
+          pageBuffer.write(b, 0, this.sizeWithoutStatistic);
+          firstPageStatistics.serialize(pageBuffer);
+          pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
+          if (!insertPagePositions.isEmpty()) {
+            insertPagePositions.set(0, pageBuffer.size());
+          }
+        }
+        pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, false);
+        firstPageStatistics = null;
+      } else {
+        pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, false);
+      }
+
+      // update statistics of this chunk
+      numOfPages++;
+      this.statistics.mergeStatistics(pageWriter.getStatistics());
+    } catch (IOException e) {
+      logger.error("meet error in pageWriter.writePageHeaderAndDataIntoBuff,ignore this page:", e);
+    } finally {
+      // clear start time stamp for next initializing
+      pageWriter.reset(dataType);
+    }
+  }
+
   public void writeLazyPageLoaderIntoBuff(LazyPageLoader lazyPageLoader) throws PageException {
     PageHeader header = lazyPageLoader.getPageHeader();
     // write the page header to pageBuffer

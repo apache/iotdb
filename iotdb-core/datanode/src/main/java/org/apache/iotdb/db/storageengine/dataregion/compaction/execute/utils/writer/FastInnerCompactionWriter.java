@@ -217,7 +217,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       return true;
     }
     for (PageHeader valuePageHeader : valuePageHeaders) {
-      if (valuePageHeader == null) {
+      if (valuePageHeader == null || valuePageHeader.getStatistics() == null) {
         continue;
       }
       if (checkIsPageLargeEnough(valuePageHeader)) {

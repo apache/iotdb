@@ -48,6 +48,6 @@ public class LazyPageLoader {
   }
 
   public boolean isEmpty() {
-    return reader == null;
+    return reader == null || pageHeader == null || pageHeader.getUncompressedSize() == 0;
   }
 }

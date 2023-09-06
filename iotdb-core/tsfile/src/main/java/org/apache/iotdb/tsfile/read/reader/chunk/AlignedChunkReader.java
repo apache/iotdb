@@ -290,7 +290,7 @@ public class AlignedChunkReader implements IChunkReader {
     IUnCompressor timeUnCompressor =
         IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
     Decoder timeDecoder =
-        Decoder.getDecoderByType(timeChunkHeader.getEncodingType(), TSDataType.INT64);
+        Decoder.getDecoderByType(timeChunkHeader.getEncodingType(), timeChunkHeader.getDataType());
 
     // uncompress time page data
     ByteBuffer uncompressedTimePageData =
