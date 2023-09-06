@@ -228,14 +228,14 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         CompactionMetricsManager.getInstance().updateSummary(summary);
 
-        long costTime = (System.currentTimeMillis() - startTime) / 1000;
+        double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
 
         LOGGER.info(
             "{}-{} [Compaction] CrossSpaceCompaction task finishes successfully, time cost is {} s, compaction speed is {} MB/s, {}",
             storageGroupName,
             dataRegionId,
-            costTime,
-            (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024 / costTime,
+            String.format("%.2f", costTime),
+            String.format("%.2f", (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024 / costTime),
             summary);
       }
       if (logFile.exists()) {
