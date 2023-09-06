@@ -91,14 +91,14 @@ public abstract class BasicUserManager implements IUserManager {
     admin = getUser(CommonDescriptor.getInstance().getConfig().getAdminName());
     try {
       PartialPath rootPath = new PartialPath(new String(IoTDBConstant.PATH_ROOT + ".**"));
-      PathPrivilege pathPri = new PathPrivilege();
-      pathPri.setPath(rootPath);
+      PathPrivilege pathPri = new PathPrivilege(rootPath);
       for (PrivilegeType item : PrivilegeType.values()) {
-        if(!item.isPathRelevant()) {
+        if (!item.isPathRelevant()) {
           admin.getSysPrivilege().add(item.ordinal());
           admin.getSysPriGrantOpt().add(item.ordinal());
+        } else {
+          pathPri.grantPrivilege(item.ordinal(), true);
         }
-        pathPri.grantPrivilege(item.ordinal(),true);
       }
       admin.getPathPrivilegeList().add(pathPri);
     } catch (IllegalPathException e) {
