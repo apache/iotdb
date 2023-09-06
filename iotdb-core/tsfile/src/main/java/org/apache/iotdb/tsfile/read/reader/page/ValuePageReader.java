@@ -329,6 +329,44 @@ public class ValuePageReader {
     }
   }
 
+  public void writeColumnBuilderWithNextBatch(
+      int readStartIndex, int readEndIndex, ColumnBuilder columnBuilder) {
+    if (valueBuffer == null) {
+      for (int i = readStartIndex; i < readEndIndex; i++) {
+        columnBuilder.appendNull();
+      }
+      return;
+    }
+    for (int i = readStartIndex; i < readEndIndex; i++) {
+      if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+        columnBuilder.appendNull();
+        continue;
+      }
+      switch (dataType) {
+        case BOOLEAN:
+          columnBuilder.writeBoolean(valueDecoder.readBoolean(valueBuffer));
+          break;
+        case INT32:
+          columnBuilder.writeInt(valueDecoder.readInt(valueBuffer));
+          break;
+        case INT64:
+          columnBuilder.writeLong(valueDecoder.readLong(valueBuffer));
+          break;
+        case FLOAT:
+          columnBuilder.writeFloat(valueDecoder.readFloat(valueBuffer));
+          break;
+        case DOUBLE:
+          columnBuilder.writeDouble(valueDecoder.readDouble(valueBuffer));
+          break;
+        case TEXT:
+          columnBuilder.writeBinary(valueDecoder.readBinary(valueBuffer));
+          break;
+        default:
+          throw new UnSupportedDataTypeException(String.valueOf(dataType));
+      }
+    }
+  }
+
   public Statistics getStatistics() {
     return pageHeader.getStatistics();
   }
