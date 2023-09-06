@@ -44,7 +44,7 @@ public enum BuiltinPipePlugin {
   IOTDB_THRIFT_ASYNC_CONNECTOR("iotdb-thrift-async-connector", IoTDBThriftAsyncConnector.class),
   IOTDB_LEGACY_PIPE_CONNECTOR("iotdb-legacy-pipe-connector", IoTDBLegacyPipeConnector.class),
   IOTDB_AIR_GAP_CONNECTOR("iotdb-air-gap-connector", IoTDBAirGapConnector.class),
-  WEB_SOCKET_CONNECTOR("websocket-connector", WebSocketConnector.class),
+  WEBSOCKET_CONNECTOR("websocket-connector", WebSocketConnector.class),
   ;
 
   private final String pipePluginName;

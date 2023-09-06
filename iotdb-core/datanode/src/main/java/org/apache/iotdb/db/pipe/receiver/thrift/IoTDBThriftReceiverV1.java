@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -515,6 +516,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       final String fileAbsolutePath = writingFile.getAbsolutePath();
       writingFileWriter.close();
       writingFileWriter = null;
+      writingFile = null;
 
       List<InsertTabletStatement> statements = new ArrayList<>();
       for (TabletInsertionEvent event :
@@ -523,7 +525,8 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
               .toTabletInsertionEvents()) {
         statements.add(
             PipeTransferTabletRawReq.toLocalTPipeTransferReq(
-                    event.convertToTablet(), event.isAligned())
+                    ((PipeTabletInsertionEvent) event).convertToTablet(),
+                    ((PipeTabletInsertionEvent) event).isAligned())
                 .constructStatement());
       }
 
@@ -546,13 +549,13 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
     } catch (IOException e) {
       LOGGER.warn(
           String.format(
-              "Failed to seal file %s from req %s. Receiver id is %d.",
+              "Failed to seal file %s with parse from req %s. Receiver id is %d.",
               writingFile, req, receiverId.get()),
           e);
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-              String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
+              String.format("Failed to seal file %s with parse because %s", writingFile, e.getMessage())));
     } finally {
       // If the writing file is not sealed successfully, the writing file will be deleted.
       // All pieces of the writing file should be retransmitted by the sender.

@@ -79,7 +79,7 @@ public class PipeConnectorSubtaskManager {
       } else if (connectorKey.equals(
           BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
         pipeConnector = new IoTDBAirGapConnector();
-      } else if (connectorKey.equals(BuiltinPipePlugin.WEB_SOCKET_CONNECTOR.getPipePluginName())) {
+      } else if (connectorKey.equals(BuiltinPipePlugin.WEBSOCKET_CONNECTOR.getPipePluginName())) {
         pipeConnector = new WebSocketConnector();
       } else {
         pipeConnector = PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
