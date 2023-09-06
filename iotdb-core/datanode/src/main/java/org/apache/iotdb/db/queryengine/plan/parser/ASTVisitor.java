@@ -255,8 +255,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private static final String GROUP_BY_COMMON_ONLY_ONE_MSG =
       "Only one of group by time or group by variation/series/session can be supported at a time";
 
-  private static final String NEGATIVE_TIMESTAMP_ERROR_MSG =
-      "Please set the time >=0 or after 1970-01-01 00:00:00";
   private static final String LIMIT_CONFIGURATION_ENABLED_ERROR_MSG =
       "Limit configuration is not enabled, please enable it first.";
 
@@ -3661,11 +3659,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.time != null) {
       long timestamp = parseTimeValue(ctx.time, DateTimeUtils.currentTime());
-      if (timestamp < 0) {
-        throw new SemanticException(NEGATIVE_TIMESTAMP_ERROR_MSG);
-      } else {
-        getRegionIdStatement.setTimeStamp(timestamp);
-      }
+      getRegionIdStatement.setTimeStamp(timestamp);
     }
     return getRegionIdStatement;
   }
@@ -3689,19 +3683,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.startTime != null) {
       long timestamp = parseTimeValue(ctx.startTime, DateTimeUtils.currentTime());
-      if (timestamp < 0) {
-        throw new SemanticException(NEGATIVE_TIMESTAMP_ERROR_MSG);
-      } else {
-        getTimeSlotListStatement.setStartTime(timestamp);
-      }
+      getTimeSlotListStatement.setStartTime(timestamp);
     }
     if (ctx.endTime != null) {
       long timestamp = parseTimeValue(ctx.endTime, DateTimeUtils.currentTime());
-      if (timestamp < 0) {
-        throw new SemanticException(NEGATIVE_TIMESTAMP_ERROR_MSG);
-      } else {
-        getTimeSlotListStatement.setEndTime(timestamp);
-      }
+      getTimeSlotListStatement.setEndTime(timestamp);
     }
     return getTimeSlotListStatement;
   }

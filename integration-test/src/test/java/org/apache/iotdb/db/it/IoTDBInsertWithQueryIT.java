@@ -147,6 +147,21 @@ public class IoTDBInsertWithQueryIT {
   }
 
   @Test
+  public void insertNegativeTimestampWithQueryTest() {
+    // insert
+    insertData(-1000, 1);
+
+    // select
+    selectAndCount(1001);
+
+    // insert
+    insertData(-2000, -1000);
+
+    // select
+    selectAndCount(2001);
+  }
+
+  @Test
   public void flushWithQueryTest() throws InterruptedException {
     // insert
     insertData(0, 1000);
@@ -393,11 +408,13 @@ public class IoTDBInsertWithQueryIT {
       for (int time = start; time < end; time++) {
         String sql =
             String.format("insert into root.fans.d0(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d0(timestamp,s1) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
       }
+      statement.executeBatch();
+      statement.clearBatch();
     } catch (SQLException e) {
       e.printStackTrace();
     }
@@ -422,7 +439,7 @@ public class IoTDBInsertWithQueryIT {
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         int cnt = 0;
-        long before = -1;
+        long before = -10000;
         while (resultSet.next()) {
           long cur = Long.parseLong(resultSet.getString(TestConstant.TIMESTAMP_STR));
           if (cur <= before) {
