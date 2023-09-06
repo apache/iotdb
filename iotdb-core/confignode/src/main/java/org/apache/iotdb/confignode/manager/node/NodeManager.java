@@ -165,7 +165,6 @@ public class NodeManager {
 
     ratisConfig.setDataLogUnsafeFlushEnable(conf.isDataRegionRatisLogUnsafeFlushEnable());
     ratisConfig.setSchemaLogUnsafeFlushEnable(conf.isSchemaRegionRatisLogUnsafeFlushEnable());
-    ratisConfig.setDataRegionLogForceSyncNum(conf.getDataRegionRatisLogForceSyncNum());
 
     ratisConfig.setDataLogSegmentSizeMax(conf.getDataRegionRatisLogSegmentSizeMax());
     ratisConfig.setSchemaLogSegmentSizeMax(conf.getSchemaRegionRatisLogSegmentSizeMax());
@@ -174,6 +173,11 @@ public class NodeManager {
     ratisConfig.setSchemaGrpcFlowControlWindow(conf.getSchemaRegionRatisGrpcFlowControlWindow());
     ratisConfig.setDataRegionGrpcLeaderOutstandingAppendsMax(
         conf.getDataRegionRatisGrpcLeaderOutstandingAppendsMax());
+    ratisConfig.setSchemaRegionGrpcLeaderOutstandingAppendsMax(
+        conf.getSchemaRegionRatisGrpcLeaderOutstandingAppendsMax());
+
+    ratisConfig.setDataRegionLogForceSyncNum(conf.getDataRegionRatisLogForceSyncNum());
+    ratisConfig.setSchemaRegionLogForceSyncNum(conf.getSchemaRegionRatisLogForceSyncNum());
 
     ratisConfig.setDataLeaderElectionTimeoutMin(
         conf.getDataRegionRatisRpcLeaderElectionTimeoutMinMs());

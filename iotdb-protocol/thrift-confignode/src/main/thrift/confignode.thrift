@@ -85,6 +85,9 @@ struct TRatisConfig {
 
   29: required i32 dataRegionGrpcLeaderOutstandingAppendsMax
   30: required i32 dataRegionLogForceSyncNum
+
+  31: required i32 schemaRegionGrpcLeaderOutstandingAppendsMax
+  32: required i32 schemaRegionLogForceSyncNum
 }
 
 struct TCQConfig {
