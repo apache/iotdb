@@ -222,10 +222,10 @@ public class AuthorityChecker {
     if (listRoleUser) {
       headerList.add(new ColumnHeader(authResp.getTag(), TSDataType.TEXT));
     } else {
-      headerList.add(new ColumnHeader(new String("  ROLE  "), TSDataType.TEXT));
-      headerList.add(new ColumnHeader(new String("  PATH  "), TSDataType.TEXT));
-      headerList.add(new ColumnHeader(new String("  PRIVILEGES  "), TSDataType.TEXT));
-      headerList.add(new ColumnHeader(new String("  GRANT OPTION  "), TSDataType.TEXT));
+      headerList.add(new ColumnHeader(new String("ROLE"), TSDataType.TEXT));
+      headerList.add(new ColumnHeader(new String("PATH"), TSDataType.TEXT));
+      headerList.add(new ColumnHeader(new String("PRIVILEGES"), TSDataType.TEXT));
+      headerList.add(new ColumnHeader(new String("GRANT OPTION"), TSDataType.BOOLEAN));
     }
 
     if (listRoleUser) {
@@ -271,9 +271,9 @@ public class AuthorityChecker {
       builder.getColumnBuilder(1).writeBinary(new Binary(new String(path)));
       builder.getColumnBuilder(2).writeBinary(new Binary(PrivilegeType.values()[i].toString()));
       if (grantOpt.contains(i)) {
-        builder.getColumnBuilder(3).writeBinary(new Binary(new String("T")));
+        builder.getColumnBuilder(3).writeBoolean(true);
       } else {
-        builder.getColumnBuilder(3).writeBinary(new Binary(new String("F")));
+        builder.getColumnBuilder(3).writeBoolean(false);
       }
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.declarePosition();

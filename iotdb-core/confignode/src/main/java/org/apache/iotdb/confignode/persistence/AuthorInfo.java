@@ -474,7 +474,7 @@ public class AuthorInfo implements SnapshotProcessor {
           TSStatusCode.USER_NOT_EXIST, String.format("No such user : %s", username));
     }
     result = getUserPermissionInfo(username);
-    if (!user.getRoleList().contains(rolename)) {
+    if (user.getRoleList().contains(rolename)) {
       result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     } else {
       result.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_HAS_ROLE));
