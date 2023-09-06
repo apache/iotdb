@@ -33,35 +33,36 @@ public class EncodeTest {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<String> dataset_name = new ArrayList<>();
+    ArrayList<Integer> dataset_block_size = new ArrayList<>();
 
     for (int i = 0; i < dataset_name.size(); i++) {
       input_path_list.add(input_parent_dir + dataset_name.get(i));
     }
 
     output_path_list.add(output_parent_dir + "\\CS-Sensors_ratio.csv"); // 0
-
+    dataset_block_size.add(1024);
     output_path_list.add(output_parent_dir + "\\Metro-Traffic_ratio.csv");// 1
-
+    dataset_block_size.add(512);
     output_path_list.add(output_parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
-
+    dataset_block_size.add(512);
     output_path_list.add(output_parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
-
+    dataset_block_size.add(256);
     output_path_list.add(output_parent_dir + "\\GW-Magnetic_ratio.csv"); //4
-
+    dataset_block_size.add(128);
     output_path_list.add(output_parent_dir + "\\TY-Fuel_ratio.csv");//5
-
+    dataset_block_size.add(64);
     output_path_list.add(output_parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
-
+    dataset_block_size.add(128);
     output_path_list.add(output_parent_dir + "\\Vehicle-Charge_ratio.csv");//7
-
+    dataset_block_size.add(512);
     output_path_list.add(output_parent_dir + "\\Nifty-Stocks_ratio.csv");//8
-
+    dataset_block_size.add(256);
     output_path_list.add(output_parent_dir + "\\TH-Climate_ratio.csv");//9
-
+    dataset_block_size.add(512);
     output_path_list.add(output_parent_dir + "\\TY-Transport_ratio.csv");//10
-
+    dataset_block_size.add(512);
     output_path_list.add(output_parent_dir + "\\EPM-Education_ratio.csv");//11
-
+    dataset_block_size.add(512);
 
     //    for(int file_i=7;file_i<8;file_i++){
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
