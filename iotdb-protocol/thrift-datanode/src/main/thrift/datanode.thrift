@@ -308,12 +308,16 @@ struct TTsFilePieceReq{
     1: required binary body
     2: required string uuid
     3: required common.TConsensusGroupId consensusGroupId
+    // if isRelay is true, the receiver should forward the request to other replicas in the group
+    4: optional bool isRelay
 }
 
 struct TLoadCommandReq{
     1: required i32 commandType
     2: required string uuid
     3: optional bool isGeneratedByPipe
+    4: optional bool useConsensus
+    5: optional common.TConsensusGroupId consensusGroupId
 }
 
 struct TLoadResp{

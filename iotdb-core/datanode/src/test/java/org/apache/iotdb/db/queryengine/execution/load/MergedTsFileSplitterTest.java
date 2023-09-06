@@ -19,14 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
+import static org.junit.Assert.assertEquals;
+
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
+
+import org.junit.Test;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
-import org.junit.Test;
 
 public class MergedTsFileSplitterTest extends TestBase {
 
@@ -35,20 +40,30 @@ public class MergedTsFileSplitterTest extends TestBase {
   @Test
   public void testSplit() throws IOException {
     long start = System.currentTimeMillis();
-    MergedTsFileSplitter splitter = new MergedTsFileSplitter(files, this::consumeSplit,
-        IoTDBThreadPoolFactory.newThreadPool(16, Integer.MAX_VALUE, 20, TimeUnit.SECONDS,
-            new SynchronousQueue<>(),
-            new IoTThreadFactory("MergedTsFileSplitter"), "MergedTsFileSplitter"));
+    MergedTsFileSplitter splitter =
+        new MergedTsFileSplitter(
+            files,
+            this::consumeSplit,
+            IoTDBThreadPoolFactory.newThreadPool(
+                16,
+                Integer.MAX_VALUE,
+                20,
+                TimeUnit.SECONDS,
+                new SynchronousQueue<>(),
+                new IoTThreadFactory("MergedTsFileSplitter"),
+                "MergedTsFileSplitter"),
+            TimePartitionUtils.getTimePartitionInterval());
     try {
       splitter.splitTsFileByDataPartition();
       for (TsFileData tsFileData : resultSet) {
-//         System.out.println(tsFileData);
+        //         System.out.println(tsFileData);
       }
     } finally {
       splitter.close();
     }
-    System.out.printf("%d splits after %dms\n", resultSet.size(),
-        System.currentTimeMillis() - start);
+    System.out.printf(
+        "%d splits after %dms\n", resultSet.size(), System.currentTimeMillis() - start);
+    assertEquals(resultSet.size(), expectedChunkNum());
   }
 
   public boolean consumeSplit(TsFileData data) {

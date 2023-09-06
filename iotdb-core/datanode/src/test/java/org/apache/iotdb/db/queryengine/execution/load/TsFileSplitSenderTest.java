@@ -1,0 +1,186 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.queryengine.execution.load;
+
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.stream.Collectors;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
+import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
+import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
+import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.junit.Test;
+
+public class TsFileSplitSenderTest extends TestBase {
+
+  // the third key is UUid
+  protected Map<TEndPoint, Map<ConsensusGroupId, Map<String, Map<File, List<TsFileData>>>>>
+      phaseOneResults = new ConcurrentSkipListMap<>();
+  protected Map<TEndPoint, Map<ConsensusGroupId, Map<String, Integer>>> phaseTwoResults =
+      new ConcurrentSkipListMap<>();
+
+  public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndpoint) {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
+    LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(
+        req.body.slice());
+    List<TsFileData> tsFileData =
+        phaseOneResults
+            .computeIfAbsent(tEndpoint, e -> new ConcurrentSkipListMap<>(
+                Comparator.comparingInt(ConsensusGroupId::getId)))
+            .computeIfAbsent(groupId, g -> new ConcurrentSkipListMap<>())
+            .computeIfAbsent(req.uuid, id -> new ConcurrentSkipListMap<>())
+            .computeIfAbsent(pieceNode.getTsFile(), f -> new ArrayList<>());
+    synchronized (tsFileData) {
+      tsFileData.addAll(pieceNode.getAllTsFileData());
+    }
+
+    // forward to other replicas in the group
+    if (req.isRelay) {
+      req.isRelay = false;
+      TRegionReplicaSet regionReplicaSet = groupId2ReplicaSetMap.get(groupId);
+      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+        TEndPoint otherPoint = dataNodeLocation.getInternalEndPoint();
+        if (!otherPoint.equals(tEndpoint)) {
+          handleTsFilePieceNode(req, otherPoint);
+        }
+      }
+    }
+
+    return new TLoadResp().setAccepted(true)
+        .setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+  }
+
+  public TLoadResp handleTsLoadCommand(TLoadCommandReq req, TEndPoint tEndpoint) {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
+    phaseTwoResults
+        .computeIfAbsent(tEndpoint,
+            e -> new ConcurrentSkipListMap<>(Comparator.comparingInt(ConsensusGroupId::getId)))
+        .computeIfAbsent(groupId, g -> new ConcurrentSkipListMap<>())
+        .computeIfAbsent(req.uuid, id -> req.commandType);
+
+    // forward to other replicas in the group
+    if (req.useConsensus) {
+      req.useConsensus = false;
+      TRegionReplicaSet regionReplicaSet = groupId2ReplicaSetMap.get(groupId);
+      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+        TEndPoint otherPoint = dataNodeLocation.getInternalEndPoint();
+        if (!otherPoint.equals(tEndpoint)) {
+          handleTsLoadCommand(req, otherPoint);
+        }
+      }
+    }
+
+    return new TLoadResp().setAccepted(true)
+        .setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+  }
+
+  @Test
+  public void test() throws IOException {
+    LoadTsFileNode loadTsFileNode =
+        new LoadTsFileNode(new PlanNodeId("testPlanNode"), tsFileResources);
+    DataPartitionBatchFetcher partitionBatchFetcher =
+        new DataPartitionBatchFetcher(partitionFetcher) {
+          @Override
+          public List<TRegionReplicaSet> queryDataPartition(
+              List<Pair<String, TTimePartitionSlot>> slotList) {
+            return slotList.stream()
+                .map(p -> partitionTable.get(p.left))
+                .collect(Collectors.toList());
+          }
+        };
+    TsFileSplitSender splitSender =
+        new TsFileSplitSender(
+            loadTsFileNode,
+            partitionBatchFetcher,
+            TimePartitionUtils.getTimePartitionInterval(),
+            internalServiceClientManager,
+            false);
+    long start = System.currentTimeMillis();
+    splitSender.start();
+    long timeConsumption = System.currentTimeMillis() - start;
+
+    printResult();
+    System.out.printf("Split ends after %dms", timeConsumption);
+  }
+
+  public void printResult() {
+    System.out.print("Phase one:\n");
+    for (Entry<TEndPoint, Map<ConsensusGroupId, Map<String, Map<File, List<TsFileData>>>>>
+        tEndPointMapEntry : phaseOneResults.entrySet()) {
+      TEndPoint endPoint = tEndPointMapEntry.getKey();
+      for (Entry<ConsensusGroupId, Map<String, Map<File, List<TsFileData>>>>
+          consensusGroupIdMapEntry : tEndPointMapEntry.getValue().entrySet()) {
+        ConsensusGroupId consensusGroupId = consensusGroupIdMapEntry.getKey();
+        for (Entry<String, Map<File, List<TsFileData>>> stringMapEntry :
+            consensusGroupIdMapEntry.getValue().entrySet()) {
+          String uuid = stringMapEntry.getKey();
+          for (Entry<File, List<TsFileData>> fileListEntry : stringMapEntry.getValue().entrySet()) {
+            File tsFile = fileListEntry.getKey();
+            List<TsFileData> chunks = fileListEntry.getValue();
+            System.out.printf(
+                "%s - %s - %s - %s - %s chunks\n", endPoint, consensusGroupId, uuid, tsFile, chunks.size());
+            assertEquals(chunks.size(), expectedChunkNum() / 2);
+          }
+        }
+      }
+    }
+
+    System.out.print("Phase two:\n");
+    for (Entry<TEndPoint, Map<ConsensusGroupId, Map<String, Integer>>> tEndPointMapEntry :
+        phaseTwoResults.entrySet()) {
+      TEndPoint endPoint = tEndPointMapEntry.getKey();
+      for (Entry<ConsensusGroupId, Map<String, Integer>> consensusGroupIdMapEntry :
+          tEndPointMapEntry.getValue().entrySet()) {
+        ConsensusGroupId consensusGroupId = consensusGroupIdMapEntry.getKey();
+        for (Entry<String, Integer> stringMapEntry :
+            consensusGroupIdMapEntry.getValue().entrySet()) {
+          String uuid = stringMapEntry.getKey();
+          int command = stringMapEntry.getValue();
+          System.out.printf("%s - %s - %s - %s\n", endPoint, consensusGroupId, uuid,
+              LoadCommand.values()[command]);
+          assertEquals(command, LoadCommand.EXECUTE.ordinal());
+        }
+      }
+    }
+  }
+}

@@ -111,4 +111,12 @@ public class LoadTsFileNode extends WritePlanNode {
   public int hashCode() {
     return Objects.hash(resources);
   }
+
+  public List<TsFileResource> getResources() {
+    return resources;
+  }
+
+  public TsFileResource lastResource() {
+    return resources.get(resources.size() - 1);
+  }
 }

@@ -37,6 +37,10 @@ public interface TsFileData {
 
   void serialize(DataOutputStream stream) throws IOException;
 
+  int getSplitId();
+
+  void setSplitId(int sid);
+
   static TsFileData deserialize(InputStream stream)
       throws IOException, PageException, IllegalPathException {
     boolean isModification = ReadWriteIOUtils.readBool(stream);

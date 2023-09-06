@@ -19,26 +19,33 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.Test;
 
-public class TsFileSplitterTest extends TestBase{
+public class TsFileSplitterTest extends TestBase {
   private List<TsFileData> resultSet = new ArrayList<>();
 
   @Test
   public void testSplit() throws IOException {
     long start = System.currentTimeMillis();
+    int splitId = 0;
     for (File file : files) {
-      TsFileSplitter splitter = new TsFileSplitter(file, this::consumeSplit);
+      TsFileSplitter splitter = new TsFileSplitter(file, this::consumeSplit, splitId + 1);
       splitter.splitTsFileByDataPartition();
+      splitId = splitter.getCurrentSplitId();
     }
     for (TsFileData tsFileData : resultSet) {
       // System.out.println(tsFileData);
     }
-    System.out.printf("%d splits after %dms\n", resultSet.size(), System.currentTimeMillis() - start);
+    System.out.printf(
+        "%d/%d splits after %dms\n", resultSet.size(), expectedChunkNum(), System.currentTimeMillis() - start);
+    assertEquals(resultSet.size(), expectedChunkNum());
   }
 
   public boolean consumeSplit(TsFileData data) {

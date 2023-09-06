@@ -19,18 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
-import java.io.DataOutputStream;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -55,11 +44,12 @@ import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
 import org.apache.iotdb.tsfile.read.reader.page.ValuePageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -73,6 +63,13 @@ import java.util.NoSuchElementException;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 public class MergedTsFileSplitter {
@@ -83,16 +80,22 @@ public class MergedTsFileSplitter {
   private final Function<TsFileData, Boolean> consumer;
   private final PriorityQueue<SplitTask> taskPriorityQueue;
   private ExecutorService asyncExecutor;
+  private long timePartitionInterval;
+  private AtomicInteger splitIdGenerator = new AtomicInteger();
 
-  public MergedTsFileSplitter(List<File> tsFiles, Function<TsFileData, Boolean> consumer, ExecutorService asyncExecutor) {
+  public MergedTsFileSplitter(
+      List<File> tsFiles,
+      Function<TsFileData, Boolean> consumer,
+      ExecutorService asyncExecutor,
+      long timePartitionInterval) {
     this.tsFiles = tsFiles;
     this.consumer = consumer;
     this.asyncExecutor = asyncExecutor;
+    this.timePartitionInterval = timePartitionInterval;
     taskPriorityQueue = new PriorityQueue<>();
   }
 
-  public void splitTsFileByDataPartition()
-      throws IOException, IllegalStateException {
+  public void splitTsFileByDataPartition() throws IOException, IllegalStateException {
     for (File tsFile : tsFiles) {
       SplitTask splitTask = new SplitTask(tsFile, asyncExecutor);
       if (splitTask.hasNext()) {
@@ -115,6 +118,7 @@ public class MergedTsFileSplitter {
 
       for (SplitTask equalTask : equalTasks) {
         TsFileData tsFileData = equalTask.removeNext();
+        tsFileData.setSplitId(splitIdGenerator.incrementAndGet());
         consumer.apply(tsFileData);
         if (equalTask.hasNext()) {
           taskPriorityQueue.add(equalTask);
@@ -203,15 +207,17 @@ public class MergedTsFileSplitter {
 
       nextSplits = new LinkedBlockingDeque<>(64);
       if (asyncExecutor != null) {
-        asyncTask = asyncExecutor.submit(() -> {
-          try {
-            asyncComputeNext();
-          } catch (Throwable e) {
-            logger.info("Exception during splitting", e);
-            throw e;
-          }
-          return null;
-        });
+        asyncTask =
+            asyncExecutor.submit(
+                () -> {
+                  try {
+                    asyncComputeNext();
+                  } catch (Throwable e) {
+                    logger.info("Exception during splitting", e);
+                    throw e;
+                  }
+                  return null;
+                });
       }
     }
 
@@ -336,7 +342,8 @@ public class MergedTsFileSplitter {
                     == TsFileConstant.TIME_COLUMN_MASK);
             IChunkMetadata chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
             TTimePartitionSlot timePartitionSlot =
-                TimePartitionUtils.getTimePartition(chunkMetadata.getStartTime());
+                TimePartitionUtils.getTimePartition(
+                    chunkMetadata.getStartTime(), timePartitionInterval);
             ChunkData chunkData =
                 ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
 
@@ -379,7 +386,7 @@ public class MergedTsFileSplitter {
                         ? chunkMetadata.getStartTime()
                         : pageHeader.getStartTime();
                 TTimePartitionSlot pageTimePartitionSlot =
-                    TimePartitionUtils.getTimePartition(startTime);
+                    TimePartitionUtils.getTimePartition(startTime, timePartitionInterval);
                 if (!timePartitionSlot.equals(pageTimePartitionSlot)) {
                   if (!isAligned) {
                     insertNewChunk(chunkData);
@@ -406,9 +413,7 @@ public class MergedTsFileSplitter {
                 }
 
                 int start = 0;
-                long endTime =
-                    timePartitionSlot.getStartTime()
-                        + TimePartitionUtils.getTimePartitionInterval();
+                long endTime = timePartitionSlot.getStartTime() + timePartitionInterval;
                 for (int i = 0; i < times.length; i++) {
                   if (times[i] >= endTime) {
                     chunkData.writeDecodePage(times, values, start, i);
@@ -420,10 +425,9 @@ public class MergedTsFileSplitter {
                       insertNewChunk(chunkData);
                     }
 
-                    timePartitionSlot = TimePartitionUtils.getTimePartition(times[i]);
-                    endTime =
-                        timePartitionSlot.getStartTime()
-                            + TimePartitionUtils.getTimePartitionInterval();
+                    timePartitionSlot =
+                        TimePartitionUtils.getTimePartition(times[i], timePartitionInterval);
+                    endTime = timePartitionSlot.getStartTime() + timePartitionInterval;
                     chunkData =
                         ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
                     start = i;
@@ -531,9 +535,7 @@ public class MergedTsFileSplitter {
       }
 
       @Override
-      public void writeToFileWriter(TsFileIOWriter writer) throws IOException {
-
-      }
+      public void writeToFileWriter(TsFileIOWriter writer) throws IOException {}
 
       @Override
       public boolean isModification() {
@@ -541,9 +543,15 @@ public class MergedTsFileSplitter {
       }
 
       @Override
-      public void serialize(DataOutputStream stream) throws IOException {
+      public void serialize(DataOutputStream stream) throws IOException {}
 
+      @Override
+      public int getSplitId() {
+        return 0;
       }
+
+      @Override
+      public void setSplitId(int sid) {}
     }
 
     private void getAllModification(Map<Long, List<Deletion>> offset2Deletions) throws IOException {
@@ -616,17 +624,24 @@ public class MergedTsFileSplitter {
     }
 
     private boolean needDecodeChunk(IChunkMetadata chunkMetadata) {
-      return !TimePartitionUtils.getTimePartition(chunkMetadata.getStartTime())
-          .equals(TimePartitionUtils.getTimePartition(chunkMetadata.getEndTime()));
+      return !TimePartitionUtils.getTimePartition(
+              chunkMetadata.getStartTime(), timePartitionInterval)
+          .equals(
+              TimePartitionUtils.getTimePartition(
+                  chunkMetadata.getEndTime(), timePartitionInterval));
     }
 
     private boolean needDecodePage(PageHeader pageHeader, IChunkMetadata chunkMetadata) {
       if (pageHeader.getStatistics() == null) {
-        return !TimePartitionUtils.getTimePartition(chunkMetadata.getStartTime())
-            .equals(TimePartitionUtils.getTimePartition(chunkMetadata.getEndTime()));
+        return !TimePartitionUtils.getTimePartition(
+                chunkMetadata.getStartTime(), timePartitionInterval)
+            .equals(
+                TimePartitionUtils.getTimePartition(
+                    chunkMetadata.getEndTime(), timePartitionInterval));
       }
-      return !TimePartitionUtils.getTimePartition(pageHeader.getStartTime())
-          .equals(TimePartitionUtils.getTimePartition(pageHeader.getEndTime()));
+      return !TimePartitionUtils.getTimePartition(pageHeader.getStartTime(), timePartitionInterval)
+          .equals(
+              TimePartitionUtils.getTimePartition(pageHeader.getEndTime(), timePartitionInterval));
     }
 
     private Pair<long[], Object[]> decodePage(

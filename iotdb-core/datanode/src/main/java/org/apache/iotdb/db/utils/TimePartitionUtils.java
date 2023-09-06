@@ -32,6 +32,12 @@ public class TimePartitionUtils {
     return timePartitionSlot;
   }
 
+  public static TTimePartitionSlot getTimePartition(long time, long timePartitionInterval) {
+    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
+    timePartitionSlot.setStartTime(time - time % timePartitionInterval);
+    return timePartitionSlot;
+  }
+
   public static long getTimePartitionInterval() {
     return timePartitionInterval;
   }

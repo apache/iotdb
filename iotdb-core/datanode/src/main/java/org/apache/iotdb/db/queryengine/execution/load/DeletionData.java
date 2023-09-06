@@ -33,6 +33,7 @@ import java.io.InputStream;
 
 public class DeletionData implements TsFileData {
   private final Deletion deletion;
+  private int splitId;
 
   public DeletionData(Deletion deletion) {
     this.deletion = deletion;
@@ -68,5 +69,15 @@ public class DeletionData implements TsFileData {
   public static DeletionData deserialize(InputStream stream)
       throws IllegalPathException, IOException {
     return new DeletionData(Deletion.deserializeWithoutFileOffset(new DataInputStream(stream)));
+  }
+
+  @Override
+  public int getSplitId() {
+    return splitId;
+  }
+
+  @Override
+  public void setSplitId(int sid) {
+    this.splitId = sid;
   }
 }

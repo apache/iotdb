@@ -70,7 +70,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   private final ExecutorService executor;
   private final boolean isGeneratedByPipe;
 
-  private static final String NODE_CONNECTION_ERROR = "can't connect to node {}";
+  public static final String NODE_CONNECTION_ERROR = "can't connect to node {}";
 
   public LoadTsFileDispatcherImpl(
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,

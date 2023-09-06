@@ -58,6 +58,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 public class TsFileSplitter {
@@ -65,10 +66,16 @@ public class TsFileSplitter {
 
   private final File tsFile;
   private final Function<TsFileData, Boolean> consumer;
+  private final AtomicInteger splitIdGenerator = new AtomicInteger();
 
-  public TsFileSplitter(File tsFile, Function<TsFileData, Boolean> consumer) {
+  public TsFileSplitter(File tsFile, Function<TsFileData, Boolean> consumer, int startSplitId) {
     this.tsFile = tsFile;
     this.consumer = consumer;
+    splitIdGenerator.set(startSplitId);
+  }
+
+  public int getCurrentSplitId() {
+    return splitIdGenerator.get();
   }
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
@@ -344,7 +351,12 @@ public class TsFileSplitter {
       offset2Deletions
           .pollFirstEntry()
           .getValue()
-          .forEach(o -> consumer.apply(new DeletionData(o)));
+          .forEach(
+              o -> {
+                DeletionData deletionData = new DeletionData(o);
+                deletionData.setSplitId(splitIdGenerator.incrementAndGet());
+                consumer.apply(deletionData);
+              });
     }
   }
 
@@ -359,6 +371,7 @@ public class TsFileSplitter {
       allChunkData.addAll(entry.getValue());
     }
     for (ChunkData chunkData : allChunkData) {
+      chunkData.setSplitId(splitIdGenerator.incrementAndGet());
       if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
         throw new IllegalStateException(
             String.format(
@@ -370,6 +383,7 @@ public class TsFileSplitter {
   }
 
   private void consumeChunkData(String measurement, long offset, ChunkData chunkData) {
+    chunkData.setSplitId(splitIdGenerator.incrementAndGet());
     if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
       throw new IllegalStateException(
           String.format(

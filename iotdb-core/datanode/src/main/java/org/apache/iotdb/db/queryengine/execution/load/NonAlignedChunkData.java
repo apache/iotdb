@@ -57,6 +57,7 @@ public class NonAlignedChunkData implements ChunkData {
 
   private ChunkWriterImpl chunkWriter;
   private Chunk chunk;
+  private int splitId;
 
   public NonAlignedChunkData(
       String device, ChunkHeader chunkHeader, TTimePartitionSlot timePartitionSlot) {
@@ -121,6 +122,7 @@ public class NonAlignedChunkData implements ChunkData {
     ReadWriteIOUtils.write(isAligned(), stream);
     serializeAttr(stream);
     byteStream.writeTo(stream);
+    ReadWriteIOUtils.write(splitId, stream);
     close();
   }
 
@@ -309,6 +311,8 @@ public class NonAlignedChunkData implements ChunkData {
     chunkData.pageNumber = pageNumber;
     chunkData.deserializeTsFileData(stream);
     chunkData.close();
+
+    chunkData.setSplitId(ReadWriteIOUtils.readInt(stream));
     return chunkData;
   }
 
@@ -336,6 +340,18 @@ public class NonAlignedChunkData implements ChunkData {
         + chunkHeader
         + ", needDecodeChunk="
         + needDecodeChunk
+        + ", splitId="
+        + splitId
         + '}';
+  }
+
+  @Override
+  public int getSplitId() {
+    return splitId;
+  }
+
+  @Override
+  public void setSplitId(int sid) {
+    this.splitId = sid;
   }
 }

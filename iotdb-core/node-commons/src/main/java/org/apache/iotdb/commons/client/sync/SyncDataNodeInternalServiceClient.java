@@ -32,6 +32,7 @@ import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
@@ -59,6 +60,20 @@ public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Clien
                         endpoint.getIp(),
                         endpoint.getPort(),
                         property.getConnectionTimeoutMs()))));
+    this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
+    this.endpoint = endpoint;
+    this.clientManager = clientManager;
+    getInputProtocol().getTransport().open();
+  }
+
+  @TestOnly
+  public SyncDataNodeInternalServiceClient(
+      TProtocol protocol,
+      ThriftClientProperty property,
+      TEndPoint endpoint,
+      ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager)
+      throws TTransportException {
+    super(protocol);
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
