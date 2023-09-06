@@ -115,7 +115,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  // if All paths fail, return No permission;
+  // if All paths fail, return No permission
   // if some paths fail, return SUCCESS and failed index list
   // if all path success, return success and empty index list
   public TPermissionInfoResp checkUserPrivileges(
@@ -131,7 +131,6 @@ public class AuthorInfo implements SnapshotProcessor {
         for (PartialPath path : paths) {
           if (!checkOnePath(username, path, permission)) {
             failedList.add(pos);
-            continue;
           }
           pos++;
         }
