@@ -205,29 +205,26 @@ public class AuthorityChecker {
     int columnNum = 0;
     if (authResp.tag.equals(IoTDBConstant.COLUMN_ROLE)
         || authResp.tag.equals(IoTDBConstant.COLUMN_USER)) {
-      // if list role/user, just return 1 column.
-      columnNum = 1;
       listRoleUser = true;
-    } else {
-      // if list privilege, return : rolename, path, privilege, grant option
-      columnNum = 4;
     }
 
-    for (int i = 0; i < columnNum; i++) {
-      types.add(TSDataType.TEXT);
-    }
-    TsBlockBuilder builder = new TsBlockBuilder(types);
     List<ColumnHeader> headerList = new ArrayList<>();
 
     if (listRoleUser) {
       headerList.add(new ColumnHeader(authResp.getTag(), TSDataType.TEXT));
+      types.add(TSDataType.TEXT);
     } else {
       headerList.add(new ColumnHeader(new String("ROLE"), TSDataType.TEXT));
+      types.add(TSDataType.TEXT);
       headerList.add(new ColumnHeader(new String("PATH"), TSDataType.TEXT));
+      types.add(TSDataType.TEXT);
       headerList.add(new ColumnHeader(new String("PRIVILEGES"), TSDataType.TEXT));
+      types.add(TSDataType.TEXT);
       headerList.add(new ColumnHeader(new String("GRANT OPTION"), TSDataType.BOOLEAN));
+      types.add(TSDataType.BOOLEAN);
     }
 
+    TsBlockBuilder builder = new TsBlockBuilder(types);
     if (listRoleUser) {
       for (String name : authResp.getMemberInfo()) {
         builder.getTimeColumnBuilder().writeLong(0L);

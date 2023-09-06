@@ -488,17 +488,17 @@ public class IoTDBAuthIT {
       adminStmt.execute("GRANT READ_SCHEMA ON root.a.b TO USER user1");
       adminStmt.execute("CREATE ROLE role1");
       adminStmt.execute("GRANT READ_SCHEMA,WRITE_DATA ON root.a.b.c TO ROLE role1");
-      adminStmt.execute("GRANT READ_SCHEMA,WRITE_DATA ON root.d.b.c TO ROLE role1");
-      adminStmt.execute("GRANT role1 TO user1");
+      adminStmt.execute(
+          "GRANT READ_SCHEMA,WRITE_DATA ON root.d.b.c TO ROLE role1 WITH GRANT OPTION");
+      adminStmt.execute("GRANT ROLE role1 TO user1");
 
-      ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1");
+      ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES OF USER user1");
       String ans =
-          ",root.a.b : READ_SCHEMA"
-              + ",\n"
-              + "role1,root.a.b.c : WRITE_DATA READ_SCHEMA"
-              + ",\n"
-              + "role1,root.d.b.c : WRITE_DATA READ_SCHEMA"
-              + ",\n";
+          ",root.a.b, READ_SCHEMA, false, \n"
+              + "role1, root.a.b.c, WRITE_DATA, false, \n"
+              + "role1, root.a.b.c, READ_SCHEMA, false, \n"
+              + "role1,root.d.b.c,READ_SCHEMA,true,\n"
+              + "role, root.d.b.c,WRITE_DATA, true,\n";
       try {
         validateResultSet(resultSet, ans);
 

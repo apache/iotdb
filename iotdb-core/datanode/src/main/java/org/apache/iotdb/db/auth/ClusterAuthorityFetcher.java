@@ -92,7 +92,6 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           if (!user.checkPathPrivilege(path, permission)) {
             if (user.getRoleList().isEmpty()) {
               posList.add(pos);
-              continue;
             }
             boolean status = false;
             for (String rolename : user.getRoleList()) {
