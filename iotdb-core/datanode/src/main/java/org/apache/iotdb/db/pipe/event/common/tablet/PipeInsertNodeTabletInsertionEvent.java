@@ -184,6 +184,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     }
   }
 
+  /////////////////////////// parsePattern ///////////////////////////
+
   public TabletInsertionEvent parseEventWithPattern() {
     return new PipeRawTabletInsertionEvent(convertToTablet(), isAligned, pipeTaskMeta, this, true);
   }

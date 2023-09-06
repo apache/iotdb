@@ -166,42 +166,6 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent
-        || tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
-      } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
-      }
-    } else {
-      throw new NotImplementedException(
-          "IoTDBLegacyPipeConnector only support "
-              + "PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
-    }
-  }
-
-  private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
-      throws IoTDBConnectionException, StatementExecutionException {
-    final Tablet tablet = pipeInsertNodeInsertionEvent.convertToTablet();
-    if (pipeInsertNodeInsertionEvent.isAligned()) {
-      sessionPool.insertAlignedTablet(tablet);
-    } else {
-      sessionPool.insertTablet(tablet);
-    }
-  }
-
-  private void doTransfer(PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
-      throws PipeException, IoTDBConnectionException, StatementExecutionException {
-    final Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
-    if (pipeTabletInsertionEvent.isAligned()) {
-      sessionPool.insertAlignedTablet(tablet);
-    } else {
-      sessionPool.insertTablet(tablet);
-    }
-  }
-
-  @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       throw new NotImplementedException(
@@ -215,6 +179,40 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
           String.format(
               "Network error when transfer tsFile insertion event: %s.", tsFileInsertionEvent),
           e);
+    }
+  }
+
+
+  @Override
+  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+    } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+      doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+    } else {
+      throw new NotImplementedException(
+              "IoTDBLegacyPipeConnector only support "
+                      + "PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
+    }
+  }
+
+  private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
+          throws IoTDBConnectionException, StatementExecutionException {
+    final Tablet tablet = pipeInsertNodeInsertionEvent.convertToTablet();
+    if (pipeInsertNodeInsertionEvent.isAligned()) {
+      sessionPool.insertAlignedTablet(tablet);
+    } else {
+      sessionPool.insertTablet(tablet);
+    }
+  }
+
+  private void doTransfer(PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
+          throws PipeException, IoTDBConnectionException, StatementExecutionException {
+    final Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
+    if (pipeTabletInsertionEvent.isAligned()) {
+      sessionPool.insertAlignedTablet(tablet);
+    } else {
+      sessionPool.insertTablet(tablet);
     }
   }
 
