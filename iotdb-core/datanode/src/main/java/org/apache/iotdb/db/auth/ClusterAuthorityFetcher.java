@@ -22,6 +22,7 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -127,7 +128,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     boolean grantOpt;
     if (user != null) {
       if (!user.isOpenIdUser()) {
-        if (!paths.isEmpty()) {
+        if (PrivilegeType.values()[permission].isPathRelevant()) {
           for (PartialPath path : paths) {
             grantOpt = user.checkPathPrivilegeGrantOpt(path, permission);
             if (!grantOpt) {
@@ -152,9 +153,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           }
           return true;
         } else {
-          grantOpt =
-              user.getSysPrivilege().contains(permission)
-                  && user.getSysPriGrantOpt().contains(permission);
+          grantOpt = user.checkSysPriGrantOpt(permission);
           if (!grantOpt) {
             for (String roleName : user.getRoleList()) {
               Role role = iAuthorCache.getRoleCache(roleName);
@@ -169,6 +168,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
                 return checkUserPrivilegeGrantOptFromConfigNode(username, paths, permission);
               }
             }
+            return false;
           } else {
             return true;
           }
@@ -363,6 +363,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     return iAuthorCache;
   }
 
+  @Override
   public void refreshToken() {
     long currentTime = System.currentTimeMillis();
     if (heartBeatTimeStamp == 0) {
