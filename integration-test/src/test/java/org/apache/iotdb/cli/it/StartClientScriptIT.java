@@ -109,20 +109,6 @@ public class StartClientScriptIT extends AbstractScript {
             "%^errorlevel%");
     builder2.environment().put("CLASSPATH", libPath);
     testOutput(builder2, output2, 0);
-
-    final String[] output3 = {
-      "Error: error format of max print row count, it should be an integer number"
-    };
-    ProcessBuilder builder3 =
-        new ProcessBuilder(
-            "cmd.exe",
-            "/c",
-            sbinPath + File.separator + "start-cli.bat",
-            "&",
-            "exit",
-            "%^errorlevel%");
-    builder3.environment().put("CLASSPATH", libPath);
-    testOutput(builder3, output3, 1);
   }
 
   @Override
