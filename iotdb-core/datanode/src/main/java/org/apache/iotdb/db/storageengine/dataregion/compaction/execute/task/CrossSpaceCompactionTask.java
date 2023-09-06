@@ -247,7 +247,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             storageGroupName,
             dataRegionId,
             String.format("%.2f", costTime),
-            String.format("%.2f", (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024 / costTime),
+            String.format("%.2f", (selectedSeqFileSize + selectedUnseqFileSize) / 1024.0d / 1024.0d / costTime),
             summary);
       }
       if (logFile.exists()) {
