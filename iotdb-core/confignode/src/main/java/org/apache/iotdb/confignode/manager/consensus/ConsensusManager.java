@@ -128,6 +128,7 @@ public class ConsensusManager {
                                   RatisConfig.Log.newBuilder()
                                       .setUnsafeFlushEnabled(
                                           CONF.isConfigNodeRatisLogUnsafeFlushEnable())
+                                      .setForceSyncNum(CONF.getConfigNodeRatisLogForceSyncNum())
                                       .setSegmentCacheSizeMax(
                                           SizeInBytes.valueOf(
                                               CONF.getConfigNodeRatisLogSegmentSizeMax()))
@@ -139,6 +140,8 @@ public class ConsensusManager {
                                       .setFlowControlWindow(
                                           SizeInBytes.valueOf(
                                               CONF.getConfigNodeRatisGrpcFlowControlWindow()))
+                                      .setLeaderOutstandingAppendsMax(
+                                          CONF.getConfigNodeRatisGrpcLeaderOutstandingAppendsMax())
                                       .build())
                               .setRpc(
                                   RatisConfig.Rpc.newBuilder()
