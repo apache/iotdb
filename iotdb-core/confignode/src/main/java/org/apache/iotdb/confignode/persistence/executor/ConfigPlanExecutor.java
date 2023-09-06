@@ -579,7 +579,8 @@ public class ConfigPlanExecutor {
     } else {
       // count nodes
       Pair<List<PartialPath>, Set<PartialPath>> matchedChildInNextLevel =
-          clusterSchemaInfo.getNodesListInGivenLevel(partialPath, level);
+          clusterSchemaInfo.getNodesListInGivenLevel(
+              partialPath, level, getNodePathsPartitionPlan.getScope());
       alreadyMatchedNode =
           matchedChildInNextLevel.left.stream()
               .map(path -> new TSchemaNode(path.getFullPath(), MNodeType.UNIMPLEMENT.getNodeType()))
