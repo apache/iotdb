@@ -8,7 +8,6 @@ on:
     branches:
       - master
       - "rel/*"
-      - codecov
     paths-ignore:
       - "docs/**"
       - 'site/**'
@@ -47,22 +46,13 @@ jobs:
       - name: Test
         run: | 
           mvn -B -P with-code-coverage clean compile test -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true
+          # TODO: "post-integration-test" doesn't evaluate the outcome of the IT phase, this is done in "validate"
           mvn -B -P with-code-coverage post-integration-test -pl code-coverage
       - name: Upload coverage reports to codecov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./code-coverage/target/jacoco-merged-reports/jacoco.xml
-#      - name: Coveralls
-#        # TODO: "post-integration-test" doesn't evaluate the outcome of the IT phase, this is done in "validate"
-#        run: |
-#          mvn -B -P with-code-coverage post-integration-test -pl code-coverage
-#          mvn -B coveralls:report \
-#          -DserviceName=travis_ci \
-#          -Dbranch=$BRANCH_NAME \
-#          -DpullRequest=$PR_NUMBER \
-#          -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
-#          -Pwith-code-coverage
 
   sonar:
     runs-on: ubuntu-latest
