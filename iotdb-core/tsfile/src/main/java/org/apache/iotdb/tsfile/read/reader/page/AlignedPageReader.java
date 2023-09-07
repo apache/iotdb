@@ -165,6 +165,23 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     return new LazyLoadAlignedPagePointReader(timePageReader, valuePageReaderList);
   }
 
+  // if any values of these queried measurements has the same value count as the time column
+  // and no mods file exist, we can go fast way
+  private boolean canGoFastWay() {
+    if (isModified) {
+      return false;
+    }
+    boolean res = getValueStatisticsList().isEmpty();
+    long rowCount = getTimeStatistics().getCount();
+    for (Statistics vStatistics : getValueStatisticsList()) {
+      if (vStatistics != null && !vStatistics.hasNullValue(rowCount)) {
+        res = true;
+        break;
+      }
+    }
+    return res;
+  }
+
   @Override
   public TsBlock getAllSatisfiedData() throws IOException {
     if (!pageSatisfy()) {
@@ -173,17 +190,15 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
     long[] timeBatch = timePageReader.getNextTimeBatch();
 
-    if (queryAllSensors && !isModified) {
+    if (canGoFastWay()) {
       // skip all the page
       if (paginationController.hasCurOffset(timeBatch.length)) {
         paginationController.consumeOffset(timeBatch.length);
       } else {
-        // consume the remaining offset
-        if (paginationController.hasCurOffset()) {
-          paginationController.consumeOffset(paginationController.getCurOffset());
-        }
         int readStartIndex =
             paginationController.hasCurOffset() ? (int) paginationController.getCurOffset() : 0;
+        // consume the remaining offset
+        paginationController.consumeOffset(readStartIndex);
         // not included
         int readEndIndex =
             (paginationController.hasCurLimit()
@@ -191,7 +206,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
                 ? readStartIndex + (int) paginationController.getCurLimit()
                 : timeBatch.length;
         if (paginationController.hasCurLimit()) {
-          paginationController.consumeLimit(readEndIndex - readStartIndex);
+          paginationController.consumeLimit((long) readEndIndex - readStartIndex);
         }
         // construct time column
         for (int i = readStartIndex; i < readEndIndex; i++) {
