@@ -111,7 +111,7 @@ public class PipeConnectorSubtaskManager {
       final BoundedBlockingPendingQueue<Event> pendingQueue =
           new BoundedBlockingPendingQueue<>(
               PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
-      ArrayList<PipeConnectorSubtaskLifeCycle> pipeSubtaskLifeCycleList =
+      ArrayList<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
       for (int i = 0; i < connectorNum; i++) {
@@ -120,11 +120,11 @@ public class PipeConnectorSubtaskManager {
                 attributeSortedString + i, pendingQueue, pipeConnectorList.get(i));
         final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
             new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask, pendingQueue);
-        pipeSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
+        pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
       }
 
       attributeSortedString2SubtaskLifeCycleMap.put(
-          attributeSortedString, pipeSubtaskLifeCycleList);
+          attributeSortedString, pipeConnectorSubtaskLifeCycleList);
     }
 
     ArrayList<PipeConnectorSubtaskLifeCycle> list =
