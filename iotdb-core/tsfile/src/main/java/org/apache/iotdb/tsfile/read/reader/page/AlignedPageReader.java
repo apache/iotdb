@@ -201,13 +201,11 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
         paginationController.consumeOffset(readStartIndex);
         // not included
         int readEndIndex =
-            (paginationController.hasCurLimit()
-                    && (paginationController.getCurLimit() > 0
-                        && paginationController.getCurLimit()
-                            < timeBatch.length - readStartIndex + 1))
+            (paginationController.hasCurLimit() && paginationController.getCurLimit() > 0)
+                    && (paginationController.getCurLimit() < timeBatch.length - readStartIndex + 1)
                 ? readStartIndex + (int) paginationController.getCurLimit()
                 : timeBatch.length;
-        if (paginationController.hasCurLimit()) {
+        if (paginationController.hasCurLimit() && paginationController.getCurLimit() > 0) {
           paginationController.consumeLimit((long) readEndIndex - readStartIndex);
         }
         // construct time column
