@@ -70,7 +70,7 @@ import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.
  */
 public class OpcUaServerBuilder {
 
-  private final String wildCardAddress = "0.0.0.0";
+  private static final String WILD_CARD_ADDRESS = "0.0.0.0";
   private final Logger logger = LoggerFactory.getLogger(OpcUaServerBuilder.class);
 
   private int tcpBindPort;
@@ -79,7 +79,10 @@ public class OpcUaServerBuilder {
   private String password;
 
   public OpcUaServerBuilder() {
-    // Empty constructor
+    tcpBindPort = 12686;
+    httpsBindPort = 8443;
+    user = "root";
+    password = "root";
   }
 
   public OpcUaServerBuilder setTcpBindPort(int tcpBindPort) {
@@ -132,7 +135,7 @@ public class OpcUaServerBuilder {
     SelfSignedHttpsCertificateBuilder httpsCertificateBuilder =
         new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
     httpsCertificateBuilder.setCommonName(HostnameUtil.getHostname());
-    HostnameUtil.getHostnames(wildCardAddress).forEach(httpsCertificateBuilder::addDnsName);
+    HostnameUtil.getHostnames(WILD_CARD_ADDRESS).forEach(httpsCertificateBuilder::addDnsName);
     X509Certificate httpsCertificate = httpsCertificateBuilder.build();
 
     DefaultServerCertificateValidator certificateValidator =
@@ -206,11 +209,11 @@ public class OpcUaServerBuilder {
     Set<EndpointConfiguration> endpointConfigurations = new LinkedHashSet<>();
 
     List<String> bindAddresses = newArrayList();
-    bindAddresses.add(wildCardAddress);
+    bindAddresses.add(WILD_CARD_ADDRESS);
 
     Set<String> hostnames = new LinkedHashSet<>();
     hostnames.add(HostnameUtil.getHostname());
-    hostnames.addAll(HostnameUtil.getHostnames(wildCardAddress));
+    hostnames.addAll(HostnameUtil.getHostnames(WILD_CARD_ADDRESS));
 
     for (String bindAddress : bindAddresses) {
       for (String hostname : hostnames) {

@@ -37,7 +37,6 @@ import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.BaseEventTypeNode;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.UaException;
-import org.eclipse.milo.opcua.stack.core.types.builtin.ByteString;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
@@ -65,8 +64,6 @@ public class OpcUaConnector implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaConnector.class);
 
   private OpcUaServer server;
-
-  private int eventId = 0;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -208,9 +205,6 @@ public class OpcUaConnector implements PipeConnector {
             throw new PipeRuntimeNonCriticalException(
                 "Unsupported data type: " + tablet.getSchemas().get(columnIndex).getType());
         }
-
-        // Reset the eventId each time
-        eventNode.setEventId(ByteString.of(Integer.toString(eventId++).getBytes()));
 
         // Send the event
         server.getEventBus().post(eventNode);
