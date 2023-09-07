@@ -46,12 +46,12 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
   private final PriorityBlockingQueue<Pair<Long, Event>> events =
       new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left));
-  private final WebsocketConnector websocketConnector;
+  private final WebSocketConnector websocketConnector;
 
   private final ConcurrentMap<Long, Event> eventMap = new ConcurrentHashMap<>();
 
   public WebSocketConnectorServer(
-      InetSocketAddress address, WebsocketConnector websocketConnector) {
+      InetSocketAddress address, WebSocketConnector websocketConnector) {
     super(address);
     this.websocketConnector = websocketConnector;
   }
@@ -78,18 +78,20 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   @Override
   public void onMessage(WebSocket webSocket, String s) {
-    String log =
-        String.format(
-            "Received a message `%s` from %s:%d",
-            s,
-            webSocket.getRemoteSocketAddress().getHostName(),
-            webSocket.getRemoteSocketAddress().getPort());
-    LOGGER.info(log);
     if (s.startsWith("START")) {
+      LOGGER.info(
+          "Received a start message from {}:{}",
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort());
       handleStart(webSocket);
     } else if (s.startsWith("ACK")) {
       handleAck(webSocket, s);
     } else if (s.startsWith("ERROR")) {
+      LOGGER.error(
+          "Received an error message {} from {}:{}",
+          s,
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort());
       handleError(webSocket, s);
     }
   }
@@ -116,7 +118,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
         String.format(
             "The webSocket server %s:%d has been started!",
             this.getAddress().getHostName(), this.getPort());
-    LOGGER.error(log);
+    LOGGER.info(log);
   }
 
   public void addEvent(Pair<Long, Event> event) {
@@ -127,6 +129,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
             events.wait();
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            throw new PipeException(e.getMessage());
           }
         }
       }
@@ -145,14 +148,17 @@ public class WebSocketConnectorServer extends WebSocketServer {
       String log = String.format("The event can't be taken, because: %s", e.getMessage());
       LOGGER.warn(log);
       Thread.currentThread().interrupt();
+      throw new PipeException(e.getMessage());
     }
   }
 
   private void handleAck(WebSocket webSocket, String s) {
     long commitId = Long.parseLong(s.replace("ACK:", ""));
     Event event = eventMap.remove(commitId);
-    websocketConnector.commit(
-        commitId, event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
+    if (event != null) {
+      websocketConnector.commit(
+          commitId, event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
+    }
     handleStart(webSocket);
   }
 
@@ -163,7 +169,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
             "The tablet of commitId: %d can't be parsed by client, it will be retried later.",
             commitId);
     LOGGER.warn(log);
-    events.put(new Pair<>(commitId, eventMap.remove(commitId)));
+    Event event = eventMap.remove(commitId);
+    if (event != null) {
+      events.put(new Pair<>(commitId, event));
+    }
     handleStart(webSocket);
   }
 
@@ -203,7 +212,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
       throw new PipeException(e.getMessage());
     } catch (Exception e) {
       events.put(eventPair);
-      e.printStackTrace();
+      throw new PipeException(e.getMessage());
     }
   }
 }

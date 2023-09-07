@@ -25,8 +25,10 @@ import org.apache.iotdb.flink.sql.exception.IllegalOptionException;
 import org.apache.iotdb.flink.sql.exception.IllegalSchemaException;
 import org.apache.iotdb.flink.sql.wrapper.SchemaWrapper;
 import org.apache.iotdb.flink.sql.wrapper.TabletWrapper;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -89,8 +91,18 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
     Session session =
         new Session.Builder().username(user).password(password).nodeUrls(nodeUrls).build();
     session.open(false);
-    boolean hasCreatedPipeTask =
-        session.executeQueryStatement(String.format("show pipe flink_cdc_%s", taskName)).hasNext();
+    String pipeName =
+        String.format("`flink_cdc_%s_%s_%d`", taskName, pattern.replace("`", "``"), cdcPort);
+    boolean hasCreatedPipeTask = false;
+    try (SessionDataSet pipes = session.executeQueryStatement("show pipes"); ) {
+      while (pipes.hasNext()) {
+        RowRecord pipe = pipes.next();
+        if (pipeName.equals(pipe.getFields().get(0).getStringValue())) {
+          hasCreatedPipeTask = true;
+          break;
+        }
+      }
+    }
     if (!hasCreatedPipeTask) {
       for (String nodeUrl : nodeUrls) {
         URI uri = new URI(String.format("ws://%s:%d", nodeUrl.split(":")[0], cdcPort));
@@ -103,32 +115,30 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
       }
       String createPipeCommand =
           String.format(
-              "CREATE PIPE flink_cdc_%s\n"
+              "CREATE PIPE %s\n"
                   + "WITH EXTRACTOR (\n"
                   + "'extractor' = 'iotdb-extractor',\n"
                   + "'extractor.pattern' = '%s',\n"
-                  + "'extractor.history.enable' = 'true',\n"
-                  + "'extractor.realtime.enable' = 'true',\n"
-                  + "'extractor.realtime.mode' = 'hybrid',\n"
                   + ") WITH CONNECTOR (\n"
                   + "'connector' = 'websocket-connector',\n"
                   + "'connector.websocket.port' = '%d'"
                   + ")",
-              taskName, pattern, cdcPort);
+              pipeName, pattern, cdcPort);
       session.executeNonQueryStatement(createPipeCommand);
     }
-
-    String status =
-        session
-            .executeQueryStatement(String.format("show pipe flink_cdc_%s", taskName))
-            .next()
-            .getFields()
-            .get(2)
-            .getStringValue();
-    if ("STOPPED".equals(status)) {
-      session.executeNonQueryStatement(String.format("start pipe flink_cdc_%s", taskName));
+    try (SessionDataSet pipes = session.executeQueryStatement("show pipes"); ) {
+      String status = null;
+      while (pipes.hasNext()) {
+        RowRecord pipe = pipes.next();
+        if (pipeName.equals(pipe.getFields().get(0).getStringValue())) {
+          status = pipe.getFields().get(2).getStringValue();
+          break;
+        }
+      }
+      if ("STOPPED".equals(status)) {
+        session.executeNonQueryStatement(String.format("start pipe %s", pipeName));
+      }
     }
-
     session.close();
 
     consumeExecutor = Executors.newFixedThreadPool(1);
@@ -212,7 +222,11 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
     for (MeasurementSchema schema : schemas) {
       String timeseries = String.format("%s.%s", tablet.deviceId, schema.getMeasurementId());
       TSDataType iotdbType = schema.getType();
-      DataType flinkType = tableSchema.get(timeseriesList.indexOf(timeseries)).f1;
+      int index = timeseriesList.indexOf(timeseries);
+      if (index == -1) {
+        return;
+      }
+      DataType flinkType = tableSchema.get(index).f1;
       if (!Utils.isTypeEqual(iotdbType, flinkType)) {
         throw new IllegalSchemaException(
             String.format(
