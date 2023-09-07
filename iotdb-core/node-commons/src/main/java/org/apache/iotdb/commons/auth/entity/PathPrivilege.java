@@ -102,6 +102,19 @@ public class PathPrivilege {
     return true;
   }
 
+  public boolean checkPrivilege(int privilege) {
+    if (privileges.contains(privilege)) {
+      return true;
+    }
+    if (privilege == PrivilegeType.READ_DATA.ordinal()) {
+      return privileges.contains(PrivilegeType.WRITE_DATA.ordinal());
+    }
+    if (privilege == PrivilegeType.READ_SCHEMA.ordinal()) {
+      return privileges.contains(PrivilegeType.WRITE_SCHEMA.ordinal());
+    }
+    return false;
+  }
+
   private int posToPri(int pos) {
     switch (pos) {
       case 0:

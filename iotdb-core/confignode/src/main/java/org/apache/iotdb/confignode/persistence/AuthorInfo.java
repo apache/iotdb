@@ -369,7 +369,7 @@ public class AuthorInfo implements SnapshotProcessor {
       return resp;
     }
     for (PathPrivilege path : user.getPathPrivilegeList()) {
-      if (path.getPrivileges().contains(permission)) {
+      if (path.checkPrivilege(permission)) {
         pPtree.appendPathPattern(path.getPath());
       }
     }
@@ -377,7 +377,7 @@ public class AuthorInfo implements SnapshotProcessor {
       Role role = authorizer.getRole(rolename);
       if (role != null) {
         for (PathPrivilege path : role.getPathPrivilegeList()) {
-          if (path.getPrivileges().contains(permission)) {
+          if (path.checkPrivilege(permission)) {
             pPtree.appendPathPattern(path.getPath());
           }
         }
