@@ -28,7 +28,7 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_IOTDB_IP_KEY = "connector.ip";
   public static final String CONNECTOR_IOTDB_PORT_KEY = "connector.port";
   public static final String CONNECTOR_IOTDB_NODE_URLS_KEY = "connector.node-urls";
-  
+
   public static final String CONNECTOR_IOTDB_NUMBER_KEY = "connector.number";
   public static final int CONNECTOR_IOTDB_NUMBER_DEFAULT_VALUE = 1;
 
@@ -56,7 +56,7 @@ public class PipeConnectorConstant {
 
   public static final String CONNECTOR_WEBSOCKET_PORT_KEY = "connector.websocket.port";
   public static final int CONNECTOR_WEBSOCKET_PORT_DEFAULT_VALUE = 8080;
-  
+
   public static final String CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY = "connector.opcua.tcp.port";
   public static final int CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE = 12686;
 
