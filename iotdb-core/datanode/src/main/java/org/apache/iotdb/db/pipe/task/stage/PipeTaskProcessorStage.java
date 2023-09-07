@@ -85,7 +85,12 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       throw new PipeException(e.getMessage(), e);
     }
 
-    final String taskId = pipeName + "_" + dataRegionId;
+    // Should add creation time in taskID, because subtasks are stored in the hashmap
+    // PipeProcessorSubtaskWorker.subtasks, and deleted subtasks will be removed by
+    // a timed thread. If a pipe is deleted and created again before its subtask is
+    // removed, the new subtask will have the same pipeName and dataRegionId as the
+    // old one, so we need creationTime to make their hash code different in the map.
+    final String taskId = pipeName + "_" + dataRegionId + "_" + creationTime;
     final PipeEventCollector pipeConnectorOutputEventCollector =
         new PipeEventCollector(pipeConnectorOutputPendingQueue);
     this.pipeProcessorSubtask =
