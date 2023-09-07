@@ -43,6 +43,7 @@ import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showChildNodesColumnHeaders;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showChildPathsColumnHeaders;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showDevicesColumnHeaders;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showStorageGroupsColumnHeaders;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showTTLColumnHeaders;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showTimeSeriesColumnHeaders;
 
@@ -150,6 +151,18 @@ public class IoTDBSeriesPermissionIT {
         new String[] {"1,"},
         "test1",
         "test123");
+
+    // show/count databases
+    resultSetEqualTest(
+        "show databases",
+        showStorageGroupsColumnHeaders.stream()
+            .map(ColumnHeader::getColumnName)
+            .toArray(String[]::new),
+        new String[] {"root.test,10000,1,1,604800000,"},
+        "test1",
+        "test123");
+    resultSetEqualTest(
+        "count databases", new String[] {"count"}, new String[] {"1,"}, "test1", "test123");
 
     // show/count devices
     resultSetEqualTest(

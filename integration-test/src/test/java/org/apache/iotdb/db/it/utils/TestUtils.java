@@ -408,4 +408,16 @@ public class TestUtils {
       fail(e.getMessage());
     }
   }
+
+  public static void revokeUserSeriesPrivilege(
+      String userName, PrivilegeType privilegeType, String path) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format("revoke %s on %s from user %s", privilegeType, path, userName));
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }
