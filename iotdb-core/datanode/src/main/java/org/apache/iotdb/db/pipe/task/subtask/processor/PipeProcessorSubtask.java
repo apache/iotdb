@@ -96,15 +96,18 @@ public class PipeProcessorSubtask extends PipeSubtask {
     }
 
     try {
-      if (event instanceof TabletInsertionEvent) {
-        pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
-      } else if (event instanceof TsFileInsertionEvent) {
-        pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
-      } else if (event instanceof PipeHeartbeatEvent) {
-        pipeProcessor.process(event, outputEventCollector);
-        ((PipeHeartbeatEvent) event).onProcessed();
-      } else {
-        pipeProcessor.process(event, outputEventCollector);
+      // event can be supplied after the subtask is closed, so we need to check isClosed here
+      if (!isClosed.get()) {
+        if (event instanceof TabletInsertionEvent) {
+          pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+        } else if (event instanceof TsFileInsertionEvent) {
+          pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+        } else if (event instanceof PipeHeartbeatEvent) {
+          pipeProcessor.process(event, outputEventCollector);
+          ((PipeHeartbeatEvent) event).onProcessed();
+        } else {
+          pipeProcessor.process(event, outputEventCollector);
+        }
       }
 
       releaseLastEvent();
