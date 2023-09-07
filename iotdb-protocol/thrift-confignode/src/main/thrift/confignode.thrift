@@ -728,12 +728,10 @@ struct TUnsetSchemaTemplateReq{
 
 struct TCreateModelReq {
   1: required string modelId
-  2: required common.ModelTask modelTask
-  3: required string modelType
-  4: required list<string> queryExpressions
-  5: optional string queryFilter
-  6: required bool isAuto
-  7: required map<string, string> modelConfigs
+  2: required common.TaskType taskType
+  3: required map<string, string> options
+  4: required map<string, string> hyperparameters
+  5: required string datasetFetchSQL
 }
 
 struct TDropModelReq {
@@ -749,26 +747,35 @@ struct TShowModelResp {
   2: required list<binary> modelInfoList
 }
 
-struct TShowTrailReq {
+struct TShowTrialReq {
   1: required string modelId
-  2: optional string trailId
+  2: optional string trialId
 }
 
-struct TShowTrailResp {
+struct TGetModelInfoReq {
+  1: required string modelId
+}
+
+struct TShowTrialResp {
   1: required common.TSStatus status
-  2: required list<binary> trailInfoList
+  2: required list<binary> trialInfoList
 }
 
 struct TUpdateModelInfoReq {
   1: required string modelId
-  2: required string trailId
+  2: required string trialId
   3: required map<string, string> modelInfo
 }
 
 struct TUpdateModelStateReq {
   1: required string modelId
   2: required common.TrainingState state
-  3: optional string bestTrailId
+  3: optional string bestTrialId
+}
+
+struct TGetModelInfoResp {
+  1: required common.TSStatus status
+  2: optional binary modelInfo
 }
 
 // ====================================================
@@ -1371,9 +1378,9 @@ service IConfigNodeRPCService {
   TShowModelResp showModel(TShowModelReq req)
 
   /**
-   * Return the trail table
+   * Return the trial table
    */
-  TShowTrailResp showTrail(TShowTrailReq req)
+  TShowTrialResp showTrial(TShowTrialReq req)
 
   /**
    * Update the model info
@@ -1388,6 +1395,11 @@ service IConfigNodeRPCService {
    * @return SUCCESS_STATUS if the model was removed successfully
    */
   common.TSStatus updateModelState(TUpdateModelStateReq req)
+
+   /**
+   * Return the model info by model_id
+   */
+  TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
 
   // ======================================================
   // Quota

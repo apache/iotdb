@@ -33,7 +33,7 @@ import java.util.Objects;
 public class UpdateModelInfoPlan extends ConfigPhysicalPlan {
 
   private String modelId;
-  private String trailId;
+  private String trialId;
   private Map<String, String> modelInfo;
 
   public UpdateModelInfoPlan() {
@@ -43,7 +43,7 @@ public class UpdateModelInfoPlan extends ConfigPhysicalPlan {
   public UpdateModelInfoPlan(TUpdateModelInfoReq updateModelInfoReq) {
     super(ConfigPhysicalPlanType.UpdateModelInfo);
     this.modelId = updateModelInfoReq.getModelId();
-    this.trailId = updateModelInfoReq.getTrailId();
+    this.trialId = updateModelInfoReq.getTrialId();
     this.modelInfo = updateModelInfoReq.getModelInfo();
   }
 
@@ -51,8 +51,8 @@ public class UpdateModelInfoPlan extends ConfigPhysicalPlan {
     return modelId;
   }
 
-  public String getTrailId() {
-    return trailId;
+  public String getTrialId() {
+    return trialId;
   }
 
   public Map<String, String> getModelInfo() {
@@ -63,14 +63,14 @@ public class UpdateModelInfoPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(modelId, stream);
-    ReadWriteIOUtils.write(trailId, stream);
+    ReadWriteIOUtils.write(trialId, stream);
     ReadWriteIOUtils.write(modelInfo, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     this.modelId = ReadWriteIOUtils.readString(buffer);
-    this.trailId = ReadWriteIOUtils.readString(buffer);
+    this.trialId = ReadWriteIOUtils.readString(buffer);
     this.modelInfo = ReadWriteIOUtils.readMap(buffer);
   }
 
@@ -87,12 +87,12 @@ public class UpdateModelInfoPlan extends ConfigPhysicalPlan {
     }
     UpdateModelInfoPlan that = (UpdateModelInfoPlan) o;
     return modelId.equals(that.modelId)
-        && trailId.equals(that.trailId)
+        && trialId.equals(that.trialId)
         && modelInfo.equals(that.modelInfo);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), modelId, trailId, modelInfo);
+    return Objects.hash(super.hashCode(), modelId, trialId, modelInfo);
   }
 }

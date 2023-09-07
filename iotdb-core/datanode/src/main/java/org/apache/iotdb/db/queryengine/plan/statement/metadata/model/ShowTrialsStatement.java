@@ -28,11 +28,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import java.util.Collections;
 import java.util.List;
 
-public class ShowTrailsStatement extends Statement implements IConfigStatement {
+public class ShowTrialsStatement extends Statement implements IConfigStatement {
 
   private final String modelId;
 
-  public ShowTrailsStatement(String modelId) {
+  public ShowTrialsStatement(String modelId) {
     this.modelId = modelId;
   }
 
@@ -52,6 +52,6 @@ public class ShowTrailsStatement extends Statement implements IConfigStatement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowTrails(this, context);
+    return visitor.visitShowTrials(this, context);
   }
 }

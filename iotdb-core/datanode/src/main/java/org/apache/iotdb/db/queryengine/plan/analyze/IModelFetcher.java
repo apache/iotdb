@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.queryengine.plan.analyze;
 
-public class IntoProcessException extends RuntimeException {
+import org.apache.iotdb.commons.model.ModelInformation;
 
-  public IntoProcessException(String message) {
-    super(message);
-  }
+public interface IModelFetcher {
+  /** Get model information by model id from configNode. */
+  ModelInformation getModelInformation(String modelId);
 }

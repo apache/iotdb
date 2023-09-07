@@ -67,7 +67,6 @@ public class AbstractCliIT {
       AbstractCli.PW_ARGS,
       AbstractCli.USERNAME_ARGS,
       AbstractCli.ISO8601_ARGS,
-      AbstractCli.MAX_PRINT_ROW_COUNT_ARGS,
     };
     for (String keyword : keywords) {
       if (!AbstractCli.keywordSet.contains("-" + keyword)) {
@@ -170,20 +169,6 @@ public class AbstractCliIT {
 
     assertEquals(
         OperationResult.CONTINUE_OPER,
-        AbstractCli.handleInputCmd(
-            String.format("%s=", AbstractCli.SET_MAX_DISPLAY_NUM), connection));
-    assertEquals(
-        OperationResult.CONTINUE_OPER,
-        AbstractCli.handleInputCmd(
-            String.format("%s=xxx", AbstractCli.SET_MAX_DISPLAY_NUM), connection));
-    assertEquals(
-        OperationResult.CONTINUE_OPER,
-        AbstractCli.handleInputCmd(
-            String.format("%s=1", AbstractCli.SET_MAX_DISPLAY_NUM), connection));
-    testSetMaxDisplayNumber();
-
-    assertEquals(
-        OperationResult.CONTINUE_OPER,
         AbstractCli.handleInputCmd(AbstractCli.SHOW_TIMEZONE, connection));
     assertEquals(
         OperationResult.CONTINUE_OPER,
@@ -208,29 +193,5 @@ public class AbstractCliIT {
         OperationResult.CONTINUE_OPER,
         AbstractCli.handleInputCmd(
             String.format("%s=111", AbstractCli.SET_FETCH_SIZE), connection));
-  }
-
-  private void testSetMaxDisplayNumber() {
-    try {
-      AbstractCli.setMaxDisplayNumber("10");
-    } catch (NumberFormatException e) {
-      fail();
-    }
-
-    try {
-      AbstractCli.setMaxDisplayNumber("111111111111111");
-      fail();
-    } catch (NumberFormatException ignored) {
-    }
-
-    try {
-      AbstractCli.setMaxDisplayNumber("-10");
-    } catch (NumberFormatException ignored) {
-    }
-
-    try {
-      AbstractCli.setMaxDisplayNumber("0");
-    } catch (NumberFormatException ignored) {
-    }
   }
 }

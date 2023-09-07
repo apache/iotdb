@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.consensus.request.read.model;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrialReq;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -29,20 +29,20 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class ShowTrailPlan extends ConfigPhysicalPlan {
+public class ShowTrialPlan extends ConfigPhysicalPlan {
 
   private String modelId;
-  private String trailId;
+  private String trialId;
 
-  public ShowTrailPlan() {
-    super(ConfigPhysicalPlanType.ShowTrail);
+  public ShowTrialPlan() {
+    super(ConfigPhysicalPlanType.ShowTrial);
   }
 
-  public ShowTrailPlan(TShowTrailReq showTrailReq) {
-    super(ConfigPhysicalPlanType.ShowTrail);
+  public ShowTrialPlan(TShowTrialReq showTrailReq) {
+    super(ConfigPhysicalPlanType.ShowTrial);
     this.modelId = showTrailReq.getModelId();
-    if (showTrailReq.isSetTrailId()) {
-      this.trailId = showTrailReq.getTrailId();
+    if (showTrailReq.isSetTrialId()) {
+      this.trialId = showTrailReq.getTrialId();
     }
   }
 
@@ -50,20 +50,20 @@ public class ShowTrailPlan extends ConfigPhysicalPlan {
     return modelId;
   }
 
-  public boolean isSetTrailId() {
-    return trailId != null;
+  public boolean isSetTrialId() {
+    return trialId != null;
   }
 
-  public String getTrailId() {
-    return trailId;
+  public String getTrialId() {
+    return trialId;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(modelId, stream);
-    ReadWriteIOUtils.write(trailId != null, stream);
-    ReadWriteIOUtils.write(trailId, stream);
+    ReadWriteIOUtils.write(trialId != null, stream);
+    ReadWriteIOUtils.write(trialId, stream);
   }
 
   @Override
@@ -71,7 +71,7 @@ public class ShowTrailPlan extends ConfigPhysicalPlan {
     this.modelId = ReadWriteIOUtils.readString(buffer);
     boolean isSetTrailId = ReadWriteIOUtils.readBool(buffer);
     if (isSetTrailId) {
-      this.trailId = ReadWriteIOUtils.readString(buffer);
+      this.trialId = ReadWriteIOUtils.readString(buffer);
     }
   }
 
@@ -86,12 +86,12 @@ public class ShowTrailPlan extends ConfigPhysicalPlan {
     if (!super.equals(o)) {
       return false;
     }
-    ShowTrailPlan that = (ShowTrailPlan) o;
-    return modelId.equals(that.modelId) && Objects.equals(trailId, that.trailId);
+    ShowTrialPlan that = (ShowTrialPlan) o;
+    return modelId.equals(that.modelId) && Objects.equals(trialId, that.trialId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), modelId, trailId);
+    return Objects.hash(super.hashCode(), modelId, trialId);
   }
 }

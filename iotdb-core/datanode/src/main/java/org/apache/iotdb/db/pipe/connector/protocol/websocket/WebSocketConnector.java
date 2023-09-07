@@ -42,10 +42,11 @@ import java.util.Comparator;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
-public class WebsocketConnector implements PipeConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(WebsocketConnector.class);
-  private WebSocketConnectorServer server;
+public class WebSocketConnector implements PipeConnector {
+  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnector.class);
+  private final AtomicReference<WebSocketConnectorServer> server = new AtomicReference<>();
   private int port;
 
   public final AtomicLong commitIdGenerator = new AtomicLong(0);
@@ -67,9 +68,13 @@ public class WebsocketConnector implements PipeConnector {
 
   @Override
   public void handshake() throws Exception {
-    if (server == null) {
-      server = new WebSocketConnectorServer(new InetSocketAddress(port), this);
-      server.start();
+    if (server.get() == null) {
+      synchronized (server) {
+        if (server.get() == null) {
+          server.set(new WebSocketConnectorServer(new InetSocketAddress(port), this));
+          server.get().start();
+        }
+      }
     }
   }
 
@@ -88,8 +93,8 @@ public class WebsocketConnector implements PipeConnector {
     }
     long commitId = commitIdGenerator.incrementAndGet();
     ((EnrichedEvent) tabletInsertionEvent)
-        .increaseReferenceCount(WebsocketConnector.class.getName());
-    server.addEvent(new Pair<>(commitId, tabletInsertionEvent));
+        .increaseReferenceCount(WebSocketConnector.class.getName());
+    server.get().addEvent(new Pair<>(commitId, tabletInsertionEvent));
   }
 
   @Override
@@ -100,10 +105,11 @@ public class WebsocketConnector implements PipeConnector {
           tsFileInsertionEvent);
       return;
     }
-    long commitId = commitIdGenerator.incrementAndGet();
-    ((EnrichedEvent) tsFileInsertionEvent)
-        .increaseReferenceCount(WebsocketConnector.class.getName());
-    server.addEvent(new Pair<>(commitId, tsFileInsertionEvent));
+    for (TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+      long commitId = commitIdGenerator.incrementAndGet();
+      ((EnrichedEvent) event).increaseReferenceCount(WebSocketConnector.class.getName());
+      server.get().addEvent(new Pair<>(commitId, event));
+    }
   }
 
   @Override
@@ -111,7 +117,7 @@ public class WebsocketConnector implements PipeConnector {
 
   @Override
   public void close() throws Exception {
-    server.stop();
+    server.get().stop();
   }
 
   public synchronized void commit(long requestCommitId, @Nullable EnrichedEvent enrichedEvent) {
@@ -122,7 +128,7 @@ public class WebsocketConnector implements PipeConnector {
                 Optional.ofNullable(enrichedEvent)
                     .ifPresent(
                         event ->
-                            event.decreaseReferenceCount(WebsocketConnector.class.getName()))));
+                            event.decreaseReferenceCount(WebSocketConnector.class.getName()))));
 
     while (!commitQueue.isEmpty()) {
       final Pair<Long, Runnable> committer = commitQueue.peek();
