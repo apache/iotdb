@@ -34,6 +34,18 @@ public class EncodeTest {
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<String> dataset_name = new ArrayList<>();
     ArrayList<Integer> dataset_block_size = new ArrayList<>();
+    dataset_name.add("CS-Sensors");
+    dataset_name.add("Metro-Traffic");
+    dataset_name.add("USGS-Earthquakes");
+    dataset_name.add("YZ-Electricity");
+    dataset_name.add("GW-Magnetic");
+    dataset_name.add("TY-Fuel");
+    dataset_name.add("Cyber-Vehicle");
+    dataset_name.add("Vehicle-Charge");
+    dataset_name.add("Nifty-Stocks");
+    dataset_name.add("TH-Climate");
+    dataset_name.add("TY-Transport");
+    dataset_name.add("EPM-Education");
 
     for (int i = 0; i < dataset_name.size(); i++) {
       input_path_list.add(input_parent_dir + dataset_name.get(i));

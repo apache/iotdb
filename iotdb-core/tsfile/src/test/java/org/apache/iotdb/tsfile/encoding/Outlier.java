@@ -12,6 +12,7 @@ import java.util.*;
 
 import static java.lang.Math.abs;
 import static java.lang.Math.pow;
+
 public class Outlier {
 
     public static int getBitWith(int num) {
@@ -93,7 +94,7 @@ public class Outlier {
         return value;
     }
 
-    public static byte[] bitPacking(ArrayList<Integer> numbers,int start, int bit_width) {
+    public static byte[] bitPacking(ArrayList<Integer> numbers, int start, int bit_width) {
         int block_num = numbers.size() / 8;
         byte[] result = new byte[bit_width * block_num];
         for (int i = 0; i < block_num; i++) {
@@ -150,16 +151,14 @@ public class Outlier {
         return result_list;
     }
 
-    public static int part(ArrayList<Integer> arr, int index, int low, int high) {
+    public static int part(ArrayList<Integer> arr, int low, int high) {
         int tmp = arr.get(low);
         while (low < high) {
-            while (low < high
-                    && (arr.get(high) > tmp)) {
+            while (low < high && (arr.get(high) > tmp)) {
                 high--;
             }
             arr.set(low, arr.get(high));
-            while (low < high
-                    && (arr.get(low) < tmp)) {
+            while (low < high && (arr.get(low) < tmp)) {
                 low++;
             }
             arr.set(high, arr.get(low));
@@ -170,19 +169,11 @@ public class Outlier {
 
     public static void quickSort(ArrayList<Integer> arr, int index, int low, int high) {
         Stack<Integer> stack = new Stack<>();
-        int mid = part(arr, index, low, high);
-        if (mid + 1 < high) {
-            stack.push(mid + 1);
-            stack.push(high);
-        }
-        if (mid - 1 > low) {
-            stack.push(low);
-            stack.push(mid - 1);
-        }
-        while (stack.empty() == false) {
+        while (!stack.empty()) {
             high = stack.pop();
             low = stack.pop();
-            mid = part(arr, index, low, high);
+            int mid = part(arr, low, high);
+
             if (mid + 1 < high) {
                 stack.push(mid + 1);
                 stack.push(high);
@@ -236,127 +227,6 @@ public class Outlier {
         result.add(td_common);
     }
 
-    public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(
-            ArrayList<ArrayList<Integer>> ts_block,
-            int block_size,
-            ArrayList<Integer> result,
-            ArrayList<Integer> i_star,
-            double threshold) {
-        int timestamp_delta_min = Integer.MAX_VALUE;
-        int value_delta_min = Integer.MAX_VALUE;
-        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
-
-        ArrayList<Integer> tmp0 = new ArrayList<>();
-        tmp0.add(ts_block.get(0).get(0));
-        tmp0.add(ts_block.get(0).get(1));
-        ts_block_delta.add(tmp0);
-
-        ArrayList<ArrayList<Integer>> epsilon_r_j_list = new ArrayList<>();
-        ArrayList<ArrayList<Integer>> epsilon_v_j_list = new ArrayList<>();
-        ArrayList<Integer> tmp_top_k = new ArrayList<>();
-
-        // delta to Regression
-        for (int j = 1; j < block_size; j++) {
-            int epsilon_r = ts_block.get(j).get(0) - ts_block.get(j - 1).get(0);
-            int epsilon_v = ts_block.get(j).get(1) - ts_block.get(j - 1).get(1);
-
-            if (epsilon_r < timestamp_delta_min) {
-                timestamp_delta_min = epsilon_r;
-            }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
-            }
-
-            if (epsilon_r_j_list.size() == 0) {
-                tmp_top_k = new ArrayList<>();
-                tmp_top_k.add(j);
-                tmp_top_k.add(epsilon_r);
-                epsilon_r_j_list.add(tmp_top_k);
-                tmp_top_k = new ArrayList<>();
-                tmp_top_k.add(j);
-                tmp_top_k.add(epsilon_v);
-                epsilon_v_j_list.add(tmp_top_k);
-            } else {
-                tmp_top_k = new ArrayList<>();
-                ;
-                tmp_top_k.add(j);
-                tmp_top_k.add(epsilon_r);
-                // 寻找插入位置
-                int insertIndex = 0;
-                while (insertIndex < epsilon_r_j_list.size() && tmp_top_k.get(1) < epsilon_r_j_list.get(insertIndex).get(1)) {
-                    insertIndex++;
-                }
-                epsilon_r_j_list.add(insertIndex, tmp_top_k);
-                tmp_top_k = new ArrayList<>();
-                ;
-                tmp_top_k.add(j);
-                tmp_top_k.add(epsilon_v);
-                insertIndex = 0;
-                while (insertIndex < epsilon_v_j_list.size() && tmp_top_k.get(1) < epsilon_v_j_list.get(insertIndex).get(1)) {
-                    insertIndex++;
-                }
-                epsilon_v_j_list.add(insertIndex, tmp_top_k);
-            }
-
-            ArrayList<Integer> tmp = new ArrayList<>();
-            tmp.add(epsilon_r);
-            tmp.add(epsilon_v);
-            ts_block_delta.add(tmp);
-        }
-        int j_star_index_t = (int) ((double) epsilon_r_j_list.size() * threshold);
-        int timestamp_delta_topk_max = epsilon_r_j_list.get(j_star_index_t).get(1);
-//        timestamp_delta_max = epsilon_r_j_list.get(0).get(1);
-
-        int j_star_index_v = (int) ((double) epsilon_v_j_list.size() * threshold);
-        int value_delta_topk_max = epsilon_v_j_list.get(j_star_index_v).get(1);
-
-        int max_interval = Integer.MIN_VALUE;
-        int max_interval_i = -1;
-        int max_value = Integer.MIN_VALUE;
-        int max_value_i = -1;
-        for (int j = block_size - 1; j > 0; j--) {
-            int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
-            int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
-            if (epsilon_r > max_interval) {
-                max_interval = epsilon_r;
-                max_interval_i = j;
-            }
-            if (epsilon_v > max_value) {
-                max_value = epsilon_v;
-                max_value_i = j;
-            }
-            ArrayList<Integer> tmp = new ArrayList<>();
-            tmp.add(epsilon_r);
-            tmp.add(epsilon_v);
-            ts_block_delta.set(j, tmp);
-        }
-
-
-        int max_bit_width_interval = getBitWith(max_interval);
-        int max_bit_width_value = getBitWith(max_value);
-
-        // calculate error
-        int length = (max_bit_width_interval + max_bit_width_value) * (block_size - 1);
-        result.clear();
-
-        result.add(length);
-        result.add(max_bit_width_interval);
-        result.add(max_bit_width_value);
-        result.add(getBitWith(timestamp_delta_topk_max - timestamp_delta_min));
-        result.add(getBitWith(value_delta_topk_max - value_delta_min));
-
-
-        result.add(timestamp_delta_min);
-        result.add(value_delta_min);
-
-        i_star.add(max_interval_i);
-        i_star.add(max_value_i);
-
-        return ts_block_delta;
-    }
-
-
-
 
     public static ArrayList<Integer> getAbsDeltaTsBlock(
             ArrayList<Integer> ts_block,
@@ -389,6 +259,7 @@ public class Outlier {
         }
         return ts_block_bit_width;
     }
+
     public static ArrayList<Byte> encode2Bytes(
             ArrayList<Integer> ts_block,
             int min_delta,
@@ -406,96 +277,105 @@ public class Outlier {
         // encode value
         byte[] max_bit_width_value_byte = int2Bytes(bit_width);
         for (byte b : max_bit_width_value_byte) encoded_result.add(b);
-        byte[] value_bytes = bitPacking(ts_block,1, bit_width);
+        byte[] value_bytes = bitPacking(ts_block, 1, bit_width);
         for (byte b : value_bytes) encoded_result.add(b);
 
 
         return encoded_result;
     }
+
     public static ArrayList<Byte> encodeOutlier2Bytes(
             ArrayList<Integer> ts_block_delta,
             int bit_width) {
         ArrayList<Byte> encoded_result = new ArrayList<>();
 
-        // encode value0
-        byte[] value0_byte = int2Bytes(ts_block_delta.get(0));
-        for (byte b : value0_byte) encoded_result.add(b);
-
+//        // encode value0
+//        byte[] value0_byte = int2Bytes(ts_block_delta.get(0));
+//        for (byte b : value0_byte) encoded_result.add(b);
+//
 
         // encode value
-        byte[] value_bytes = bitPacking(ts_block_delta, 0,bit_width);
+        byte[] value_bytes = bitPacking(ts_block_delta, 0, bit_width);
         for (byte b : value_bytes) encoded_result.add(b);
 
         int n_k = ts_block_delta.size();
         int n_k_b = n_k / 8;
-        int remaining = n_k - n_k_b*8;
+        int remaining = n_k - n_k_b * 8;
 
-        for(int i=n_k_b*8;i<n_k;i++){
-            
+        int cur_remaining = 0;
+        int cur_number_bits = 0;
+        for (int i = n_k_b * 8; i < n_k; i++) {
+            int cur_value = ts_block_delta.get(i);
+            int cur_bit_width = bit_width;
+            if (cur_number_bits + bit_width > 32) {
+                cur_remaining <<= (32 - cur_number_bits);
+                cur_bit_width = bit_width - 32 + cur_number_bits;
+                cur_remaining += (cur_value >> cur_bit_width);
+
+                byte[] cur_remaining_byte = int2Bytes(cur_remaining);
+                for (byte b : cur_remaining_byte) encoded_result.add(b);
+                cur_remaining = 0;
+            }
+            cur_remaining <<= cur_bit_width;
+            cur_remaining += ((cur_value << (32 - cur_bit_width)) >> (32 - cur_bit_width));
         }
+        byte[] cur_remaining_byte = int2Bytes(cur_remaining);
+        for (byte b : cur_remaining_byte) encoded_result.add(b);
 
 
         return encoded_result;
     }
 
 
-
-    public static class Result {
-        public ArrayList<ArrayList<Integer>> final_outlier_top_k;
-        public ArrayList<Integer> final_outlier_top_k_index;
-
-        public Result(ArrayList<ArrayList<Integer>> final_outlier_top_k, ArrayList<Integer> final_outlier_top_k_index) {
-            this.final_outlier_top_k = final_outlier_top_k;
-            this.final_outlier_top_k_index = final_outlier_top_k_index;
-        }
-    }
     private static ArrayList<Byte> learnKDelta(ArrayList<Integer> ts_block) {
 
         int block_size = ts_block.size();
         ArrayList<Byte> cur_byte = new ArrayList<>();
         double threshold = 0.2;
-        int k_up_bound = (int) ((double)block_size * threshold);
-        int k_down_bound =(int) ((double)block_size * (1 - threshold));
-        if(k_down_bound == block_size || k_down_bound == block_size-1){
+        int k_up_bound = (int) ((double) block_size * threshold);
+        int k_down_bound = (int) ((double) block_size * (1 - threshold));
+        if (k_down_bound == block_size || k_down_bound == block_size - 1) {
             k_down_bound = block_size - 2;
         }
         ArrayList<Integer> min_delta = new ArrayList<>();
-        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block,min_delta);
+        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
         ArrayList<Integer> ts_block_bit_width = getBitWith(ts_block_delta);
         quickSort(ts_block_delta, 0, 1, block_size - 1);
-        int bit_width = getBitWith(ts_block_delta.get(block_size-1));
+
+//        System.out.println("quickSort");
+        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
 
         ArrayList<Integer> ts_block_order_value = new ArrayList<>();
-        for(int i=1;i<block_size;i++){
+        for (int i = 1; i < block_size; i++) {
             ts_block_order_value.add(ts_block_delta.get(i));
         }
 
         int k_up_bound_value = ts_block_order_value.get(k_up_bound);
         int k_down_bound_value = ts_block_order_value.get(k_down_bound);
 
-        int max_delta_value = ts_block_order_value.get(block_size-2);
+        int max_delta_value = ts_block_order_value.get(block_size - 2);
         int max_delta_value_bit_width = getBitWith(max_delta_value);
         ArrayList<Integer> spread_value = new ArrayList<>();
-        for(int i=1;i<max_delta_value_bit_width;i++){
-            int spread_v = (int) pow(2,i)-1;
-            if(spread_v>=k_down_bound_value)
+        for (int i = 1; i < max_delta_value_bit_width; i++) {
+            int spread_v = (int) pow(2, i) - 1;
+            if (spread_v >= k_down_bound_value)
                 spread_value.add(spread_v);
         }
 
 
         ArrayList<Integer> start_value = new ArrayList<>();
-        for(int i=0;i<max_delta_value_bit_width;i++){
-            int start_v = (int) pow(2,i);
-            if(start_v<=k_up_bound_value)
+        for (int i = 0; i < max_delta_value_bit_width; i++) {
+            int start_v = (int) pow(2, i);
+            if (start_v <= k_up_bound_value)
                 start_value.add(start_v);
         }
 
 
-        int final_k_start_value=ts_block_order_value.get(0);
-        int final_k_end_value=ts_block_order_value.get(ts_block_order_value.size()-1);
+        int final_k_start_value = ts_block_order_value.get(0);
+        int final_k_end_value = ts_block_order_value.get(ts_block_order_value.size() - 1);
 
         int min_bits = 0;
-        min_bits +=( getBitWith( final_k_end_value-final_k_start_value)*(block_size-1));
+        min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size - 1));
 
         int final_left_max = 0;
         int final_right_max = 0;
@@ -503,6 +383,8 @@ public class Outlier {
         for (int k_start_value : start_value) {
             for (int k_spread_value : spread_value) {
                 int k_end_value = k_spread_value + k_start_value;
+//                System.out.println(k_start_value);
+//                System.out.println(k_spread_value);
 
                 int cur_bits = 0;
                 int left_max = Integer.MIN_VALUE;
@@ -512,26 +394,26 @@ public class Outlier {
                 int k1 = 0;
 
                 for (int i = 1; i < block_size; i++) {
-                     if ( ts_block_delta.get(i) < k_start_value) {
-                         if(ts_block_delta.get(i) > left_max){
-                             left_max = ts_block_delta.get(i);
-                         }
-                         k1 ++;
-                         k ++;
+                    if (ts_block_delta.get(i) < k_start_value) {
+                        if (ts_block_delta.get(i) > left_max) {
+                            left_max = ts_block_delta.get(i);
+                        }
+                        k1++;
+                        k++;
 
                     } else if (ts_block_delta.get(i) > k_end_value) {
-                         if(ts_block_delta.get(i) > right_max){
-                             right_max = ts_block_delta.get(i);
-                         }
-                         k ++;
+                        if (ts_block_delta.get(i) > right_max) {
+                            right_max = ts_block_delta.get(i);
+                        }
+                        k++;
                     }
                 }
 
-                int alpha = k * getBitWith(block_size - 2) <= (block_size - 1)? 1 : 0;
-                if(alpha==1){
-                    cur_bits += k * getBitWith(block_size - 2) ;
-                }else {
-                    cur_bits +=  (block_size - 1) ;
+                int alpha = k * getBitWith(block_size - 2) <= (block_size - 1) ? 1 : 0;
+                if (alpha == 1) {
+                    cur_bits += k * getBitWith(block_size - 2);
+                } else {
+                    cur_bits += (block_size - 1);
                 }
                 cur_bits += getBitWith(k_spread_value) * (block_size - 1 - k);
                 cur_bits += k1 * getBitWith(left_max);
@@ -551,9 +433,9 @@ public class Outlier {
 
 
         // ------------------------- encode data -----------------------------------------
-        if(final_left_max == 0 && final_right_max == 0){
-            cur_byte = encode2Bytes(ts_block_delta,min_delta.get(0),bit_width);
-        }else{
+        if (final_left_max == 0 && final_right_max == 0) {
+            cur_byte = encode2Bytes(ts_block_delta, min_delta.get(0), bit_width);
+        } else {
             ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
             ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
             ArrayList<Integer> final_left_outlier = new ArrayList<>();
@@ -566,44 +448,44 @@ public class Outlier {
             int index_bitmap = 0;
             int index_bitmap_outlier = 0;
             for (int i = 1; i < block_size; i++) {
-                if ( ts_block_delta.get(i) < final_k_start_value) {
+                if (ts_block_delta.get(i) < final_k_start_value) {
                     final_left_outlier.add(ts_block_delta.get(i));
-                    if(final_alpha==1)
+                    if (final_alpha == 1)
                         final_left_outlier_index.add(i);
-                    else{
+                    else {
                         index_bitmap_outlier += 1;
                         index_bitmap_outlier <<= 1;
                         index_bitmap += 1;
                     }
 
-                    k1 ++;
-                    k ++;
+                    k1++;
+                    k++;
 
                 } else if (ts_block_delta.get(i) > final_k_end_value) {
-                    final_right_outlier.add(ts_block_delta.get(i)-final_k_end_value);
-                    k ++;
-                    if(final_alpha==1)
+                    final_right_outlier.add(ts_block_delta.get(i) - final_k_end_value);
+                    k++;
+                    if (final_alpha == 1)
                         final_right_outlier_index.add(i);
-                    else{
+                    else {
                         index_bitmap_outlier <<= 1;
                         index_bitmap += 1;
                     }
-                }else {
-                    final_normal.add(ts_block_delta.get(i)-final_k_start_value);
+                } else {
+                    final_normal.add(ts_block_delta.get(i) - final_k_start_value);
                 }
-                if(final_alpha==0){
+                if (final_alpha == 0) {
                     index_bitmap <<= 1;
-                    if(i % 8==0){
+                    if (i % 8 == 0) {
                         bitmap.add(index_bitmap);
                         index_bitmap = 0;
                     }
-                    if(k%8==0){
+                    if (k % 8 == 0) {
                         bitmap_outlier.add(index_bitmap_outlier);
                         index_bitmap_outlier = 0;
                     }
                 }
             }
-            if(k%8!=0){
+            if (k % 8 != 0) {
                 bitmap_outlier.add(index_bitmap_outlier);
             }
 
@@ -624,14 +506,17 @@ public class Outlier {
 
             byte[] final_k_start_value_bytes = int2Bytes(final_k_start_value);
             for (byte b : final_k_start_value_bytes) cur_byte.add(b);
-            int bit_width_final = getBitWith(final_k_end_value-final_k_start_value);
+            int bit_width_final = getBitWith(final_k_end_value - final_k_start_value);
             byte[] bit_width_bytes = int2Bytes(bit_width_final);
             for (byte b : bit_width_bytes) cur_byte.add(b);
 
+            int left_bit_width = getBitWith(final_left_max);
+            int right_bit_width = getBitWith(final_right_max - final_k_end_value);
+
             cur_byte.addAll(encodeOutlier2Bytes(final_normal, bit_width_final));
-
+            cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier, left_bit_width));
+            cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier, right_bit_width));
         }
-
 
 
         return cur_byte;
@@ -650,19 +535,19 @@ public class Outlier {
         for (byte b : block_size_byte) encoded_result.add(b);
 
 
-
 //        for (int i = 0; i < 1; i++) {
         for (int i = 0; i < block_num; i++) {
+//            System.out.println("i="+i);
             ArrayList<Integer> ts_block = new ArrayList<>();
-            ArrayList<Integer> ts_block_reorder = new ArrayList<>();
+//            ArrayList<Integer> ts_block_reorder = new ArrayList<>();
             for (int j = 0; j < block_size; j++) {
                 ts_block.add(data.get(j + i * block_size));
-                ts_block_reorder.add(data.get(j + i * block_size));
+//                ts_block_reorder.add(data.get(j + i * block_size));
             }
             ArrayList<Integer> result2 = new ArrayList<>();
 
             splitTimeStamp3(ts_block, result2);
-            splitTimeStamp3(ts_block_reorder, result2);
+//            splitTimeStamp3(ts_block_reorder, result2);
 
             // time-order
             ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block);
@@ -738,7 +623,6 @@ public class Outlier {
 
         return encoded_result;
     }
-
 
 
     public static ArrayList<ArrayList<Integer>> ReorderingRegressionDecoder(ArrayList<Byte> encoded) {
@@ -898,6 +782,7 @@ public class Outlier {
         }
         return data;
     }
+
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
         String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-outlier\\";
         String output_parent_dir = parent_dir + "vldb\\compression_ratio\\outlier";
@@ -908,6 +793,18 @@ public class Outlier {
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
         ArrayList<Integer> dataset_block_size = new ArrayList<>();
+        dataset_name.add("CS-Sensors");
+        dataset_name.add("Metro-Traffic");
+        dataset_name.add("USGS-Earthquakes");
+        dataset_name.add("YZ-Electricity");
+        dataset_name.add("GW-Magnetic");
+        dataset_name.add("TY-Fuel");
+        dataset_name.add("Cyber-Vehicle");
+        dataset_name.add("Vehicle-Charge");
+        dataset_name.add("Nifty-Stocks");
+        dataset_name.add("TH-Climate");
+        dataset_name.add("TY-Transport");
+        dataset_name.add("EPM-Education");
 
         for (int i = 0; i < dataset_name.size(); i++) {
             input_path_list.add(input_parent_dir + dataset_name.get(i));
@@ -939,7 +836,6 @@ public class Outlier {
         dataset_block_size.add(512);
 
 
-//        dataset_block_size.add(256);
         ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
         for (int i = 0; i < 2; i++) {
             columnIndexes.add(i, i);
@@ -964,7 +860,6 @@ public class Outlier {
                     "Encoding Algorithm",
                     "Encoding Time",
                     "Decoding Time",
-//                    "threshold",
                     "Points",
                     "Compressed Size",
                     "Compression Ratio"
@@ -975,23 +870,28 @@ public class Outlier {
 
             for (File f : tempList) {
 //                f = tempList[2];
+                System.out.println(f);
                 InputStream inputStream = Files.newInputStream(f.toPath());
+
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Integer> data = new ArrayList<>();
+                ArrayList<Integer> data1 = new ArrayList<>();
+                ArrayList<Integer> data2 = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> data_decoded = new ArrayList<>();
 
 
-                for (int index : columnIndexes) {
+//                for (int index : columnIndexes) {
                     // add a column to "data"
-                    //        System.out.println(index);
-                    int max_precision = 0;
+//                    System.out.println(index);
+
                     loader.readHeaders();
-                    data.clear();
+//                    data.clear();
                     while (loader.readRecord()) {
-                        String value = loader.getValues()[index];
-                        data.add(Integer.valueOf(value));
+//                        String value = loader.getValues()[index];
+                        data1.add(Integer.valueOf(loader.getValues()[0]));
+                        data2.add(Integer.valueOf(loader.getValues()[1]));
+//                        data.add(Integer.valueOf(value));
                     }
-                    //        System.out.println(max_precision);
+//                    System.out.println(data.size());
                     inputStream.close();
 
                     long encodeTime = 0;
@@ -1001,15 +901,20 @@ public class Outlier {
                     int repeatTime2 = 1;
                     for (int i = 0; i < repeatTime; i++) {
                         long s = System.nanoTime();
-                        ArrayList<Byte> buffer = new ArrayList<>();
+                        ArrayList<Byte> buffer1 = new ArrayList<>();
+                        ArrayList<Byte> buffer2 = new ArrayList<>();
                         long buffer_bits = 0;
-                        for (int repeat = 0; repeat < repeatTime2; repeat++)
+                        for (int repeat = 0; repeat < repeatTime2; repeat++){
+                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
+                            buffer2 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
+                        }
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
-                            buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i),  dataset_name.get(file_i));
+
                         long e = System.nanoTime();
                         encodeTime += ((e - s) / repeatTime2);
-                        compressed_size += buffer_bits;
-                        double ratioTmp = (double) data.size()  / (double) (data.size() * Integer.BYTES * 8);
+                        compressed_size += buffer1.size();
+                        compressed_size += buffer2.size();
+                        double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES * 2);
                         ratio += ratioTmp;
                         s = System.nanoTime();
                         //          for(int repeat=0;repeat<repeatTime2;repeat++)
@@ -1025,22 +930,22 @@ public class Outlier {
 
                     String[] record = {
                             f.toString(),
-                            "Windows-Reorder",
+                            "Outlier",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
-                            String.valueOf(data.size()),
+                            String.valueOf(data1.size()),
                             String.valueOf(compressed_size),
                             String.valueOf(ratio)
                     };
                     writer.writeRecord(record);
+                    System.out.println(ratio);
 
-
-                }
+//                }
 
 //
-
-                writer.close();
             }
+            writer.close();
+
         }
     }
 
