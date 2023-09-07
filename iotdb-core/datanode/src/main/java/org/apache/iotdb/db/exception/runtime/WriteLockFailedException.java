@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.runtime;
 
-public class IntoProcessException extends RuntimeException {
+public class WriteLockFailedException extends RuntimeException {
 
-  public IntoProcessException(String message) {
+  public WriteLockFailedException(String message) {
     super(message);
   }
 }

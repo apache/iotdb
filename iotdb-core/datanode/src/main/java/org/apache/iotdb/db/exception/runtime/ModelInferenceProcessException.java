@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.runtime;
 
-public class WriteLockFailedException extends RuntimeException {
+public class ModelInferenceProcessException extends RuntimeException {
 
-  public WriteLockFailedException(String message) {
+  public ModelInferenceProcessException(String message) {
     super(message);
   }
 }

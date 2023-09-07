@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.runtime;
 
-public class ModelInferenceProcessException extends RuntimeException {
+public class IntoProcessException extends RuntimeException {
 
-  public ModelInferenceProcessException(String message) {
+  public IntoProcessException(String message) {
     super(message);
   }
 }
