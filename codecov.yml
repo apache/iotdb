@@ -27,6 +27,10 @@ coverage:
     patch: no
     changes: no
 
+parsers:
+  jacoco:
+    partials_as_hits: true #false by default
+
 ignore:
   #  - "*/interface/thrift/**/*.java"  # ignore thrift-gen folders and all its contents
   - "**/generated-classes/**/*.java"
