@@ -73,6 +73,7 @@ public class SchemaRegionConsensusImpl {
                                 RatisConfig.Log.newBuilder()
                                     .setUnsafeFlushEnabled(
                                         CONF.isSchemaRatisConsensusLogUnsafeFlushEnable())
+                                    .setForceSyncNum(CONF.getSchemaRatisConsensusLogForceSyncNum())
                                     .setSegmentSizeMax(
                                         SizeInBytes.valueOf(
                                             CONF.getSchemaRatisConsensusLogSegmentSizeMax()))
@@ -84,6 +85,9 @@ public class SchemaRegionConsensusImpl {
                                     .setFlowControlWindow(
                                         SizeInBytes.valueOf(
                                             CONF.getSchemaRatisConsensusGrpcFlowControlWindow()))
+                                    .setLeaderOutstandingAppendsMax(
+                                        CONF
+                                            .getSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax())
                                     .build())
                             .setRpc(
                                 RatisConfig.Rpc.newBuilder()

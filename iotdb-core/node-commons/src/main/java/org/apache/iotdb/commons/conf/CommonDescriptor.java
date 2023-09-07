@@ -238,6 +238,11 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
+    config.setModelInferenceExecutionThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "model_inference_execution_thread_count",
+                String.valueOf(config.getModelInferenceExecutionThreadCount()))));
   }
 
   private void loadPipeProps(Properties properties) {

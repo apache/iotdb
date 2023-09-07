@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
+import org.eclipse.jetty.util.StringUtil;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -158,11 +159,20 @@ public class AlignedLastQueryScanNode extends LastSeriesSourceNode {
 
   @Override
   public String toString() {
-    return String.format(
-        "AlignedLastQueryScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
-        this.getPlanNodeId(),
-        this.getSeriesPath().getFormattedString(),
-        PlanNodeUtil.printRegionReplicaSet(this.getRegionReplicaSet()));
+    if (StringUtil.isNotBlank(outputViewPath)) {
+      return String.format(
+          "AlignedLastQueryScanNode-%s:[SeriesPath: %s, ViewPath: %s, DataRegion: %s]",
+          this.getPlanNodeId(),
+          this.getSeriesPath().getFormattedString(),
+          this.getOutputViewPath(),
+          PlanNodeUtil.printRegionReplicaSet(this.getRegionReplicaSet()));
+    } else {
+      return String.format(
+          "AlignedLastQueryScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
+          this.getPlanNodeId(),
+          this.getSeriesPath().getFormattedString(),
+          PlanNodeUtil.printRegionReplicaSet(this.getRegionReplicaSet()));
+    }
   }
 
   @Override

@@ -17,23 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.ratis;
+package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.consensus.ratis.utils.Utils;
+public class ModelInferenceProcessException extends RuntimeException {
 
-import org.apache.ratis.protocol.RaftGroupId;
-import org.junit.Assert;
-import org.junit.Test;
-
-public class UtilsTest {
-  @Test
-  public void testEncryption() {
-    ConsensusGroupId raw = new ConfigRegionId(100);
-    RaftGroupId id = Utils.fromConsensusGroupIdToRaftGroupId(raw);
-    ConsensusGroupId cgid = Utils.fromRaftGroupIdToConsensusGroupId(id);
-    Assert.assertEquals(raw.getId(), cgid.getId());
-    Assert.assertEquals(raw.getType(), cgid.getType());
+  public ModelInferenceProcessException(String message) {
+    super(message);
   }
 }

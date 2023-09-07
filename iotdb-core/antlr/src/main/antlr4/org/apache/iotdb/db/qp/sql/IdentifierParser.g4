@@ -45,7 +45,6 @@ keyWords
     | AS
     | ASC
     | ATTRIBUTES
-    | AUTO
     | BEFORE
     | BEGIN
     | BETWEEN
@@ -77,6 +76,7 @@ keyWords
     | DATABASES
     | DATANODEID
     | DATANODES
+    | DATASET
     | DEACTIVATE
     | DEBUG
     | DELETE
@@ -84,7 +84,6 @@ keyWords
     | DESCRIBE
     | DETAILS
     | DEVICE
-    | DEVICEID
     | DEVICES
     | DISABLE
     | DISCARD
@@ -110,6 +109,7 @@ keyWords
     | GRANT
     | GROUP
     | HAVING
+    | HYPERPARAMETERS
     | IN
     | INDEX
     | INFO
@@ -146,6 +146,7 @@ keyWords
     | OFF
     | OFFSET
     | ON
+    | OPTIONS
     | OR
     | ORDER
     | ONSUCCESS
@@ -224,7 +225,7 @@ keyWords
     | TOLERANCE
     | TOP
     | TRACING
-    | TRAILS
+    | TRIALS
     | TRIGGER
     | TRIGGERS
     | TRUE

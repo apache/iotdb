@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import java.util.concurrent.TimeUnit;
 
 public class TimestampPrecisionUtils {
-  private static final String timestampPrecision =
+  private static final String TIMESTAMP_PRECISION =
       CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
 
   @FunctionalInterface
@@ -34,15 +34,15 @@ public class TimestampPrecisionUtils {
   private static final ConvertFunction<Long, TimeUnit, Long> convertFunction;
 
   static {
-    switch (timestampPrecision) {
+    switch (TIMESTAMP_PRECISION) {
       case "ms":
         convertFunction = TimeUnit.MILLISECONDS::convert;
         break;
-      case "ns":
-        convertFunction = TimeUnit.NANOSECONDS::convert;
-        break;
       case "us":
         convertFunction = TimeUnit.MICROSECONDS::convert;
+        break;
+      case "ns":
+        convertFunction = TimeUnit.NANOSECONDS::convert;
         break;
         // this case will never reach
       default:
