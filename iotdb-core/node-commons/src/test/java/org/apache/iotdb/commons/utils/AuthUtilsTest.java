@@ -102,9 +102,16 @@ public class AuthUtilsTest {
     AuthUtils.removePrivilege(path2, PrivilegeType.READ_SCHEMA.ordinal(), privs);
     Assert.assertEquals(privs.size(), 1);
 
-    AuthUtils.removePrivilege(path1, PrivilegeType.READ_DATA.ordinal(), privs);
+    // if we revoke privileges on root.**, privileges on root.t1 and root.t2 will also be removed.
+    PartialPath rootPath = new PartialPath("root.**");
+    AuthUtils.removePrivilege(rootPath, PrivilegeType.READ_DATA.ordinal(), privs);
     Assert.assertEquals(privs.get(0).getPrivileges().size(), 2);
     Assert.assertFalse(privs.get(0).getPrivileges().contains(PrivilegeType.READ_DATA.ordinal()));
+
+    AuthUtils.addPrivilege(path2, PrivilegeType.WRITE_SCHEMA.ordinal(), privs, true);
+    AuthUtils.removePrivilege(rootPath, PrivilegeType.WRITE_SCHEMA.ordinal(), privs);
+    Assert.assertEquals(privs.size(), 1);
+    Assert.assertEquals(privs.get(0).getPrivileges().size(), 1);
   }
 
   @Test
