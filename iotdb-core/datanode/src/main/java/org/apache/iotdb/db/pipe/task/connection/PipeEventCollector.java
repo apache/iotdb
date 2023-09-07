@@ -27,11 +27,11 @@ import org.apache.iotdb.pipe.api.event.Event;
 import java.util.Deque;
 import java.util.LinkedList;
 
-public class PipeEventCollector implements EventCollector {
+public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
-  private Deque<Event> bufferQueue;
+  private final Deque<Event> bufferQueue;
 
   public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue) {
     this.pendingQueue = pendingQueue;
@@ -89,15 +89,12 @@ public class PipeEventCollector implements EventCollector {
   }
 
   public synchronized void close() {
-    if (bufferQueue != null) {
-      bufferQueue.forEach(
-          event -> {
-            if (event instanceof EnrichedEvent) {
-              ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName());
-            }
-          });
-      bufferQueue.clear();
-      bufferQueue = null;
-    }
+    bufferQueue.forEach(
+        event -> {
+          if (event instanceof EnrichedEvent) {
+            ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName());
+          }
+        });
+    bufferQueue.clear();
   }
 }

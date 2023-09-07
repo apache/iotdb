@@ -134,8 +134,10 @@ public class PipeProcessorSubtask extends PipeSubtask {
     try {
       isClosed.set(true);
 
-      outputEventCollector.close();
+      // pipeProcessor closes first, then no more events will be added into outputEventCollector.
+      // only after that, outputEventCollector can be closed.
       pipeProcessor.close();
+      outputEventCollector.close();
 
       // should be called after pipeProcessor.close()
       super.close();

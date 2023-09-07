@@ -32,6 +32,9 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
@@ -158,16 +161,21 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
   @Override
   public void close() throws Exception {
     super.close();
-    if (pendingQueue != null) {
-      pendingQueue.forEach(
-          event -> {
-            if (event instanceof EnrichedEvent) {
-              ((EnrichedEvent) event)
-                  .clearReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
-            }
-          });
-      pendingQueue.clear();
-      pendingQueue = null;
-    }
+
+    final List<Event> eventsToDrop = new ArrayList<>(pendingQueue.size());
+
+    // processor stage is closed later than extractor stage, {@link supply()} may be called after
+    // processor stage is closed. To avoid concurrent issues, we should clear the pending queue
+    // before clearing all the reference count of the events in the pending queue.
+    pendingQueue.forEach(eventsToDrop::add);
+    pendingQueue.clear();
+
+    eventsToDrop.forEach(
+        event -> {
+          if (event instanceof EnrichedEvent) {
+            ((EnrichedEvent) event)
+                .clearReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+          }
+        });
   }
 }

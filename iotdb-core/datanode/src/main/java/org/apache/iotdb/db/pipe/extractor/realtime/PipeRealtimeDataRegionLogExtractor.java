@@ -32,6 +32,9 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
@@ -39,7 +42,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
-  private UnboundedBlockingPendingQueue<Event> pendingQueue;
+  private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
   public PipeRealtimeDataRegionLogExtractor() {
     this.pendingQueue = new UnboundedBlockingPendingQueue<>();
@@ -158,16 +161,21 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
   @Override
   public void close() throws Exception {
     super.close();
-    if (pendingQueue != null) {
-      pendingQueue.forEach(
-          event -> {
-            if (event instanceof EnrichedEvent) {
-              ((EnrichedEvent) event)
-                  .clearReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
-            }
-          });
-      pendingQueue.clear();
-      pendingQueue = null;
-    }
+
+    final List<Event> eventsToDrop = new ArrayList<>(pendingQueue.size());
+
+    // processor stage is closed later than extractor stage, {@link supply()} may be called after
+    // processor stage is closed. To avoid concurrent issues, we should clear the pending queue
+    // before clearing all the reference count of the events in the pending queue.
+    pendingQueue.forEach(eventsToDrop::add);
+    pendingQueue.clear();
+
+    eventsToDrop.forEach(
+        event -> {
+          if (event instanceof EnrichedEvent) {
+            ((EnrichedEvent) event)
+                .clearReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+          }
+        });
   }
 }
