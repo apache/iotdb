@@ -42,7 +42,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
 
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
-  private UnboundedBlockingPendingQueue<Event> pendingQueue;
+  private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
   public PipeRealtimeDataRegionTsFileExtractor() {
     this.pendingQueue = new UnboundedBlockingPendingQueue<>();
