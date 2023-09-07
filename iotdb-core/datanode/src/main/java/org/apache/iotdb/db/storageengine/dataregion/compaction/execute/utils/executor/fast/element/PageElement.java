@@ -19,15 +19,20 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.page.LazyLoadAlignedPagePointReader;
+import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
+import org.apache.iotdb.tsfile.read.reader.page.ValuePageReader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -115,7 +120,7 @@ public class PageElement {
         valueDeleteIntervalList.add(valueChunk == null ? null : valueChunk.getDeleteIntervalList());
       }
       this.pointReader =
-          AlignedChunkReader.getPagePointReader(
+          getAlignedPagePointReader(
               chunkMetadataElement.chunk.getHeader(),
               valueChunkHeaderList,
               valueDeleteIntervalList,
@@ -126,5 +131,72 @@ public class PageElement {
     } else {
       this.batchData = ((ChunkReader) iChunkReader).readPageData(pageHeader, pageData);
     }
+  }
+
+  private IPointReader getAlignedPagePointReader(
+      ChunkHeader timeChunkHeader,
+      List<ChunkHeader> valueChunkHeaderList,
+      List<List<TimeRange>> valueDeleteIntervalList,
+      PageHeader timePageHeader,
+      List<PageHeader> valuePageHeaders,
+      ByteBuffer compressedTimePageData,
+      List<ByteBuffer> compressedValuePageDatas)
+      throws IOException {
+
+    IUnCompressor timeUnCompressor =
+        IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
+    Decoder timeDecoder =
+        Decoder.getDecoderByType(timeChunkHeader.getEncodingType(), timeChunkHeader.getDataType());
+    ByteBuffer uncompressedTimePageData =
+        uncompressPageData(timePageHeader, timeUnCompressor, compressedTimePageData);
+    TimePageReader timePageReader =
+        new TimePageReader(timePageHeader, uncompressedTimePageData, timeDecoder);
+
+    List<ValuePageReader> valuePageReaders = new ArrayList<>(valueChunkHeaderList.size());
+    for (int i = 0; i < valuePageHeaders.size(); i++) {
+      if (valuePageHeaders.get(i) == null) {
+        valuePageReaders.add(null);
+      } else {
+        ChunkHeader valueChunkHeader = valueChunkHeaderList.get(i);
+        TSDataType valueType = valueChunkHeader.getDataType();
+        Decoder valuePageDecoder =
+            Decoder.getDecoderByType(valueChunkHeader.getEncodingType(), valueType);
+        ByteBuffer uncompressedPageData =
+            uncompressPageData(
+                valuePageHeaders.get(i),
+                IUnCompressor.getUnCompressor(valueChunkHeader.getCompressionType()),
+                compressedValuePageDatas.get(i));
+        ValuePageReader valuePageReader =
+            new ValuePageReader(
+                valuePageHeaders.get(i), uncompressedPageData, valueType, valuePageDecoder);
+        if (valueDeleteIntervalList != null) {
+          valuePageReader.setDeleteIntervalList(valueDeleteIntervalList.get(i));
+        }
+        valuePageReaders.add(valuePageReader);
+      }
+    }
+    return new LazyLoadAlignedPagePointReader(timePageReader, valuePageReaders);
+  }
+
+  private ByteBuffer uncompressPageData(
+      PageHeader header, IUnCompressor unCompressor, ByteBuffer compressedPageData)
+      throws IOException {
+    int compressedPageBodyLength = header.getCompressedSize();
+    byte[] uncompressedPageData = new byte[header.getUncompressedSize()];
+    try {
+      unCompressor.uncompress(
+          compressedPageData.array(), 0, compressedPageBodyLength, uncompressedPageData, 0);
+    } catch (Exception e) {
+      throw new IOException(
+          "Uncompress error! uncompress size: "
+              + header.getUncompressedSize()
+              + "compressed size: "
+              + header.getCompressedSize()
+              + "page header: "
+              + header
+              + e.getMessage());
+    }
+
+    return ByteBuffer.wrap(uncompressedPageData);
   }
 }
