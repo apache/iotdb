@@ -22,9 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.websocket;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -123,9 +121,9 @@ public class WebSocketConnectorServer extends WebSocketServer {
   }
 
   public void addEvent(Pair<Long, Event> event) {
-    if (events.size() >= 50) {
+    if (events.size() >= 5) {
       synchronized (events) {
-        while (events.size() >= 50) {
+        while (events.size() >= 5) {
           try {
             events.wait();
           } catch (InterruptedException e) {
@@ -140,10 +138,21 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   private void handleStart(WebSocket webSocket) {
     try {
-      Pair<Long, Event> eventPair = events.take();
-      synchronized (events) {
-        events.notifyAll();
-        transfer(eventPair, webSocket);
+      while (true) {
+        Pair<Long, Event> eventPair = events.take();
+        synchronized (events) {
+          events.notifyAll();
+        }
+        boolean transferred = transfer(eventPair, webSocket);
+        if (transferred) {
+          break;
+        } else {
+          websocketConnector.commit(
+              eventPair.getLeft(),
+              eventPair.getRight() instanceof EnrichedEvent
+                  ? (EnrichedEvent) eventPair.getRight()
+                  : null);
+        }
       }
     } catch (InterruptedException e) {
       String log = String.format("The event can't be taken, because: %s", e.getMessage());
@@ -177,7 +186,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
     handleStart(webSocket);
   }
 
-  private void transfer(Pair<Long, Event> eventPair, WebSocket webSocket) {
+  private boolean transfer(Pair<Long, Event> eventPair, WebSocket webSocket) {
     Long commitId = eventPair.getLeft();
     Event event = eventPair.getRight();
     try {
@@ -186,20 +195,13 @@ public class WebSocketConnectorServer extends WebSocketServer {
         tabletBuffer = ((PipeInsertNodeTabletInsertionEvent) event).convertToTablet().serialize();
       } else if (event instanceof PipeRawTabletInsertionEvent) {
         tabletBuffer = ((PipeRawTabletInsertionEvent) event).convertToTablet().serialize();
-      } else if (event instanceof PipeTsFileInsertionEvent) {
-        PipeTsFileInsertionEvent tsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
-        tsFileInsertionEvent.waitForTsFileClose();
-        Iterable<TabletInsertionEvent> subEvents = tsFileInsertionEvent.toTabletInsertionEvents();
-        for (TabletInsertionEvent subEvent : subEvents) {
-          tabletBuffer = ((PipeRawTabletInsertionEvent) subEvent).convertToTablet().serialize();
-        }
       } else {
         throw new NotImplementedException(
             "IoTDBCDCConnector only support "
                 + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
       }
       if (tabletBuffer == null) {
-        return;
+        return false;
       }
       ByteBuffer payload = ByteBuffer.allocate(Long.BYTES + tabletBuffer.limit());
       payload.putLong(commitId);
@@ -207,13 +209,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
       payload.flip();
       this.broadcast(payload, Collections.singletonList(webSocket));
       eventMap.put(eventPair.getLeft(), eventPair.getRight());
-    } catch (InterruptedException e) {
-      events.put(eventPair);
-      Thread.currentThread().interrupt();
-      throw new PipeException(e.getMessage());
     } catch (Exception e) {
       events.put(eventPair);
       throw new PipeException(e.getMessage());
     }
+    return true;
   }
 }

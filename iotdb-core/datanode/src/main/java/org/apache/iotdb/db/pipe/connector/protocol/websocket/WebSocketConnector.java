@@ -105,10 +105,11 @@ public class WebSocketConnector implements PipeConnector {
           tsFileInsertionEvent);
       return;
     }
-    long commitId = commitIdGenerator.incrementAndGet();
-    ((EnrichedEvent) tsFileInsertionEvent)
-        .increaseReferenceCount(WebSocketConnector.class.getName());
-    server.get().addEvent(new Pair<>(commitId, tsFileInsertionEvent));
+    for (TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+      long commitId = commitIdGenerator.incrementAndGet();
+      ((EnrichedEvent) event).increaseReferenceCount(WebSocketConnector.class.getName());
+      server.get().addEvent(new Pair<>(commitId, event));
+    }
   }
 
   @Override
