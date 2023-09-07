@@ -208,20 +208,37 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
         if (paginationController.hasCurLimit() && paginationController.getCurLimit() > 0) {
           paginationController.consumeLimit((long) readEndIndex - readStartIndex);
         }
-        // construct time column
-        for (int i = readStartIndex; i < readEndIndex; i++) {
-          builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
-          builder.declarePosition();
+
+        boolean[] keepCurrentRow = new boolean[readEndIndex - readStartIndex];
+        if (filter == null) {
+          Arrays.fill(keepCurrentRow, true);
+          // construct time column
+          for (int i = readStartIndex; i < readEndIndex; i++) {
+            builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
+            builder.declarePosition();
+          }
+        } else {
+          for (int i = readStartIndex; i < readEndIndex; i++) {
+            keepCurrentRow[i - readStartIndex] = filter.satisfy(timeBatch[i], null);
+            // construct time column
+            if (keepCurrentRow[i - readStartIndex]) {
+              builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
+              builder.declarePosition();
+            }
+          }
         }
+
         // construct value columns
         for (int i = 0; i < valueCount; i++) {
           ValuePageReader pageReader = valuePageReaderList.get(i);
           if (pageReader != null) {
             pageReader.writeColumnBuilderWithNextBatch(
-                readStartIndex, readEndIndex, builder.getColumnBuilder(i));
+                readStartIndex, readEndIndex, builder.getColumnBuilder(i), keepCurrentRow);
           } else {
             for (int j = readStartIndex; j < readEndIndex; j++) {
-              builder.getColumnBuilder(i).appendNull();
+              if (keepCurrentRow[j - readStartIndex]) {
+                builder.getColumnBuilder(i).appendNull();
+              }
             }
           }
         }
