@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.ml;
 import org.apache.iotdb.commons.client.mlnode.MLNodeClient;
 import org.apache.iotdb.commons.client.mlnode.MLNodeClientManager;
 import org.apache.iotdb.commons.client.mlnode.MLNodeInfo;
-import org.apache.iotdb.db.exception.ModelInferenceProcessException;
+import org.apache.iotdb.db.exception.runtime.ModelInferenceProcessException;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
