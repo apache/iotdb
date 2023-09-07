@@ -32,7 +32,7 @@ env:
   PR_NUMBER: ${{ github.event.number }}
 
 jobs:
-  coveralls:
+  codecov:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push'
 
@@ -48,7 +48,7 @@ jobs:
         run: | 
           mvn -B -P with-code-coverage clean compile test -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true
           mvn -B coveralls:report
-      - name: Upload coverage reports to Codecov
+      - name: Upload coverage reports to codecov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
