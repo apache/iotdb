@@ -76,9 +76,6 @@ public class PipeConnectorSubtaskManager {
       } else if (connectorKey.equals(
           BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName())) {
         pipeConnector = new IoTDBLegacyPipeConnector();
-      } else if (connectorKey.equals(
-          BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
-        pipeConnector = new IoTDBAirGapConnector();
       } else if (connectorKey.equals(BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName())) {
         pipeConnector = new OpcUaConnector();
       } else if (connectorKey.equals(BuiltinPipePlugin.WEBSOCKET_CONNECTOR.getPipePluginName())) {
