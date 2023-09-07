@@ -38,6 +38,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
@@ -47,7 +48,7 @@ public class PipeConnectorSubtaskManager {
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";
 
-  private final Map<String, PipeConnectorSubtaskLifeCycle>
+  private final Map<String, ArrayList<PipeConnectorSubtaskLifeCycle>>
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
 
   public synchronized String register(
@@ -65,49 +66,73 @@ public class PipeConnectorSubtaskManager {
               PipeConnectorConstant.CONNECTOR_KEY,
               BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
 
-      PipeConnector pipeConnector;
-      if (connectorKey.equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
-          || connectorKey.equals(
-              BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName())) {
-        pipeConnector = new IoTDBThriftSyncConnector();
-      } else if (connectorKey.equals(
-          BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName())) {
-        pipeConnector = new IoTDBThriftAsyncConnector();
-      } else if (connectorKey.equals(
-          BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName())) {
-        pipeConnector = new IoTDBLegacyPipeConnector();
-      } else if (connectorKey.equals(
-          BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
-        pipeConnector = new IoTDBAirGapConnector();
-      } else if (connectorKey.equals(BuiltinPipePlugin.WEBSOCKET_CONNECTOR.getPipePluginName())) {
-        pipeConnector = new WebsocketConnector();
-      } else {
-        pipeConnector = PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
-      }
+      final int connectorNum =
+          pipeConnectorParameters.getIntOrDefault(
+              PipeConnectorConstant.CONNECTOR_IOTDB_NUMBER_KEY,
+              PipeConnectorConstant.CONNECTOR_IOTDB_NUMBER_DEFAULT_VALUE);
 
-      try {
-        pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
-        pipeConnector.customize(
-            pipeConnectorParameters, new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment));
-        pipeConnector.handshake();
-      } catch (Exception e) {
-        throw new PipeException(
-            "Failed to construct PipeConnector, because of " + e.getMessage(), e);
+      ArrayList<PipeConnector> pipeConnectorList = new ArrayList<>(connectorNum);
+
+      for (int i = 0; i < connectorNum; i++) {
+        PipeConnector pipeConnector;
+        if (connectorKey.equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+            || connectorKey.equals(
+                BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName())) {
+          pipeConnector = new IoTDBThriftSyncConnector();
+        } else if (connectorKey.equals(
+            BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName())) {
+          pipeConnector = new IoTDBThriftAsyncConnector();
+        } else if (connectorKey.equals(
+            BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName())) {
+          pipeConnector = new IoTDBLegacyPipeConnector();
+        } else if (connectorKey.equals(
+            BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
+          pipeConnector = new IoTDBAirGapConnector();
+        } else if (connectorKey.equals(BuiltinPipePlugin.WEBSOCKET_CONNECTOR.getPipePluginName())) {
+          pipeConnector = new WebsocketConnector();
+        } else {
+          pipeConnector = PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
+        }
+
+        try {
+          pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
+          pipeConnector.customize(
+              pipeConnectorParameters, new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment));
+          pipeConnector.handshake();
+        } catch (Exception e) {
+          throw new PipeException(
+              "Failed to construct PipeConnector, because of " + e.getMessage(), e);
+        }
+
+        pipeConnectorList.add(pipeConnector);
       }
 
       // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
       final BoundedBlockingPendingQueue<Event> pendingQueue =
           new BoundedBlockingPendingQueue<>(
               PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
-      final PipeConnectorSubtask pipeConnectorSubtask =
-          new PipeConnectorSubtask(attributeSortedString, pendingQueue, pipeConnector);
-      final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
-          new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask, pendingQueue);
+      ArrayList<PipeConnectorSubtaskLifeCycle> pipeSubtaskLifeCycleList =
+          new ArrayList<>(connectorNum);
+
+      for (int i = 0; i < connectorNum; i++) {
+        final PipeConnectorSubtask pipeConnectorSubtask =
+            new PipeConnectorSubtask(
+                attributeSortedString + i, pendingQueue, pipeConnectorList.get(i));
+        final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
+            new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask, pendingQueue);
+        pipeSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
+      }
+
       attributeSortedString2SubtaskLifeCycleMap.put(
-          attributeSortedString, pipeConnectorSubtaskLifeCycle);
+          attributeSortedString, pipeSubtaskLifeCycleList);
     }
 
-    attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).register();
+    ArrayList<PipeConnectorSubtaskLifeCycle> list =
+        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
+
+    for (PipeConnectorSubtaskLifeCycle o : list) {
+      o.register();
+    }
 
     return attributeSortedString;
   }
@@ -117,8 +142,11 @@ public class PipeConnectorSubtaskManager {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
-    if (attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).deregister()) {
-      attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
+    for (PipeConnectorSubtaskLifeCycle o :
+        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
+      if (o.deregister()) {
+        attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
+      }
     }
   }
 
@@ -127,7 +155,10 @@ public class PipeConnectorSubtaskManager {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
-    attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).start();
+    for (PipeConnectorSubtaskLifeCycle o :
+        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
+      o.start();
+    }
   }
 
   public synchronized void stop(String attributeSortedString) {
@@ -135,7 +166,10 @@ public class PipeConnectorSubtaskManager {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
-    attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).stop();
+    for (PipeConnectorSubtaskLifeCycle o :
+        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
+      o.stop();
+    }
   }
 
   public BoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
@@ -145,7 +179,10 @@ public class PipeConnectorSubtaskManager {
           "Failed to get PendingQueue. No such subtask: " + attributeSortedString);
     }
 
-    return attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).getPendingQueue();
+    return attributeSortedString2SubtaskLifeCycleMap
+        .get(attributeSortedString)
+        .get(0)
+        .getPendingQueue();
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
