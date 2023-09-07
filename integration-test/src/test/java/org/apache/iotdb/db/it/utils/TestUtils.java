@@ -124,8 +124,13 @@ public class TestUtils {
   }
 
   public static void resultSetEqualTest(
-      String sql, String expectedHeader, String[] expectedRetArray, DateFormat df) {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+      String sql,
+      String expectedHeader,
+      String[] expectedRetArray,
+      DateFormat df,
+      String userName,
+      String password) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
       if (df != null) {
         connection.setClientInfo("time_zone", "+00:00");
@@ -141,7 +146,7 @@ public class TestUtils {
 
   public static void resultSetEqualTest(
       String sql, String expectedHeader, String[] expectedRetArray) {
-    resultSetEqualTest(sql, expectedHeader, expectedRetArray, null);
+    resultSetEqualTest(sql, expectedHeader, expectedRetArray, null, "root", "root");
   }
 
   public static void resultSetEqualTest(
@@ -150,12 +155,35 @@ public class TestUtils {
   }
 
   public static void resultSetEqualTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String userName,
+      String password) {
+    resultSetEqualTest(sql, expectedHeader, expectedRetArray, null, userName, password);
+  }
+
+  public static void resultSetEqualTest(
       String sql, String[] expectedHeader, String[] expectedRetArray, DateFormat df) {
     StringBuilder header = new StringBuilder();
     for (String s : expectedHeader) {
       header.append(s).append(",");
     }
-    resultSetEqualTest(sql, header.toString(), expectedRetArray, df);
+    resultSetEqualTest(sql, header.toString(), expectedRetArray, df, "root", "root");
+  }
+
+  public static void resultSetEqualTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      DateFormat df,
+      String userName,
+      String password) {
+    StringBuilder header = new StringBuilder();
+    for (String s : expectedHeader) {
+      header.append(s).append(",");
+    }
+    resultSetEqualTest(sql, header.toString(), expectedRetArray, df, userName, password);
   }
 
   public static void resultSetEqualWithDescOrderTest(
@@ -311,7 +339,7 @@ public class TestUtils {
   }
 
   public static void executeQuery(String sql) {
-    executeNonQuery(sql, "root", "root");
+    executeQuery(sql, "root", "root");
   }
 
   public static void executeQuery(String sql, String userName, String password) {

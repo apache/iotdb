@@ -298,7 +298,9 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkGrantOption(userName, privilegeList, nodeNameList),
-            "Has no permission to " + authorType);
+            "Has no permission to "
+                + authorType
+                + ", please ensure you have these privileges and the grant option is TRUE when granted");
 
       case GRANT_USER:
       case GRANT_ROLE:
@@ -308,7 +310,9 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkGrantOption(userName, privilegeList, nodeNameList),
-            "Has no permission to " + authorType);
+            "Has no permission to "
+                + authorType
+                + ", please ensure you have these privileges and the grant option is TRUE when granted");
       default:
         throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }
