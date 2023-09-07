@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.pipe.connector.protocol.websocket;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;

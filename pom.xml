@@ -211,6 +211,8 @@
         <boost.include.dir/>
         <!-- websocket -->
         <websocket.version>1.5.3</websocket.version>
+        <!-- milo -->
+        <milo.version>0.6.10</milo.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
