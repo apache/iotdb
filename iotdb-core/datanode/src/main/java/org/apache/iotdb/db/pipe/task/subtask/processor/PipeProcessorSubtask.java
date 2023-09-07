@@ -137,15 +137,16 @@ public class PipeProcessorSubtask extends PipeSubtask {
       // pipeProcessor closes first, then no more events will be added into outputEventCollector.
       // only after that, outputEventCollector can be closed.
       pipeProcessor.close();
-      outputEventCollector.close();
-
-      // should be called after pipeProcessor.close()
-      super.close();
     } catch (Exception e) {
       LOGGER.info(
           "Error occurred during closing PipeProcessor, perhaps need to check whether the "
               + "implementation of PipeProcessor is correct according to the pipe-api description.",
           e);
+    } finally {
+      outputEventCollector.close();
+
+      // should be called after pipeProcessor.close()
+      super.close();
     }
   }
 
