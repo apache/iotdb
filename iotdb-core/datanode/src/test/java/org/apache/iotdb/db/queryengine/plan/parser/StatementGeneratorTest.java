@@ -521,7 +521,7 @@ public class StatementGeneratorTest {
     assertEquals("user1", roleDcl.getUserName());
 
     roleDcl = createAuthDclStmt("revoke role `role1` from `user1`;");
-    assertEquals(StatementType.GRANT_USER_ROLE, roleDcl.getType());
+    assertEquals(StatementType.REVOKE_USER_ROLE, roleDcl.getType());
     assertEquals("role1", roleDcl.getRoleName());
     assertEquals("user1", roleDcl.getUserName());
   }

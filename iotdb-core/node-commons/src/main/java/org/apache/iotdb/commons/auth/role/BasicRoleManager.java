@@ -123,7 +123,7 @@ public abstract class BasicRoleManager implements IRoleManager {
         throw new AuthException(
             TSStatusCode.ROLE_NOT_EXIST, String.format("No such role %s", rolename));
       }
-      if (!role.hasPrivilege(path, privilegeId)) {
+      if (!role.hasPrivilegeToRevoke(path, privilegeId)) {
         return false;
       }
       if (path != null) {

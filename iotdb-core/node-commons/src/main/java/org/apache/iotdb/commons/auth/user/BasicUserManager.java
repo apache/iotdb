@@ -103,7 +103,7 @@ public abstract class BasicUserManager implements IUserManager {
       admin.getPathPrivilegeList().add(pathPri);
     } catch (IllegalPathException e) {
       // This error only results in a lack of permissions for list.
-      logger.warn("Got an wrong path for root to init");
+      logger.warn("Got a wrong path for root to init");
     }
     logger.info("Admin initialized");
   }
@@ -183,7 +183,7 @@ public abstract class BasicUserManager implements IUserManager {
         throw new AuthException(
             TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_ERROR, username));
       }
-      if (!user.hasPrivilege(path, privilegeId)) {
+      if (!user.hasPrivilegeToRevoke(path, privilegeId)) {
         return false;
       }
       if (path != null) {
