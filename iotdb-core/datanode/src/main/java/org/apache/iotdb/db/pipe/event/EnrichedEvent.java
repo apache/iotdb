@@ -77,9 +77,9 @@ public abstract class EnrichedEvent implements Event {
   public abstract boolean internallyIncreaseResourceReferenceCount(String holderMessage);
 
   /**
-   * Decrease the reference count of this event. If the reference count is decreased to 0, the event
-   * can be recycled and the data stored in the event is not safe to use, the processing progress of
-   * the event should be reported to the pipe task meta.
+   * Decrease the reference count of this event by 1. If the reference count is decreased to 0, the
+   * event can be recycled and the data stored in the event is not safe to use, the processing
+   * progress of the event should be reported to the pipe task meta.
    *
    * @param holderMessage the message of the invoker
    * @return true if the reference count is decreased successfully, false otherwise
@@ -92,6 +92,26 @@ public abstract class EnrichedEvent implements Event {
         reportProgress();
       }
       referenceCount.decrementAndGet();
+    }
+    return isSuccessful;
+  }
+
+  /**
+   * Decrease the reference count of this event to 0. The event can be recycled and the data stored
+   * in the event is not safe to use, the processing progress of the event should be reported to the
+   * pipe task meta.
+   *
+   * @param holderMessage the message of the invoker
+   * @return true if the reference count is decreased successfully, false otherwise
+   */
+  public boolean clearReferenceCount(String holderMessage) {
+    boolean isSuccessful = true;
+    synchronized (this) {
+      if (referenceCount.get() >= 1) {
+        isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
+        reportProgress();
+      }
+      referenceCount.set(0);
     }
     return isSuccessful;
   }
