@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.runtime;
 
 public class WriteLockFailedException extends RuntimeException {
 
