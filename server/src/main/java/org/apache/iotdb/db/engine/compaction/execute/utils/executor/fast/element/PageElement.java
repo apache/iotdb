@@ -107,53 +107,36 @@ public class PageElement {
 
   public void deserializePage() throws IOException {
     if (this.iChunkReader == null) {
-      List<ChunkHeader> valueChunkHeaderList =
-          new ArrayList<>(chunkMetadataElement.valueChunks.size());
-      List<List<TimeRange>> valueDeleteIntervalList =
-          new ArrayList<>(chunkMetadataElement.valueChunks.size());
-      for (Chunk valueChunk : chunkMetadataElement.valueChunks) {
-        valueChunkHeaderList.add(valueChunk == null ? null : valueChunk.getHeader());
-        valueDeleteIntervalList.add(valueChunk == null ? null : valueChunk.getDeleteIntervalList());
-      }
-      this.pointReader =
-          getAlignedPagePointReader(
-              chunkMetadataElement.chunk.getHeader(),
-              valueChunkHeaderList,
-              valueDeleteIntervalList,
-              pageHeader,
-              valuePageHeaders,
-              pageData,
-              valuePageDatas);
+      this.pointReader = getAlignedPagePointReader();
     } else {
       this.batchData = ((ChunkReader) iChunkReader).readPageData(pageHeader, pageData);
     }
   }
 
-  private IPointReader getAlignedPagePointReader(
-      ChunkHeader timeChunkHeader,
-      List<ChunkHeader> valueChunkHeaderList,
-      List<List<TimeRange>> valueDeleteIntervalList,
-      PageHeader timePageHeader,
-      List<PageHeader> valuePageHeaders,
-      ByteBuffer compressedTimePageData,
-      List<ByteBuffer> compressedValuePageDatas)
-      throws IOException {
-
+  private IPointReader getAlignedPagePointReader() throws IOException {
+    // construct time page reader
+    ChunkHeader timeChunkHeader = chunkMetadataElement.chunk.getHeader();
     IUnCompressor timeUnCompressor =
         IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
     Decoder timeDecoder =
         Decoder.getDecoderByType(timeChunkHeader.getEncodingType(), timeChunkHeader.getDataType());
     ByteBuffer uncompressedTimePageData =
-        uncompressPageData(timePageHeader, timeUnCompressor, compressedTimePageData);
+        uncompressPageData(pageHeader, timeUnCompressor, pageData);
     TimePageReader timePageReader =
-        new TimePageReader(timePageHeader, uncompressedTimePageData, timeDecoder);
+        new TimePageReader(pageHeader, uncompressedTimePageData, timeDecoder);
+    // release compressed time page data
+    pageData = null;
 
-    List<ValuePageReader> valuePageReaders = new ArrayList<>(valueChunkHeaderList.size());
+    // construct value page readers
+    List<ValuePageReader> valuePageReaders = new ArrayList<>(valuePageHeaders.size());
     for (int i = 0; i < valuePageHeaders.size(); i++) {
       if (valuePageHeaders.get(i) == null) {
         valuePageReaders.add(null);
       } else {
-        ChunkHeader valueChunkHeader = valueChunkHeaderList.get(i);
+        // the data buffer of all chunk has been released
+        Chunk valueChunk = chunkMetadataElement.valueChunks.get(i);
+        ChunkHeader valueChunkHeader = valueChunk.getHeader();
+        List<TimeRange> valueDeleteIntervalList = valueChunk.getDeleteIntervalList();
         TSDataType valueType = valueChunkHeader.getDataType();
         Decoder valuePageDecoder =
             Decoder.getDecoderByType(valueChunkHeader.getEncodingType(), valueType);
@@ -161,16 +144,17 @@ public class PageElement {
             uncompressPageData(
                 valuePageHeaders.get(i),
                 IUnCompressor.getUnCompressor(valueChunkHeader.getCompressionType()),
-                compressedValuePageDatas.get(i));
+                valuePageDatas.get(i));
         ValuePageReader valuePageReader =
             new ValuePageReader(
                 valuePageHeaders.get(i), uncompressedPageData, valueType, valuePageDecoder);
-        if (valueDeleteIntervalList != null) {
-          valuePageReader.setDeleteIntervalList(valueDeleteIntervalList.get(i));
-        }
+        valuePageReader.setDeleteIntervalList(valueDeleteIntervalList);
         valuePageReaders.add(valuePageReader);
+        // release compressed value page data
+        valuePageDatas.set(i, null);
       }
     }
+
     return new LazyLoadAlignedPagePointReader(timePageReader, valuePageReaders);
   }
 
