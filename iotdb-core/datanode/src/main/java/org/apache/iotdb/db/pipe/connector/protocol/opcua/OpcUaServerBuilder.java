@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
+import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
@@ -79,10 +80,10 @@ public class OpcUaServerBuilder {
   private String password;
 
   public OpcUaServerBuilder() {
-    tcpBindPort = 12686;
-    httpsBindPort = 8443;
-    user = "root";
-    password = "root";
+    tcpBindPort = PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
+    httpsBindPort = PipeConnectorConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
+    user = PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
+    password = PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
   }
 
   public OpcUaServerBuilder setTcpBindPort(int tcpBindPort) {
