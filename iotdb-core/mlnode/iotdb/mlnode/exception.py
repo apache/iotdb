@@ -18,7 +18,12 @@
 
 class _BaseError(Exception):
     """Base class for exceptions in this module."""
-    pass
+
+    def __init__(self):
+        self.message = None
+
+    def __str__(self) -> str:
+        return self.message
 
 
 class BadNodeUrlError(_BaseError):
@@ -28,4 +33,34 @@ class BadNodeUrlError(_BaseError):
 
 class ModelNotExistError(_BaseError):
     def __init__(self, file_path: str):
-        self.message = "Model path: ({}) not exists".format(file_path)
+        self.message = "Model path is not exists: {} ".format(file_path)
+
+
+class BadConfigValueError(_BaseError):
+    def __init__(self, config_name: str, config_value, hint: str = ''):
+        self.message = "Bad value [{0}] for config {1}. {2}".format(config_value, config_name, hint)
+
+
+class MissingConfigError(_BaseError):
+    def __init__(self, config_name: str):
+        self.message = "Missing config: {}".format(config_name)
+
+
+class MissingOptionError(_BaseError):
+    def __init__(self, config_name: str):
+        self.message = "Missing task option: {}".format(config_name)
+
+
+class RedundantOptionError(_BaseError):
+    def __init__(self, option_name: str):
+        self.message = "Redundant task option: {}".format(option_name)
+
+
+class WrongTypeConfigError(_BaseError):
+    def __init__(self, config_name: str, expected_type: str):
+        self.message = "Wrong type for config: {0}, expected: {1}".format(config_name, expected_type)
+
+
+class UnsupportedError(_BaseError):
+    def __init__(self, msg: str):
+        self.message = "{0} is not supported in current version".format(msg)

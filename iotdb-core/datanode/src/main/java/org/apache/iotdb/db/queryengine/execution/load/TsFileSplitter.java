@@ -114,7 +114,7 @@ public class TsFileSplitter {
                     == TsFileConstant.TIME_COLUMN_MASK);
             IChunkMetadata chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
             TTimePartitionSlot timePartitionSlot =
-                TimePartitionUtils.getTimePartition(chunkMetadata.getStartTime());
+                TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime());
             ChunkData chunkData =
                 ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
 
@@ -157,7 +157,7 @@ public class TsFileSplitter {
                         ? chunkMetadata.getStartTime()
                         : pageHeader.getStartTime();
                 TTimePartitionSlot pageTimePartitionSlot =
-                    TimePartitionUtils.getTimePartition(startTime);
+                    TimePartitionUtils.getTimePartitionSlot(startTime);
                 if (!timePartitionSlot.equals(pageTimePartitionSlot)) {
                   if (!isAligned) {
                     consumeChunkData(measurementId, chunkOffset, chunkData);
@@ -198,7 +198,7 @@ public class TsFileSplitter {
                       consumeChunkData(measurementId, chunkOffset, chunkData);
                     }
 
-                    timePartitionSlot = TimePartitionUtils.getTimePartition(times[i]);
+                    timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
                     satisfiedLength = 0;
                     endTime =
                         timePartitionSlot.getStartTime()
@@ -380,17 +380,17 @@ public class TsFileSplitter {
   }
 
   private boolean needDecodeChunk(IChunkMetadata chunkMetadata) {
-    return !TimePartitionUtils.getTimePartition(chunkMetadata.getStartTime())
-        .equals(TimePartitionUtils.getTimePartition(chunkMetadata.getEndTime()));
+    return !TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime())
+        .equals(TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getEndTime()));
   }
 
   private boolean needDecodePage(PageHeader pageHeader, IChunkMetadata chunkMetadata) {
     if (pageHeader.getStatistics() == null) {
-      return !TimePartitionUtils.getTimePartition(chunkMetadata.getStartTime())
-          .equals(TimePartitionUtils.getTimePartition(chunkMetadata.getEndTime()));
+      return !TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime())
+          .equals(TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getEndTime()));
     }
-    return !TimePartitionUtils.getTimePartition(pageHeader.getStartTime())
-        .equals(TimePartitionUtils.getTimePartition(pageHeader.getEndTime()));
+    return !TimePartitionUtils.getTimePartitionSlot(pageHeader.getStartTime())
+        .equals(TimePartitionUtils.getTimePartitionSlot(pageHeader.getEndTime()));
   }
 
   private Pair<long[], Object[]> decodePage(

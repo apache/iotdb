@@ -79,7 +79,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowTrailsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowTrialsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
@@ -280,8 +280,8 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showModelsModelStatement, context);
   }
 
-  public R visitShowTrails(ShowTrailsStatement showTrailsStatement, C context) {
-    return visitStatement(showTrailsStatement, context);
+  public R visitShowTrials(ShowTrialsStatement showTrialsStatement, C context) {
+    return visitStatement(showTrialsStatement, context);
   }
 
   /** Data Manipulation Language (DML) */

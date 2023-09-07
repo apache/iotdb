@@ -17,23 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.ratis;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
-import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.consensus.ratis.utils.Utils;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
-import org.apache.ratis.protocol.RaftGroupId;
-import org.junit.Assert;
-import org.junit.Test;
+public class SequenceFileSubTaskThreadExecutor {
+  private ExecutorService executor;
 
-public class UtilsTest {
-  @Test
-  public void testEncryption() {
-    ConsensusGroupId raw = new ConfigRegionId(100);
-    RaftGroupId id = Utils.fromConsensusGroupIdToRaftGroupId(raw);
-    ConsensusGroupId cgid = Utils.fromRaftGroupIdToConsensusGroupId(id);
-    Assert.assertEquals(raw.getId(), cgid.getId());
-    Assert.assertEquals(raw.getType(), cgid.getType());
+  public SequenceFileSubTaskThreadExecutor(int threadCount) {
+    executor = Executors.newFixedThreadPool(threadCount);
+  }
+
+  public Future<SequenceFileTaskSummary> submit(Callable<SequenceFileTaskSummary> task) {
+    return executor.submit(task);
+  }
+
+  public void shutdown() {
+    executor.shutdown();
   }
 }

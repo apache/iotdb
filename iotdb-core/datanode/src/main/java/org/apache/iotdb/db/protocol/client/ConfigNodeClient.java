@@ -80,6 +80,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -120,8 +122,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrialReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrialResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
@@ -954,9 +956,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TShowTrailResp showTrail(TShowTrailReq req) throws TException {
+  public TShowTrialResp showTrial(TShowTrialReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showTrail(req), resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.showTrial(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -967,6 +969,22 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TSStatus updateModelState(TUpdateModelStateReq req) throws TException {
     throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TGetModelInfoResp getModelInfo(TGetModelInfoReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetModelInfoResp resp = client.getModelInfo(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override

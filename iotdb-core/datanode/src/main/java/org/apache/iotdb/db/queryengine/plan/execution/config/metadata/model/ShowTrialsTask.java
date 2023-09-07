@@ -40,24 +40,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ShowTrailsTask implements IConfigTask {
+public class ShowTrialsTask implements IConfigTask {
 
   private final String modelId;
 
-  public ShowTrailsTask(String modelId) {
+  public ShowTrialsTask(String modelId) {
     this.modelId = modelId;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showTrails(modelId);
+    return configTaskExecutor.showTrials(modelId);
   }
 
   public static void buildTsBlock(
       List<ByteBuffer> trailInfoList, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.showTrailsColumnHeaders.stream()
+        ColumnHeaderConstant.showTrialsColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
@@ -84,7 +84,7 @@ public class ShowTrailsTask implements IConfigTask {
         builder.declarePosition();
       }
     }
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowTrailsHeader();
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowTrialsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

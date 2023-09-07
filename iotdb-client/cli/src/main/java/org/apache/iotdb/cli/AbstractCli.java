@@ -78,13 +78,10 @@ public abstract class AbstractCli {
 
   static final String ISO8601_ARGS = "disableISO8601";
   static final List<String> AGGREGRATE_TIME_LIST = new ArrayList<>();
-  static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
-  private static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
   static final String RPC_COMPRESS_ARGS = "c";
   private static final String RPC_COMPRESS_NAME = "rpcCompressed";
   static final String TIMEOUT_ARGS = "timeout";
   private static final String TIMEOUT_NAME = "queryTimeout";
-  static final String SET_MAX_DISPLAY_NUM = "set max_display_num";
   static final String SET_TIMESTAMP_DISPLAY = "set time_display_type";
   static final String SHOW_TIMESTAMP_DISPLAY = "show time_display_type";
   static final String SET_TIME_ZONE = "set time_zone";
@@ -135,7 +132,6 @@ public abstract class AbstractCli {
     keywordSet.add("-" + USERNAME_ARGS);
     keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
-    keywordSet.add("-" + MAX_PRINT_ROW_COUNT_ARGS);
     keywordSet.add("-" + RPC_COMPRESS_ARGS);
   }
 
@@ -185,14 +181,6 @@ public abstract class AbstractCli {
             .desc("execute statement (optional)")
             .build();
     options.addOption(execute);
-
-    Option maxPrintCount =
-        Option.builder(MAX_PRINT_ROW_COUNT_ARGS)
-            .argName(MAX_PRINT_ROW_COUNT_NAME)
-            .hasArg()
-            .desc("Maximum number of rows displayed (optional)")
-            .build();
-    options.addOption(maxPrintCount);
 
     Option isRpcCompressed =
         Option.builder(RPC_COMPRESS_ARGS)
@@ -259,17 +247,6 @@ public abstract class AbstractCli {
     }
     println("Fetch size has set to " + values[1].trim());
     return CODE_OK;
-  }
-
-  static void setMaxDisplayNumber(String maxDisplayNum) {
-    long tmp = Long.parseLong(maxDisplayNum.trim());
-    if (tmp > Integer.MAX_VALUE) {
-      throw new NumberFormatException();
-    } else if (tmp <= 0) {
-      continuePrint = true;
-    } else {
-      maxPrintRowCount = Integer.parseInt(maxDisplayNum.trim());
-    }
   }
 
   static void setQueryTimeout(String timeoutString) {
@@ -389,11 +366,6 @@ public abstract class AbstractCli {
       return OperationResult.CONTINUE_OPER;
     }
 
-    if (specialCmd.startsWith(SET_MAX_DISPLAY_NUM)) {
-      lastProcessStatus = setMaxDisplayNum(specialCmd, cmd);
-      return OperationResult.CONTINUE_OPER;
-    }
-
     if (specialCmd.startsWith(SHOW_TIMEZONE)) {
       lastProcessStatus = showTimeZone(connection);
       return OperationResult.CONTINUE_OPER;
@@ -431,10 +403,6 @@ public abstract class AbstractCli {
         String.format(
             "    %s=xxx\t\t set fetch size when querying data from server.", SET_FETCH_SIZE));
     println(String.format("    %s\t\t show fetch size", SHOW_FETCH_SIZE));
-    println(
-        String.format(
-            "    %s=xxx\t eg. set max lines for cli to ouput, -1 equals to unlimited.",
-            SET_MAX_DISPLAY_NUM));
   }
 
   private static int setTimestampDisplay(String specialCmd, String cmd) {
@@ -477,25 +445,6 @@ public abstract class AbstractCli {
       return CODE_ERROR;
     }
     println("Time zone has set to " + values[1].trim());
-    return CODE_OK;
-  }
-
-  private static int setMaxDisplayNum(String specialCmd, String cmd) {
-    String[] values = specialCmd.split("=");
-    if (values.length != 2) {
-      println(
-          String.format(
-              "Max display number format error, please input like %s = 10000",
-              SET_MAX_DISPLAY_NUM));
-      return CODE_ERROR;
-    }
-    try {
-      setMaxDisplayNumber(cmd.split("=")[1]);
-    } catch (Exception e) {
-      println(String.format("Max display number format error, %s", e.getMessage()));
-      return CODE_ERROR;
-    }
-    println("Max display number has set to " + values[1].trim());
     return CODE_OK;
   }
 
@@ -558,10 +507,7 @@ public abstract class AbstractCli {
               output(lists, maxSizeList);
               continue;
             }
-            println(
-                String.format(
-                    "Reach the max_display_num = %s. Press ENTER to show more, input 'q' to quit.",
-                    maxPrintRowCount));
+            println("This display 1000 rows. Press ENTER to show more, input 'q' to quit.");
             BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
             try {
               if ("".equals(br.readLine())) {

@@ -17,11 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.commons.client.mlnode;
 
-public class WriteLockFailedException extends RuntimeException {
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
+import org.apache.iotdb.commons.client.IClientManager;
 
-  public WriteLockFailedException(String message) {
-    super(message);
+public class MLNodeClientManager {
+  private MLNodeClientManager() {
+    // Empty constructor
+  }
+
+  private static final class MLNodeClientManagerHolder {
+    private static final IClientManager<TEndPoint, MLNodeClient> INSTANCE =
+        new IClientManager.Factory<TEndPoint, MLNodeClient>()
+            .createClientManager(new ClientPoolFactory.MLNodeClientPoolFactory());
+  }
+
+  public static IClientManager<TEndPoint, MLNodeClient> getInstance() {
+    return MLNodeClientManagerHolder.INSTANCE;
   }
 }
