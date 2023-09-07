@@ -105,7 +105,7 @@ public class PageElement {
   }
 
   public void deserializePage() throws IOException {
-    if (iChunkReader instanceof AlignedChunkReader) {
+    if (this.iChunkReader == null) {
       List<ChunkHeader> valueChunkHeaderList =
           new ArrayList<>(chunkMetadataElement.valueChunks.size());
       List<List<TimeRange>> valueDeleteIntervalList =
