@@ -145,7 +145,7 @@ public abstract class BasicRoleManager implements IRoleManager {
     roleMap.clear();
     for (String roleName : accessor.listAllRoles()) {
       try {
-        accessor.loadRole(roleName);
+        roleMap.put(roleName, accessor.loadRole(roleName));
       } catch (IOException e) {
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }

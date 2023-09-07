@@ -265,7 +265,7 @@ public abstract class BasicUserManager implements IUserManager {
     userMap.clear();
     for (String name : accessor.listAllUsers()) {
       try {
-        accessor.loadUser(name);
+        userMap.put(name, accessor.loadUser(name));
       } catch (IOException e) {
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }

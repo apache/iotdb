@@ -491,6 +491,11 @@ public class AuthorInfo implements SnapshotProcessor {
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     authorizer.processLoadSnapshot(snapshotDir);
+    try {
+      authorizer.reset();
+    } catch (AuthException e) {
+      throw new IOException("Error when load role and user: %s", e);
+    }
   }
 
   @TestOnly
