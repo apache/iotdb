@@ -277,7 +277,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   @Override
-  public Event supply() {
+  public synchronized Event supply() {
     if (pendingQueue == null) {
       return null;
     }
@@ -292,14 +292,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   @Override
   public synchronized void close() {
     if (pendingQueue != null) {
-      final Queue<PipeTsFileInsertionEvent> pendingQueueToClose = pendingQueue;
-      // To avoid concurrent supply and close, we set pendingQueue to null first.
-      pendingQueue = null;
-
-      pendingQueueToClose.forEach(
+      pendingQueue.forEach(
           event ->
               event.clearReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName()));
-      pendingQueueToClose.clear();
+      pendingQueue.clear();
+      pendingQueue = null;
     }
   }
 }
