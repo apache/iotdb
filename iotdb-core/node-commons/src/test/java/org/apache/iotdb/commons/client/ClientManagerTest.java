@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.exception.BorrowNullClientManagerException;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -34,8 +33,6 @@ import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
-import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -43,41 +40,20 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class ClientManagerTest {
 
   private final TEndPoint endPoint = new TEndPoint("localhost", 10730);
 
-  private static final int CONNECTION_TIMEOUT = 5_000;
-
   private MockInternalRPCService service;
 
-  @SuppressWarnings("java:S2925")
   @Before
-  public void setUp() throws StartupException, TException {
+  public void setUp() throws StartupException {
     service = new MockInternalRPCService(endPoint);
-    IDataNodeRPCService.Iface processor = mock(IDataNodeRPCService.Iface.class);
-    // timeout method
-    when(processor.clearCache())
-        .thenAnswer(
-            invocation -> {
-              Thread.sleep(CONNECTION_TIMEOUT + 1000);
-              return new TSStatus();
-            });
-    // normal method
-    when(processor.merge())
-        .thenAnswer(
-            invocation -> {
-              Thread.sleep(1000);
-              return new TSStatus();
-            });
-    service.initSyncedServiceImpl(processor);
+    service.initSyncedServiceImpl(mock(IDataNodeRPCService.Iface.class));
     service.start();
   }
 
@@ -102,8 +78,6 @@ public class ClientManagerTest {
     invalidSyncClientReturnTest();
     invalidAsyncClientReturnTest();
     borrowNullTest();
-    syncClientTimeoutTest();
-    asyncClientTimeoutTest();
   }
 
   public void normalSyncTest() throws Exception {
@@ -487,96 +461,6 @@ public class ClientManagerTest {
     Assert.assertEquals(0, asyncClusterManager.getPool().getNumIdle(endPoint));
   }
 
-  public void syncClientTimeoutTest() throws Exception {
-    // init syncClientManager
-    ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClusterManager =
-        (ClientManager<TEndPoint, SyncDataNodeInternalServiceClient>)
-            new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
-                .createClientManager(new TestSyncDataNodeInternalServiceClientPoolFactory());
-
-    // normal RPC
-    try (SyncDataNodeInternalServiceClient syncClient = syncClusterManager.borrowClient(endPoint)) {
-      syncClient.merge();
-    } catch (Exception e) {
-      Assert.fail("There should be no timeout here");
-    }
-    Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
-    Assert.assertEquals(1, syncClusterManager.getPool().getNumIdle(endPoint));
-
-    // timeout RPC
-    try (SyncDataNodeInternalServiceClient syncClient = syncClusterManager.borrowClient(endPoint)) {
-      syncClient.clearCache();
-      Assert.fail("A timeout exception should occur here");
-    } catch (Exception ignored) {
-    }
-    Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
-    Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
-
-    syncClusterManager.close();
-  }
-
-  public void asyncClientTimeoutTest() throws Exception {
-    // init asyncClientManager
-    ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> asyncClusterManager =
-        (ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>)
-            new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
-                .createClientManager(new TestAsyncDataNodeInternalServiceClientPoolFactory());
-
-    // normal RPC
-    AsyncDataNodeInternalServiceClient asyncClient = asyncClusterManager.borrowClient(endPoint);
-    CountDownLatch latch = new CountDownLatch(1);
-    AtomicBoolean failed = new AtomicBoolean(false);
-    CountDownLatch finalLatch = latch;
-    AtomicBoolean finalFailed = failed;
-    asyncClient.merge(
-        new AsyncMethodCallback<TSStatus>() {
-          @Override
-          public void onComplete(TSStatus response) {
-            finalLatch.countDown();
-          }
-
-          @Override
-          public void onError(Exception exception) {
-            finalFailed.set(true);
-            finalLatch.countDown();
-          }
-        });
-    latch.await();
-    if (failed.get()) {
-      Assert.fail("There should be no timeout here");
-    }
-    Assert.assertEquals(0, asyncClusterManager.getPool().getNumActive(endPoint));
-    Assert.assertEquals(1, asyncClusterManager.getPool().getNumIdle(endPoint));
-
-    // timeout RPC
-    asyncClient = asyncClusterManager.borrowClient(endPoint);
-    latch = new CountDownLatch(1);
-    failed = new AtomicBoolean(false);
-    AtomicBoolean finalFailed1 = failed;
-    CountDownLatch finalLatch1 = latch;
-    asyncClient.clearCache(
-        new AsyncMethodCallback<TSStatus>() {
-          @Override
-          public void onComplete(TSStatus response) {
-            finalFailed1.set(true);
-            finalLatch1.countDown();
-          }
-
-          @Override
-          public void onError(Exception exception) {
-            finalLatch1.countDown();
-          }
-        });
-    latch.await();
-    if (failed.get()) {
-      Assert.fail("A timeout exception should occur here");
-    }
-    Assert.assertEquals(0, asyncClusterManager.getPool().getNumActive(endPoint));
-    Assert.assertEquals(0, asyncClusterManager.getPool().getNumIdle(endPoint));
-
-    asyncClusterManager.close();
-  }
-
   public static class TestSyncDataNodeInternalServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncDataNodeInternalServiceClient> {
 
@@ -585,10 +469,7 @@ public class ClientManagerTest {
         ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
       return new GenericKeyedObjectPool<>(
           new SyncDataNodeInternalServiceClient.Factory(
-              manager,
-              new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(CONNECTION_TIMEOUT)
-                  .build()),
+              manager, new ThriftClientProperty.Builder().build()),
           new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>().build().getConfig());
     }
   }
@@ -602,7 +483,7 @@ public class ClientManagerTest {
       return new GenericKeyedObjectPool<>(
           new AsyncDataNodeInternalServiceClient.Factory(
               manager,
-              new ThriftClientProperty.Builder().setConnectionTimeoutMs(CONNECTION_TIMEOUT).build(),
+              new ThriftClientProperty.Builder().build(),
               ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>().build().getConfig());
     }

@@ -56,7 +56,6 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
         tClientManager,
         TNonblockingSocketWrapper.wrap(
             endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
-    setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
