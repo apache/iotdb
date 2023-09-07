@@ -96,15 +96,18 @@ public class PipeProcessorSubtask extends PipeSubtask {
     }
 
     try {
-      if (event instanceof TabletInsertionEvent) {
-        pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
-      } else if (event instanceof TsFileInsertionEvent) {
-        pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
-      } else if (event instanceof PipeHeartbeatEvent) {
-        pipeProcessor.process(event, outputEventCollector);
-        ((PipeHeartbeatEvent) event).onProcessed();
-      } else {
-        pipeProcessor.process(event, outputEventCollector);
+      // event can be supplied after the subtask is closed, so we need to check isClosed here
+      if (!isClosed.get()) {
+        if (event instanceof TabletInsertionEvent) {
+          pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+        } else if (event instanceof TsFileInsertionEvent) {
+          pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+        } else if (event instanceof PipeHeartbeatEvent) {
+          pipeProcessor.process(event, outputEventCollector);
+          ((PipeHeartbeatEvent) event).onProcessed();
+        } else {
+          pipeProcessor.process(event, outputEventCollector);
+        }
       }
 
       releaseLastEvent();
@@ -134,15 +137,19 @@ public class PipeProcessorSubtask extends PipeSubtask {
     try {
       isClosed.set(true);
 
+      // pipeProcessor closes first, then no more events will be added into outputEventCollector.
+      // only after that, outputEventCollector can be closed.
       pipeProcessor.close();
-
-      // should be called after pipeProcessor.close()
-      super.close();
     } catch (Exception e) {
       LOGGER.info(
           "Error occurred during closing PipeProcessor, perhaps need to check whether the "
               + "implementation of PipeProcessor is correct according to the pipe-api description.",
           e);
+    } finally {
+      outputEventCollector.close();
+
+      // should be called after pipeProcessor.close()
+      super.close();
     }
   }
 
