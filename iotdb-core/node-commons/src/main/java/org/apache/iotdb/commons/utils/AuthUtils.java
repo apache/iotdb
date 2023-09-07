@@ -43,6 +43,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -249,8 +250,9 @@ public class AuthUtils {
           return true;
         }
         if (privilegeId == PrivilegeType.READ_SCHEMA.ordinal()
-            && pathPrivilege.getPrivileges().contains(PrivilegeType.WRITE_SCHEMA.ordinal()))
+            && pathPrivilege.getPrivileges().contains(PrivilegeType.WRITE_SCHEMA.ordinal())) {
           return true;
+        }
         if (privilegeId == PrivilegeType.READ_DATA.ordinal()
             && pathPrivilege.getPrivileges().contains(PrivilegeType.WRITE_DATA.ordinal())) {
           return true;
@@ -351,17 +353,14 @@ public class AuthUtils {
    */
   public static void removePrivilege(
       PartialPath path, int privilegeId, List<PathPrivilege> privilegeList) {
-    PathPrivilege targetPathPrivilege = null;
-    for (PathPrivilege pathPrivilege : privilegeList) {
-      if (pathPrivilege.getPath().equals(path)) {
-        targetPathPrivilege = pathPrivilege;
-        break;
-      }
-    }
-    if (targetPathPrivilege != null) {
-      targetPathPrivilege.revokePrivilege(privilegeId);
-      if (targetPathPrivilege.getPrivileges().isEmpty()) {
-        privilegeList.remove(targetPathPrivilege);
+    Iterator<PathPrivilege> it = privilegeList.iterator();
+    while (it.hasNext()) {
+      PathPrivilege pathPri = it.next();
+      if (path.matchFullPath(pathPri.getPath())) {
+        pathPri.revokePrivilege(privilegeId);
+        if (pathPri.getPrivileges().isEmpty()) {
+          it.remove();
+        }
       }
     }
   }

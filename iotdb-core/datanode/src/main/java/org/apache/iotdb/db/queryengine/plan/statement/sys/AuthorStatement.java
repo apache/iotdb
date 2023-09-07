@@ -277,9 +277,20 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
 
+      case LIST_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        if (this.userName != null && userName == this.userName) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        } else {
+          return AuthorityChecker.getTSStatus(
+              AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE.ordinal()),
+              PrivilegeType.MANAGE_ROLE);
+        }
+
       case CREATE_ROLE:
       case DROP_ROLE:
-      case LIST_ROLE:
       case GRANT_USER_ROLE:
       case REVOKE_USER_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {

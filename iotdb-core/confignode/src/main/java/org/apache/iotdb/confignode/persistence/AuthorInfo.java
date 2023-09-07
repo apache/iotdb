@@ -527,13 +527,13 @@ public class AuthorInfo implements SnapshotProcessor {
         path.setPriGrantOpt(pathPrivilege.getGrantOpt());
         userPrivilegeList.add(path);
       }
-      tUserResp.setUsername(user.getName());
-      tUserResp.setPassword(user.getPassword());
-      tUserResp.setPrivilegeList(userPrivilegeList);
-      tUserResp.setRoleList(user.getRoleList());
-      tUserResp.setSysPriSet(user.getSysPrivilege());
-      tUserResp.setSysPriSetGrantOpt(user.getSysPriGrantOpt());
     }
+    tUserResp.setUsername(user.getName());
+    tUserResp.setPassword(user.getPassword());
+    tUserResp.setPrivilegeList(userPrivilegeList);
+    tUserResp.setRoleList(user.getRoleList());
+    tUserResp.setSysPriSet(user.getSysPrivilege());
+    tUserResp.setSysPriSetGrantOpt(user.getSysPriGrantOpt());
 
     // Permission information for roles owned by users
     if (user.getRoleList() != null) {
