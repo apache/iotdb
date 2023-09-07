@@ -15,7 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from iotdb.mlnode.constant import TSStatusCode
+
+from typing import cast
+
+from iotdb.mlnode.config import descriptor
+from iotdb.mlnode.constant import TaskType, TSStatusCode
+from iotdb.mlnode.dataset.dataset import TsForecastDataset
+from iotdb.mlnode.dataset.factory import create_dataset
+from iotdb.mlnode.log import logger
+from iotdb.mlnode.parser import (ForecastTaskOptions, parse_forecast_request,
+                                 parse_task_options)
+from iotdb.mlnode.process.manager import TaskManager
+from iotdb.mlnode.serde import convert_to_binary
 from iotdb.mlnode.storage import model_storage
 from iotdb.mlnode.util import get_status
 from iotdb.thrift.mlnode import IMLNodeRPCService
@@ -26,19 +37,59 @@ from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
 
 class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def __init__(self):
-        pass
+        self.__task_manager = TaskManager(pool_size=descriptor.get_config().get_mn_mn_task_pool_size())
 
     def deleteModel(self, req: TDeleteModelReq):
         try:
             model_storage.delete_model(req.modelId)
             return get_status(TSStatusCode.SUCCESS_STATUS)
         except Exception as e:
+            logger.warn(e)
             return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))
 
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
-        return get_status(TSStatusCode.SUCCESS_STATUS)
+        task = None
+        try:
+            # parse options
+            task_options = parse_task_options(req.options)
+            dataset = create_dataset(req.datasetFetchSQL, task_options)
+
+            # create task according to task type
+            # currently, IoTDB-ML supports forecasting training task only
+            if task_options.get_task_type() == TaskType.FORECAST:
+                task_options = cast(ForecastTaskOptions, task_options)
+                dataset = cast(TsForecastDataset, dataset)
+                task = self.__task_manager.create_forecast_training_task(
+                    model_id=req.modelId,
+                    task_options=task_options,
+                    hyperparameters=req.hyperparameters,
+                    dataset=dataset
+                )
+            else:
+                raise NotImplementedError
+
+            return get_status(TSStatusCode.SUCCESS_STATUS)
+        except Exception as e:
+            logger.warn(e)
+            return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))
+        finally:
+            if task is not None:
+                # submit task to process pool
+                self.__task_manager.submit_training_task(task)
 
     def forecast(self, req: TForecastReq):
-        status = get_status(TSStatusCode.SUCCESS_STATUS)
-        forecast_result = b'forecast result'
-        return TForecastResp(status, forecast_result)
+        model_path, data, pred_length = parse_forecast_request(req)
+        try:
+            task = self.__task_manager.create_forecast_task(
+                pred_length,
+                data,
+                model_path
+            )
+            # submit task stage & check resource and decide pending/start
+            res = self.__task_manager.submit_forecast_task(task)
+            forecast_result = convert_to_binary(res)
+            resp = TForecastResp(get_status(TSStatusCode.SUCCESS_STATUS), forecast_result)
+            return resp
+        except Exception as e:
+            logger.warn(e)
+            return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))

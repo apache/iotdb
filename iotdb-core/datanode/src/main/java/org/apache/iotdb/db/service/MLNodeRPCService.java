@@ -30,8 +30,6 @@ import org.apache.iotdb.db.protocol.thrift.handler.MLNodeRPCServiceThriftHandler
 import org.apache.iotdb.db.protocol.thrift.impl.MLNodeRPCServiceImpl;
 import org.apache.iotdb.mpp.rpc.thrift.IMLNodeInternalRPCService;
 
-import java.lang.reflect.InvocationTargetException;
-
 public class MLNodeRPCService extends ThriftService implements MLNodeRPCServiceMBean {
 
   private MLNodeRPCServiceImpl impl;
@@ -44,9 +42,7 @@ public class MLNodeRPCService extends ThriftService implements MLNodeRPCServiceM
   }
 
   @Override
-  public void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException,
-          NoSuchMethodException, InvocationTargetException {
+  public void initTProcessor() {
     impl = new MLNodeRPCServiceImpl();
     initSyncedServiceImpl(null);
     processor = new IMLNodeInternalRPCService.Processor<>(impl);
@@ -67,13 +63,11 @@ public class MLNodeRPCService extends ThriftService implements MLNodeRPCServiceM
               config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new MLNodeRPCServiceThriftHandler(impl),
-              // TODO: hard coded compress strategy
               false);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
     thriftServiceThread.setName(ThreadName.MLNODE_RPC_SERVICE.getName());
-    // TODO: metricService
   }
 
   @Override

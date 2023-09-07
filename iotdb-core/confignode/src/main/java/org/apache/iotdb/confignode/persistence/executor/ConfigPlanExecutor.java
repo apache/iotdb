@@ -31,8 +31,9 @@ import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabase
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
-import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrialPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
@@ -279,8 +280,10 @@ public class ConfigPlanExecutor {
         return udfInfo.getUDFJar((GetUDFJarPlan) req);
       case ShowModel:
         return modelInfo.showModel((ShowModelPlan) req);
-      case ShowTrail:
-        return modelInfo.showTrail((ShowTrailPlan) req);
+      case ShowTrial:
+        return modelInfo.showTrial((ShowTrialPlan) req);
+      case GetModelInfo:
+        return modelInfo.getModelInfo((GetModelInfoPlan) req);
       case GetPipePluginTable:
         return pipeInfo.getPipePluginInfo().showPipePlugins();
       case GetPipePluginJar:

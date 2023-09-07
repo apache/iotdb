@@ -119,14 +119,9 @@ classes/
 Makefile
 **/CMakeFiles/
 
-### cluster test data
-node1/
-node2/
-node3/
-
 # Exclude copied license
-/client-py/LICENSE
-/mlnode/LICENSE
+iotdb-client/client-py/LICENSE
+iotdb-core/mlnode/LICENSE
 
 # ANTLR
 iotdb-core/antlr/gen/
