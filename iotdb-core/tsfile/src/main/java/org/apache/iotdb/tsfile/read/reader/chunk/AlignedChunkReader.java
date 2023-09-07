@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
 
 import java.io.IOException;
@@ -274,85 +273,6 @@ public class AlignedChunkReader implements IChunkReader {
             queryAllSensors);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
     return alignedPageReader;
-  }
-
-  /** Read data from compressed page data. Uncompress the page and decode it to tsblock data. */
-  public static IPointReader getPagePointReader(
-      ChunkHeader timeChunkHeader,
-      List<ChunkHeader> valueChunkHeaderList,
-      List<List<TimeRange>> valueDeleteIntervalList,
-      PageHeader timePageHeader,
-      List<PageHeader> valuePageHeaders,
-      ByteBuffer compressedTimePageData,
-      List<ByteBuffer> compressedValuePageDatas)
-      throws IOException {
-
-    IUnCompressor timeUnCompressor =
-        IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
-    Decoder timeDecoder =
-        Decoder.getDecoderByType(timeChunkHeader.getEncodingType(), timeChunkHeader.getDataType());
-    // uncompress time page data
-    ByteBuffer uncompressedTimePageData =
-        uncompressPageData(timePageHeader, timeUnCompressor, compressedTimePageData);
-    // uncompress value page datas
-    List<ByteBuffer> uncompressedValuePageDatas = new ArrayList<>();
-    List<TSDataType> valueTypes = new ArrayList<>();
-    List<Decoder> valueDecoders = new ArrayList<>();
-    for (int i = 0; i < valuePageHeaders.size(); i++) {
-      if (valuePageHeaders.get(i) == null) {
-        uncompressedValuePageDatas.add(null);
-        valueTypes.add(TSDataType.BOOLEAN);
-        valueDecoders.add(null);
-      } else {
-        ChunkHeader valueChunkHeader = valueChunkHeaderList.get(i);
-        uncompressedValuePageDatas.add(
-            uncompressPageData(
-                valuePageHeaders.get(i),
-                IUnCompressor.getUnCompressor(valueChunkHeader.getCompressionType()),
-                compressedValuePageDatas.get(i)));
-        TSDataType valueType = valueChunkHeader.getDataType();
-        valueDecoders.add(Decoder.getDecoderByType(valueChunkHeader.getEncodingType(), valueType));
-        valueTypes.add(valueType);
-      }
-    }
-
-    // decode page data
-    AlignedPageReader alignedPageReader =
-        new AlignedPageReader(
-            timePageHeader,
-            uncompressedTimePageData,
-            timeDecoder,
-            valuePageHeaders,
-            uncompressedValuePageDatas,
-            valueTypes,
-            valueDecoders,
-            null,
-            false);
-    alignedPageReader.initTsBlockBuilder(valueTypes);
-    alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
-    return alignedPageReader.getLazyPointReader();
-  }
-
-  private static ByteBuffer uncompressPageData(
-      PageHeader pageHeader, IUnCompressor unCompressor, ByteBuffer compressedPageData)
-      throws IOException {
-    int compressedPageBodyLength = pageHeader.getCompressedSize();
-    byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
-    try {
-      unCompressor.uncompress(
-          compressedPageData.array(), 0, compressedPageBodyLength, uncompressedPageData, 0);
-    } catch (Exception e) {
-      throw new IOException(
-          "Uncompress error! uncompress size: "
-              + pageHeader.getUncompressedSize()
-              + "compressed size: "
-              + pageHeader.getCompressedSize()
-              + "page header: "
-              + pageHeader
-              + e.getMessage());
-    }
-
-    return ByteBuffer.wrap(uncompressedPageData);
   }
 
   /**
