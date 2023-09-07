@@ -430,32 +430,14 @@ public class Outlier {
         int n_k_b = n_k / 8;
         int remaining = n_k - n_k_b*8;
 
+        for(int i=n_k_b*8;i<n_k;i++){
+            
+        }
+
 
         return encoded_result;
     }
 
-
-    public static int getBitwidthDeltaTsBlock(ArrayList<ArrayList<Integer>> outlier_top_k, int t_or_v) {
-        int bit_num = 0;
-        int block_size = outlier_top_k.size();
-//        System.out.println(outlier_top_k);
-//        bit_num += (10 * block_size);
-        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
-        int timestamp_delta_min = Integer.MAX_VALUE;
-        int timestamp_delta_max = Integer.MIN_VALUE;
-        for (int i = 1; i < block_size; i++) {
-//        for (ArrayList<Integer> integers : outlier_top_k) {
-            int epsilon_r = outlier_top_k.get(i).get(t_or_v + 1) - outlier_top_k.get(i - 1).get(t_or_v + 1);
-            if (epsilon_r < timestamp_delta_min) {
-                timestamp_delta_min = epsilon_r;
-            }
-            if (epsilon_r > timestamp_delta_max) {
-                timestamp_delta_max = epsilon_r;
-            }
-        }
-        bit_num += ((block_size - 1) * getBitWith(timestamp_delta_max - timestamp_delta_min) + 32);
-        return bit_num;
-    }
 
 
     public static class Result {
@@ -646,7 +628,7 @@ public class Outlier {
             byte[] bit_width_bytes = int2Bytes(bit_width_final);
             for (byte b : bit_width_bytes) cur_byte.add(b);
 
-            
+            cur_byte.addAll(encodeOutlier2Bytes(final_normal, bit_width_final));
 
         }
 
