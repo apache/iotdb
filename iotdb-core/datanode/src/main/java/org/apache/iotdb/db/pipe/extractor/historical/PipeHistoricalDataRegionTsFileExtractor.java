@@ -290,8 +290,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
     if (pendingQueue != null) {
+      pendingQueue.forEach(
+          event ->
+              event.clearReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName()));
       pendingQueue.clear();
       pendingQueue = null;
     }

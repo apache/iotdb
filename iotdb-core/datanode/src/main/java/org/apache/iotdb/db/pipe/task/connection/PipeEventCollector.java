@@ -31,7 +31,7 @@ public class PipeEventCollector implements EventCollector {
 
   private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
-  private final Deque<Event> bufferQueue;
+  private Deque<Event> bufferQueue;
 
   public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue) {
     this.pendingQueue = pendingQueue;
@@ -86,5 +86,18 @@ public class PipeEventCollector implements EventCollector {
       }
     }
     return false;
+  }
+
+  public synchronized void close() {
+    if (bufferQueue != null) {
+      bufferQueue.forEach(
+          event -> {
+            if (event instanceof EnrichedEvent) {
+              ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName());
+            }
+          });
+      bufferQueue.clear();
+      bufferQueue = null;
+    }
   }
 }

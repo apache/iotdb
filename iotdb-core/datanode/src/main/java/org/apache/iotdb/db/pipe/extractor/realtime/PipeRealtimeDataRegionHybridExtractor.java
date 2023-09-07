@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
@@ -40,7 +41,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
 
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
-  private final UnboundedBlockingPendingQueue<Event> pendingQueue;
+  private UnboundedBlockingPendingQueue<Event> pendingQueue;
 
   public PipeRealtimeDataRegionHybridExtractor() {
     this.pendingQueue = new UnboundedBlockingPendingQueue<>();
@@ -311,6 +312,16 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   @Override
   public void close() throws Exception {
     super.close();
-    pendingQueue.clear();
+    if (pendingQueue != null) {
+      pendingQueue.forEach(
+          event -> {
+            if (event instanceof EnrichedEvent) {
+              ((EnrichedEvent) event)
+                  .clearReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+            }
+          });
+      pendingQueue.clear();
+      pendingQueue = null;
+    }
   }
 }

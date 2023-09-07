@@ -134,6 +134,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
     try {
       isClosed.set(true);
 
+      outputEventCollector.close();
       pipeProcessor.close();
 
       // should be called after pipeProcessor.close()
