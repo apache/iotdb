@@ -134,7 +134,8 @@ public class TsFileSplitSenderTest extends TestBase {
             partitionBatchFetcher,
             TimePartitionUtils.getTimePartitionInterval(),
             internalServiceClientManager,
-            false);
+            false,
+            4096);
     long start = System.currentTimeMillis();
     splitSender.start();
     long timeConsumption = System.currentTimeMillis() - start;

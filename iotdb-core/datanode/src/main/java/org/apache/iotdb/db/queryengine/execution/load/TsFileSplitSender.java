@@ -19,6 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
+import static org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileDispatcherImpl.NODE_CONNECTION_ERROR;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -38,27 +54,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileDispatcherImpl.NODE_CONNECTION_ERROR;
 
 public class TsFileSplitSender {
 
@@ -80,18 +78,21 @@ public class TsFileSplitSender {
   private Map<Pair<LoadTsFilePieceNode, TRegionReplicaSet>, Exception> phaseOneFailures =
       new ConcurrentHashMap<>();
   private Map<TRegionReplicaSet, Exception> phaseTwoFailures = new HashMap<>();
+  private long maxSplitSize;
 
   public TsFileSplitSender(
       LoadTsFileNode loadTsFileNode,
       DataPartitionBatchFetcher targetPartitionFetcher,
       long targetPartitionInterval,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
-      boolean isGeneratedByPipe) {
+      boolean isGeneratedByPipe,
+      long maxSplitSize) {
     this.loadTsFileNode = loadTsFileNode;
     this.targetPartitionFetcher = targetPartitionFetcher;
     this.targetPartitionInterval = targetPartitionInterval;
     this.internalServiceClientManager = internalServiceClientManager;
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.maxSplitSize = maxSplitSize;
   }
 
   public void start() throws IOException {
@@ -114,7 +115,9 @@ public class TsFileSplitSender {
             this::dispatchOnePieceNode,
             node.getPlanNodeId(),
             node.lastResource().getTsFile(),
-            targetPartitionFetcher);
+            targetPartitionFetcher,
+            maxSplitSize);
+
     ExecutorService executorService =
         IoTDBThreadPoolFactory.newThreadPool(
             16,
@@ -125,12 +128,12 @@ public class TsFileSplitSender {
             new IoTThreadFactory("MergedTsFileSplitter"),
             "MergedTsFileSplitter");
     new MergedTsFileSplitter(
-            node.getResources().stream()
-                .map(TsFileResource::getTsFile)
-                .collect(Collectors.toList()),
-            tsFileDataManager::addOrSendTsFileData,
-            executorService,
-            targetPartitionInterval)
+        node.getResources().stream()
+            .map(TsFileResource::getTsFile)
+            .collect(Collectors.toList()),
+        tsFileDataManager::addOrSendTsFileData,
+        executorService,
+        targetPartitionInterval)
         .splitTsFileByDataPartition();
     return tsFileDataManager.sendAllTsFileData() && phaseOneFailures.isEmpty();
   }
@@ -206,6 +209,11 @@ public class TsFileSplitSender {
       locations.add(new Pair<>(dataNodeLocation, throughput));
       totalThroughput += throughput;
     }
+    if (logger.isDebugEnabled()) {
+      logger.debug("Location throughput: {}", dataNodeThroughputMap.entrySet().stream()
+          .map(e -> new Pair<>(e.getKey().getDataNodeId(), e.getValue()))
+          .collect(Collectors.toList()));
+    }
     // calculate cumulative ranks
     locations.get(0).right = locations.get(0).right / totalThroughput;
     for (int i = 1; i < locations.size(); i++) {
@@ -219,7 +227,7 @@ public class TsFileSplitSender {
       List<Pair<TDataNodeLocation, Double>> locations) {
     int chosen = 0;
     double dice = random.nextDouble();
-    for (int i = 1; i < locations.size() - 1; i++) {
+    for (int i = 1; i < locations.size(); i++) {
       if (locations.get(i - 1).right <= dice && dice < locations.get(i).right) {
         chosen = i;
       }
@@ -240,6 +248,11 @@ public class TsFileSplitSender {
         new TTsFilePieceReq(pieceNode.serializeToByteBuffer(), uuid, replicaSet.getRegionId());
     loadTsFileReq.isRelay = true;
     List<Pair<TDataNodeLocation, Double>> locations = rankLocations(replicaSet);
+    if (logger.isDebugEnabled()) {
+      logger.debug("Location ranks: {}",
+          locations.stream().map(p -> new Pair<>(p.left.getDataNodeId(), p.right)).collect(
+              Collectors.toList()));
+    }
 
     long startTime = 0;
     boolean loadSucceed = false;
@@ -248,8 +261,9 @@ public class TsFileSplitSender {
     while (!locations.isEmpty()) {
       // the chosen location is removed from the list
       Pair<TDataNodeLocation, Double> locationRankPair = chooseNextLocation(locations);
+      logger.debug("Chose location {}", locationRankPair.left.getDataNodeId());
       currLocation = locationRankPair.left;
-      startTime = System.currentTimeMillis();
+      startTime = System.nanoTime();
       for (int i = 0; i < MAX_RETRY; i++) {
         try (SyncDataNodeInternalServiceClient client =
             internalServiceClientManager.borrowClient(currLocation.internalEndPoint)) {
@@ -289,7 +303,7 @@ public class TsFileSplitSender {
           new Pair<>(pieceNode, replicaSet), new FragmentInstanceDispatchException(status));
       return false;
     }
-    long timeConsumption = System.currentTimeMillis() - startTime;
+    long timeConsumption = System.nanoTime() - startTime;
     dataNodeThroughputMap.put(currLocation, pieceNode.getDataSize() * 1.0 / timeConsumption);
     return true;
   }

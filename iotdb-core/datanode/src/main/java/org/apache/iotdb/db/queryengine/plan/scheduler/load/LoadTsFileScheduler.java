@@ -192,7 +192,8 @@ public class LoadTsFileScheduler implements IScheduler {
               this::dispatchOnePieceNode,
               node.getPlanNodeId(),
               node.getTsFileResource().getTsFile(),
-              partitionFetcher);
+              partitionFetcher,
+              MAX_MEMORY_SIZE);
       new TsFileSplitter(
               node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData, 0)
           .splitTsFileByDataPartition();

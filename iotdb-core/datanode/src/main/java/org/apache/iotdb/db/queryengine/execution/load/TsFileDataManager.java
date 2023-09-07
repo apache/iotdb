@@ -46,6 +46,7 @@ import java.util.stream.IntStream;
 public class TsFileDataManager {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileDataManager.class);
+  private final long maxMemorySize;
   private final DispatchFunction dispatchFunction;
   private final DataPartitionBatchFetcher partitionBatchFetcher;
   private final PlanNodeId planNodeId;
@@ -65,7 +66,8 @@ public class TsFileDataManager {
       DispatchFunction dispatchFunction,
       PlanNodeId planNodeId,
       File targetFile,
-      DataPartitionBatchFetcher partitionBatchFetcher) {
+      DataPartitionBatchFetcher partitionBatchFetcher,
+      long maxMemorySize) {
     this.dispatchFunction = dispatchFunction;
     this.planNodeId = planNodeId;
     this.targetFile = targetFile;
@@ -73,6 +75,7 @@ public class TsFileDataManager {
     this.replicaSet2Piece = new HashMap<>();
     this.nonDirectionalChunkData = new ArrayList<>();
     this.partitionBatchFetcher = partitionBatchFetcher;
+    this.maxMemorySize = maxMemorySize;
   }
 
   public boolean addOrSendTsFileData(TsFileData tsFileData) {
@@ -85,7 +88,7 @@ public class TsFileDataManager {
     nonDirectionalChunkData.add(chunkData);
     dataSize += chunkData.getDataSize();
 
-    if (dataSize > LoadTsFileScheduler.MAX_MEMORY_SIZE) {
+    if (dataSize > maxMemorySize) {
       routeChunkData();
 
       // start to dispatch from the biggest TsFilePieceNode
@@ -109,7 +112,7 @@ public class TsFileDataManager {
             sortedReplicaSet,
             new LoadTsFilePieceNode(
                 planNodeId, targetFile)); // can not just remove, because of deletion
-        if (dataSize <= LoadTsFileScheduler.MAX_MEMORY_SIZE) {
+        if (dataSize <= maxMemorySize) {
           break;
         }
       }
@@ -152,7 +155,7 @@ public class TsFileDataManager {
     routeChunkData();
 
     for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
-      if (!dispatchFunction.dispatchOnePieceNode(entry.getValue(), entry.getKey())) {
+      if (entry.getValue().getDataSize() > 0 && !dispatchFunction.dispatchOnePieceNode(entry.getValue(), entry.getKey())) {
         logger.warn("Dispatch piece node {} of TsFile {} error.", entry.getValue(), targetFile);
         return false;
       }
