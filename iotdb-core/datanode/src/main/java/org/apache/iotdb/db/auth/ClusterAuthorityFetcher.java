@@ -213,7 +213,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
       for (PathPrivilege path : user.getPathPrivilegeList()) {
-        if (path.getPrivileges().contains(permission)) {
+        if (path.checkPrivilege(permission)) {
           patternTree.appendPathPattern(path.getPath());
         }
       }
@@ -222,7 +222,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           Role role = iAuthorCache.getRoleCache(roleName);
           if (role != null) {
             for (PathPrivilege path : role.getPathPrivilegeList()) {
-              if (path.getPrivileges().contains(permission)) {
+              if (path.checkPrivilege(permission)) {
                 patternTree.appendPathPattern(path.getPath());
               }
             }
