@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.model;
 
-import org.apache.iotdb.common.rpc.thrift.ModelTask;
+import org.apache.iotdb.common.rpc.thrift.TaskType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
@@ -28,16 +28,25 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.model.ModelInformation.MODEL_TYPE;
+import static org.apache.iotdb.commons.model.ModelInformation.TASK_TYPE;
+
 public class CreateModelStatement extends Statement implements IConfigStatement {
 
   private String modelId;
-  private boolean isAuto;
-  private Map<String, String> attributes;
-  private QueryStatement queryStatement;
+
+  private Map<String, String> options;
+
+  private Map<String, String> hyperparameters;
+
+  private QueryStatement datasetStatement;
+
+  private final List<String> requiredOptions = Arrays.asList(TASK_TYPE, MODEL_TYPE);
 
   public CreateModelStatement() {
     // do nothing
@@ -51,44 +60,54 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
     this.modelId = modelId;
   }
 
-  public boolean isAuto() {
-    return isAuto;
+  public Map<String, String> getOptions() {
+    return options;
   }
 
-  public void setAuto(boolean auto) {
-    isAuto = auto;
+  public void setOptions(Map<String, String> options) {
+    this.options = options;
   }
 
-  public Map<String, String> getAttributes() {
-    return attributes;
+  public Map<String, String> getHyperparameters() {
+    return hyperparameters;
   }
 
-  public void setAttributes(Map<String, String> attributes) {
-    this.attributes = attributes;
+  public void setHyperparameters(Map<String, String> hyperparameters) {
+    this.hyperparameters = hyperparameters;
   }
 
-  public QueryStatement getQueryStatement() {
-    return queryStatement;
+  public QueryStatement getDatasetStatement() {
+    return datasetStatement;
   }
 
-  public void setQueryStatement(QueryStatement queryStatement) {
-    this.queryStatement = queryStatement;
+  public void setDatasetStatement(QueryStatement queryBody) {
+    this.datasetStatement = queryBody;
   }
 
-  public ModelTask getModelTask() {
-    return ModelTask.valueOf(attributes.get("model_task").toUpperCase());
-  }
-
-  public String getModelType() {
-    return attributes.get("model_type");
+  public TaskType getTaskType() {
+    try {
+      return TaskType.valueOf(options.get("task_type").toUpperCase());
+    } catch (IllegalArgumentException e) {
+      throw new SemanticException("Unknown task type: " + options.get("task_type"));
+    }
   }
 
   public void semanticCheck() {
-    if (!attributes.containsKey("model_task")) {
-      throw new SemanticException("The attribute `model_task` must be specified.");
+    for (String requiredOption : requiredOptions) {
+      if (!options.containsKey(requiredOption)) {
+        throw new SemanticException("The option `" + requiredOption + "` must be specified.");
+      }
     }
-    if (!attributes.containsKey("model_type")) {
-      throw new SemanticException("The attribute `model_type` must be specified.");
+    if (datasetStatement.isAlignByDevice()) {
+      throw new SemanticException(
+          "Currently the sql statement in CREATE MODEL does not support align by device.");
+    }
+    if (datasetStatement.isLastQuery()) {
+      throw new SemanticException("The sql statement in CREATE MODEL does not support LAST query.");
+    }
+    if (datasetStatement.isAggregationQuery() && !datasetStatement.isGroupByTime()) {
+      throw new SemanticException(
+          "The aggregation sql in CREATE MODEL only supports GROUP BY TIME now.");
     }
   }
 

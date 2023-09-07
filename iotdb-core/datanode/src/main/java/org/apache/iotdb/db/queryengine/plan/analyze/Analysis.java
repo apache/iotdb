@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByParame
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
@@ -214,6 +215,8 @@ public class Analysis {
 
   // indicate whether the Nodes produce source data are VirtualSourceNodes
   private boolean isVirtualSource = false;
+
+  private ModelInferenceDescriptor modelInferenceDescriptor;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // SELECT INTO Analysis
@@ -726,6 +729,14 @@ public class Analysis {
 
   public void setTimeseriesOrderingForLastQuery(Ordering timeseriesOrderingForLastQuery) {
     this.timeseriesOrderingForLastQuery = timeseriesOrderingForLastQuery;
+  }
+
+  public ModelInferenceDescriptor getModelInferenceDescriptor() {
+    return modelInferenceDescriptor;
+  }
+
+  public void setModelInferenceDescriptor(ModelInferenceDescriptor modelInferenceDescriptor) {
+    this.modelInferenceDescriptor = modelInferenceDescriptor;
   }
 
   public Map<String, List<String>> getOutputDeviceToQueriedDevicesMap() {

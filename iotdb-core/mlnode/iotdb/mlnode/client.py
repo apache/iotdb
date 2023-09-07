@@ -19,7 +19,7 @@ import time
 from typing import Dict, List
 
 import pandas as pd
-from thrift.protocol import TBinaryProtocol, TCompactProtocol
+from thrift.protocol import TBinaryProtocol
 from thrift.Thrift import TException
 from thrift.transport import TSocket, TTransport
 
@@ -33,10 +33,9 @@ from iotdb.thrift.confignode import IConfigNodeRPCService
 from iotdb.thrift.confignode.ttypes import (TUpdateModelInfoReq,
                                             TUpdateModelStateReq)
 from iotdb.thrift.datanode import IMLNodeInternalRPCService
-from iotdb.thrift.datanode.ttypes import (TFetchTimeseriesReq,
+from iotdb.thrift.datanode.ttypes import (TFetchMoreDataReq,
+                                          TFetchTimeseriesReq,
                                           TRecordModelMetricsReq)
-from iotdb.thrift.mlnode import IMLNodeRPCService
-from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TDeleteModelReq
 
 
 class ClientManager(object):
@@ -50,57 +49,6 @@ class ClientManager(object):
 
     def borrow_config_node_client(self):
         return ConfigNodeClient(config_leader=self.__config_node_endpoint)
-
-
-class MLNodeClient(object):
-    def __init__(self, host, port):
-        self.__host = host
-        self.__port = port
-
-        transport = TTransport.TBufferedTransport(
-            TSocket.TSocket(self.__host, self.__port)
-        )
-        if not transport.isOpen():
-            try:
-                transport.open()
-            except TTransport.TTransportException as e:
-                logger.exception("TTransportException!", exc_info=e)
-
-        protocol = TCompactProtocol.TCompactProtocol(transport)
-        self.__client = IMLNodeRPCService.Client(protocol)
-
-    def create_training_task(self,
-                             model_id: str,
-                             is_auto: bool,
-                             model_configs: Dict,
-                             query_expressions: List[str],
-                             query_filter: str = '') -> None:
-        req = TCreateTrainingTaskReq(
-            modelId=model_id,
-            isAuto=is_auto,
-            modelConfigs={k: str(v) for k, v in model_configs.items()},
-            queryExpressions=[str(query) for query in query_expressions],
-            queryFilter=query_filter,
-        )
-        try:
-            status = self.__client.createTrainingTask(req)
-            verify_success(status, "An error occurs when calling create_training_task()")
-        except TTransport.TException as e:
-            raise e
-
-    def create_forecast_task(self) -> None:
-        # TODO
-        pass
-
-    def delete_model(self,
-                     model_id: str,
-                     trial_id: str = None) -> None:
-        req = TDeleteModelReq(modelId=model_id, trialId=trial_id)
-        try:
-            status = self.__client.deleteModel(req)
-            verify_success(status, "An error occurs when calling delete_model()")
-        except TTransport.TException as e:
-            raise e
 
 
 class DataNodeClient(object):
@@ -125,13 +73,11 @@ class DataNodeClient(object):
         self.__client = IMLNodeInternalRPCService.Client(protocol)
 
     def fetch_timeseries(self,
-                         query_expressions: List[str],
-                         query_filter: str = None,
+                         query_body: str,
                          fetch_size: int = DEFAULT_FETCH_SIZE,
-                         timeout: int = DEFAULT_TIMEOUT) -> [int, bool, pd.DataFrame]:
+                         timeout: int = DEFAULT_TIMEOUT) -> pd.DataFrame:
         req = TFetchTimeseriesReq(
-            queryExpressions=query_expressions,
-            queryFilter=query_filter,
+            queryBody=query_body,
             fetchSize=fetch_size,
             timeout=timeout
         )
@@ -140,27 +86,38 @@ class DataNodeClient(object):
             verify_success(resp.status, "An error occurs when calling fetch_timeseries()")
 
             if len(resp.tsDataset) == 0:
-                raise RuntimeError(f'No data fetched with query filter: {query_filter}')
-
+                raise RuntimeError(f'No data fetched with sql: {query_body}')
             data = serde.convert_to_df(resp.columnNameList,
                                        resp.columnTypeList,
                                        resp.columnNameIndexMap,
                                        resp.tsDataset)
             if data.empty:
                 raise RuntimeError(
-                    f'Fetched empty data with query expressions: {query_expressions} and query filter: {query_filter}')
-            return resp.queryId, resp.hasMoreData, data
+                    f'Fetched empty data with sql: {query_body}')
         except Exception as e:
             logger.warn(
-                f'Fail to fetch data with query expressions: {query_expressions} and query filter: {query_filter}')
+                f'Fail to fetch data with sql: {query_body}')
             raise e
-
-    def fetch_window_batch(self,
-                           query_expressions: list,
-                           query_filter: str = None,
-                           fetch_size: int = DEFAULT_FETCH_SIZE,
-                           timeout: int = DEFAULT_TIMEOUT) -> [int, bool, List[pd.DataFrame]]:
-        pass
+        query_id = resp.queryId
+        column_name_list = resp.columnNameList
+        column_type_list = resp.columnTypeList
+        column_name_index_map = resp.columnNameIndexMap
+        has_more_data = resp.hasMoreData
+        while has_more_data:
+            req = TFetchMoreDataReq(queryId=query_id, fetchSize=fetch_size)
+            try:
+                resp = self.__client.fetchMoreData(req)
+                verify_success(resp.status, "An error occurs when calling fetch_more_data()")
+                data = data.append(serde.convert_to_df(column_name_list,
+                                                       column_type_list,
+                                                       column_name_index_map,
+                                                       resp.tsDataset))
+                has_more_data = resp.hasMoreData
+            except Exception as e:
+                logger.warn(
+                    f'Fail to fetch more data with query id: {query_id}')
+                raise e
+        return data
 
     def record_model_metrics(self,
                              model_id: str,
@@ -178,7 +135,7 @@ class DataNodeClient(object):
             status = self.__client.recordModelMetrics(req)
             verify_success(status, "An error occurs when calling record_model_metrics()")
         except TTransport.TException as e:
-            raise e
+            logger.exception(e.message)
 
 
 class ConfigNodeClient(object):
@@ -271,9 +228,9 @@ class ConfigNodeClient(object):
         req = TUpdateModelStateReq(
             modelId=model_id,
             state=training_state,
-            bestTrailId=best_trail_id
+            bestTrialId=best_trail_id
         )
-        for i in range(0, self.__RETRY_NUM):
+        for _ in range(0, self.__RETRY_NUM):
             try:
                 status = self.__client.updateModelState(req)
                 if not self.__update_config_node_leader(status):
@@ -295,11 +252,11 @@ class ConfigNodeClient(object):
             model_info = {}
         req = TUpdateModelInfoReq(
             modelId=model_id,
-            trailId=trial_id,
+            trialId=trial_id,
             modelInfo={k: str(v) for k, v in model_info.items()},
         )
 
-        for i in range(0, self.__RETRY_NUM):
+        for _ in range(0, self.__RETRY_NUM):
             try:
                 status = self.__client.updateModelInfo(req)
                 if not self.__update_config_node_leader(status):
