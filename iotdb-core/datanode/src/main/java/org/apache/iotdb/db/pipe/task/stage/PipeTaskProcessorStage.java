@@ -85,7 +85,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       throw new PipeException(e.getMessage(), e);
     }
 
-    final String taskId = pipeName + "_" + dataRegionId;
+    final String taskId = pipeName + "_" + dataRegionId + "_" + creationTime;
     final PipeEventCollector pipeConnectorOutputEventCollector =
         new PipeEventCollector(pipeConnectorOutputPendingQueue);
     this.pipeProcessorSubtask =
