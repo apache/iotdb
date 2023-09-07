@@ -66,6 +66,7 @@ public class IoTDBSeriesPermissionIT {
   @Test
   public void testSchema() {
     testWriteSchema();
+
     testReadSchema();
   }
 
