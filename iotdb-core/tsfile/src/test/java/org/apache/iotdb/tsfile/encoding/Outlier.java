@@ -93,14 +93,14 @@ public class Outlier {
         return value;
     }
 
-    public static byte[] bitPacking(ArrayList<Integer> numbers, int bit_width) {
+    public static byte[] bitPacking(ArrayList<Integer> numbers,int start, int bit_width) {
         int block_num = numbers.size() / 8;
         byte[] result = new byte[bit_width * block_num];
         for (int i = 0; i < block_num; i++) {
             for (int j = 0; j < bit_width; j++) {
                 int tmp_int = 0;
                 for (int k = 0; k < 8; k++) {
-                    tmp_int += (((numbers.get(i * 8 + k) >> j) % 2) << k);
+                    tmp_int += (((numbers.get(i * 8 + k + start) >> j) % 2) << k);
                 }
                 result[i * bit_width + j] = (byte) tmp_int;
             }
@@ -108,14 +108,14 @@ public class Outlier {
         return result;
     }
 
-    public static byte[] bitPacking(ArrayList<ArrayList<Integer>> numbers, int index, int bit_width) {
+    public static byte[] bitPacking(ArrayList<ArrayList<Integer>> numbers, int start, int index, int bit_width) {
         int block_num = numbers.size() / 8;
         byte[] result = new byte[bit_width * block_num];
         for (int i = 0; i < block_num; i++) {
             for (int j = 0; j < bit_width; j++) {
                 int tmp_int = 0;
                 for (int k = 0; k < 8; k++) {
-                    tmp_int += (((numbers.get(i * 8 + k + 1).get(index) >> j) % 2) << k);
+                    tmp_int += (((numbers.get(i * 8 + k + start).get(index) >> j) % 2) << k);
                 }
                 result[i * bit_width + j] = (byte) tmp_int;
             }
@@ -205,10 +205,10 @@ public class Outlier {
     }
 
     public static void splitTimeStamp3(
-            ArrayList<ArrayList<Integer>> ts_block, ArrayList<Integer> result) {
+            ArrayList<Integer> ts_block, ArrayList<Integer> result) {
         int td_common = 0;
         for (int i = 1; i < ts_block.size(); i++) {
-            int time_diffi = ts_block.get(i).get(0) - ts_block.get(i - 1).get(0);
+            int time_diffi = ts_block.get(i) - ts_block.get(i - 1);
             if (td_common == 0) {
                 if (time_diffi != 0) {
                     td_common = time_diffi;
@@ -228,13 +228,10 @@ public class Outlier {
             td_common = 1;
         }
 
-        int t0 = ts_block.get(0).get(0);
+        int t0 = ts_block.get(0);
         for (int i = 0; i < ts_block.size(); i++) {
-            ArrayList<Integer> tmp = new ArrayList<>();
-            int interval_i = (ts_block.get(i).get(0) - t0) / td_common;
-            tmp.add(t0 + interval_i);
-            tmp.add(ts_block.get(i).get(1));
-            ts_block.set(i, tmp);
+            int interval_i = (ts_block.get(i) - t0) / td_common;
+            ts_block.set(i, t0 + interval_i);
         }
         result.add(td_common);
     }
@@ -359,44 +356,11 @@ public class Outlier {
     }
 
 
-    public static ArrayList<Byte> encode2Bytes(
-            ArrayList<ArrayList<Integer>> ts_block,
-            ArrayList<Integer> raw_length,
-            ArrayList<Integer> result2) {
-        ArrayList<Byte> encoded_result = new ArrayList<>();
 
-        // encode interval0 and value0
-        byte[] interval0_byte = int2Bytes(ts_block.get(0).get(0));
-        for (byte b : interval0_byte) encoded_result.add(b);
-        byte[] value0_byte = int2Bytes(ts_block.get(0).get(1));
-        for (byte b : value0_byte) encoded_result.add(b);
-
-        // encode theta
-        byte[] timestamp_min_byte = int2Bytes(raw_length.get(3));
-        for (byte b : timestamp_min_byte) encoded_result.add(b);
-        byte[] value_min_byte = int2Bytes(raw_length.get(4));
-        for (byte b : value_min_byte) encoded_result.add(b);
-
-        // encode interval
-        byte[] max_bit_width_interval_byte = int2Bytes(raw_length.get(1));
-        for (byte b : max_bit_width_interval_byte) encoded_result.add(b);
-        byte[] timestamp_bytes = bitPacking(ts_block, 0, raw_length.get(1));
-        for (byte b : timestamp_bytes) encoded_result.add(b);
-
-        // encode value
-        byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
-        for (byte b : max_bit_width_value_byte) encoded_result.add(b);
-        byte[] value_bytes = bitPacking(ts_block, 1, raw_length.get(2));
-        for (byte b : value_bytes) encoded_result.add(b);
-
-        byte[] td_common_byte = int2Bytes(result2.get(0));
-        for (byte b : td_common_byte) encoded_result.add(b);
-
-        return encoded_result;
-    }
 
     public static ArrayList<Integer> getAbsDeltaTsBlock(
-            ArrayList<Integer> ts_block) {
+            ArrayList<Integer> ts_block,
+            ArrayList<Integer> min_delta) {
         ArrayList<Integer> ts_block_delta = new ArrayList<>();
 
         ts_block_delta.add(ts_block.get(0));
@@ -410,6 +374,7 @@ public class Outlier {
             }
 
         }
+        min_delta.add(value_delta_min);
         for (int i = 1; i < ts_block.size(); i++) {
             int epsilon_v = ts_block.get(i) - value_delta_min - ts_block.get(i - 1);
             ts_block_delta.add(epsilon_v);
@@ -424,99 +389,51 @@ public class Outlier {
         }
         return ts_block_bit_width;
     }
-
-    public static ArrayList<ArrayList<Integer>> getDeltaTsBlock(
-            ArrayList<ArrayList<Integer>> ts_block,
-            ArrayList<Integer> result,
-            ArrayList<Integer> outlier_top_k_index,
-            ArrayList<ArrayList<Integer>> outlier_top_k) {
-        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
-        ArrayList<Integer> tmp = new ArrayList<>();
-        tmp.add(ts_block.get(0).get(0));
-        tmp.add(ts_block.get(0).get(1));
-        ts_block_delta.add(tmp);
-        int timestamp_delta_min = Integer.MAX_VALUE;
-        int value_delta_min = Integer.MAX_VALUE;
-
-        for (int i = 1; i < ts_block.size(); i++) {
-            int epsilon_r;
-            int epsilon_v;
-            if (outlier_top_k_index.contains(i)) {
-                epsilon_r = 0;
-                epsilon_v = 0;
-                tmp = new ArrayList<>();
-                tmp.add(i);
-                tmp.add(ts_block.get(i).get(0));
-                tmp.add(ts_block.get(i).get(1));
-                outlier_top_k.add(tmp);
-            } else {
-                epsilon_r = ts_block.get(i).get(0) - ts_block.get(i - 1).get(0);
-                epsilon_v = ts_block.get(i).get(1) - ts_block.get(i - 1).get(1);
-                if (epsilon_r < timestamp_delta_min) {
-                    timestamp_delta_min = epsilon_r;
-                }
-                if (epsilon_v < value_delta_min) {
-                    value_delta_min = epsilon_v;
-                }
-
-            }
-
-            tmp = new ArrayList<>();
-            tmp.add(epsilon_r);
-            tmp.add(epsilon_v);
-            ts_block_delta.add(tmp);
-        }
-        for (int j = ts_block.size() - 1; j > 0; j--) {
-            if (!outlier_top_k_index.contains(j)) {
-                int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
-                int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
-                tmp = new ArrayList<>();
-                tmp.add(epsilon_r);
-                tmp.add(epsilon_v);
-                ts_block_delta.set(j, tmp);
-            }
-        }
-//        System.out.println(value_delta_min);
-        result.add(timestamp_delta_min);
-        result.add(value_delta_min);
-
-        return ts_block_delta;
-    }
-
-    public static ArrayList<Byte> encodeDeltaTsBlock(
-            ArrayList<ArrayList<Integer>> ts_block_delta, ArrayList<Integer> result, int t_or_v) {
+    public static ArrayList<Byte> encode2Bytes(
+            ArrayList<Integer> ts_block,
+            int min_delta,
+            int bit_width) {
         ArrayList<Byte> encoded_result = new ArrayList<>();
 
-        // encode interval0 and value0
-        byte[] interval0_byte = int2Bytes(ts_block_delta.get(0).get(t_or_v));
-        for (byte b : interval0_byte) encoded_result.add(b);
+        // encode value0
+        byte[] value0_byte = int2Bytes(ts_block.get(0));
+        for (byte b : value0_byte) encoded_result.add(b);
 
-        // encode min delta
-        byte[] min_interval_byte = int2Bytes(result.get(t_or_v));
-        for (byte b : min_interval_byte) encoded_result.add(b);
+        // encode theta
+        byte[] value_min_byte = int2Bytes(min_delta);
+        for (byte b : value_min_byte) encoded_result.add(b);
 
-        int max_interval = Integer.MIN_VALUE;
-        int block_size = ts_block_delta.size();
+        // encode value
+        byte[] max_bit_width_value_byte = int2Bytes(bit_width);
+        for (byte b : max_bit_width_value_byte) encoded_result.add(b);
+        byte[] value_bytes = bitPacking(ts_block,1, bit_width);
+        for (byte b : value_bytes) encoded_result.add(b);
 
-        for (int j = block_size - 1; j > 0; j--) {
-            int epsilon_r = ts_block_delta.get(j).get(t_or_v);
-            if (epsilon_r > max_interval) {
-                max_interval = epsilon_r;
-            }
-        }
-
-        // encode max bit width
-        byte[] timestamp_min_byte = int2Bytes(getBitWith(max_interval));
-        for (byte b : timestamp_min_byte) encoded_result.add(b);
-
-        // encode interval
-//        System.out.println(getBitWith(max_interval));
-        byte[] timestamp_bytes = bitPacking(ts_block_delta, t_or_v, getBitWith(max_interval));
-//        System.out.println(timestamp_bytes.length);
-        for (byte b : timestamp_bytes) encoded_result.add(b);
 
         return encoded_result;
     }
+    public static ArrayList<Byte> encodeOutlier2Bytes(
+            ArrayList<Integer> ts_block_delta,
+            int bit_width) {
+        ArrayList<Byte> encoded_result = new ArrayList<>();
+
+        // encode value0
+        byte[] value0_byte = int2Bytes(ts_block_delta.get(0));
+        for (byte b : value0_byte) encoded_result.add(b);
+
+
+        // encode value
+        byte[] value_bytes = bitPacking(ts_block_delta, 0,bit_width);
+        for (byte b : value_bytes) encoded_result.add(b);
+
+        int n_k = ts_block_delta.size();
+        int n_k_b = n_k / 8;
+        int remaining = n_k - n_k_b*8;
+
+
+        return encoded_result;
+    }
+
 
     public static int getBitwidthDeltaTsBlock(ArrayList<ArrayList<Integer>> outlier_top_k, int t_or_v) {
         int bit_num = 0;
@@ -541,6 +458,202 @@ public class Outlier {
     }
 
 
+    public static class Result {
+        public ArrayList<ArrayList<Integer>> final_outlier_top_k;
+        public ArrayList<Integer> final_outlier_top_k_index;
+
+        public Result(ArrayList<ArrayList<Integer>> final_outlier_top_k, ArrayList<Integer> final_outlier_top_k_index) {
+            this.final_outlier_top_k = final_outlier_top_k;
+            this.final_outlier_top_k_index = final_outlier_top_k_index;
+        }
+    }
+    private static ArrayList<Byte> learnKDelta(ArrayList<Integer> ts_block) {
+
+        int block_size = ts_block.size();
+        ArrayList<Byte> cur_byte = new ArrayList<>();
+        double threshold = 0.2;
+        int k_up_bound = (int) ((double)block_size * threshold);
+        int k_down_bound =(int) ((double)block_size * (1 - threshold));
+        if(k_down_bound == block_size || k_down_bound == block_size-1){
+            k_down_bound = block_size - 2;
+        }
+        ArrayList<Integer> min_delta = new ArrayList<>();
+        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block,min_delta);
+        ArrayList<Integer> ts_block_bit_width = getBitWith(ts_block_delta);
+        quickSort(ts_block_delta, 0, 1, block_size - 1);
+        int bit_width = getBitWith(ts_block_delta.get(block_size-1));
+
+        ArrayList<Integer> ts_block_order_value = new ArrayList<>();
+        for(int i=1;i<block_size;i++){
+            ts_block_order_value.add(ts_block_delta.get(i));
+        }
+
+        int k_up_bound_value = ts_block_order_value.get(k_up_bound);
+        int k_down_bound_value = ts_block_order_value.get(k_down_bound);
+
+        int max_delta_value = ts_block_order_value.get(block_size-2);
+        int max_delta_value_bit_width = getBitWith(max_delta_value);
+        ArrayList<Integer> spread_value = new ArrayList<>();
+        for(int i=1;i<max_delta_value_bit_width;i++){
+            int spread_v = (int) pow(2,i)-1;
+            if(spread_v>=k_down_bound_value)
+                spread_value.add(spread_v);
+        }
+
+
+        ArrayList<Integer> start_value = new ArrayList<>();
+        for(int i=0;i<max_delta_value_bit_width;i++){
+            int start_v = (int) pow(2,i);
+            if(start_v<=k_up_bound_value)
+                start_value.add(start_v);
+        }
+
+
+        int final_k_start_value=ts_block_order_value.get(0);
+        int final_k_end_value=ts_block_order_value.get(ts_block_order_value.size()-1);
+
+        int min_bits = 0;
+        min_bits +=( getBitWith( final_k_end_value-final_k_start_value)*(block_size-1));
+
+        int final_left_max = 0;
+        int final_right_max = 0;
+        int final_alpha = 1;
+        for (int k_start_value : start_value) {
+            for (int k_spread_value : spread_value) {
+                int k_end_value = k_spread_value + k_start_value;
+
+                int cur_bits = 0;
+                int left_max = Integer.MIN_VALUE;
+                int right_max = Integer.MIN_VALUE;
+
+                int k = 0;
+                int k1 = 0;
+
+                for (int i = 1; i < block_size; i++) {
+                     if ( ts_block_delta.get(i) < k_start_value) {
+                         if(ts_block_delta.get(i) > left_max){
+                             left_max = ts_block_delta.get(i);
+                         }
+                         k1 ++;
+                         k ++;
+
+                    } else if (ts_block_delta.get(i) > k_end_value) {
+                         if(ts_block_delta.get(i) > right_max){
+                             right_max = ts_block_delta.get(i);
+                         }
+                         k ++;
+                    }
+                }
+
+                int alpha = k * getBitWith(block_size - 2) <= (block_size - 1)? 1 : 0;
+                if(alpha==1){
+                    cur_bits += k * getBitWith(block_size - 2) ;
+                }else {
+                    cur_bits +=  (block_size - 1) ;
+                }
+                cur_bits += getBitWith(k_spread_value) * (block_size - 1 - k);
+                cur_bits += k1 * getBitWith(left_max);
+                cur_bits += (k - k1) * getBitWith(right_max - k_end_value);
+
+                if (cur_bits < min_bits) {
+                    min_bits = cur_bits;
+                    final_alpha = alpha;
+                    final_left_max = left_max;
+                    final_right_max = right_max;
+                    final_k_start_value = k_start_value;
+                    final_k_end_value = k_end_value;
+                }
+
+            }
+        }
+
+
+        // ------------------------- encode data -----------------------------------------
+        if(final_left_max == 0 && final_right_max == 0){
+            cur_byte = encode2Bytes(ts_block_delta,min_delta.get(0),bit_width);
+        }else{
+            ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
+            ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
+            ArrayList<Integer> final_left_outlier = new ArrayList<>();
+            ArrayList<Integer> final_right_outlier = new ArrayList<>();
+            ArrayList<Integer> final_normal = new ArrayList<>();
+            int k = 0;
+            int k1 = 0;
+            ArrayList<Integer> bitmap = new ArrayList<>();
+            ArrayList<Integer> bitmap_outlier = new ArrayList<>();
+            int index_bitmap = 0;
+            int index_bitmap_outlier = 0;
+            for (int i = 1; i < block_size; i++) {
+                if ( ts_block_delta.get(i) < final_k_start_value) {
+                    final_left_outlier.add(ts_block_delta.get(i));
+                    if(final_alpha==1)
+                        final_left_outlier_index.add(i);
+                    else{
+                        index_bitmap_outlier += 1;
+                        index_bitmap_outlier <<= 1;
+                        index_bitmap += 1;
+                    }
+
+                    k1 ++;
+                    k ++;
+
+                } else if (ts_block_delta.get(i) > final_k_end_value) {
+                    final_right_outlier.add(ts_block_delta.get(i)-final_k_end_value);
+                    k ++;
+                    if(final_alpha==1)
+                        final_right_outlier_index.add(i);
+                    else{
+                        index_bitmap_outlier <<= 1;
+                        index_bitmap += 1;
+                    }
+                }else {
+                    final_normal.add(ts_block_delta.get(i)-final_k_start_value);
+                }
+                if(final_alpha==0){
+                    index_bitmap <<= 1;
+                    if(i % 8==0){
+                        bitmap.add(index_bitmap);
+                        index_bitmap = 0;
+                    }
+                    if(k%8==0){
+                        bitmap_outlier.add(index_bitmap_outlier);
+                        index_bitmap_outlier = 0;
+                    }
+                }
+            }
+            if(k%8!=0){
+                bitmap_outlier.add(index_bitmap_outlier);
+            }
+
+
+            k1 <<= 1;
+            k1 += final_alpha;
+            k <<= 16;
+            k += k1;
+            byte[] k_bytes = int2Bytes(k);
+            for (byte b : k_bytes) cur_byte.add(b);
+//            byte[] k1_bytes = int2Bytes(k1);
+//            for (byte b : k1_bytes) cur_byte.add(b);
+
+            byte[] value0_bytes = int2Bytes(ts_block_delta.get(0));
+            for (byte b : value0_bytes) cur_byte.add(b);
+            byte[] min_delta_bytes = int2Bytes(min_delta.get(0));
+            for (byte b : min_delta_bytes) cur_byte.add(b);
+
+            byte[] final_k_start_value_bytes = int2Bytes(final_k_start_value);
+            for (byte b : final_k_start_value_bytes) cur_byte.add(b);
+            int bit_width_final = getBitWith(final_k_end_value-final_k_start_value);
+            byte[] bit_width_bytes = int2Bytes(bit_width_final);
+            for (byte b : bit_width_bytes) cur_byte.add(b);
+
+            
+
+        }
+
+
+
+        return cur_byte;
+    }
 
     public static ArrayList<Byte> ReorderingRegressionEncoder(
             ArrayList<Integer> data, int block_size, String dataset_name) throws IOException {
@@ -564,6 +677,11 @@ public class Outlier {
                 ts_block.add(data.get(j + i * block_size));
                 ts_block_reorder.add(data.get(j + i * block_size));
             }
+            ArrayList<Integer> result2 = new ArrayList<>();
+
+            splitTimeStamp3(ts_block, result2);
+            splitTimeStamp3(ts_block_reorder, result2);
+
             // time-order
             ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block);
             encoded_result.addAll(cur_encoded_result);
@@ -639,282 +757,7 @@ public class Outlier {
         return encoded_result;
     }
 
-    public static int getBitwidthOutlier(ArrayList<ArrayList<Integer>> outlier_top_k, int size) {
-        int bit_num = 0;
-        int block_size = outlier_top_k.size();
-        if(block_size <= 2) return block_size*64;
 
-        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
-        int timestamp_delta_min = Integer.MAX_VALUE;
-        int timestamp_delta_max = Integer.MIN_VALUE;
-        int value_delta_min = Integer.MAX_VALUE;
-        int value_delta_max = Integer.MIN_VALUE;
-
-        for (int i = 1; i < block_size; i++) {
-            int epsilon_t = outlier_top_k.get(i).get(1) - outlier_top_k.get(i - 1).get(1);
-            int epsilon_v = outlier_top_k.get(i).get(2) - outlier_top_k.get(i - 1).get(2);
-
-            if (epsilon_t < timestamp_delta_min) {
-                timestamp_delta_min = epsilon_t;
-            }
-            if (epsilon_t > timestamp_delta_max) {
-                timestamp_delta_max = epsilon_t;
-            }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
-            }
-            if (epsilon_v > value_delta_max) {
-                value_delta_max = epsilon_v;
-            }
-        }
-        bit_num += ((block_size - 1) * getBitWith(timestamp_delta_max - timestamp_delta_min) + 64);
-        bit_num += ((block_size - 1) * getBitWith(value_delta_max - value_delta_min) + 64);
-        bit_num += Math.min(size, block_size * getBitWith(size)); // need to modify to store sign
-
-        return bit_num;
-    }
-
-
-    public static int getBitwidthOutlierFour(ArrayList<ArrayList<Integer>> outlier_top_k_left_time,
-                                             ArrayList<ArrayList<Integer>> outlier_top_k_right_time,
-                                             ArrayList<ArrayList<Integer>> outlier_top_k_left_value,
-                                             ArrayList<ArrayList<Integer>> outlier_top_k_right_value,int size) {
-        int bit_num = 0;
-        int block_size = outlier_top_k_left_time.size();
-        if(block_size <= 2) bit_num += (block_size*64);
-        bit_num += ( block_size * getBitWith(size));
-
-        int timestamp_delta_min = Integer.MAX_VALUE;
-        int timestamp_delta_max = Integer.MIN_VALUE;
-        int value_delta_min = Integer.MAX_VALUE;
-        int value_delta_max = Integer.MIN_VALUE;
-
-        for (int i = 1; i < block_size; i++) {
-            int epsilon_t = outlier_top_k_left_time.get(i).get(1) - outlier_top_k_left_time.get(i - 1).get(1);
-            int epsilon_v = outlier_top_k_left_time.get(i).get(2) - outlier_top_k_left_time.get(i - 1).get(2);
-
-            if (epsilon_t < timestamp_delta_min) {
-                timestamp_delta_min = epsilon_t;
-            }
-            if (epsilon_t > timestamp_delta_max) {
-                timestamp_delta_max = epsilon_t;
-            }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
-            }
-            if (epsilon_v > value_delta_max) {
-                value_delta_max = epsilon_v;
-            }
-        }
-        bit_num += ((block_size - 1) * getBitWith(timestamp_delta_max - timestamp_delta_min) + 64);
-        bit_num += ((block_size - 1) * getBitWith(value_delta_max - value_delta_min) + 64);
-//        bit_num += Math.min(size, block_size * getBitWith(size)); // need to modify to store sign
-
-        block_size = outlier_top_k_right_time.size();
-        if(block_size <= 2) bit_num += (block_size*64);
-        bit_num += ( block_size * getBitWith(size));
-
-        timestamp_delta_min = Integer.MAX_VALUE;
-        timestamp_delta_max = Integer.MIN_VALUE;
-        value_delta_min = Integer.MAX_VALUE;
-        value_delta_max = Integer.MIN_VALUE;
-
-        for (int i = 1; i < block_size; i++) {
-            int epsilon_t = outlier_top_k_right_time.get(i).get(1) - outlier_top_k_right_time.get(i - 1).get(1);
-            int epsilon_v = outlier_top_k_right_time.get(i).get(2) - outlier_top_k_right_time.get(i - 1).get(2);
-
-            if (epsilon_t < timestamp_delta_min) {
-                timestamp_delta_min = epsilon_t;
-            }
-            if (epsilon_t > timestamp_delta_max) {
-                timestamp_delta_max = epsilon_t;
-            }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
-            }
-            if (epsilon_v > value_delta_max) {
-                value_delta_max = epsilon_v;
-            }
-        }
-        bit_num += ((block_size - 1) * getBitWith(timestamp_delta_max - timestamp_delta_min) + 64);
-        bit_num += ((block_size - 1) * getBitWith(value_delta_max - value_delta_min) + 64);
-
-        block_size = outlier_top_k_left_value.size();
-        if(block_size <= 2) bit_num += (block_size*64);
-        bit_num += ( block_size * getBitWith(size));
-
-        timestamp_delta_min = Integer.MAX_VALUE;
-        timestamp_delta_max = Integer.MIN_VALUE;
-        value_delta_min = Integer.MAX_VALUE;
-        value_delta_max = Integer.MIN_VALUE;
-
-        for (int i = 1; i < block_size; i++) {
-            int epsilon_t = outlier_top_k_left_value.get(i).get(1) - outlier_top_k_left_value.get(i - 1).get(1);
-            int epsilon_v = outlier_top_k_left_value.get(i).get(2) - outlier_top_k_left_value.get(i - 1).get(2);
-
-            if (epsilon_t < timestamp_delta_min) {
-                timestamp_delta_min = epsilon_t;
-            }
-            if (epsilon_t > timestamp_delta_max) {
-                timestamp_delta_max = epsilon_t;
-            }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
-            }
-            if (epsilon_v > value_delta_max) {
-                value_delta_max = epsilon_v;
-            }
-        }
-        bit_num += ((block_size - 1) * getBitWith(timestamp_delta_max - timestamp_delta_min) + 64);
-        bit_num += ((block_size - 1) * getBitWith(value_delta_max - value_delta_min) + 64);
-
-        block_size = outlier_top_k_right_value.size();
-        if(block_size <= 2) bit_num += (block_size*64);
-        bit_num += ( block_size * getBitWith(size));
-
-        timestamp_delta_min = Integer.MAX_VALUE;
-        timestamp_delta_max = Integer.MIN_VALUE;
-        value_delta_min = Integer.MAX_VALUE;
-        value_delta_max = Integer.MIN_VALUE;
-
-        for (int i = 1; i < block_size; i++) {
-            int epsilon_t = outlier_top_k_right_value.get(i).get(1) - outlier_top_k_right_value.get(i - 1).get(1);
-            int epsilon_v = outlier_top_k_right_value.get(i).get(2) - outlier_top_k_right_value.get(i - 1).get(2);
-
-            if (epsilon_t < timestamp_delta_min) {
-                timestamp_delta_min = epsilon_t;
-            }
-            if (epsilon_t > timestamp_delta_max) {
-                timestamp_delta_max = epsilon_t;
-            }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
-            }
-            if (epsilon_v > value_delta_max) {
-                value_delta_max = epsilon_v;
-            }
-        }
-        bit_num += ((block_size - 1) * getBitWith(timestamp_delta_max - timestamp_delta_min) + 64);
-        bit_num += ((block_size - 1) * getBitWith(value_delta_max - value_delta_min) + 64);
-
-
-        return bit_num;
-    }
-
-    public static class Result {
-        public ArrayList<ArrayList<Integer>> final_outlier_top_k;
-        public ArrayList<Integer> final_outlier_top_k_index;
-
-        public Result(ArrayList<ArrayList<Integer>> final_outlier_top_k, ArrayList<Integer> final_outlier_top_k_index) {
-            this.final_outlier_top_k = final_outlier_top_k;
-            this.final_outlier_top_k_index = final_outlier_top_k_index;
-        }
-    }
-    private static ArrayList<Byte> learnKDelta(ArrayList<Integer> ts_block) {
-        int timestamp_delta_min = Integer.MAX_VALUE;
-        int value_delta_min = Integer.MAX_VALUE;
-        int block_size = ts_block.size();
-        ArrayList<Byte> cur_byte = new ArrayList<>();
-        double threshold = 0.2;
-        int k_up_bound = (int) ((double)block_size * threshold);
-//        System.out.println(k_up_bound);
-        int k_down_bound =(int) ((double)block_size * (1 - threshold));
-        if(k_down_bound == block_size || k_down_bound == block_size-1){
-            k_down_bound = block_size - 2;
-        }
-//        System.out.println(k_down_bound);
-//        System.out.println(block_size);
-
-        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block);
-        ArrayList<Integer> ts_block_bit_width = getBitWith(ts_block_delta);
-        quickSort(ts_block_delta, 0, 1, block_size - 1);
-
-        ArrayList<Integer> ts_block_order_value = new ArrayList<>();
-        for(int i=1;i<block_size;i++){
-            ts_block_order_value.add(ts_block_delta.get(i));
-        }
-
-        int k_up_bound_value = ts_block_order_value.get(k_up_bound);
-        int k_down_bound_value = ts_block_order_value.get(k_down_bound);
-
-        int max_delta_value = ts_block_order_value.get(block_size-2);
-        int max_delta_value_bit_width = getBitWith(max_delta_value);
-        ArrayList<Integer> spread_value = new ArrayList<>();
-        for(int i=1;i<max_delta_value_bit_width;i++){
-            int spread_v = (int) pow(2,i)-1;
-            if(spread_v>=k_down_bound_value)
-                spread_value.add(spread_v);
-        }
-
-
-        ArrayList<Integer> start_value = new ArrayList<>();
-        for(int i=0;i<max_delta_value_bit_width;i++){
-            int start_v = (int) pow(2,i);
-            if(start_v<=k_up_bound_value)
-                start_value.add(start_v);
-        }
-
-
-        int final_k_start_value=ts_block_order_value.get(0);
-        int final_k_end_value=ts_block_order_value.get(ts_block_order_value.size()-1);
-
-        int min_bits = 0;
-        min_bits +=( getBitWith( final_k_end_value-final_k_start_value)*(block_size-1)+32);
-        ArrayList<ArrayList<Integer>> final_outlier_top_k = new ArrayList<>();
-        ArrayList<Integer> final_outlier_top_k_index = new ArrayList<>();
-
-        for (int k_start_value : start_value) {
-            for (int k_spread_value : spread_value) {
-                int k_end_value = k_spread_value + k_start_value;
-                ArrayList<ArrayList<Integer>> outlier_top_k = new ArrayList<>();
-                ArrayList<ArrayList<Integer>> outlier_top_k_left_value = new ArrayList<>();
-                ArrayList<ArrayList<Integer>> outlier_top_k_right_value = new ArrayList<>();
-
-
-                ArrayList<Integer> outlier_top_k_index = new ArrayList<>();
-
-                ArrayList<Integer> new_ts_block_delta = new ArrayList<>();
-                ArrayList<Integer> new_ts_block_bit_width = new ArrayList<>();
-                new_ts_block_delta.add(ts_block_delta.get(0)); // Normal point without outlier time
-                new_ts_block_bit_width.add(ts_block_bit_width.get(0));// Bit width of Normal point without outlier time
-                for (int i = 1; i < block_size; i++) {
-                    if ( ts_block_delta.get(i) < k_start_value || ts_block_delta.get(i) > k_end_value) {
-                        ArrayList<Integer> tmp = new ArrayList<>();
-                        tmp.add(i);
-                        tmp.add(ts_block_delta.get(i));
-                        outlier_top_k.add(tmp);
-                         if ( ts_block_delta.get(i) < k_start_value) {
-                            outlier_top_k_left_value.add(tmp);
-                        } else if (ts_block_delta.get(i) > k_end_value) {
-                            outlier_top_k_right_value.add(tmp);
-                        }
-                    } else {
-                        new_ts_block_delta.add(ts_block_delta.get(i));
-                        new_ts_block_bit_width.add(ts_block_bit_width.get(i));
-                    }
-                }
-                int outlier_size = outlier_top_k.size();
-                int cur_bits = getBitwidthOutlierTwo(outlier_top_k_left_value,outlier_top_k_right_value,block_size);
-                cur_bits += getBitWith(k_spread_value) * (new_ts_block_delta.size() - 1);
-                cur_bits += 64; // 0-th
-                cur_bits += 64; // min_delta
-                if (cur_bits < min_bits) {
-                    min_bits = cur_bits;
-
-                    final_k_start_value = k_start_value;
-                    final_k_end_value = k_end_value;
-                    final_outlier_top_k = outlier_top_k;
-                    final_outlier_top_k_index = outlier_top_k_index;
-//                            System.out.println(final_outlier_top_k);
-//                            System.out.println(final_outlier_top_k_index);
-                }
-
-            }
-        }
-
-
-        return cur_byte;
-    }
 
     public static ArrayList<ArrayList<Integer>> ReorderingRegressionDecoder(ArrayList<Byte> encoded) {
         ArrayList<ArrayList<Integer>> data = new ArrayList<>();
