@@ -42,10 +42,11 @@ import java.util.Comparator;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class WebSocketConnector implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnector.class);
-  private WebSocketConnectorServer server;
+  private final AtomicReference<WebSocketConnectorServer> server = new AtomicReference<>();
   private int port;
 
   public final AtomicLong commitIdGenerator = new AtomicLong(0);
@@ -54,9 +55,7 @@ public class WebSocketConnector implements PipeConnector {
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
-    // The port is optional
-  }
+  public void validate(PipeParameterValidator validator) throws Exception {}
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
@@ -69,23 +68,25 @@ public class WebSocketConnector implements PipeConnector {
 
   @Override
   public void handshake() throws Exception {
-    if (server == null) {
-      server = new WebSocketConnectorServer(new InetSocketAddress(port), this);
-      server.start();
+    if (server.get() == null) {
+      synchronized (server) {
+        if (server.get() == null) {
+          server.set(new WebSocketConnectorServer(new InetSocketAddress(port), this));
+          server.get().start();
+        }
+      }
     }
   }
 
   @Override
-  public void heartbeat() throws Exception {
-    // Server side, do nothing
-  }
+  public void heartbeat() throws Exception {}
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "WebSocketConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+          "WebsocketConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Current event: {}.",
           tabletInsertionEvent);
       return;
@@ -93,31 +94,30 @@ public class WebSocketConnector implements PipeConnector {
     long commitId = commitIdGenerator.incrementAndGet();
     ((EnrichedEvent) tabletInsertionEvent)
         .increaseReferenceCount(WebSocketConnector.class.getName());
-    server.addEvent(new Pair<>(commitId, tabletInsertionEvent));
+    server.get().addEvent(new Pair<>(commitId, tabletInsertionEvent));
   }
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "WebSocketConnector only support PipeTsFileInsertionEvent. Current event: {}.",
+          "WebsocketConnector only support PipeTsFileInsertionEvent. Current event: {}.",
           tsFileInsertionEvent);
       return;
     }
-    long commitId = commitIdGenerator.incrementAndGet();
-    ((EnrichedEvent) tsFileInsertionEvent)
-        .increaseReferenceCount(WebSocketConnector.class.getName());
-    server.addEvent(new Pair<>(commitId, tsFileInsertionEvent));
+    for (TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+      long commitId = commitIdGenerator.incrementAndGet();
+      ((EnrichedEvent) event).increaseReferenceCount(WebSocketConnector.class.getName());
+      server.get().addEvent(new Pair<>(commitId, event));
+    }
   }
 
   @Override
-  public void transfer(Event event) throws Exception {
-    // Do nothing when receive heartbeat or other events
-  }
+  public void transfer(Event event) throws Exception {}
 
   @Override
   public void close() throws Exception {
-    server.stop();
+    server.get().stop();
   }
 
   public synchronized void commit(long requestCommitId, @Nullable EnrichedEvent enrichedEvent) {
