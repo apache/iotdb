@@ -22,11 +22,9 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -34,24 +32,13 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
-  // This queue is used to store pending events extracted by the method extract(). The method
-  // supply() will poll events from this queue and send them to the next pipe plugin.
-  private final UnboundedBlockingPendingQueue<Event> pendingQueue;
-
-  public PipeRealtimeDataRegionHybridExtractor() {
-    this.pendingQueue = new UnboundedBlockingPendingQueue<>();
-  }
-
   @Override
-  public void extract(PipeRealtimeEvent event) {
+  protected void doExtract(PipeRealtimeEvent event) {
     final Event eventToExtract = event.getEvent();
 
     if (eventToExtract instanceof TabletInsertionEvent) {
@@ -310,26 +297,5 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
 
       return null;
     }
-  }
-
-  @Override
-  public void close() throws Exception {
-    super.close();
-
-    final List<Event> eventsToDrop = new ArrayList<>(pendingQueue.size());
-
-    // processor stage is closed later than extractor stage, {@link supply()} may be called after
-    // processor stage is closed. To avoid concurrent issues, we should clear the pending queue
-    // before clearing all the reference count of the events in the pending queue.
-    pendingQueue.forEach(eventsToDrop::add);
-    pendingQueue.clear();
-
-    eventsToDrop.forEach(
-        event -> {
-          if (event instanceof EnrichedEvent) {
-            ((EnrichedEvent) event)
-                .clearReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
-          }
-        });
   }
 }
