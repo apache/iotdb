@@ -491,6 +491,11 @@ public class AuthorInfo implements SnapshotProcessor {
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     authorizer.processLoadSnapshot(snapshotDir);
+    try {
+      authorizer.reset();
+    } catch (AuthException e) {
+      throw new IOException("Error when load role and user: %s", e);
+    }
   }
 
   @TestOnly
@@ -527,13 +532,13 @@ public class AuthorInfo implements SnapshotProcessor {
         path.setPriGrantOpt(pathPrivilege.getGrantOpt());
         userPrivilegeList.add(path);
       }
-      tUserResp.setUsername(user.getName());
-      tUserResp.setPassword(user.getPassword());
-      tUserResp.setPrivilegeList(userPrivilegeList);
-      tUserResp.setRoleList(user.getRoleList());
-      tUserResp.setSysPriSet(user.getSysPrivilege());
-      tUserResp.setSysPriSetGrantOpt(user.getSysPriGrantOpt());
     }
+    tUserResp.setUsername(user.getName());
+    tUserResp.setPassword(user.getPassword());
+    tUserResp.setPrivilegeList(userPrivilegeList);
+    tUserResp.setRoleList(user.getRoleList());
+    tUserResp.setSysPriSet(user.getSysPrivilege());
+    tUserResp.setSysPriSetGrantOpt(user.getSysPriGrantOpt());
 
     // Permission information for roles owned by users
     if (user.getRoleList() != null) {

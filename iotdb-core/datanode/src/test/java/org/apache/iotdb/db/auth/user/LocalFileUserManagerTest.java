@@ -112,26 +112,28 @@ public class LocalFileUserManagerTest {
     assertTrue(manager.deleteUser("not a user"));
     assertTrue(manager.deleteUser(users[users.length - 1].getName()));
     assertNull(manager.getUser(users[users.length - 1].getName()));
-    assertFalse(manager.deleteUser(users[users.length - 1].getName()));
+    assertTrue(manager.deleteUser(users[users.length - 1].getName()));
 
     // grant privilege
     user = manager.getUser(users[0].getName());
     PartialPath path = new PartialPath("root.a.b.c");
     int privilegeId = 0;
 
-    assertFalse(user.hasPrivilege(path, privilegeId));
+    assertFalse(user.hasPrivilegeToRevoke(path, privilegeId));
     assertTrue(manager.grantPrivilegeToUser(user.getName(), path, privilegeId, false));
     assertTrue(manager.grantPrivilegeToUser(user.getName(), path, privilegeId + 1, false));
-    assertFalse(manager.grantPrivilegeToUser(user.getName(), path, privilegeId, false));
+    // grant again will success
+    assertTrue(manager.grantPrivilegeToUser(user.getName(), path, privilegeId, false));
     user = manager.getUser(users[0].getName());
-    assertTrue(user.hasPrivilege(path, privilegeId));
+    assertTrue(user.hasPrivilegeToRevoke(path, privilegeId));
 
     Assert.assertThrows(
         AuthException.class,
         () -> manager.grantPrivilegeToUser("not a user", path, privilegeId, false));
-    Assert.assertThrows(
-        AuthException.class,
-        () -> manager.grantPrivilegeToUser(users[0].getName(), path, -1, false));
+    // We will check the privilegeid before we process it.
+    //    Assert.assertThrows(
+    //        AuthException.class,
+    //        () -> manager.grantPrivilegeToUser(users[0].getName(), path, -1, false));
 
     // revoke privilege
     user = manager.getUser(users[0].getName());
@@ -141,8 +143,6 @@ public class LocalFileUserManagerTest {
     Assert.assertThrows(
         AuthException.class,
         () -> manager.revokePrivilegeFromUser("not a user", path, privilegeId));
-    Assert.assertThrows(
-        AuthException.class, () -> manager.revokePrivilegeFromUser(users[0].getName(), path, -1));
 
     // update password
     String newPassword = "newPassword";

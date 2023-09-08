@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -53,11 +54,22 @@ public class AuthorInfoTest {
   private static AuthorInfo authorInfo;
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "authorInfo-snapshot");
 
+  private static final File userFolder =
+      new File(CommonDescriptor.getInstance().getConfig().getUserFolder());
+  private static final File roleFolder =
+      new File(CommonDescriptor.getInstance().getConfig().getRoleFolder());
+
   @BeforeClass
   public static void setup() {
     authorInfo = new AuthorInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
+    }
+    if (!userFolder.exists()) {
+      userFolder.mkdirs();
+    }
+    if (!roleFolder.exists()) {
+      roleFolder.mkdirs();
     }
   }
 
@@ -66,6 +78,12 @@ public class AuthorInfoTest {
     authorInfo.clear();
     if (snapshotDir.exists()) {
       FileUtils.deleteDirectory(snapshotDir);
+    }
+    if (userFolder.exists()) {
+      FileUtils.deleteDirectory(userFolder);
+    }
+    if (roleFolder.exists()) {
+      FileUtils.deleteDirectory(roleFolder);
     }
   }
 

@@ -202,11 +202,11 @@ public class Role {
   }
 
   /** ------------ check func ---------------* */
-  public boolean hasPrivilege(PartialPath path, int privilegeId) {
+  public boolean hasPrivilegeToRevoke(PartialPath path, int privilegeId) {
     if (path == null) {
       return sysPrivilegeSet.contains(privilegeId);
     } else {
-      return AuthUtils.hasPrivilege(path, privilegeId, pathPrivilegeList);
+      return AuthUtils.hasPrivilegeToReovke(path, privilegeId, pathPrivilegeList);
     }
   }
 
