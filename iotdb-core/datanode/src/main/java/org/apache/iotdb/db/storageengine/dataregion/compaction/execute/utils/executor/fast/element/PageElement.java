@@ -110,10 +110,10 @@ public class PageElement {
   }
 
   public void deserializePage() throws IOException {
-    if (this.iChunkReader == null) {
-      this.pointReader = getAlignedPagePointReader();
-    } else {
+    if (this.iChunkReader instanceof ChunkReader) {
       this.batchData = ((ChunkReader) iChunkReader).readPageData(pageHeader, pageData);
+    } else {
+      this.pointReader = getAlignedPagePointReader();
     }
   }
 
