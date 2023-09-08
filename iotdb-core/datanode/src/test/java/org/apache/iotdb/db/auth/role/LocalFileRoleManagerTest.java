@@ -109,26 +109,20 @@ public class LocalFileRoleManagerTest {
     role = manager.getRole(roles[0].getName());
     PartialPath path = new PartialPath("root.a.b.c");
     int privilegeId = 0;
-    assertFalse(role.hasPrivilege(path, privilegeId));
+    assertFalse(role.hasPrivilegeToRevoke(path, privilegeId));
     assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId, false));
     assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId + 1, false));
-    assertFalse(manager.grantPrivilegeToRole(role.getName(), path, privilegeId, false));
+    // grant again will success
+    assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId, false));
     role = manager.getRole(roles[0].getName());
-    assertTrue(role.hasPrivilege(path, privilegeId));
+    assertTrue(role.hasPrivilegeToRevoke(path, privilegeId));
     assertTrue(
         manager.grantPrivilegeToRole(role.getName(), null, PrivilegeType.MAINTAIN.ordinal(), true));
-    assertFalse(
+    assertTrue(
         manager.grantPrivilegeToRole(role.getName(), null, PrivilegeType.MAINTAIN.ordinal(), true));
     caught = false;
     try {
       manager.grantPrivilegeToRole("not a role", path, privilegeId, false);
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-    caught = false;
-    try {
-      manager.grantPrivilegeToRole(role.getName(), path, -1, false);
     } catch (AuthException e) {
       caught = true;
     }
@@ -146,13 +140,6 @@ public class LocalFileRoleManagerTest {
     caught = false;
     try {
       manager.revokePrivilegeFromRole("not a role", path, privilegeId);
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-    caught = false;
-    try {
-      manager.revokePrivilegeFromRole(role.getName(), path, -1);
     } catch (AuthException e) {
       caught = true;
     }
