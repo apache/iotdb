@@ -1,7 +1,7 @@
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: Sonar-Coveralls
+name: Sonar-Codecov
 
 on:
   push:
@@ -31,7 +31,7 @@ env:
   PR_NUMBER: ${{ github.event.number }}
 
 jobs:
-  coveralls:
+  codecov:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push'
 
@@ -44,17 +44,14 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Test
-        run: mvn -B -P with-code-coverage clean compile test -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true
-      - name: Coveralls
-        # TODO: "post-integration-test" doesn't evaluate the outcome of the IT phase, this is done in "validate"
-        run: |
+        run: | 
+          mvn -B -P with-code-coverage clean compile test -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true
           mvn -B -P with-code-coverage post-integration-test -pl code-coverage
-          mvn -B coveralls:report \
-          -DserviceName=travis_ci \
-          -Dbranch=$BRANCH_NAME \
-          -DpullRequest=$PR_NUMBER \
-          -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
-          -Pwith-code-coverage
+      - name: Upload coverage reports to codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./code-coverage/target/jacoco-merged-reports/jacoco.xml
 
   sonar:
     runs-on: ubuntu-latest
