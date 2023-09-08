@@ -909,7 +909,7 @@ public class IoTDBConfig {
   private int mppDataExchangeKeepAliveTimeInMs = 1000;
 
   /** Thrift socket and connection timeout between data node and config node. */
-  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
