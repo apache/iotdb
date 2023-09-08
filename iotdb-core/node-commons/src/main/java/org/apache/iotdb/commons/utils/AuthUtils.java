@@ -54,7 +54,9 @@ public class AuthUtils {
   public static PartialPath ROOT_PATH_PRIVILEGE_PATH;
   private static final int MIN_LENGTH = 4;
   private static final int MAX_LENGTH = 32;
-  private static final String REX_PATTERN = "^[-\\w]*$";
+  // match number, character, and !@#$%^*()_+-=
+  // pattern: ^[-\w!@#\$%\^\(\)\+=]*$
+  private static final String REX_PATTERN = "^[-\\w!@#\\$%\\^\\*()\\+=]*$";
 
   private AuthUtils() {
     // Empty constructor
@@ -119,7 +121,7 @@ public class AuthUtils {
     } else if (!str.matches(REX_PATTERN)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER,
-          "The name or password can only contain letters, numbers, and underscores");
+          "The name or password can only contain letters, numbers, underscores or !@#$%^*()_+-=");
     }
   }
 

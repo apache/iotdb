@@ -30,27 +30,31 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Vector;
 
 public class AuthUtilsTest {
 
   @Test
   public void authUtilsTest_ParameterCheck() throws AuthException, IllegalPathException {
-    AuthUtils auth;
-    Vector<String> nameOrPassword = new Vector<>();
-    nameOrPassword.add(new String("he"));
-    nameOrPassword.add(
-        new String(
-            "qwertyuiopasdfghjklzxcvbnm123456789999999asdfgh"
-                + "jkzxcvbnmqwertyuioasdfghjklzxcvbnm"));
-    nameOrPassword.add(new String("he  llo"));
-    nameOrPassword.add(new String("hel^d"));
-    nameOrPassword.add(new String("he\\llo"));
-    nameOrPassword.add(new String("he*llo"));
-    nameOrPassword.add(new String("he*$llo"));
-    for (String item : nameOrPassword) {
-      Assert.assertThrows(AuthException.class, () -> AuthUtils.validateNameOrPassword(item));
-    }
+    AuthUtils.validatePassword("hello@");
+    AuthUtils.validatePassword("hello$");
+    AuthUtils.validatePassword("hello$^");
+    AuthUtils.validatePassword("hel_lo$^");
+    AuthUtils.validatePassword("he!l_lo$^");
+    AuthUtils.validatePassword("he!l_l$o$^");
+    AuthUtils.validatePassword("he!l_l!@#$%^*()_+-=$o$^");
+    AuthUtils.validatePassword("he!l^^+=");
+    AuthUtils.validatePassword("he!l*^^+=");
+    AuthUtils.validatePassword("he!!l*^^+=");
+    AuthUtils.validatePassword("he!!l*()^^+=");
+    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePassword("he!!l\\*()^^+="));
+    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePassword("he!l^^ +="));
+    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePassword("he"));
+    Assert.assertThrows(
+        AuthException.class,
+        () ->
+            AuthUtils.validatePassword(
+                "heqwertyuiopasdfghjklzxcvbnm123456789999999asdfgh\"\n"
+                    + "                + \"jkzxcvbnmqwertyuioasdfghjklzxcvbnm"));
   }
 
   @Test

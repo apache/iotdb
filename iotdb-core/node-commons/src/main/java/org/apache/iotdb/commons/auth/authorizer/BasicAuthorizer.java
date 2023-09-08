@@ -125,6 +125,13 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
   }
 
+  public void createOpenIdUser(String username, String password) throws AuthException {
+    if (!userManager.createUser(username, password, true)) {
+      throw new AuthException(
+          TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
+    }
+  }
+
   @Override
   public void deleteUser(String username) throws AuthException {
     if (isAdmin(username)) {
