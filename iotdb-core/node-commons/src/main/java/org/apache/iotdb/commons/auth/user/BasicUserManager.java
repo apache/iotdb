@@ -117,9 +117,9 @@ public abstract class BasicUserManager implements IUserManager {
   }
 
   @Override
-  public boolean createUser(String username, String password, boolean firstInit)
+  public boolean createUser(String username, String password, boolean validCheck)
       throws AuthException {
-    if (!firstInit) {
+    if (!validCheck) {
       AuthUtils.validateUsername(username);
       AuthUtils.validatePassword(password);
     }
