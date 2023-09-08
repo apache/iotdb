@@ -157,8 +157,10 @@ public class QueryStatement extends AuthorityInformationStatement {
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
     try {
-      this.authorityScope =
-          AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA.ordinal());
+      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+        this.authorityScope =
+            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA.ordinal());
+      }
     } catch (AuthException e) {
       return new TSStatus(e.getCode().getStatusCode());
     }

@@ -26,8 +26,8 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -37,6 +37,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
 import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSeriesPrivilege;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.TIME;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.countDevicesColumnHeaders;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.countNodesColumnHeaders;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.countTimeSeriesColumnHeaders;
@@ -51,15 +52,15 @@ import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSeriesPermissionIT {
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     createUser("test", "test123");
     createUser("test1", "test123");
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -242,6 +243,33 @@ public class IoTDBSeriesPermissionIT {
 
   @Test
   public void testData() {
-    // TODO
+    testWriteData();
+
+    testReadData();
+  }
+
+  private void testWriteData() {}
+
+  private void testReadData() {
+    executeNonQuery("insert into  root.test.d1(time,s1) values(1,1)");
+    executeNonQuery("insert into root.test1.d1(time,s1) values(2,2)");
+    executeNonQuery("insert into root.test1.d2(time,s1) values(2,2)");
+
+    resultSetEqualTest(
+        "select * from root.**", new String[] {TIME}, new String[] {}, "test", "test123");
+    grantUserSeriesPrivilege("test", PrivilegeType.READ_DATA, "root.test.**");
+    resultSetEqualTest(
+        "select * from root.**",
+        new String[] {TIME, "root.test.d1.s1"},
+        new String[] {"1,1.0,"},
+        "test",
+        "test123");
+    grantUserSeriesPrivilege("test", PrivilegeType.READ_DATA, "root.test1.d1.**");
+    resultSetEqualTest(
+        "select * from root.**",
+        new String[] {TIME, "root.test.d1.s1", "root.test1.d1.s1"},
+        new String[] {"1,1.0,null,", "2,null,2.0,"},
+        "test",
+        "test123");
   }
 }
