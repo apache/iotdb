@@ -27,8 +27,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -58,12 +61,17 @@ public class BatchActivateTemplateStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
+    List<String> templatePaths = new ArrayList<>();
+    for (PartialPath path : devicePathList) {
+      Pair<Template, PartialPath> templateSetInfo =
+          clusterTemplateManager.checkTemplateSetInfo(path);
+      if (templateSetInfo == null) {
+        continue;
+      }
+      templatePaths.addAll(templateSetInfo.left.getSchemaMap().keySet());
+    }
     return devicePathList.stream()
-        .flatMap(
-            path ->
-                clusterTemplateManager.checkTemplateSetInfo(path).left.getSchemaMap().keySet()
-                    .stream()
-                    .map(path::concatNode))
+        .flatMap(path -> templatePaths.stream().map(path::concatNode))
         .collect(Collectors.toList());
   }
 
