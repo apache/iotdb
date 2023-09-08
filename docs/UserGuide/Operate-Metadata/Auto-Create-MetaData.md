@@ -101,8 +101,8 @@ Illustrated as the following figure:
 | Data Type | iotdb-datanode.properties  | Default |
 |:---|:---------------------------|:---|
 | BOOLEAN | default\_boolean\_encoding | RLE |
-| INT32 | default\_int32\_encoding   | RLE |
-| INT64 | default\_int64\_encoding   | RLE |
+| INT32 | default\_int32\_encoding   | TS_2DIFF |
+| INT64 | default\_int64\_encoding   | TS_2DIFF |
 | FLOAT | default\_float\_encoding   | GORILLA |
 | DOUBLE | default\_double\_encoding  | GORILLA |
 | TEXT | default\_text\_encoding    | PLAIN |
