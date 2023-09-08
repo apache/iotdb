@@ -46,13 +46,14 @@ import java.util.TreeMap;
 import java.util.function.Supplier;
 
 public class PipeConnectorSubtaskManager {
-  Map<String, Supplier<PipeConnector>> connectorMap = new HashMap<>();
 
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";
 
   private final Map<String, ArrayList<PipeConnectorSubtaskLifeCycle>>
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
+
+  public static final Map<String, Supplier<PipeConnector>> CONNECTOR_CONSTRUCTORS = new HashMap<>();
 
   public synchronized String register(
       PipeConnectorSubtaskExecutor executor,
@@ -80,7 +81,7 @@ public class PipeConnectorSubtaskManager {
 
       for (int i = 0; i < connectorNum; i++) {
         PipeConnector pipeConnector =
-            connectorMap
+            CONNECTOR_CONSTRUCTORS
                 .getOrDefault(
                     connectorKey,
                     () -> PipeAgent.plugin().reflectConnector(pipeConnectorParameters))
@@ -172,23 +173,24 @@ public class PipeConnectorSubtaskManager {
 
   private PipeConnectorSubtaskManager() {
     // init BuiltinPipePlugin
-    connectorMap.put(
+    CONNECTOR_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
         IoTDBThriftSyncConnector::new);
-    connectorMap.put(
+    CONNECTOR_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName(),
         IoTDBThriftSyncConnector::new);
-    connectorMap.put(
+    CONNECTOR_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
         IoTDBThriftAsyncConnector::new);
-    connectorMap.put(
+    CONNECTOR_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName(),
         IoTDBLegacyPipeConnector::new);
-    connectorMap.put(
+    CONNECTOR_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName(), IoTDBAirGapConnector::new);
-    connectorMap.put(
+    CONNECTOR_CONSTRUCTORS.put(
         BuiltinPipePlugin.WEBSOCKET_CONNECTOR.getPipePluginName(), WebSocketConnector::new);
-    connectorMap.put(BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName(), OpcUaConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName(), OpcUaConnector::new);
   }
 
   private static class PipeSubtaskManagerHolder {
