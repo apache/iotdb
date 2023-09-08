@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -35,6 +37,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -47,6 +50,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -67,20 +71,15 @@ public class IoTDBPipeClusterIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
-    senderEnv
-        .getConfig()
-        .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
 
     senderEnv.initClusterEnvironment(3, 3);
     receiverEnv.initClusterEnvironment(3, 3);
@@ -461,6 +460,519 @@ public class IoTDBPipeClusterIT {
         e.printStackTrace();
         fail(e.getMessage());
       }
+    }
+  }
+
+  @Test
+  public void testCreatePipeWhenRegisteringNewDataNode() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Thread t =
+          new Thread(
+              () -> {
+                try (Connection connection = senderEnv.getConnection();
+                    Statement statement = connection.createStatement()) {
+                  for (int i = 0; i < 100; ++i) {
+                    statement.execute(
+                        String.format(
+                            "create pipe p%s"
+                                + " with connector ("
+                                + "'connector'='iotdb-thrift-connector',"
+                                + "'connector.ip'='%s',"
+                                + "'connector.port'='%s',"
+                                + "'connector.batch.enable'='false')",
+                            i, receiverIp, receiverPort));
+                    Thread.sleep(100);
+                  }
+                } catch (SQLException e) {
+                  e.printStackTrace();
+                  fail(e.getMessage());
+                } catch (InterruptedException ignored) {
+                }
+              });
+      t.start();
+
+      senderEnv.registerNewDataNode(false);
+      senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
+      ((AbstractEnv) senderEnv).testWorking();
+
+      t.join();
+      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      Assert.assertEquals(100, showPipeResult.size());
+    }
+  }
+
+  @Test
+  public void testRegisteringNewDataNodeWhenTransferringData() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      Thread t =
+          new Thread(
+              () -> {
+                try (Connection connection = senderEnv.getConnection();
+                    Statement statement = connection.createStatement()) {
+                  for (int i = 0; i < 100; ++i) {
+                    statement.execute(
+                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+                    Thread.sleep(100);
+                  }
+                } catch (SQLException e) {
+                  e.printStackTrace();
+                  fail(e.getMessage());
+                } catch (InterruptedException ignored) {
+                }
+              });
+      t.start();
+
+      senderEnv.registerNewDataNode(false);
+      senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
+      ((AbstractEnv) senderEnv).testWorking();
+
+      t.join();
+
+      try (Connection connection = receiverEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        await()
+            .atMost(600, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    TestUtils.assertResultSetEqual(
+                        statement.executeQuery("select count(*) from root.db.d1"),
+                        "count(root.db.d1.s1),",
+                        Collections.singleton("100,")));
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
+      senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
+    }
+  }
+
+  @Test
+  public void testRegisteringNewDataNodeAfterTransferringData() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      try (Connection connection = senderEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        for (int i = 0; i < 100; ++i) {
+          statement.execute(String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+        }
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      senderEnv.registerNewDataNode(false);
+      senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
+      ((AbstractEnv) senderEnv).testWorking();
+
+      try (Connection connection = receiverEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        await()
+            .atMost(600, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    TestUtils.assertResultSetEqual(
+                        statement.executeQuery("select count(*) from root.db.d1"),
+                        "count(root.db.d1.s1),",
+                        Collections.singleton("100,")));
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
+      senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
+    }
+  }
+
+  @Test
+  public void testNewDataNodeFailureAfterTransferringData() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      try (Connection connection = senderEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        for (int i = 0; i < 100; ++i) {
+          statement.execute(
+              String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000));
+        }
+        statement.execute("flush");
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      senderEnv.registerNewDataNode(false);
+      senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
+      senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1); // ctrl + c
+      senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
+      ((AbstractEnv) senderEnv).testWorking();
+
+      try (Connection connection = receiverEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        await()
+            .atMost(600, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    TestUtils.assertResultSetEqual(
+                        statement.executeQuery("select count(*) from root.db.d1"),
+                        "count(root.db.d1.s1),",
+                        Collections.singleton("100,")));
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      Assert.assertEquals(1, showPipeResult.size());
+    }
+  }
+
+  @Test
+  public void testSenderRestartWhenTransferring() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      try (Connection connection = senderEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        for (int i = 0; i < 100; ++i) {
+          statement.execute(
+              String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000));
+        }
+        statement.execute("flush");
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+
+    restartCluster(senderEnv);
+
+    try (Connection connection = receiverEnv.getConnection();
+        Statement statement = connection.createStatement()) {
+      await()
+          .atMost(600, TimeUnit.SECONDS)
+          .untilAsserted(
+              () ->
+                  TestUtils.assertResultSetEqual(
+                      statement.executeQuery("select count(*) from root.**"),
+                      "count(root.db.d1.s1),",
+                      Collections.singleton("100,")));
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testConcurrentlyCreatePipeOfSameName() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    Map<String, String> extractorAttributes = new HashMap<>();
+    Map<String, String> processorAttributes = new HashMap<>();
+    Map<String, String> connectorAttributes = new HashMap<>();
+
+    connectorAttributes.put("connector", "iotdb-thrift-connector");
+    connectorAttributes.put("connector.batch.enable", "false");
+    connectorAttributes.put("connector.ip", receiverIp);
+    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+    AtomicInteger successCount = new AtomicInteger(0);
+    for (int i = 0; i < 10; ++i) {
+      Thread t =
+          new Thread(
+              () -> {
+                try (SyncConfigNodeIServiceClient client =
+                    (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+                  TSStatus status =
+                      client.createPipe(
+                          new TCreatePipeReq("p1", connectorAttributes)
+                              .setExtractorAttributes(extractorAttributes)
+                              .setProcessorAttributes(processorAttributes));
+                  if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                    successCount.updateAndGet(v -> v + 1);
+                  }
+                } catch (TException ignored) {
+                } catch (Exception e) {
+                  fail();
+                }
+              });
+      t.start();
+    }
+
+    await()
+        .atMost(600, TimeUnit.SECONDS)
+        .untilAsserted(() -> Assert.assertEquals(1, successCount.get()));
+  }
+
+  @Test
+  public void testCreate10PipesWithSameConnector() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    Map<String, String> extractorAttributes = new HashMap<>();
+    Map<String, String> processorAttributes = new HashMap<>();
+    Map<String, String> connectorAttributes = new HashMap<>();
+
+    connectorAttributes.put("connector", "iotdb-thrift-connector");
+    connectorAttributes.put("connector.batch.enable", "false");
+    connectorAttributes.put("connector.ip", receiverIp);
+    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+    for (int i = 0; i < 10; ++i) {
+      int finalI = i;
+      Thread t =
+          new Thread(
+              () -> {
+                try (SyncConfigNodeIServiceClient client =
+                    (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+                  TSStatus status =
+                      client.createPipe(
+                          new TCreatePipeReq("p" + finalI, connectorAttributes)
+                              .setExtractorAttributes(extractorAttributes)
+                              .setProcessorAttributes(processorAttributes));
+                  Assert.assertEquals(
+                      TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+                } catch (Exception e) {
+                  e.printStackTrace();
+                  fail();
+                }
+              });
+      t.start();
+    }
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      await()
+          .atMost(600, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                List<TShowPipeInfo> showPipeResult =
+                    client.showPipe(new TShowPipeReq()).pipeInfoList;
+                Assert.assertEquals(10, showPipeResult.size());
+                showPipeResult =
+                    client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true))
+                        .pipeInfoList;
+                Assert.assertEquals(10, showPipeResult.size());
+              });
+    }
+  }
+
+  @Test
+  public void testCreate50PipesWithSameConnector() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    Map<String, String> extractorAttributes = new HashMap<>();
+    Map<String, String> processorAttributes = new HashMap<>();
+    Map<String, String> connectorAttributes = new HashMap<>();
+
+    connectorAttributes.put("connector", "iotdb-thrift-connector");
+    connectorAttributes.put("connector.batch.enable", "false");
+    connectorAttributes.put("connector.ip", receiverIp);
+    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+    for (int i = 0; i < 50; ++i) {
+      int finalI = i;
+      Thread t =
+          new Thread(
+              () -> {
+                try (SyncConfigNodeIServiceClient client =
+                    (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+                  TSStatus status =
+                      client.createPipe(
+                          new TCreatePipeReq("p" + finalI, connectorAttributes)
+                              .setExtractorAttributes(extractorAttributes)
+                              .setProcessorAttributes(processorAttributes));
+                  Assert.assertEquals(
+                      TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+                } catch (Exception e) {
+                  e.printStackTrace();
+                  fail();
+                }
+              });
+      t.start();
+    }
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      await()
+          .atMost(600, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                List<TShowPipeInfo> showPipeResult =
+                    client.showPipe(new TShowPipeReq()).pipeInfoList;
+                Assert.assertEquals(50, showPipeResult.size());
+                showPipeResult =
+                    client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true))
+                        .pipeInfoList;
+                Assert.assertEquals(50, showPipeResult.size());
+              });
+    }
+  }
+
+  @Test
+  public void testCreate100PipesWithSameConnector() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    Map<String, String> extractorAttributes = new HashMap<>();
+    Map<String, String> processorAttributes = new HashMap<>();
+    Map<String, String> connectorAttributes = new HashMap<>();
+
+    connectorAttributes.put("connector", "iotdb-thrift-connector");
+    connectorAttributes.put("connector.batch.enable", "false");
+    connectorAttributes.put("connector.ip", receiverIp);
+    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+    for (int i = 0; i < 100; ++i) {
+      int finalI = i;
+      Thread t =
+          new Thread(
+              () -> {
+                try (SyncConfigNodeIServiceClient client =
+                    (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+                  TSStatus status =
+                      client.createPipe(
+                          new TCreatePipeReq("p" + finalI, connectorAttributes)
+                              .setExtractorAttributes(extractorAttributes)
+                              .setProcessorAttributes(processorAttributes));
+                  Assert.assertEquals(
+                      TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+                } catch (Exception e) {
+                  e.printStackTrace();
+                  fail();
+                }
+              });
+      t.start();
+    }
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      await()
+          .atMost(600, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                List<TShowPipeInfo> showPipeResult =
+                    client.showPipe(new TShowPipeReq()).pipeInfoList;
+                Assert.assertEquals(100, showPipeResult.size());
+                showPipeResult =
+                    client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true))
+                        .pipeInfoList;
+                Assert.assertEquals(100, showPipeResult.size());
+              });
     }
   }
 

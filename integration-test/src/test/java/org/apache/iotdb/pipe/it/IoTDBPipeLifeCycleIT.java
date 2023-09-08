@@ -542,10 +542,10 @@ public class IoTDBPipeLifeCycleIT {
               () -> {
                 try (Connection connection = senderEnv.getConnection();
                     Statement statement = connection.createStatement()) {
-                  for (int i = 0; i < 10; ++i) {
+                  for (int i = 0; i < 100; ++i) {
                     statement.execute(
                         String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
-                    Thread.sleep(1000);
+                    Thread.sleep(100);
                   }
                 } catch (SQLException e) {
                   e.printStackTrace();
@@ -567,7 +567,91 @@ public class IoTDBPipeLifeCycleIT {
                     TestUtils.assertResultSetEqual(
                         statement.executeQuery("select count(*) from root.**"),
                         "count(root.sg1.d1.at1),",
-                        Collections.singleton("10,")));
+                        Collections.singleton("100,")));
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testReceiverAlreadyHaveTimeSeries() throws Exception {
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      try (Connection connection = receiverEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("insert into root.db.d1(time, s1) values (1, 1)");
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      try (Connection connection = senderEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("insert into root.db.d1(time, s1) values (2, 2)");
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      try (Connection connection = receiverEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        await()
+            .atMost(600, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    TestUtils.assertResultSetEqual(
+                        statement.executeQuery("select count(*) from root.**"),
+                        "count(root.db.d1.s1),",
+                        Collections.singleton("2,")));
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
+
+      try (Connection connection = senderEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("insert into root.db.d1(time, s1) values (3, 3)");
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      Thread.sleep(5000);
+      try (Connection connection = receiverEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery("select count(*) from root.**"),
+            "count(root.db.d1.s1),",
+            Collections.singleton("2,"));
       } catch (Exception e) {
         e.printStackTrace();
         fail(e.getMessage());
