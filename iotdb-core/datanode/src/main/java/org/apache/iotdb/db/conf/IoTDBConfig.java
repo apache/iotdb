@@ -633,10 +633,10 @@ public class IoTDBConfig {
   private TSEncoding defaultBooleanEncoding = TSEncoding.RLE;
 
   /** INT32 encoding when creating schema automatically is enabled */
-  private TSEncoding defaultInt32Encoding = TSEncoding.RLE;
+  private TSEncoding defaultInt32Encoding = TSEncoding.TS_2DIFF;
 
   /** INT64 encoding when creating schema automatically is enabled */
-  private TSEncoding defaultInt64Encoding = TSEncoding.RLE;
+  private TSEncoding defaultInt64Encoding = TSEncoding.TS_2DIFF;
 
   /** FLOAT encoding when creating schema automatically is enabled */
   private TSEncoding defaultFloatEncoding = TSEncoding.GORILLA;
