@@ -237,6 +237,23 @@ License: http://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
+The following files include code modified from Panagiotis Liakos, Katia Papakonstantinopoulou and Yannis Kotidis chimp project.
+
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/DoublePrecisionChimpDecoder.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/IntChimpDecoder.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/LongChimpDecoder.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/SinglePrecisionChimpDecoder.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/DoublePrecisionChimpEncoder.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/IntChimpEncoder.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/LongChimpEncoder.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/SinglePrecisionChimpEncoder.java
+
+Copyright: 2022- Panagiotis Liakos, Katia Papakonstantinopoulou and Yannis Kotidis
+Project page: https://github.com/panagiotisl/chimp
+License: http://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+
 The following files include code modified from Apache HBase project.
 
 ./iotdb-core/confignode/src/main/java/org/apache/iotdb/procedure/Procedure.java
