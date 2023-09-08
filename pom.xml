@@ -92,7 +92,7 @@
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.assembly.version>3.1.0</maven.assembly.version>
+        <maven.assembly.version>3.6.0</maven.assembly.version>
         <scala.library.version>2.12</scala.library.version>
         <scala.version>2.12.10</scala.version>
         <hadoop2.version>2.10.1</hadoop2.version>
@@ -1356,15 +1356,6 @@
                     </plugin>
                 </plugins>
             </build>
-            <dependencies>
-                <!-- This ensures the iotdb-tools-thift module is build first -->
-                <dependency>
-                    <groupId>org.apache.iotdb.tools</groupId>
-                    <artifactId>iotdb-tools-thrift</artifactId>
-                    <version>${iotdb-tools-thrift.version}</version>
-                    <type>pom</type>
-                </dependency>
-            </dependencies>
         </profile>
         <!-- Enable integration-testsuite on demand, as this takes quite a long time to run -->
         <profile>
