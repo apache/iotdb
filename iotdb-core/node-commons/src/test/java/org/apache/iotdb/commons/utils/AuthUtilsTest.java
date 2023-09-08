@@ -30,8 +30,29 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Vector;
 
 public class AuthUtilsTest {
+
+  @Test
+  public void authUtilsTest_ParameterCheck() throws AuthException, IllegalPathException {
+    AuthUtils auth;
+    Vector<String> nameOrPassword = new Vector<>();
+    nameOrPassword.add(new String("he"));
+    nameOrPassword.add(
+        new String(
+            "qwertyuiopasdfghjklzxcvbnm123456789999999asdfgh"
+                + "jkzxcvbnmqwertyuioasdfghjklzxcvbnm"));
+    nameOrPassword.add(new String("he  llo"));
+    nameOrPassword.add(new String("hel^d"));
+    nameOrPassword.add(new String("he\\llo"));
+    nameOrPassword.add(new String("he*llo"));
+    nameOrPassword.add(new String("he*$llo"));
+    for (String item : nameOrPassword) {
+      Assert.assertThrows(AuthException.class, () -> AuthUtils.validateNameOrPassword(item));
+    }
+  }
+
   @Test
   public void authUtilsTest_PrivilegeGrantRevokeCheck() throws IllegalPathException {
     PartialPath path = new PartialPath(new String("root.t1"));
@@ -118,8 +139,12 @@ public class AuthUtilsTest {
   public void authUtilsTest_PatternPathCheck() throws AuthException, IllegalPathException {
     AuthUtils.validatePatternPath(new PartialPath(new String("root.data.t1")));
     AuthUtils.validatePatternPath(new PartialPath(new String("root.data.**")));
-    AuthUtils.validatePatternPath(new PartialPath(new String("root.data.*a")));
-    AuthUtils.validatePatternPath(new PartialPath(new String("root.data.*")));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.*a"))));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.*"))));
     Assert.assertThrows(
         AuthException.class,
         () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.t1.a*.a"))));

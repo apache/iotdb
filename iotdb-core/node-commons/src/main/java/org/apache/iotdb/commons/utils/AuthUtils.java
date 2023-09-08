@@ -53,7 +53,7 @@ public class AuthUtils {
   private static final String ROOT_PREFIX = IoTDBConstant.PATH_ROOT;
   public static PartialPath ROOT_PATH_PRIVILEGE_PATH;
   private static final int MIN_LENGTH = 4;
-  private static final int MAX_LENGTH = 64;
+  private static final int MAX_LENGTH = 32;
   private static final String REX_PATTERN = "^[-\\w]*$";
 
   private AuthUtils() {
@@ -163,13 +163,12 @@ public class AuthUtils {
   public static void validatePatternPath(PartialPath path) throws AuthException {
     if (!path.hasWildcard()) {
       return;
-    } else if (!PathPatternUtil.hasWildcard(path.getTailNode())) {
-      // check a.b.*.c/a.b.**.c/a.b*.c
+    } else if (!PathPatternUtil.isMultiLevelMatchWildcard(path.getTailNode())) {
+      // check a.b.*.c/ a.b.**.c/ a.b*.c/ a.b.c.*
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER,
           String.format(
-              "Illegal pattern path: %s, only pattern path that end with wildcards are supported.",
-              path));
+              "Illegal pattern path: %s, only pattern path that end with ** are supported.", path));
     }
     for (int i = 0; i < path.getNodeLength() - 1; i++) {
       if (PathPatternUtil.hasWildcard(path.getNodes()[i])) {
