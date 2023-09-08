@@ -114,10 +114,10 @@ public class IoTDBTemplatePermissionIT {
     // active
     assertNonQueryTestFail(
         "create timeseries using schema template on root.sg1.d1",
-        "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1]",
+        "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.temperature, root.sg1.d1.status]",
         "test",
         "test123");
-    grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.**");
+    grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
     executeNonQuery("create timeseries using schema template on root.sg1.d1", "test", "test123");
 
     // insert
@@ -149,13 +149,13 @@ public class IoTDBTemplatePermissionIT {
         "test123");
 
     // deActive
-    revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.**");
+    revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
     assertNonQueryTestFail(
         "deactivate schema template t1 from root.sg1.d1",
-        "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1]",
+        "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.temperature, root.sg1.d1.s1, root.sg1.d1.status]",
         "test",
         "test123");
-    grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.**");
+    grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
     executeNonQuery("deactivate schema template t1 from root.sg1.d1", "test", "test123");
   }
 }
