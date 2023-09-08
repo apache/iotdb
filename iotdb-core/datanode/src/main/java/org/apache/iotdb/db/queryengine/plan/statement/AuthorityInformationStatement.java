@@ -30,7 +30,6 @@ public abstract class AuthorityInformationStatement extends Statement {
   protected PathPatternTree authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
 
   public PathPatternTree getAuthorityScope() {
-    authorityScope.constructTree();
     return authorityScope;
   }
 
