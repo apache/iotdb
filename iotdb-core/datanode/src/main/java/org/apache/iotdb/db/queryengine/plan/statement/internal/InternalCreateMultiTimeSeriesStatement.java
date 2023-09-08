@@ -30,9 +30,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class InternalCreateMultiTimeSeriesStatement extends Statement {
 
@@ -51,7 +51,11 @@ public class InternalCreateMultiTimeSeriesStatement extends Statement {
 
   @Override
   public List<PartialPath> getPaths() {
-    return new ArrayList<>(deviceMap.keySet());
+    return deviceMap.entrySet().stream()
+        .flatMap(
+            entry ->
+                entry.getValue().right.getMeasurements().stream().map(entry.getKey()::concatNode))
+        .collect(Collectors.toList());
   }
 
   @Override

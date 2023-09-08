@@ -3050,7 +3050,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setStatement(batchActivateTemplateStatement);
 
     Map<PartialPath, Pair<Template, PartialPath>> deviceTemplateSetInfoMap =
-        new HashMap<>(batchActivateTemplateStatement.getPaths().size());
+        new HashMap<>(batchActivateTemplateStatement.getDevicePathList().size());
     for (PartialPath devicePath : batchActivateTemplateStatement.getDevicePathList()) {
       Pair<Template, PartialPath> templateSetInfo = schemaFetcher.checkTemplateSetInfo(devicePath);
       if (templateSetInfo == null) {

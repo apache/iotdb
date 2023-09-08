@@ -30,8 +30,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -57,17 +59,20 @@ public class DeactivateTemplateStatement extends Statement implements IConfigSta
   @Override
   public List<PartialPath> getPaths() {
     ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
+
+    Template template;
+
+    try {
+      template = clusterTemplateManager.getTemplate(templateName);
+      if (template == null) {
+        return Collections.emptyList();
+      }
+    } catch (IoTDBException e) {
+      throw new RuntimeException(e);
+    }
+
     return pathPatternList.stream()
-        .flatMap(
-            path -> {
-              try {
-                return clusterTemplateManager.getTemplate(templateName).getSchemaMap().keySet()
-                    .stream()
-                    .map(path::concatNode);
-              } catch (IoTDBException e) {
-                throw new RuntimeException(e);
-              }
-            })
+        .flatMap(path -> template.getSchemaMap().keySet().stream().map(path::concatNode))
         .collect(Collectors.toList());
   }
 
