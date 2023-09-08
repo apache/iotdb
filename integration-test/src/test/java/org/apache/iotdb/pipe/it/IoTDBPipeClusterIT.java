@@ -255,7 +255,7 @@ public class IoTDBPipeClusterIT {
           } catch (InterruptedException ignored) {
           }
           senderEnv.startDataNode(i);
-          ((AbstractEnv) senderEnv).testWorking();
+          ((AbstractEnv) senderEnv).testWorkingNoUnknown();
           flag = true;
         }
       }
@@ -382,7 +382,7 @@ public class IoTDBPipeClusterIT {
 
       senderEnv.registerNewDataNode(false);
       senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
-      ((AbstractEnv) senderEnv).testWorking();
+      ((AbstractEnv) senderEnv).testWorkingNoUnknown();
       DataNodeWrapper newDataNode =
           senderEnv.getDataNodeWrapper(senderEnv.getDataNodeWrapperList().size() - 1);
       try (Connection connection = senderEnv.getConnectionWithSpecifiedDataNode(newDataNode);
@@ -499,7 +499,7 @@ public class IoTDBPipeClusterIT {
 
       senderEnv.registerNewDataNode(false);
       senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
-      ((AbstractEnv) senderEnv).testWorking();
+      ((AbstractEnv) senderEnv).testWorkingNoUnknown();
 
       t.join();
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
@@ -555,7 +555,7 @@ public class IoTDBPipeClusterIT {
 
       senderEnv.registerNewDataNode(false);
       senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
-      ((AbstractEnv) senderEnv).testWorking();
+      ((AbstractEnv) senderEnv).testWorkingNoUnknown();
 
       t.join();
 
@@ -619,7 +619,7 @@ public class IoTDBPipeClusterIT {
 
       senderEnv.registerNewDataNode(false);
       senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
-      ((AbstractEnv) senderEnv).testWorking();
+      ((AbstractEnv) senderEnv).testWorkingNoUnknown();
 
       try (Connection connection = receiverEnv.getConnection();
           Statement statement = connection.createStatement()) {
@@ -685,7 +685,7 @@ public class IoTDBPipeClusterIT {
       senderEnv.startDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
       senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1); // ctrl + c
       senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
-      ((AbstractEnv) senderEnv).testWorking();
+      ((AbstractEnv) senderEnv).testWorkingNoUnknown();
 
       try (Connection connection = receiverEnv.getConnection();
           Statement statement = connection.createStatement()) {
@@ -993,6 +993,6 @@ public class IoTDBPipeClusterIT {
     for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
       env.startDataNode(i);
     }
-    ((AbstractEnv) env).testWorking();
+    ((AbstractEnv) env).testWorkingNoUnknown();
   }
 }
