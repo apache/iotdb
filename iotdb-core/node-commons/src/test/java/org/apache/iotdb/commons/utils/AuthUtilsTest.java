@@ -32,6 +32,31 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AuthUtilsTest {
+
+  @Test
+  public void authUtilsTest_ParameterCheck() throws AuthException, IllegalPathException {
+    AuthUtils.validatePassword("hello@");
+    AuthUtils.validatePassword("hello$");
+    AuthUtils.validatePassword("hello$^");
+    AuthUtils.validatePassword("hel_lo$^");
+    AuthUtils.validatePassword("he!l_lo$^");
+    AuthUtils.validatePassword("he!l_l$o$^");
+    AuthUtils.validatePassword("he!l_l!@#$%^*()_+-=$o$^");
+    AuthUtils.validatePassword("he!l^^+=");
+    AuthUtils.validatePassword("he!l*^^+=");
+    AuthUtils.validatePassword("he!!l*^^+=");
+    AuthUtils.validatePassword("he!!l*()^^+=");
+    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePassword("he!!l\\*()^^+="));
+    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePassword("he!l^^ +="));
+    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePassword("he"));
+    Assert.assertThrows(
+        AuthException.class,
+        () ->
+            AuthUtils.validatePassword(
+                "heqwertyuiopasdfghjklzxcvbnm123456789999999asdfgh\"\n"
+                    + "                + \"jkzxcvbnmqwertyuioasdfghjklzxcvbnm"));
+  }
+
   @Test
   public void authUtilsTest_PrivilegeGrantRevokeCheck() throws IllegalPathException {
     PartialPath path = new PartialPath(new String("root.t1"));
@@ -118,8 +143,12 @@ public class AuthUtilsTest {
   public void authUtilsTest_PatternPathCheck() throws AuthException, IllegalPathException {
     AuthUtils.validatePatternPath(new PartialPath(new String("root.data.t1")));
     AuthUtils.validatePatternPath(new PartialPath(new String("root.data.**")));
-    AuthUtils.validatePatternPath(new PartialPath(new String("root.data.*a")));
-    AuthUtils.validatePatternPath(new PartialPath(new String("root.data.*")));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.*a"))));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.*"))));
     Assert.assertThrows(
         AuthException.class,
         () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.t1.a*.a"))));
