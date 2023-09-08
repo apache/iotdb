@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata.template;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
@@ -28,9 +29,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
@@ -53,7 +56,19 @@ public class DeactivateTemplateStatement extends Statement implements IConfigSta
 
   @Override
   public List<PartialPath> getPaths() {
-    return getPathPatternList();
+    ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
+    return pathPatternList.stream()
+        .flatMap(
+            path -> {
+              try {
+                return clusterTemplateManager.getTemplate(templateName).getSchemaMap().keySet()
+                    .stream()
+                    .map(path::concatNode);
+              } catch (IoTDBException e) {
+                throw new RuntimeException(e);
+              }
+            })
+        .collect(Collectors.toList());
   }
 
   @Override
