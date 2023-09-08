@@ -113,6 +113,9 @@ public class PageElement {
     if (this.iChunkReader instanceof ChunkReader) {
       this.batchData = ((ChunkReader) iChunkReader).readPageData(pageHeader, pageData);
     } else {
+      // In order to save memory, AlignedChunkReader is not used here.
+      // If the variable 'iChunkReader' is null, it means that it is
+      // currently an aligned series.
       this.pointReader = getAlignedPagePointReader();
     }
   }
