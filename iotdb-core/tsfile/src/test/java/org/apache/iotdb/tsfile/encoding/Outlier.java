@@ -28,7 +28,11 @@ public class Outlier {
         bytes[3] = (byte) integer;
         return bytes;
     }
-
+    public static byte[] intByte2Bytes(int integer) {
+        byte[] bytes = new byte[1];
+        bytes[0] = (byte) integer;
+        return bytes;
+    }
     public static byte[] double2Bytes(double dou) {
         long value = Double.doubleToRawLongBits(dou);
         byte[] bytes = new byte[8];
@@ -339,21 +343,22 @@ public class Outlier {
         }
         ArrayList<Integer> min_delta = new ArrayList<>();
         ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
+        ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta);
         ArrayList<Integer> ts_block_bit_width = getBitWith(ts_block_delta);
-        quickSort(ts_block_delta, 0, 1, block_size - 1);
+        quickSort(ts_block_order_value, 0, 1, block_size - 1);
 
 //        System.out.println("quickSort");
         int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
 
-        ArrayList<Integer> ts_block_order_value = new ArrayList<>();
-        for (int i = 1; i < block_size; i++) {
-            ts_block_order_value.add(ts_block_delta.get(i));
-        }
+//        ArrayList<Integer> ts_block_order_value = new ArrayList<>();
+//        for (int i = 1; i < block_size; i++) {
+//            ts_block_order_value.add(ts_block_delta.get(i));
+//        }
 
         int k_up_bound_value = ts_block_order_value.get(k_up_bound);
         int k_down_bound_value = ts_block_order_value.get(k_down_bound);
 
-        int max_delta_value = ts_block_order_value.get(block_size - 2);
+        int max_delta_value = ts_block_order_value.get(block_size - 1);
         int max_delta_value_bit_width = getBitWith(max_delta_value);
         ArrayList<Integer> spread_value = new ArrayList<>();
         for (int i = 1; i < max_delta_value_bit_width; i++) {
@@ -512,6 +517,32 @@ public class Outlier {
 
             int left_bit_width = getBitWith(final_left_max);
             int right_bit_width = getBitWith(final_right_max - final_k_end_value);
+            bit_width_bytes = int2Bytes(left_bit_width);
+            for (byte b : bit_width_bytes) cur_byte.add(b);
+            bit_width_bytes = int2Bytes(right_bit_width);
+            for (byte b : bit_width_bytes) cur_byte.add(b);
+
+
+            if(final_alpha == 0){
+                for(int i:bitmap){
+                    byte[] index_bytes = intByte2Bytes(i);
+                    for (byte b : index_bytes) cur_byte.add(b);
+                }
+                for(int i:bitmap_outlier){
+                    byte[] index_bytes = intByte2Bytes(i);
+                    for (byte b : index_bytes) cur_byte.add(b);
+                }
+            }else{
+                for(int i:final_left_outlier_index){
+                    byte[] index_bytes = intByte2Bytes(i);
+                    for (byte b : index_bytes) cur_byte.add(b);
+                }
+                for(int i:final_right_outlier_index){
+                    byte[] index_bytes = intByte2Bytes(i);
+                    for (byte b : index_bytes) cur_byte.add(b);
+                }
+            }
+
 
             cur_byte.addAll(encodeOutlier2Bytes(final_normal, bit_width_final));
             cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier, left_bit_width));
@@ -786,8 +817,6 @@ public class Outlier {
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
         String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-outlier\\";
         String output_parent_dir = parent_dir + "vldb\\compression_ratio\\outlier";
-
-
         String input_parent_dir = parent_dir + "iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -841,7 +870,7 @@ public class Outlier {
             columnIndexes.add(i, i);
         }
 
-//        for (int file_i = 2; file_i < 3; file_i++) {
+//        for (int file_i = 11; file_i < 12; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -891,7 +920,7 @@ public class Outlier {
                         data2.add(Integer.valueOf(loader.getValues()[1]));
 //                        data.add(Integer.valueOf(value));
                     }
-//                    System.out.println(data.size());
+//                    System.out.println(data2);
                     inputStream.close();
 
                     long encodeTime = 0;
@@ -906,8 +935,9 @@ public class Outlier {
                         long buffer_bits = 0;
                         for (int repeat = 0; repeat < repeatTime2; repeat++){
                             buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
-                            buffer2 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
+                            buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i));
                         }
+//                        System.out.println(buffer2.size());
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
 
                         long e = System.nanoTime();
