@@ -36,11 +36,11 @@ import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoCompo
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.FORBID_PLACEHOLDER_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.PATH_NUM_MISMATCH_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.PLACEHOLDER_MISMATCH_ERROR_MSG;
-import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT;
+import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_CAN_ONLY_EXIST_ALONE;
 import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL;
 import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG;
-import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION;
 import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING;
+import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG;
 import static org.junit.Assert.fail;
 
 public class AnalyzeFailTest {
@@ -182,32 +182,41 @@ public class AnalyzeFailTest {
         "select count_time(* + *) from root.sg.*;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
 
     assertAnalyzeSemanticException(
-        "select count_time(*) / 2 from root.sg.*;",
-        COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION);
+        "select count_time(*) / 2 from root.sg.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
-        "select sum(s1) / count_time(*) from root.sg.*;",
-        COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION);
+        "select sum(s1) / count_time(*) from root.sg.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
-        "select count_time(*),count_time(*) from root.sg.**;",
-        COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT);
+        "select count_time(*), count(*) from root.sg.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
+
+    assertAnalyzeSemanticException(
+        "select count(*), count_time(*) from root.sg.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
+
+    assertAnalyzeSemanticException(
+        "select sum(*), count_time(*), sum(*) from root.sg.*;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
+
+    assertAnalyzeSemanticException(
+        "select s1, count_time(*), sum(*) from root.sg.*;", RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG);
+
+    assertAnalyzeSemanticException(
+        "select count_time(*),count_time(*) from root.sg.**;", COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
         "select count_time(*),count_time(*) from root.sg.d1,root.sg.d2;",
-        COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT);
+        COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
         "select COUNT_TIME(*),COUNT_TIME(*) from root.sg.d1,root.sg.d2;",
-        COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT);
+        COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
         "select COUNT_TIME(*),count_time(*) from root.sg.d1,root.sg.d2;",
-        COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT);
+        COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
         "select COUNT_TIME(*),COUNT_time(*) from root.sg.d1,root.sg.d2;",
-        COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT);
+        COUNT_TIME_CAN_ONLY_EXIST_ALONE);
 
     assertAnalyzeSemanticException(
         "select count_time(*) from root.sg.* having count(*) > 1;",
