@@ -41,19 +41,20 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Supplier;
 
 public class PipeConnectorSubtaskManager {
 
+  public static final Map<String, Supplier<PipeConnector>> CONNECTOR_CONSTRUCTORS = new HashMap<>();
+
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";
 
-  private final Map<String, ArrayList<PipeConnectorSubtaskLifeCycle>>
+  private final Map<String, List<PipeConnectorSubtaskLifeCycle>>
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
-
-  public static final Map<String, Supplier<PipeConnector>> CONNECTOR_CONSTRUCTORS = new HashMap<>();
 
   public synchronized String register(
       PipeConnectorSubtaskExecutor executor,
@@ -76,7 +77,7 @@ public class PipeConnectorSubtaskManager {
       final BoundedBlockingPendingQueue<Event> pendingQueue =
           new BoundedBlockingPendingQueue<>(
               PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
-      final ArrayList<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
+      final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
       for (int i = 0; i < connectorNum; i++) {
@@ -111,7 +112,7 @@ public class PipeConnectorSubtaskManager {
           attributeSortedString, pipeConnectorSubtaskLifeCycleList);
     }
 
-    ArrayList<PipeConnectorSubtaskLifeCycle> list =
+    List<PipeConnectorSubtaskLifeCycle> list =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
 
     for (PipeConnectorSubtaskLifeCycle lifeCycle : list) {
