@@ -542,12 +542,8 @@ public class QueryStatement extends AuthorityInformationStatement {
   public static final String COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG =
       "Count_time aggregation function using with group by tag is not supported.";
 
-  public static final String COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION =
-      "Count_time aggregation function used with arithmetic operation "
-          + "or other aggregation is not supported.";
-
-  public static final String COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT =
-      "Count_time aggregation function can only exist one in select clause.";
+  public static final String COUNT_TIME_CAN_ONLY_EXIST_ALONE =
+      "Count_time aggregation can only exist alone, and cannot used with other queries or aggregations.";
 
   public static final String COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING =
       "Count_time aggregation function can not be used with having clause.";
@@ -617,7 +613,8 @@ public class QueryStatement extends AuthorityInformationStatement {
 
         String expressionString = resultColumn.getExpression().getExpressionString();
         if (expressionString.toLowerCase().contains(COUNT_TIME)) {
-          checkCountTimeValidationInSelect(resultColumn.getExpression(), outputColumn);
+          checkCountTimeValidationInSelect(
+              resultColumn.getExpression(), outputColumn, selectComponent.getResultColumns());
         }
         outputColumn.add(
             resultColumn.getAlias() != null ? resultColumn.getAlias() : expressionString);
@@ -834,21 +831,27 @@ public class QueryStatement extends AuthorityInformationStatement {
     return visitor.visitQuery(this, context);
   }
 
-  private void checkCountTimeValidationInSelect(Expression expression, Set<String> outputColumn) {
+  private void checkCountTimeValidationInSelect(
+      Expression expression, Set<String> outputColumn, List<ResultColumn> resultColumns) {
     int countTimeAggSize = new CountTimeAggregationAmountVisitor().process(expression, null).size();
 
     if (countTimeAggSize > 1) {
       // e.g. select count_time(*) + count_time(*) from root.**
-      throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT);
+      throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ALONE);
     } else if (countTimeAggSize == 1) {
       // e.g. select count_time(*) / 2; select sum(*) / count_time(*)
       if (!(expression instanceof FunctionExpression)) {
-        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION);
+        throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ALONE);
       }
 
       // e.g. select count(*), count(*) from root.db.**
       if (!outputColumn.isEmpty()) {
-        throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT);
+        throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ALONE);
+      }
+
+      // e.g. select count_time(*), count(*)
+      if (resultColumns.size() > 1) {
+        throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ALONE);
       }
 
       if (isGroupByTag()) {
