@@ -35,10 +35,12 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
 
   private final MemSchemaRegionStatistics regionStatistics;
   private final String regionTagValue;
+  private final String database;
 
-  public SchemaRegionMemMetric(MemSchemaRegionStatistics regionStatistics) {
+  public SchemaRegionMemMetric(MemSchemaRegionStatistics regionStatistics, String database) {
     this.regionStatistics = regionStatistics;
     this.regionTagValue = String.format("SchemaRegion[%d]", regionStatistics.getSchemaRegionId());
+    this.database = database;
   }
 
   @Override
@@ -51,7 +53,9 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         Tag.NAME.toString(),
         MEM_USAGE,
         Tag.REGION.toString(),
-        regionTagValue);
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
     metricService.createAutoGauge(
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
@@ -60,7 +64,9 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         Tag.NAME.toString(),
         SERIES_CNT,
         Tag.REGION.toString(),
-        regionTagValue);
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
     metricService.createAutoGauge(
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
@@ -69,7 +75,9 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         Tag.NAME.toString(),
         TEMPLATE_CNT,
         Tag.REGION.toString(),
-        regionTagValue);
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
     metricService.createAutoGauge(
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
@@ -78,7 +86,9 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         Tag.NAME.toString(),
         TEMPLATE_SERIES_CNT,
         Tag.REGION.toString(),
-        regionTagValue);
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
   }
 
   @Override
@@ -89,27 +99,35 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         Tag.NAME.toString(),
         MEM_USAGE,
         Tag.REGION.toString(),
-        regionTagValue);
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),
         Tag.NAME.toString(),
         SERIES_CNT,
         Tag.REGION.toString(),
-        regionTagValue);
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),
         Tag.NAME.toString(),
         TEMPLATE_CNT,
         Tag.REGION.toString(),
-        regionTagValue);
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),
         Tag.NAME.toString(),
         TEMPLATE_SERIES_CNT,
         Tag.REGION.toString(),
-        regionTagValue);
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
   }
 }

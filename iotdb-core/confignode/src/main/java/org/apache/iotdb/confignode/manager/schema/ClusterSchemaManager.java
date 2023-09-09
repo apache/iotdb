@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -37,24 +39,9 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.AdjustMaxRegionGroupNumPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.*;
+import org.apache.iotdb.confignode.consensus.request.write.database.*;
+import org.apache.iotdb.confignode.consensus.request.write.template.*;
 import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
 import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.partition.PathInfoResp;
@@ -68,12 +55,7 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.*;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
@@ -82,6 +64,8 @@ import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -120,6 +104,7 @@ public class ClusterSchemaManager {
 
   private static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
+  private static final MetricService metricService = MetricService.getInstance();
 
   public ClusterSchemaManager(
       IManager configManager,
@@ -166,6 +151,25 @@ public class ClusterSchemaManager {
           MetricService.getInstance(), configManager, databaseSchemaPlan.getSchema().getName());
       // Adjust the maximum RegionGroup number of each Database
       adjustMaxRegionGroupNum();
+      // Add database replication factor metrics
+      metricService
+          .getOrCreateGauge(
+              Metric.REPLICATION_FACTOR.toString(),
+              MetricLevel.CORE,
+              Tag.TYPE.toString(),
+              "data",
+              Tag.DATABASE.toString(),
+              databaseSchemaPlan.getSchema().getName())
+          .set(databaseSchemaPlan.getSchema().dataReplicationFactor);
+      metricService
+          .getOrCreateGauge(
+              Metric.REPLICATION_FACTOR.toString(),
+              MetricLevel.CORE,
+              Tag.TYPE.toString(),
+              "schema",
+              Tag.DATABASE.toString(),
+              databaseSchemaPlan.getSchema().getName())
+          .set(databaseSchemaPlan.getSchema().schemaReplicationFactor);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -233,7 +237,27 @@ public class ClusterSchemaManager {
 
     // Alter DatabaseSchema
     try {
-      return getConsensusManager().write(databaseSchemaPlan);
+      result = getConsensusManager().write(databaseSchemaPlan);
+      // Alter database replication factor metrics
+      metricService
+          .getOrCreateGauge(
+              Metric.REPLICATION_FACTOR.toString(),
+              MetricLevel.CORE,
+              Tag.TYPE.toString(),
+              "data",
+              Tag.DATABASE.toString(),
+              databaseSchemaPlan.getSchema().getName())
+          .set(databaseSchemaPlan.getSchema().dataReplicationFactor);
+      metricService
+          .getOrCreateGauge(
+              Metric.REPLICATION_FACTOR.toString(),
+              MetricLevel.CORE,
+              Tag.TYPE.toString(),
+              "schema",
+              Tag.DATABASE.toString(),
+              databaseSchemaPlan.getSchema().getName())
+          .set(databaseSchemaPlan.getSchema().schemaReplicationFactor);
+      return result;
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -247,6 +271,21 @@ public class ClusterSchemaManager {
     TSStatus result;
     try {
       result = getConsensusManager().write(deleteDatabasePlan);
+      // Remove database replication factor metric
+      metricService.remove(
+          MetricType.GAUGE,
+          Metric.REPLICATION_FACTOR.toString(),
+          Tag.TYPE.toString(),
+          "data",
+          Tag.DATABASE.toString(),
+          deleteDatabasePlan.getName());
+      metricService.remove(
+          MetricType.GAUGE,
+          Metric.REPLICATION_FACTOR.toString(),
+          Tag.TYPE.toString(),
+          "schema",
+          Tag.DATABASE.toString(),
+          deleteDatabasePlan.getName());
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
