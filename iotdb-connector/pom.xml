@@ -38,6 +38,7 @@
         <module>hive-connector</module>
         <module>spark-iotdb-connector</module>
         <module>spark-tsfile</module>
+        <module>sparkplugb-connector</module>
         <module>zeppelin-interpreter</module>
     </modules>
     <profiles>

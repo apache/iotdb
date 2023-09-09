@@ -1125,6 +1125,7 @@
             </activation>
             <properties>
                 <os.classifier>linux-x86_64</os.classifier>
+                <protoc.classifier>linux-x64_64</protoc.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <thrift.executable>thrift</thrift.executable>
             </properties>
@@ -1140,6 +1141,7 @@
             </activation>
             <properties>
                 <os.classifier>linux-aarch64</os.classifier>
+                <protoc.classifier>linux-aarch_64</protoc.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <thrift.executable>thrift</thrift.executable>
             </properties>
@@ -1154,6 +1156,7 @@
             </activation>
             <properties>
                 <os.classifier>mac-x86_64</os.classifier>
+                <protoc.classifier>osx-x86_64</protoc.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <thrift.executable>thrift</thrift.executable>
                 <boost.include.dir>/usr/local/include</boost.include.dir>
@@ -1169,6 +1172,7 @@
             </activation>
             <properties>
                 <os.classifier>mac-aarch64</os.classifier>
+                <protoc.classifier>osx-aarch_64</protoc.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <thrift.executable>thrift</thrift.executable>
                 <boost.include.dir>/opt/homebrew/opt/boost/include</boost.include.dir>
@@ -1184,6 +1188,7 @@
             </activation>
             <properties>
                 <os.classifier>windows-x86_64</os.classifier>
+                <protoc.classifier>windows-x86_64</protoc.classifier>
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
             </properties>
@@ -1198,6 +1203,7 @@
             </activation>
             <properties>
                 <os.classifier>windows-aarch64</os.classifier>
+                <protoc.classifier>windows-aarch_64</protoc.classifier>
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
             </properties>

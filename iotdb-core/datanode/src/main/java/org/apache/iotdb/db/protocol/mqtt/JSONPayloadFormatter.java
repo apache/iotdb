@@ -100,7 +100,7 @@ public class JSONPayloadFormatter implements PayloadFormatter {
     List<Long> timestamps =
         GSON.fromJson(
             jsonObject.get(JSON_KEY_TIMESTAMPS), new TypeToken<List<Long>>() {}.getType());
-    List<List<String>> values =
+    List<List<Object>> values =
         GSON.fromJson(
             jsonObject.get(JSON_KEY_VALUES), new TypeToken<List<List<String>>>() {}.getType());
 
