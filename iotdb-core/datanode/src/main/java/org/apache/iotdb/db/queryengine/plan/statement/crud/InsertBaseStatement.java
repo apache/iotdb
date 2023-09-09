@@ -140,7 +140,7 @@ public abstract class InsertBaseStatement extends Statement {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
-    List<PartialPath> checkedPaths = getPaths();
+    List<PartialPath> checkedPaths = getPaths().stream().distinct().collect(Collectors.toList());
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathListPermission(
             userName, checkedPaths, PrivilegeType.WRITE_DATA.ordinal()),
