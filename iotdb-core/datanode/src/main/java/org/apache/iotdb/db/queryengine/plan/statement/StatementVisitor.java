@@ -77,7 +77,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModel
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowTrialsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowTrailsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;

@@ -207,10 +207,11 @@ public class AuthorityChecker {
             || authResp.tag.equals(IoTDBConstant.COLUMN_USER);
 
     List<ColumnHeader> headerList = new ArrayList<>();
-    TsBlockBuilder builder = new TsBlockBuilder(types);
+    TsBlockBuilder builder;
     if (listRoleUser) {
       headerList.add(new ColumnHeader(authResp.getTag(), TSDataType.TEXT));
       types.add(TSDataType.TEXT);
+      builder = new TsBlockBuilder(types);
       for (String name : authResp.getMemberInfo()) {
         builder.getTimeColumnBuilder().writeLong(0L);
         builder.getColumnBuilder(0).writeBinary(new Binary(name));
@@ -225,6 +226,7 @@ public class AuthorityChecker {
       types.add(TSDataType.TEXT);
       headerList.add(new ColumnHeader("GRANT OPTION", TSDataType.BOOLEAN));
       types.add(TSDataType.BOOLEAN);
+      builder = new TsBlockBuilder(types);
       TUserResp user = authResp.getPermissionInfo().getUserInfo();
       if (user != null) {
         appendPriBuilder("", "", user.getSysPriSet(), user.getSysPriSetGrantOpt(), builder);
