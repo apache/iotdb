@@ -53,6 +53,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.MODEL_ID;
 
 /**
  * Base class of SELECT statement.
@@ -294,7 +295,7 @@ public class QueryStatement extends Statement {
   }
 
   public boolean isAggregationQuery() {
-    return selectComponent.isHasBuiltInAggregationFunction();
+    return selectComponent.hasBuiltInAggregationFunction();
   }
 
   public boolean isGroupByLevel() {
@@ -513,6 +514,10 @@ public class QueryStatement extends Statement {
   public static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
       "Raw data and aggregation hybrid query is not supported.";
 
+  public boolean isModelInferenceQuery() {
+    return selectComponent.hasModelInferenceFunction();
+  }
+
   public static final String COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL =
       "Count_time aggregation function using with group by level is not supported.";
 
@@ -531,6 +536,51 @@ public class QueryStatement extends Statement {
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void semanticCheck() {
+    if (isModelInferenceQuery()) {
+      if (selectComponent.getResultColumns().size() > 1) {
+        throw new SemanticException("Model inference query can't be used with other queries now.");
+      }
+
+      Expression modelInferenceExpression =
+          selectComponent.getResultColumns().get(0).getExpression();
+      if (!(modelInferenceExpression instanceof FunctionExpression
+          && ((FunctionExpression) modelInferenceExpression).isModelInferenceFunction())) {
+        throw new SemanticException("Model inference only supports forecast function now.");
+      }
+      if (!((FunctionExpression) modelInferenceExpression)
+          .getFunctionAttributes()
+          .containsKey(MODEL_ID)) {
+        throw new SemanticException("Model inference function must indicate the model id.");
+      }
+      if (!ExpressionAnalyzer.searchAggregationExpressions(modelInferenceExpression).isEmpty()) {
+        throw new SemanticException(
+            "Expression "
+                + modelInferenceExpression.getExpressionString()
+                + " doesn't refer to any data.");
+      }
+
+      if (hasHaving()
+          || isGroupBy()
+          || isGroupByLevel()
+          || isGroupByTag()
+          || isAlignByDevice()
+          || isLastQuery()
+          || seriesLimit > 0
+          || seriesOffset > 0
+          || isSelectInto()
+          || isOrderByDevice()
+          || isOrderByTimeseries()) {
+        throw new SemanticException("Model inference query can't be used with other queries now.");
+      }
+
+      if (orderByComponent != null
+          && (!orderByComponent.isOrderByTime()
+              || orderByComponent.getTimeOrder() != Ordering.ASC)) {
+        throw new SemanticException(
+            "The order by clause of model inference query must be ORDER BY TIME ASC.");
+      }
+    }
+
     if (isAggregationQuery()) {
       if (groupByComponent != null && isGroupByLevel()) {
         throw new SemanticException("GROUP BY CLAUSES doesn't support GROUP BY LEVEL now.");

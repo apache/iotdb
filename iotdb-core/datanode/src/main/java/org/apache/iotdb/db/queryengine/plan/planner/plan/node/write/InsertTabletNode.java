@@ -190,29 +190,23 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (times.length == 0) {
       return Collections.emptyList();
     }
-    long startTime =
-        (times[0] / TimePartitionUtils.timePartitionInterval)
-            * TimePartitionUtils.timePartitionInterval; // included
-    long endTime = startTime + TimePartitionUtils.timePartitionInterval; // excluded
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(times[0]);
+    long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
     int startLoc = 0; // included
 
     List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
     // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
     List<Integer> ranges = new ArrayList<>();
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
-      if (times[i] >= endTime) {
+      if (times[i] >= upperBoundOfTimePartition) {
         // a new range.
         ranges.add(startLoc); // included
         ranges.add(i); // excluded
         timePartitionSlots.add(timePartitionSlot);
         // next init
         startLoc = i;
-        startTime = endTime;
-        endTime =
-            (times[i] / TimePartitionUtils.timePartitionInterval + 1)
-                * TimePartitionUtils.timePartitionInterval;
-        timePartitionSlot = TimePartitionUtils.getTimePartition(times[i]);
+        upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);
+        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
       }
     }
 
@@ -292,19 +286,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   @TestOnly
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     List<TTimePartitionSlot> result = new ArrayList<>();
-    long startTime =
-        (times[0] / TimePartitionUtils.timePartitionInterval)
-            * TimePartitionUtils.timePartitionInterval; // included
-    long endTime = startTime + TimePartitionUtils.timePartitionInterval; // excluded
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(times[0]);
+    long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
-      if (times[i] >= endTime) {
+      if (times[i] >= upperBoundOfTimePartition) {
         result.add(timePartitionSlot);
         // next init
-        endTime =
-            (times[i] / TimePartitionUtils.timePartitionInterval + 1)
-                * TimePartitionUtils.timePartitionInterval;
-        timePartitionSlot = TimePartitionUtils.getTimePartition(times[i]);
+        upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);
+        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
       }
     }
     result.add(timePartitionSlot);
