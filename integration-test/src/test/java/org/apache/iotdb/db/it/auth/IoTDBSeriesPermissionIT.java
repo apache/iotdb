@@ -246,8 +246,6 @@ public class IoTDBSeriesPermissionIT {
   public void testData() {
     testWriteData();
 
-    // testLoad();
-
     testReadData();
   }
 
