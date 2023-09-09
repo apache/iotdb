@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -60,6 +61,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -126,6 +128,8 @@ public class LoadTsfileAnalyzer {
             e);
         throw new SemanticException(
             String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
+      } catch (AuthException e) {
+        throw new RuntimeException(e);
       } catch (Exception e) {
         LOGGER.warn(String.format("Parse file %s to resource error.", tsFile.getPath()), e);
         throw new SemanticException(
@@ -142,7 +146,7 @@ public class LoadTsfileAnalyzer {
     return analysis;
   }
 
-  private void analyzeSingleTsFile(File tsFile) throws IOException {
+  private void analyzeSingleTsFile(File tsFile) throws IOException, AuthException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // can be reused when constructing tsfile resource
       Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata = null;
@@ -255,39 +259,41 @@ public class LoadTsfileAnalyzer {
     private SchemaAutoCreatorAndVerifier() {}
 
     public void autoCreateAndVerify(
-        TsFileSequenceReader reader, TimeSeriesIterator timeSeriesIterator) throws IOException {
+        TsFileSequenceReader reader, TimeSeriesIterator timeSeriesIterator)
+        throws IOException, AuthException {
       while (currentBatchTimeseriesCount < maxTimeseriesNumberPerBatch
           && timeSeriesIterator.hasNext()) {
         final Pair<String, TimeseriesMetadata> pair = timeSeriesIterator.next();
         final String device = pair.left;
         final TimeseriesMetadata timeseriesMetadata = pair.right;
-
-        // check WRITE_DATA permission of timeseries
-        String userName = context.getSession().getUserName();
-        if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-          TSStatus status;
-          try {
-            status =
-                AuthorityChecker.getTSStatus(
-                    AuthorityChecker.checkFullPathPermission(
-                        userName,
-                        new PartialPath(device, timeseriesMetadata.getMeasurementId()),
-                        PrivilegeType.WRITE_DATA.ordinal()),
-                    PrivilegeType.WRITE_DATA);
-          } catch (IllegalPathException e) {
-            throw new RuntimeException(e);
-          }
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
-          }
-        }
-
         final TSDataType dataType = timeseriesMetadata.getTsDataType();
         if (dataType.equals(TSDataType.VECTOR)) {
           tsfileDevice2IsAligned.put(device, true);
 
           // not a timeseries, skip ++currentBatchTimeseriesCount
         } else {
+          // check WRITE_DATA permission of timeseries
+          String userName = context.getSession().getUserName();
+          if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+            TSStatus status;
+            try {
+              List<PartialPath> paths =
+                  Collections.singletonList(
+                      new PartialPath(device, timeseriesMetadata.getMeasurementId()));
+              status =
+                  AuthorityChecker.getTSStatus(
+                      AuthorityChecker.checkFullPathListPermission(
+                          userName, paths, PrivilegeType.WRITE_DATA.ordinal()),
+                      paths,
+                      PrivilegeType.WRITE_DATA);
+            } catch (IllegalPathException e) {
+              throw new RuntimeException(e);
+            }
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              throw new AuthException(
+                  TSStatusCode.representOf(status.getCode()), status.getMessage());
+            }
+          }
           final Pair<CompressionType, TSEncoding> compressionEncodingPair =
               reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
           currentBatchDevice2TimeseriesSchemas
