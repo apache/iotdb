@@ -40,13 +40,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-/**
- * This class stores information of each user in a separate file within a directory, and cache them
- * in memory when a user is accessed.
- */
+/** This class stores information of each user. */
 public abstract class BasicUserManager implements IUserManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(BasicUserManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(BasicUserManager.class);
   private static final String NO_SUCH_USER_ERROR = "No such user %s";
 
   protected Map<String, User> userMap;
@@ -77,7 +74,7 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       admin = getUser(CommonDescriptor.getInstance().getConfig().getAdminName());
     } catch (AuthException e) {
-      logger.warn("Cannot load admin, Creating a new one", e);
+      LOGGER.warn("Cannot load admin, Creating a new one", e);
       admin = null;
     }
 
@@ -88,9 +85,10 @@ public abstract class BasicUserManager implements IUserManager {
           true);
       setUserUseWaterMark(CommonDescriptor.getInstance().getConfig().getAdminName(), false);
     }
+    // admin has all privileges.
     admin = getUser(CommonDescriptor.getInstance().getConfig().getAdminName());
     try {
-      PartialPath rootPath = new PartialPath(new String(IoTDBConstant.PATH_ROOT + ".**"));
+      PartialPath rootPath = new PartialPath(IoTDBConstant.PATH_ROOT + ".**");
       PathPrivilege pathPri = new PathPrivilege(rootPath);
       for (PrivilegeType item : PrivilegeType.values()) {
         if (!item.isPathRelevant()) {
@@ -102,10 +100,10 @@ public abstract class BasicUserManager implements IUserManager {
       }
       admin.getPathPrivilegeList().add(pathPri);
     } catch (IllegalPathException e) {
-      // This error only results in a lack of permissions for list.
-      logger.warn("Got a wrong path for root to init");
+      // This error only leads to  a lack of permissions for list.
+      LOGGER.warn("Got a wrong path for root to init");
     }
-    logger.info("Admin initialized");
+    LOGGER.info("Admin initialized");
   }
 
   @Override
@@ -149,7 +147,6 @@ public abstract class BasicUserManager implements IUserManager {
   @Override
   public boolean grantPrivilegeToUser(
       String username, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
-    // AuthUtils.validatePrivilege(path, privilegeId);
     lock.writeLock(username);
     try {
       User user = getUser(username);
@@ -175,7 +172,6 @@ public abstract class BasicUserManager implements IUserManager {
   @Override
   public boolean revokePrivilegeFromUser(String username, PartialPath path, int privilegeId)
       throws AuthException {
-    //    AuthUtils.validatePrivilege(path, privilegeId);
     lock.writeLock(username);
     try {
       User user = getUser(username);
@@ -203,7 +199,7 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       AuthUtils.validatePassword(newPassword);
     } catch (AuthException e) {
-      logger.debug("An illegal password detected ", e);
+      LOGGER.debug("An illegal password detected ", e);
       return false;
     }
 
@@ -276,10 +272,7 @@ public abstract class BasicUserManager implements IUserManager {
   @Override
   public List<String> listAllUsers() {
     List<String> rtlist = new ArrayList<>();
-    userMap.forEach(
-        (name, item) -> {
-          rtlist.add(name);
-        });
+    userMap.forEach((name, item) -> rtlist.add(name));
     rtlist.sort(null);
     return rtlist;
   }

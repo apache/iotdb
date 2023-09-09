@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.commons.auth.entity;
 
-import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
@@ -69,7 +68,7 @@ public class Role {
     return sysPrivilegeSet;
   }
 
-  public Set<Integer> getPathPrivileges(PartialPath path) throws AuthException {
+  public Set<Integer> getPathPrivileges(PartialPath path) {
     return AuthUtils.getPrivileges(path, pathPrivilegeList);
   }
 
@@ -80,10 +79,10 @@ public class Role {
   public int getAllSysPrivileges() {
     int privs = 0;
     for (Integer sysPri : sysPrivilegeSet) {
-      privs |= (0b1 << sysPriTopos(sysPri));
+      privs |= 1 << sysPriTopos(sysPri);
     }
-    for (Integer sysPriGrantOpt : sysPriGrantOpt) {
-      privs |= 1 << (sysPriTopos(sysPriGrantOpt) + 16);
+    for (Integer sysGrantOpt : sysPriGrantOpt) {
+      privs |= 1 << (sysPriTopos(sysGrantOpt) + 16);
     }
     return privs;
   }

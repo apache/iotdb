@@ -36,9 +36,8 @@ import java.util.Set;
 
 /** This class represents a privilege on a specific seriesPath. */
 public class PathPrivilege {
-  private static final Logger logger = LoggerFactory.getLogger(PathPrivilege.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PathPrivilege.class);
 
-  // privilege capacity: read_data, write_data, read_schema, write_schema;
   private static final int PATH_PRI_SIZE = PrivilegeType.getPathPriCount();
   private Set<Integer> privileges;
 
@@ -74,17 +73,16 @@ public class PathPrivilege {
     this.grantOpts = grantOpts;
   }
 
-  public boolean grantPrivilege(int privilege, boolean grantOpt) {
+  public void grantPrivilege(int privilege, boolean grantOpt) {
     privileges.add(privilege);
     if (grantOpt) {
       grantOpts.add(privilege);
     }
-    return true;
   }
 
   public boolean revokePrivilege(int privilege) {
     if (!privileges.contains(privilege)) {
-      logger.warn("not find privilege{} on path {}", PrivilegeType.values()[privilege], path);
+      LOGGER.warn("not find privilege{} on path {}", PrivilegeType.values()[privilege], path);
       return false;
     }
     privileges.remove(privilege);
@@ -95,7 +93,7 @@ public class PathPrivilege {
 
   public boolean revokeGrantOpt(int privilege) {
     if (!privileges.contains(privilege)) {
-      logger.warn("path {} dont have privilege {}", path, PrivilegeType.values()[privilege]);
+      LOGGER.warn("path {} dont have privilege {}", path, PrivilegeType.values()[privilege]);
       return false;
     }
     grantOpts.remove(privilege);
@@ -216,7 +214,7 @@ public class PathPrivilege {
     try {
       path.serialize(dataOutputStream);
     } catch (IOException exception) {
-      logger.error("Unexpected exception when serialize path", exception);
+      LOGGER.error("Unexpected exception when serialize path", exception);
     }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }

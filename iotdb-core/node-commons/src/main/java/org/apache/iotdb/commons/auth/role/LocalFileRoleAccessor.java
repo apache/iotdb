@@ -50,7 +50,7 @@ import java.util.UUID;
  * path[2]-bytes-utf8 | privilege-int32| path[3]-length int32| path[3]-bytes-utf8 | privilege-int32|
  * .....
  *
- * <p>system-privileges is a int32 mask code. Low 16 bits for privileges and high 16 bits mark that
+ * <p>system-privileges is an int32 mask code. Low 16 bits for privileges and high 16 bits mark that
  * whether the corresponding position 's privilege has grant option.So we can use a int32 to mark 16
  * kinds of privileges. Here are the permissions corresponding to the bit location identifier：
  * Manage_database : 0 MANAGE_USER : 1 MANAGE_ROLE : 2 USE_TRIGGER : 3 USE_UDF : 4 USE_CQ : 5
@@ -66,14 +66,14 @@ import java.util.UUID;
  */
 
 /**
- * All user/role file store in config node's user/role folder. when we need someone's privilege
- * info, we load it form folder. If we did some alter query, we just store raft log.
+ * All user/role file store in config node's user/role folder. when our system start, we load all
+ * user/role from folder. If we did some alter query, we just store raft log.
  */
 public class LocalFileRoleAccessor implements IRoleAccessor {
-  private static final Logger logger = LoggerFactory.getLogger(LocalFileRoleAccessor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalFileRoleAccessor.class);
   private static final String TEMP_SUFFIX = ".temp";
   private static final String STRING_ENCODING = "utf-8";
-  private static final String roleSnapshotFileName = "system" + File.separator + "roles";
+  private static final String ROLE_SNAPSHOT_FILE_NAME = "system" + File.separator + "roles";
 
   private final String roleDirPath;
 
@@ -142,7 +142,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
     File roleDir = new File(roleDirPath);
     if (!roleDir.exists()) {
       if (!roleDir.mkdirs()) {
-        logger.error("Failed to create role dir {}", roleDirPath);
+        LOGGER.error("Failed to create role dir {}", roleDirPath);
       }
     }
     try (BufferedOutputStream outputStream =
@@ -212,7 +212,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
     File roleFolder = systemFileFactory.getFile(roleDirPath);
-    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, roleSnapshotFileName);
+    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, ROLE_SNAPSHOT_FILE_NAME);
     File roleTmpSnapshotDir =
         systemFileFactory.getFile(roleSnapshotDir.getAbsolutePath() + "-" + UUID.randomUUID());
 
@@ -234,12 +234,12 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
     File roleFolder = systemFileFactory.getFile(roleDirPath);
     File roleTmpFolder =
         systemFileFactory.getFile(roleFolder.getAbsolutePath() + "-" + UUID.randomUUID());
-    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, roleSnapshotFileName);
+    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, ROLE_SNAPSHOT_FILE_NAME);
     if (roleSnapshotDir.exists()) {
       try {
         org.apache.commons.io.FileUtils.moveDirectory(roleFolder, roleTmpFolder);
         if (!FileUtils.copyDir(roleSnapshotDir, roleFolder)) {
-          logger.error("Failed to load role folder snapshot and rollback.");
+          LOGGER.error("Failed to load role folder snapshot and rollback.");
           // rollback if failed to copy
           FileUtils.deleteDirectory(roleFolder);
           org.apache.commons.io.FileUtils.moveDirectory(roleTmpFolder, roleFolder);
@@ -248,16 +248,16 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
         FileUtils.deleteDirectory(roleTmpFolder);
       }
     } else {
-      logger.info("There are no roles to load.");
+      LOGGER.info("There are no roles to load.");
     }
   }
 
   @Override
   public void reset() {
     if (SystemFileFactory.INSTANCE.getFile(roleDirPath).mkdirs()) {
-      logger.info("role info dir {} is created", roleDirPath);
+      LOGGER.info("role info dir {} is created", roleDirPath);
     } else if (!SystemFileFactory.INSTANCE.getFile(roleDirPath).exists()) {
-      logger.error("role info dir {} can not be created", roleDirPath);
+      LOGGER.error("role info dir {} can not be created", roleDirPath);
     }
   }
 

@@ -345,10 +345,10 @@ struct TPermissionInfoResp {
 
 struct TAuthizedPatternTreeResp {
   1: required common.TSStatus status
-  2: required string username
-  3: required i32 privilegeId
-  4: required binary pathPatternTree
-  5: required TPermissionInfoResp permissionInfo
+  2: optional string username
+  3: optional i32 privilegeId
+  4: optional binary pathPatternTree
+  5: optional TPermissionInfoResp permissionInfo
 }
 
 struct TLoginReq {

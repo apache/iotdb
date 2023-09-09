@@ -158,6 +158,7 @@ public class User extends Role {
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
+  @Override
   public void deserialize(ByteBuffer buffer) {
     super.setName(SerializeUtils.deserializeString(buffer));
     password = SerializeUtils.deserializeString(buffer);
