@@ -252,4 +252,6 @@ keyWords
     | WITHOUT
     | WRITABLE
     | WRITE
+    | AUDIT
+    | OPTION
     ;

@@ -56,11 +56,6 @@ public class PipeEnrichedLoadTsFileStatement extends LoadTsFileStatement {
   }
 
   @Override
-  public boolean isAuthenticationRequired() {
-    return loadTsFileStatement.isAuthenticationRequired();
-  }
-
-  @Override
   public void setDeleteAfterLoad(boolean deleteAfterLoad) {
     loadTsFileStatement.setDeleteAfterLoad(deleteAfterLoad);
   }

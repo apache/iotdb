@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - "new_*"
+      - auth
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -12,6 +13,7 @@ on:
     branches:
       - master
       - "new_*"
+      - auth
     paths-ignore:
       - 'docs/**'
       - 'site/**'

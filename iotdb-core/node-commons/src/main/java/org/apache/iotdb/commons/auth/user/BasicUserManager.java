@@ -19,10 +19,13 @@
 package org.apache.iotdb.commons.auth.user;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.HashLock;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -30,22 +33,17 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
-/**
- * This class stores information of each user in a separate file within a directory, and cache them
- * in memory when a user is accessed.
- */
+/** This class stores information of each user. */
 public abstract class BasicUserManager implements IUserManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(BasicUserManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(BasicUserManager.class);
   private static final String NO_SUCH_USER_ERROR = "No such user %s";
 
   protected Map<String, User> userMap;
@@ -76,7 +74,7 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       admin = getUser(CommonDescriptor.getInstance().getConfig().getAdminName());
     } catch (AuthException e) {
-      logger.warn("Cannot load admin, Creating a new one", e);
+      LOGGER.warn("Cannot load admin, Creating a new one", e);
       admin = null;
     }
 
@@ -87,35 +85,39 @@ public abstract class BasicUserManager implements IUserManager {
           true);
       setUserUseWaterMark(CommonDescriptor.getInstance().getConfig().getAdminName(), false);
     }
-    logger.info("Admin initialized");
+    // admin has all privileges.
+    admin = getUser(CommonDescriptor.getInstance().getConfig().getAdminName());
+    try {
+      PartialPath rootPath = new PartialPath(IoTDBConstant.PATH_ROOT + ".**");
+      PathPrivilege pathPri = new PathPrivilege(rootPath);
+      for (PrivilegeType item : PrivilegeType.values()) {
+        if (!item.isPathRelevant()) {
+          admin.getSysPrivilege().add(item.ordinal());
+          admin.getSysPriGrantOpt().add(item.ordinal());
+        } else {
+          pathPri.grantPrivilege(item.ordinal(), true);
+        }
+      }
+      admin.getPathPrivilegeList().add(pathPri);
+    } catch (IllegalPathException e) {
+      // This error only leads to  a lack of permissions for list.
+      LOGGER.warn("Got a wrong path for root to init");
+    }
+    LOGGER.info("Admin initialized");
   }
 
   @Override
   public User getUser(String username) throws AuthException {
     lock.readLock(username);
     User user = userMap.get(username);
-    try {
-      if (user == null) {
-        user = accessor.loadUser(username);
-        if (user != null) {
-          userMap.put(username, user);
-        }
-      }
-    } catch (IOException e) {
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-    } finally {
-      lock.readUnlock(username);
-    }
-    if (user != null) {
-      user.setLastActiveTime(System.currentTimeMillis());
-    }
+    lock.readUnlock(username);
     return user;
   }
 
   @Override
-  public boolean createUser(String username, String password, boolean firstInit)
+  public boolean createUser(String username, String password, boolean validCheck)
       throws AuthException {
-    if (!firstInit) {
+    if (!validCheck) {
       AuthUtils.validateUsername(username);
       AuthUtils.validatePassword(password);
     }
@@ -127,41 +129,24 @@ public abstract class BasicUserManager implements IUserManager {
     lock.writeLock(username);
     try {
       user = new User(username, AuthUtils.encryptPassword(password));
-      File userDirPath = new File(accessor.getDirPath());
-      if (!userDirPath.exists()) {
-        reset();
-      }
-      accessor.saveUser(user);
       userMap.put(username, user);
       return true;
-    } catch (IOException e) {
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
     } finally {
       lock.writeUnlock(username);
     }
   }
 
   @Override
-  public boolean deleteUser(String username) throws AuthException {
+  public boolean deleteUser(String username) {
     lock.writeLock(username);
-    try {
-      if (accessor.deleteUser(username)) {
-        userMap.remove(username);
-        return true;
-      } else {
-        return false;
-      }
-    } catch (IOException e) {
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-    } finally {
-      lock.writeUnlock(username);
-    }
+    userMap.remove(username);
+    lock.writeUnlock(username);
+    return true;
   }
 
   @Override
-  public boolean grantPrivilegeToUser(String username, PartialPath path, int privilegeId)
-      throws AuthException {
-    AuthUtils.validatePrivilegeOnPath(path, privilegeId);
+  public boolean grantPrivilegeToUser(
+      String username, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
     lock.writeLock(username);
     try {
       User user = getUser(username);
@@ -169,16 +154,14 @@ public abstract class BasicUserManager implements IUserManager {
         throw new AuthException(
             TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_ERROR, username));
       }
-      if (user.hasPrivilege(path, privilegeId)) {
-        return false;
-      }
-      Set<Integer> privilegesCopy = new HashSet<>(user.getPrivileges(path));
-      user.addPrivilege(path, privilegeId);
-      try {
-        accessor.saveUser(user);
-      } catch (IOException e) {
-        user.setPrivileges(path, privilegesCopy);
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      if (path != null) {
+        AuthUtils.validatePatternPath(path);
+        user.addPathPrivilege(path, privilegeId, grantOpt);
+      } else {
+        user.addSysPrivilege(privilegeId);
+        if (grantOpt) {
+          user.getSysPriGrantOpt().add(privilegeId);
+        }
       }
       return true;
     } finally {
@@ -189,7 +172,6 @@ public abstract class BasicUserManager implements IUserManager {
   @Override
   public boolean revokePrivilegeFromUser(String username, PartialPath path, int privilegeId)
       throws AuthException {
-    AuthUtils.validatePrivilegeOnPath(path, privilegeId);
     lock.writeLock(username);
     try {
       User user = getUser(username);
@@ -197,15 +179,14 @@ public abstract class BasicUserManager implements IUserManager {
         throw new AuthException(
             TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_ERROR, username));
       }
-      if (PrivilegeType.isStorable(privilegeId) && !user.hasPrivilege(path, privilegeId)) {
+      if (!user.hasPrivilegeToRevoke(path, privilegeId)) {
         return false;
       }
-      user.removePrivilege(path, privilegeId);
-      try {
-        accessor.saveUser(user);
-      } catch (IOException e) {
-        user.addPrivilege(path, privilegeId);
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      if (path != null) {
+        AuthUtils.validatePatternPath(path);
+        user.removePathPrivilege(path, privilegeId);
+      } else {
+        user.removeSysPrivilege(privilegeId);
       }
       return true;
     } finally {
@@ -218,7 +199,7 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       AuthUtils.validatePassword(newPassword);
     } catch (AuthException e) {
-      logger.debug("An illegal password detected ", e);
+      LOGGER.debug("An illegal password detected ", e);
       return false;
     }
 
@@ -229,14 +210,7 @@ public abstract class BasicUserManager implements IUserManager {
         throw new AuthException(
             TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_ERROR, username));
       }
-      String oldPassword = user.getPassword();
       user.setPassword(AuthUtils.encryptPassword(newPassword));
-      try {
-        accessor.saveUser(user);
-      } catch (IOException e) {
-        user.setPassword(oldPassword);
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-      }
       return true;
     } finally {
       lock.writeUnlock(username);
@@ -256,12 +230,6 @@ public abstract class BasicUserManager implements IUserManager {
         return false;
       }
       user.getRoleList().add(roleName);
-      try {
-        accessor.saveUser(user);
-      } catch (IOException e) {
-        user.getRoleList().remove(roleName);
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-      }
       return true;
     } finally {
       lock.writeUnlock(username);
@@ -281,12 +249,6 @@ public abstract class BasicUserManager implements IUserManager {
         return false;
       }
       user.getRoleList().remove(roleName);
-      try {
-        accessor.saveUser(user);
-      } catch (IOException e) {
-        user.getRoleList().add(roleName);
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-      }
       return true;
     } finally {
       lock.writeUnlock(username);
@@ -297,12 +259,20 @@ public abstract class BasicUserManager implements IUserManager {
   public void reset() throws AuthException {
     accessor.reset();
     userMap.clear();
+    for (String name : accessor.listAllUsers()) {
+      try {
+        userMap.put(name, accessor.loadUser(name));
+      } catch (IOException e) {
+        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      }
+    }
     initAdmin();
   }
 
   @Override
   public List<String> listAllUsers() {
-    List<String> rtlist = accessor.listAllUsers();
+    List<String> rtlist = new ArrayList<>();
+    userMap.forEach((name, item) -> rtlist.add(name));
     rtlist.sort(null);
     return rtlist;
   }
@@ -329,12 +299,6 @@ public abstract class BasicUserManager implements IUserManager {
       return;
     }
     user.setUseWaterMark(useWaterMark);
-    try {
-      accessor.saveUser(user);
-    } catch (IOException e) {
-      user.setUseWaterMark(oldFlag);
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-    }
   }
 
   @Override
