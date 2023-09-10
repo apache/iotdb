@@ -68,8 +68,9 @@ import static org.apache.iotdb.commons.auth.entity.PrivilegeType.isPathRelevant;
 public class AuthorInfo implements SnapshotProcessor {
 
   // Works at config node.
-  private static final Logger logger = LoggerFactory.getLogger(AuthorInfo.class);
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static final Logger LOGGER = LoggerFactory.getLogger(AuthorInfo.class);
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final String NO_USER_MSG = "No such user : ";
 
   private IAuthorizer authorizer;
 
@@ -77,7 +78,7 @@ public class AuthorInfo implements SnapshotProcessor {
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
-      logger.error("get user or role permissionInfo failed because ", e);
+      LOGGER.error("get user or role permissionInfo failed because ", e);
     }
   }
 
@@ -103,7 +104,7 @@ public class AuthorInfo implements SnapshotProcessor {
         result = AuthUtils.generateEmptyPermissionInfoResp();
       }
     } catch (AuthException e) {
-      logger.error("meet error while logging in.", e);
+      LOGGER.error("meet error while logging in.", e);
       status = false;
       loginMessage = e.getMessage();
     }
@@ -165,7 +166,7 @@ public class AuthorInfo implements SnapshotProcessor {
         return true;
       }
     } catch (AuthException e) {
-      logger.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
+      LOGGER.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
       throw new AuthException(e.getCode(), e);
     }
     return false;
@@ -293,8 +294,7 @@ public class AuthorInfo implements SnapshotProcessor {
       User user = authorizer.getUser(plan.getUserName());
       if (user == null) {
         result.setStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.USER_NOT_EXIST, "No such user : " + plan.getUserName()));
+            RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + plan.getUserName()));
         result.setMemberInfo(permissionInfo);
         return result;
       }
@@ -332,9 +332,9 @@ public class AuthorInfo implements SnapshotProcessor {
     roleResp.setSysPriSetGrantOpt(role.getSysPriGrantOpt());
     Map<String, TRoleResp> roleInfo = new HashMap<>();
     roleInfo.put(role.getName(), roleResp);
-    result.setTag(IoTDBConstant.COLUMN_PRIVILEGE);
     resp.setRoleInfo(roleInfo);
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    result.setTag(IoTDBConstant.COLUMN_PRIVILEGE);
     result.setPermissionInfoResp(resp);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setMemberInfo(permissionInfo);
@@ -346,7 +346,7 @@ public class AuthorInfo implements SnapshotProcessor {
     User user = authorizer.getUser(plan.getUserName());
     if (user == null) {
       result.setStatus(
-          RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, "No such user : " + plan.getUserName()));
+          RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + plan.getUserName()));
       return result;
     }
     TPermissionInfoResp resp = getUserPermissionInfo(plan.getUserName());
@@ -363,7 +363,7 @@ public class AuthorInfo implements SnapshotProcessor {
     User user = authorizer.getUser(username);
     PathPatternTree pPtree = new PathPatternTree();
     if (user == null) {
-      resp.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, "No such user : " + username));
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + username));
       resp.setUsername(username);
       resp.setPrivilegeId(permission);
       return resp;
@@ -408,7 +408,7 @@ public class AuthorInfo implements SnapshotProcessor {
     TPermissionInfoResp resp = new TPermissionInfoResp();
     boolean status = false;
     if (user == null) {
-      resp.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, "No such user : " + username));
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + username));
       return resp;
     }
     try {
@@ -432,15 +432,13 @@ public class AuthorInfo implements SnapshotProcessor {
           }
         }
       } else {
-        if (user.getSysPrivilege().contains(permission)
-            && user.getSysPriGrantOpt().contains(permission)) {
+        if (user.checkSysPriGrantOpt(permission)) {
           status = true;
         }
         if (!status) {
           for (String roleName : user.getRoleList()) {
             Role role = authorizer.getRole(roleName);
-            if (role.getSysPrivilege().contains(permission)
-                && role.getSysPriGrantOpt().contains(permission)) {
+            if (role.checkSysPriGrantOpt(permission)) {
               status = true;
               break;
             }
@@ -468,7 +466,7 @@ public class AuthorInfo implements SnapshotProcessor {
 
   public TPermissionInfoResp checkRoleOfUser(String username, String rolename)
       throws AuthException {
-    TPermissionInfoResp result = new TPermissionInfoResp();
+    TPermissionInfoResp result;
     User user = authorizer.getUser(username);
     if (user == null) {
       throw new AuthException(
@@ -500,11 +498,11 @@ public class AuthorInfo implements SnapshotProcessor {
 
   @TestOnly
   public void clear() throws AuthException {
-    File userFolder = new File(commonConfig.getUserFolder());
+    File userFolder = new File(COMMON_CONFIG.getUserFolder());
     if (userFolder.exists()) {
       FileUtils.deleteDirectory(userFolder);
     }
-    File roleFolder = new File(commonConfig.getRoleFolder());
+    File roleFolder = new File(COMMON_CONFIG.getRoleFolder());
     if (roleFolder.exists()) {
       FileUtils.deleteDirectory(roleFolder);
     }

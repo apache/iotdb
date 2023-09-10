@@ -44,22 +44,39 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * This class loads a user's information from the corresponding file.The user file is a sequential
- * file. User file schema: Int32 username bytes size Utf-8 username bytes Int32 Password bytes size
- * Utf-8 password bytes Int32 seriesPath privilege number n Int32 seriesPath[1] size Utf-8
- * seriesPath[1] bytes Int32 privilege num k1 Int32 privilege[1][1] Int32 privilege[1][2] ... Int32
- * privilege[1][k1] Int32 seriesPath[2] size Utf-8 seriesPath[2] bytes Int32 privilege num k2 Int32
- * privilege[2][1] Int32 privilege[2][2] ... Int32 privilege[2][k2] ... Int32 seriesPath[n] size
- * Utf-8 seriesPath[n] bytes Int32 privilege num kn Int32 privilege[n][1] Int32 privilege[n][2] ...
- * Int32 privilege[n][kn] Int32 user name number m Int32 user name[1] size Utf-8 user name[1] bytes
- * Int32 user name[2] size Utf-8 user name[2] bytes ... Int32 user name[m] size Utf-8 user name[m]
- * bytes
+ * This class store user info in separate sequential files and every user will have one user file
+ * and an optional user_role file. user file schema: username-length int32| username-bytes-utf8|
+ * userpwd-length int32 | userpwd-bytes-utf8| system-perivileges int32| path[1]-length int32|
+ * path[1]-bytes-utf8 | privilege-int32| path[2]-length int32| path[2]-bytes-utf8 | privilege-int32|
+ * path[3]-length int32| path[3]-bytes-utf8 | privilege-int32|
+ *
+ * <p>user_role file schema: role1-length int32 | role1-bytes-utf8 | role2-length int32 |
+ * role2-bytes-utf8... .....
+ *
+ * <p>system-privileges is an int32 mask code. Low 16 bits for privileges and high 16 bits mark that
+ * whether the corresponding position 's privilege has grant option.So we can use a int32 to mark 16
+ * kinds of privileges. Here are the permissions corresponding to the bit location identifier：
+ * Manage_database : 0 MANAGE_USER : 1 MANAGE_ROLE : 2 USE_TRIGGER : 3 USE_UDF : 4 USE_CQ : 5
+ * USE_PIPE : 6 EXTEDN_TEMPLATE : 7 AUDIT : 8 MAINTAIN : 9 |0000-0000-0000-0001|0000-0000-0000-0001|
+ * means this role has Manage_database's privilege and be able to grant it to others.
+ *
+ * <p>path-privileges is a pair contains paths and privileges mask. Path privilege is a int32 mask
+ * code which has the same structure as system-privileges. For path privilege, the low 16 bits stand
+ * for four privileges, they are: READ_DATA : 0 WRITE_DATA : 1 READ_SCHEMA : 2 WRITE_SCHEMA : 3 And
+ * the high 16 bits stand for grant option.
+ *
+ * <p>user files and user_role files are appendable.
+ */
+
+/**
+ * All user/role file store in config node's user/role folder. when our system start, we load all
+ * user/role from folder. If we did some alter query, we just store raft log.
  */
 public class LocalFileUserAccessor implements IUserAccessor {
-  private static final Logger logger = LoggerFactory.getLogger(LocalFileUserAccessor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalFileUserAccessor.class);
   private static final String TEMP_SUFFIX = ".temp";
   private static final String STRING_ENCODING = "utf-8";
-  private static final String userSnapshotFileName = "system" + File.separator + "users";
+  private static final String USER_SNAPSHOT_FILE_NAME = "system" + File.separator + "users";
 
   private static final String ROLE_SUFFIX = "_role";
 
@@ -94,7 +111,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
               userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
       if (newProfile.exists() && newProfile.isFile()) {
         if (!newProfile.renameTo(userProfile)) {
-          logger.error("New profile renaming not succeed.");
+          LOGGER.error("New profile renaming not succeed.");
         }
         userProfile = newProfile;
       } else {
@@ -132,7 +149,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
                     + TEMP_SUFFIX);
         if (newRoleProfile.exists() && newRoleProfile.isFile()) {
           if (!newRoleProfile.renameTo(roleOfUser)) {
-            logger.warn(" New role profile renaming not succeed.");
+            LOGGER.warn(" New role profile renaming not succeed.");
           }
         }
       }
@@ -140,31 +157,19 @@ public class LocalFileUserAccessor implements IUserAccessor {
       roleOfUser =
           SystemFileFactory.INSTANCE.getFile(
               userDirPath, File.separator + username + ROLE_SUFFIX + IoTDBConstant.PROFILE_SUFFIX);
-
+      List<String> roleList = new ArrayList<>();
       if (roleOfUser.exists()) {
         inputStream = new FileInputStream(roleOfUser);
         try (DataInputStream roleInpuStream =
             new DataInputStream(new BufferedInputStream(inputStream))) {
-          List<String> roleList = new ArrayList<>();
+
           for (int i = 0; roleInpuStream.available() != 0; i++) {
             String rolename = IOUtils.readString(roleInpuStream, STRING_ENCODING, strBufferLocal);
             roleList.add(rolename);
           }
-          user.setRoleList(roleList);
         }
       }
-
-      //      // for online upgrading, profile for v0.9.x/v1 does not contain waterMark
-      //      long userProfileLength = userProfile.length();
-      //      try {
-      //        user.setUseWaterMark(dataInputStream.readInt() != 0);
-      //      } catch (EOFException e1) {
-      //        user.setUseWaterMark(false);
-      //        try (RandomAccessFile file = new RandomAccessFile(userProfile, "rw")) {
-      //          file.seek(userProfileLength);
-      //          file.writeInt(0);
-      //        }
-      //      }
+      user.setRoleList(roleList);
       return user;
     } catch (Exception e) {
       throw new IOException(e);
@@ -307,8 +312,8 @@ public class LocalFileUserAccessor implements IUserAccessor {
         userDir.list(
             (dir, name) ->
                 (name.endsWith(IoTDBConstant.PROFILE_SUFFIX)
-                        && !name.endsWith("_role" + IoTDBConstant.PROFILE_SUFFIX))
-                    || (name.endsWith(TEMP_SUFFIX) && !name.endsWith("_role" + TEMP_SUFFIX)));
+                        && !name.endsWith(ROLE_SUFFIX + IoTDBConstant.PROFILE_SUFFIX))
+                    || (name.endsWith(TEMP_SUFFIX) && !name.endsWith(ROLE_SUFFIX + TEMP_SUFFIX)));
     List<String> retList = new ArrayList<>();
     if (names != null) {
       // in very rare situations, normal file and backup file may exist at the same time
@@ -326,7 +331,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
     File userFolder = systemFileFactory.getFile(userDirPath);
-    File userSnapshotDir = systemFileFactory.getFile(snapshotDir, userSnapshotFileName);
+    File userSnapshotDir = systemFileFactory.getFile(snapshotDir, USER_SNAPSHOT_FILE_NAME);
     File userTmpSnapshotDir =
         systemFileFactory.getFile(userSnapshotDir.getAbsolutePath() + "-" + UUID.randomUUID());
 
@@ -348,12 +353,12 @@ public class LocalFileUserAccessor implements IUserAccessor {
     File userFolder = systemFileFactory.getFile(userDirPath);
     File userTmpFolder =
         systemFileFactory.getFile(userFolder.getAbsolutePath() + "-" + UUID.randomUUID());
-    File userSnapshotDir = systemFileFactory.getFile(snapshotDir, userSnapshotFileName);
+    File userSnapshotDir = systemFileFactory.getFile(snapshotDir, USER_SNAPSHOT_FILE_NAME);
 
     try {
       org.apache.commons.io.FileUtils.moveDirectory(userFolder, userTmpFolder);
       if (!FileUtils.copyDir(userSnapshotDir, userFolder)) {
-        logger.error("Failed to load user folder snapshot and rollback.");
+        LOGGER.error("Failed to load user folder snapshot and rollback.");
         // rollback if failed to copy
         FileUtils.deleteDirectory(userFolder);
         org.apache.commons.io.FileUtils.moveDirectory(userTmpFolder, userFolder);
@@ -366,9 +371,9 @@ public class LocalFileUserAccessor implements IUserAccessor {
   @Override
   public void reset() {
     if (SystemFileFactory.INSTANCE.getFile(userDirPath).mkdirs()) {
-      logger.info("user info dir {} is created", userDirPath);
+      LOGGER.info("user info dir {} is created", userDirPath);
     } else if (!SystemFileFactory.INSTANCE.getFile(userDirPath).exists()) {
-      logger.error("user info dir {} can not be created", userDirPath);
+      LOGGER.error("user info dir {} can not be created", userDirPath);
     }
   }
 

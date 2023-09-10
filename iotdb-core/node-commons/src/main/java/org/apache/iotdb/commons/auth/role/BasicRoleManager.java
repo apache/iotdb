@@ -77,19 +77,15 @@ public abstract class BasicRoleManager implements IRoleManager {
   public boolean deleteRole(String rolename) {
     lock.writeLock(rolename);
     try {
-      if (roleMap.remove(rolename) != null) {
-        return true;
-      }
+      return roleMap.remove(rolename) != null;
     } finally {
       lock.writeUnlock(rolename);
     }
-    return false;
   }
 
   @Override
-  public boolean grantPrivilegeToRole(
+  public void grantPrivilegeToRole(
       String rolename, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
-    //    AuthUtils.validatePrivilege(path, privilegeId);
     lock.writeLock(rolename);
     try {
       Role role = getRole(rolename);
@@ -106,7 +102,6 @@ public abstract class BasicRoleManager implements IRoleManager {
           role.getSysPriGrantOpt().add(privilegeId);
         }
       }
-      return true;
     } finally {
       lock.writeUnlock(rolename);
     }
@@ -115,7 +110,6 @@ public abstract class BasicRoleManager implements IRoleManager {
   @Override
   public boolean revokePrivilegeFromRole(String rolename, PartialPath path, int privilegeId)
       throws AuthException {
-    //    AuthUtils.validatePrivilege(path, privilegeId);
     lock.writeLock(rolename);
     try {
       Role role = getRole(rolename);
@@ -156,10 +150,7 @@ public abstract class BasicRoleManager implements IRoleManager {
   public List<String> listAllRoles() {
 
     List<String> rtlist = new ArrayList<>();
-    roleMap.forEach(
-        (name, item) -> {
-          rtlist.add(name);
-        });
+    roleMap.forEach((name, item) -> rtlist.add(name));
     rtlist.sort(null);
     return rtlist;
   }

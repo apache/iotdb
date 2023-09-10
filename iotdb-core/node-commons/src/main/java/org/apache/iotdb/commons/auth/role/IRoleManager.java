@@ -63,10 +63,9 @@ public interface IRoleManager extends SnapshotProcessor {
    *     seriesPath-free privilege, this should be "root".
    * @param privilegeId An integer that represents a privilege.
    * @param grantOpt Whether the privilege can be granted to other role/user.
-   * @return True if the permission is successfully added, false if the permission already exists.
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal.
    */
-  boolean grantPrivilegeToRole(String rolename, PartialPath path, int privilegeId, boolean grantOpt)
+  void grantPrivilegeToRole(String rolename, PartialPath path, int privilegeId, boolean grantOpt)
       throws AuthException;
 
   /**

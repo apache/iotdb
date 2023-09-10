@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -144,9 +145,9 @@ public class AuthorityChecker {
   public static boolean checkFullPathPermission(
       String userName, PartialPath fullPath, int permission) {
     long startTime = System.nanoTime();
-    List<PartialPath> path = new ArrayList<>();
-    path.add(fullPath);
-    List<Integer> failIndex = authorityFetcher.checkUserPathPrivileges(userName, path, permission);
+    List<Integer> failIndex =
+        authorityFetcher.checkUserPathPrivileges(
+            userName, Collections.singletonList(fullPath), permission);
     PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     return failIndex.isEmpty();
   }
@@ -201,42 +202,34 @@ public class AuthorityChecker {
   public static void buildTSBlock(
       TAuthorizerResp authResp, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> types = new ArrayList<>();
-    boolean listRoleUser = false;
-    if (authResp.tag.equals(IoTDBConstant.COLUMN_ROLE)
-        || authResp.tag.equals(IoTDBConstant.COLUMN_USER)) {
-      listRoleUser = true;
-    }
+    boolean listRoleUser =
+        authResp.tag.equals(IoTDBConstant.COLUMN_ROLE)
+            || authResp.tag.equals(IoTDBConstant.COLUMN_USER);
 
     List<ColumnHeader> headerList = new ArrayList<>();
-
+    TsBlockBuilder builder = new TsBlockBuilder(types);
     if (listRoleUser) {
       headerList.add(new ColumnHeader(authResp.getTag(), TSDataType.TEXT));
       types.add(TSDataType.TEXT);
-    } else {
-      headerList.add(new ColumnHeader(new String("ROLE"), TSDataType.TEXT));
-      types.add(TSDataType.TEXT);
-      headerList.add(new ColumnHeader(new String("PATH"), TSDataType.TEXT));
-      types.add(TSDataType.TEXT);
-      headerList.add(new ColumnHeader(new String("PRIVILEGES"), TSDataType.TEXT));
-      types.add(TSDataType.TEXT);
-      headerList.add(new ColumnHeader(new String("GRANT OPTION"), TSDataType.BOOLEAN));
-      types.add(TSDataType.BOOLEAN);
-    }
-
-    TsBlockBuilder builder = new TsBlockBuilder(types);
-    if (listRoleUser) {
       for (String name : authResp.getMemberInfo()) {
         builder.getTimeColumnBuilder().writeLong(0L);
         builder.getColumnBuilder(0).writeBinary(new Binary(name));
         builder.declarePosition();
       }
     } else {
+      headerList.add(new ColumnHeader("ROLE", TSDataType.TEXT));
+      types.add(TSDataType.TEXT);
+      headerList.add(new ColumnHeader("PATH", TSDataType.TEXT));
+      types.add(TSDataType.TEXT);
+      headerList.add(new ColumnHeader("PRIVILEGES", TSDataType.TEXT));
+      types.add(TSDataType.TEXT);
+      headerList.add(new ColumnHeader("GRANT OPTION", TSDataType.BOOLEAN));
+      types.add(TSDataType.BOOLEAN);
       TUserResp user = authResp.getPermissionInfo().getUserInfo();
       if (user != null) {
         appendPriBuilder("", "", user.getSysPriSet(), user.getSysPriSetGrantOpt(), builder);
         for (TPathPrivilege path : user.getPrivilegeList()) {
-          appendPriBuilder(
-              "", path.getPath().toString(), path.getPriSet(), path.getPriGrantOpt(), builder);
+          appendPriBuilder("", path.getPath(), path.getPriSet(), path.getPriGrantOpt(), builder);
         }
       }
       Iterator<Map.Entry<String, TRoleResp>> it =
@@ -247,15 +240,10 @@ public class AuthorityChecker {
             role.getRoleName(), "", role.getSysPriSet(), role.getSysPriSetGrantOpt(), builder);
         for (TPathPrivilege path : role.getPrivilegeList()) {
           appendPriBuilder(
-              role.getRoleName(),
-              path.getPath().toString(),
-              path.getPriSet(),
-              path.getPriGrantOpt(),
-              builder);
+              role.getRoleName(), path.getPath(), path.getPriSet(), path.getPriGrantOpt(), builder);
         }
       }
     }
-
     DatasetHeader datasetHeader = new DatasetHeader(headerList, true);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
@@ -263,14 +251,10 @@ public class AuthorityChecker {
   private static void appendPriBuilder(
       String name, String path, Set<Integer> priv, Set<Integer> grantOpt, TsBlockBuilder builder) {
     for (int i : priv) {
-      builder.getColumnBuilder(0).writeBinary(new Binary(new String(name)));
-      builder.getColumnBuilder(1).writeBinary(new Binary(new String(path)));
+      builder.getColumnBuilder(0).writeBinary(new Binary(name));
+      builder.getColumnBuilder(1).writeBinary(new Binary(path));
       builder.getColumnBuilder(2).writeBinary(new Binary(PrivilegeType.values()[i].toString()));
-      if (grantOpt.contains(i)) {
-        builder.getColumnBuilder(3).writeBoolean(true);
-      } else {
-        builder.getColumnBuilder(3).writeBoolean(false);
-      }
+      builder.getColumnBuilder(3).writeBoolean(grantOpt.contains(i));
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.declarePosition();
     }

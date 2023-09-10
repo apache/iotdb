@@ -110,16 +110,14 @@ public class LocalFileRoleManagerTest {
     PartialPath path = new PartialPath("root.a.b.c");
     int privilegeId = 0;
     assertFalse(role.hasPrivilegeToRevoke(path, privilegeId));
-    assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId, false));
-    assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId + 1, false));
+    manager.grantPrivilegeToRole(role.getName(), path, privilegeId, false);
+    manager.grantPrivilegeToRole(role.getName(), path, privilegeId + 1, false);
     // grant again will success
-    assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId, false));
+    manager.grantPrivilegeToRole(role.getName(), path, privilegeId, false);
     role = manager.getRole(roles[0].getName());
     assertTrue(role.hasPrivilegeToRevoke(path, privilegeId));
-    assertTrue(
-        manager.grantPrivilegeToRole(role.getName(), null, PrivilegeType.MAINTAIN.ordinal(), true));
-    assertTrue(
-        manager.grantPrivilegeToRole(role.getName(), null, PrivilegeType.MAINTAIN.ordinal(), true));
+    manager.grantPrivilegeToRole(role.getName(), null, PrivilegeType.MAINTAIN.ordinal(), true);
+    manager.grantPrivilegeToRole(role.getName(), null, PrivilegeType.MAINTAIN.ordinal(), true);
     caught = false;
     try {
       manager.grantPrivilegeToRole("not a role", path, privilegeId, false);
