@@ -520,7 +520,8 @@ public class QueryStatement extends Statement {
       "Count_time aggregation function using with group by tag is not supported.";
 
   public static final String COUNT_TIME_CAN_ONLY_EXIST_ALONE =
-      "Count_time aggregation can only exist alone, and cannot used with other queries or aggregations.";
+      "Count_time aggregation can only exist alone, "
+          + "and cannot used with other queries or aggregations.";
 
   public static final String COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING =
       "Count_time aggregation function can not be used with having clause.";
