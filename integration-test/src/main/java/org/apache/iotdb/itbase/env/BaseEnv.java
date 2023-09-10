@@ -89,6 +89,8 @@ public interface BaseEnv {
 
   ISession getSessionConnection() throws IoTDBConnectionException;
 
+  ISession getSessionConnection(String userName, String password) throws IoTDBConnectionException;
+
   ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
 
   /**

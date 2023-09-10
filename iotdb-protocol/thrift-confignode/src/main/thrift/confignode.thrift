@@ -215,6 +215,7 @@ struct TSchemaPartitionTableResp {
 struct TSchemaNodeManagementReq {
   1: required binary pathPatternTree
   2: optional i32 level
+  3: optional binary scopePatternTree
 }
 
 struct TSchemaNodeManagementResp {
@@ -304,31 +305,53 @@ struct TAuthorizerReq {
   4: required string password
   5: required string newPassword
   6: required set<i32> permissions
-  7: required binary nodeNameList
+  7: required bool grantOpt
+  8: required binary nodeNameList
 }
 
 struct TAuthorizerResp {
   1: required common.TSStatus status
-  2: optional map<string, list<string>> authorizerInfo
+  2: optional string tag
+  3: optional list<string> memberInfo
+  4: optional TPermissionInfoResp permissionInfo
 }
 
 struct TUserResp {
   1: required string username
   2: required string password
-  3: required list<string> privilegeList
-  4: required list<string> roleList
-  5: required bool isOpenIdUser
+  3: required list<TPathPrivilege> privilegeList
+  4: required set<i32> sysPriSet
+  5: required set<i32> sysPriSetGrantOpt
+  6: required list<string> roleList
+  7: required bool isOpenIdUser
 }
 
 struct TRoleResp {
   1: required string roleName
-  2: required list<string> privilegeList
+  2: required list<TPathPrivilege> privilegeList
+  3: required set<i32> sysPriSet
+  4: required set<i32> sysPriSetGrantOpt
+}
+
+struct TPathPrivilege {
+  1: required string path
+  2: required set<i32> priSet
+  3: required set<i32> priGrantOpt
 }
 
 struct TPermissionInfoResp {
   1: required common.TSStatus status
-  2: optional TUserResp userInfo
-  3: optional map<string, TRoleResp> roleInfo
+  2: optional list<i32> failPos
+  3: optional TUserResp userInfo
+  4: optional map<string, TRoleResp> roleInfo
+}
+
+struct TAuthizedPatternTreeResp {
+  1: required common.TSStatus status
+  2: optional string username
+  3: optional i32 privilegeId
+  4: optional binary pathPatternTree
+  5: optional TPermissionInfoResp permissionInfo
 }
 
 struct TLoginReq {
@@ -340,6 +363,7 @@ struct TCheckUserPrivilegesReq {
   1: required string username
   2: required binary paths
   3: required i32 permission
+  4: optional bool grantOpt
 }
 
 // ConfigNode
@@ -542,6 +566,11 @@ struct TDatabaseInfo {
   11: required i32 maxDataRegionNum
 }
 
+struct TGetDatabaseReq{
+  1: required list<string> databasePathPattern
+  2: required binary scopePatternTree
+}
+
 struct TShowDatabaseResp {
   1: required common.TSStatus status
   // map<DatabaseName, TDatabaseInfo>
@@ -607,6 +636,11 @@ struct TSetSchemaTemplateReq {
   1: required string queryId
   2: required string name
   3: required string path
+}
+
+struct TGetPathsSetTemplatesReq {
+  1: required string templateName
+  2: required binary scopePatternTree
 }
 
 struct TGetPathsSetTemplatesResp {
@@ -913,10 +947,10 @@ service IConfigNodeRPCService {
   common.TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req)
 
   /** Count the matched Databases */
-  TCountDatabaseResp countMatchedDatabases(list<string> DatabasePathPattern)
+  TCountDatabaseResp countMatchedDatabases(TGetDatabaseReq req)
 
   /** Get the matched Databases' TDatabaseSchema */
-  TDatabaseSchemaResp getMatchedDatabaseSchemas(list<string> DatabasePathPattern)
+  TDatabaseSchemaResp getMatchedDatabaseSchemas(TGetDatabaseReq req)
 
   // ======================================================
   // SchemaPartition
@@ -1011,6 +1045,14 @@ service IConfigNodeRPCService {
    *         NO_PERMISSION_ERROR if the user does not have this permission
    */
   TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
+
+  TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
+
+  TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req)
+
+  TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req)
+
+
 
   // ======================================================
   // ConfigNode
@@ -1211,7 +1253,7 @@ service IConfigNodeRPCService {
   TShowConfigNodesResp showConfigNodes()
 
   /** Show cluster Databases' information */
-  TShowDatabaseResp showDatabase(list<string> databasePathPattern)
+  TShowDatabaseResp showDatabase(TGetDatabaseReq req)
 
   /**
    * Show the matched cluster Regions' information
@@ -1253,7 +1295,7 @@ service IConfigNodeRPCService {
   /**
    * Get paths setting given schema template
    */
-  TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
+  TGetPathsSetTemplatesResp getPathsSetTemplate(TGetPathsSetTemplatesReq req)
 
   /**
    * Deactivate schema template from paths matched by given pattern tree in cluster

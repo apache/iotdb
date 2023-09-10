@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.request.read.partition;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
@@ -31,10 +32,19 @@ import java.util.Objects;
 
 public class GetNodePathsPartitionPlan extends ConfigPhysicalPlan {
   private PartialPath partialPath;
+  private PathPatternTree scope;
   private int level = -1;
 
   public GetNodePathsPartitionPlan() {
     super(ConfigPhysicalPlanType.GetNodePathsPartition);
+  }
+
+  public PathPatternTree getScope() {
+    return scope;
+  }
+
+  public void setScope(PathPatternTree scope) {
+    this.scope = scope;
   }
 
   public PartialPath getPartialPath() {
@@ -57,12 +67,14 @@ public class GetNodePathsPartitionPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     partialPath.serialize(stream);
+    scope.serialize(stream);
     stream.writeInt(level);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     partialPath = (PartialPath) PathDeserializeUtil.deserialize(buffer);
+    scope = PathPatternTree.deserialize(buffer);
     level = buffer.getInt();
   }
 

@@ -1108,7 +1108,8 @@ public class LogicalPlanBuilder {
       long offset,
       boolean orderByHeat,
       boolean prefixPath,
-      Map<Integer, Template> templateMap) {
+      Map<Integer, Template> templateMap,
+      PathPatternTree scope) {
     this.root =
         new TimeSeriesSchemaScanNode(
             context.getQueryId().genPlanNodeId(),
@@ -1118,7 +1119,8 @@ public class LogicalPlanBuilder {
             offset,
             orderByHeat,
             prefixPath,
-            templateMap);
+            templateMap,
+            scope);
     return this;
   }
 
@@ -1128,7 +1130,8 @@ public class LogicalPlanBuilder {
       long offset,
       boolean prefixPath,
       boolean hasSgCol,
-      SchemaFilter schemaFilter) {
+      SchemaFilter schemaFilter,
+      PathPatternTree scope) {
     this.root =
         new DevicesSchemaScanNode(
             context.getQueryId().genPlanNodeId(),
@@ -1137,7 +1140,8 @@ public class LogicalPlanBuilder {
             offset,
             prefixPath,
             hasSgCol,
-            schemaFilter);
+            schemaFilter,
+            scope);
     return this;
   }
 
@@ -1203,8 +1207,10 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planDevicesCountSource(PartialPath partialPath, boolean prefixPath) {
-    this.root = new DevicesCountNode(context.getQueryId().genPlanNodeId(), partialPath, prefixPath);
+  public LogicalPlanBuilder planDevicesCountSource(
+      PartialPath partialPath, boolean prefixPath, PathPatternTree scope) {
+    this.root =
+        new DevicesCountNode(context.getQueryId().genPlanNodeId(), partialPath, prefixPath, scope);
     return this;
   }
 
@@ -1212,14 +1218,16 @@ public class LogicalPlanBuilder {
       PartialPath partialPath,
       boolean prefixPath,
       SchemaFilter schemaFilter,
-      Map<Integer, Template> templateMap) {
+      Map<Integer, Template> templateMap,
+      PathPatternTree scope) {
     this.root =
         new TimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(),
             partialPath,
             prefixPath,
             schemaFilter,
-            templateMap);
+            templateMap,
+            scope);
     return this;
   }
 
@@ -1228,7 +1236,8 @@ public class LogicalPlanBuilder {
       boolean prefixPath,
       int level,
       SchemaFilter schemaFilter,
-      Map<Integer, Template> templateMap) {
+      Map<Integer, Template> templateMap,
+      PathPatternTree scope) {
     this.root =
         new LevelTimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(),
@@ -1236,13 +1245,16 @@ public class LogicalPlanBuilder {
             prefixPath,
             level,
             schemaFilter,
-            templateMap);
+            templateMap,
+            scope);
     return this;
   }
 
-  public LogicalPlanBuilder planNodePathsSchemaSource(PartialPath partialPath, Integer level) {
+  public LogicalPlanBuilder planNodePathsSchemaSource(
+      PartialPath partialPath, Integer level, PathPatternTree scope) {
     this.root =
-        new NodePathsSchemaScanNode(context.getQueryId().genPlanNodeId(), partialPath, level);
+        new NodePathsSchemaScanNode(
+            context.getQueryId().genPlanNodeId(), partialPath, level, scope);
     return this;
   }
 
@@ -1271,18 +1283,22 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planPathsUsingTemplateSource(
-      List<PartialPath> pathPatternList, int templateId) {
+      List<PartialPath> pathPatternList, int templateId, PathPatternTree scope) {
     this.root =
         new PathsUsingTemplateScanNode(
-            context.getQueryId().genPlanNodeId(), pathPatternList, templateId);
+            context.getQueryId().genPlanNodeId(), pathPatternList, templateId, scope);
     return this;
   }
 
   public LogicalPlanBuilder planLogicalViewSchemaSource(
-      PartialPath pathPattern, SchemaFilter schemaFilter, long limit, long offset) {
+      PartialPath pathPattern,
+      SchemaFilter schemaFilter,
+      long limit,
+      long offset,
+      PathPatternTree scope) {
     this.root =
         new LogicalViewSchemaScanNode(
-            context.getQueryId().genPlanNodeId(), pathPattern, schemaFilter, limit, offset);
+            context.getQueryId().genPlanNodeId(), pathPattern, schemaFilter, limit, offset, scope);
     return this;
   }
 

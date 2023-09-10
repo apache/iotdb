@@ -35,16 +35,17 @@ public class UserTest {
     User user = new User("user", "password");
     PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.ln"));
     user.setPrivilegeList(Collections.singletonList(pathPrivilege));
-    user.setPrivileges(new PartialPath("root.ln"), Collections.singleton(1));
+    user.setPathPrivileges(new PartialPath("root.ln"), Collections.singleton(1));
     Assert.assertEquals(
-        "User{name='user', password='password', privilegeList=[root.ln : WRITE_DATA], roleList=[], "
-            + "isOpenIdUser=false, useWaterMark=false, lastActiveTime=0}",
+        "User{name='user', password='password', pathPrivilegeList=[root.ln : WRITE_DATA], sysPrivilegeSet=[], roleList=[], "
+            + "isOpenIdUser=false, useWaterMark=false}",
         user.toString());
     User user1 = new User("user1", "password1");
     user1.deserialize(user.serialize());
     Assert.assertEquals(
-        "User{name='user', password='password', privilegeList=[root.ln : WRITE_DATA], roleList=[], "
-            + "isOpenIdUser=false, useWaterMark=false, lastActiveTime=0}",
+        "User{name='user', password='password', pathPrivilegeList=[root.ln : WRITE_DATA], sysPrivilegeSet=[], roleList=[], "
+            + "isOpenIdUser=false, useWaterMark=false}",
         user1.toString());
+    Assert.assertTrue(user1.equals(user));
   }
 }
