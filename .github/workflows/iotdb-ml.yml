@@ -8,7 +8,6 @@ on:
       - master
       - 'rel/*'
       - "new_*"
-      - auth
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -17,7 +16,6 @@ on:
       - master
       - 'rel/*'
       - "new_*"
-      - auth
     paths-ignore:
       - 'docs/**'
       - 'site/**'

@@ -10,7 +10,6 @@ on:
     branches:
       - master
       - "rel/*"
-      - auth
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -18,7 +17,6 @@ on:
     branches:
       - master
       - "rel/*"
-      - auth
     paths-ignore:
       - 'docs/**'
       - 'site/**'
