@@ -45,7 +45,6 @@ import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class WebSocketConnector implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnector.class);
@@ -82,7 +81,7 @@ public class WebSocketConnector implements PipeConnector {
                   WebSocketConnectorServer newServer =
                       new WebSocketConnectorServer(new InetSocketAddress(port), this);
                   newServer.start();
-                  return new Pair<>(new AtomicInteger(0), server);
+                  return new Pair<>(new AtomicInteger(0), newServer);
                 })
             .getRight();
     serverWithReferenceCountMap.get(port).getLeft().incrementAndGet();
@@ -104,7 +103,7 @@ public class WebSocketConnector implements PipeConnector {
     long commitId = commitIdGenerator.incrementAndGet();
     ((EnrichedEvent) tabletInsertionEvent)
         .increaseReferenceCount(WebSocketConnector.class.getName());
-    server.get().addEvent(new Pair<>(commitId, tabletInsertionEvent));
+    server.addEvent(new Pair<>(commitId, tabletInsertionEvent));
   }
 
   @Override
@@ -118,7 +117,7 @@ public class WebSocketConnector implements PipeConnector {
     for (TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
       long commitId = commitIdGenerator.incrementAndGet();
       ((EnrichedEvent) event).increaseReferenceCount(WebSocketConnector.class.getName());
-      server.get().addEvent(new Pair<>(commitId, event));
+      server.addEvent(new Pair<>(commitId, event));
     }
   }
 

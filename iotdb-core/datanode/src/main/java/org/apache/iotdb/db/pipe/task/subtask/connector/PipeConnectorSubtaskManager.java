@@ -48,7 +48,8 @@ import java.util.function.Supplier;
 
 public class PipeConnectorSubtaskManager {
 
-  private static final Map<String, Supplier<PipeConnector>> CONNECTOR_CONSTRUCTORS = new HashMap<>();
+  private static final Map<String, Supplier<PipeConnector>> CONNECTOR_CONSTRUCTORS =
+      new HashMap<>();
 
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";
