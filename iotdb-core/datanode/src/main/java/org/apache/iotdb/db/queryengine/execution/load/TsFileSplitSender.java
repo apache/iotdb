@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,6 +44,11 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
+import org.apache.iotdb.db.queryengine.execution.load.locseq.FixedLocationSequencer;
+import org.apache.iotdb.db.queryengine.execution.load.locseq.LocationSequencer;
+import org.apache.iotdb.db.queryengine.execution.load.locseq.LocationStatistics;
+import org.apache.iotdb.db.queryengine.execution.load.locseq.RandomLocationSequencer;
+import org.apache.iotdb.db.queryengine.execution.load.locseq.ThroughputBasedLocationSequencer;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
@@ -72,8 +76,7 @@ public class TsFileSplitSender {
   // All consensus groups accessed in Phase1 should be notified in Phase2
   private final Set<TRegionReplicaSet> allReplicaSets = new ConcurrentSkipListSet<>();
   private String uuid;
-  private Map<TDataNodeLocation, Double> dataNodeThroughputMap = new ConcurrentHashMap<>();
-  private Random random = new Random();
+  private LocationStatistics locationStatistics = new LocationStatistics();
   private boolean isGeneratedByPipe;
   private Map<Pair<LoadTsFilePieceNode, TRegionReplicaSet>, Exception> phaseOneFailures =
       new ConcurrentHashMap<>();
@@ -107,6 +110,7 @@ public class TsFileSplitSender {
     } else {
       logger.warn("Can not Load TsFiles {}", loadTsFileNode.getResources());
     }
+    locationStatistics.logLocationStatistics();
   }
 
   private boolean firstPhase(LoadTsFileNode node) throws IOException {
@@ -191,55 +195,6 @@ public class TsFileSplitSender {
     return phaseTwoFailures.isEmpty();
   }
 
-  /**
-   * The rank (probability of being chosen) is calculated as throughput / totalThroughput for those
-   * nodes that have not been used, their throughput is defined as Float.MAX_VALUE
-   *
-   * @param replicaSet replica set to be ranked
-   * @return the nodes and their ranks
-   */
-  private List<Pair<TDataNodeLocation, Double>> rankLocations(TRegionReplicaSet replicaSet) {
-    List<Pair<TDataNodeLocation, Double>> locations =
-        new ArrayList<>(replicaSet.dataNodeLocations.size());
-    // retrieve throughput of each node
-    double totalThroughput = 0.0;
-    for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
-      // use Float.MAX_VALUE so that they can be added together
-      double throughput =
-          dataNodeThroughputMap.computeIfAbsent(dataNodeLocation, l -> (double) Float.MAX_VALUE);
-      locations.add(new Pair<>(dataNodeLocation, throughput));
-      totalThroughput += throughput;
-    }
-    if (logger.isDebugEnabled()) {
-      logger.debug("Location throughput: {}", dataNodeThroughputMap.entrySet().stream()
-          .map(e -> new Pair<>(e.getKey().getDataNodeId(), e.getValue()))
-          .collect(Collectors.toList()));
-    }
-    // calculate cumulative ranks
-    locations.get(0).right = locations.get(0).right / totalThroughput;
-    for (int i = 1; i < locations.size(); i++) {
-      Pair<TDataNodeLocation, Double> location = locations.get(i);
-      location.right = location.right / totalThroughput + locations.get(i - 1).right;
-    }
-    return locations;
-  }
-
-  private Pair<TDataNodeLocation, Double> chooseNextLocation(
-      List<Pair<TDataNodeLocation, Double>> locations) {
-    int chosen = 0;
-    double dice = random.nextDouble();
-    for (int i = 1; i < locations.size(); i++) {
-      if (locations.get(i - 1).right <= dice && dice < locations.get(i).right) {
-        chosen = i;
-      }
-    }
-    Pair<TDataNodeLocation, Double> chosenPair = locations.remove(chosen);
-    // update ranks
-    for (Pair<TDataNodeLocation, Double> location : locations) {
-      location.right = location.right / (1 - chosenPair.right);
-    }
-    return chosenPair;
-  }
 
   /**
    * Split a piece node by series.
@@ -267,7 +222,12 @@ public class TsFileSplitSender {
     return result;
   }
 
-  @SuppressWarnings("BusyWait")
+  public LocationSequencer createLocationSequencer(TRegionReplicaSet replicaSet) {
+//    return new FixedLocationSequencer(replicaSet);
+//    return new RandomLocationSequencer(replicaSet);
+    return new ThroughputBasedLocationSequencer(replicaSet, locationStatistics);
+  }
+
   public boolean dispatchOnePieceNode(LoadTsFilePieceNode pieceNode, TRegionReplicaSet replicaSet) {
     allReplicaSets.add(replicaSet);
 
@@ -278,21 +238,14 @@ public class TsFileSplitSender {
       TTsFilePieceReq loadTsFileReq =
           new TTsFilePieceReq(node.serializeToByteBuffer(), uuid, replicaSet.getRegionId());
       loadTsFileReq.isRelay = true;
-      List<Pair<TDataNodeLocation, Double>> locations = rankLocations(replicaSet);
-      if (logger.isDebugEnabled()) {
-        logger.debug("Location ranks: {}",
-            locations.stream().map(p -> new Pair<>(p.left.getDataNodeId(), p.right)).collect(
-                Collectors.toList()));
-      }
+      LocationSequencer locationSequencer = createLocationSequencer(replicaSet);
 
       boolean loadSucceed = false;
       Exception lastConnectionError = null;
       TDataNodeLocation currLocation = null;
-      while (!locations.isEmpty()) {
-        // the chosen location is removed from the list
-        Pair<TDataNodeLocation, Double> locationRankPair = chooseNextLocation(locations);
-        logger.debug("Chose location {}", locationRankPair.left.getDataNodeId());
-        currLocation = locationRankPair.left;
+      for (TDataNodeLocation location : locationSequencer) {
+        logger.debug("Chose location {}", location.getDataNodeId());
+        currLocation = location;
         startTime = System.nanoTime();
         for (int i = 0; i < MAX_RETRY; i++) {
           try (SyncDataNodeInternalServiceClient client =
@@ -325,16 +278,17 @@ public class TsFileSplitSender {
 
       if (!loadSucceed) {
         String warning = NODE_CONNECTION_ERROR;
-        logger.warn(warning, locations, lastConnectionError);
+        logger.warn(warning, currLocation, lastConnectionError);
         TSStatus status = new TSStatus();
         status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-        status.setMessage(warning + locations);
+        status.setMessage(warning + currLocation);
         phaseOneFailures.put(
             new Pair<>(node, replicaSet), new FragmentInstanceDispatchException(status));
         return false;
       }
       long timeConsumption = System.nanoTime() - startTime;
-      dataNodeThroughputMap.put(currLocation, node.getDataSize() * 1.0 / timeConsumption);
+      locationStatistics.updateThroughput(currLocation, node.getDataSize() * 1.0 / timeConsumption);
+      locationStatistics.increaseHit(currLocation);
       return true;
     }).collect(Collectors.toList());
 

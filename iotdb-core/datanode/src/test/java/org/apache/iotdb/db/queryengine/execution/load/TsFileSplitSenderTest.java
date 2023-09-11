@@ -55,6 +55,7 @@ public class TsFileSplitSenderTest extends TestBase {
   // the third key is UUid, the value is command type
   protected Map<TEndPoint, Map<ConsensusGroupId, Map<String, Integer>>> phaseTwoResults =
       new ConcurrentSkipListMap<>();
+  private long dummyDelayMS = 800;
 
 
   @Test
@@ -93,6 +94,21 @@ public class TsFileSplitSenderTest extends TestBase {
             .computeIfAbsent(pieceNode.getTsFile(), f -> new ConcurrentSkipListSet<>());
     splitIds.addAll(pieceNode.getAllTsFileData().stream().map(TsFileData::getSplitId).collect(
         Collectors.toList()));
+
+    if ((tEndpoint.getPort() - 10000) % 3 == 0 && req.isRelay) {
+      try {
+        Thread.sleep(dummyDelayMS);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    if ((tEndpoint.getPort() - 10000) % 3 == 1 && req.isRelay) {
+      try {
+        Thread.sleep(dummyDelayMS / 2);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
 
     // forward to other replicas in the group
     if (req.isRelay) {
