@@ -111,7 +111,7 @@ public class TsFileSplitSender {
 
   private boolean firstPhase(LoadTsFileNode node) throws IOException {
     TsFileDataManager tsFileDataManager =
-        new TsFileDataManager(
+        new DeviceBatchTsFileDataManager(
             this::dispatchOnePieceNode,
             node.getPlanNodeId(),
             node.lastResource().getTsFile(),
@@ -120,21 +120,22 @@ public class TsFileSplitSender {
 
     ExecutorService executorService =
         IoTDBThreadPoolFactory.newThreadPool(
-            16,
+            32,
             Integer.MAX_VALUE,
             20,
             TimeUnit.SECONDS,
             new SynchronousQueue<>(),
             new IoTThreadFactory("MergedTsFileSplitter"),
             "MergedTsFileSplitter");
-    new MergedTsFileSplitter(
+    MergedTsFileSplitter splitter = new MergedTsFileSplitter(
         node.getResources().stream()
             .map(TsFileResource::getTsFile)
             .collect(Collectors.toList()),
         tsFileDataManager::addOrSendTsFileData,
         executorService,
-        targetPartitionInterval)
-        .splitTsFileByDataPartition();
+        targetPartitionInterval);
+    splitter.splitTsFileByDataPartition();
+    splitter.close();
     return tsFileDataManager.sendAllTsFileData() && phaseOneFailures.isEmpty();
   }
 
@@ -240,71 +241,103 @@ public class TsFileSplitSender {
     return chosenPair;
   }
 
+  /**
+   * Split a piece node by series.
+   * @return a list of piece nodes, each associated to only one series.
+   */
+  private List<LoadTsFilePieceNode> splitPieceNode(LoadTsFilePieceNode pieceNode) {
+    List<LoadTsFilePieceNode> result = new ArrayList<>();
+    String currMeasurement = null;
+    LoadTsFilePieceNode currNode = new LoadTsFilePieceNode(pieceNode.getPlanNodeId(), pieceNode.getTsFile());
+    result.add(currNode);
+    for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
+      if (tsFileData.isModification()) {
+        currNode.addTsFileData(tsFileData);
+        continue;
+      }
+
+      ChunkData chunkData = (ChunkData) tsFileData;
+      if (currMeasurement != null && !currMeasurement.equals(chunkData.firstMeasurement())) {
+        currNode = new LoadTsFilePieceNode(pieceNode.getPlanNodeId(), pieceNode.getTsFile());
+        result.add(currNode);
+      }
+      currMeasurement = chunkData.firstMeasurement();
+      currNode.addTsFileData(tsFileData);
+    }
+    return result;
+  }
+
   @SuppressWarnings("BusyWait")
   public boolean dispatchOnePieceNode(LoadTsFilePieceNode pieceNode, TRegionReplicaSet replicaSet) {
     allReplicaSets.add(replicaSet);
 
-    TTsFilePieceReq loadTsFileReq =
-        new TTsFilePieceReq(pieceNode.serializeToByteBuffer(), uuid, replicaSet.getRegionId());
-    loadTsFileReq.isRelay = true;
-    List<Pair<TDataNodeLocation, Double>> locations = rankLocations(replicaSet);
-    if (logger.isDebugEnabled()) {
-      logger.debug("Location ranks: {}",
-          locations.stream().map(p -> new Pair<>(p.left.getDataNodeId(), p.right)).collect(
-              Collectors.toList()));
-    }
+    List<LoadTsFilePieceNode> subNodes = splitPieceNode(pieceNode);
 
-    long startTime = 0;
-    boolean loadSucceed = false;
-    Exception lastConnectionError = null;
-    TDataNodeLocation currLocation = null;
-    while (!locations.isEmpty()) {
-      // the chosen location is removed from the list
-      Pair<TDataNodeLocation, Double> locationRankPair = chooseNextLocation(locations);
-      logger.debug("Chose location {}", locationRankPair.left.getDataNodeId());
-      currLocation = locationRankPair.left;
-      startTime = System.nanoTime();
-      for (int i = 0; i < MAX_RETRY; i++) {
-        try (SyncDataNodeInternalServiceClient client =
-            internalServiceClientManager.borrowClient(currLocation.internalEndPoint)) {
-          TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
-          if (!loadResp.isAccepted()) {
-            logger.warn(loadResp.message);
-            phaseOneFailures.put(
-                new Pair<>(pieceNode, replicaSet),
-                new FragmentInstanceDispatchException(loadResp.status));
+    List<Boolean> subNodeResults = subNodes.stream().parallel().map(node -> {
+      long startTime = 0;
+      TTsFilePieceReq loadTsFileReq =
+          new TTsFilePieceReq(node.serializeToByteBuffer(), uuid, replicaSet.getRegionId());
+      loadTsFileReq.isRelay = true;
+      List<Pair<TDataNodeLocation, Double>> locations = rankLocations(replicaSet);
+      if (logger.isDebugEnabled()) {
+        logger.debug("Location ranks: {}",
+            locations.stream().map(p -> new Pair<>(p.left.getDataNodeId(), p.right)).collect(
+                Collectors.toList()));
+      }
+
+      boolean loadSucceed = false;
+      Exception lastConnectionError = null;
+      TDataNodeLocation currLocation = null;
+      while (!locations.isEmpty()) {
+        // the chosen location is removed from the list
+        Pair<TDataNodeLocation, Double> locationRankPair = chooseNextLocation(locations);
+        logger.debug("Chose location {}", locationRankPair.left.getDataNodeId());
+        currLocation = locationRankPair.left;
+        startTime = System.nanoTime();
+        for (int i = 0; i < MAX_RETRY; i++) {
+          try (SyncDataNodeInternalServiceClient client =
+              internalServiceClientManager.borrowClient(currLocation.internalEndPoint)) {
+            TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
+            if (!loadResp.isAccepted()) {
+              logger.warn(loadResp.message);
+              phaseOneFailures.put(
+                  new Pair<>(node, replicaSet),
+                  new FragmentInstanceDispatchException(loadResp.status));
+              return false;
+            }
+            loadSucceed = true;
+            break;
+          } catch (ClientManagerException | TException e) {
+            lastConnectionError = e;
+          }
+
+          try {
+            Thread.sleep(RETRY_INTERVAL_MS);
+          } catch (InterruptedException e) {
             return false;
           }
-          loadSucceed = true;
+        }
+
+        if (loadSucceed) {
           break;
-        } catch (ClientManagerException | TException e) {
-          lastConnectionError = e;
-        }
-
-        try {
-          Thread.sleep(RETRY_INTERVAL_MS);
-        } catch (InterruptedException e) {
-          return false;
         }
       }
 
-      if (loadSucceed) {
-        break;
+      if (!loadSucceed) {
+        String warning = NODE_CONNECTION_ERROR;
+        logger.warn(warning, locations, lastConnectionError);
+        TSStatus status = new TSStatus();
+        status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
+        status.setMessage(warning + locations);
+        phaseOneFailures.put(
+            new Pair<>(node, replicaSet), new FragmentInstanceDispatchException(status));
+        return false;
       }
-    }
+      long timeConsumption = System.nanoTime() - startTime;
+      dataNodeThroughputMap.put(currLocation, node.getDataSize() * 1.0 / timeConsumption);
+      return true;
+    }).collect(Collectors.toList());
 
-    if (!loadSucceed) {
-      String warning = NODE_CONNECTION_ERROR;
-      logger.warn(warning, locations, lastConnectionError);
-      TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-      status.setMessage(warning + locations);
-      phaseOneFailures.put(
-          new Pair<>(pieceNode, replicaSet), new FragmentInstanceDispatchException(status));
-      return false;
-    }
-    long timeConsumption = System.nanoTime() - startTime;
-    dataNodeThroughputMap.put(currLocation, pieceNode.getDataSize() * 1.0 / timeConsumption);
-    return true;
+    return !subNodeResults.contains(false);
   }
 }

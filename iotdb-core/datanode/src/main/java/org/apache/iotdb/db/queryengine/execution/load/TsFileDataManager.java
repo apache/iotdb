@@ -46,15 +46,15 @@ import java.util.stream.IntStream;
 public class TsFileDataManager {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileDataManager.class);
-  private final long maxMemorySize;
-  private final DispatchFunction dispatchFunction;
+  protected final long maxMemorySize;
+  protected final DispatchFunction dispatchFunction;
   private final DataPartitionBatchFetcher partitionBatchFetcher;
-  private final PlanNodeId planNodeId;
-  private final File targetFile;
+  protected final PlanNodeId planNodeId;
+  protected final File targetFile;
 
-  private long dataSize;
-  private final Map<TRegionReplicaSet, LoadTsFilePieceNode> replicaSet2Piece;
-  private final List<ChunkData> nonDirectionalChunkData;
+  protected long dataSize;
+  protected final Map<TRegionReplicaSet, LoadTsFilePieceNode> replicaSet2Piece;
+  protected final List<ChunkData> nonDirectionalChunkData;
 
   @FunctionalInterface
   public interface DispatchFunction {
@@ -84,44 +84,50 @@ public class TsFileDataManager {
         : addOrSendChunkData((ChunkData) tsFileData);
   }
 
-  private boolean addOrSendChunkData(ChunkData chunkData) {
+  protected boolean addOrSendChunkData(ChunkData chunkData) {
     nonDirectionalChunkData.add(chunkData);
     dataSize += chunkData.getDataSize();
 
     if (dataSize > maxMemorySize) {
-      routeChunkData();
-
-      // start to dispatch from the biggest TsFilePieceNode
-      List<TRegionReplicaSet> sortedReplicaSets =
-          replicaSet2Piece.keySet().stream()
-              .sorted(
-                  Comparator.comparingLong(o -> replicaSet2Piece.get(o).getDataSize()).reversed())
-              .collect(Collectors.toList());
-
-      for (TRegionReplicaSet sortedReplicaSet : sortedReplicaSets) {
-        LoadTsFilePieceNode pieceNode = replicaSet2Piece.get(sortedReplicaSet);
-        if (pieceNode.getDataSize() == 0) { // total data size has been reduced to 0
-          break;
-        }
-        if (!dispatchFunction.dispatchOnePieceNode(pieceNode, sortedReplicaSet)) {
-          return false;
-        }
-
-        dataSize -= pieceNode.getDataSize();
-        replicaSet2Piece.put(
-            sortedReplicaSet,
-            new LoadTsFilePieceNode(
-                planNodeId, targetFile)); // can not just remove, because of deletion
-        if (dataSize <= maxMemorySize) {
-          break;
-        }
-      }
+      return flushChunkData(false);
     }
 
     return true;
   }
 
-  private void routeChunkData() {
+  protected boolean flushChunkData(boolean flushAll) {
+    routeChunkData();
+
+    // start to dispatch from the biggest TsFilePieceNode
+    List<TRegionReplicaSet> sortedReplicaSets =
+        replicaSet2Piece.keySet().stream()
+            .sorted(
+                Comparator.comparingLong(o -> replicaSet2Piece.get(o).getDataSize()).reversed())
+            .collect(Collectors.toList());
+
+    for (TRegionReplicaSet sortedReplicaSet : sortedReplicaSets) {
+      LoadTsFilePieceNode pieceNode = replicaSet2Piece.get(sortedReplicaSet);
+      if (pieceNode.getDataSize() == 0) { // total data size has been reduced to 0
+        break;
+      }
+      if (!dispatchFunction.dispatchOnePieceNode(pieceNode, sortedReplicaSet)) {
+        return false;
+      }
+
+      dataSize -= pieceNode.getDataSize();
+      replicaSet2Piece.put(
+          sortedReplicaSet,
+          new LoadTsFilePieceNode(
+              planNodeId, targetFile)); // can not just remove, because of deletion
+      if (!flushAll && dataSize <= maxMemorySize) {
+        break;
+      }
+    }
+    return true;
+  }
+
+
+  protected void routeChunkData() {
     if (nonDirectionalChunkData.isEmpty()) {
       return;
     }

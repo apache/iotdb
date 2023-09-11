@@ -19,13 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
+import static org.junit.Assert.assertEquals;
+
 import java.nio.ByteBuffer;
+import java.util.Comparator;
+import java.util.Map.Entry;
 import java.util.Random;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.stream.Collectors;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -41,15 +49,18 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -93,9 +104,9 @@ public class TestBase {
   public static final String TEST_TSFILE_PATH =
       BASE_OUTPUT_PATH + "testTsFile".concat(File.separator) + PARTIAL_PATH_STRING;
 
-  protected int fileNum = new Random().nextInt(100) + 1;
+  protected int fileNum = 100;
   // series number of each file, sn non-aligned series and 1 aligned series with sn measurements
-  protected int seriesNum = 1;
+  protected int seriesNum = 1000;
   // number of chunks of each series in a file, each series has only one chunk in a file
   protected double chunkTimeRangeRatio = 0.3;
   // the interval between two consecutive points of a series
@@ -108,6 +119,7 @@ public class TestBase {
   protected Map<ConsensusGroupId, TRegionReplicaSet> groupId2ReplicaSetMap = new HashMap<>();
   protected IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
+  // the third key is UUid, the forth key is targetFile
 
   @Before
   public void setup() throws IOException, WriteProcessException {
@@ -139,14 +151,13 @@ public class TestBase {
   }
 
   public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndpoint) {
-    ConsensusGroupId groupId =
-        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
-    LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
-    return new TLoadResp();
+    return new TLoadResp().setAccepted(true)
+        .setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
   public TLoadResp handleTsLoadCommand(TLoadCommandReq req, TEndPoint tEndpoint) {
-    return new TLoadResp();
+    return new TLoadResp().setAccepted(true)
+        .setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
   public TProtocol dummyProtocol() throws TTransportException {
@@ -279,6 +290,18 @@ public class TestBase {
 
       @Override
       public void invalidAllCache() {
+      }
+    };
+  }
+
+  public DataPartitionBatchFetcher dummyDataPartitionBatchFetcher() {
+    return new DataPartitionBatchFetcher(partitionFetcher) {
+      @Override
+      public List<TRegionReplicaSet> queryDataPartition(
+          List<Pair<String, TTimePartitionSlot>> slotList) {
+        return slotList.stream()
+            .map(p -> partitionTable.get(p.left))
+            .collect(Collectors.toList());
       }
     };
   }

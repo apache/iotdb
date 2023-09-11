@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
+import org.apache.iotdb.db.queryengine.execution.load.DataPartitionBatchFetcher;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -323,7 +324,7 @@ public class QueryExecution implements IQueryExecution {
               context,
               stateMachine,
               syncInternalServiceClientManager,
-              partitionFetcher,
+              new DataPartitionBatchFetcher(partitionFetcher),
               rawStatement instanceof PipeEnrichedLoadTsFileStatement);
       this.scheduler.start();
       return;

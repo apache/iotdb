@@ -523,7 +523,11 @@ public class MergedTsFileSplitter {
       handleModification(offset2Deletions, Long.MAX_VALUE);
       close();
       if (asyncExecutor != null) {
-        nextSplits.add(new EmptyTsFileData());
+        try {
+          nextSplits.put(new EmptyTsFileData());
+        } catch (InterruptedException e) {
+          asyncTask.cancel(true);
+        }
       }
     }
 

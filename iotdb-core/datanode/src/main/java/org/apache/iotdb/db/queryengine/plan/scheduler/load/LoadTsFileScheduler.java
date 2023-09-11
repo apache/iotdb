@@ -106,14 +106,14 @@ public class LoadTsFileScheduler implements IScheduler {
       MPPQueryContext queryContext,
       QueryStateMachine stateMachine,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
-      IPartitionFetcher partitionFetcher,
+      DataPartitionBatchFetcher partitionFetcher,
       boolean isGeneratedByPipe) {
     this.queryContext = queryContext;
     this.stateMachine = stateMachine;
     this.tsFileNodeList = new ArrayList<>();
     this.fragmentId = distributedQueryPlan.getRootSubPlan().getPlanFragment().getId();
     this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager, isGeneratedByPipe);
-    this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
+    this.partitionFetcher = partitionFetcher;
     this.allReplicaSets = new HashSet<>();
     this.isGeneratedByPipe = isGeneratedByPipe;
 
