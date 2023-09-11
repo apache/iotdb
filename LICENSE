@@ -262,8 +262,7 @@ The following files include code modified from Apache HBase project.
 ./iotdb-core/confignode/src/main/java/org/apache/iotdb/procedure/TimeoutExecutorThread.java
 ./iotdb-core/confignode/src/main/java/org/apache/iotdb/procedure/StoppableThread.java
 
-Copyright: 2016-2018 Michael Burman and/or other contributors
-Project page: https://github.com/burmanm/gorilla-tsc
+Project page: https://github.com/apache/hbase
 License: http://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
@@ -304,3 +303,4 @@ which is under Apache License 2.0:
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceStateMachine.java
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.java
 ./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/read/common/block/*
+

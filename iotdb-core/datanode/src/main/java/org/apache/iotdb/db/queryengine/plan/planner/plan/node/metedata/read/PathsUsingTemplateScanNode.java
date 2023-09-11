@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -43,8 +44,9 @@ public class PathsUsingTemplateScanNode extends SchemaQueryScanNode {
   private final int templateId;
 
   public PathsUsingTemplateScanNode(
-      PlanNodeId id, List<PartialPath> pathPatternList, int templateId) {
+      PlanNodeId id, List<PartialPath> pathPatternList, int templateId, PathPatternTree scope) {
     super(id);
+    setScope(scope);
     this.pathPatternList = pathPatternList;
     this.templateId = templateId;
   }
@@ -65,7 +67,7 @@ public class PathsUsingTemplateScanNode extends SchemaQueryScanNode {
 
   @Override
   public PlanNode clone() {
-    return new PathsUsingTemplateScanNode(getPlanNodeId(), pathPatternList, templateId);
+    return new PathsUsingTemplateScanNode(getPlanNodeId(), pathPatternList, templateId, scope);
   }
 
   @Override
@@ -82,6 +84,7 @@ public class PathsUsingTemplateScanNode extends SchemaQueryScanNode {
     for (PartialPath pathPattern : pathPatternList) {
       pathPattern.serialize(byteBuffer);
     }
+    scope.serialize(byteBuffer);
     ReadWriteIOUtils.write(templateId, byteBuffer);
   }
 
@@ -92,6 +95,7 @@ public class PathsUsingTemplateScanNode extends SchemaQueryScanNode {
     for (PartialPath pathPattern : pathPatternList) {
       pathPattern.serialize(stream);
     }
+    scope.serialize(stream);
     ReadWriteIOUtils.write(templateId, stream);
   }
 
@@ -101,9 +105,10 @@ public class PathsUsingTemplateScanNode extends SchemaQueryScanNode {
     for (int i = 0; i < size; i++) {
       pathPatternList.add((PartialPath) PathDeserializeUtil.deserialize(buffer));
     }
+    PathPatternTree scope = PathPatternTree.deserialize(buffer);
     int templateId = ReadWriteIOUtils.readInt(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new PathsUsingTemplateScanNode(planNodeId, pathPatternList, templateId);
+    return new PathsUsingTemplateScanNode(planNodeId, pathPatternList, templateId, scope);
   }
 
   @Override

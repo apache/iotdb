@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -41,8 +42,13 @@ public class LogicalViewSchemaScanNode extends SchemaQueryScanNode {
   private final SchemaFilter schemaFilter;
 
   public LogicalViewSchemaScanNode(
-      PlanNodeId id, PartialPath partialPath, SchemaFilter schemaFilter, long limit, long offset) {
-    super(id, partialPath, limit, offset, false);
+      PlanNodeId id,
+      PartialPath partialPath,
+      SchemaFilter schemaFilter,
+      long limit,
+      long offset,
+      PathPatternTree scope) {
+    super(id, partialPath, limit, offset, false, scope);
     this.schemaFilter = schemaFilter;
   }
 
@@ -54,6 +60,7 @@ public class LogicalViewSchemaScanNode extends SchemaQueryScanNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.LOGICAL_VIEW_SCHEMA_SCAN.serialize(byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
+    scope.serialize(byteBuffer);
     SchemaFilter.serialize(schemaFilter, byteBuffer);
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
@@ -63,6 +70,7 @@ public class LogicalViewSchemaScanNode extends SchemaQueryScanNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.LOGICAL_VIEW_SCHEMA_SCAN.serialize(stream);
     ReadWriteIOUtils.write(path.getFullPath(), stream);
+    scope.serialize(stream);
     SchemaFilter.serialize(schemaFilter, stream);
     ReadWriteIOUtils.write(limit, stream);
     ReadWriteIOUtils.write(offset, stream);
@@ -76,18 +84,19 @@ public class LogicalViewSchemaScanNode extends SchemaQueryScanNode {
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize TimeSeriesSchemaScanNode", e);
     }
+    PathPatternTree scope = PathPatternTree.deserialize(byteBuffer);
     SchemaFilter schemaFilter = SchemaFilter.deserialize(byteBuffer);
     long limit = ReadWriteIOUtils.readLong(byteBuffer);
     long offset = ReadWriteIOUtils.readLong(byteBuffer);
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
-    return new LogicalViewSchemaScanNode(planNodeId, path, schemaFilter, limit, offset);
+    return new LogicalViewSchemaScanNode(planNodeId, path, schemaFilter, limit, offset, scope);
   }
 
   @Override
   public PlanNode clone() {
-    return new LogicalViewSchemaScanNode(getPlanNodeId(), path, schemaFilter, limit, offset);
+    return new LogicalViewSchemaScanNode(getPlanNodeId(), path, schemaFilter, limit, offset, scope);
   }
 
   @Override

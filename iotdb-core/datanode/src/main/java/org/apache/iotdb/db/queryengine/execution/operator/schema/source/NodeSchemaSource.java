@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -39,12 +40,13 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 public class NodeSchemaSource implements ISchemaSource<INodeSchemaInfo> {
 
   private final PartialPath pathPattern;
-
+  private final PathPatternTree scope;
   private final int level;
 
-  NodeSchemaSource(PartialPath pathPattern, int level) {
+  NodeSchemaSource(PartialPath pathPattern, int level, PathPatternTree scope) {
     this.pathPattern = pathPattern;
     this.level = level;
+    this.scope = scope;
   }
 
   @Override
@@ -53,9 +55,10 @@ public class NodeSchemaSource implements ISchemaSource<INodeSchemaInfo> {
     if (-1 == level) {
       showNodesPlan =
           SchemaRegionReadPlanFactory.getShowNodesPlan(
-              pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD));
+              pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), scope);
     } else {
-      showNodesPlan = SchemaRegionReadPlanFactory.getShowNodesPlan(pathPattern, level, false);
+      showNodesPlan =
+          SchemaRegionReadPlanFactory.getShowNodesPlan(pathPattern, level, false, scope);
     }
     try {
       return schemaRegion.getNodeReader(showNodesPlan);

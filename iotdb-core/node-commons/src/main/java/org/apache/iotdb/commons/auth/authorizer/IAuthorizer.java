@@ -67,10 +67,11 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @param path The seriesPath on which the privilege takes effect. If the privilege is a
    *     seriesPath-free privilege, this should be "root".
    * @param privilegeId An integer that represents a privilege.
+   * @param grantOpt Whether the privilege is grant option.
    * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal
    *     or the permission already exists.
    */
-  void grantPrivilegeToUser(String username, PartialPath path, int privilegeId)
+  void grantPrivilegeToUser(String username, PartialPath path, int privilegeId, boolean grantOpt)
       throws AuthException;
 
   /**
@@ -112,7 +113,7 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal
    *     or the privilege already exists.
    */
-  void grantPrivilegeToRole(String roleName, PartialPath path, int privilegeId)
+  void grantPrivilegeToRole(String roleName, PartialPath path, int privilegeId, boolean grantOpt)
       throws AuthException;
 
   /**
@@ -170,8 +171,8 @@ public interface IAuthorizer extends SnapshotProcessor {
    * Check if the user have the privilege on the seriesPath.
    *
    * @param username The name of the user whose privileges are checked.
-   * @param path The seriesPath on which the privilege takes effect. If the privilege is a
-   *     seriesPath-free privilege, this should be "root".
+   * @param path The seriesPath on which the privilege takes effect. If the privilege is system
+   *     privilege, path should be null.
    * @param privilegeId An integer that represents a privilege.
    * @return True if the user has such privilege, false if the user does not have such privilege.
    * @throws AuthException If the seriesPath or the privilege is illegal.

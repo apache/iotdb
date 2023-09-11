@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.audit.AuditLogger;
-import org.apache.iotdb.db.auth.AuthorizerManager;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
@@ -106,7 +106,7 @@ public class SessionManager implements SessionManagerMBean {
     TSStatus loginStatus;
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
-    loginStatus = AuthorizerManager.getInstance().checkUser(username, password);
+    loginStatus = AuthorityChecker.checkUser(username, password);
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // check the version compatibility
       if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {

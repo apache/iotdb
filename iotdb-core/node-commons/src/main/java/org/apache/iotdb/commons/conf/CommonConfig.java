@@ -98,7 +98,7 @@ public class CommonConfig {
   private long[] tierTTLInMs = {Long.MAX_VALUE};
 
   /** Thrift socket and connection timeout between data node and config node. */
-  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
@@ -197,6 +197,8 @@ public class CommonConfig {
 
   // maximum number of Cluster Databases allowed
   private int databaseLimitThreshold = -1;
+
+  private long datanodeTokenTimeoutMS = 180 * 1000; // 3 minutes
 
   CommonConfig() {
     // Empty constructor
@@ -762,5 +764,13 @@ public class CommonConfig {
 
   public void setModelInferenceExecutionThreadCount(int modelInferenceExecutionThreadCount) {
     this.modelInferenceExecutionThreadCount = modelInferenceExecutionThreadCount;
+  }
+
+  public long getDatanodeTokenTimeoutMS() {
+    return datanodeTokenTimeoutMS;
+  }
+
+  public void setDatanodeTokenTimeoutMS(long timeoutMS) {
+    this.datanodeTokenTimeoutMS = timeoutMS;
   }
 }

@@ -73,11 +73,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -344,7 +346,8 @@ public interface IManager {
    *
    * @return TSchemaNodeManagementResp
    */
-  TSchemaNodeManagementResp getNodePathsPartition(PartialPath partialPath, Integer level);
+  TSchemaNodeManagementResp getNodePathsPartition(
+      PartialPath partialPath, PathPatternTree scope, Integer level);
 
   /**
    * Get DataPartition.
@@ -491,10 +494,10 @@ public interface IManager {
   /**
    * Show StorageGroup.
    *
-   * @param getStorageGroupPlan GetStorageGroupPlan, including path patterns about StorageGroups
+   * @param req TShowDatabaseReq
    * @return TShowStorageGroupResp
    */
-  TShowDatabaseResp showDatabase(GetDatabasePlan getStorageGroupPlan);
+  TShowDatabaseResp showDatabase(TGetDatabaseReq req);
 
   /**
    * Create schemaengine template.
@@ -530,10 +533,10 @@ public interface IManager {
   /**
    * show paths set schemaengine template xx.
    *
-   * @param req String
+   * @param req req
    * @return TGetPathsSetTemplatesResp
    */
-  TGetPathsSetTemplatesResp getPathsSetTemplate(String req);
+  TGetPathsSetTemplatesResp getPathsSetTemplate(TGetPathsSetTemplatesReq req);
 
   /** Deactivate schemaengine template. */
   TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req);
