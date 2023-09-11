@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it;
+package org.apache.iotdb.db.it.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -38,7 +38,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -46,6 +45,7 @@ import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -80,12 +80,13 @@ public class IoTDBClusterAuthorityIT {
             "",
             "",
             new HashSet<>(),
+            false,
             AuthUtils.serializePartialPathList(new ArrayList<>()));
     TAuthorizerResp authorizerResp = client.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-    List<String> allUsers = authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_USER);
+    List<String> allUsers = authorizerResp.getMemberInfo();
     for (String user : allUsers) {
       if (!user.equals("root")) {
         authorizerReq =
@@ -96,6 +97,7 @@ public class IoTDBClusterAuthorityIT {
                 "",
                 "",
                 new HashSet<>(),
+                false,
                 AuthUtils.serializePartialPathList(new ArrayList<>()));
         status = client.operatePermission(authorizerReq);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -119,14 +121,14 @@ public class IoTDBClusterAuthorityIT {
     TAuthorizerResp authorizerResp;
     TCheckUserPrivilegesReq checkUserPrivilegesReq;
 
-    Set<Integer> privilegeList = new HashSet<>();
-    privilegeList.add(PrivilegeType.MANAGE_USER.ordinal());
+    Set<Integer> pathPrivilegeList = new HashSet<>();
+    pathPrivilegeList.add(PrivilegeType.READ_DATA.ordinal());
 
-    Set<Integer> revokePrivilege = new HashSet<>();
-    revokePrivilege.add(PrivilegeType.MANAGE_USER.ordinal());
+    Set<Integer> revokePathPrivilege = new HashSet<>();
+    revokePathPrivilege.add(PrivilegeType.READ_DATA.ordinal());
 
     List<String> privilege = new ArrayList<>();
-    privilege.add("root.** : MANAGE_USER");
+    privilege.add("root.** : READ_DATA");
 
     List<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath("root.ln.**"));
@@ -144,12 +146,14 @@ public class IoTDBClusterAuthorityIT {
               "passwd",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       authorizerReq.setUserName("tempuser1");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      // in confignode: tempuser0, tempuser1
 
       // check user privileges
       checkUserPrivilegesReq =
@@ -169,9 +173,11 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      // in confignode: tempuser0
 
       // list user
       authorizerReq =
@@ -182,12 +188,13 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       userList.remove("tempuser1");
-      assertEquals(userList, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_USER));
+      assertEquals(userList, authorizerResp.getMemberInfo());
 
       // create role
       authorizerReq =
@@ -198,12 +205,14 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       authorizerReq.setRoleName("temprole1");
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      // in confignode: tempuser0,temprole0,temprole1
 
       // drop role
       authorizerReq =
@@ -214,9 +223,11 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      // in confignode: tempuser0,temprole0
 
       // list role
       authorizerReq =
@@ -227,12 +238,13 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       roleList.remove("temprole1");
-      assertEquals(roleList, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_ROLE));
+      assertEquals(roleList, authorizerResp.getMemberInfo());
 
       // alter user
       authorizerReq =
@@ -243,6 +255,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "newpwd",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -257,17 +270,20 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               "",
-              privilegeList,
+              pathPrivilegeList,
+              false,
               AuthUtils.serializePartialPathList(nodeNameList));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      // in confignode: tempuser0: root.ln.** ,read_data
+      //                temprole0
 
       // check user privileges
       checkUserPrivilegesReq =
           new TCheckUserPrivilegesReq(
               "tempuser0",
               AuthUtils.serializePartialPathList(paths),
-              PrivilegeType.MANAGE_USER.ordinal());
+              PrivilegeType.READ_DATA.ordinal());
       status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -279,10 +295,13 @@ public class IoTDBClusterAuthorityIT {
               "temprole0",
               "",
               "",
-              privilegeList,
+              pathPrivilegeList,
+              false,
               AuthUtils.serializePartialPathList(nodeNameList));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      // in confignode: tempuser0: root.ln.** ,read_data
+      //                temprole0: root.ln.** , read_data
 
       // grant role to user
       authorizerReq =
@@ -293,9 +312,12 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(nodeNameList));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      // in confignode: tempuser0: root.ln.** ,read_data; [temprole0]
+      //                temprole0: root.ln.** , read_data
 
       // revoke user
       authorizerReq =
@@ -305,10 +327,13 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               "",
-              revokePrivilege,
+              revokePathPrivilege,
+              false,
               AuthUtils.serializePartialPathList(nodeNameList));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      // in confignode: tempuser0: ; [temprole0]
+      //                temprole0: root.ln.** , read_data
 
       // revoke role
       authorizerReq =
@@ -318,12 +343,15 @@ public class IoTDBClusterAuthorityIT {
               "temprole0",
               "",
               "",
-              revokePrivilege,
+              revokePathPrivilege,
+              false,
               AuthUtils.serializePartialPathList(nodeNameList));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      // in confignode: tempuser0: ; [temprole0]
+      //                temprole0: ;
 
-      // list privileges user on root.ln.**
+      // list privileges of user.
       authorizerReq =
           new TAuthorizerReq(
               AuthorType.LIST_USER_PRIVILEGE.ordinal(),
@@ -332,64 +360,18 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
-              AuthUtils.serializePartialPathList(nodeNameList));
-      authorizerResp = client.queryPermission(authorizerReq);
-      status = authorizerResp.getStatus();
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          0, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).size());
-
-      // list privileges user on root.**
-      authorizerReq =
-          new TAuthorizerReq(
-              AuthorType.LIST_USER_PRIVILEGE.ordinal(),
-              "tempuser0",
-              "",
-              "",
-              "",
-              new HashSet<>(),
-              AuthUtils.serializePartialPathList(
-                  Collections.singletonList(new PartialPath("root.**"))));
-      authorizerResp = client.queryPermission(authorizerReq);
-      status = authorizerResp.getStatus();
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      privilege.remove(0);
-      Assert.assertEquals(
-          privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
-
-      // list user privileges
-      authorizerReq =
-          new TAuthorizerReq(
-              AuthorType.LIST_USER_PRIVILEGE.ordinal(),
-              "tempuser0",
-              "",
-              "",
-              "",
-              new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
-
-      // list privileges role on root.ln.**
-      authorizerReq =
-          new TAuthorizerReq(
-              AuthorType.LIST_ROLE_PRIVILEGE.ordinal(),
-              "",
-              "temprole0",
-              "",
-              "",
-              new HashSet<>(),
-              AuthUtils.serializePartialPathList(nodeNameList));
-      authorizerResp = client.queryPermission(authorizerReq);
-      status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(IoTDBConstant.COLUMN_PRIVILEGE, authorizerResp.getTag());
+      assertEquals("tempuser0", authorizerResp.getPermissionInfo().getUserInfo().getUsername());
       assertEquals(
-          0, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).size());
+          new ArrayList<>(), authorizerResp.getPermissionInfo().getUserInfo().getPrivilegeList());
+      assertEquals(1, authorizerResp.getPermissionInfo().getUserInfo().getRoleListSize());
 
-      // list privileges role on root.**
+      // list privileges role
       authorizerReq =
           new TAuthorizerReq(
               AuthorType.LIST_ROLE_PRIVILEGE.ordinal(),
@@ -398,29 +380,16 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
-              AuthUtils.serializePartialPathList(
-                  Collections.singletonList(new PartialPath("root.**"))));
-      authorizerResp = client.queryPermission(authorizerReq);
-      status = authorizerResp.getStatus();
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      assertEquals(
-          privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
-
-      // list role privileges
-      authorizerReq =
-          new TAuthorizerReq(
-              AuthorType.LIST_ROLE_PRIVILEGE.ordinal(),
-              "",
-              "temprole0",
-              "",
-              "",
-              new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(null, authorizerResp.getPermissionInfo().getUserInfo());
+      assertEquals(1, authorizerResp.getPermissionInfo().getRoleInfoSize());
+      assertEquals(
+          0,
+          authorizerResp.getPermissionInfo().getRoleInfo().get("temprole0").getPrivilegeListSize());
 
       // list all role of user
       authorizerReq =
@@ -431,12 +400,13 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       roleList.remove("temprole1");
-      assertEquals(roleList, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_ROLE));
+      assertEquals(roleList, authorizerResp.getMemberInfo());
 
       // list all user of role
       authorizerReq =
@@ -447,26 +417,14 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       userList.remove("tempuser1");
       userList.remove("root");
-      assertEquals(userList, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_USER));
-
-      // revoke role from user
-      authorizerReq =
-          new TAuthorizerReq(
-              AuthorType.REVOKE_USER_ROLE.ordinal(),
-              "tempuser0",
-              "temprole0",
-              "",
-              "",
-              new HashSet<>(),
-              AuthUtils.serializePartialPathList(new ArrayList<>()));
-      status = client.operatePermission(authorizerReq);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(userList, authorizerResp.getMemberInfo());
 
       // list root privileges
       authorizerReq =
@@ -477,17 +435,101 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Set<PrivilegeType> allPrivilegeTypes = PrivilegeType.ALL.getStorablePrivilege();
-      List<String> resultPrivilegeTypes =
-          authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE);
-      Assert.assertEquals(allPrivilegeTypes.size(), resultPrivilegeTypes.size());
-      for (int i = 0; i < allPrivilegeTypes.size(); i++) {
-        Assert.assertTrue(resultPrivilegeTypes.contains(PrivilegeType.values()[i].toString()));
-      }
+      assertEquals(null, authorizerResp.getMemberInfo());
+      assertEquals(new HashMap<>(), authorizerResp.getPermissionInfo().getRoleInfo());
+      assertEquals(
+          new ArrayList<>(), authorizerResp.getPermissionInfo().getUserInfo().getRoleList());
+      assertEquals(
+          PrivilegeType.getPathPriCount(),
+          authorizerResp.getPermissionInfo().getUserInfo().getPrivilegeList().get(0).priSet.size());
+      assertEquals(
+          PrivilegeType.getSysPriCount(),
+          authorizerResp.getPermissionInfo().getUserInfo().getSysPriSet().size());
+      assertEquals(
+          PrivilegeType.getSysPriCount(),
+          authorizerResp.getPermissionInfo().getUserInfo().getSysPriSetGrantOptSize());
+
+      authorizerReq =
+          new TAuthorizerReq(
+              AuthorType.GRANT_USER.ordinal(),
+              "tempuser0",
+              "",
+              "",
+              "",
+              Collections.singleton(PrivilegeType.MANAGE_USER.ordinal()),
+              false,
+              AuthUtils.serializePartialPathList(new ArrayList<>()));
+      status = client.operatePermission(authorizerReq);
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      // in confignode: tempuser0: MANAGE_USER
+
+      // check user privileges
+      checkUserPrivilegesReq =
+          new TCheckUserPrivilegesReq(
+              "tempuser0",
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              PrivilegeType.MANAGE_USER.ordinal());
+      status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      authorizerReq =
+          new TAuthorizerReq(
+              AuthorType.GRANT_ROLE.ordinal(),
+              "",
+              "temprole0",
+              "",
+              "",
+              Collections.singleton(PrivilegeType.MANAGE_DATABASE.ordinal()),
+              false,
+              AuthUtils.serializePartialPathList(new ArrayList<>()));
+      status = client.operatePermission(authorizerReq);
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      // in confignode: tempuser0: MANAGE_USER
+
+      // check user privileges
+      checkUserPrivilegesReq =
+          new TCheckUserPrivilegesReq(
+              "tempuser0",
+              AuthUtils.serializePartialPathList(new ArrayList<>()),
+              PrivilegeType.MANAGE_DATABASE.ordinal());
+      status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      // revoke role from user
+      authorizerReq =
+          new TAuthorizerReq(
+              AuthorType.REVOKE_USER_ROLE.ordinal(),
+              "tempuser0",
+              "temprole0",
+              "",
+              "",
+              new HashSet<>(),
+              false,
+              AuthUtils.serializePartialPathList(new ArrayList<>()));
+      status = client.operatePermission(authorizerReq);
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      // list all role of user
+      authorizerReq =
+          new TAuthorizerReq(
+              AuthorType.LIST_ROLE.ordinal(),
+              "tempuser0",
+              "",
+              "",
+              "",
+              new HashSet<>(),
+              false,
+              AuthUtils.serializePartialPathList(new ArrayList<>()));
+      authorizerResp = client.queryPermission(authorizerReq);
+      status = authorizerResp.getStatus();
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(new ArrayList<>(), authorizerResp.getMemberInfo());
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

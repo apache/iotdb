@@ -41,26 +41,23 @@ import org.apache.flink.table.types.DataType;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSplit> {
   private final ReadableConfig options;
-  private final String device;
+  private final String sql;
+  private final List<Tuple2<String, DataType>> tableSchema;
   private final long lowerBound;
   private final long upperBound;
-  private final List<String> measurements;
   private Session session;
   private SessionDataSet dataSet;
-  private List<String> columnTypes;
+  private List<String> columnNames;
 
   public IoTDBBoundedScanFunction(ReadableConfig options, SchemaWrapper schemaWrapper) {
     this.options = options;
-    List<Tuple2<String, DataType>> tableSchema = schemaWrapper.getSchema();
-    device = options.get(Options.DEVICE);
+    tableSchema = schemaWrapper.getSchema();
+    sql = options.get(Options.SQL);
     lowerBound = options.get(Options.SCAN_BOUNDED_LOWER_BOUND);
     upperBound = options.get(Options.SCAN_BOUNDED_UPPER_BOUND);
-    measurements =
-        tableSchema.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
   }
 
   @Override
@@ -103,26 +100,18 @@ public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSpli
   public void open(InputSplit inputSplit) {
     String sql;
     if (lowerBound < 0L && upperBound < 0L) {
-      sql = String.format("SELECT %s FROM %s", String.join(",", measurements), device);
+      sql = this.sql;
     } else if (lowerBound < 0L && upperBound > 0L) {
-      sql =
-          String.format(
-              "SELECT %s FROM %s WHERE TIME <= %d",
-              String.join(",", measurements), device, upperBound);
+      sql = String.format("%s WHERE TIME <= %d", this.sql, upperBound);
     } else if (lowerBound > 0L && upperBound < 0L) {
-      sql =
-          String.format(
-              "SELECT %s FROM %s WHERE TIME >= %d",
-              String.join(",", measurements), device, lowerBound);
+      sql = String.format("%s WHERE TIME >= %d", this.sql, lowerBound);
     } else {
-      sql =
-          String.format(
-              "SELECT %s FROM %s WHERE TIME >= %d AND TIME <= %d",
-              String.join(",", measurements), device, lowerBound, upperBound);
+      sql = String.format("%s WHERE TIME >= %d AND TIME <= %d", this.sql, lowerBound, upperBound);
     }
     try {
       dataSet = session.executeQueryStatement(sql);
-      columnTypes = dataSet.getColumnTypes();
+
+      columnNames = dataSet.getColumnNames();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new RuntimeException(e);
     }
@@ -141,7 +130,7 @@ public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSpli
   public RowData nextRecord(RowData rowData) {
     try {
       RowRecord rowRecord = dataSet.next();
-      return Utils.convert(rowRecord, columnTypes);
+      return Utils.convert(rowRecord, columnNames, tableSchema);
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new RuntimeException(e);
     }

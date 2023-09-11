@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.commons.auth.entity;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 /** This enum class contains all available privileges in IoTDB. */
 public enum PrivilegeType {
   READ_DATA(true),
@@ -34,89 +27,54 @@ public enum PrivilegeType {
   WRITE_SCHEMA(true),
   MANAGE_USER,
   MANAGE_ROLE,
-  GRANT_PRIVILEGE,
-  ALTER_PASSWORD,
-  USE_TRIGGER(true),
+  USE_TRIGGER,
+
+  USE_UDF,
+
   USE_CQ,
   USE_PIPE,
-  MANAGE_DATABASE(true),
+  EXTEND_TEMPLATE,
+  MANAGE_DATABASE,
   MAINTAIN,
-  READ(true, false, READ_DATA, READ_SCHEMA),
-  WRITE(true, false, WRITE_DATA, WRITE_SCHEMA),
-  ALL(
-      true,
-      false,
-      READ,
-      WRITE,
-      MANAGE_USER,
-      MANAGE_ROLE,
-      GRANT_PRIVILEGE,
-      ALTER_PASSWORD,
-      USE_TRIGGER,
-      USE_CQ,
-      USE_PIPE,
-      MANAGE_DATABASE,
-      MAINTAIN);
+  AUDIT;
 
   private static final int PRIVILEGE_COUNT = values().length;
 
   private final boolean isPathRelevant;
-  private final boolean isStorable;
-  private final List<PrivilegeType> subPrivileges = new ArrayList<>();
 
   PrivilegeType() {
     this.isPathRelevant = false;
-    this.isStorable = true;
   }
 
   PrivilegeType(boolean isPathRelevant) {
     this.isPathRelevant = isPathRelevant;
-    this.isStorable = true;
-  }
-
-  PrivilegeType(boolean isPathRelevant, boolean isStorable, PrivilegeType... privilegeTypes) {
-    this.isPathRelevant = isPathRelevant;
-    this.isStorable = isStorable;
-    this.subPrivileges.addAll(Arrays.asList(privilegeTypes));
-  }
-
-  /**
-   * Some privileges need a seriesPath as parameter, while others do not. This method returns which
-   * privileges need a seriesPath.
-   *
-   * @param type An integer that represents a privilege.
-   * @return Whether this privilege need a seriesPath or not.
-   */
-  public static boolean isPathRelevant(int type) {
-    return 0 <= type && type < PRIVILEGE_COUNT && values()[type].isPathRelevant;
-  }
-
-  public static boolean isStorable(int type) {
-    return 0 <= type && type < PRIVILEGE_COUNT && values()[type].isStorable;
   }
 
   public boolean isPathRelevant() {
     return isPathRelevant;
   }
 
-  public static Set<PrivilegeType> getStorablePrivilege(Integer ordinal) {
-    if (ordinal < 0 || ordinal >= PRIVILEGE_COUNT) {
-      return Collections.emptySet();
-    }
-    PrivilegeType privilegeType = PrivilegeType.values()[ordinal];
-    return privilegeType.getStorablePrivilege();
+  public static boolean isPathRelevant(int ordinal) {
+    return ordinal < 4;
   }
 
-  public Set<PrivilegeType> getStorablePrivilege() {
-    Set<PrivilegeType> result = new HashSet<>();
-    if (isStorable) {
-      // if this privilege is storable, add it to the result set
-      result.add(this);
+  public static int getSysPriCount() {
+    int size = 0;
+    for (PrivilegeType item : PrivilegeType.values()) {
+      if (!item.isPathRelevant()) {
+        size++;
+      }
     }
-    for (PrivilegeType privilegeType : subPrivileges) {
-      // add all storable privileges of sub privileges to the result set
-      result.addAll(privilegeType.getStorablePrivilege());
+    return size;
+  }
+
+  public static int getPathPriCount() {
+    int size = 0;
+    for (PrivilegeType item : PrivilegeType.values()) {
+      if (item.isPathRelevant()) {
+        size++;
+      }
     }
-    return result;
+    return size;
   }
 }

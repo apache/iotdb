@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.flink.sql.factory;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.flink.sql.common.Options;
 import org.apache.iotdb.flink.sql.common.Utils;
 import org.apache.iotdb.flink.sql.exception.IllegalIoTDBPathException;
@@ -63,7 +65,7 @@ public class IoTDBDynamicTableFactory
     ReadableConfig options = helper.getOptions();
     TableSchema schema = context.getCatalogTable().getSchema();
 
-    validate(options, schema);
+    validate(options, schema, Type.SOURCE);
 
     return new IoTDBDynamicTableSource(options, schema);
   }
@@ -75,10 +77,7 @@ public class IoTDBDynamicTableFactory
 
   @Override
   public Set<ConfigOption<?>> requiredOptions() {
-    HashSet<ConfigOption<?>> requiredOptions = new HashSet<>();
-    requiredOptions.add(Options.DEVICE);
-
-    return requiredOptions;
+    return new HashSet<>();
   }
 
   @Override
@@ -93,6 +92,8 @@ public class IoTDBDynamicTableFactory
     optionalOptions.add(Options.MODE);
     optionalOptions.add(Options.CDC_TASK_NAME);
     optionalOptions.add(Options.CDC_PORT);
+    optionalOptions.add(Options.SQL);
+    optionalOptions.add(Options.PATTERN);
 
     return optionalOptions;
   }
@@ -105,12 +106,12 @@ public class IoTDBDynamicTableFactory
     ReadableConfig options = helper.getOptions();
     TableSchema schema = context.getCatalogTable().getSchema();
 
-    validate(options, schema);
+    validate(options, schema, Type.SINK);
 
     return new IoTDBDynamicTableSink(options, schema);
   }
 
-  protected void validate(ReadableConfig options, TableSchema schema) {
+  protected void validate(ReadableConfig options, TableSchema schema, Type type) {
     String[] fieldNames = schema.getFieldNames();
     DataType[] fieldDataTypes = schema.getFieldDataTypes();
 
@@ -119,16 +120,22 @@ public class IoTDBDynamicTableFactory
           "The first field's name must be `Time_`, and its data type must be BIGINT.");
     }
     for (String fieldName : fieldNames) {
-      if (fieldName.contains("\\.")) {
+      if (!"Time_".equals(fieldName) && !fieldName.startsWith("root.")) {
         throw new IllegalIoTDBPathException(
-            String.format(
-                "The field name `%s` contains character `.`, it's not allowed in IoTDB.",
-                fieldName));
+            String.format("The field name `%s` doesn't start with 'root.'.", fieldName));
       }
-      if (Utils.isNumeric(fieldName)) {
-        throw new IllegalIoTDBPathException(
-            String.format(
-                "The field name `%s` is a pure number, which is not allowed in IoTDB.", fieldName));
+      try {
+        String[] nodes = PathUtils.splitPathToDetachedNodes(fieldName);
+        for (String node : nodes) {
+          if (Utils.isNumeric(node)) {
+            throw new IllegalIoTDBPathException(
+                String.format(
+                    "The node `%s` in the field name `%s` is a pure number, which is not allowed in IoTDB.",
+                    node, fieldName));
+          }
+        }
+      } catch (IllegalPathException e) {
+        throw new IllegalIoTDBPathException(e.getMessage());
       }
     }
 
@@ -136,19 +143,6 @@ public class IoTDBDynamicTableFactory
       if (!supportedDataTypes.contains(fieldDataType)) {
         throw new UnsupportedDataTypeException(
             "IoTDB doesn't support the data type: " + fieldDataType);
-      }
-    }
-
-    String device = options.get(Options.DEVICE);
-    if (!device.startsWith("root.")) {
-      throw new IllegalIoTDBPathException("The option `device` must starts with 'root.'.");
-    }
-    for (String s : device.split("\\.")) {
-      if (Utils.isNumeric(s)) {
-        throw new IllegalIoTDBPathException(
-            String.format(
-                "The option `device` contains a purely number path: `%s`, it's not allowed in IoTDB.",
-                s));
       }
     }
 
@@ -180,10 +174,26 @@ public class IoTDBDynamicTableFactory
           "The value of option `scan.bounded.lower-bound` could not be greater than the value of option `scan.bounded.upper-bound`.");
     }
 
-    if (options.get(Options.MODE) == Options.Mode.CDC
-        && options.get(Options.CDC_TASK_NAME) == null) {
-      throw new IllegalOptionException(
-          "The option `cdc.task.name` is required when option `mode` equals `CDC`");
+    if (type == Type.SOURCE) {
+      if (options.get(Options.MODE) == Options.Mode.CDC) {
+        if (options.get(Options.CDC_TASK_NAME) == null) {
+          throw new IllegalOptionException(
+              "The option `cdc.task.name` is required when option `mode` equals `CDC`");
+        }
+        if (options.get(Options.PATTERN) == null) {
+          throw new IllegalOptionException(
+              "The option `cdc.pattern` is required when option `mode` equals `CDC`");
+        }
+      } else if (options.get(Options.MODE) == Options.Mode.BOUNDED
+          && (options.get(Options.SQL) == null)) {
+        throw new IllegalOptionException(
+            "The option `sql` is required when option `mode` equals `BOUNDED`");
+      }
     }
+  }
+
+  private enum Type {
+    SINK,
+    SOURCE
   }
 }

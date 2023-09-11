@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
@@ -27,7 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CountTimeAggregationAmountVisitor;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.AuthorityInformationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillComponent;
@@ -45,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -74,7 +79,7 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.MODEL_ID;
  *   <li>[{ALIGN BY DEVICE | DISABLE ALIGN}]
  * </ul>
  */
-public class QueryStatement extends Statement {
+public class QueryStatement extends AuthorityInformationStatement {
 
   private SelectComponent selectComponent;
   private FromComponent fromComponent;
@@ -148,6 +153,19 @@ public class QueryStatement extends Statement {
       authPaths.addAll(ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths));
     }
     return new ArrayList<>(authPaths);
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    try {
+      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+        this.authorityScope =
+            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA.ordinal());
+      }
+    } catch (AuthException e) {
+      return new TSStatus(e.getCode().getStatusCode());
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public SelectComponent getSelectComponent() {
@@ -524,12 +542,9 @@ public class QueryStatement extends Statement {
   public static final String COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG =
       "Count_time aggregation function using with group by tag is not supported.";
 
-  public static final String COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION =
-      "Count_time aggregation function used with arithmetic operation "
-          + "or other aggregation is not supported.";
-
-  public static final String COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT =
-      "Count_time aggregation function can only exist one in select clause.";
+  public static final String COUNT_TIME_CAN_ONLY_EXIST_ALONE =
+      "Count_time aggregation can only exist alone, "
+          + "and cannot used with other queries or aggregations.";
 
   public static final String COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING =
       "Count_time aggregation function can not be used with having clause.";
@@ -599,7 +614,8 @@ public class QueryStatement extends Statement {
 
         String expressionString = resultColumn.getExpression().getExpressionString();
         if (expressionString.toLowerCase().contains(COUNT_TIME)) {
-          checkCountTimeValidationInSelect(resultColumn.getExpression(), outputColumn);
+          checkCountTimeValidationInSelect(
+              resultColumn.getExpression(), outputColumn, selectComponent.getResultColumns());
         }
         outputColumn.add(
             resultColumn.getAlias() != null ? resultColumn.getAlias() : expressionString);
@@ -816,21 +832,27 @@ public class QueryStatement extends Statement {
     return visitor.visitQuery(this, context);
   }
 
-  private void checkCountTimeValidationInSelect(Expression expression, Set<String> outputColumn) {
+  private void checkCountTimeValidationInSelect(
+      Expression expression, Set<String> outputColumn, List<ResultColumn> resultColumns) {
     int countTimeAggSize = new CountTimeAggregationAmountVisitor().process(expression, null).size();
 
     if (countTimeAggSize > 1) {
       // e.g. select count_time(*) + count_time(*) from root.**
-      throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT);
+      throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ALONE);
     } else if (countTimeAggSize == 1) {
       // e.g. select count_time(*) / 2; select sum(*) / count_time(*)
       if (!(expression instanceof FunctionExpression)) {
-        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION);
+        throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ALONE);
       }
 
       // e.g. select count(*), count(*) from root.db.**
       if (!outputColumn.isEmpty()) {
-        throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT);
+        throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ALONE);
+      }
+
+      // e.g. select count_time(*), count(*)
+      if (resultColumns.size() > 1) {
+        throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ALONE);
       }
 
       if (isGroupByTag()) {
