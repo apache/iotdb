@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
@@ -430,5 +431,51 @@ public class LocalFileUserAccessor implements IUserAccessor {
     for (File file : files) {
       FileUtils.deleteFileIfExist(file);
     }
+  }
+
+  @TestOnly
+  public void saveUserOldVersion(User user) throws IOException {
+    File userProfile =
+        SystemFileFactory.INSTANCE.getFile(
+            userDirPath
+                + File.separator
+                + user.getName()
+                + IoTDBConstant.PROFILE_SUFFIX
+                + TEMP_SUFFIX);
+
+    try (BufferedOutputStream outputStream =
+        new BufferedOutputStream(Files.newOutputStream(userProfile.toPath()))) {
+      try {
+        IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
+        IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
+
+        int privilegeNum = user.getPathPrivilegeList().size();
+        IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
+        for (int i = 0; i < privilegeNum; i++) {
+          PathPrivilege pathPrivilege = user.getPathPrivilegeList().get(i);
+          IOUtils.writePathPrivilege(
+              outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
+        }
+
+        int userNum = user.getRoleList().size();
+        IOUtils.writeInt(outputStream, userNum, encodingBufferLocal);
+        for (int i = 0; i < userNum; i++) {
+          IOUtils.writeString(
+              outputStream, user.getRoleList().get(i), STRING_ENCODING, encodingBufferLocal);
+        }
+        IOUtils.writeInt(outputStream, user.isUseWaterMark() ? 1 : 0, encodingBufferLocal);
+        outputStream.flush();
+
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
+    } finally {
+      encodingBufferLocal.remove();
+    }
+
+    File oldFile =
+        SystemFileFactory.INSTANCE.getFile(
+            userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
+    IOUtils.replaceFile(userProfile, oldFile);
   }
 }

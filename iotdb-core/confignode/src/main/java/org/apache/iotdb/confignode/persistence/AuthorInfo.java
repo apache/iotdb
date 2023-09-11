@@ -193,12 +193,6 @@ public class AuthorInfo implements SnapshotProcessor {
         case RevokeUserDep:
         case RevokeRoleDep:
         case RevokeRoleFromUserDep:
-        case ListUserDep:
-        case ListRoleDep:
-        case ListUserPrivilegeDep:
-        case ListRolePrivilegeDep:
-        case ListUserRoles:
-        case ListRoleUsersDep:
           throw new AuthException(
               TSStatusCode.UNSUPPORTED_OPERATION,
               "unsupport operation: " + authorPlan.getAuthorType());
