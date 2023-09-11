@@ -527,7 +527,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       plan =
           new AuthorPlan(
               ConfigPhysicalPlanType.values()[
-                  req.getAuthorType() + ConfigPhysicalPlanType.Author.ordinal() + 1],
+                  req.getAuthorType() + ConfigPhysicalPlanType.Author.ordinal() + 1 + 17],
               req.getUserName(),
               req.getRoleName(),
               req.getPassword(),
@@ -551,7 +551,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       plan =
           new AuthorPlan(
               ConfigPhysicalPlanType.values()[
-                  req.getAuthorType() + ConfigPhysicalPlanType.Author.ordinal() + 1],
+                  req.getAuthorType() + ConfigPhysicalPlanType.Author.ordinal() + 1 + 17],
               req.getUserName(),
               req.getRoleName(),
               req.getPassword(),

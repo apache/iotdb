@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -113,16 +114,33 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
       Role role = new Role();
-      role.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
-      role.setSysPrivilegeSet(dataInputStream.readInt());
-
-      List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
-      for (int i = 0; dataInputStream.available() != 0; i++) {
-        pathPrivilegeList.add(
-            IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
+      Pair<String, Boolean> result =
+          IOUtils.readAuthString(dataInputStream, STRING_ENCODING, strBufferLocal);
+      role.setName(result.getLeft());
+      boolean oldVersion = result.getRight();
+      if (oldVersion) {
+        //        int privilegeNum = dataInputStream.readInt();
+        //        List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
+        //        for (int i = 0; i < privilegeNum; i++) {
+        //          pathPrivilegeList.add(
+        //                  IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING,
+        // strBufferLocal,true));
+        //        }
+        //        role.setPrivilegeList(pathPrivilegeList);
+        role.setPrivilegeList(new ArrayList<>());
+        role.setSysPrivilegeSet(new HashSet<>());
+        role.setSysPriGrantOpt(new HashSet<>());
+        return role;
+      } else {
+        role.setSysPrivilegeSet(dataInputStream.readInt());
+        List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
+        for (int i = 0; dataInputStream.available() != 0; i++) {
+          pathPrivilegeList.add(
+              IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal, false));
+        }
+        role.setPrivilegeList(pathPrivilegeList);
+        return role;
       }
-      role.setPrivilegeList(pathPrivilegeList);
-      return role;
     } catch (Exception e) {
       throw new IOException(e);
     } finally {

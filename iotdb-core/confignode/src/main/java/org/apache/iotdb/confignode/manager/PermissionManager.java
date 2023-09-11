@@ -62,7 +62,9 @@ public class PermissionManager {
     // If the permissions change, clear the cache content affected by the operation
     try {
       if (authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUser
-          || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRole) {
+          || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRole
+          || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUserDep
+          || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRoleDep) {
         tsStatus = getConsensusManager().write(authorPlan);
       } else {
         List<TDataNodeConfiguration> allDataNodes =

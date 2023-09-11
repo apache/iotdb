@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -117,6 +118,31 @@ public class IOUtils {
     return null;
   }
 
+  public static Pair<String, Boolean> readAuthString(
+      DataInputStream inputStream, String encoding, ThreadLocal<byte[]> strBufferLocal)
+      throws IOException {
+    byte[] strBuffer;
+    int length = inputStream.readInt();
+    int absLength = Math.abs(length);
+    if (absLength != 0) {
+      if (strBufferLocal != null) {
+        strBuffer = strBufferLocal.get();
+        if (strBuffer == null || absLength > strBuffer.length) {
+          strBuffer = new byte[absLength];
+          strBufferLocal.set(strBuffer);
+        }
+      } else {
+        strBuffer = new byte[absLength];
+      }
+
+      inputStream.read(strBuffer, 0, absLength);
+      Pair<String, Boolean> result =
+          new Pair<>(new String(strBuffer, 0, absLength, encoding), length > 0);
+      return result;
+    }
+    return null;
+  }
+
   /**
    * Read a PathPrivilege from the given stream.
    *
@@ -128,13 +154,26 @@ public class IOUtils {
    * @throws IOException when an exception raised during operating the stream.
    */
   public static PathPrivilege readPathPrivilege(
-      DataInputStream inputStream, String encoding, ThreadLocal<byte[]> strBufferLocal)
+      DataInputStream inputStream,
+      String encoding,
+      ThreadLocal<byte[]> strBufferLocal,
+      boolean compatible)
       throws IOException, IllegalPathException {
     String path = IOUtils.readString(inputStream, encoding, strBufferLocal);
-    PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath(path));
-    int privileges = inputStream.readInt();
-    pathPrivilege.setAllPrivileges(privileges);
-    return pathPrivilege;
+    if (compatible) {
+      int privilegeNum = inputStream.readInt();
+      PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath(path));
+      for (int i = 0; i < privilegeNum; i++) {
+        // Need to check the corresponding relationship of permissions
+        pathPrivilege.getPrivileges().add(inputStream.readInt());
+      }
+      return pathPrivilege;
+    } else {
+      PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath(path));
+      int privileges = inputStream.readInt();
+      pathPrivilege.setAllPrivileges(privileges);
+      return pathPrivilege;
+    }
   }
 
   /**
