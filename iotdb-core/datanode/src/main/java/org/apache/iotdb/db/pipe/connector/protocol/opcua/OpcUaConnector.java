@@ -31,6 +31,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
@@ -43,7 +44,10 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
@@ -63,6 +67,10 @@ public class OpcUaConnector implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaConnector.class);
 
+  private static final Map<String, Pair<AtomicInteger, OpcUaServer>> serverWithReferenceCountMap =
+      new ConcurrentHashMap<>();
+
+  private String serverKey;
   private OpcUaServer server;
 
   @Override
@@ -86,14 +94,29 @@ public class OpcUaConnector implements PipeConnector {
         parameters.getStringOrDefault(
             CONNECTOR_IOTDB_PASSWORD_KEY, CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
 
+    serverKey = httpsBindPort + ":" + tcpBindPort;
+
     server =
-        new OpcUaServerBuilder()
-            .setTcpBindPort(tcpBindPort)
-            .setHttpsBindPort(httpsBindPort)
-            .setUser(user)
-            .setPassword(password)
-            .build();
-    server.startup();
+        serverWithReferenceCountMap
+            .computeIfAbsent(
+                serverKey,
+                key -> {
+                  try {
+                    OpcUaServer newServer =
+                        new OpcUaServerBuilder()
+                            .setTcpBindPort(tcpBindPort)
+                            .setHttpsBindPort(httpsBindPort)
+                            .setUser(user)
+                            .setPassword(password)
+                            .build();
+                    newServer.startup();
+                    return new Pair<>(new AtomicInteger(0), newServer);
+                  } catch (Exception e) {
+                    throw new RuntimeException("Failed to build and startup OpcUaServer", e);
+                  }
+                })
+            .getRight();
+    serverWithReferenceCountMap.get(serverKey).getLeft().incrementAndGet();
   }
 
   @Override
@@ -104,6 +127,11 @@ public class OpcUaConnector implements PipeConnector {
   @Override
   public void heartbeat() throws Exception {
     // Server side, do nothing
+  }
+
+  @Override
+  public void transfer(Event event) throws Exception {
+    // Do nothing when receive heartbeat or other events
   }
 
   @Override
@@ -235,12 +263,10 @@ public class OpcUaConnector implements PipeConnector {
   }
 
   @Override
-  public void transfer(Event event) throws Exception {
-    // Do nothing when receive heartbeat or other events
-  }
-
-  @Override
   public void close() throws Exception {
-    server.shutdown();
+    if (serverWithReferenceCountMap.get(serverKey).getLeft().decrementAndGet() <= 0) {
+      server.shutdown();
+      serverWithReferenceCountMap.remove(serverKey);
+    }
   }
 }

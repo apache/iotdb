@@ -39,12 +39,18 @@ import javax.annotation.Nullable;
 
 import java.net.InetSocketAddress;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.Optional;
 import java.util.PriorityQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class WebSocketConnector implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnector.class);
+
+  private static final Map<Integer, Pair<AtomicInteger, WebSocketConnectorServer>>
+      serverWithReferenceCountMap = new ConcurrentHashMap<>();
   private WebSocketConnectorServer server;
   private int port;
 
@@ -69,10 +75,18 @@ public class WebSocketConnector implements PipeConnector {
 
   @Override
   public void handshake() throws Exception {
-    if (server == null) {
-      server = new WebSocketConnectorServer(new InetSocketAddress(port), this);
-      server.start();
-    }
+    server =
+        serverWithReferenceCountMap
+            .computeIfAbsent(
+                port,
+                key -> {
+                  WebSocketConnectorServer newServer =
+                      new WebSocketConnectorServer(new InetSocketAddress(port), this);
+                  newServer.start();
+                  return new Pair<>(new AtomicInteger(0), server);
+                })
+            .getRight();
+    serverWithReferenceCountMap.get(port).getLeft().incrementAndGet();
   }
 
   @Override
@@ -117,7 +131,10 @@ public class WebSocketConnector implements PipeConnector {
 
   @Override
   public void close() throws Exception {
-    server.stop();
+    if (serverWithReferenceCountMap.get(port).getLeft().decrementAndGet() <= 0) {
+      server.stop();
+      serverWithReferenceCountMap.remove(port);
+    }
   }
 
   public synchronized void commit(long requestCommitId, @Nullable EnrichedEvent enrichedEvent) {
