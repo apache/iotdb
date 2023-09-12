@@ -193,13 +193,13 @@ public abstract class PipeSubtask
 
   @Override
   public synchronized void close() {
-    releaseLastEvent();
+    releaseLastEvent(false);
   }
 
-  protected void releaseLastEvent() {
+  protected void releaseLastEvent(boolean shouldReport) {
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName());
+        ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName(), shouldReport);
       }
       lastEvent = null;
     }
