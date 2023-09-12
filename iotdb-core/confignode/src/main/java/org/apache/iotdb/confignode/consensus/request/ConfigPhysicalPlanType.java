@@ -76,8 +76,9 @@ public enum ConfigPhysicalPlanType {
   DeleteProcedure((short) 501),
 
   /** Authority. */
-  // for version earlier than 1.2
   Author((short) 600),
+
+  // For version earlier than 1.2. Dep for Deprecated.
   CreateUserDep((short) 601),
   CreateRoleDep((short) 602),
   DropUserDep((short) 603),
@@ -98,7 +99,7 @@ public enum ConfigPhysicalPlanType {
   @Deprecated
   ListRoleUsersDep((short) 617),
 
-  // for version after and equal 1.2
+  // For version after and equal 1.2
   CreateUser((short) 621),
   CreateRole((short) 622),
   DropUser((short) 623),

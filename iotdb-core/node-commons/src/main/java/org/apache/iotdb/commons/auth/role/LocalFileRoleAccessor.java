@@ -120,6 +120,8 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       role.setName(result.getLeft());
       boolean oldVersion = result.getRight();
       if (oldVersion) {
+        // TODO will deal with these authority upgrade soon in the future.
+
         //        int privilegeNum = dataInputStream.readInt();
         //        List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
         //        for (int i = 0; i < privilegeNum; i++) {

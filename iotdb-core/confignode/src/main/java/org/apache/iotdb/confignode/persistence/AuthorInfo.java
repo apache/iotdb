@@ -193,6 +193,7 @@ public class AuthorInfo implements SnapshotProcessor {
         case RevokeUserDep:
         case RevokeRoleDep:
         case RevokeRoleFromUserDep:
+          // TODO will deal with these authority upgrade soon in the future.
           throw new AuthException(
               TSStatusCode.UNSUPPORTED_OPERATION,
               "unsupport operation: " + authorPlan.getAuthorType());

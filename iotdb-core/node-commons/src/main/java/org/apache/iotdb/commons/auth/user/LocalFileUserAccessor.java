@@ -131,6 +131,8 @@ public class LocalFileUserAccessor implements IUserAccessor {
       user.setName(result.getLeft());
       user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
       if (oldVersion) {
+        // TODO will deal with these authority upgrade soon in the future.
+
         //        int privilegeNum = dataInputStream.readInt();
         //        List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
         //        for (int i = 0; i < privilegeNum; i++) {
