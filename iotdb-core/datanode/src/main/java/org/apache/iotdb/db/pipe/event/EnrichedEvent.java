@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
@@ -127,7 +128,9 @@ public abstract class EnrichedEvent implements Event {
 
   protected void reportProgress() {
     if (pipeTaskMeta != null) {
-      pipeTaskMeta.updateProgressIndex(getProgressIndex());
+      final ProgressIndex progressIndex = getProgressIndex();
+      pipeTaskMeta.updateProgressIndex(
+          progressIndex == null ? MinimumProgressIndex.INSTANCE : progressIndex);
     }
   }
 

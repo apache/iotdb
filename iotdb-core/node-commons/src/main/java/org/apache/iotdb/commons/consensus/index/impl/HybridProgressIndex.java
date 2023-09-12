@@ -159,7 +159,7 @@ public class HybridProgressIndex implements ProgressIndex {
   public ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex) {
     lock.writeLock().lock();
     try {
-      if (progressIndex instanceof MinimumProgressIndex) {
+      if (progressIndex == null || progressIndex instanceof MinimumProgressIndex) {
         return this;
       }
 
