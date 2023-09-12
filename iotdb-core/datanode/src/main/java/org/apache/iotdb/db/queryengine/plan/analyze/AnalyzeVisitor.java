@@ -495,20 +495,27 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private void analyzeLastSource(
       Analysis analysis, List<Expression> selectExpressions, ISchemaTree schemaTree) {
-    Set<Expression> sourceExpressions;
-
-    sourceExpressions = new LinkedHashSet<>();
+    Set<Expression> sourceExpressions = new LinkedHashSet<>();
+    Set<Expression> lastQueryNonWriteViewExpression = null;
+    Set<Expression> lastQueryBaseExpressions = new HashSet<>();
 
     for (Expression selectExpression : selectExpressions) {
       for (Expression sourceExpression : bindSchemaForExpression(selectExpression, schemaTree)) {
         if (!(sourceExpression instanceof TimeSeriesOperand)) {
-          throw new SemanticException(
-              "Views with functions and expressions cannot be used in LAST query");
+          if (lastQueryNonWriteViewExpression == null) {
+            lastQueryNonWriteViewExpression = new HashSet<>();
+          }
+          lastQueryNonWriteViewExpression.add(sourceExpression);
+          sourceExpressions.addAll(searchSourceExpressions(sourceExpression));
+        } else {
+          sourceExpressions.add(sourceExpression);
+          lastQueryBaseExpressions.add(sourceExpression);
         }
-        sourceExpressions.add(sourceExpression);
       }
     }
     analysis.setSourceExpressions(sourceExpressions);
+    analysis.setLastQueryBaseExpression(lastQueryBaseExpressions);
+    analysis.setLastQueryNonWriteViewExpression(lastQueryNonWriteViewExpression);
   }
 
   private void updateSchemaTreeByViews(Analysis analysis, ISchemaTree originSchemaTree) {
