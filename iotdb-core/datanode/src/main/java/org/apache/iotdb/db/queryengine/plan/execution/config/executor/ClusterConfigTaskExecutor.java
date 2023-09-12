@@ -1811,13 +1811,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // Transform all Expressions into ViewExpressions.
     TransformToViewExpressionVisitor transformToViewExpressionVisitor =
         new TransformToViewExpressionVisitor();
-    List<Expression> expressionList = alterLogicalViewStatement.getSourceExpressionList();
+    List<Expression> expressionList = createLogicalViewStatement.getSourceExpressionList();
     List<ViewExpression> viewExpressionList = new ArrayList<>();
     for (Expression expression : expressionList) {
       viewExpressionList.add(transformToViewExpressionVisitor.process(expression, null));
     }
 
-    List<PartialPath> viewPathList = alterLogicalViewStatement.getTargetPathList();
+    List<PartialPath> viewPathList = createLogicalViewStatement.getTargetPathList();
 
     ByteArrayOutputStream stream = new ByteArrayOutputStream();
     try {
