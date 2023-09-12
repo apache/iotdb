@@ -188,6 +188,13 @@ public class RemoteServerEnv implements BaseEnv {
     return session;
   }
 
+  public ISession getSessionConnection(String userName, String password)
+      throws IoTDBConnectionException {
+    Session session = new Session(ip_addr, Integer.parseInt(port), userName, password);
+    session.open();
+    return session;
+  }
+
   @Override
   public ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
     Session session =

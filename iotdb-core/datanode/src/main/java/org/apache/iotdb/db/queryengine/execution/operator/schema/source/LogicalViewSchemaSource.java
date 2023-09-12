@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
@@ -44,6 +46,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaInfo> {
 
   private final PartialPath pathPattern;
+  private final PathPatternTree scope;
 
   private final long limit;
   private final long offset;
@@ -51,8 +54,13 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
   private final SchemaFilter schemaFilter;
 
   LogicalViewSchemaSource(
-      PartialPath pathPattern, long limit, long offset, SchemaFilter schemaFilter) {
+      PartialPath pathPattern,
+      long limit,
+      long offset,
+      SchemaFilter schemaFilter,
+      PathPatternTree scope) {
     this.pathPattern = pathPattern;
+    this.scope = scope;
 
     this.limit = limit;
     this.offset = offset;
@@ -72,7 +80,8 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
               false,
               SchemaFilterFactory.and(
                   schemaFilter, SchemaFilterFactory.createViewTypeFilter(ViewType.VIEW)),
-              true));
+              true,
+              scope));
     } catch (MetadataException e) {
       throw new SchemaExecutionException(e.getMessage(), e);
     }
@@ -103,7 +112,9 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
 
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
-    return pathPattern.equals(ALL_MATCH_PATTERN);
+    return pathPattern.equals(ALL_MATCH_PATTERN)
+        && (schemaFilter == null)
+        && scope.equals(SchemaConstant.ALL_MATCH_SCOPE);
   }
 
   @Override

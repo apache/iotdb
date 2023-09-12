@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -39,6 +41,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
 
   private final PartialPath pathPattern;
+  private final PathPatternTree scope;
   private final boolean isPrefixMatch;
 
   private final long limit;
@@ -54,7 +57,8 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
       long limit,
       long offset,
       boolean hasSgCol,
-      SchemaFilter schemaFilter) {
+      SchemaFilter schemaFilter,
+      PathPatternTree scope) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixPath;
 
@@ -63,6 +67,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
 
     this.hasSgCol = hasSgCol;
     this.schemaFilter = schemaFilter;
+    this.scope = scope;
   }
 
   @Override
@@ -70,7 +75,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
     try {
       return schemaRegion.getDeviceReader(
           SchemaRegionReadPlanFactory.getShowDevicesPlan(
-              pathPattern, limit, offset, isPrefixMatch, schemaFilter));
+              pathPattern, limit, offset, isPrefixMatch, schemaFilter, scope));
     } catch (MetadataException e) {
       throw new SchemaExecutionException(e.getMessage(), e);
     }
@@ -99,7 +104,9 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
 
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
-    return pathPattern.equals(ALL_MATCH_PATTERN);
+    return pathPattern.equals(ALL_MATCH_PATTERN)
+        && (schemaFilter == null)
+        && scope.equals(SchemaConstant.ALL_MATCH_SCOPE);
   }
 
   @Override

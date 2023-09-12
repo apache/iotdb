@@ -33,6 +33,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -551,13 +552,15 @@ public class IoTDBSelectIntoIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser1 'temppw1'");
-      adminStmt.execute("GRANT USER tempuser1 PRIVILEGES WRITE_DATA on root.sg_bk.**;");
+      adminStmt.execute("GRANT WRITE_DATA on root.sg_bk.** TO USER tempuser1;");
+      ResultSet resultSet;
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser1", "temppw1");
           Statement userStmt = userCon.createStatement()) {
         userStmt.executeQuery(
             "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;");
-        fail("No exception!");
+        resultSet = userStmt.executeQuery("select * from root.sg_bk.new_d");
+        Assert.assertEquals(resultSet.next(), false);
       } catch (SQLException e) {
         Assert.assertTrue(
             e.getMessage(),
@@ -572,7 +575,7 @@ public class IoTDBSelectIntoIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser2 'temppw2'");
-      adminStmt.execute("GRANT USER tempuser2 PRIVILEGES WRITE_DATA on root.sg.**;");
+      adminStmt.execute("GRANT WRITE_DATA on root.sg.** TO USER tempuser2;");
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser2", "temppw2");
           Statement userStmt = userCon.createStatement()) {
