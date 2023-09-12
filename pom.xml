@@ -164,7 +164,9 @@
         <!-- for REST service -->
         <swagger.core.version>1.6.2</swagger.core.version>
         <servlet.api.version>2.5</servlet.api.version>
-        <openapi.generator.version>7.0.0</openapi.generator.version>
+        <openapi.generator.version>6.6.0</openapi.generator.version>
+        <!-- OpenAPI Generator 7 isn't compatible with Java 8 anymore -->
+        <!--openapi.generator.version>7.0.0</openapi.generator.version-->
         <!-- cli -->
         <progressbar.version>0.9.5</progressbar.version>
         <!-- zeppelin -->
@@ -1138,7 +1140,9 @@
                     <dependency>
                         <groupId>com.puppycrawl.tools</groupId>
                         <artifactId>checkstyle</artifactId>
-                        <version>10.12.3</version>
+                        <version>9.3</version>
+                        <!-- Starting with version 10, checkstyle requires Java 11 -->
+                        <!--version>10.12.3</version-->
                     </dependency>
                 </dependencies>
             </plugin>
