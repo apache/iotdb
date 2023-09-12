@@ -105,6 +105,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -1792,25 +1793,31 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> alterLogicalView(
-      String queryId, AlterLogicalViewStatement alterLogicalViewStatement) {
+      AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     CreateLogicalViewStatement createLogicalViewStatement = new CreateLogicalViewStatement();
     createLogicalViewStatement.setTargetPaths(alterLogicalViewStatement.getTargetPaths());
     createLogicalViewStatement.setSourcePaths(alterLogicalViewStatement.getSourcePaths());
     createLogicalViewStatement.setQueryStatement(alterLogicalViewStatement.getQueryStatement());
 
-    Analyzer.validate(createLogicalViewStatement);
+    Analysis analysis = Analyzer.analyze(createLogicalViewStatement, context);
+    if (analysis.isFailed()) {
+      future.setException(
+          new IoTDBException(
+              analysis.getFailStatus().getMessage(), analysis.getFailStatus().getCode()));
+      return future;
+    }
 
     // Transform all Expressions into ViewExpressions.
     TransformToViewExpressionVisitor transformToViewExpressionVisitor =
         new TransformToViewExpressionVisitor();
-    List<Expression> expressionList = createLogicalViewStatement.getSourceExpressionList();
+    List<Expression> expressionList = alterLogicalViewStatement.getSourceExpressionList();
     List<ViewExpression> viewExpressionList = new ArrayList<>();
     for (Expression expression : expressionList) {
       viewExpressionList.add(transformToViewExpressionVisitor.process(expression, null));
     }
 
-    List<PartialPath> viewPathList = createLogicalViewStatement.getTargetPathList();
+    List<PartialPath> viewPathList = alterLogicalViewStatement.getTargetPathList();
 
     ByteArrayOutputStream stream = new ByteArrayOutputStream();
     try {
@@ -1824,7 +1831,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
 
     TAlterLogicalViewReq req =
-        new TAlterLogicalViewReq(queryId, ByteBuffer.wrap(stream.toByteArray()));
+        new TAlterLogicalViewReq(
+            context.getQueryId().getId(), ByteBuffer.wrap(stream.toByteArray()));
     try (ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
@@ -2007,12 +2015,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createContinuousQuery(
-      CreateContinuousQueryStatement createContinuousQueryStatement, String sql, String username) {
+      CreateContinuousQueryStatement createContinuousQueryStatement, MPPQueryContext context) {
     createContinuousQueryStatement.semanticCheck();
 
     String queryBody = createContinuousQueryStatement.getQueryBody();
     // TODO Do not modify Statement in Analyzer
-    Analyzer.validate(createContinuousQueryStatement.getQueryBodyStatement());
+    Analyzer.analyze(createContinuousQueryStatement.getQueryBodyStatement(), context);
 
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
@@ -2026,9 +2034,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createContinuousQueryStatement.getEndTimeOffset(),
               createContinuousQueryStatement.getTimeoutPolicy().getType(),
               queryBody,
-              sql,
+              context.getSql(),
               createContinuousQueryStatement.getZoneId(),
-              username);
+              context.getSession() == null ? null : context.getSession().getUserName());
       final TSStatus executionStatus = client.createCQ(tCreateCQReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn(
@@ -2112,11 +2120,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createModel(CreateModelStatement createModelStatement) {
+  public SettableFuture<ConfigTaskResult> createModel(
+      CreateModelStatement createModelStatement, MPPQueryContext context) {
     createModelStatement.semanticCheck();
-
-    Analyzer analyzer = Analyzer.getAnalyzer();
-    Analysis analysis = analyzer.analyze(createModelStatement.getQueryStatement());
+    Analysis analysis = Analyzer.analyze(createModelStatement.getQueryStatement(), context);
 
     List<String> queryExpressions = new ArrayList<>();
     for (Expression expression : analysis.getSelectExpressions()) {
