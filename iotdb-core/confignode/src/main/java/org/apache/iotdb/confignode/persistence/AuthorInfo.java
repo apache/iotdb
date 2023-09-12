@@ -183,7 +183,22 @@ public class AuthorInfo implements SnapshotProcessor {
     List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
     try {
       switch (authorType) {
+        case CreateUserDep:
+        case CreateRoleDep:
+        case DropUserDep:
+        case DropRoleDep:
+        case GrantUserDep:
+        case GrantRoleDep:
+        case GrantRoleToUserDep:
+        case RevokeUserDep:
+        case RevokeRoleDep:
+        case RevokeRoleFromUserDep:
+          // TODO will deal with these authority upgrade soon in the future.
+          throw new AuthException(
+              TSStatusCode.UNSUPPORTED_OPERATION,
+              "unsupport operation: " + authorPlan.getAuthorType());
         case UpdateUser:
+        case UpdateUserDep:
           authorizer.updateUserPassword(userName, newPassword);
           break;
         case CreateUser:

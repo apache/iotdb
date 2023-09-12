@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -123,54 +125,94 @@ public class LocalFileUserAccessor implements IUserAccessor {
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
       User user = new User();
-      user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+      Pair<String, Boolean> result =
+          IOUtils.readAuthString(dataInputStream, STRING_ENCODING, strBufferLocal);
+      boolean oldVersion = result.getRight();
+      user.setName(result.getLeft());
       user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
-      user.setSysPrivilegeSet(dataInputStream.readInt());
-      List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
-      for (int i = 0; dataInputStream.available() != 0; i++) {
-        pathPrivilegeList.add(
-            IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
-      }
-      user.setPrivilegeList(pathPrivilegeList);
+      if (oldVersion) {
+        // TODO will deal with these authority upgrade soon in the future.
 
-      File roleOfUser =
-          SystemFileFactory.INSTANCE.getFile(
-              userDirPath, File.separator + username + ROLE_SUFFIX + IoTDBConstant.PROFILE_SUFFIX);
+        //        int privilegeNum = dataInputStream.readInt();
+        //        List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
+        //        for (int i = 0; i < privilegeNum; i++) {
+        //          pathPrivilegeList.add(
+        //                  IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING,
+        // strBufferLocal, versionNow));
+        //        }
+        //        user.setPrivilegeList(pathPrivilegeList);
+        //        int roleNum = dataInputStream.readInt();
+        //        List<String> roleList = new ArrayList<>();
+        //        for (int i = 0; i < roleNum; i++) {
+        //          String userName = IOUtils.readString(dataInputStream, STRING_ENCODING,
+        // strBufferLocal);
+        //          roleList.add(userName);
+        //        }
+        //        user.setRoleList(roleList);
+        //        // for online upgrading, profile for v0.9.x/v1 does not contain waterMark
+        //        long userProfileLength = userProfile.length();
+        //        try {
+        //          user.setUseWaterMark(dataInputStream.readInt() != 0);
+        //        } catch (EOFException e1) {
+        //          user.setUseWaterMark(false);
+        //          try (RandomAccessFile file = new RandomAccessFile(userProfile, "rw")) {
+        //            file.seek(userProfileLength);
+        //            file.writeInt(0);
+        //          }
+        //        }
+        user.setRoleList(new ArrayList<>());
+        user.setSysPrivilegeSet(new HashSet<>());
+        user.setPrivilegeList(new ArrayList<>());
+        user.setSysPriGrantOpt(new HashSet<>());
+        user.setUseWaterMark(false);
+        return user;
+      } else {
+        user.setSysPrivilegeSet(dataInputStream.readInt());
+        List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
+        for (int i = 0; dataInputStream.available() != 0; i++) {
+          pathPrivilegeList.add(
+              IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal, false));
+        }
+        user.setPrivilegeList(pathPrivilegeList);
 
-      if (!roleOfUser.isFile() || !roleOfUser.exists()) {
-        // System may crush before a newer file is renamed.
-        File newRoleProfile =
+        File roleOfUser =
             SystemFileFactory.INSTANCE.getFile(
-                userDirPath
-                    + File.separator
-                    + username
-                    + "_role"
-                    + IoTDBConstant.PROFILE_SUFFIX
-                    + TEMP_SUFFIX);
-        if (newRoleProfile.exists() && newRoleProfile.isFile()) {
-          if (!newRoleProfile.renameTo(roleOfUser)) {
-            LOGGER.warn(" New role profile renaming not succeed.");
+                userDirPath,
+                File.separator + username + ROLE_SUFFIX + IoTDBConstant.PROFILE_SUFFIX);
+
+        if (!roleOfUser.isFile() || !roleOfUser.exists()) {
+          // System may crush before a newer file is renamed.
+          File newRoleProfile =
+              SystemFileFactory.INSTANCE.getFile(
+                  userDirPath
+                      + File.separator
+                      + username
+                      + "_role"
+                      + IoTDBConstant.PROFILE_SUFFIX
+                      + TEMP_SUFFIX);
+          if (newRoleProfile.exists() && newRoleProfile.isFile()) {
+            if (!newRoleProfile.renameTo(roleOfUser)) {
+              LOGGER.warn(" New role profile renaming not succeed.");
+            }
+            roleOfUser = newRoleProfile;
           }
         }
-      }
 
-      roleOfUser =
-          SystemFileFactory.INSTANCE.getFile(
-              userDirPath, File.separator + username + ROLE_SUFFIX + IoTDBConstant.PROFILE_SUFFIX);
-      List<String> roleList = new ArrayList<>();
-      if (roleOfUser.exists()) {
-        inputStream = new FileInputStream(roleOfUser);
-        try (DataInputStream roleInpuStream =
-            new DataInputStream(new BufferedInputStream(inputStream))) {
+        List<String> roleList = new ArrayList<>();
+        if (roleOfUser.exists()) {
+          inputStream = new FileInputStream(roleOfUser);
+          try (DataInputStream roleInpuStream =
+              new DataInputStream(new BufferedInputStream(inputStream))) {
 
-          for (int i = 0; roleInpuStream.available() != 0; i++) {
-            String rolename = IOUtils.readString(roleInpuStream, STRING_ENCODING, strBufferLocal);
-            roleList.add(rolename);
+            for (int i = 0; roleInpuStream.available() != 0; i++) {
+              String rolename = IOUtils.readString(roleInpuStream, STRING_ENCODING, strBufferLocal);
+              roleList.add(rolename);
+            }
           }
         }
+        user.setRoleList(roleList);
+        return user;
       }
-      user.setRoleList(roleList);
-      return user;
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
@@ -196,7 +238,10 @@ public class LocalFileUserAccessor implements IUserAccessor {
     try (BufferedOutputStream outputStream =
         new BufferedOutputStream(Files.newOutputStream(userProfile.toPath()))) {
       try {
-        IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
+        // for IOTDB 1.2, the username's length will be stored as a negative number.
+        byte[] strBuffer = user.getName().getBytes(STRING_ENCODING);
+        IOUtils.writeInt(outputStream, -1 * strBuffer.length, encodingBufferLocal);
+        outputStream.write(strBuffer);
         IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
         IOUtils.writeInt(outputStream, user.getAllSysPrivileges(), encodingBufferLocal);
 
@@ -388,5 +433,51 @@ public class LocalFileUserAccessor implements IUserAccessor {
     for (File file : files) {
       FileUtils.deleteFileIfExist(file);
     }
+  }
+
+  @TestOnly
+  public void saveUserOldVersion(User user) throws IOException {
+    File userProfile =
+        SystemFileFactory.INSTANCE.getFile(
+            userDirPath
+                + File.separator
+                + user.getName()
+                + IoTDBConstant.PROFILE_SUFFIX
+                + TEMP_SUFFIX);
+
+    try (BufferedOutputStream outputStream =
+        new BufferedOutputStream(Files.newOutputStream(userProfile.toPath()))) {
+      try {
+        IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
+        IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
+
+        int privilegeNum = user.getPathPrivilegeList().size();
+        IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
+        for (int i = 0; i < privilegeNum; i++) {
+          PathPrivilege pathPrivilege = user.getPathPrivilegeList().get(i);
+          IOUtils.writePathPrivilege(
+              outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
+        }
+
+        int userNum = user.getRoleList().size();
+        IOUtils.writeInt(outputStream, userNum, encodingBufferLocal);
+        for (int i = 0; i < userNum; i++) {
+          IOUtils.writeString(
+              outputStream, user.getRoleList().get(i), STRING_ENCODING, encodingBufferLocal);
+        }
+        IOUtils.writeInt(outputStream, user.isUseWaterMark() ? 1 : 0, encodingBufferLocal);
+        outputStream.flush();
+
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
+    } finally {
+      encodingBufferLocal.remove();
+    }
+
+    File oldFile =
+        SystemFileFactory.INSTANCE.getFile(
+            userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
+    IOUtils.replaceFile(userProfile, oldFile);
   }
 }
