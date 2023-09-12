@@ -23,7 +23,9 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -31,6 +33,12 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.DATA_TYPE_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESEIRES_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.VALUE_STR;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -39,24 +47,67 @@ public class IoTDBLastViewIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    // without lastCache
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnableLastCache(false);
     EnvFactory.getEnv().initClusterEnvironment();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      prepareData(SQL_LIST);
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
-  private String[] sqlList =
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void lastViewTest() {
+    String[] expectedHeader =
+        new String[] {TIMESTAMP_STR, TIMESEIRES_STR, VALUE_STR, DATA_TYPE_STR};
+    String[] retArray =
+        new String[] {
+          "1,root.sg.d3.s2,1.0,DOUBLE,",
+          "1,root.sg.d4.vs3,0.5,DOUBLE,",
+          "2,root.sg.d4.vs2,102.0,DOUBLE,",
+          "106048000000,root.sg.d1.s1,10000,INT32,",
+          "106048000000,root.sg.d3.s1,2,INT32,",
+          "106048000000,root.sg.d4.vs1,10000,INT32,",
+          "106058000000,root.sg.d2.s1,10001,INT32,",
+        };
+    resultSetEqualTest("select last * from root.** order by time", expectedHeader, retArray);
+
+    retArray =
+        new String[] {
+          "1,root.sg.d4.vs3,0.5,DOUBLE,",
+          "2,root.sg.d4.vs2,102.0,DOUBLE,",
+          "106048000000,root.sg.d4.vs1,10000,INT32,",
+          "1,root.sg.d3.s2,1.0,DOUBLE,",
+          "106048000000,root.sg.d3.s1,2,INT32,",
+          "106058000000,root.sg.d2.s1,10001,INT32,",
+          "106048000000,root.sg.d1.s1,10000,INT32,",
+        };
+    resultSetEqualTest(
+        "select last * from root.** order by timeseries desc", expectedHeader, retArray);
+  }
+
+  private static final String[] SQL_LIST =
       new String[] {
         "create timeseries root.sg.d1.s1 INT32;",
         "create timeseries root.sg.d2.s1 INT32;",
-        "create view root.sg.d3.vs1 as root.sg.d1.s1;",
-        "create view root.sg.d3.vs2 as select d1.s1 + d2.s1 from root.sg;",
+        "CREATE ALIGNED TIMESERIES root.sg.d3(s1 INT32, s2 DOUBLE);",
+        "create view root.sg.d4.vs1 as root.sg.d1.s1;",
+        "create view root.sg.d4.vs2 as select d1.s1 + d2.s1 from root.sg;",
+        "create view root.sg.d4.vs3 as select d3.s2 / 2 from root.sg;",
         "insert into root.sg.d1(time, s1) values (1, 1);",
-        "insert into root.sg.d1(time, s1) values (106048000000, 2);",
-        "insert into root.sg.d2(time, s1) values (1, 100);",
-        "insert into root.sg.d2(time, s1) values (106048000000, 102);",
+        "insert into root.sg.d1(time, s1) values (2, 2);",
+        "insert into root.sg.d1(time, s1) values (106048000000, 10000);",
+        "insert into root.sg.d2(time, s1) values (2, 100);",
+        "insert into root.sg.d2(time, s1) values (106058000000, 10001);",
+        "insert into root.sg.d3(time, s1, s2) aligned values (1, 1, 1.0);",
+        "insert into root.sg.d3(time, s1, s2) aligned values (106048000000, 2, null);",
       };
 }

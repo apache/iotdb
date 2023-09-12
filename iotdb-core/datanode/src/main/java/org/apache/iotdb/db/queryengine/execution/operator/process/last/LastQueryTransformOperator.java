@@ -87,7 +87,6 @@ public class LastQueryTransformOperator implements ProcessOperator {
       return res;
     }
 
-    // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
 
