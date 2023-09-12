@@ -33,7 +33,6 @@
             <plugin>
                 <groupId>org.openapitools</groupId>
                 <artifactId>openapi-generator-maven-plugin</artifactId>
-                <version>${openapi.generator.version}</version>
                 <executions>
                     <execution>
                         <id>generate-java-rest-codes-common</id>
@@ -118,7 +117,6 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
-                <version>1.9.1</version>
                 <executions>
                     <execution>
                         <id>add-source</id>
