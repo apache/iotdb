@@ -1827,7 +1827,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     createLogicalViewStatement.setSourcePaths(alterLogicalViewStatement.getSourcePaths());
     createLogicalViewStatement.setQueryStatement(alterLogicalViewStatement.getQueryStatement());
 
-    Analyzer.analyze(createLogicalViewStatement, context);
+    Analysis analysis = Analyzer.analyze(createLogicalViewStatement, context);
+    if (analysis.isFailed()) {
+      future.setException(
+          new IoTDBException(
+              analysis.getFailStatus().getMessage(), analysis.getFailStatus().getCode()));
+      return future;
+    }
 
     // Transform all Expressions into ViewExpressions.
     TransformToViewExpressionVisitor transformToViewExpressionVisitor =
