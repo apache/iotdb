@@ -67,12 +67,32 @@ public class ShowClusterTask implements IConfigTask {
       TNodeVersionInfo versionInfo) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(nodeId);
-    builder.getColumnBuilder(1).writeBinary(new Binary(nodeType));
-    builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
-    builder.getColumnBuilder(3).writeBinary(new Binary(hostAddress));
+    if (nodeType == null) {
+      builder.getColumnBuilder(1).appendNull();
+    } else {
+      builder.getColumnBuilder(1).writeBinary(new Binary(nodeType));
+    }
+    if (nodeStatus == null) {
+      builder.getColumnBuilder(2).appendNull();
+    } else {
+      builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
+    }
+    if (hostAddress == null) {
+      builder.getColumnBuilder(3).appendNull();
+    } else {
+      builder.getColumnBuilder(3).writeBinary(new Binary(hostAddress));
+    }
     builder.getColumnBuilder(4).writeInt(port);
-    builder.getColumnBuilder(5).writeBinary(new Binary(versionInfo.getVersion()));
-    builder.getColumnBuilder(6).writeBinary(new Binary(versionInfo.getBuildInfo()));
+    if (versionInfo == null || versionInfo.getVersion() == null) {
+      builder.getColumnBuilder(5).appendNull();
+    } else {
+      builder.getColumnBuilder(5).writeBinary(new Binary(versionInfo.getVersion()));
+    }
+    if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+      builder.getColumnBuilder(6).appendNull();
+    } else {
+      builder.getColumnBuilder(6).writeBinary(new Binary(versionInfo.getBuildInfo()));
+    }
     builder.declarePosition();
   }
 

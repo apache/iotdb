@@ -16,24 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.flink.sql.wrapper;
 
-package org.apache.iotdb.consensus.ratis;
+import org.apache.iotdb.flink.sql.client.IoTDBWebSocketClient;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
-import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.consensus.ratis.utils.Utils;
+public class TabletWrapper {
+  private final long commitId;
+  private final IoTDBWebSocketClient websocketClient;
+  private final Tablet tablet;
 
-import org.apache.ratis.protocol.RaftGroupId;
-import org.junit.Assert;
-import org.junit.Test;
+  public TabletWrapper(long commitId, IoTDBWebSocketClient websocketClient, Tablet tablet) {
+    this.commitId = commitId;
+    this.websocketClient = websocketClient;
+    this.tablet = tablet;
+  }
 
-public class UtilsTest {
-  @Test
-  public void testEncryption() {
-    ConsensusGroupId raw = new ConfigRegionId(100);
-    RaftGroupId id = Utils.fromConsensusGroupIdToRaftGroupId(raw);
-    ConsensusGroupId cgid = Utils.fromRaftGroupIdToConsensusGroupId(id);
-    Assert.assertEquals(raw.getId(), cgid.getId());
-    Assert.assertEquals(raw.getType(), cgid.getType());
+  public long getCommitId() {
+    return commitId;
+  }
+
+  public IoTDBWebSocketClient getWebSocketClient() {
+    return websocketClient;
+  }
+
+  public Tablet getTablet() {
+    return tablet;
   }
 }

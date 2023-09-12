@@ -128,6 +128,7 @@ public class ConsensusManager {
                                   RatisConfig.Log.newBuilder()
                                       .setUnsafeFlushEnabled(
                                           CONF.isConfigNodeRatisLogUnsafeFlushEnable())
+                                      .setForceSyncNum(CONF.getConfigNodeRatisLogForceSyncNum())
                                       .setSegmentCacheSizeMax(
                                           SizeInBytes.valueOf(
                                               CONF.getConfigNodeRatisLogSegmentSizeMax()))
@@ -139,6 +140,8 @@ public class ConsensusManager {
                                       .setFlowControlWindow(
                                           SizeInBytes.valueOf(
                                               CONF.getConfigNodeRatisGrpcFlowControlWindow()))
+                                      .setLeaderOutstandingAppendsMax(
+                                          CONF.getConfigNodeRatisGrpcLeaderOutstandingAppendsMax())
                                       .build())
                               .setRpc(
                                   RatisConfig.Rpc.newBuilder()
@@ -336,6 +339,10 @@ public class ConsensusManager {
     return consensusImpl.isLeader(DEFAULT_CONSENSUS_GROUP_ID);
   }
 
+  public boolean isLeaderReady() {
+    return consensusImpl.isLeaderReady(DEFAULT_CONSENSUS_GROUP_ID);
+  }
+
   /** @return ConfigNode-leader's location if leader exists, null otherwise. */
   public TConfigNodeLocation getLeader() {
     for (int retry = 0; retry < 50; retry++) {
@@ -366,25 +373,28 @@ public class ConsensusManager {
   /**
    * Confirm the current ConfigNode's leadership.
    *
-   * @return SUCCESS_STATUS if the current ConfigNode is leader, NEED_REDIRECTION otherwise
+   * @return SUCCESS_STATUS if the current ConfigNode is leader and has been ready yet,
+   *     NEED_REDIRECTION otherwise
    */
   public TSStatus confirmLeader() {
     TSStatus result = new TSStatus();
-
-    if (isLeader()) {
-      return result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    if (isLeaderReady()) {
+      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
       result.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
-      result.setMessage(
-          "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
-
+      if (isLeader()) {
+        result.setMessage(
+            "The current ConfigNode is leader but not ready yet, please try again later.");
+      } else {
+        result.setMessage(
+            "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
+      }
       TConfigNodeLocation leaderLocation = getLeader();
       if (leaderLocation != null) {
         result.setRedirectNode(leaderLocation.getInternalEndPoint());
       }
-
-      return result;
     }
+    return result;
   }
 
   public ConsensusGroupId getConsensusGroupId() {

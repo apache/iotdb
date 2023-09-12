@@ -35,8 +35,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLED_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLED_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
@@ -87,8 +87,7 @@ public abstract class IoTDBConnector implements PipeConnector {
 
     isTabletBatchModeEnabled =
         parameters.getBooleanOrDefault(
-            CONNECTOR_IOTDB_BATCH_MODE_ENABLED_KEY,
-            CONNECTOR_IOTDB_BATCH_MODE_ENABLED_DEFAULT_VALUE);
+            CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
     LOGGER.info("IoTDBConnector isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
   }
 }

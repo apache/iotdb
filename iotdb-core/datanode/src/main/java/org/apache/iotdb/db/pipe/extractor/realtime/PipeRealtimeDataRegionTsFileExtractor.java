@@ -21,9 +21,9 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
@@ -35,16 +35,13 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionTsFileExtractor.class);
 
-  // This queue is used to store pending events extracted by the method extract(). The method
-  // supply() will poll events from this queue and send them to the next pipe plugin.
-  private final UnboundedBlockingPendingQueue<Event> pendingQueue;
-
-  public PipeRealtimeDataRegionTsFileExtractor() {
-    this.pendingQueue = new UnboundedBlockingPendingQueue<>();
-  }
-
   @Override
-  public void extract(PipeRealtimeEvent event) {
+  protected void doExtract(PipeRealtimeEvent event) {
+    if (event.getEvent() instanceof PipeHeartbeatEvent) {
+      extractHeartbeat(event);
+      return;
+    }
+
     event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
 
     if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
@@ -62,6 +59,39 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
               this, event, event.getTsFileEpoch().getState(this));
       LOGGER.error(errorMessage);
       PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+
+      // Ignore the event.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+    }
+  }
+
+  private void extractHeartbeat(PipeRealtimeEvent event) {
+    // Record the pending queue size before trying to put heartbeatEvent into queue
+    ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
+
+    Event lastEvent = pendingQueue.peekLast();
+    if (lastEvent instanceof PipeRealtimeEvent
+        && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent
+        && (((PipeHeartbeatEvent) ((PipeRealtimeEvent) lastEvent).getEvent()).isShouldPrintMessage()
+            || !((PipeHeartbeatEvent) event.getEvent()).isShouldPrintMessage())) {
+      // If the last event in the pending queue is a heartbeat event, we should not extract any more
+      // heartbeat events to avoid OOM when the pipe is stopped.
+      // Besides, the printable event has higher priority to stay in queue to enable metrics report.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+      return;
+    }
+
+    if (!pendingQueue.waitedOffer(event)) {
+      // This would not happen, but just in case.
+      // Pending is unbounded, so it should never reach capacity.
+      LOGGER.error(
+          "extract: pending queue of PipeRealtimeDataRegionTsFileExtractor {} "
+              + "has reached capacity, discard heartbeat event {}",
+          this,
+          event);
+
+      // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of
+      // pipe progress.
 
       // Ignore the event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
@@ -113,11 +143,5 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
 
     // means the pending queue is empty.
     return null;
-  }
-
-  @Override
-  public void close() throws Exception {
-    super.close();
-    pendingQueue.clear();
   }
 }

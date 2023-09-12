@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 public abstract class BlockingPendingQueue<E extends Event> {
 
@@ -35,7 +36,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
   private static final long MAX_BLOCKING_TIME_MS =
       PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
 
-  private final BlockingQueue<E> pendingQueue;
+  protected final BlockingQueue<E> pendingQueue;
 
   protected BlockingPendingQueue(BlockingQueue<E> pendingQueue) {
     this.pendingQueue = pendingQueue;
@@ -83,6 +84,10 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   public void clear() {
     pendingQueue.clear();
+  }
+
+  public void forEach(Consumer<? super E> action) {
+    pendingQueue.forEach(action);
   }
 
   public int size() {

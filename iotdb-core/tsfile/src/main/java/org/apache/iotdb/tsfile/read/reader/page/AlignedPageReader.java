@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -158,6 +159,10 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       // TODO accept valueStatisticsList to filter
       return filter.satisfy(statistics);
     }
+  }
+
+  public IPointReader getLazyPointReader() throws IOException {
+    return new LazyLoadAlignedPagePointReader(timePageReader, valuePageReaderList);
   }
 
   @Override
