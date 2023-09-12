@@ -119,7 +119,9 @@
         <jackson.version>2.13.5</jackson.version>
         <disrupter.version>3.4.2</disrupter.version>
         <jackson.databind.version>2.13.4.2</jackson.databind.version>
-        <antlr4.version>4.13.1</antlr4.version>
+        <antlr4.version>4.9.3</antlr4.version>
+        <!-- All versions 3.10.x and newer require Java 11 -->
+        <!--antlr4.version>4.13.1</antlr4.version-->
         <common.cli.version>1.3.1</common.cli.version>
         <common.codec.version>1.13</common.codec.version>
         <common.collections.version>3.2.2</common.collections.version>
@@ -616,6 +618,11 @@
                 <artifactId>JTransforms</artifactId>
                 <version>${JTransforms.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.dropwizard.metrics</groupId>
+                <artifactId>metrics-core</artifactId>
+                <version>${dropwizard.metrics.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>
@@ -937,6 +944,11 @@
                     <artifactId>openapi-generator-maven-plugin</artifactId>
                     <version>${openapi.generator.version}</version>
                 </plugin>
+                <plugin>
+                    <groupId>au.com.acegi</groupId>
+                    <artifactId>xml-format-maven-plugin</artifactId>
+                    <version>3.2.2</version>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -1001,14 +1013,14 @@
                     <execution>
                         <id>enforce-version-convergence</id>
                         <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
                         <configuration>
                             <rules>
                                 <dependencyConvergence/>
                             </rules>
                         </configuration>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
                     </execution>
                     <!--
                         Fails the build if classes are included from multiple
@@ -1058,12 +1070,17 @@
                     <dependency>
                         <groupId>org.sonatype.ossindex.maven</groupId>
                         <artifactId>ossindex-maven-enforcer-rules</artifactId>
-                        <version>1.0.0</version>
+                        <version>3.2.0</version>
                     </dependency>
                     <dependency>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>extra-enforcer-rules</artifactId>
-                        <version>1.4</version>
+                        <version>1.7.0</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.apache.maven.shared</groupId>
+                        <artifactId>maven-dependency-tree</artifactId>
+                        <version>3.2.1</version>
                     </dependency>
                 </dependencies>
             </plugin>
@@ -1100,13 +1117,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.puppycrawl.tools</groupId>
-                        <artifactId>checkstyle</artifactId>
-                        <version>8.45.1</version>
-                    </dependency>
-                </dependencies>
                 <executions>
                     <execution>
                         <id>validate</id>
@@ -1124,6 +1134,13 @@
                     <configLocation>checkstyle.xml</configLocation>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
                 </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>10.12.3</version>
+                    </dependency>
+                </dependencies>
             </plugin>
             <!--
               Check if all files contain Apache headers in them.
