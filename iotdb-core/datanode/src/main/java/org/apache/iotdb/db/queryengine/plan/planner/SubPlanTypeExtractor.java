@@ -143,7 +143,11 @@ public class SubPlanTypeExtractor {
 
     @Override
     public Void visitLastQueryCollect(LastQueryCollectNode node, Void context) {
-      return visitPlan(node, context);
+      if (node.getChildren().size() == 1
+          && node.getChildren().get(0) instanceof LastQueryTransformNode) {
+        return visitPlan(node, context);
+      }
+      return null;
     }
 
     @Override
