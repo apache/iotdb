@@ -496,26 +496,27 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private void analyzeLastSource(
       Analysis analysis, List<Expression> selectExpressions, ISchemaTree schemaTree) {
     Set<Expression> sourceExpressions = new LinkedHashSet<>();
-    Set<Expression> lastQueryNonWriteViewExpression = null;
-    Set<Expression> lastQueryBaseExpressions = new HashSet<>();
+    Set<Expression> lastQueryBaseExpressions = new LinkedHashSet<>();
+    Set<Expression> lastQueryNonWritableViewExpressions = null;
 
     for (Expression selectExpression : selectExpressions) {
       for (Expression sourceExpression : bindSchemaForExpression(selectExpression, schemaTree)) {
-        if (!(sourceExpression instanceof TimeSeriesOperand)) {
-          if (lastQueryNonWriteViewExpression == null) {
-            lastQueryNonWriteViewExpression = new HashSet<>();
-          }
-          lastQueryNonWriteViewExpression.add(sourceExpression);
-          sourceExpressions.addAll(searchSourceExpressions(sourceExpression));
-        } else {
-          sourceExpressions.add(sourceExpression);
+        if (sourceExpression instanceof TimeSeriesOperand) {
           lastQueryBaseExpressions.add(sourceExpression);
+          sourceExpressions.add(sourceExpression);
+        } else {
+          if (lastQueryNonWritableViewExpressions == null) {
+            lastQueryNonWritableViewExpressions = new LinkedHashSet<>();
+          }
+          lastQueryNonWritableViewExpressions.add(sourceExpression);
+          sourceExpressions.addAll(searchSourceExpressions(sourceExpression));
         }
       }
     }
+
     analysis.setSourceExpressions(sourceExpressions);
-    analysis.setLastQueryBaseExpression(lastQueryBaseExpressions);
-    analysis.setLastQueryNonWriteViewExpression(lastQueryNonWriteViewExpression);
+    analysis.setLastQueryBaseExpressions(lastQueryBaseExpressions);
+    analysis.setLastQueryNonWritableViewExpression(lastQueryNonWritableViewExpressions);
   }
 
   private void updateSchemaTreeByViews(Analysis analysis, ISchemaTree originSchemaTree) {

@@ -210,7 +210,7 @@ public class Analysis {
   // timeseries, otherwise it will be null
   private Ordering timeseriesOrderingForLastQuery = null;
 
-  // Used to store view expression in last query which in non-writable
+  // Used to store view expression in last query which is non-writable
   private Set<Expression> lastQueryNonWritableViewExpressions;
 
   private Set<Expression> lastQueryBaseExpressions;
@@ -740,7 +740,7 @@ public class Analysis {
     return this.lastQueryBaseExpressions;
   }
 
-  public void setLastQueryBaseExpression(Set<Expression> lastQueryBaseExpressions) {
+  public void setLastQueryBaseExpressions(Set<Expression> lastQueryBaseExpressions) {
     this.lastQueryBaseExpressions = lastQueryBaseExpressions;
   }
 
@@ -748,8 +748,9 @@ public class Analysis {
     return this.lastQueryNonWritableViewExpressions;
   }
 
-  public void setLastQueryNonWriteViewExpression(Set<Expression> lastQueryNonWriteViewExpression) {
-    this.lastQueryNonWritableViewExpressions = lastQueryNonWriteViewExpression;
+  public void setLastQueryNonWritableViewExpression(
+      Set<Expression> lastQueryNonWritableViewExpression) {
+    this.lastQueryNonWritableViewExpressions = lastQueryNonWritableViewExpression;
   }
 
   public ModelInferenceDescriptor getModelInferenceDescriptor() {

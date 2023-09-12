@@ -317,9 +317,18 @@ public class LogicalPlanBuilder {
       for (Expression expression : lastQueryNonWriteViewExpressions) {
         Set<Expression> sourceTransformExpressions =
             new HashSet<>(Collections.singletonList(expression));
-        analyzeExpression(analysis, expression);
         LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-        Set<Expression> sources = new HashSet<>(searchSourceExpressions(expression));
+        Set<Expression> sources = new LinkedHashSet<>(searchSourceExpressions(expression));
+        FunctionExpression maxTimeAgg =
+            new FunctionExpression(
+                MAX_TIME, new LinkedHashMap<>(), Collections.singletonList(expression));
+        FunctionExpression lastValueAgg =
+            new FunctionExpression(
+                LAST_VALUE, new LinkedHashMap<>(), Collections.singletonList(expression));
+        analyzeExpression(analysis, expression);
+        analyzeExpression(analysis, maxTimeAgg);
+        analyzeExpression(analysis, lastValueAgg);
+
         planBuilder =
             planBuilder
                 .planRawDataSource(
@@ -332,25 +341,15 @@ public class LogicalPlanBuilder {
                     sourceTransformExpressions,
                     false,
                     queryStatement.getSelectComponent().getZoneId(),
-                    queryStatement.getResultTimeOrder());
-
-        FunctionExpression maxTimeAgg =
-            new FunctionExpression(
-                MAX_TIME, new LinkedHashMap<>(), Collections.singletonList(expression));
-        FunctionExpression lastValueAgg =
-            new FunctionExpression(
-                LAST_VALUE, new LinkedHashMap<>(), Collections.singletonList(expression));
-        analyzeExpression(analysis, maxTimeAgg);
-        analyzeExpression(analysis, lastValueAgg);
-        planBuilder =
-            planBuilder.planAggregation(
-                new LinkedHashSet<>(Arrays.asList(maxTimeAgg, lastValueAgg)),
-                null,
-                analysis.getGroupByTimeParameter(),
-                analysis.getGroupByParameter(),
-                false,
-                AggregationStep.SINGLE,
-                Ordering.ASC);
+                    queryStatement.getResultTimeOrder())
+                .planAggregation(
+                    new LinkedHashSet<>(Arrays.asList(maxTimeAgg, lastValueAgg)),
+                    null,
+                    analysis.getGroupByTimeParameter(),
+                    analysis.getGroupByParameter(),
+                    false,
+                    AggregationStep.SINGLE,
+                    Ordering.ASC);
 
         LastQueryTransformNode transformNode =
             new LastQueryTransformNode(

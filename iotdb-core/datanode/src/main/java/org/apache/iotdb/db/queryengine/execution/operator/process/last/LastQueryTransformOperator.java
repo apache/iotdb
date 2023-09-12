@@ -1,12 +1,10 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
-import org.apache.iotdb.commons.exception.runtime.UnSupportedDataTypeException;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -84,11 +82,14 @@ public class LastQueryTransformOperator implements ProcessOperator {
         if (tsBlock == null) {
           return null;
         } else if (!tsBlock.isEmpty()) {
+          if (tsBlock.getColumn(1).isNull(0)) {
+            return null;
+          }
           LastQueryUtil.appendLastValue(
               tsBlockBuilder,
               tsBlock.getColumn(0).getLong(0),
               viewPath,
-              getValue(tsBlock.getColumn(1)),
+              tsBlock.getColumn(1).getTsPrimitiveType(0).getStringValue(),
               dataType);
         }
       } else {
@@ -150,23 +151,5 @@ public class LastQueryTransformOperator implements ProcessOperator {
       }
     }
     tsBlockBuilder = null;
-  }
-
-  private String getValue(Column column) {
-    switch (column.getDataType()) {
-      case BOOLEAN:
-        return String.valueOf(column.getBoolean(0));
-      case INT32:
-        return String.valueOf(column.getInt(0));
-      case INT64:
-        return String.valueOf(column.getLong(0));
-      case FLOAT:
-        return String.valueOf(column.getFloat(0));
-      case DOUBLE:
-        return String.valueOf(column.getDouble(0));
-      default:
-        throw new UnSupportedDataTypeException(
-            "UnSupported data type in last query : " + column.getDataType());
-    }
   }
 }

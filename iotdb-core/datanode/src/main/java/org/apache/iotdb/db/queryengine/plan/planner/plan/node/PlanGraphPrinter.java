@@ -436,6 +436,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitLastQueryTransform(LastQueryTransformNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("LastQueryTransform-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("ViewPath: %s", node.getViewPath()));
     return render(node, boxValue, context);
   }
 
