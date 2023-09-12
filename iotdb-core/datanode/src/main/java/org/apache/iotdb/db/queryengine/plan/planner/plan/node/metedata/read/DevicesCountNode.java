@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -36,13 +37,14 @@ import java.util.stream.Collectors;
 
 public class DevicesCountNode extends SchemaQueryScanNode {
 
-  public DevicesCountNode(PlanNodeId id, PartialPath partialPath, boolean isPrefixPath) {
-    super(id, partialPath, isPrefixPath);
+  public DevicesCountNode(
+      PlanNodeId id, PartialPath partialPath, boolean isPrefixPath, PathPatternTree scope) {
+    super(id, partialPath, isPrefixPath, scope);
   }
 
   @Override
   public PlanNode clone() {
-    return new DevicesCountNode(getPlanNodeId(), path, isPrefixPath);
+    return new DevicesCountNode(getPlanNodeId(), path, isPrefixPath, scope);
   }
 
   @Override
@@ -56,6 +58,7 @@ public class DevicesCountNode extends SchemaQueryScanNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.DEVICES_COUNT.serialize(byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
+    scope.serialize(byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
   }
 
@@ -63,6 +66,7 @@ public class DevicesCountNode extends SchemaQueryScanNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.DEVICES_COUNT.serialize(stream);
     ReadWriteIOUtils.write(path.getFullPath(), stream);
+    scope.serialize(stream);
     ReadWriteIOUtils.write(isPrefixPath, stream);
   }
 
@@ -74,9 +78,10 @@ public class DevicesCountNode extends SchemaQueryScanNode {
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize DevicesSchemaScanNode", e);
     }
+    PathPatternTree scope = PathPatternTree.deserialize(buffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new DevicesCountNode(planNodeId, path, isPrefixPath);
+    return new DevicesCountNode(planNodeId, path, isPrefixPath, scope);
   }
 
   @Override

@@ -79,7 +79,10 @@ public enum ProcedureType {
 
   /** logical view */
   DELETE_LOGICAL_VIEW_PROCEDURE((short) 1200),
-  ALTER_LOGICAL_VIEW_PROCEDURE((short) 12001);
+  ALTER_LOGICAL_VIEW_PROCEDURE((short) 12001),
+
+  /** Auth privilege */
+  AUTH_OPERATE_PROCEDURE((short) 1300);
 
   private final short typeCode;
 

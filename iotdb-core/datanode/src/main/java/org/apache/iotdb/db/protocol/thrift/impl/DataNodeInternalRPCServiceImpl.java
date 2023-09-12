@@ -43,6 +43,7 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -53,7 +54,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
-import org.apache.iotdb.db.auth.AuthorizerManager;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -782,7 +783,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 for (PartialPath pattern : filteredPatternTree.getAllPathPatterns()) {
                   ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
                       SchemaSourceFactory.getTimeSeriesSchemaCountSource(
-                          pattern, false, null, null);
+                          pattern, false, null, null, SchemaConstant.ALL_MATCH_SCOPE);
                   try (ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
                       schemaSource.getSchemaReader(schemaRegion)) {
                     if (schemaReader.hasNext()) {
@@ -1185,7 +1186,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
       resp.setLoadSample(loadSample);
     }
-
+    AuthorityChecker.getAuthorityFetcher().refreshToken();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
     resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
     if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {
@@ -1312,7 +1313,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req) {
-    if (AuthorizerManager.getInstance().invalidateCache(req.getUsername(), req.getRoleName())) {
+    if (AuthorityChecker.invalidateCache(req.getUsername(), req.getRoleName())) {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
     return RpcUtils.getStatus(TSStatusCode.CLEAR_PERMISSION_CACHE_ERROR);

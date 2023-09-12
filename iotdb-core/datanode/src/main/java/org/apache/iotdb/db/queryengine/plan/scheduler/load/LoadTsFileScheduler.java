@@ -142,7 +142,10 @@ public class LoadTsFileScheduler implements IScheduler {
               node.getTsFileResource().getTsFilePath());
 
         } else if (!node.needDecodeTsFile(
-            partitionFetcher::queryDataPartition)) { // do not decode, load locally
+            slotList ->
+                partitionFetcher.queryDataPartition(
+                    slotList,
+                    queryContext.getSession().getUserName()))) { // do not decode, load locally
           isLoadSingleTsFileSuccess = loadLocally(node);
           node.clean();
 
@@ -432,7 +435,8 @@ public class LoadTsFileScheduler implements IScheduler {
           scheduler.partitionFetcher.queryDataPartition(
               nonDirectionalChunkData.stream()
                   .map(data -> new Pair<>(data.getDevice(), data.getTimePartitionSlot()))
-                  .collect(Collectors.toList()));
+                  .collect(Collectors.toList()),
+              scheduler.queryContext.getSession().getUserName());
       IntStream.range(0, nonDirectionalChunkData.size())
           .forEach(
               i ->
@@ -481,14 +485,15 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     public List<TRegionReplicaSet> queryDataPartition(
-        List<Pair<String, TTimePartitionSlot>> slotList) {
+        List<Pair<String, TTimePartitionSlot>> slotList, String userName) {
       List<TRegionReplicaSet> replicaSets = new ArrayList<>();
       int size = slotList.size();
 
       for (int i = 0; i < size; i += TRANSMIT_LIMIT) {
         List<Pair<String, TTimePartitionSlot>> subSlotList =
             slotList.subList(i, Math.min(size, i + TRANSMIT_LIMIT));
-        DataPartition dataPartition = fetcher.getOrCreateDataPartition(toQueryParam(subSlotList));
+        DataPartition dataPartition =
+            fetcher.getOrCreateDataPartition(toQueryParam(subSlotList), userName);
         replicaSets.addAll(
             subSlotList.stream()
                 .map(pair -> dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right))

@@ -47,6 +47,9 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   public CachedSchemaPatternMatcher() {
     this.lock = new ReentrantReadWriteLock();
+    // Should be thread-safe because the extractors will be returned by {@link #match} and
+    // iterated by {@link #assignToExtractor}, at the same time the extractors may be added or
+    // removed by {@link #register} and {@link #deregister}.
     this.extractors = new CopyOnWriteArraySet<>();
     this.deviceToExtractorsCache =
         Caffeine.newBuilder()

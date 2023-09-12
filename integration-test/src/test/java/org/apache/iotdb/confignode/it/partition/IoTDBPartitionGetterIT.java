@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -30,6 +31,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -326,8 +328,10 @@ public class IoTDBPartitionGetterIT {
 
         // Check the number of DataRegionGroup.
         // And this number should be greater than or equal to leastDataRegionGroupNum
-        TShowDatabaseResp showStorageGroupResp =
-            client.showDatabase(Arrays.asList(storageGroup.split("\\.")));
+        TGetDatabaseReq req =
+            new TGetDatabaseReq(
+                Arrays.asList(storageGroup.split("\\.")), SchemaConstant.ALL_MATCH_SCOPE_BINARY);
+        TShowDatabaseResp showStorageGroupResp = client.showDatabase(req);
         Assert.assertTrue(
             showStorageGroupResp.getDatabaseInfoMap().get(storageGroup).getDataRegionNum()
                 >= leastDataRegionGroupNum);
