@@ -2342,6 +2342,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitLastQuery(LastQueryNode node, LocalExecutionPlanContext context) {
+    if (node.getChildren().size() == 1
+        && node.getChildren().get(0) instanceof LastQueryTransformNode) {
+      return visitLastQueryTransform((LastQueryTransformNode) node.getChildren().get(0), context);
+    }
 
     context.setLastQueryTimeFilter(node.getTimeFilter());
     context.setNeedUpdateLastCache(LastQueryUtil.needUpdateCache(node.getTimeFilter()));

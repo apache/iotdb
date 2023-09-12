@@ -115,6 +115,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -343,7 +344,7 @@ public class LogicalPlanBuilder {
         analyzeExpression(analysis, lastValueAgg);
         planBuilder =
             planBuilder.planAggregation(
-                new HashSet<>(Arrays.asList(maxTimeAgg, lastValueAgg)),
+                new LinkedHashSet<>(Arrays.asList(maxTimeAgg, lastValueAgg)),
                 null,
                 analysis.getGroupByTimeParameter(),
                 analysis.getGroupByParameter(),
