@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_FILE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_FORCED_LOG;
@@ -72,17 +72,17 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
         .validateAttributeValueRange(
             EXTRACTOR_HISTORY_ENABLE_KEY, true, Boolean.TRUE.toString(), Boolean.FALSE.toString())
         .validateAttributeValueRange(
-            EXTRACTOR_REALTIME_ENABLE, true, Boolean.TRUE.toString(), Boolean.FALSE.toString())
+            EXTRACTOR_REALTIME_ENABLE_KEY, true, Boolean.TRUE.toString(), Boolean.FALSE.toString())
         .validate(
             args -> (boolean) args[0] || (boolean) args[1],
             String.format(
                 "Should not set both %s and %s to false.",
-                EXTRACTOR_HISTORY_ENABLE_KEY, EXTRACTOR_REALTIME_ENABLE),
+                EXTRACTOR_HISTORY_ENABLE_KEY, EXTRACTOR_REALTIME_ENABLE_KEY),
             validator.getParameters().getBooleanOrDefault(EXTRACTOR_HISTORY_ENABLE_KEY, true),
-            validator.getParameters().getBooleanOrDefault(EXTRACTOR_REALTIME_ENABLE, true));
+            validator.getParameters().getBooleanOrDefault(EXTRACTOR_REALTIME_ENABLE_KEY, true));
 
     // Validate extractor.realtime.mode
-    if (validator.getParameters().getBooleanOrDefault(EXTRACTOR_REALTIME_ENABLE, true)) {
+    if (validator.getParameters().getBooleanOrDefault(EXTRACTOR_REALTIME_ENABLE_KEY, true)) {
       validator.validateAttributeValueRange(
           EXTRACTOR_REALTIME_MODE,
           true,
@@ -106,9 +106,10 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
   private void constructRealtimeExtractor(PipeParameters parameters) {
     // Enable realtime extractor by default
-    if (!parameters.getBooleanOrDefault(EXTRACTOR_REALTIME_ENABLE, true)) {
+    if (!parameters.getBooleanOrDefault(EXTRACTOR_REALTIME_ENABLE_KEY, true)) {
       realtimeExtractor = new PipeRealtimeDataRegionFakeExtractor();
-      LOGGER.info("'{}' is set to false, use fake realtime extractor.", EXTRACTOR_REALTIME_ENABLE);
+      LOGGER.info(
+          "'{}' is set to false, use fake realtime extractor.", EXTRACTOR_REALTIME_ENABLE_KEY);
       return;
     }
 

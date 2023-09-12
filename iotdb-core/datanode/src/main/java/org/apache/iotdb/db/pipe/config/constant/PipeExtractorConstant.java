@@ -34,7 +34,7 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_HISTORY_START_TIME = "extractor.history.start-time";
   public static final String EXTRACTOR_HISTORY_END_TIME = "extractor.history.end-time";
 
-  public static final String EXTRACTOR_REALTIME_ENABLE = "extractor.realtime.enable";
+  public static final String EXTRACTOR_REALTIME_ENABLE_KEY = "extractor.realtime.enable";
   public static final String EXTRACTOR_REALTIME_MODE = "extractor.realtime.mode";
   public static final String EXTRACTOR_REALTIME_MODE_HYBRID = "hybrid";
   public static final String EXTRACTOR_REALTIME_MODE_FILE = "file";

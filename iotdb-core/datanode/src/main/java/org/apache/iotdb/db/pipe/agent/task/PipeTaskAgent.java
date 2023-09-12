@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.task.PipeBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTask;
@@ -40,6 +41,7 @@ import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -57,6 +59,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
 
 /**
  * State transition diagram of a pipe task:
@@ -436,6 +441,23 @@ public class PipeTaskAgent {
    * @throws IllegalStateException if the status is illegal
    */
   private boolean createPipe(PipeMeta pipeMetaFromConfigNode) {
+    // If there is no data region now, the validate() process of the pipe will be skipped.
+    // So we simply add the logic here to prohibit creating a pipe with both history.enable
+    // and realtime.enable set to false.
+    if (!(pipeMetaFromConfigNode
+            .getStaticMeta()
+            .getExtractorParameters()
+            .getBooleanOrDefault(PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY, true)
+        || pipeMetaFromConfigNode
+            .getStaticMeta()
+            .getExtractorParameters()
+            .getBooleanOrDefault(PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_KEY, true))) {
+      throw new PipeException(
+          String.format(
+              "At least one of %s and %s should be set to true.",
+              EXTRACTOR_HISTORY_ENABLE_KEY, EXTRACTOR_REALTIME_ENABLE_KEY));
+    }
+
     final String pipeName = pipeMetaFromConfigNode.getStaticMeta().getPipeName();
     final long creationTime = pipeMetaFromConfigNode.getStaticMeta().getCreationTime();
 
