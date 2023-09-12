@@ -288,7 +288,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       PipeResourceManager.tsfile().unpinTsFileResource(resource);
     } catch (IOException e) {
       LOGGER.warn(
-          "Pipe: failed to unpin TsFileResource, original path: {}", resource.getTsFilePath());
+          "Pipe: failed to unpin TsFileResource after creating event, original path: {}",
+          resource.getTsFilePath());
     }
     return event;
   }
@@ -301,8 +302,15 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   public synchronized void close() {
     if (pendingQueue != null) {
       pendingQueue.forEach(
-          event ->
-              event.clearReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName()));
+          resource -> {
+            try {
+              PipeResourceManager.tsfile().unpinTsFileResource(resource);
+            } catch (IOException e) {
+              LOGGER.warn(
+                  "Pipe: failed to unpin TsFileResource after dropping pipe, original path: {}",
+                  resource.getTsFilePath());
+            }
+          });
       pendingQueue.clear();
       pendingQueue = null;
     }
