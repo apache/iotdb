@@ -115,7 +115,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   // Pipe only collect user's data, filter metric database here.
                   consensusGroupIdToTaskMetaMap.put(
                       regionGroupId,
-                      new PipeTaskMeta(new MinimumProgressIndex(), regionLeaderNodeId));
+                      new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId));
                 }
               }
             });
