@@ -906,12 +906,13 @@ public class IoTConsensusServerImpl {
         long sortTime = System.nanoTime();
         ioTConsensusServerMetrics.recordSortCost(sortTime - insertStartTime);
         logger.debug(
-            "source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}",
+            "source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}, sortTime = {} ms",
             sourcePeerId,
             consensusGroupId,
             requestCache.size(),
             request.getStartSyncIndex(),
-            request.getEndSyncIndex());
+            request.getEndSyncIndex(),
+            TimeUnit.NANOSECONDS.toMillis(sortTime - insertStartTime));
         List<TSStatus> subStatus = new LinkedList<>();
         for (IConsensusRequest insertNode : request.getInsertNodes()) {
           subStatus.add(stateMachine.write(insertNode));
