@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.confignode.manager.pipe.task;
 
-import org.apache.iotdb.pipe.api.exception.PipeException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * PipeTaskCoordinatorLock is a cross thread lock for pipe task coordinator. It is used to ensure
@@ -35,21 +34,40 @@ public class PipeTaskCoordinatorLock {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskCoordinatorLock.class);
 
-  private final BlockingDeque<Object> deque = new LinkedBlockingDeque<>(1);
-  private final Object object = new Object();
+  private final BlockingDeque<Long> deque = new LinkedBlockingDeque<>(1);
+  private final AtomicLong idGenerator = new AtomicLong(0);
 
   void lock() {
     try {
-      deque.put(object);
-      LOGGER.info("Lock acquired by thread {}", Thread.currentThread().getName());
+      final long id = idGenerator.incrementAndGet();
+      LOGGER.info(
+          "PipeTaskCoordinator lock (id: {}) waiting for thread {}",
+          id,
+          Thread.currentThread().getName());
+      deque.put(id);
+      LOGGER.info(
+          "PipeTaskCoordinator lock (id: {}) acquired by thread {}",
+          id,
+          Thread.currentThread().getName());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new PipeException(String.format("Interrupted while waiting for lock: %s", e));
+      LOGGER.error(
+          "Interrupted while waiting for PipeTaskCoordinator lock, current thread: {}",
+          Thread.currentThread().getName());
     }
   }
 
   void unlock() {
-    deque.poll();
-    LOGGER.info("Lock released by thread {}", Thread.currentThread().getName());
+    final Long id = deque.poll();
+    if (id == null) {
+      LOGGER.error(
+          "PipeTaskCoordinator lock released by thread {} but the lock is not acquired by any thread",
+          Thread.currentThread().getName());
+    } else {
+      LOGGER.info(
+          "PipeTaskCoordinator lock (id: {}) released by thread {}",
+          id,
+          Thread.currentThread().getName());
+    }
   }
 }

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
@@ -35,26 +37,34 @@ public abstract class SchemaQueryScanNode extends SourceNode {
   protected long limit;
   protected long offset;
   protected PartialPath path;
+  protected PathPatternTree scope;
   private boolean hasLimit;
   protected boolean isPrefixPath;
 
   private TRegionReplicaSet schemaRegionReplicaSet;
 
   protected SchemaQueryScanNode(PlanNodeId id) {
-    this(id, null, false);
+    this(id, null, false, SchemaConstant.ALL_MATCH_SCOPE);
   }
 
   protected SchemaQueryScanNode(
-      PlanNodeId id, PartialPath partialPath, long limit, long offset, boolean isPrefixPath) {
+      PlanNodeId id,
+      PartialPath partialPath,
+      long limit,
+      long offset,
+      boolean isPrefixPath,
+      PathPatternTree scope) {
     super(id);
     this.path = partialPath;
+    this.scope = scope;
     setLimit(limit);
     this.offset = offset;
     this.isPrefixPath = isPrefixPath;
   }
 
-  protected SchemaQueryScanNode(PlanNodeId id, PartialPath partialPath, boolean isPrefixPath) {
-    this(id, partialPath, 0, 0, isPrefixPath);
+  protected SchemaQueryScanNode(
+      PlanNodeId id, PartialPath partialPath, boolean isPrefixPath, PathPatternTree scope) {
+    this(id, partialPath, 0, 0, isPrefixPath, scope);
   }
 
   @Override
@@ -129,6 +139,14 @@ public abstract class SchemaQueryScanNode extends SourceNode {
     this.path = path;
   }
 
+  public PathPatternTree getScope() {
+    return scope;
+  }
+
+  public void setScope(PathPatternTree scope) {
+    this.scope = scope;
+  }
+
   public boolean isHasLimit() {
     return hasLimit;
   }
@@ -151,24 +169,19 @@ public abstract class SchemaQueryScanNode extends SourceNode {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
     SchemaQueryScanNode that = (SchemaQueryScanNode) o;
     return limit == that.limit
         && offset == that.offset
         && isPrefixPath == that.isPrefixPath
-        && Objects.equals(path, that.path);
+        && Objects.equals(path, that.path)
+        && Objects.equals(scope, that.scope);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), limit, offset, path, isPrefixPath);
+    return Objects.hash(super.hashCode(), limit, offset, path, scope, isPrefixPath);
   }
 }

@@ -49,7 +49,7 @@ public class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionE
   }
 
   @Override
-  public void extract(PipeRealtimeEvent event) {
+  protected void doExtract(PipeRealtimeEvent event) {
     // do nothing
   }
 

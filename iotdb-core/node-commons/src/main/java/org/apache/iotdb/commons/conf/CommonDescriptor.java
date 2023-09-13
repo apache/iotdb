@@ -200,6 +200,10 @@ public class CommonDescriptor {
     config.setTimestampPrecision(
         properties.getProperty("timestamp_precision", config.getTimestampPrecision()).trim());
 
+    config.setDatanodeTokenTimeoutMS(
+        Integer.parseInt(
+            properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
+
     String endPointUrl =
         properties.getProperty(
             "target_ml_node_endpoint",
@@ -238,6 +242,11 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
+    config.setModelInferenceExecutionThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "model_inference_execution_thread_count",
+                String.valueOf(config.getModelInferenceExecutionThreadCount()))));
   }
 
   private void loadPipeProps(Properties properties) {

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.DecoratingLock;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
@@ -115,7 +116,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
         outputPipeConnector.transfer(event);
       }
 
-      releaseLastEvent();
+      releaseLastEvent(true);
     } catch (PipeConnectionException e) {
       throw e;
     } catch (Exception e) {
@@ -237,14 +238,22 @@ public class PipeConnectorSubtask extends PipeSubtask {
   public synchronized void close() {
     try {
       outputPipeConnector.close();
-
-      // Should be called after outputPipeConnector.close()
-      super.close();
     } catch (Exception e) {
       LOGGER.info(
           "Error occurred during closing PipeConnector, perhaps need to check whether the "
               + "implementation of PipeConnector is correct according to the pipe-api description.",
           e);
+    } finally {
+      inputPendingQueue.forEach(
+          event -> {
+            if (event instanceof EnrichedEvent) {
+              ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName());
+            }
+          });
+      inputPendingQueue.clear();
+
+      // Should be called after outputPipeConnector.close()
+      super.close();
     }
   }
 }

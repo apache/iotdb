@@ -108,9 +108,6 @@ public class Cli extends AbstractCli {
       if (commandLine.hasOption(ISO8601_ARGS)) {
         timeFormat = RpcUtils.setTimeFormat("long");
       }
-      if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
-        setMaxDisplayNumber(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
-      }
       if (commandLine.hasOption(TIMEOUT_ARGS)) {
         setQueryTimeout(commandLine.getOptionValue(TIMEOUT_ARGS));
       }

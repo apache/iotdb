@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -39,12 +40,15 @@ import java.util.NoSuchElementException;
 public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo> {
 
   private final List<PartialPath> pathPatternList;
+  private final PathPatternTree scope;
 
   private final int templateId;
 
-  PathsUsingTemplateSource(List<PartialPath> pathPatternList, int templateId) {
+  PathsUsingTemplateSource(
+      List<PartialPath> pathPatternList, int templateId, PathPatternTree scope) {
     this.pathPatternList = pathPatternList;
     this.templateId = templateId;
+    this.scope = scope;
   }
 
   @Override
@@ -126,7 +130,7 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
           currentDeviceReader =
               schemaRegion.getDeviceReader(
                   SchemaRegionReadPlanFactory.getShowDevicesPlan(
-                      pathPatternIterator.next(), 0, 0, false, templateId));
+                      pathPatternIterator.next(), 0, 0, false, templateId, scope));
           if (currentDeviceReader.hasNext()) {
             return true;
           } else {

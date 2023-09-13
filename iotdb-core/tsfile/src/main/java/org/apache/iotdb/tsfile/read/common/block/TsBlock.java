@@ -137,14 +137,16 @@ public class TsBlock {
         length, (TimeColumn) timeColumn.getRegion(positionOffset, length), slicedColumns);
   }
 
-  public TsBlock appendValueColumn(Column column) {
-    requireNonNull(column, "Column is null");
-    if (positionCount != column.getPositionCount()) {
-      throw new IllegalArgumentException("Block does not have same position count");
+  public TsBlock appendValueColumns(Column[] columns) {
+    Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + columns.length);
+    int newColumnIndex = valueColumns.length;
+    for (Column column : columns) {
+      requireNonNull(column, "Column is null");
+      if (positionCount != column.getPositionCount()) {
+        throw new IllegalArgumentException("Block does not have same position count");
+      }
+      newBlocks[newColumnIndex++] = column;
     }
-
-    Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + 1);
-    newBlocks[valueColumns.length] = column;
     return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
   }
 
@@ -469,8 +471,8 @@ public class TsBlock {
     }
 
     private boolean isCurrentValueAllNull() {
-      for (int i = 0; i < valueColumns.length; i++) {
-        if (!valueColumns[i].isNull(rowIndex)) {
+      for (Column valueColumn : valueColumns) {
+        if (!valueColumn.isNull(rowIndex)) {
           return false;
         }
       }

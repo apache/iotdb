@@ -83,7 +83,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   @Override
   public ProgressIndex getProgressIndex() {
-    return new MinimumProgressIndex();
+    return MinimumProgressIndex.INSTANCE;
   }
 
   @Override

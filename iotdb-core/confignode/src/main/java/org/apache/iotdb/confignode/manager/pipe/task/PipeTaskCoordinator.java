@@ -65,7 +65,6 @@ public class PipeTaskCoordinator {
    */
   public AtomicReference<PipeTaskInfo> lock() {
     pipeTaskCoordinatorLock.lock();
-    LOGGER.info("Pipe task coordinator locked.");
 
     pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
     return pipeTaskInfoHolder;
@@ -85,7 +84,6 @@ public class PipeTaskCoordinator {
 
     try {
       pipeTaskCoordinatorLock.unlock();
-      LOGGER.info("Pipe task coordinator unlocked.");
       return true;
     } catch (IllegalMonitorStateException ignored) {
       // This is thrown if unlock() is called without lock() called first.

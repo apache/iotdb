@@ -16,14 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.pipe.connector.protocol.websocket;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -46,12 +45,12 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
   private final PriorityBlockingQueue<Pair<Long, Event>> events =
       new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left));
-  private final WebsocketConnector websocketConnector;
+  private final WebSocketConnector websocketConnector;
 
   private final ConcurrentMap<Long, Event> eventMap = new ConcurrentHashMap<>();
 
   public WebSocketConnectorServer(
-      InetSocketAddress address, WebsocketConnector websocketConnector) {
+      InetSocketAddress address, WebSocketConnector websocketConnector) {
     super(address);
     this.websocketConnector = websocketConnector;
   }
@@ -78,18 +77,20 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   @Override
   public void onMessage(WebSocket webSocket, String s) {
-    String log =
-        String.format(
-            "Received a message `%s` from %s:%d",
-            s,
-            webSocket.getRemoteSocketAddress().getHostName(),
-            webSocket.getRemoteSocketAddress().getPort());
-    LOGGER.info(log);
     if (s.startsWith("START")) {
+      LOGGER.info(
+          "Received a start message from {}:{}",
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort());
       handleStart(webSocket);
     } else if (s.startsWith("ACK")) {
       handleAck(webSocket, s);
     } else if (s.startsWith("ERROR")) {
+      LOGGER.error(
+          "Received an error message {} from {}:{}",
+          s,
+          webSocket.getRemoteSocketAddress().getHostName(),
+          webSocket.getRemoteSocketAddress().getPort());
       handleError(webSocket, s);
     }
   }
@@ -116,17 +117,18 @@ public class WebSocketConnectorServer extends WebSocketServer {
         String.format(
             "The webSocket server %s:%d has been started!",
             this.getAddress().getHostName(), this.getPort());
-    LOGGER.error(log);
+    LOGGER.info(log);
   }
 
   public void addEvent(Pair<Long, Event> event) {
-    if (events.size() >= 50) {
+    if (events.size() >= 5) {
       synchronized (events) {
-        while (events.size() >= 50) {
+        while (events.size() >= 5) {
           try {
             events.wait();
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            throw new PipeException(e.getMessage());
           }
         }
       }
@@ -136,23 +138,37 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   private void handleStart(WebSocket webSocket) {
     try {
-      Pair<Long, Event> eventPair = events.take();
-      synchronized (events) {
-        events.notifyAll();
-        transfer(eventPair, webSocket);
+      while (true) {
+        Pair<Long, Event> eventPair = events.take();
+        synchronized (events) {
+          events.notifyAll();
+        }
+        boolean transferred = transfer(eventPair, webSocket);
+        if (transferred) {
+          break;
+        } else {
+          websocketConnector.commit(
+              eventPair.getLeft(),
+              eventPair.getRight() instanceof EnrichedEvent
+                  ? (EnrichedEvent) eventPair.getRight()
+                  : null);
+        }
       }
     } catch (InterruptedException e) {
       String log = String.format("The event can't be taken, because: %s", e.getMessage());
       LOGGER.warn(log);
       Thread.currentThread().interrupt();
+      throw new PipeException(e.getMessage());
     }
   }
 
   private void handleAck(WebSocket webSocket, String s) {
     long commitId = Long.parseLong(s.replace("ACK:", ""));
     Event event = eventMap.remove(commitId);
-    websocketConnector.commit(
-        commitId, event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
+    if (event != null) {
+      websocketConnector.commit(
+          commitId, event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
+    }
     handleStart(webSocket);
   }
 
@@ -163,11 +179,14 @@ public class WebSocketConnectorServer extends WebSocketServer {
             "The tablet of commitId: %d can't be parsed by client, it will be retried later.",
             commitId);
     LOGGER.warn(log);
-    events.put(new Pair<>(commitId, eventMap.remove(commitId)));
+    Event event = eventMap.remove(commitId);
+    if (event != null) {
+      events.put(new Pair<>(commitId, event));
+    }
     handleStart(webSocket);
   }
 
-  private void transfer(Pair<Long, Event> eventPair, WebSocket webSocket) {
+  private boolean transfer(Pair<Long, Event> eventPair, WebSocket webSocket) {
     Long commitId = eventPair.getLeft();
     Event event = eventPair.getRight();
     try {
@@ -176,20 +195,13 @@ public class WebSocketConnectorServer extends WebSocketServer {
         tabletBuffer = ((PipeInsertNodeTabletInsertionEvent) event).convertToTablet().serialize();
       } else if (event instanceof PipeRawTabletInsertionEvent) {
         tabletBuffer = ((PipeRawTabletInsertionEvent) event).convertToTablet().serialize();
-      } else if (event instanceof PipeTsFileInsertionEvent) {
-        PipeTsFileInsertionEvent tsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
-        tsFileInsertionEvent.waitForTsFileClose();
-        Iterable<TabletInsertionEvent> subEvents = tsFileInsertionEvent.toTabletInsertionEvents();
-        for (TabletInsertionEvent subEvent : subEvents) {
-          tabletBuffer = ((PipeRawTabletInsertionEvent) subEvent).convertToTablet().serialize();
-        }
       } else {
         throw new NotImplementedException(
             "IoTDBCDCConnector only support "
                 + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
       }
       if (tabletBuffer == null) {
-        return;
+        return false;
       }
       ByteBuffer payload = ByteBuffer.allocate(Long.BYTES + tabletBuffer.limit());
       payload.putLong(commitId);
@@ -197,20 +209,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
       payload.flip();
       this.broadcast(payload, Collections.singletonList(webSocket));
       eventMap.put(eventPair.getLeft(), eventPair.getRight());
-      String log =
-          String.format(
-              "Transferred a message to client %s:%d",
-              webSocket.getRemoteSocketAddress().getAddress().getHostName(),
-              webSocket.getRemoteSocketAddress().getPort());
-      LOGGER.info(log);
-    } catch (InterruptedException e) {
-      events.put(eventPair);
-      Thread.currentThread().interrupt();
-      throw new PipeException(e.getMessage());
     } catch (Exception e) {
       events.put(eventPair);
-      e.printStackTrace();
       throw new PipeException(e.getMessage());
     }
+    return true;
   }
 }

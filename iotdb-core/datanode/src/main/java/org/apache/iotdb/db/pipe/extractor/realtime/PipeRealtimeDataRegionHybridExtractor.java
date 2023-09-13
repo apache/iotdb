@@ -25,7 +25,6 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -38,16 +37,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
-  // This queue is used to store pending events extracted by the method extract(). The method
-  // supply() will poll events from this queue and send them to the next pipe plugin.
-  private final UnboundedBlockingPendingQueue<Event> pendingQueue;
-
-  public PipeRealtimeDataRegionHybridExtractor() {
-    this.pendingQueue = new UnboundedBlockingPendingQueue<>();
-  }
-
   @Override
-  public void extract(PipeRealtimeEvent event) {
+  protected void doExtract(PipeRealtimeEvent event) {
     final Event eventToExtract = event.getEvent();
 
     if (eventToExtract instanceof TabletInsertionEvent) {
@@ -86,7 +77,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     switch (state) {
       case USING_TSFILE:
         // Ignore the tablet event.
-        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
         break;
       case EMPTY:
       case USING_TABLET:
@@ -103,7 +94,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
           // Ignore the tablet event.
-          event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+          event.decreaseReferenceCount(
+              PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
         }
         break;
       default:
@@ -139,12 +131,16 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
           // Ignore the tsfile event.
-          event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+          event.decreaseReferenceCount(
+              PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
         }
         break;
       case USING_TABLET:
-        // All the tablet events have been extracted, so we can ignore the tsfile event.
-        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+        // All the tablet events have been extracted, so we can ignore the tsFile event.
+        // Report this event for SimpleProgressIndex, which does not have progressIndex for wal.
+        // This report won't affect IoTProgressIndex since the previous wal events have been
+        // successfully transferred here.
+        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName(), true);
         break;
       default:
         throw new UnsupportedOperationException(
@@ -166,7 +162,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       // If the last event in the pending queue is a heartbeat event, we should not extract any more
       // heartbeat events to avoid OOM when the pipe is stopped.
       // Besides, the printable event has higher priority to stay in queue to enable metrics report.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
       return;
     }
 
@@ -183,7 +179,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       // pipe progress.
 
       // ignore this event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
     }
   }
 
@@ -214,7 +210,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                 eventToSupply.getClass(), this));
       }
 
-      realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+      realtimeEvent.decreaseReferenceCount(
+          PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
 
       if (suppliedEvent != null) {
         return suppliedEvent;
@@ -306,11 +303,5 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
 
       return null;
     }
-  }
-
-  @Override
-  public void close() throws Exception {
-    super.close();
-    pendingQueue.clear();
   }
 }

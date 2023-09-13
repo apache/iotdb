@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
@@ -70,6 +71,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -704,9 +706,10 @@ public class ProcedureManager {
     return statusList.get(0);
   }
 
-  public TSStatus createModel(ModelInformation modelInformation, Map<String, String> modelConfigs) {
+  public TSStatus createModel(
+      ModelInformation modelInformation, Map<String, String> hyperparameters) {
     long procedureId =
-        executor.submitProcedure(new CreateModelProcedure(modelInformation, modelConfigs));
+        executor.submitProcedure(new CreateModelProcedure(modelInformation, hyperparameters));
     List<TSStatus> statusList = new ArrayList<>();
     boolean isSucceed =
         waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
@@ -881,6 +884,25 @@ public class ProcedureManager {
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus operateAuthPlan(AuthorPlan authorPlan, List<TDataNodeConfiguration> dns) {
+    try {
+      final long procedureId =
+          executor.submitProcedure(new AuthOperationProcedure(authorPlan, dns));
+      List<TSStatus> statusList = new ArrayList<>();
+      boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return RpcUtils.SUCCESS_STATUS;
+      } else {
+        return new TSStatus(TSStatusCode.AUTH_OPERATE_EXCEPTION.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.AUTH_OPERATE_EXCEPTION.getStatusCode())
+          .setMessage(e.getMessage());
     }
   }
 

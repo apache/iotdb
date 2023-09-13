@@ -20,6 +20,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.Traverser;
@@ -43,11 +44,17 @@ public abstract class MNodeTraverser<R, N extends IMNode<N>> extends Traverser<R
    * @param path use wildcard to specify which part to traverse
    * @param store MTree store to traverse
    * @param isPrefixMatch prefix match or not
+   * @param scope traversing scope
    * @throws MetadataException path does not meet the expected rules
    */
-  public MNodeTraverser(N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
+  public MNodeTraverser(
+      N startNode,
+      PartialPath path,
+      IMTreeStore<N> store,
+      boolean isPrefixMatch,
+      PathPatternTree scope)
       throws MetadataException {
-    super(startNode, path, store, isPrefixMatch);
+    super(startNode, path, store, isPrefixMatch, scope);
   }
 
   @Override

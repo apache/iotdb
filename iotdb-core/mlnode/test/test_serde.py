@@ -26,7 +26,7 @@ device_id = "root.wt1"
 
 ts_path_lst = [
     "root.wt1.temperature",
-    "root.wt1.windspeed",
+    "root.wt1.windSpeed",
     "root.wt1.angle",
     "root.wt1.altitude",
     "root.wt1.status",
@@ -34,7 +34,7 @@ ts_path_lst = [
 ]
 measurements = [
     "temperature",
-    "windspeed",
+    "windSpeed",
     "angle",
     "altitude",
     "status",
@@ -90,10 +90,10 @@ binary_with_null = \
         b'\x00\x00\x00\x06\x04\x03\x05\x00\x02\x01\x00\x00\x00\x01\x02\x02\x01\x03\x04\x02\x04\x00\x00\x00\x00\x00'
         b'\x00\x00\x00\x13\x00?\xd3\xc7\xae#\x86\xe1j\x00?\x10\xea!\x00\x00\x00\x00\x05text1\x00\x01\x80\x00\x00\x00'
         b'\x00\x00\x00\x00\x00\x00?\x01\x01\x80']
-column_names = ['root.wt1.altitude', 'root.wt1.temperature', 'root.wt1.angle', 'root.wt1.windspeed',
+column_names = ['root.wt1.altitude', 'root.wt1.temperature', 'root.wt1.angle', 'root.wt1.windSpeed',
                 'root.wt1.hardware', 'root.wt1.status']
 data_type_list = ['INT64', 'FLOAT', 'INT32', 'DOUBLE', 'TEXT', 'BOOLEAN']
-column_name_index = {'root.wt1.windspeed': 0, 'root.wt1.temperature': 1, 'root.wt1.hardware': 2, 'root.wt1.status': 3,
+column_name_index = {'root.wt1.windSpeed': 0, 'root.wt1.temperature': 1, 'root.wt1.hardware': 2, 'root.wt1.status': 3,
                      'root.wt1.altitude': 4, 'root.wt1.angle': 5}
 
 

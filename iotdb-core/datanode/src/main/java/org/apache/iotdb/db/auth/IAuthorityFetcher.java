@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 
@@ -32,11 +34,21 @@ public interface IAuthorityFetcher {
 
   TSStatus checkUser(String username, String password);
 
-  TSStatus checkUserPrivileges(String username, List<PartialPath> allPath, int permission);
+  boolean checkRole(String username, String rolename);
+
+  List<Integer> checkUserPathPrivileges(String username, List<PartialPath> allPath, int permission);
+
+  TSStatus checkUserSysPrivileges(String username, int permisssion);
+
+  boolean checkUserPrivilegeGrantOpt(String username, List<PartialPath> paths, int permission);
+
+  PathPatternTree getAuthorizedPatternTree(String username, int permission) throws AuthException;
 
   SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement);
 
   SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement);
 
   IAuthorCache getAuthorCache();
+
+  void refreshToken();
 }

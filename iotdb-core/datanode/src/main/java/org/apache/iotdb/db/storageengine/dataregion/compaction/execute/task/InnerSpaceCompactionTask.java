@@ -249,7 +249,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             "{}-{} [Compaction] compaction finish, start to delete old files",
             storageGroupName,
             dataRegionId);
-        CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(selectedTsFileResourceList);
+        CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
+            selectedTsFileResourceList, sequence);
         CompactionUtils.deleteModificationForSourceFile(
             selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
 
@@ -279,8 +280,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             dataRegionId,
             sequence ? "Sequence" : "Unsequence",
             targetTsFileResource.getTsFile().getName(),
-            costTime,
-            selectedFileSize / 1024.0d / 1024.0d / costTime,
+            String.format("%.2f", costTime),
+            String.format("%.2f", selectedFileSize / 1024.0d / 1024.0d / costTime),
             summary);
       }
       if (logFile.exists()) {
