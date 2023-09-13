@@ -82,9 +82,6 @@ public class LocalExecutionPlannerTest {
           root, context.getDriverContext(), root.calculateMaxPeekMemory());
       Assert.assertEquals(
           ALIGNED_MAX_SIZE, calculateEstimatedMemorySize(context.getPipelineDriverFactories()));
-      Assert.assertEquals(
-          calculateEstimatedMemorySizeFromOperation(context.getPipelineDriverFactories()),
-          calculateEstimatedMemorySize(context.getPipelineDriverFactories()));
     } catch (Exception e) {
       Assert.fail();
     }
@@ -116,32 +113,32 @@ public class LocalExecutionPlannerTest {
     // ALIGNED_MAX_SIZE * 5 / 2 is calculated by directly applying the algorithm on the Operator
     // Tree.
     Assert.assertEquals(
-        ALIGNED_MAX_SIZE * 5 / 2,
+        ALIGNED_MAX_SIZE * 5 / 2
+            + context.getPipelineDriverFactories().stream()
+                .map(
+                    pipelineDriverFactory ->
+                        pipelineDriverFactory
+                            .getOperation()
+                            .calculateRetainedSizeAfterCallingNext())
+                .reduce(0L, Long::sum),
         calculateEstimatedMemorySize(context.getPipelineDriverFactories()));
-    Assert.assertEquals(
-        calculateEstimatedMemorySizeFromOperation(context.getPipelineDriverFactories()),
-        calculateEstimatedMemorySize(context.getPipelineDriverFactories()));
-  }
-
-  private long calculateEstimatedMemorySizeFromOperation(
-      final List<PipelineDriverFactory> pipelineDriverFactories) {
-    long totalSizeOfDrivers =
-        pipelineDriverFactories.stream()
-            .map(
-                pipelineDriverFactory ->
-                    pipelineDriverFactory.getOperation().calculateMaxPeekMemory())
-            .reduce(0L, Long::sum);
-    return Math.max((QUERY_THREAD_COUNT / ESTIMATED_FI_NUM), 1)
-        * (totalSizeOfDrivers / pipelineDriverFactories.size());
   }
 
   private long calculateEstimatedMemorySize(
       final List<PipelineDriverFactory> pipelineDriverFactories) {
+    long retainedSize =
+        pipelineDriverFactories.stream()
+            .map(
+                pipelineDriverFactory ->
+                    pipelineDriverFactory.getOperation().calculateRetainedSizeAfterCallingNext())
+            .reduce(0L, Long::sum);
     long totalSizeOfDrivers =
         pipelineDriverFactories.stream()
             .map(PipelineDriverFactory::getEstimatedMemorySize)
             .reduce(0L, Long::sum);
-    return Math.max((QUERY_THREAD_COUNT / ESTIMATED_FI_NUM), 1)
-        * (totalSizeOfDrivers / pipelineDriverFactories.size());
+    long runningMemorySize =
+        Math.max((QUERY_THREAD_COUNT / ESTIMATED_FI_NUM), 1)
+            * (totalSizeOfDrivers / pipelineDriverFactories.size());
+    return retainedSize + runningMemorySize;
   }
 }

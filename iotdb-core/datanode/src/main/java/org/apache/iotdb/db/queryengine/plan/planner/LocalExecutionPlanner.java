@@ -168,18 +168,33 @@ public class LocalExecutionPlanner {
    *
    * <p>N = (X / ( M * Y)) * Y = X / M
    *
-   * <p>The estimated memory size this FI would use is:
+   * <p>The estimated running memory size this FI would use is:
    *
    * <p>N * avgMemoryUsedPerDriver = N * totalSizeOfDriver / driverNum
+   *
+   * <p>Some operators still retain memory when they are not running, so we need to add the size of
+   * retained memory of all the Drivers when they are not running.
+   *
+   * <p>The total estimated memory size this FI would use is:
+   *
+   * <p>retainedSize + N * totalSizeOfDriver / driverNum
    */
   private long calculateEstimatedMemorySize(
       final List<PipelineDriverFactory> pipelineDriverFactories) {
+    long retainedSize =
+        pipelineDriverFactories.stream()
+            .map(
+                pipelineDriverFactory ->
+                    pipelineDriverFactory.getOperation().calculateRetainedSizeAfterCallingNext())
+            .reduce(0L, Long::sum);
     long totalSizeOfDrivers =
         pipelineDriverFactories.stream()
             .map(PipelineDriverFactory::getEstimatedMemorySize)
             .reduce(0L, Long::sum);
-    return Math.max((QUERY_THREAD_COUNT / ESTIMATED_FI_NUM), 1)
-        * (totalSizeOfDrivers / pipelineDriverFactories.size());
+    long runningMemorySize =
+        Math.max((QUERY_THREAD_COUNT / ESTIMATED_FI_NUM), 1)
+            * (totalSizeOfDrivers / pipelineDriverFactories.size());
+    return retainedSize + runningMemorySize;
   }
 
   private List<PartialPath> collectSourcePaths(LocalExecutionPlanContext context) {
