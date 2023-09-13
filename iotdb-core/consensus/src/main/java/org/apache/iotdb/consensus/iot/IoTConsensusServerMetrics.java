@@ -37,7 +37,7 @@ public class IoTConsensusServerMetrics implements IMetricSet {
   private Histogram writeStateMachineHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram offerRequestToQueueHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram consensusWriteHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  private static final String IOT_SYNC_LOG = Metric.IOT_SYNC_LOG.toString();
+  private static final String IOT_RECEIVE_LOG = Metric.IOT_RECEIVE_LOG.toString();
   private Timer deserializeTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer sortTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer applyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -193,7 +193,7 @@ public class IoTConsensusServerMetrics implements IMetricSet {
     // bind sync log timers
     deserializeTimer =
         metricService.getOrCreateTimer(
-            IOT_SYNC_LOG,
+            IOT_RECEIVE_LOG,
             MetricLevel.IMPORTANT,
             Tag.STAGE.toString(),
             DESERIALIZE,
@@ -201,7 +201,7 @@ public class IoTConsensusServerMetrics implements IMetricSet {
             impl.getConsensusGroupId());
     sortTimer =
         metricService.getOrCreateTimer(
-            IOT_SYNC_LOG,
+            IOT_RECEIVE_LOG,
             MetricLevel.IMPORTANT,
             Tag.STAGE.toString(),
             SORT,
@@ -209,7 +209,7 @@ public class IoTConsensusServerMetrics implements IMetricSet {
             impl.getConsensusGroupId());
     applyTimer =
         metricService.getOrCreateTimer(
-            IOT_SYNC_LOG,
+            IOT_RECEIVE_LOG,
             MetricLevel.IMPORTANT,
             Tag.STAGE.toString(),
             APPLY,
@@ -322,21 +322,21 @@ public class IoTConsensusServerMetrics implements IMetricSet {
     // unbind sync log timers
     metricService.remove(
         MetricType.TIMER,
-        IOT_SYNC_LOG,
+        IOT_RECEIVE_LOG,
         Tag.STAGE.toString(),
         DESERIALIZE,
         Tag.REGION.toString(),
         impl.getConsensusGroupId());
     metricService.remove(
         MetricType.TIMER,
-        IOT_SYNC_LOG,
+        IOT_RECEIVE_LOG,
         Tag.STAGE.toString(),
         SORT,
         Tag.REGION.toString(),
         impl.getConsensusGroupId());
     metricService.remove(
         MetricType.TIMER,
-        IOT_SYNC_LOG,
+        IOT_RECEIVE_LOG,
         Tag.STAGE.toString(),
         APPLY,
         Tag.REGION.toString(),
