@@ -33,6 +33,9 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -111,5 +114,27 @@ public class LocalFileUserAccessorTest {
     }
     User nullUser = accessor.loadUser(users[users.length - 1].getName());
     assertNull(nullUser);
+  }
+
+  public void testLoadOldVersion() throws IOException, IllegalPathException {
+    User user = new User();
+    user.setName("root");
+    user.setPassword("password1");
+    PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c"));
+    pathPrivilege.grantPrivilege(1, false);
+    user.setPrivilegeList(Collections.singletonList(pathPrivilege));
+    user.setSysPriGrantOpt(new HashSet<>());
+    user.setSysPrivilegeSet(new HashSet<>());
+    user.setRoleList(Collections.singletonList("role1"));
+    accessor.saveUserOldVersion(user);
+    User newUser = accessor.loadUser("root");
+    assertEquals("root", newUser.getName());
+    assertEquals("password1", newUser.getPassword());
+    assertEquals(new ArrayList<>(), newUser.getPathPrivilegeList());
+    assertEquals(new HashSet<>(), newUser.getSysPrivilege());
+    accessor.deleteUser("root");
+    accessor.saveUser(user);
+    newUser = accessor.loadUser("root");
+    assertEquals(user, newUser);
   }
 }

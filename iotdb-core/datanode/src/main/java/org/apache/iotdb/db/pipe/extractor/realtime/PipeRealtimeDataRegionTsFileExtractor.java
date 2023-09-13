@@ -45,7 +45,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
     event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
 
     if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
-      event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
       return;
     }
 
@@ -61,7 +61,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
       PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
       // Ignore the event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
     }
   }
 
@@ -77,7 +77,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
       // If the last event in the pending queue is a heartbeat event, we should not extract any more
       // heartbeat events to avoid OOM when the pipe is stopped.
       // Besides, the printable event has higher priority to stay in queue to enable metrics report.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
       return;
     }
 
@@ -94,7 +94,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
       // pipe progress.
 
       // Ignore the event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
     }
   }
 
@@ -132,7 +132,8 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
         PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }
 
-      realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+      realtimeEvent.decreaseReferenceCount(
+          PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
 
       if (suppliedEvent != null) {
         return suppliedEvent;

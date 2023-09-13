@@ -362,6 +362,17 @@ public class ConfigPlanExecutor {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
+      case CreateUserDep:
+      case CreateRoleDep:
+      case DropUserDep:
+      case DropRoleDep:
+      case GrantRoleDep:
+      case GrantUserDep:
+      case GrantRoleToUserDep:
+      case RevokeUserDep:
+      case RevokeRoleDep:
+      case RevokeRoleFromUserDep:
+      case UpdateUserDep:
         return authorInfo.authorNonQuery((AuthorPlan) physicalPlan);
       case ApplyConfigNode:
         return nodeInfo.applyConfigNode((ApplyConfigNodePlan) physicalPlan);

@@ -169,11 +169,11 @@ public class AuthorPlan extends ConfigPhysicalPlan {
         stream.writeInt(permission);
       }
     }
-    BasicStructureSerDeUtil.write(grantOpt ? 1 : 0, stream);
     BasicStructureSerDeUtil.write(nodeNameList.size(), stream);
     for (PartialPath partialPath : nodeNameList) {
       BasicStructureSerDeUtil.write(partialPath.getFullPath(), stream);
     }
+    BasicStructureSerDeUtil.write(grantOpt ? 1 : 0, stream);
   }
 
   @Override
@@ -192,7 +192,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
         permissions.add(buffer.getInt());
       }
     }
-    grantOpt = BasicStructureSerDeUtil.readInt(buffer) > 0;
+
     int nodeNameListSize = BasicStructureSerDeUtil.readInt(buffer);
     nodeNameList = new ArrayList<>(nodeNameListSize);
     try {
@@ -201,6 +201,10 @@ public class AuthorPlan extends ConfigPhysicalPlan {
       }
     } catch (MetadataException e) {
       logger.error("Invalid path when deserialize authPlan: {}", nodeNameList, e);
+    }
+    grantOpt = false;
+    if (this.authorType.ordinal() >= ConfigPhysicalPlanType.CreateUser.ordinal()) {
+      grantOpt = BasicStructureSerDeUtil.readInt(buffer) > 0;
     }
   }
 

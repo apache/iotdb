@@ -519,15 +519,17 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       @Override
       public YieldableState yield() throws Exception {
         if (isFirstIteration) {
-          if (rowRecordList.size() == 0 && nextWindowTimeBegin == Long.MIN_VALUE) {
+          if (rowRecordList.size() == 0) {
             final YieldableState yieldableState =
                 LayerCacheUtils.yieldRow(udfInputDataSet, rowRecordList);
             if (yieldableState != YieldableState.YIELDABLE) {
               return yieldableState;
             }
-            // display window begin should be set to the same as the min timestamp of the query
-            // result set
-            nextWindowTimeBegin = rowRecordList.getTime(0);
+            if (nextWindowTimeBegin == Long.MIN_VALUE) {
+              // display window begin should be set to the same as the min timestamp of the query
+              // result set
+              nextWindowTimeBegin = rowRecordList.getTime(0);
+            }
           }
           hasAtLeastOneRow = rowRecordList.size() != 0;
           isFirstIteration = false;
