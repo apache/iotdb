@@ -45,6 +45,7 @@ public enum Metric {
   // consensus related
   STAGE("stage"),
   IOT_CONSENSUS("iot_consensus"),
+  IOT_SYNC_LOG("iot_sync_log"),
   RATIS_CONSENSUS_WRITE("ratis_consensus_write"),
   RATIS_CONSENSUS_READ("ratis_consensus_read"),
   // storage engine related

@@ -25,6 +25,7 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -36,6 +37,13 @@ public class IoTConsensusServerMetrics implements IMetricSet {
   private Histogram writeStateMachineHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram offerRequestToQueueHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram consensusWriteHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private static final String IOT_SYNC_LOG = Metric.IOT_SYNC_LOG.toString();
+  private Timer deserializeTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer sortTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer applyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private static final String DESERIALIZE = "deserialize";
+  private static final String SORT = "sort";
+  private static final String APPLY = "apply";
 
   public IoTConsensusServerMetrics(IoTConsensusServerImpl impl) {
     this.impl = impl;
@@ -43,16 +51,30 @@ public class IoTConsensusServerMetrics implements IMetricSet {
 
   private static final String IMPL = "ioTConsensusServerImpl";
 
+  public void recordDeserializeCost(long costTimeInNanos) {
+    deserializeTimer.updateNanos(costTimeInNanos);
+  }
+
+  public void recordSortCost(long costTimeInNanos) {
+    sortTimer.updateNanos(costTimeInNanos);
+  }
+
+  public void recordApplyCost(long costTimeInNanos) {
+    applyTimer.updateNanos(costTimeInNanos);
+  }
+
   @Override
   public void bindTo(AbstractMetricService metricService) {
     bindAutoGauge(metricService);
     bindStageHistogram(metricService);
+    bindSyncLogTimer(metricService);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     unbindAutoGauge(metricService);
     unbindStageHistogram(metricService);
+    unbindSyncLogTimer(metricService);
   }
 
   private void bindAutoGauge(AbstractMetricService metricService) {
@@ -167,6 +189,34 @@ public class IoTConsensusServerMetrics implements IMetricSet {
             impl.getConsensusGroupId());
   }
 
+  private void bindSyncLogTimer(AbstractMetricService metricService) {
+    // bind sync log timers
+    deserializeTimer =
+        metricService.getOrCreateTimer(
+            IOT_SYNC_LOG,
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            DESERIALIZE,
+            Tag.REGION.toString(),
+            impl.getConsensusGroupId());
+    sortTimer =
+        metricService.getOrCreateTimer(
+            IOT_SYNC_LOG,
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            SORT,
+            Tag.REGION.toString(),
+            impl.getConsensusGroupId());
+    applyTimer =
+        metricService.getOrCreateTimer(
+            IOT_SYNC_LOG,
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            APPLY,
+            Tag.REGION.toString(),
+            impl.getConsensusGroupId());
+  }
+
   private void unbindAutoGauge(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.AUTO_GAUGE,
@@ -264,6 +314,31 @@ public class IoTConsensusServerMetrics implements IMetricSet {
         Metric.IOT_CONSENSUS.toString(),
         Tag.TYPE.toString(),
         "consensusWrite",
+        Tag.REGION.toString(),
+        impl.getConsensusGroupId());
+  }
+
+  private void unbindSyncLogTimer(AbstractMetricService metricService) {
+    // unbind sync log timers
+    metricService.remove(
+        MetricType.TIMER,
+        IOT_SYNC_LOG,
+        Tag.STAGE.toString(),
+        DESERIALIZE,
+        Tag.REGION.toString(),
+        impl.getConsensusGroupId());
+    metricService.remove(
+        MetricType.TIMER,
+        IOT_SYNC_LOG,
+        Tag.STAGE.toString(),
+        SORT,
+        Tag.REGION.toString(),
+        impl.getConsensusGroupId());
+    metricService.remove(
+        MetricType.TIMER,
+        IOT_SYNC_LOG,
+        Tag.STAGE.toString(),
+        APPLY,
         Tag.REGION.toString(),
         impl.getConsensusGroupId());
   }

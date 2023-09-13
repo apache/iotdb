@@ -740,6 +740,10 @@ public class IoTConsensusServerImpl {
     return retryService;
   }
 
+  public IoTConsensusServerMetrics getIoTConsensusServerMetrics() {
+    return this.ioTConsensusServerMetrics;
+  }
+
   public boolean isReadOnly() {
     return stateMachine.isReadOnly();
   }
@@ -841,6 +845,7 @@ public class IoTConsensusServerImpl {
     private TSStatus cacheAndInsertLatestNode(DeserializedBatchIndexedConsensusRequest request) {
       queueLock.lock();
       try {
+        long insertStartTime = System.nanoTime();
         requestCache.add(request);
         // If the peek is not hold by current thread, it should notify the corresponding thread to
         // process the peek when the queue is full
@@ -898,6 +903,8 @@ public class IoTConsensusServerImpl {
             Thread.currentThread().interrupt();
           }
         }
+        long sortTime = System.nanoTime();
+        ioTConsensusServerMetrics.recordSortCost(sortTime - insertStartTime);
         logger.debug(
             "source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}",
             sourcePeerId,
@@ -909,6 +916,7 @@ public class IoTConsensusServerImpl {
         for (IConsensusRequest insertNode : request.getInsertNodes()) {
           subStatus.add(stateMachine.write(insertNode));
         }
+        ioTConsensusServerMetrics.recordApplyCost(System.nanoTime() - sortTime);
         queueSortCondition.signalAll();
         return new TSStatus().setSubStatus(subStatus);
       } finally {
