@@ -17,30 +17,46 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.statement.metadata;
+package org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
 
-public class DropPipePluginStatement extends Statement implements IConfigStatement {
+public class CreatePipePluginStatement extends Statement implements IConfigStatement {
 
   private final String pluginName;
+  private final String className;
+  private final String uriString;
 
-  public DropPipePluginStatement(String pluginName) {
+  public CreatePipePluginStatement(String pluginName, String className, String uriString) {
     super();
-    statementType = StatementType.DROP_PIPEPLUGIN;
+    statementType = StatementType.CREATE_PIPEPLUGIN;
     this.pluginName = pluginName;
+    this.className = className;
+    this.uriString = uriString;
   }
 
   public String getPluginName() {
     return pluginName;
+  }
+
+  public String getClassName() {
+    return className;
+  }
+
+  public String getUriString() {
+    return uriString;
   }
 
   @Override
@@ -54,7 +70,17 @@ public class DropPipePluginStatement extends Statement implements IConfigStateme
   }
 
   @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE.ordinal()),
+        PrivilegeType.USE_PIPE);
+  }
+
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitDropPipePlugin(this, context);
+    return visitor.visitCreatePipePlugin(this, context);
   }
 }

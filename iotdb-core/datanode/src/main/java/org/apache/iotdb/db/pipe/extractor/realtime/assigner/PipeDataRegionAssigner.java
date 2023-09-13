@@ -72,7 +72,7 @@ public class PipeDataRegionAssigner {
               }
             });
     event.gcSchemaInfo();
-    event.decreaseReferenceCount(PipeDataRegionAssigner.class.getName());
+    event.decreaseReferenceCount(PipeDataRegionAssigner.class.getName(), false);
   }
 
   public void startAssignTo(PipeRealtimeDataRegionExtractor extractor) {

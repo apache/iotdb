@@ -45,7 +45,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
     event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TABLET);
 
     if (!(event.getEvent() instanceof TabletInsertionEvent)) {
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
       return;
     }
 
@@ -61,7 +61,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
       PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
       // ignore this event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
     }
   }
 
@@ -77,7 +77,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
       // If the last event in the pending queue is a heartbeat event, we should not extract any more
       // heartbeat events to avoid OOM when the pipe is stopped.
       // Besides, the printable event has higher priority to stay in queue to enable metrics report.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
       return;
     }
 
@@ -94,7 +94,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
       // pipe progress.
 
       // ignore this event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
     }
   }
 
@@ -132,7 +132,8 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
         PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }
 
-      realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+      realtimeEvent.decreaseReferenceCount(
+          PipeRealtimeDataRegionLogExtractor.class.getName(), false);
 
       if (suppliedEvent != null) {
         return suppliedEvent;

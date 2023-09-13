@@ -68,7 +68,8 @@ public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatc
 
     for (final Event event : events) {
       if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).decreaseReferenceCount(IoTDBThriftSyncConnector.class.getName());
+        ((EnrichedEvent) event)
+            .decreaseReferenceCount(IoTDBThriftSyncConnector.class.getName(), true);
       }
     }
     events.clear();

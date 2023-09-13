@@ -22,6 +22,7 @@ package org.apache.iotdb.db.schemaengine.template;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -63,8 +64,9 @@ public interface ITemplateManager {
    * Get info of mounted template.
    *
    * @param name template name
+   * @param scope scope
    */
-  List<PartialPath> getPathsSetTemplate(String name);
+  List<PartialPath> getPathsSetTemplate(String name, PathPatternTree scope);
 
   Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath devicePath);
 

@@ -29,7 +29,9 @@ import java.nio.ByteBuffer;
 
 public class MinimumProgressIndex implements ProgressIndex {
 
-  public MinimumProgressIndex() {}
+  public static final MinimumProgressIndex INSTANCE = new MinimumProgressIndex();
+
+  private MinimumProgressIndex() {}
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
@@ -78,11 +80,11 @@ public class MinimumProgressIndex implements ProgressIndex {
   }
 
   public static MinimumProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
-    return new MinimumProgressIndex();
+    return INSTANCE;
   }
 
   public static MinimumProgressIndex deserializeFrom(InputStream stream) {
-    return new MinimumProgressIndex();
+    return INSTANCE;
   }
 
   @Override

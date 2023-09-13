@@ -198,6 +198,8 @@ public class CommonConfig {
   // maximum number of Cluster Databases allowed
   private int databaseLimitThreshold = -1;
 
+  private long datanodeTokenTimeoutMS = 180 * 1000; // 3 minutes
+
   CommonConfig() {
     // Empty constructor
   }
@@ -762,5 +764,13 @@ public class CommonConfig {
 
   public void setModelInferenceExecutionThreadCount(int modelInferenceExecutionThreadCount) {
     this.modelInferenceExecutionThreadCount = modelInferenceExecutionThreadCount;
+  }
+
+  public long getDatanodeTokenTimeoutMS() {
+    return datanodeTokenTimeoutMS;
+  }
+
+  public void setDatanodeTokenTimeoutMS(long timeoutMS) {
+    this.datanodeTokenTimeoutMS = timeoutMS;
   }
 }

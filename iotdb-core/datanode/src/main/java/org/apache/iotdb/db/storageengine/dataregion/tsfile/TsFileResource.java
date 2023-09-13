@@ -1189,6 +1189,6 @@ public class TsFileResource {
   }
 
   public ProgressIndex getMaxProgressIndex() {
-    return maxProgressIndex == null ? new MinimumProgressIndex() : maxProgressIndex;
+    return maxProgressIndex == null ? MinimumProgressIndex.INSTANCE : maxProgressIndex;
   }
 }

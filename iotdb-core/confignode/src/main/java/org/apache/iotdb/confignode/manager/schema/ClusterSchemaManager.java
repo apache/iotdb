@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -324,10 +325,10 @@ public class ClusterSchemaManager {
    *
    * @return DatabaseSchemaResp
    */
-  public DatabaseSchemaResp getMatchedDatabaseSchema(GetDatabasePlan getStorageGroupPlan) {
+  public DatabaseSchemaResp getMatchedDatabaseSchema(GetDatabasePlan getDatabasePlan) {
     DatabaseSchemaResp resp;
     try {
-      resp = (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan);
+      resp = (DatabaseSchemaResp) getConsensusManager().read(getDatabasePlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -817,8 +818,9 @@ public class ClusterSchemaManager {
   }
 
   /** show path set template xx */
-  public TGetPathsSetTemplatesResp getPathsSetTemplate(String templateName) {
-    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
+  public TGetPathsSetTemplatesResp getPathsSetTemplate(String templateName, PathPatternTree scope) {
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan =
+        new GetPathsSetTemplatePlan(templateName, scope);
     PathInfoResp pathInfoResp;
     try {
       pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
@@ -892,7 +894,8 @@ public class ClusterSchemaManager {
       return new Pair<>(templateResp.getStatus(), null);
     }
 
-    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan =
+        new GetPathsSetTemplatePlan(templateName, SchemaConstant.ALL_MATCH_SCOPE);
     PathInfoResp pathInfoResp;
     try {
       pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
@@ -978,7 +981,8 @@ public class ClusterSchemaManager {
     }
 
     // check is template set on some path, block all template set operation
-    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan =
+        new GetPathsSetTemplatePlan(templateName, SchemaConstant.ALL_MATCH_SCOPE);
     PathInfoResp pathInfoResp;
     try {
       pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
