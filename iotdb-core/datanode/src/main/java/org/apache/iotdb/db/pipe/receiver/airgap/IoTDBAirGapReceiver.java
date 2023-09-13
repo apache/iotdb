@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.receiver.airgap;
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverAgent;
@@ -59,6 +60,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
 
+  private boolean hasELanguage;
+
   public IoTDBAirGapReceiver(Socket socket, long receiverId) {
     this.socket = socket;
     this.receiverId = receiverId;
@@ -77,6 +80,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
     try {
       while (!socket.isClosed()) {
+        hasELanguage = false;
         receive();
       }
       LOGGER.info(
@@ -110,6 +114,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
       // Removed the used checksum
       final ByteBuffer byteBuffer = ByteBuffer.wrap(data, LONG_LEN, data.length - LONG_LEN);
+
       // Pseudo request, to reuse logic in IoTDBThriftReceiverAgent
       final AirGapPseudoTPipeTransferRequest req =
           (AirGapPseudoTPipeTransferRequest)
@@ -176,6 +181,9 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       resultBuffer.put(readBuffer, 0, currentReadBytes);
       alreadyReadBytes += currentReadBytes;
     }
+    if (hasELanguage) {
+      inputStream.skip(AirGapELanguageConstant.E_LANGUAGE_SUFFIX.length);
+    }
     return resultBuffer.array();
   }
 
@@ -184,17 +192,24 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
    * data to read.
    */
   private int readLength(InputStream inputStream) throws IOException {
-    byte[] lengthBytes0 = new byte[4];
-    if (inputStream.read(lengthBytes0) < 4) {
+    byte[] lengthBytesStr = new byte[8];
+    if (inputStream.read(lengthBytesStr) < 8) {
       return 0;
+    }
+
+    // Judge the 8 bytes of the data instead of 4 bytes, in case the 4 length bytes equal to
+    // exactly the sub bytes of E_LANGUAGE_PREFIX.
+    if (lengthBytesStr == BytesUtils.subBytes(AirGapELanguageConstant.E_LANGUAGE_PREFIX, 0, 8)) {
+      hasELanguage = true;
+      inputStream.skip(AirGapELanguageConstant.E_LANGUAGE_PREFIX.length - 8);
+      return readLength(inputStream);
     }
 
     // for double check
-    byte[] lengthBytes1 = new byte[4];
-    if (inputStream.read(lengthBytes1) < 4) {
-      return 0;
-    }
+    byte[] lengthBytes1 = BytesUtils.subBytes(lengthBytesStr, 4, 4);
 
-    return Arrays.equals(lengthBytes0, lengthBytes1) ? BytesUtils.bytesToInt(lengthBytes0) : 0;
+    return Arrays.equals(BytesUtils.subBytes(lengthBytesStr, 0, 4), lengthBytes1)
+        ? BytesUtils.bytesToInt(lengthBytes1)
+        : 0;
   }
 }
