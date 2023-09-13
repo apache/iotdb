@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.view;
 
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
@@ -28,17 +29,18 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 public class AlterLogicalViewTask implements IConfigTask {
 
-  private final String queryId;
+  private final MPPQueryContext context;
   private final AlterLogicalViewStatement alterLogicalViewStatement;
 
-  public AlterLogicalViewTask(String queryId, AlterLogicalViewStatement alterLogicalViewStatement) {
-    this.queryId = queryId;
+  public AlterLogicalViewTask(
+      AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context) {
     this.alterLogicalViewStatement = alterLogicalViewStatement;
+    this.context = context;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.alterLogicalView(queryId, alterLogicalViewStatement);
+    return configTaskExecutor.alterLogicalView(alterLogicalViewStatement, context);
   }
 }
