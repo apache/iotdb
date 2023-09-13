@@ -36,7 +36,6 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MemMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.LogicalViewInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -427,7 +426,7 @@ public class MemMTreeSnapshotUtil {
       LogicalViewSchema logicalViewSchema = LogicalViewSchema.deserializeFrom(inputStream);
       long tagOffset = ReadWriteIOUtils.readLong(inputStream);
       IMeasurementMNode<IMemMNode> node =
-          nodeFactory.createLogicalViewMNode(null, name, new LogicalViewInfo(logicalViewSchema));
+          nodeFactory.createLogicalViewMNode(null, name, logicalViewSchema);
       node.setOffset(tagOffset);
       node.setPreDeleted(ReadWriteIOUtils.readBool(inputStream));
       return node.getAsMNode();

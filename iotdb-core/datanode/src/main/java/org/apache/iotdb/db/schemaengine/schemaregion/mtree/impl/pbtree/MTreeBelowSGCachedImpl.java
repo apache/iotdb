@@ -920,6 +920,12 @@ public class MTreeBelowSGCachedImpl {
             }
           }
 
+          if (device.isDevice() && device.getAsDeviceMNode().isAligned()) {
+            throw new AlignedTimeseriesException(
+                "timeseries under this device is aligned, please use createAlignedTimeseries or change device.",
+                device.getFullPath());
+          }
+
           IDeviceMNode<ICachedMNode> entityMNode;
           if (device.isDevice()) {
             entityMNode = device.getAsDeviceMNode();
@@ -928,10 +934,7 @@ public class MTreeBelowSGCachedImpl {
             if (entityMNode.isDatabase()) {
               replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
             }
-            // this parent has no measurement before. The leafName is his first child who is a
-            // logical
-            // view.
-            entityMNode.setAligned(null);
+            device = entityMNode.getAsMNode();
           }
 
           IMeasurementMNode<ICachedMNode> viewMNode =
@@ -954,7 +957,7 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     List<PartialPath> result = new ArrayList<>();
     try (MeasurementUpdater<ICachedMNode> updater =
-        new MeasurementUpdater<ICachedMNode>(rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+        new MeasurementUpdater<ICachedMNode>(rootNode, pathPattern, store, false,SchemaConstant.ALL_MATCH_SCOPE) {
           protected void updateMeasurement(IMeasurementMNode<ICachedMNode> node)
               throws MetadataException {
             if (node.isLogicalView()) {
@@ -973,7 +976,7 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     List<PartialPath> result = new ArrayList<>();
     try (MeasurementUpdater<ICachedMNode> updater =
-        new MeasurementUpdater<ICachedMNode>(rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+        new MeasurementUpdater<ICachedMNode>(rootNode, pathPattern, store, false,SchemaConstant.ALL_MATCH_SCOPE) {
           protected void updateMeasurement(IMeasurementMNode<ICachedMNode> node)
               throws MetadataException {
             if (node.isLogicalView()) {
@@ -992,7 +995,7 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
     try (MeasurementCollector<Void, ICachedMNode> collector =
-        new MeasurementCollector<Void, ICachedMNode>(rootNode, pathPattern, store, false) {
+        new MeasurementCollector<Void, ICachedMNode>(rootNode, pathPattern, store, false,SchemaConstant.ALL_MATCH_SCOPE) {
           protected Void collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
             if (node.isLogicalView() && node.isPreDeleted()) {
               result.add(getPartialPathFromRootToNode(node.getAsMNode()));
