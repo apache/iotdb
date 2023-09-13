@@ -133,7 +133,7 @@ public class IoTDBPipeConnectorParallelIT {
               () ->
                   TestUtils.assertResultSetEqual(
                       statement.executeQuery("select * from root.**"),
-                      "Time,root.sg1.d1.at1,",
+                      "Time,root.sg1.d1.s1,",
                       expectedResSet));
     } catch (Exception e) {
       e.printStackTrace();
