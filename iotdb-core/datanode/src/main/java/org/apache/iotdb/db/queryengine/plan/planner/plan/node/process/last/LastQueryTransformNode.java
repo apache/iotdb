@@ -76,9 +76,9 @@ public class LastQueryTransformNode extends MultiChildProcessNode {
   }
 
   public static LastQueryTransformNode deserialize(ByteBuffer byteBuffer) {
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     String viewPath = ReadWriteIOUtils.readString(byteBuffer);
     String dataType = ReadWriteIOUtils.readString(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new LastQueryTransformNode(planNodeId, viewPath, dataType);
   }
 
