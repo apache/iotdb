@@ -904,7 +904,8 @@ public class IoTConsensusServerImpl {
           }
         }
         long sortTime = System.nanoTime();
-        ioTConsensusServerMetrics.recordSortCost(sortTime - insertStartTime);
+        ioTConsensusServerMetrics.recordSortCost(
+            (sortTime - insertStartTime) / request.getInsertNodes().size());
         logger.debug(
             "source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}",
             sourcePeerId,
@@ -916,7 +917,8 @@ public class IoTConsensusServerImpl {
         for (IConsensusRequest insertNode : request.getInsertNodes()) {
           subStatus.add(stateMachine.write(insertNode));
         }
-        ioTConsensusServerMetrics.recordApplyCost(System.nanoTime() - sortTime);
+        ioTConsensusServerMetrics.recordApplyCost(
+            (System.nanoTime() - sortTime) / request.getInsertNodes().size());
         queueSortCondition.signalAll();
         return new TSStatus().setSubStatus(subStatus);
       } finally {
