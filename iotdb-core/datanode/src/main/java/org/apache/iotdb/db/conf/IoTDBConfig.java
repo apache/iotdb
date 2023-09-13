@@ -558,7 +558,8 @@ public class IoTDBConfig {
   private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 8 / 10 / 20;
 
   /** Memory allocated proportion for wal pipe cache */
-  private long allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
+  private long allocateMemoryForWALPipeCache =
+      Math.min(allocateMemoryForConsensus / 2, 3 * getWalFileSizeThresholdInByte());
 
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny
@@ -635,10 +636,10 @@ public class IoTDBConfig {
   private TSEncoding defaultBooleanEncoding = TSEncoding.RLE;
 
   /** INT32 encoding when creating schema automatically is enabled */
-  private TSEncoding defaultInt32Encoding = TSEncoding.RLE;
+  private TSEncoding defaultInt32Encoding = TSEncoding.TS_2DIFF;
 
   /** INT64 encoding when creating schema automatically is enabled */
-  private TSEncoding defaultInt64Encoding = TSEncoding.RLE;
+  private TSEncoding defaultInt64Encoding = TSEncoding.TS_2DIFF;
 
   /** FLOAT encoding when creating schema automatically is enabled */
   private TSEncoding defaultFloatEncoding = TSEncoding.GORILLA;
@@ -799,9 +800,6 @@ public class IoTDBConfig {
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
-  /** time interval in minute for calculating query frequency. Unit: minute */
-  private int frequencyIntervalInMinute = 1;
-
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 30000;
 
@@ -910,7 +908,7 @@ public class IoTDBConfig {
   private int mppDataExchangeKeepAliveTimeInMs = 1000;
 
   /** Thrift socket and connection timeout between data node and config node. */
-  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
@@ -1010,6 +1008,7 @@ public class IoTDBConfig {
   private boolean schemaRatisConsensusLogUnsafeFlushEnable = false;
 
   private int dataRatisConsensusLogForceSyncNum = 128;
+  private int schemaRatisConsensusLogForceSyncNum = 128;
 
   private long dataRatisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long schemaRatisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
@@ -1018,6 +1017,8 @@ public class IoTDBConfig {
   private long schemaRatisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
 
   private int dataRatisConsensusGrpcLeaderOutstandingAppendsMax = 128;
+
+  private int schemaRatisConsensusGrpcLeaderOutstandingAppendsMax = 128;
 
   private long dataRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
   private long schemaRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
@@ -2524,14 +2525,6 @@ public class IoTDBConfig {
     this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
   }
 
-  public int getFrequencyIntervalInMinute() {
-    return frequencyIntervalInMinute;
-  }
-
-  public void setFrequencyIntervalInMinute(int frequencyIntervalInMinute) {
-    this.frequencyIntervalInMinute = frequencyIntervalInMinute;
-  }
-
   public long getSlowQueryThreshold() {
     return slowQueryThreshold;
   }
@@ -3385,6 +3378,14 @@ public class IoTDBConfig {
     this.dataRatisConsensusLogForceSyncNum = dataRatisConsensusLogForceSyncNum;
   }
 
+  public int getSchemaRatisConsensusLogForceSyncNum() {
+    return schemaRatisConsensusLogForceSyncNum;
+  }
+
+  public void setSchemaRatisConsensusLogForceSyncNum(int schemaRatisConsensusLogForceSyncNum) {
+    this.schemaRatisConsensusLogForceSyncNum = schemaRatisConsensusLogForceSyncNum;
+  }
+
   public long getDataRatisConsensusLogSegmentSizeMax() {
     return dataRatisConsensusLogSegmentSizeMax;
   }
@@ -3410,6 +3411,16 @@ public class IoTDBConfig {
       int dataRatisConsensusGrpcLeaderOutstandingAppendsMax) {
     this.dataRatisConsensusGrpcLeaderOutstandingAppendsMax =
         dataRatisConsensusGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public int getSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax() {
+    return schemaRatisConsensusGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public void setSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax(
+      int schemaRatisConsensusGrpcLeaderOutstandingAppendsMax) {
+    this.schemaRatisConsensusGrpcLeaderOutstandingAppendsMax =
+        schemaRatisConsensusGrpcLeaderOutstandingAppendsMax;
   }
 
   public long getDataRatisConsensusLeaderElectionTimeoutMinMs() {

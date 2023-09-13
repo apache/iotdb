@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.database;
 
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -32,6 +33,7 @@ import java.util.List;
 public class CountDatabasePlan extends ConfigPhysicalPlan {
 
   private String[] storageGroupPattern;
+  private PathPatternTree scope;
 
   public CountDatabasePlan() {
     super(ConfigPhysicalPlanType.CountDatabase);
@@ -41,18 +43,25 @@ public class CountDatabasePlan extends ConfigPhysicalPlan {
     super(type);
   }
 
-  public CountDatabasePlan(List<String> storageGroupPattern) {
+  public CountDatabasePlan(List<String> storageGroupPattern, PathPatternTree scope) {
     this();
     this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
+    this.scope = scope;
   }
 
-  public CountDatabasePlan(ConfigPhysicalPlanType type, List<String> storageGroupPattern) {
+  public CountDatabasePlan(
+      ConfigPhysicalPlanType type, List<String> storageGroupPattern, PathPatternTree scope) {
     super(type);
     this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
+    this.scope = scope;
   }
 
   public String[] getDatabasePattern() {
     return storageGroupPattern;
+  }
+
+  public PathPatternTree getScope() {
+    return scope;
   }
 
   @Override
@@ -63,6 +72,7 @@ public class CountDatabasePlan extends ConfigPhysicalPlan {
     for (String node : storageGroupPattern) {
       BasicStructureSerDeUtil.write(node, stream);
     }
+    scope.serialize(stream);
   }
 
   @Override
@@ -72,6 +82,7 @@ public class CountDatabasePlan extends ConfigPhysicalPlan {
     for (int i = 0; i < length; i++) {
       storageGroupPattern[i] = BasicStructureSerDeUtil.readString(buffer);
     }
+    scope = PathPatternTree.deserialize(buffer);
   }
 
   @Override

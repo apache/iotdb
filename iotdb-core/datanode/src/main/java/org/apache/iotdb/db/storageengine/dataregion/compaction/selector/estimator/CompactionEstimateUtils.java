@@ -43,8 +43,7 @@ public class CompactionEstimateUtils {
    *
    * @throws IOException if io errors occurred
    */
-  public static FileInfo getSeriesAndDeviceChunkNum(TsFileSequenceReader reader)
-      throws IOException {
+  public static FileInfo calculateFileInfo(TsFileSequenceReader reader) throws IOException {
     int totalChunkNum = 0;
     int maxChunkNum = 0;
     int maxAlignedSeriesNumInDevice = -1;

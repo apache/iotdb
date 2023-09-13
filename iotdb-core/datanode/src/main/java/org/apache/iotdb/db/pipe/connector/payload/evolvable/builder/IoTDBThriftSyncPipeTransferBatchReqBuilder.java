@@ -19,12 +19,8 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
 
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -46,13 +42,8 @@ public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatc
    * @return true if the batch can be transferred
    */
   public boolean onEvent(TabletInsertionEvent event) throws IOException, WALPipeException {
-    final TPipeTransferReq req =
-        event instanceof PipeInsertNodeTabletInsertionEvent
-            ? PipeTransferInsertNodeReq.toTPipeTransferReq(
-                ((PipeInsertNodeTabletInsertionEvent) event).getInsertNode())
-            : PipeTransferTabletReq.toTPipeTransferReq(
-                ((PipeRawTabletInsertionEvent) event).convertToTablet(),
-                ((PipeRawTabletInsertionEvent) event).isAligned());
+    final TPipeTransferReq req = buildTabletInsertionReq(event);
+
     if (events.isEmpty() || !events.get(events.size() - 1).equals(event)) {
       reqs.add(req);
 

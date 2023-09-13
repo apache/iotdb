@@ -247,9 +247,16 @@ public class RpcUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static String parseLongToDateWithPrecision(
       DateTimeFormatter formatter, long timestamp, ZoneId zoneid, String timestampPrecision) {
+    long integerOfDate;
+    StringBuilder digits;
     if ("ms".equals(timestampPrecision)) {
-      long integerOfDate = timestamp / 1000;
-      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000));
+      if (timestamp > 0 || timestamp % 1000 == 0) {
+        integerOfDate = timestamp / 1000;
+        digits = new StringBuilder(Long.toString(timestamp % 1000));
+      } else {
+        integerOfDate = timestamp / 1000 - 1;
+        digits = new StringBuilder(Long.toString(1000 + timestamp % 1000));
+      }
       ZonedDateTime dateTime =
           ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);
@@ -261,8 +268,13 @@ public class RpcUtils {
       }
       return formatDatetimeStr(datetime, digits);
     } else if ("us".equals(timestampPrecision)) {
-      long integerOfDate = timestamp / 1000_000;
-      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
+      if (timestamp > 0 || timestamp % 1000_000 == 0) {
+        integerOfDate = timestamp / 1000_000;
+        digits = new StringBuilder(Long.toString(timestamp % 1000_000));
+      } else {
+        integerOfDate = timestamp / 1000_000 - 1;
+        digits = new StringBuilder(Long.toString(1000_000 + timestamp % 1000_000));
+      }
       ZonedDateTime dateTime =
           ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);
@@ -274,8 +286,13 @@ public class RpcUtils {
       }
       return formatDatetimeStr(datetime, digits);
     } else {
-      long integerOfDate = timestamp / 1000_000_000L;
-      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
+      if (timestamp > 0 || timestamp % 1000_000_000L == 0) {
+        integerOfDate = timestamp / 1000_000_000L;
+        digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
+      } else {
+        integerOfDate = timestamp / 1000_000_000L - 1;
+        digits = new StringBuilder(Long.toString(1000_000_000L + timestamp % 1000_000_000L));
+      }
       ZonedDateTime dateTime =
           ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);

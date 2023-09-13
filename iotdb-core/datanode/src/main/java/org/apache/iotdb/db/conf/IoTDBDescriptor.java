@@ -807,12 +807,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "dn_thrift_init_buffer_size", String.valueOf(conf.getThriftDefaultBufferSize()))));
 
-    conf.setFrequencyIntervalInMinute(
-        Integer.parseInt(
-            properties.getProperty(
-                "frequency_interval_in_minute",
-                String.valueOf(conf.getFrequencyIntervalInMinute()))));
-
     conf.setSlowQueryThreshold(
         Long.parseLong(
             properties.getProperty(
@@ -1575,13 +1569,6 @@ public class IoTDBDescriptor {
 
       // update tsfile-format config
       loadTsFileProps(properties);
-
-      // update frequency_interval_in_minute
-      conf.setFrequencyIntervalInMinute(
-          Integer.parseInt(
-              properties.getProperty(
-                  "frequency_interval_in_minute",
-                  Integer.toString(conf.getFrequencyIntervalInMinute()))));
       // update slow_query_threshold
       conf.setSlowQueryThreshold(
           Long.parseLong(
@@ -2122,15 +2109,20 @@ public class IoTDBDescriptor {
 
     conf.setDataRatisConsensusLogUnsafeFlushEnable(ratisConfig.isDataLogUnsafeFlushEnable());
     conf.setSchemaRatisConsensusLogUnsafeFlushEnable(ratisConfig.isSchemaLogUnsafeFlushEnable());
+
     conf.setDataRatisConsensusLogForceSyncNum(ratisConfig.getDataRegionLogForceSyncNum());
+    conf.setSchemaRatisConsensusLogForceSyncNum(ratisConfig.getSchemaRegionLogForceSyncNum());
 
     conf.setDataRatisConsensusLogSegmentSizeMax(ratisConfig.getDataLogSegmentSizeMax());
     conf.setSchemaRatisConsensusLogSegmentSizeMax(ratisConfig.getSchemaLogSegmentSizeMax());
 
     conf.setDataRatisConsensusGrpcFlowControlWindow(ratisConfig.getDataGrpcFlowControlWindow());
     conf.setSchemaRatisConsensusGrpcFlowControlWindow(ratisConfig.getSchemaGrpcFlowControlWindow());
+
     conf.setDataRatisConsensusGrpcLeaderOutstandingAppendsMax(
         ratisConfig.getDataRegionGrpcLeaderOutstandingAppendsMax());
+    conf.setSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax(
+        ratisConfig.getSchemaRegionGrpcLeaderOutstandingAppendsMax());
 
     conf.setDataRatisConsensusLeaderElectionTimeoutMinMs(
         ratisConfig.getDataLeaderElectionTimeoutMin());

@@ -33,6 +33,9 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -61,13 +64,17 @@ public class LocalFileRoleAccessorTest {
 
   @Test
   public void test() throws IOException, IllegalPathException {
-    Role[] roles = new Role[5];
+    Role[] roles = new Role[4];
     for (int i = 0; i < roles.length; i++) {
       roles[i] = new Role("role" + i);
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.getPrivileges().add(j);
-        roles[i].getPrivilegeList().add(pathPrivilege);
+        roles[i].getPathPrivilegeList().add(pathPrivilege);
+        roles[i].getSysPrivilege().add(i + 4);
+        if (i % 2 != 0) {
+          roles[i].getSysPriGrantOpt().add(i + 4);
+        }
       }
     }
 
@@ -94,5 +101,25 @@ public class LocalFileRoleAccessorTest {
     for (int i = 0; i < roleNames.size(); i++) {
       assertEquals(roles[i].getName(), roleNames.get(i));
     }
+  }
+
+  @Test
+  public void testLoadOldVersion() throws IOException, IllegalPathException {
+    Role role = new Role();
+    role.setName("root");
+    PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c"));
+    pathPrivilege.grantPrivilege(1, false);
+    role.setPrivilegeList(Collections.singletonList(pathPrivilege));
+    role.setSysPriGrantOpt(new HashSet<>());
+    role.setSysPrivilegeSet(new HashSet<>());
+    accessor.saveRoleOldVer(role);
+    Role newRole = accessor.loadRole("root");
+    assertEquals("root", newRole.getName());
+    assertEquals(new ArrayList<>(), newRole.getPathPrivilegeList());
+    assertEquals(new HashSet<>(), newRole.getSysPrivilege());
+    accessor.deleteRole("root");
+    accessor.saveRole(role);
+    newRole = accessor.loadRole("root");
+    assertEquals(role, newRole);
   }
 }

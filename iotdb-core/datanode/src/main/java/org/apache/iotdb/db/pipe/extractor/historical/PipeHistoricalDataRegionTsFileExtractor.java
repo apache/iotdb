@@ -41,6 +41,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
@@ -54,6 +57,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHistoricalDataRegionTsFileExtractor.class);
+
+  private static final Map<Integer, Long> DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP = new HashMap<>();
+  private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
 
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
@@ -84,6 +90,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
     dataRegionId = environment.getRegionId();
+    synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
+      DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.putIfAbsent(dataRegionId, 0L);
+    }
 
     pattern = parameters.getStringOrDefault(EXTRACTOR_PATTERN_KEY, EXTRACTOR_PATTERN_DEFAULT_VALUE);
 
@@ -132,7 +141,14 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     // If we don't invoke flushDataRegionAllTsFiles() in the realtime only mode, the data generated
     // between the creation time of the pipe the time when the pipe starts will be lost.
     if (historicalDataExtractionTimeLowerBound != Long.MIN_VALUE) {
-      flushDataRegionAllTsFiles();
+      synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
+        final long lastFlushedByPipeTime =
+            DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
+        if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
+          flushDataRegionAllTsFiles();
+          DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.replace(dataRegionId, System.currentTimeMillis());
+        }
+      }
     }
   }
 
@@ -162,17 +178,28 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     dataRegion.writeLock("Pipe: start to extract historical TsFile");
     try {
-      dataRegion.syncCloseAllWorkingTsFileProcessors();
+      synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
+        final long lastFlushedByPipeTime =
+            DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.get(dataRegionId);
+        if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
+          dataRegion.syncCloseAllWorkingTsFileProcessors();
+          DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.replace(dataRegionId, System.currentTimeMillis());
+        }
+      }
 
       final TsFileManager tsFileManager = dataRegion.getTsFileManager();
       tsFileManager.readLock();
       try {
         pendingQueue = new ArrayDeque<>(tsFileManager.size(true) + tsFileManager.size(false));
-        pendingQueue.addAll(
+
+        final Collection<PipeTsFileInsertionEvent> sequenceFileInsertionEvents =
             tsFileManager.getTsFileList(true).stream()
                 .filter(
                     resource ->
-                        !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+                        // Some resource may be not closed due to the control of
+                        // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
+                        resource.isClosed()
+                            && !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .map(
@@ -184,12 +211,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             pattern,
                             historicalDataExtractionStartTime,
                             historicalDataExtractionEndTime))
-                .collect(Collectors.toList()));
-        pendingQueue.addAll(
+                .collect(Collectors.toList());
+        pendingQueue.addAll(sequenceFileInsertionEvents);
+
+        final Collection<PipeTsFileInsertionEvent> unsequenceFileInsertionEvents =
             tsFileManager.getTsFileList(false).stream()
                 .filter(
                     resource ->
-                        !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+                        // Some resource may be not closed due to the control of
+                        // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
+                        resource.isClosed()
+                            && !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .map(
@@ -201,11 +233,20 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             pattern,
                             historicalDataExtractionStartTime,
                             historicalDataExtractionEndTime))
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList());
+        pendingQueue.addAll(unsequenceFileInsertionEvents);
+
         pendingQueue.forEach(
             event ->
                 event.increaseReferenceCount(
                     PipeHistoricalDataRegionTsFileExtractor.class.getName()));
+
+        LOGGER.info(
+            "Pipe: start to extract historical TsFile, data region {}, "
+                + "sequence file count {}, unsequence file count {}",
+            dataRegionId,
+            sequenceFileInsertionEvents.size(),
+            unsequenceFileInsertionEvents.size());
       } finally {
         tsFileManager.readUnlock();
       }
@@ -236,7 +277,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   @Override
-  public Event supply() {
+  public synchronized Event supply() {
     if (pendingQueue == null) {
       return null;
     }
@@ -249,8 +290,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
     if (pendingQueue != null) {
+      pendingQueue.forEach(
+          event ->
+              event.clearReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName()));
       pendingQueue.clear();
       pendingQueue = null;
     }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -196,5 +197,25 @@ public class TsFileResourceProgressIndexTest {
     public ProgressIndexType getType() {
       throw new UnsupportedOperationException("method not implemented.");
     }
+  }
+
+  @Test
+  public void testHybridProgressIndex() {
+    final IoTProgressIndex ioTProgressIndex = new IoTProgressIndex(1, 123L);
+    final RecoverProgressIndex recoverProgressIndex =
+        new RecoverProgressIndex(1, new SimpleProgressIndex(2, 2));
+    final HybridProgressIndex hybridProgressIndex = new HybridProgressIndex();
+
+    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(ioTProgressIndex);
+    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(recoverProgressIndex);
+
+    Assert.assertTrue(hybridProgressIndex.isAfter(new IoTProgressIndex(1, 100L)));
+    Assert.assertTrue(
+        hybridProgressIndex.isAfter(new RecoverProgressIndex(1, new SimpleProgressIndex(1, 2))));
+
+    Assert.assertFalse(hybridProgressIndex.isAfter(new IoTProgressIndex(1, 200L)));
+    Assert.assertFalse(hybridProgressIndex.isAfter(new IoTProgressIndex(2, 200L)));
+    Assert.assertFalse(
+        hybridProgressIndex.isAfter(new RecoverProgressIndex(1, new SimpleProgressIndex(2, 21))));
   }
 }

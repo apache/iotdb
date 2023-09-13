@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.common.schematree.visitor;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.MeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaMeasurementNode;
@@ -33,6 +34,11 @@ public class SchemaTreeDeviceVisitor extends SchemaTreeVisitor<DeviceSchemaInfo>
 
   public SchemaTreeDeviceVisitor(SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
     super(root, pathPattern, isPrefixMatch);
+  }
+
+  public SchemaTreeDeviceVisitor(
+      SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch, PathPatternTree scope) {
+    super(root, pathPattern, isPrefixMatch, scope);
   }
 
   @Override

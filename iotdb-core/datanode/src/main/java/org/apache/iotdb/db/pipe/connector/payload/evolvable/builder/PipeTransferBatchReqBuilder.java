@@ -19,10 +19,18 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
 
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,5 +68,30 @@ public abstract class PipeTransferBatchReqBuilder {
 
   public boolean isEmpty() {
     return reqs.isEmpty();
+  }
+
+  protected TPipeTransferReq buildTabletInsertionReq(TabletInsertionEvent event)
+      throws IOException, WALPipeException {
+    final TPipeTransferReq req;
+    if (event instanceof PipeInsertNodeTabletInsertionEvent) {
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
+          (PipeInsertNodeTabletInsertionEvent) event;
+      // Read the bytebuffer from the wal file and transfer it directly without serializing or
+      // deserializing if possible
+      req =
+          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
+              ? PipeTransferTabletBinaryReq.toTPipeTransferReq(
+                  pipeInsertNodeTabletInsertionEvent.getByteBuffer())
+              : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
+                  pipeInsertNodeTabletInsertionEvent.getInsertNode());
+    } else {
+      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
+          (PipeRawTabletInsertionEvent) event;
+      req =
+          PipeTransferTabletRawReq.toTPipeTransferReq(
+              pipeRawTabletInsertionEvent.convertToTablet(),
+              pipeRawTabletInsertionEvent.isAligned());
+    }
+    return req;
   }
 }

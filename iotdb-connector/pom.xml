@@ -31,13 +31,21 @@
     <name>IoTDB: Connector</name>
     <modules>
         <module>flink-iotdb-connector</module>
+        <module>flink-sql-iotdb-connector</module>
         <module>flink-tsfile-connector</module>
         <module>grafana-connector</module>
-        <module>grafana-plugin</module>
         <module>hadoop</module>
         <module>hive-connector</module>
         <module>spark-iotdb-connector</module>
         <module>spark-tsfile</module>
         <module>zeppelin-interpreter</module>
     </modules>
+    <profiles>
+        <profile>
+            <id>with-grafana-plugin</id>
+            <modules>
+                <module>grafana-plugin</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>

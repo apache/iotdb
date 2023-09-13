@@ -31,11 +31,11 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.task.PipeBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTask;
 import org.apache.iotdb.db.pipe.task.PipeTaskBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTaskManager;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
@@ -776,13 +776,7 @@ public class PipeTaskAgent {
 
   ///////////////////////// Heartbeat /////////////////////////
 
-  public synchronized void collectPipeMetaList(THeartbeatReq req, THeartbeatResp resp)
-      throws TException {
-    // If the pipe heartbeat is separated from the cluster heartbeat, then the lock doesn't
-    // need to be acquired
-    if (!req.isNeedPipeMetaList()) {
-      return;
-    }
+  public synchronized void collectPipeMetaList(THeartbeatResp resp) throws TException {
     // Try the lock instead of directly acquire it to prevent the block of the cluster heartbeat
     // 10s is the half of the HEARTBEAT_TIMEOUT_TIME defined in class BaseNodeCache in ConfigNode
     if (!tryReadLockWithTimeOut(10)) {
@@ -841,5 +835,7 @@ public class PipeTaskAgent {
       throw new TException(e);
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
+
+    PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 }

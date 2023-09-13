@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 
@@ -31,5 +33,12 @@ public class ShowVersionStatement extends ShowStatement {
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitShowVersion(this, context);
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.SUPER_USER.equals(userName),
+        "Only the admin user can perform this operation");
   }
 }

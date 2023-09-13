@@ -78,7 +78,7 @@ while true; do
             shift 2
         ;;
         --help)
-            echo "Usage: $0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-D <name=value>] [-c] [-e sql] [-maxPRC <PRC size>]"
+            echo "Usage: $0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-D <name=value>] [-c] [-e sql]"
             exit 0
         ;;
         "")

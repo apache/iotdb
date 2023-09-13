@@ -156,7 +156,7 @@ public class CachedSchemaPatternMatcherTest {
     }
 
     @Override
-    public void extract(PipeRealtimeEvent event) {
+    protected void doExtract(PipeRealtimeEvent event) {
       final boolean[] match = {false};
       event
           .getSchemaInfo()

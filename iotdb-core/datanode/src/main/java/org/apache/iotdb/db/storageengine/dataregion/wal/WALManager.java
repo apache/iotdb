@@ -172,16 +172,23 @@ public class WALManager implements IService {
   }
 
   private void deleteOutdatedFiles() {
-    List<WALNode> walNodes = walNodesManager.getNodesSnapshot();
-    walNodes.sort((node1, node2) -> Long.compare(node2.getDiskUsage(), node1.getDiskUsage()));
-    for (WALNode walNode : walNodes) {
-      walNode.deleteOutdatedFiles();
-    }
-    if (shouldThrottle()) {
-      logger.warn(
-          "WAL disk usage {} is larger than the iot_consensus_throttle_threshold_in_byte {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
-          getTotalDiskUsage(),
-          getThrottleThreshold());
+    // Normally, only need to delete the expired file once. When the WAL disk file size exceeds the
+    // threshold, the system continues to delete expired files until the disk size is smaller than
+    // the threshold.
+    boolean firstLoop = true;
+    while (firstLoop || shouldThrottle()) {
+      List<WALNode> walNodes = walNodesManager.getNodesSnapshot();
+      walNodes.sort((node1, node2) -> Long.compare(node2.getDiskUsage(), node1.getDiskUsage()));
+      for (WALNode walNode : walNodes) {
+        walNode.deleteOutdatedFiles();
+      }
+      if (firstLoop && shouldThrottle()) {
+        logger.warn(
+            "WAL disk usage {} is larger than the iot_consensus_throttle_threshold_in_byte {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
+            getTotalDiskUsage(),
+            getThrottleThreshold());
+      }
+      firstLoop = false;
     }
   }
 

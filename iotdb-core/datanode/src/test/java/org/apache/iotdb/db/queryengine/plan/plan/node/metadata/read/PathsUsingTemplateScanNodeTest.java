@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.plan.node.metadata.read;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.PathsUsingTemplateScanNode;
@@ -39,7 +40,10 @@ public class PathsUsingTemplateScanNodeTest {
     patternTree.appendPathPattern(new PartialPath("root.sg.**.*"));
     PathsUsingTemplateScanNode pathsUsingTemplateScanNode =
         new PathsUsingTemplateScanNode(
-            new PlanNodeId("0"), Collections.singletonList(new PartialPath("root.sg")), 1);
+            new PlanNodeId("0"),
+            Collections.singletonList(new PartialPath("root.sg")),
+            1,
+            SchemaConstant.ALL_MATCH_SCOPE);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
     pathsUsingTemplateScanNode.serialize(byteBuffer);
     byteBuffer.flip();

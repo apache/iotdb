@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -52,8 +53,9 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
       PartialPath partialPath,
       boolean isPrefixPath,
       SchemaFilter schemaFilter,
-      @NotNull Map<Integer, Template> templateMap) {
-    super(id, partialPath, isPrefixPath);
+      @NotNull Map<Integer, Template> templateMap,
+      @NotNull PathPatternTree scope) {
+    super(id, partialPath, isPrefixPath, scope);
     this.schemaFilter = schemaFilter;
     this.templateMap = templateMap;
   }
@@ -68,7 +70,8 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
 
   @Override
   public PlanNode clone() {
-    return new TimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath, schemaFilter, templateMap);
+    return new TimeSeriesCountNode(
+        getPlanNodeId(), path, isPrefixPath, schemaFilter, templateMap, scope);
   }
 
   @Override
@@ -82,6 +85,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TIME_SERIES_COUNT.serialize(byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
+    scope.serialize(byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
     SchemaFilter.serialize(schemaFilter, byteBuffer);
     ReadWriteIOUtils.write(templateMap.size(), byteBuffer);
@@ -94,6 +98,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TIME_SERIES_COUNT.serialize(stream);
     ReadWriteIOUtils.write(path.getFullPath(), stream);
+    scope.serialize(stream);
     ReadWriteIOUtils.write(isPrefixPath, stream);
     SchemaFilter.serialize(schemaFilter, stream);
     ReadWriteIOUtils.write(templateMap.size(), stream);
@@ -110,6 +115,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize DevicesSchemaScanNode", e);
     }
+    PathPatternTree scope = PathPatternTree.deserialize(buffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
     SchemaFilter schemaFilter = SchemaFilter.deserialize(buffer);
 
@@ -123,7 +129,8 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     }
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new TimeSeriesCountNode(planNodeId, path, isPrefixPath, schemaFilter, templateMap);
+    return new TimeSeriesCountNode(
+        planNodeId, path, isPrefixPath, schemaFilter, templateMap, scope);
   }
 
   @Override

@@ -21,15 +21,14 @@
 [English](./README.md) | [中文](./README_ZH.md)
 
 # IoTDB
-[![Main Mac and Linux](https://github.com/apache/iotdb/actions/workflows/main-unix.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-unix.yml)
-[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)<!--[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)-->
+[![Unit-Test](https://github.com/apache/iotdb/actions/workflows/unit-test.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/unit-test.yml)
+[![codecov](https://codecov.io/github/apache/iotdb/graph/badge.svg?token=ejF3UGk0Nv)](https://codecov.io/github/apache/iotdb)
 [![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
 ![](https://img.shields.io/badge/platform-win%20%7C%20macos%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/java--language-1.8%20%7C%2011%20%7C%2017-blue.svg)
-[![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
 [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/iotdb)
@@ -127,16 +126,10 @@ Make sure `Java` is installed, if it's missing, simply install it via:
 
 #### OpenSSL header files
 
-    sudo apt -y install libssl-dev
-
-#### OpenSSL
-
 Usually OpenSSL is already installed, however it's missing the header files we need to compile.
 So ensure these are installed:
 
     sudo apt install libssl-dev
-
-When enabling the `compile-cpp`:
 
 ### Mac OS
 
@@ -156,7 +149,7 @@ Then install `Homebrew` - If this hasn't been installed yet, as we are going to 
 
 #### Java
 
-As soon as that's done install `Java` or newer - If this hasn't been installed yet:
+As soon as that's done install `Java`, if this hasn't been installed yet:
 
     brew install java
 
