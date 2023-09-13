@@ -8,12 +8,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Stack;
 
-import static java.lang.Math.abs;
 import static java.lang.Math.pow;
 
-public class Outlier {
+public class OutlierBlockSize {
 
     public static int getBitWith(int num) {
         if (num == 0) return 1;
@@ -601,38 +601,73 @@ public class Outlier {
             }
             ArrayList<Integer> result2 = new ArrayList<>();
             splitTimeStamp3(ts_block, result2);
-
+            int supple_length;
+            if (remaining_length % 8 == 0) {
+                supple_length = 1;
+            } else if (remaining_length % 8 == 1) {
+                supple_length = 0;
+            } else {
+                supple_length = 9 - remaining_length % 8;
+            }
+            for (int s = 0; s < supple_length; s++) {
+                ts_block.add(0);
+            }
             ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block);
             encoded_result.addAll(cur_encoded_result);
         }
 //        if (remaining_length != 0 && remaining_length != 1) {
-//            ArrayList<Integer> ts_block = new ArrayList<>();
+//            ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
+////            ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
 //
 //            for (int j = block_num * block_size; j < length_all; j++) {
 //                ts_block.add(data.get(j));
+////                ts_block_reorder.add(data.get(j));
 //            }
 //            ArrayList<Integer> result2 = new ArrayList<>();
+////            ArrayList<Integer> result2_reorder = new ArrayList<>();
 //            splitTimeStamp3(ts_block, result2);
+////            splitTimeStamp3(ts_block_reorder, result2_reorder);
+////            quickSort(ts_block_reorder, 1, 0, remaining_length - 1);
 //
-//            int supple_length;
-//            if (remaining_length % 8 == 0) {
-//                supple_length = 1;
-//            } else if (remaining_length % 8 == 1) {
-//                supple_length = 0;
+//
+////
+//            quickSort(ts_block, 0, 0, remaining_length - 1);
+//            ArrayList<Integer> encoded_length = new ArrayList<>(); // length
+//            Result res = learnKDelta(ts_block, encoded_length);
+//
+//
+//            // value-order
+//            quickSort(ts_block, 1, 0, remaining_length - 1);
+//            ArrayList<Integer> reorder_encoded_length = new ArrayList<>();
+//            Result res_reorder =  learnKDelta(ts_block,  reorder_encoded_length);
+//
+//            if (encoded_length.get(0) <= reorder_encoded_length.get(0)) {
+//                quickSort(ts_block, 0, 0, remaining_length - 1);
+////                System.out.println("encoded_length.get(0): "+encoded_length.get(0));
+//                count_raw++;
 //            } else {
-//                supple_length = 9 - remaining_length % 8;
+//                encoded_length = reorder_encoded_length;
+//                res = res_reorder;
+//                count_reorder++;
 //            }
-//
-//
+////            System.out.println(" encoded_length.get(0) : "+ encoded_length.get(0));
+//            bits_encoded_data += encoded_length.get(0);
 ////            ts_block_delta =
 ////                    getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready_reorder,threshold);
-//
-//            for (int s = 0; s < supple_length; s++) {
-//                ArrayList<Integer> tmp = new ArrayList<>();
-//                tmp.add(0);
-//                tmp.add(0);
-//                ts_block_delta.add(tmp);
-//            }
+////            int supple_length;
+////            if (remaining_length % 8 == 0) {
+////                supple_length = 1;
+////            } else if (remaining_length % 8 == 1) {
+////                supple_length = 0;
+////            } else {
+////                supple_length = 9 - remaining_length % 8;
+////            }
+////            for (int s = 0; s < supple_length; s++) {
+////                ArrayList<Integer> tmp = new ArrayList<>();
+////                tmp.add(0);
+////                tmp.add(0);
+////                ts_block_delta.add(tmp);
+////            }
 ////
 ////            ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, result2);
 ////            bits_encoded_data += (cur_encoded_result.size() * 8L);
@@ -805,7 +840,7 @@ public class Outlier {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
         String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-outlier\\";
-        String output_parent_dir = parent_dir + "vldb\\compression_ratio\\outlier";
+        String output_parent_dir = parent_dir + "vldb\\compression_ratio\\block_size";
         String input_parent_dir = parent_dir + "iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -880,6 +915,7 @@ public class Outlier {
                     "Decoding Time",
                     "Points",
                     "Compressed Size",
+                    "Block Size",
                     "Compression Ratio"
             };
             writer.writeRecord(head); // write header to output file
@@ -911,6 +947,10 @@ public class Outlier {
                     }
 //                    System.out.println(data2);
                     inputStream.close();
+                for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
+                    int block_size = (int) Math.pow(2, block_size_exp);
+                    System.out.println(block_size);
+
 
                     long encodeTime = 0;
                     long decodeTime = 0;
@@ -923,11 +963,9 @@ public class Outlier {
                         ArrayList<Byte> buffer2 = new ArrayList<>();
                         long buffer_bits = 0;
                         for (int repeat = 0; repeat < repeatTime2; repeat++){
-                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
-                            buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i));
+                            buffer1 = ReorderingRegressionEncoder(data1, block_size, dataset_name.get(file_i));
+                            buffer2 = ReorderingRegressionEncoder(data2, block_size, dataset_name.get(file_i));
                         }
-//                        System.out.println(buffer2.size());
-//                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
 
                         long e = System.nanoTime();
                         encodeTime += ((e - s) / repeatTime2);
@@ -954,11 +992,12 @@ public class Outlier {
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
                             String.valueOf(compressed_size),
+                            String.valueOf(block_size_exp),
                             String.valueOf(ratio)
                     };
                     writer.writeRecord(record);
                     System.out.println(ratio);
-
+            }
 //                }
 
 //
