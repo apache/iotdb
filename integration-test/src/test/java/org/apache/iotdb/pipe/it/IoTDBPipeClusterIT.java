@@ -502,6 +502,10 @@ public class IoTDBPipeClusterIT {
       ((AbstractEnv) senderEnv).testWorkingNoUnknown();
 
       t.join();
+    }
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(100, showPipeResult.size());
     }
