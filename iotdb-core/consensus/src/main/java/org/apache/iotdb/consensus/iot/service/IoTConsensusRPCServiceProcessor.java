@@ -119,8 +119,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
       IConsensusRequest deserializedRequest =
           impl.getStateMachine().deserializeRequest(logEntriesInThisBatch);
       impl.getIoTConsensusServerMetrics()
-          .recordDeserializeCost(
-              (System.nanoTime() - buildRequestTime) / logEntriesInThisBatch.getRequests().size());
+          .recordDeserializeCost(System.nanoTime() - buildRequestTime);
       TSStatus writeStatus =
           impl.syncLog(logEntriesInThisBatch.getSourcePeerId(), deserializedRequest);
       logger.debug(
