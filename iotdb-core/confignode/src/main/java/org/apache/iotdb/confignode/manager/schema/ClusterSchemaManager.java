@@ -126,6 +126,8 @@ public class ClusterSchemaManager {
   private static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
   private static final MetricService metricService = MetricService.getInstance();
+  private static final String DATA = "data";
+  private static final String SCHEMA = "schema";
 
   public ClusterSchemaManager(
       IManager configManager,
@@ -178,7 +180,7 @@ public class ClusterSchemaManager {
               Metric.REPLICATION_FACTOR.toString(),
               MetricLevel.CORE,
               Tag.TYPE.toString(),
-              "data",
+              DATA,
               Tag.DATABASE.toString(),
               databaseSchemaPlan.getSchema().getName())
           .set(databaseSchemaPlan.getSchema().dataReplicationFactor);
@@ -187,7 +189,7 @@ public class ClusterSchemaManager {
               Metric.REPLICATION_FACTOR.toString(),
               MetricLevel.CORE,
               Tag.TYPE.toString(),
-              "schema",
+              SCHEMA,
               Tag.DATABASE.toString(),
               databaseSchemaPlan.getSchema().getName())
           .set(databaseSchemaPlan.getSchema().schemaReplicationFactor);
@@ -265,7 +267,7 @@ public class ClusterSchemaManager {
               Metric.REPLICATION_FACTOR.toString(),
               MetricLevel.CORE,
               Tag.TYPE.toString(),
-              "data",
+              DATA,
               Tag.DATABASE.toString(),
               databaseSchemaPlan.getSchema().getName())
           .set(databaseSchemaPlan.getSchema().dataReplicationFactor);
@@ -274,7 +276,7 @@ public class ClusterSchemaManager {
               Metric.REPLICATION_FACTOR.toString(),
               MetricLevel.CORE,
               Tag.TYPE.toString(),
-              "schema",
+              SCHEMA,
               Tag.DATABASE.toString(),
               databaseSchemaPlan.getSchema().getName())
           .set(databaseSchemaPlan.getSchema().schemaReplicationFactor);
@@ -297,14 +299,14 @@ public class ClusterSchemaManager {
           MetricType.GAUGE,
           Metric.REPLICATION_FACTOR.toString(),
           Tag.TYPE.toString(),
-          "data",
+          DATA,
           Tag.DATABASE.toString(),
           deleteDatabasePlan.getName());
       metricService.remove(
           MetricType.GAUGE,
           Metric.REPLICATION_FACTOR.toString(),
           Tag.TYPE.toString(),
-          "schema",
+          SCHEMA,
           Tag.DATABASE.toString(),
           deleteDatabasePlan.getName());
     } catch (ConsensusException e) {
