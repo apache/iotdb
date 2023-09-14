@@ -19,12 +19,19 @@
 
 package org.apache.iotdb.db.pipe.extractor.realtime;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupLeaderCountReq;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -32,10 +39,14 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
+
+  private final AtomicBoolean isFirstExtractionDone = new AtomicBoolean(false);
 
   @Override
   protected void doExtract(PipeRealtimeEvent event) {
@@ -66,7 +77,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTabletInsertion(PipeRealtimeEvent event) {
-    if (isApproachingCapacity()) {
+    if (isPendingQueueApproachingCapacity() || isWalCapacityThresholdReached()) {
       // if the pending queue is approaching capacity, we should not extract any more tablet events.
       // all the data represented by the tablet events should be carried by the following tsfile
       // event.
@@ -183,9 +194,35 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     }
   }
 
-  private boolean isApproachingCapacity() {
+  private boolean isPendingQueueApproachingCapacity() {
     return pendingQueue.size()
         >= PipeConfig.getInstance().getPipeExtractorPendingQueueTabletLimit();
+  }
+
+  // Extractor in hybrid mode first tries to do log mode extraction, and then choose log or tsfile
+  // mode to continue, but if (leader data regions num * Wal size) > (maximum size of wal buffer)
+  // will cause OOM, so we need to check the size and use tsfile mode if necessary.
+  private boolean isWalCapacityThresholdReached() {
+    if (isFirstExtractionDone.compareAndSet(false, true)) {
+      try (final ConfigNodeClient configNodeClient =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+        int leaderDataRegionsNum =
+            configNodeClient
+                .getRegionGroupLeaderCount(
+                    new TGetRegionGroupLeaderCountReq(dataNodeId, TConsensusGroupType.DataRegion))
+                .getLeaderCount();
+
+        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+        return (long) leaderDataRegionsNum * config.getWalBufferSize()
+            > config.getThrottleThreshold();
+      } catch (Exception e) {
+        LOGGER.error("Failed to get leader data regions num from config node", e);
+        return true;
+      }
+    }
+
+    return true;
   }
 
   @Override
