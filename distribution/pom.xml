@@ -33,7 +33,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>${maven.assembly.version}</version>
                 <executions>
                     <!-- Package binaries-->
                     <execution>
@@ -62,7 +61,6 @@
             <plugin>
                 <groupId>net.nicoulaj.maven.plugins</groupId>
                 <artifactId>checksum-maven-plugin</artifactId>
-                <version>1.8</version>
                 <executions>
                     <execution>
                         <id>sign-source-release</id>
@@ -137,7 +135,6 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${maven.assembly.version}</version>
                         <executions>
                             <!-- Package binaries-->
                             <execution>
@@ -160,7 +157,6 @@
                     <plugin>
                         <groupId>net.nicoulaj.maven.plugins</groupId>
                         <artifactId>checksum-maven-plugin</artifactId>
-                        <version>1.8</version>
                         <executions>
                             <execution>
                                 <id>sign-source-release</id>
@@ -199,7 +195,6 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${maven.assembly.version}</version>
                         <executions>
                             <!-- Package binaries-->
                             <execution>
@@ -222,7 +217,6 @@
                     <plugin>
                         <groupId>net.nicoulaj.maven.plugins</groupId>
                         <artifactId>checksum-maven-plugin</artifactId>
-                        <version>1.8</version>
                         <executions>
                             <execution>
                                 <id>sign-source-release</id>

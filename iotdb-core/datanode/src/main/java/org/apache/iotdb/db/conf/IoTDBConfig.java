@@ -636,10 +636,10 @@ public class IoTDBConfig {
   private TSEncoding defaultBooleanEncoding = TSEncoding.RLE;
 
   /** INT32 encoding when creating schema automatically is enabled */
-  private TSEncoding defaultInt32Encoding = TSEncoding.RLE;
+  private TSEncoding defaultInt32Encoding = TSEncoding.TS_2DIFF;
 
   /** INT64 encoding when creating schema automatically is enabled */
-  private TSEncoding defaultInt64Encoding = TSEncoding.RLE;
+  private TSEncoding defaultInt64Encoding = TSEncoding.TS_2DIFF;
 
   /** FLOAT encoding when creating schema automatically is enabled */
   private TSEncoding defaultFloatEncoding = TSEncoding.GORILLA;
@@ -908,7 +908,7 @@ public class IoTDBConfig {
   private int mppDataExchangeKeepAliveTimeInMs = 1000;
 
   /** Thrift socket and connection timeout between data node and config node. */
-  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its

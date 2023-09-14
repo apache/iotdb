@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -86,8 +87,11 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
         ConfigNodeClientManager.getInstance();
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowDatabaseResp showDatabaseResp =
-          client.showDatabase(Arrays.asList(SchemaConstant.SYSTEM_DATABASE.split("\\.")));
+      TGetDatabaseReq req =
+          new TGetDatabaseReq(
+              Arrays.asList(SchemaConstant.SYSTEM_DATABASE.split("\\.")),
+              SchemaConstant.ALL_MATCH_SCOPE_BINARY);
+      TShowDatabaseResp showDatabaseResp = client.showDatabase(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == showDatabaseResp.getStatus().getCode()
           && showDatabaseResp.getDatabaseInfoMapSize() == 0) {
         TDatabaseSchema databaseSchema = new TDatabaseSchema();

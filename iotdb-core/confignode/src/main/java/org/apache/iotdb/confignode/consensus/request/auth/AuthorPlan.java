@@ -48,6 +48,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   private Set<Integer> permissions;
   private List<PartialPath> nodeNameList;
   private String userName;
+  private boolean grantOpt;
 
   public AuthorPlan(ConfigPhysicalPlanType type) {
     super(type);
@@ -63,6 +64,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
    * @param password password
    * @param newPassword new password
    * @param permissions permissions
+   * @param grantOpt with grant option, only grant statement can set grantOpt = true
    * @param nodeNameList node name in Path structure
    * @throws AuthException Authentication Exception
    */
@@ -73,6 +75,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
       String password,
       String newPassword,
       Set<Integer> permissions,
+      boolean grantOpt,
       List<PartialPath> nodeNameList)
       throws AuthException {
     this(authorType);
@@ -82,6 +85,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
     this.password = password;
     this.newPassword = newPassword;
     this.permissions = permissions;
+    this.grantOpt = grantOpt;
     this.nodeNameList = nodeNameList;
   }
 
@@ -125,6 +129,14 @@ public class AuthorPlan extends ConfigPhysicalPlan {
     this.permissions = permissions;
   }
 
+  public boolean getGrantOpt() {
+    return this.grantOpt;
+  }
+
+  public void setGrantOpt(boolean grantOpt) {
+    this.grantOpt = grantOpt;
+  }
+
   public List<PartialPath> getNodeNameList() {
     return nodeNameList;
   }
@@ -161,6 +173,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
     for (PartialPath partialPath : nodeNameList) {
       BasicStructureSerDeUtil.write(partialPath.getFullPath(), stream);
     }
+    BasicStructureSerDeUtil.write(grantOpt ? 1 : 0, stream);
   }
 
   @Override
@@ -179,6 +192,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
         permissions.add(buffer.getInt());
       }
     }
+
     int nodeNameListSize = BasicStructureSerDeUtil.readInt(buffer);
     nodeNameList = new ArrayList<>(nodeNameListSize);
     try {
@@ -187,6 +201,10 @@ public class AuthorPlan extends ConfigPhysicalPlan {
       }
     } catch (MetadataException e) {
       logger.error("Invalid path when deserialize authPlan: {}", nodeNameList, e);
+    }
+    grantOpt = false;
+    if (this.authorType.ordinal() >= ConfigPhysicalPlanType.CreateUser.ordinal()) {
+      grantOpt = BasicStructureSerDeUtil.readInt(buffer) > 0;
     }
   }
 
@@ -265,6 +283,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
         && Objects.equals(password, that.password)
         && Objects.equals(newPassword, that.newPassword)
         && Objects.equals(permissions, that.permissions)
+        && grantOpt == that.grantOpt
         && Objects.equals(nodeNameList, that.nodeNameList);
   }
 

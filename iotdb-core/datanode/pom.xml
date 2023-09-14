@@ -75,7 +75,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>${maven.assembly.version}</version>
                 <executions>
                     <!-- Package binaries-->
                     <execution>
@@ -112,6 +111,7 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
                 <executions>
                     <execution>
@@ -137,7 +137,6 @@
                 <!-- generate sources from fmpp -->
                 <groupId>org.apache.drill.tools</groupId>
                 <artifactId>drill-fmpp-maven-plugin</artifactId>
-                <version>${drill.freemarker.maven.plugin.version}</version>
                 <executions>
                     <execution>
                         <id>generate-fmpp</id>
@@ -156,7 +155,6 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.2.0</version>
                 <executions>
                     <execution>
                         <id>add-source</id>
@@ -171,6 +169,21 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <!-- Make sure stuff is also cleaned up, which might be left over from the tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>data</directory>
+                            <includes>
+                                <include>**</include>
+                            </includes>
+                        </fileset>
+                    </filesets>
+                </configuration>
             </plugin>
         </plugins>
     </build>

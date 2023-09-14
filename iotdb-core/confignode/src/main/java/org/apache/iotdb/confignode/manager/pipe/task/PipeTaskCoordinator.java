@@ -38,7 +38,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTaskCoordinator {
 
@@ -49,13 +48,13 @@ public class PipeTaskCoordinator {
   // NEVER EXPOSE THIS DIRECTLY TO THE OUTSIDE
   private final PipeTaskInfo pipeTaskInfo;
 
-  private final ReentrantLock pipeTaskCoordinatorLock;
+  private final PipeTaskCoordinatorLock pipeTaskCoordinatorLock;
   private AtomicReference<PipeTaskInfo> pipeTaskInfoHolder;
 
   public PipeTaskCoordinator(ConfigManager configManager, PipeTaskInfo pipeTaskInfo) {
     this.configManager = configManager;
     this.pipeTaskInfo = pipeTaskInfo;
-    this.pipeTaskCoordinatorLock = new ReentrantLock(true);
+    this.pipeTaskCoordinatorLock = new PipeTaskCoordinatorLock();
   }
 
   /**
@@ -66,7 +65,6 @@ public class PipeTaskCoordinator {
    */
   public AtomicReference<PipeTaskInfo> lock() {
     pipeTaskCoordinatorLock.lock();
-    LOGGER.info("Pipe task coordinator locked.");
 
     pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
     return pipeTaskInfoHolder;
@@ -86,7 +84,6 @@ public class PipeTaskCoordinator {
 
     try {
       pipeTaskCoordinatorLock.unlock();
-      LOGGER.info("Pipe task coordinator unlocked.");
       return true;
     } catch (IllegalMonitorStateException ignored) {
       // This is thrown if unlock() is called without lock() called first.

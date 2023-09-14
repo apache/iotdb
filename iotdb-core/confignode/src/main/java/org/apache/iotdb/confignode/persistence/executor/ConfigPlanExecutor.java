@@ -296,7 +296,7 @@ public class ConfigPlanExecutor {
   }
 
   public TSStatus executeNonQueryPlan(ConfigPhysicalPlan physicalPlan)
-      throws UnknownPhysicalPlanTypeException, AuthException {
+      throws UnknownPhysicalPlanTypeException {
     switch (physicalPlan.getType()) {
       case RegisterDataNode:
         return nodeInfo.registerDataNode((RegisterDataNodePlan) physicalPlan);
@@ -362,6 +362,17 @@ public class ConfigPlanExecutor {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
+      case CreateUserDep:
+      case CreateRoleDep:
+      case DropUserDep:
+      case DropRoleDep:
+      case GrantRoleDep:
+      case GrantUserDep:
+      case GrantRoleToUserDep:
+      case RevokeUserDep:
+      case RevokeRoleDep:
+      case RevokeRoleFromUserDep:
+      case UpdateUserDep:
         return authorInfo.authorNonQuery((AuthorPlan) physicalPlan);
       case ApplyConfigNode:
         return nodeInfo.applyConfigNode((ApplyConfigNodePlan) physicalPlan);
@@ -562,7 +573,8 @@ public class ConfigPlanExecutor {
     if (-1 == level) {
       // get child paths
       Pair<Set<TSchemaNode>, Set<PartialPath>> matchedChildInNextLevel =
-          clusterSchemaInfo.getChildNodePathInNextLevel(partialPath);
+          clusterSchemaInfo.getChildNodePathInNextLevel(
+              partialPath, getNodePathsPartitionPlan.getScope());
       alreadyMatchedNode = matchedChildInNextLevel.left;
       if (!partialPath.hasMultiLevelMatchWildcard()) {
         needMatchedNode = new HashSet<>();
@@ -581,7 +593,8 @@ public class ConfigPlanExecutor {
     } else {
       // count nodes
       Pair<List<PartialPath>, Set<PartialPath>> matchedChildInNextLevel =
-          clusterSchemaInfo.getNodesListInGivenLevel(partialPath, level);
+          clusterSchemaInfo.getNodesListInGivenLevel(
+              partialPath, level, getNodePathsPartitionPlan.getScope());
       alreadyMatchedNode =
           matchedChildInNextLevel.left.stream()
               .map(path -> new TSchemaNode(path.getFullPath(), MNodeType.UNIMPLEMENT.getNodeType()))

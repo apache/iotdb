@@ -71,11 +71,6 @@ public class PipeEnrichedInsertBaseStatement extends InsertBaseStatement {
   }
 
   @Override
-  public boolean isAuthenticationRequired() {
-    return insertBaseStatement.isAuthenticationRequired();
-  }
-
-  @Override
   public PartialPath getDevicePath() {
     return insertBaseStatement.getDevicePath();
   }

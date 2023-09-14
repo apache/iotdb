@@ -128,7 +128,8 @@ public class WebSocketConnector implements PipeConnector {
                 Optional.ofNullable(enrichedEvent)
                     .ifPresent(
                         event ->
-                            event.decreaseReferenceCount(WebSocketConnector.class.getName()))));
+                            event.decreaseReferenceCount(
+                                WebSocketConnector.class.getName(), true))));
 
     while (!commitQueue.isEmpty()) {
       final Pair<Long, Runnable> committer = commitQueue.peek();

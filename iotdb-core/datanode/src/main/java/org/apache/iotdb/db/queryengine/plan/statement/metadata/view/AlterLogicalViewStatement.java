@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.view;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -28,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPathType;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPaths;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.List;
 
@@ -55,12 +60,38 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
     return this.getTargetPathList();
   }
 
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    TSStatus status =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkFullPathListPermission(
+                userName, getSourcePaths().fullPathList, PrivilegeType.READ_SCHEMA.ordinal()),
+            getSourcePaths().fullPathList,
+            PrivilegeType.READ_SCHEMA);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return AuthorityChecker.getTSStatus(
+          AuthorityChecker.checkFullPathListPermission(
+              userName, getTargetPathList(), PrivilegeType.WRITE_SCHEMA.ordinal()),
+          getTargetPathList(),
+          PrivilegeType.WRITE_SCHEMA);
+    }
+    return status;
+  }
+
   public ViewPaths getTargetPaths() {
     return targetPaths;
   }
 
   public ViewPaths getSourcePaths() {
     return sourcePaths;
+  }
+
+  public List<Expression> getSourceExpressionList() {
+    this.sourcePaths.generateExpressionsIfNecessary();
+    return this.sourcePaths.expressionsList;
   }
 
   public List<PartialPath> getTargetPathList() {

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.template;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -33,6 +35,13 @@ public class ShowNodesInSchemaTemplateStatement extends ShowStatement implements
     super();
     statementType = StatementType.SHOW_NODES_IN_SCHEMA_TEMPLATE;
     this.templateName = templateName;
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.SUPER_USER.equals(userName),
+        "Only the admin user can perform this operation");
   }
 
   @Override

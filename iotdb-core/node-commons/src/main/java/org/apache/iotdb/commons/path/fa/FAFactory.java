@@ -45,7 +45,7 @@ public class FAFactory {
             .build(
                 builder -> {
                   if (builder.getPatternTree() != null) {
-                    if (builder.getPatternTree().equals(SchemaConstant.ALL_MATCH_PATTERN_TREE)) {
+                    if (builder.getPatternTree().equals(SchemaConstant.ALL_MATCH_SCOPE)) {
                       // always return the same instance for root.**
                       return SchemaConstant.ALL_MATCH_DFA;
                     }

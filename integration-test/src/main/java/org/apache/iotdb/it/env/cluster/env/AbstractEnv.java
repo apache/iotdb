@@ -409,6 +409,16 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public ISession getSessionConnection(String userName, String password)
+      throws IoTDBConnectionException {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    Session session = new Session(dataNode.getIp(), dataNode.getPort(), userName, password);
+    session.open();
+    return session;
+  }
+
+  @Override
   public ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
     Session session =
         new Session(

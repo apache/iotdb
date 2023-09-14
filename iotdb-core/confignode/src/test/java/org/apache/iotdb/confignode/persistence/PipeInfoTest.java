@@ -85,7 +85,7 @@ public class PipeInfoTest {
     connectorAttributes.put("host", "127.0.0.1");
     connectorAttributes.put("port", "6667");
 
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(new MinimumProgressIndex(), 1);
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
     pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
@@ -120,7 +120,7 @@ public class PipeInfoTest {
     extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(new MinimumProgressIndex(), 1);
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
     pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =

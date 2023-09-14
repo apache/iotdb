@@ -49,14 +49,12 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -102,7 +100,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, List<String>> storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(devicePaths, true, false);
+          partitionCache.getStorageGroupToDevice(devicePaths, true, false, null);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         TSchemaPartitionTableResp schemaPartitionTableResp =
@@ -127,13 +125,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
+  public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree, String userName) {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, List<String>> storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(devicePaths, true, true);
+          partitionCache.getStorageGroupToDevice(devicePaths, true, true, userName);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         TSchemaPartitionTableResp schemaPartitionTableResp =
@@ -159,13 +157,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-      PathPatternTree patternTree, Integer level) {
+      PathPatternTree patternTree, PathPatternTree scope, Integer level) {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       TSchemaNodeManagementResp schemaNodeManagementResp =
           client.getSchemaNodeManagementPartition(
-              constructSchemaNodeManagementPartitionReq(patternTree, level));
+              constructSchemaNodeManagementPartitionReq(patternTree, scope, level));
 
       return parseSchemaNodeManagementPartitionResp(schemaNodeManagementResp);
     } catch (ClientManagerException | TException e) {
@@ -253,10 +251,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public DataPartition getOrCreateDataPartition(
-      List<DataPartitionQueryParam> dataPartitionQueryParams) {
+      List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
 
     Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
-        splitDataPartitionQueryParam(dataPartitionQueryParams, true);
+        splitDataPartitionQueryParam(dataPartitionQueryParams, true, userName);
     DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
 
     if (null == dataPartition) {
@@ -295,13 +293,15 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   /** split data partition query param by database */
   private Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParam(
-      List<DataPartitionQueryParam> dataPartitionQueryParams, boolean isAutoCreate) {
+      List<DataPartitionQueryParam> dataPartitionQueryParams,
+      boolean isAutoCreate,
+      String userName) {
     List<String> devicePaths = new ArrayList<>();
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
       devicePaths.add(dataPartitionQueryParam.getDevicePath());
     }
     Map<String, String> deviceToStorageGroupMap =
-        partitionCache.getDeviceToStorageGroup(devicePaths, true, isAutoCreate);
+        partitionCache.getDeviceToStorageGroup(devicePaths, true, isAutoCreate, userName);
     Map<String, List<DataPartitionQueryParam>> result = new HashMap<>();
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
       String devicePath = dataPartitionQueryParam.getDevicePath();
@@ -314,28 +314,19 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private TSchemaPartitionReq constructSchemaPartitionReq(PathPatternTree patternTree) {
-    PublicBAOS baos = new PublicBAOS();
     try {
-      patternTree.serialize(baos);
-      ByteBuffer serializedPatternTree = ByteBuffer.allocate(baos.size());
-      serializedPatternTree.put(baos.getBuf(), 0, baos.size());
-      serializedPatternTree.flip();
-      return new TSchemaPartitionReq(serializedPatternTree);
+      return new TSchemaPartitionReq(patternTree.serialize());
     } catch (IOException e) {
       throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
     }
   }
 
   private TSchemaNodeManagementReq constructSchemaNodeManagementPartitionReq(
-      PathPatternTree patternTree, Integer level) {
-    PublicBAOS baos = new PublicBAOS();
+      PathPatternTree patternTree, PathPatternTree scope, Integer level) {
     try {
-      patternTree.serialize(baos);
-      ByteBuffer serializedPatternTree = ByteBuffer.allocate(baos.size());
-      serializedPatternTree.put(baos.getBuf(), 0, baos.size());
-      serializedPatternTree.flip();
       TSchemaNodeManagementReq schemaNodeManagementReq =
-          new TSchemaNodeManagementReq(serializedPatternTree);
+          new TSchemaNodeManagementReq(patternTree.serialize());
+      schemaNodeManagementReq.setScopePatternTree(scope.serialize());
       if (null == level) {
         schemaNodeManagementReq.setLevel(-1);
       } else {

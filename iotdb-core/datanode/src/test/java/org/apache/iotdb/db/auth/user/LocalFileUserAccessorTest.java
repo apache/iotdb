@@ -33,10 +33,12 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -62,13 +64,14 @@ public class LocalFileUserAccessorTest {
 
   @Test
   public void test() throws IOException, IllegalPathException {
-    User[] users = new User[5];
+    User[] users = new User[4];
     for (int i = 0; i < users.length; i++) {
       users[i] = new User("user" + i, "password" + i);
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.getPrivileges().add(j);
-        users[i].getPrivilegeList().add(pathPrivilege);
+        users[i].getPathPrivilegeList().add(pathPrivilege);
+        users[i].getSysPrivilege().add(j + 5);
         users[i].getRoleList().add("role" + j);
       }
     }
@@ -101,7 +104,7 @@ public class LocalFileUserAccessorTest {
     }
 
     // delete
-    assertFalse(accessor.deleteUser("not a user"));
+    assertTrue(accessor.deleteUser("not a user"));
     assertTrue(accessor.deleteUser(users[users.length - 1].getName()));
     usernames = accessor.listAllUsers();
     assertEquals(users.length - 1, usernames.size());
@@ -111,5 +114,27 @@ public class LocalFileUserAccessorTest {
     }
     User nullUser = accessor.loadUser(users[users.length - 1].getName());
     assertNull(nullUser);
+  }
+
+  public void testLoadOldVersion() throws IOException, IllegalPathException {
+    User user = new User();
+    user.setName("root");
+    user.setPassword("password1");
+    PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c"));
+    pathPrivilege.grantPrivilege(1, false);
+    user.setPrivilegeList(Collections.singletonList(pathPrivilege));
+    user.setSysPriGrantOpt(new HashSet<>());
+    user.setSysPrivilegeSet(new HashSet<>());
+    user.setRoleList(Collections.singletonList("role1"));
+    accessor.saveUserOldVersion(user);
+    User newUser = accessor.loadUser("root");
+    assertEquals("root", newUser.getName());
+    assertEquals("password1", newUser.getPassword());
+    assertEquals(new ArrayList<>(), newUser.getPathPrivilegeList());
+    assertEquals(new HashSet<>(), newUser.getSysPrivilege());
+    accessor.deleteUser("root");
+    accessor.saveUser(user);
+    newUser = accessor.loadUser("root");
+    assertEquals(user, newUser);
   }
 }
