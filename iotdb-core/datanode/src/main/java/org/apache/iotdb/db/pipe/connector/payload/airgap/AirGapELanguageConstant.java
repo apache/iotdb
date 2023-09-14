@@ -23,7 +23,12 @@ import java.nio.charset.StandardCharsets;
 
 public class AirGapELanguageConstant {
   public static final byte[] E_LANGUAGE_PREFIX =
-      ("<!System=OMSVersion=1.0Code=UTF-8Data=1.0!>" + "\n" + "<block:=Free>" + "\n")
+      ("<!System=IoTDB Version=1.0 Code=UTF-8 Data=1.0!>" + "\n" + "<block:=Free>" + "\n")
           .getBytes(StandardCharsets.UTF_8);
-  public static final byte[] E_LANGUAGE_SUFFIX = "</block:=Free>".getBytes(StandardCharsets.UTF_8);
+  public static final byte[] E_LANGUAGE_SUFFIX =
+      ("\n" + "</block:=Free>").getBytes(StandardCharsets.UTF_8);
+
+  private AirGapELanguageConstant() {
+    // Utility class
+  }
 }

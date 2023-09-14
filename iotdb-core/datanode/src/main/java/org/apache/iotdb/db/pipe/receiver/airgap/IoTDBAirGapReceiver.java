@@ -174,15 +174,11 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     final ByteBuffer resultBuffer = ByteBuffer.allocate(length);
     final byte[] readBuffer = new byte[length];
 
-    int alreadyReadBytes = 0;
-    int currentReadBytes;
-    while (alreadyReadBytes < length) {
-      currentReadBytes = inputStream.read(readBuffer, 0, length - alreadyReadBytes);
-      resultBuffer.put(readBuffer, 0, currentReadBytes);
-      alreadyReadBytes += currentReadBytes;
-    }
+    readTillFull(inputStream, readBuffer);
+    resultBuffer.put(readBuffer);
+
     if (hasELanguage) {
-      inputStream.skip(AirGapELanguageConstant.E_LANGUAGE_SUFFIX.length);
+      skipTillEnough(inputStream, AirGapELanguageConstant.E_LANGUAGE_SUFFIX.length);
     }
     return resultBuffer.array();
   }
@@ -193,15 +189,14 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
    */
   private int readLength(InputStream inputStream) throws IOException {
     byte[] lengthBytesStr = new byte[8];
-    if (inputStream.read(lengthBytesStr) < 8) {
-      return 0;
-    }
+    readTillFull(inputStream, lengthBytesStr);
 
     // Judge the 8 bytes of the data instead of 4 bytes, in case the 4 length bytes equal to
-    // exactly the sub bytes of E_LANGUAGE_PREFIX.
-    if (lengthBytesStr == BytesUtils.subBytes(AirGapELanguageConstant.E_LANGUAGE_PREFIX, 0, 8)) {
+    // exactly the 4 prefix bytes of E_LANGUAGE_PREFIX.
+    if (Arrays.equals(
+        lengthBytesStr, BytesUtils.subBytes(AirGapELanguageConstant.E_LANGUAGE_PREFIX, 0, 8))) {
       hasELanguage = true;
-      inputStream.skip(AirGapELanguageConstant.E_LANGUAGE_PREFIX.length - 8);
+      skipTillEnough(inputStream, (long) AirGapELanguageConstant.E_LANGUAGE_PREFIX.length - 8);
       return readLength(inputStream);
     }
 
@@ -211,5 +206,20 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     return Arrays.equals(BytesUtils.subBytes(lengthBytesStr, 0, 4), lengthBytes1)
         ? BytesUtils.bytesToInt(lengthBytes1)
         : 0;
+  }
+
+  private void readTillFull(InputStream inputStream, byte[] readBuffer) throws IOException {
+    int alreadyReadBytes = 0;
+    while (alreadyReadBytes < readBuffer.length) {
+      alreadyReadBytes +=
+          inputStream.read(readBuffer, alreadyReadBytes, readBuffer.length - alreadyReadBytes);
+    }
+  }
+
+  private void skipTillEnough(InputStream inputStream, long length) throws IOException {
+    int currentSkippedBytes = 0;
+    while (currentSkippedBytes < length) {
+      currentSkippedBytes += inputStream.skip(length - currentSkippedBytes);
+    }
   }
 }
