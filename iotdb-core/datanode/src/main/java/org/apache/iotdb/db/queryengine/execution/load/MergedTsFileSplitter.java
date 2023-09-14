@@ -622,7 +622,13 @@ public class MergedTsFileSplitter {
       for (Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
         allChunkData.addAll(entry.getValue());
       }
-      nextSplits.addAll(allChunkData);
+      for (ChunkData chunkData : allChunkData) {
+        try {
+          nextSplits.put(chunkData);
+        } catch (InterruptedException e) {
+          return false;
+        }
+      }
       pageIndex2ChunkData.clear();
       return true;
     }

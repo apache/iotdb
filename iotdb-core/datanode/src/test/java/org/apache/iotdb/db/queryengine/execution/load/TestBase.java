@@ -110,7 +110,7 @@ public class TestBase {
   // number of chunks of each series in a file, each series has only one chunk in a file
   protected double chunkTimeRangeRatio = 0.3;
   // the interval between two consecutive points of a series
-  protected long pointInterval = 50_000;
+  protected long pointInterval = 10_000;
   protected final List<File> files = new ArrayList<>();
   protected final List<TsFileResource> tsFileResources = new ArrayList<>();
   protected IPartitionFetcher partitionFetcher;
@@ -141,7 +141,8 @@ public class TestBase {
     double totalTimeRange = chunkTimeRangeRatio * fileNum;
     int splitChunkNum = 0;
     // if the boundary of the ith partition does not overlap a chunk, it introduces an additional split
-    // TODO: due to machine precision, the calculation may have error
+    // TODO: due to machine precision, the calculation may have error. Also, if the data amount is
+    // too large, there could be more than one chunk for each series in the file.
     for (int i = 0; i <= totalTimeRange; i++) {
       if (i * 1.0 % chunkTimeRangeRatio > 0.00001) {
         splitChunkNum += 1;
@@ -150,7 +151,8 @@ public class TestBase {
     return (splitChunkNum + fileNum) * seriesNum * 2;
   }
 
-  public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndpoint) {
+  public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndpoint)
+      throws TException {
     return new TLoadResp().setAccepted(true)
         .setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
@@ -176,7 +178,7 @@ public class TestBase {
                   dummyProtocol(),
                   new ThriftClientProperty.Builder().build(), node, this) {
                 @Override
-                public TLoadResp sendTsFilePieceNode(TTsFilePieceReq req) {
+                public TLoadResp sendTsFilePieceNode(TTsFilePieceReq req) throws TException {
                   return handleTsFilePieceNode(req, getTEndpoint());
                 }
 
