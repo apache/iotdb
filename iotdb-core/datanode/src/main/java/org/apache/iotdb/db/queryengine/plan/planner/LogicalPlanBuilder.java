@@ -120,6 +120,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -236,8 +237,14 @@ public class LogicalPlanBuilder {
                   : ((TimeSeriesOperand) sourceExpression).getPath());
       String outputDevice = outputPath.getDevice();
       outputPathToSourceExpressionMap
-          .computeIfAbsent(outputDevice, k -> new LinkedHashMap<>())
+          .computeIfAbsent(
+              outputDevice,
+              k ->
+                  timeseriesOrdering != null
+                      ? new TreeMap<>(timeseriesOrdering.getStringComparator())
+                      : new LinkedHashMap<>())
           .put(outputPath.getMeasurement(), sourceExpression);
+      ;
       if (outputPath.isUnderAlignedEntity()) {
         deviceAlignedSet.add(outputDevice);
       }
