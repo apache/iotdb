@@ -843,6 +843,13 @@ public class IoTConsensusServerImpl {
      * deserialization of PlanNode to be concurrent
      */
     private TSStatus cacheAndInsertLatestNode(DeserializedBatchIndexedConsensusRequest request) {
+      logger.debug(
+          "cacheAndInsert start: source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}",
+          sourcePeerId,
+          consensusGroupId,
+          requestCache.size(),
+          request.getStartSyncIndex(),
+          request.getEndSyncIndex());
       queueLock.lock();
       try {
         long insertStartTime = System.nanoTime();
@@ -905,20 +912,22 @@ public class IoTConsensusServerImpl {
         }
         long sortTime = System.nanoTime();
         ioTConsensusServerMetrics.recordSortCost(sortTime - insertStartTime);
+        List<TSStatus> subStatus = new LinkedList<>();
+        for (IConsensusRequest insertNode : request.getInsertNodes()) {
+          subStatus.add(stateMachine.write(insertNode));
+        }
+        long applyTime = System.nanoTime();
+        ioTConsensusServerMetrics.recordApplyCost(applyTime - sortTime);
+        queueSortCondition.signalAll();
         logger.debug(
-            "source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}, sortTime = {} ms",
+            "cacheAndInsert end: source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}, sortTime = {}ms, applyTime = {}ms",
             sourcePeerId,
             consensusGroupId,
             requestCache.size(),
             request.getStartSyncIndex(),
             request.getEndSyncIndex(),
-            TimeUnit.NANOSECONDS.toMillis(sortTime - insertStartTime));
-        List<TSStatus> subStatus = new LinkedList<>();
-        for (IConsensusRequest insertNode : request.getInsertNodes()) {
-          subStatus.add(stateMachine.write(insertNode));
-        }
-        ioTConsensusServerMetrics.recordApplyCost(System.nanoTime() - sortTime);
-        queueSortCondition.signalAll();
+            TimeUnit.NANOSECONDS.toMillis(sortTime - insertStartTime),
+            TimeUnit.NANOSECONDS.toMillis(applyTime - sortTime));
         return new TSStatus().setSubStatus(subStatus);
       } finally {
         queueLock.unlock();
