@@ -35,12 +35,6 @@ import static org.junit.Assert.fail;
  */
 public class AlignedWriteUtil {
 
-  public static void main(String[] args) {
-    for (String s : sqls) {
-      System.out.println(s + ";");
-    }
-  }
-
   private static final String[] sqls =
       new String[] {
         "CREATE DATABASE root.sg1",

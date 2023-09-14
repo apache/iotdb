@@ -222,8 +222,12 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planLast(Analysis analysis, Ordering resultTimeOrder, ZoneId zoneId) {
-    Ordering timeseriesOrdering = analysis.getTimeseriesOrderingForLastQuery();
+  public LogicalPlanBuilder planLast(
+      Analysis analysis,
+      Filter globalTimeFilter,
+      Ordering timeseriesOrdering,
+      Ordering resultTimeOrder,
+      ZoneId zoneId) {
     Set<String> deviceAlignedSet = new HashSet<>();
     Set<String> deviceExistViewSet = new HashSet<>();
     // <Device, <Measurement, Expression>>
