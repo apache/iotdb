@@ -636,7 +636,7 @@ public abstract class AbstractMemTable implements IMemTable {
     int databaseLength = stream.readInt();
     if (databaseLength != 0) {
       byte[] bytes = new byte[databaseLength];
-      stream.read(bytes);
+      databaseLength = stream.read(bytes);
       database = new String(bytes);
     }
 
