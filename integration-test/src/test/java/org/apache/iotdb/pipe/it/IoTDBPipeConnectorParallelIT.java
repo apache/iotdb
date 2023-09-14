@@ -116,7 +116,11 @@ public class IoTDBPipeConnectorParallelIT {
         fail(e.getMessage());
       }
 
-      expectedResSet.add("0, 1.0,");
+      expectedResSet.add("0,1.0,");
+      expectedResSet.add("1,2.0,");
+      expectedResSet.add("2,3.0,");
+      expectedResSet.add("3,4.0,");
+      assertDataOnReceiver(receiverEnv, expectedResSet);
       assertDataOnReceiver(receiverEnv, expectedResSet);
     }
   }
