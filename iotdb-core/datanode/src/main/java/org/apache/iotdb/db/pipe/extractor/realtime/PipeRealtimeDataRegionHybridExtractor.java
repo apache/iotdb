@@ -47,6 +47,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
   private final AtomicBoolean isFirstExtractionDone = new AtomicBoolean(false);
+  private final AtomicBoolean hasHistoricalExtractorConsumedAll = new AtomicBoolean(false);
 
   @Override
   protected void doExtract(PipeRealtimeEvent event) {
@@ -77,10 +78,17 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTabletInsertion(PipeRealtimeEvent event) {
-    if (isPendingQueueApproachingCapacity() || isWalCapacityThresholdReached()) {
-      // if the pending queue is approaching capacity, we should not extract any more tablet events.
-      // all the data represented by the tablet events should be carried by the following tsfile
-      // event.
+    if (!hasHistoricalExtractorConsumedAll()
+        || isPendingQueueApproachingCapacity()
+        || isWalCapacityThresholdReached()) {
+      // In the following 3 cases, we should not extract any more tablet events. all the data
+      // represented by the tablet events should be carried by the following tsfile event:
+      //  1. The historical extractor has not consumed all the data.
+      //  2. The pending queue is approaching capacity
+      //  3. HybridExtractor will first try to do extraction in log mode, and then choose log or
+      //  tsfile mode to continue extracting, but if (leader data regions num * Wal size) > (maximum
+      //  size of wal buffer) will cause OOM, so we need to use tsfile mode if the size exceeds the
+      //  threshold.
       event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
     }
 
@@ -199,9 +207,6 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         >= PipeConfig.getInstance().getPipeExtractorPendingQueueTabletLimit();
   }
 
-  // Extractor in hybrid mode first tries to do log mode extraction, and then choose log or tsfile
-  // mode to continue, but if (leader data regions num * Wal size) > (maximum size of wal buffer)
-  // will cause OOM, so we need to check the size and use tsfile mode if necessary.
   private boolean isWalCapacityThresholdReached() {
     if (isFirstExtractionDone.compareAndSet(false, true)) {
       try (final ConfigNodeClient configNodeClient =
@@ -223,6 +228,14 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     }
 
     return true;
+  }
+
+  private boolean hasHistoricalExtractorConsumedAll() {
+    return hasHistoricalExtractorConsumedAll.get();
+  }
+
+  public void setHasHistoricalExtractorConsumedAll(boolean hasConsumedAll) {
+    hasHistoricalExtractorConsumedAll.set(hasConsumedAll);
   }
 
   @Override

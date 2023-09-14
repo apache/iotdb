@@ -216,9 +216,16 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
   @Override
   public Event supply() throws Exception {
-    return historicalExtractor.hasConsumedAll()
-        ? realtimeExtractor.supply()
-        : historicalExtractor.supply();
+    if (historicalExtractor.hasConsumedAll()) {
+      if (realtimeExtractor instanceof PipeRealtimeDataRegionHybridExtractor) {
+        ((PipeRealtimeDataRegionHybridExtractor) realtimeExtractor)
+            .setHasHistoricalExtractorConsumedAll(true);
+      }
+
+      return realtimeExtractor.supply();
+    } else {
+      return historicalExtractor.supply();
+    }
   }
 
   @Override
