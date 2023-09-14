@@ -97,24 +97,17 @@ public class LastQueryTransformOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    long maxPeekMemory = 0;
-    maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemory());
-    maxPeekMemory = Math.max(maxPeekMemory, child.calculateRetainedSizeAfterCallingNext());
-    return maxPeekMemory;
+    return Math.max(child.calculateMaxPeekMemory(), child.calculateRetainedSizeAfterCallingNext());
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    long maxReturnMemory = 0;
-    maxReturnMemory = Math.max(maxReturnMemory, child.calculateMaxReturnSize());
-    return maxReturnMemory;
+    return child.calculateMaxReturnSize();
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    long sum = 0;
-    sum += child.calculateRetainedSizeAfterCallingNext();
-    return sum;
+    return child.calculateRetainedSizeAfterCallingNext();
   }
 
   @Override
