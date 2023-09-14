@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -32,26 +32,26 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
   private final LogDispatcher.LogDispatcherThread logDispatcherThread;
   private final String peerGroupId;
 
-  private Histogram constructBatchHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  private Histogram syncLogTimePerRequestHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Timer constructBatchTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer syncLogTimePerRequestTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   public LogDispatcherThreadMetrics(LogDispatcher.LogDispatcherThread logDispatcherThread) {
     this.logDispatcherThread = logDispatcherThread;
     this.peerGroupId = logDispatcherThread.getPeer().getGroupId().toString();
   }
 
-  public void recordConstructBatchTime(long time) {
-    constructBatchHistogram.update(time);
+  public void recordConstructBatchTime(long costTimeInNanos) {
+    constructBatchTimer.updateNanos(costTimeInNanos);
   }
 
-  public void recordSyncLogTimePerRequest(long time) {
-    syncLogTimePerRequestHistogram.update(time);
+  public void recordSyncLogTimePerRequest(long costTimeInNanos) {
+    syncLogTimePerRequestTimer.updateNanos(costTimeInNanos);
   }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
     bindAutoGauge(metricService);
-    bindStageHistogram(metricService);
+    bindStageTimer(metricService);
   }
 
   private void bindAutoGauge(AbstractMetricService metricService) {
@@ -90,9 +90,9 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
         "cachedRequestInMemoryQueue");
   }
 
-  private void bindStageHistogram(AbstractMetricService metricService) {
-    constructBatchHistogram =
-        metricService.getOrCreateHistogram(
+  private void bindStageTimer(AbstractMetricService metricService) {
+    constructBatchTimer =
+        metricService.getOrCreateTimer(
             Metric.STAGE.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
@@ -101,8 +101,8 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
             "constructBatch",
             Tag.REGION.toString(),
             peerGroupId);
-    syncLogTimePerRequestHistogram =
-        metricService.getOrCreateHistogram(
+    syncLogTimePerRequestTimer =
+        metricService.getOrCreateTimer(
             Metric.STAGE.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
@@ -113,9 +113,9 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
             peerGroupId);
   }
 
-  private void unbindStageHistogram(AbstractMetricService metricService) {
+  private void unbindStageTimer(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.HISTOGRAM,
+        MetricType.TIMER,
         Metric.STAGE.toString(),
         Tag.NAME.toString(),
         Metric.IOT_CONSENSUS.toString(),
@@ -124,7 +124,7 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
         Tag.REGION.toString(),
         peerGroupId);
     metricService.remove(
-        MetricType.HISTOGRAM,
+        MetricType.TIMER,
         Metric.STAGE.toString(),
         Tag.NAME.toString(),
         Metric.IOT_CONSENSUS.toString(),
@@ -137,7 +137,7 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     unbindAutoGauge(metricService);
-    unbindStageHistogram(metricService);
+    unbindStageTimer(metricService);
   }
 
   private void unbindAutoGauge(AbstractMetricService metricService) {
