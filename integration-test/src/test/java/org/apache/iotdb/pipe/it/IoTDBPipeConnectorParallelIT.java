@@ -108,6 +108,9 @@ public class IoTDBPipeConnectorParallelIT {
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
         statement.execute("insert into root.sg1.d1(time, s1) values (0, 1)");
+        statement.execute("insert into root.sg1.d1(time, s1) values (1, 2)");
+        statement.execute("insert into root.sg1.d1(time, s1) values (2, 3)");
+        statement.execute("insert into root.sg1.d1(time, s1) values (3, 4)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
