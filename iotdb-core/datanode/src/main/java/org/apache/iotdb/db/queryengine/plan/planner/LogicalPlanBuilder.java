@@ -126,7 +126,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchSourceExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_VALUE;
@@ -223,12 +222,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLast(Analysis analysis, QueryStatement queryStatement) {
-    Filter globalTimeFilter = analysis.getGlobalTimeFilter();
     Ordering timeseriesOrdering = analysis.getTimeseriesOrderingForLastQuery();
-    Set<Expression> lastQueryNonWriteViewExpressions =
-        analysis.getLastQueryNonWritableViewExpressions();
-
-    List<PlanNode> sourceNodeList = new ArrayList<>();
     Set<String> deviceAlignedSet = new HashSet<>();
     Set<String> deviceExistViewSet = new HashSet<>();
     // <Device, <Measurement, Expression>>
@@ -260,6 +254,7 @@ public class LogicalPlanBuilder {
       }
     }
 
+    List<PlanNode> sourceNodeList = new ArrayList<>();
     for (Map.Entry<String, Map<String, Expression>> deviceMeasurementExpressionEntry :
         outputPathToSourceExpressionMap.entrySet()) {
       String outputDevice = deviceMeasurementExpressionEntry.getKey();
@@ -313,12 +308,14 @@ public class LogicalPlanBuilder {
       }
     }
 
+    Set<Expression> lastQueryNonWriteViewExpressions =
+        analysis.getLastQueryNonWritableViewExpressions();
+    Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap =
+        analysis.getLastQueryNonWritableViewSourceExpressionMap();
     if (lastQueryNonWriteViewExpressions != null) {
       for (Expression expression : lastQueryNonWriteViewExpressions) {
         Set<Expression> sourceTransformExpressions =
             new HashSet<>(Collections.singletonList(expression));
-        LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-        Set<Expression> sources = new LinkedHashSet<>(searchSourceExpressions(expression));
         FunctionExpression maxTimeAgg =
             new FunctionExpression(
                 MAX_TIME, new LinkedHashMap<>(), Collections.singletonList(expression));
@@ -329,6 +326,9 @@ public class LogicalPlanBuilder {
         analyzeExpression(analysis, maxTimeAgg);
         analyzeExpression(analysis, lastValueAgg);
 
+        Set<Expression> sources =
+            new LinkedHashSet<>(lastQueryNonWritableViewSourceExpressionMap.get(expression));
+        LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
         planBuilder =
             planBuilder
                 .planRawDataSource(
@@ -354,7 +354,7 @@ public class LogicalPlanBuilder {
         LastQueryTransformNode transformNode =
             new LastQueryTransformNode(
                 context.getQueryId().genPlanNodeId(),
-                Arrays.asList(planBuilder.getRoot()),
+                planBuilder.getRoot(),
                 expression.getViewPath().getFullPath(),
                 analysis.getType(expression).toString());
         sourceNodeList.add(transformNode);
@@ -365,7 +365,7 @@ public class LogicalPlanBuilder {
         new LastQueryNode(
             context.getQueryId().genPlanNodeId(),
             sourceNodeList,
-            globalTimeFilter,
+            analysis.getGlobalTimeFilter(),
             timeseriesOrdering);
     ColumnHeaderConstant.lastQueryColumnHeaders.forEach(
         columnHeader ->

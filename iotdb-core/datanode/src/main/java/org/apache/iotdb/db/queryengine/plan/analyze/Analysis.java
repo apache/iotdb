@@ -212,6 +212,7 @@ public class Analysis {
 
   // Used to store view expression in last query which is non-writable
   private Set<Expression> lastQueryNonWritableViewExpressions;
+  private Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap;
 
   private Set<Expression> lastQueryBaseExpressions;
 
@@ -751,6 +752,15 @@ public class Analysis {
   public void setLastQueryNonWritableViewExpression(
       Set<Expression> lastQueryNonWritableViewExpression) {
     this.lastQueryNonWritableViewExpressions = lastQueryNonWritableViewExpression;
+  }
+
+  public Map<Expression, List<Expression>> getLastQueryNonWritableViewSourceExpressionMap() {
+    return this.lastQueryNonWritableViewSourceExpressionMap;
+  }
+
+  public void setLastQueryNonWritableViewSourceExpressionMap(
+      Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap) {
+    this.lastQueryNonWritableViewSourceExpressionMap = lastQueryNonWritableViewSourceExpressionMap;
   }
 
   public ModelInferenceDescriptor getModelInferenceDescriptor() {

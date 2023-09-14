@@ -16,23 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
 
-public class LastQueryTransformNode extends MultiChildProcessNode {
+public class LastQueryTransformNode extends SingleChildProcessNode {
 
   private final String viewPath;
 
@@ -44,9 +46,8 @@ public class LastQueryTransformNode extends MultiChildProcessNode {
     this.dataType = dataType;
   }
 
-  public LastQueryTransformNode(
-      PlanNodeId id, List<PlanNode> planNodes, String viewPath, String dataType) {
-    super(id, planNodes);
+  public LastQueryTransformNode(PlanNodeId id, PlanNode aggNode, String viewPath, String dataType) {
+    super(id, aggNode);
     this.viewPath = viewPath;
     this.dataType = dataType;
   }
@@ -83,13 +84,28 @@ public class LastQueryTransformNode extends MultiChildProcessNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {
-    children.add(child);
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitLastQueryTransform(this, context);
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitLastQueryTransform(this, context);
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    LastQueryTransformNode that = (LastQueryTransformNode) o;
+    return viewPath.equals(that.viewPath) && dataType.equals(that.dataType);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), viewPath, dataType);
   }
 
   public String getViewPath() {

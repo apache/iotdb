@@ -241,7 +241,7 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitLastQueryTransform(LastQueryTransformNode node, C context) {
-    return visitMultiChildProcess(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitMergeSort(MergeSortNode node, C context) {

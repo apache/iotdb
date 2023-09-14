@@ -498,18 +498,25 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Set<Expression> sourceExpressions = new LinkedHashSet<>();
     Set<Expression> lastQueryBaseExpressions = new LinkedHashSet<>();
     Set<Expression> lastQueryNonWritableViewExpressions = null;
+    Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap = null;
 
     for (Expression selectExpression : selectExpressions) {
-      for (Expression sourceExpression : bindSchemaForExpression(selectExpression, schemaTree)) {
-        if (sourceExpression instanceof TimeSeriesOperand) {
-          lastQueryBaseExpressions.add(sourceExpression);
-          sourceExpressions.add(sourceExpression);
+      for (Expression lastQuerySourceExpression :
+          bindSchemaForExpression(selectExpression, schemaTree)) {
+        if (lastQuerySourceExpression instanceof TimeSeriesOperand) {
+          lastQueryBaseExpressions.add(lastQuerySourceExpression);
+          sourceExpressions.add(lastQuerySourceExpression);
         } else {
           if (lastQueryNonWritableViewExpressions == null) {
             lastQueryNonWritableViewExpressions = new LinkedHashSet<>();
+            lastQueryNonWritableViewSourceExpressionMap = new HashMap<>();
           }
-          lastQueryNonWritableViewExpressions.add(sourceExpression);
-          sourceExpressions.addAll(searchSourceExpressions(sourceExpression));
+          List<Expression> sourceExpressionsOfNonWritableView =
+              searchSourceExpressions(lastQuerySourceExpression);
+          lastQueryNonWritableViewExpressions.add(lastQuerySourceExpression);
+          lastQueryNonWritableViewSourceExpressionMap.put(
+              lastQuerySourceExpression, sourceExpressionsOfNonWritableView);
+          sourceExpressions.addAll(sourceExpressionsOfNonWritableView);
         }
       }
     }
@@ -517,6 +524,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setSourceExpressions(sourceExpressions);
     analysis.setLastQueryBaseExpressions(lastQueryBaseExpressions);
     analysis.setLastQueryNonWritableViewExpression(lastQueryNonWritableViewExpressions);
+    analysis.setLastQueryNonWritableViewSourceExpressionMap(
+        lastQueryNonWritableViewSourceExpressionMap);
   }
 
   private void updateSchemaTreeByViews(Analysis analysis, ISchemaTree originSchemaTree) {

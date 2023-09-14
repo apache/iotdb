@@ -232,7 +232,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   @Override
   public PlanNode visitLastQueryTransform(LastQueryTransformNode node, NodeGroupContext context) {
-    return processMultiChildNode(node, context);
+    return processOneChildNode(node, context);
   }
 
   @Override

@@ -2460,7 +2460,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitLastQueryTransform(
       LastQueryTransformNode node, LocalExecutionPlanContext context) {
-    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
+    Operator operator = node.getChild().accept(this, context);
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -2471,7 +2471,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new LastQueryTransformOperator(
-        node.getViewPath(), node.getDataType(), operatorContext, children);
+        node.getViewPath(), node.getDataType(), operatorContext, operator);
   }
 
   private Map<String, List<InputLocation>> makeLayout(PlanNode node) {

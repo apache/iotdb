@@ -25,14 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperato
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class LastQueryTransformOperator implements ProcessOperator {
 
@@ -42,20 +35,18 @@ public class LastQueryTransformOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
 
-  private final List<Operator> children;
-
-  private int currentIndex;
+  // the child of LastQueryTransformOperator will always be AggOperator
+  private final Operator child;
 
   private TsBlockBuilder tsBlockBuilder;
 
   public LastQueryTransformOperator(
-      String viewPath, String dataType, OperatorContext operatorContext, List<Operator> children) {
+      String viewPath, String dataType, OperatorContext operatorContext, Operator child) {
     this.viewPath = viewPath;
     this.dataType = dataType;
     this.operatorContext = operatorContext;
-    this.children = children;
-    this.currentIndex = 0;
-    this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(0);
+    this.child = child;
+    this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(1);
   }
 
   @Override
@@ -65,57 +56,28 @@ public class LastQueryTransformOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    if (currentIndex < 1) {
-      List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
-      for (int i = currentIndex; i < 1; i++) {
-        ListenableFuture<?> blocked = children.get(i).isBlocked();
-        if (!blocked.isDone()) {
-          listenableFutures.add(blocked);
-        }
-      }
-      return listenableFutures.isEmpty() ? NOT_BLOCKED : successfulAsList(listenableFutures);
-    } else {
-      return Futures.immediateVoidFuture();
-    }
+    return child.isBlocked();
   }
 
   @Override
   public TsBlock next() throws Exception {
-    if (currentIndex >= 1) {
-      TsBlock res = tsBlockBuilder.build();
-      tsBlockBuilder.reset();
-      return res;
-    }
-
-    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
-    long start = System.nanoTime();
-
-    int endIndex = 1;
-
-    while ((System.nanoTime() - start < maxRuntime)
-        && (currentIndex < endIndex)
-        && !tsBlockBuilder.isFull()) {
-      if (children.get(currentIndex).hasNextWithTimer()) {
-        TsBlock tsBlock = children.get(currentIndex).nextWithTimer();
-        if (tsBlock == null) {
+    if (!tsBlockBuilder.isFull()) {
+      TsBlock tsBlock = child.nextWithTimer();
+      if (tsBlock == null) {
+        return null;
+      } else if (!tsBlock.isEmpty()) {
+        if (tsBlock.getColumn(1).isNull(0)) {
           return null;
-        } else if (!tsBlock.isEmpty()) {
-          if (tsBlock.getColumn(1).isNull(0)) {
-            return null;
-          }
-          LastQueryUtil.appendLastValue(
-              tsBlockBuilder,
-              tsBlock.getColumn(0).getLong(0),
-              viewPath,
-              tsBlock.getColumn(1).getTsPrimitiveType(0).getStringValue(),
-              dataType);
         }
-      } else {
-        children.get(currentIndex).close();
-        children.set(currentIndex, null);
+        LastQueryUtil.appendLastValue(
+            tsBlockBuilder,
+            tsBlock.getColumn(0).getLong(0),
+            viewPath,
+            tsBlock.getColumn(1).getTsPrimitiveType(0).getStringValue(),
+            dataType);
       }
-
-      currentIndex++;
+    } else {
+      child.close();
     }
 
     TsBlock res = tsBlockBuilder.build();
@@ -125,7 +87,7 @@ public class LastQueryTransformOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return currentIndex < 1;
+    return child.hasNext();
   }
 
   @Override
@@ -136,37 +98,29 @@ public class LastQueryTransformOperator implements ProcessOperator {
   @Override
   public long calculateMaxPeekMemory() {
     long maxPeekMemory = 0;
-    for (Operator child : children) {
-      maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemory());
-      maxPeekMemory = Math.max(maxPeekMemory, child.calculateRetainedSizeAfterCallingNext());
-    }
+    maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemory());
+    maxPeekMemory = Math.max(maxPeekMemory, child.calculateRetainedSizeAfterCallingNext());
     return maxPeekMemory;
   }
 
   @Override
   public long calculateMaxReturnSize() {
     long maxReturnMemory = 0;
-    for (Operator child : children) {
-      maxReturnMemory = Math.max(maxReturnMemory, child.calculateMaxReturnSize());
-    }
+    maxReturnMemory = Math.max(maxReturnMemory, child.calculateMaxReturnSize());
     return maxReturnMemory;
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     long sum = 0;
-    for (Operator operator : children) {
-      sum += operator.calculateRetainedSizeAfterCallingNext();
-    }
+    sum += child.calculateRetainedSizeAfterCallingNext();
     return sum;
   }
 
   @Override
   public void close() throws Exception {
-    for (Operator child : children) {
-      if (child != null) {
-        child.close();
-      }
+    if (child != null) {
+      child.close();
     }
     tsBlockBuilder = null;
   }
