@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it.last;
 
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -65,7 +66,7 @@ public class IoTDBLastViewIT {
   }
 
   @Test
-  public void lastViewTest() {
+  public void lastViewQueryTest() {
     String[] expectedHeader =
         new String[] {TIMESTAMP_STR, TIMESEIRES_STR, VALUE_STR, DATA_TYPE_STR};
 
@@ -116,6 +117,49 @@ public class IoTDBLastViewIT {
         };
     resultSetEqualTest(
         "select last vs2,vs3 from root.** order by timeseries", expectedHeader, retArray);
+  }
+
+  @Test
+  public void showLatestTest() {
+    String[] expectedHeader =
+        new String[] {
+          ColumnHeaderConstant.TIMESERIES,
+          ColumnHeaderConstant.ALIAS,
+          ColumnHeaderConstant.DATABASE,
+          ColumnHeaderConstant.DATATYPE,
+          ColumnHeaderConstant.ENCODING,
+          ColumnHeaderConstant.COMPRESSION,
+          ColumnHeaderConstant.TAGS,
+          ColumnHeaderConstant.ATTRIBUTES,
+          ColumnHeaderConstant.DEADBAND,
+          ColumnHeaderConstant.DEADBAND_PARAMETERS,
+          ColumnHeaderConstant.VIEW_TYPE,
+        };
+
+    // show latest timeseries
+    String[] retArray =
+        new String[] {
+          "root.sg.d2.s1,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+          "root.sg.d1.s1,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+          "root.sg.d3.s1,null,root.sg,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,",
+          "root.sg.d4.vs1,null,root.sg,INT32,null,null,null,null,null,null,VIEW,",
+          "root.sg.d4.vs2,null,root.sg,DOUBLE,null,null,null,null,null,null,VIEW,",
+          "root.sg.d3.s2,null,root.sg,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
+          "root.sg.d4.vs4,null,root.sg,DOUBLE,null,null,null,null,null,null,VIEW,",
+          "root.sg.d4.vs3,null,root.sg,DOUBLE,null,null,null,null,null,null,VIEW,",
+        };
+    resultSetEqualTest("show latest timeseries", expectedHeader, retArray);
+
+    // show latest timeseries and filter
+    retArray =
+        new String[] {
+          "root.sg.d4.vs1,null,root.sg,INT32,null,null,null,null,null,null,VIEW,",
+          "root.sg.d4.vs2,null,root.sg,DOUBLE,null,null,null,null,null,null,VIEW,",
+          "root.sg.d4.vs4,null,root.sg,DOUBLE,null,null,null,null,null,null,VIEW,",
+          "root.sg.d4.vs3,null,root.sg,DOUBLE,null,null,null,null,null,null,VIEW,",
+        };
+    resultSetEqualTest(
+        "show latest timeseries where timeseries contains 'd4'", expectedHeader, retArray);
   }
 
   private static final String[] SQL_LIST =

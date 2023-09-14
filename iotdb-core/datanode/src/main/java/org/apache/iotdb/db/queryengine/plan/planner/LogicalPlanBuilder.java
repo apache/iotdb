@@ -112,6 +112,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -119,7 +120,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -221,15 +221,12 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planLast(Analysis analysis, QueryStatement queryStatement) {
+  public LogicalPlanBuilder planLast(Analysis analysis, Ordering resultTimeOrder, ZoneId zoneId) {
     Ordering timeseriesOrdering = analysis.getTimeseriesOrderingForLastQuery();
     Set<String> deviceAlignedSet = new HashSet<>();
     Set<String> deviceExistViewSet = new HashSet<>();
     // <Device, <Measurement, Expression>>
-    Map<String, Map<String, Expression>> outputPathToSourceExpressionMap =
-        timeseriesOrdering != null
-            ? new TreeMap<>(timeseriesOrdering.getStringComparator())
-            : new LinkedHashMap<>();
+    Map<String, Map<String, Expression>> outputPathToSourceExpressionMap = new LinkedHashMap<>();
 
     for (Expression sourceExpression : analysis.getLastQueryBaseExpressions()) {
       MeasurementPath outputPath =
@@ -239,12 +236,7 @@ public class LogicalPlanBuilder {
                   : ((TimeSeriesOperand) sourceExpression).getPath());
       String outputDevice = outputPath.getDevice();
       outputPathToSourceExpressionMap
-          .computeIfAbsent(
-              outputDevice,
-              k ->
-                  timeseriesOrdering != null
-                      ? new TreeMap<>(timeseriesOrdering.getStringComparator())
-                      : new LinkedHashMap<>())
+          .computeIfAbsent(outputDevice, k -> new LinkedHashMap<>())
           .put(outputPath.getMeasurement(), sourceExpression);
       if (outputPath.isUnderAlignedEntity()) {
         deviceAlignedSet.add(outputDevice);
@@ -314,8 +306,7 @@ public class LogicalPlanBuilder {
         analysis.getLastQueryNonWritableViewSourceExpressionMap();
     if (lastQueryNonWriteViewExpressions != null) {
       for (Expression expression : lastQueryNonWriteViewExpressions) {
-        Set<Expression> sourceTransformExpressions =
-            new HashSet<>(Collections.singletonList(expression));
+        Set<Expression> sourceTransformExpressions = Collections.singleton(expression);
         FunctionExpression maxTimeAgg =
             new FunctionExpression(
                 MAX_TIME, new LinkedHashMap<>(), Collections.singletonList(expression));
@@ -333,15 +324,11 @@ public class LogicalPlanBuilder {
             planBuilder
                 .planRawDataSource(
                     sources,
-                    queryStatement.getResultTimeOrder(),
+                    resultTimeOrder,
                     analysis.getGlobalTimeFilter(),
                     analysis.isLastLevelUseWildcard())
                 .planWhereAndSourceTransform(
-                    null,
-                    sourceTransformExpressions,
-                    false,
-                    queryStatement.getSelectComponent().getZoneId(),
-                    queryStatement.getResultTimeOrder())
+                    null, sourceTransformExpressions, false, zoneId, resultTimeOrder)
                 .planAggregation(
                     new LinkedHashSet<>(Arrays.asList(maxTimeAgg, lastValueAgg)),
                     null,
@@ -358,6 +345,25 @@ public class LogicalPlanBuilder {
                 expression.getViewPath().getFullPath(),
                 analysis.getType(expression).toString());
         sourceNodeList.add(transformNode);
+      }
+    }
+
+    if (timeseriesOrdering != null) {
+      sourceNodeList.sort(
+          Comparator.comparing(
+              child -> {
+                String sortKey = "";
+                if (child instanceof LastQueryScanNode) {
+                  sortKey = ((LastQueryScanNode) child).getOutputSymbolForSort();
+                } else if (child instanceof AlignedLastQueryScanNode) {
+                  sortKey = ((AlignedLastQueryScanNode) child).getOutputSymbolForSort();
+                } else if (child instanceof LastQueryTransformNode) {
+                  sortKey = ((LastQueryTransformNode) child).getOutputSymbolForSort();
+                }
+                return sortKey;
+              }));
+      if (timeseriesOrdering.equals(Ordering.DESC)) {
+        Collections.reverse(sourceNodeList);
       }
     }
 

@@ -115,4 +115,8 @@ public class LastQueryTransformNode extends SingleChildProcessNode {
   public String getDataType() {
     return this.dataType;
   }
+
+  public String getOutputSymbolForSort() {
+    return viewPath;
+  }
 }
