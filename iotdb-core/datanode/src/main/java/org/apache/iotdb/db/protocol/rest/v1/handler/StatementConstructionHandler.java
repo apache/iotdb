@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDeviceP
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -42,6 +43,8 @@ public class StatementConstructionHandler {
   public static InsertTabletStatement constructInsertTabletStatement(
       InsertTabletRequest insertTabletRequest)
       throws IllegalPathException, WriteProcessRejectException {
+    TimestampPrecisionUtils.checkTimestampPrecision(
+        insertTabletRequest.getTimestamps().get(insertTabletRequest.getTimestamps().size() - 1));
     // construct insert statement
     InsertTabletStatement insertStatement = new InsertTabletStatement();
     insertStatement.setDevicePath(
@@ -204,6 +207,7 @@ public class StatementConstructionHandler {
               .getPartialPath(insertRecordsRequest.getDeviceIds().get(i)));
       statement.setMeasurements(
           insertRecordsRequest.getMeasurementsList().get(i).toArray(new String[0]));
+      TimestampPrecisionUtils.checkTimestampPrecision(insertRecordsRequest.getTimestamps().get(i));
       statement.setTime(insertRecordsRequest.getTimestamps().get(i));
       statement.setDataTypes(dataTypesList.get(i).toArray(new TSDataType[0]));
       List<Object> values =

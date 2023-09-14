@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import java.util.concurrent.TimeUnit;
 
@@ -53,5 +54,32 @@ public class TimestampPrecisionUtils {
   /** convert specific precision timestamp to current precision timestamp */
   public static long convertToCurrPrecision(long sourceTime, TimeUnit sourceUnit) {
     return convertFunction.apply(sourceTime, sourceUnit);
+  }
+
+  public static void checkTimestampPrecision(long time) {
+    switch (TIMESTAMP_PRECISION) {
+      case "ms":
+        if (time > 10_000_000_000_000L) {
+          throw new SemanticException(
+              String.format(
+                  "Current system timestamp precision is %s, "
+                      + "please check whether the timestamp %s is correct.",
+                  TIMESTAMP_PRECISION, time));
+        }
+        break;
+      case "us":
+        if (time > 10_000_000_000_000_000L) {
+          throw new SemanticException(
+              String.format(
+                  "Current system timestamp precision is %s, "
+                      + "please check whether the timestamp %s is correct.",
+                  TIMESTAMP_PRECISION, time));
+        }
+        break;
+        // Long.MaxValue is 19 digits, therefore no problem when the precision is ns.
+      case "ns":
+      default:
+        break;
+    }
   }
 }
