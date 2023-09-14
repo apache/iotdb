@@ -57,7 +57,7 @@ public abstract class AbstractMemTable implements IMemTable {
   /** Each memTable node has a unique int value identifier, init when recovering wal. */
   public static final AtomicLong memTableIdCounter = new AtomicLong(-1);
 
-  private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + 2 * Integer.BYTES + 6 * Long.BYTES;
+  private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + 3 * Integer.BYTES + 6 * Long.BYTES;
 
   private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
@@ -586,6 +586,9 @@ public abstract class AbstractMemTable implements IMemTable {
       return Byte.BYTES;
     }
     int size = FIXED_SERIALIZED_SIZE;
+    if (database != null && !database.isEmpty()) {
+      size += database.length();
+    }
     for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
       size += ReadWriteIOUtils.sizeToWrite(entry.getKey().toStringID());
       size += Byte.BYTES;
