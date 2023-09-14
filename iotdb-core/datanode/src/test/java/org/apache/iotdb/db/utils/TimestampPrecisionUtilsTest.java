@@ -19,30 +19,68 @@
 
 package org.apache.iotdb.db.utils;
 
-import static org.junit.Assert.assertEquals;
-
-import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
+import static org.junit.Assert.fail;
+
 public class TimestampPrecisionUtilsTest {
-  private String oldConfig;
-
-  @Before
-  public void before() {
-    oldConfig = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
-  }
-
-  @After
-  public void after() {
-    CommonDescriptor.getInstance().getConfig().setTimestampPrecision(oldConfig);
-  }
-
 
   @Test
   public void testCheckMsTimestampPrecision() {
-
+    TimestampPrecisionUtils.TIMESTAMP_PRECISION = "ms";
+    try {
+      TimestampPrecisionUtils.checkTimestampPrecision(-1L);
+      TimestampPrecisionUtils.checkTimestampPrecision(0L);
+      TimestampPrecisionUtils.checkTimestampPrecision(1694689856546L);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
   }
 
+  @Test
+  public void testCheckIllegalMsTimestampPrecision() {
+    TimestampPrecisionUtils.TIMESTAMP_PRECISION = "ms";
+    try {
+      TimestampPrecisionUtils.checkTimestampPrecision(1694689856546000L);
+      fail();
+    } catch (Exception ignored) {
+    }
+  }
+
+  @Test
+  public void testCheckUsTimestampPrecision() {
+    TimestampPrecisionUtils.TIMESTAMP_PRECISION = "us";
+    try {
+      TimestampPrecisionUtils.checkTimestampPrecision(-1L);
+      TimestampPrecisionUtils.checkTimestampPrecision(0L);
+      TimestampPrecisionUtils.checkTimestampPrecision(1694689856546L);
+      TimestampPrecisionUtils.checkTimestampPrecision(1694689856546000L);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCheckIllegalUsTimestampPrecision() {
+    TimestampPrecisionUtils.TIMESTAMP_PRECISION = "us";
+    try {
+      TimestampPrecisionUtils.checkTimestampPrecision(1694689856546000000L);
+      fail();
+    } catch (Exception ignored) {
+    }
+  }
+
+  @Test
+  public void testCheckNsTimestampPrecision() {
+    TimestampPrecisionUtils.TIMESTAMP_PRECISION = "ns";
+    try {
+      TimestampPrecisionUtils.checkTimestampPrecision(-1L);
+      TimestampPrecisionUtils.checkTimestampPrecision(0L);
+      TimestampPrecisionUtils.checkTimestampPrecision(1694689856546L);
+      TimestampPrecisionUtils.checkTimestampPrecision(1694689856546000L);
+      TimestampPrecisionUtils.checkTimestampPrecision(1694689856546000000L);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
 }
