@@ -41,7 +41,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

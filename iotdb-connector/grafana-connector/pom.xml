@@ -58,7 +58,6 @@
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>exec-maven-plugin</artifactId>
-                    <version>1.6.0</version>
                     <configuration>
                         <mainClass>${start-class}</mainClass>
                     </configuration>
@@ -66,27 +65,15 @@
                 <plugin>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
-                    <executions>
-                        <execution>
-                            <goals>
-                                <goal>repackage</goal>
-                            </goals>
-                        </execution>
-                    </executions>
+                    <version>${spring-boot.version}</version>
                     <configuration>
                         <mainClass>${start-class}</mainClass>
                     </configuration>
                 </plugin>
+                <!-- pluginManagement without actually calling the plugin is effectively useless -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-shade-plugin</artifactId>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.springframework.boot</groupId>
-                            <artifactId>spring-boot-maven-plugin</artifactId>
-                            <version>1.5.22.RELEASE</version>
-                        </dependency>
-                    </dependencies>
                     <configuration>
                         <keepDependenciesWithProvidedScope>true</keepDependenciesWithProvidedScope>
                         <createDependencyReducedPom>true</createDependencyReducedPom>
@@ -101,6 +88,7 @@
                             </filter>
                         </filters>
                     </configuration>
+                    <!-- TODO: Executions in pluginManagement is effectively useless -->
                     <executions>
                         <execution>
                             <phase>package</phase>
@@ -139,6 +127,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-failsafe-plugin</artifactId>
+                    <!-- TODO: Executions in pluginManagement is effectively useless -->
                     <executions>
                         <execution>
                             <id>run-integration-tests</id>
@@ -160,7 +149,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>${spring-boot.version}</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
