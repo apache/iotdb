@@ -112,7 +112,7 @@ public class IoTDBLastViewIT {
 
     retArray =
         new String[] {
-          "106048000000,root.sg.d4.vs2,10000,INT32,", "1,root.sg.d4.vs3,0.5,DOUBLE,",
+          "2,root.sg.d4.vs2,102.0,DOUBLE,", "1,root.sg.d4.vs3,0.5,DOUBLE,",
         };
     resultSetEqualTest(
         "select last vs2,vs3 from root.** order by timeseries", expectedHeader, retArray);
