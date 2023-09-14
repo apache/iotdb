@@ -188,9 +188,11 @@ public class Cli extends AbstractCli {
   }
 
   private static boolean readerReadLine(LineReader reader, IoTDBConnection connection) {
-    String s;
+    String s = "";
     try {
-      s = reader.readLine(IOTDB_CLI_PREFIX + "> ", null);
+      while (!s.endsWith(delimiter)) {
+        s = s.concat(reader.readLine(IOTDB_CLI_PREFIX + "> ", null));
+      }
       boolean continues = processCommand(s, connection);
       if (!continues) {
         return true;

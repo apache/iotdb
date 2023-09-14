@@ -124,6 +124,8 @@ public abstract class AbstractCli {
 
   static int lastProcessStatus = CODE_OK;
 
+  static final String delimiter = ";";
+
   static void init() {
     keywordSet.add("-" + HOST_ARGS);
     keywordSet.add("-" + HELP_ARGS);
@@ -739,7 +741,7 @@ public abstract class AbstractCli {
     if (s == null) {
       return true;
     }
-    String[] cmds = s.trim().split(";");
+    String[] cmds = s.trim().split(delimiter);
     for (String cmd : cmds) {
       if (cmd != null && !"".equals(cmd.trim())) {
         OperationResult result = handleInputCmd(cmd, connection);
