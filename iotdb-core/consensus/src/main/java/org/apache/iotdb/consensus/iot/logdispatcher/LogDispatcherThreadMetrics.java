@@ -93,21 +93,21 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
   private void bindStageTimer(AbstractMetricService metricService) {
     constructBatchTimer =
         metricService.getOrCreateTimer(
-            Metric.STAGE.toString(),
+            Metric.IOT_SEND_LOG.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             Metric.IOT_CONSENSUS.toString(),
-            Tag.TYPE.toString(),
+            Tag.STAGE.toString(),
             "constructBatch",
             Tag.REGION.toString(),
             peerGroupId);
     syncLogTimePerRequestTimer =
         metricService.getOrCreateTimer(
-            Metric.STAGE.toString(),
+            Metric.IOT_SEND_LOG.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             Metric.IOT_CONSENSUS.toString(),
-            Tag.TYPE.toString(),
+            Tag.STAGE.toString(),
             "syncLogTimePerRequest",
             Tag.REGION.toString(),
             peerGroupId);
@@ -116,19 +116,19 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
   private void unbindStageTimer(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.TIMER,
-        Metric.STAGE.toString(),
+        Metric.IOT_SEND_LOG.toString(),
         Tag.NAME.toString(),
         Metric.IOT_CONSENSUS.toString(),
-        Tag.TYPE.toString(),
+        Tag.STAGE.toString(),
         "constructBatch",
         Tag.REGION.toString(),
         peerGroupId);
     metricService.remove(
         MetricType.TIMER,
-        Metric.STAGE.toString(),
+        Metric.IOT_SEND_LOG.toString(),
         Tag.NAME.toString(),
         Metric.IOT_CONSENSUS.toString(),
-        Tag.TYPE.toString(),
+        Tag.STAGE.toString(),
         "syncLogTimePerRequest",
         Tag.REGION.toString(),
         peerGroupId);
