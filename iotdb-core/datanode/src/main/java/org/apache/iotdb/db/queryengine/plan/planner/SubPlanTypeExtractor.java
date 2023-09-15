@@ -129,17 +129,26 @@ public class SubPlanTypeExtractor {
 
     @Override
     public Void visitLastQuery(LastQueryNode node, Void context) {
-      return visitPlan(node, context);
+      if (node.isContainsLastTransformNode()) {
+        return visitPlan(node, context);
+      }
+      return null;
     }
 
     @Override
     public Void visitLastQueryMerge(LastQueryMergeNode node, Void context) {
-      return visitPlan(node, context);
+      if (node.isContainsLastTransformNode()) {
+        return visitPlan(node, context);
+      }
+      return null;
     }
 
     @Override
     public Void visitLastQueryCollect(LastQueryCollectNode node, Void context) {
-      return visitPlan(node, context);
+      if (node.isContainsLastTransformNode()) {
+        return visitPlan(node, context);
+      }
+      return null;
     }
 
     @Override

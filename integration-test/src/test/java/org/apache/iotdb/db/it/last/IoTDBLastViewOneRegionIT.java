@@ -44,7 +44,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBLastViewIT {
+public class IoTDBLastViewOneRegionIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -77,10 +77,10 @@ public class IoTDBLastViewIT {
           "1,root.sg.d4.vs4,2.0,DOUBLE,",
           "1,root.sg.d4.vs3,0.5,DOUBLE,",
           "2,root.sg.d4.vs2,102.0,DOUBLE,",
-          "106048000000,root.sg.d1.s1,10000,INT32,",
-          "106048000000,root.sg.d3.s1,2,INT32,",
-          "106048000000,root.sg.d4.vs1,10000,INT32,",
-          "106058000000,root.sg.d2.s1,10001,INT32,",
+          "1060480,root.sg.d1.s1,10000,INT32,",
+          "1060480,root.sg.d3.s1,2,INT32,",
+          "1060480,root.sg.d4.vs1,10000,INT32,",
+          "1060580,root.sg.d2.s1,10001,INT32,",
         };
     resultSetEqualTest("select last * from root.** order by time", expectedHeader, retArray);
 
@@ -90,11 +90,11 @@ public class IoTDBLastViewIT {
           "1,root.sg.d4.vs4,2.0,DOUBLE,",
           "1,root.sg.d4.vs3,0.5,DOUBLE,",
           "2,root.sg.d4.vs2,102.0,DOUBLE,",
-          "106048000000,root.sg.d4.vs1,10000,INT32,",
+          "1060480,root.sg.d4.vs1,10000,INT32,",
           "1,root.sg.d3.s2,1.0,DOUBLE,",
-          "106048000000,root.sg.d3.s1,2,INT32,",
-          "106058000000,root.sg.d2.s1,10001,INT32,",
-          "106048000000,root.sg.d1.s1,10000,INT32,",
+          "1060480,root.sg.d3.s1,2,INT32,",
+          "1060580,root.sg.d2.s1,10001,INT32,",
+          "1060480,root.sg.d1.s1,10000,INT32,",
         };
     resultSetEqualTest(
         "select last * from root.** order by timeseries desc", expectedHeader, retArray);
@@ -102,10 +102,10 @@ public class IoTDBLastViewIT {
     // time filter
     retArray =
         new String[] {
-          "106048000000,root.sg.d1.s1,10000,INT32,",
-          "106058000000,root.sg.d2.s1,10001,INT32,",
-          "106048000000,root.sg.d3.s1,2,INT32,",
-          "106048000000,root.sg.d4.vs1,10000,INT32,",
+          "1060480,root.sg.d1.s1,10000,INT32,",
+          "1060580,root.sg.d2.s1,10001,INT32,",
+          "1060480,root.sg.d3.s1,2,INT32,",
+          "1060480,root.sg.d4.vs1,10000,INT32,",
           "2,root.sg.d4.vs2,102.0,DOUBLE,",
         };
     resultSetEqualTest(
@@ -173,10 +173,10 @@ public class IoTDBLastViewIT {
         "create view root.sg.d4.vs4 as select d3.s1 + d3.s2 from root.sg;",
         "insert into root.sg.d1(time, s1) values (1, 1);",
         "insert into root.sg.d1(time, s1) values (2, 2);",
-        "insert into root.sg.d1(time, s1) values (106048000000, 10000);",
+        "insert into root.sg.d1(time, s1) values (1060480, 10000);",
         "insert into root.sg.d2(time, s1) values (2, 100);",
-        "insert into root.sg.d2(time, s1) values (106058000000, 10001);",
+        "insert into root.sg.d2(time, s1) values (1060580, 10001);",
         "insert into root.sg.d3(time, s1, s2) aligned values (1, 1, 1.0);",
-        "insert into root.sg.d3(time, s1, s2) aligned values (106048000000, 2, null);",
+        "insert into root.sg.d3(time, s1, s2) aligned values (1060480, 2, null);",
       };
 }

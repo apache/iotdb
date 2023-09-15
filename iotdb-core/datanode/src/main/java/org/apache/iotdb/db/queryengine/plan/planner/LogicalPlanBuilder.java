@@ -383,7 +383,9 @@ public class LogicalPlanBuilder {
             context.getQueryId().genPlanNodeId(),
             sourceNodeList,
             analysis.getGlobalTimeFilter(),
-            timeseriesOrdering);
+            timeseriesOrdering,
+            lastQueryNonWriteViewExpressions != null);
+
     ColumnHeaderConstant.lastQueryColumnHeaders.forEach(
         columnHeader ->
             context

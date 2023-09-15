@@ -46,20 +46,30 @@ public class LastQueryNode extends MultiChildProcessNode {
   // which is set to null if there is no need to sort
   private Ordering timeseriesOrdering;
 
-  public LastQueryNode(PlanNodeId id, Filter timeFilter, @Nullable Ordering timeseriesOrdering) {
+  // if children contains LastTransformNode, this variable is only used in distribute plan
+  private boolean containsLastTransformNode;
+
+  public LastQueryNode(
+      PlanNodeId id,
+      Filter timeFilter,
+      @Nullable Ordering timeseriesOrdering,
+      boolean containsLastTransformNode) {
     super(id);
     this.timeFilter = timeFilter;
     this.timeseriesOrdering = timeseriesOrdering;
+    this.containsLastTransformNode = containsLastTransformNode;
   }
 
   public LastQueryNode(
       PlanNodeId id,
       List<PlanNode> children,
       Filter timeFilter,
-      @Nullable Ordering timeseriesOrdering) {
+      @Nullable Ordering timeseriesOrdering,
+      boolean containsNonWritableView) {
     super(id, children);
     this.timeFilter = timeFilter;
     this.timeseriesOrdering = timeseriesOrdering;
+    this.containsLastTransformNode = containsNonWritableView;
   }
 
   @Override
@@ -74,7 +84,8 @@ public class LastQueryNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new LastQueryNode(getPlanNodeId(), timeFilter, timeseriesOrdering);
+    return new LastQueryNode(
+        getPlanNodeId(), timeFilter, timeseriesOrdering, containsLastTransformNode);
   }
 
   @Override
@@ -163,7 +174,7 @@ public class LastQueryNode extends MultiChildProcessNode {
       timeseriesOrdering = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LastQueryNode(planNodeId, timeFilter, timeseriesOrdering);
+    return new LastQueryNode(planNodeId, timeFilter, timeseriesOrdering, false);
   }
 
   @Override
@@ -182,6 +193,14 @@ public class LastQueryNode extends MultiChildProcessNode {
 
   public void setTimeseriesOrdering(Ordering timeseriesOrdering) {
     this.timeseriesOrdering = timeseriesOrdering;
+  }
+
+  public boolean isContainsLastTransformNode() {
+    return this.containsLastTransformNode;
+  }
+
+  public void setContainsLastTransformNode() {
+    this.containsLastTransformNode = true;
   }
 
   public boolean needOrderByTimeseries() {
