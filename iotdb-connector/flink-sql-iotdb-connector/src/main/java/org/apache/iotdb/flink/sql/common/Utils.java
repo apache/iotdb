@@ -32,6 +32,8 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
 import org.apache.flink.table.types.DataType;
 
+import javax.annotation.Nullable;
+
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.net.Socket;
@@ -83,6 +85,9 @@ public class Utils {
   }
 
   public static Object getValue(Field value, DataType dataType) {
+    if (value.getDataType() == null) {
+      return null;
+    }
     if (dataType.equals(DataTypes.INT())) {
       return value.getIntV();
     } else if (dataType.equals(DataTypes.BIGINT())) {
@@ -132,6 +137,10 @@ public class Utils {
     values.add(rowRecord.getTimestamp());
     List<Field> fields = rowRecord.getFields();
     for (Tuple2<String, DataType> field : tableSchema) {
+      if (!columnNames.contains(field.f0)) {
+        values.add(null);
+        continue;
+      }
       values.add(getValue(fields.get(columnNames.indexOf(field.f0) - 1), field.f1));
     }
     return GenericRowData.of(values.toArray());
@@ -159,7 +168,7 @@ public class Utils {
     }
   }
 
-  public static boolean isTypeEqual(TSDataType iotdbType, DataType flinkType) {
+  public static boolean isTypeEqual(@Nullable TSDataType iotdbType, DataType flinkType) {
     return typeMap.get(iotdbType).equals(flinkType);
   }
 }
