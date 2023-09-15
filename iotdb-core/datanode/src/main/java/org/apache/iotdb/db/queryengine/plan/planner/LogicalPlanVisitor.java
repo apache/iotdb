@@ -134,7 +134,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
           planBuilder
               .planLast(
                   analysis,
-                  analysis.getGlobalTimeFilter(),
                   analysis.getTimeseriesOrderingForLastQuery(),
                   queryStatement.getResultTimeOrder(),
                   queryStatement.getSelectComponent().getZoneId())
@@ -624,7 +623,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         && 0 != analysis.getDataPartitionInfo().getDataPartitionMap().size()) {
       PlanNode lastPlanNode =
           new LogicalPlanBuilder(analysis, context)
-              .planLast(analysis, analysis.getGlobalTimeFilter(), null, ASC, ZoneId.systemDefault())
+              .planLast(analysis, null, ASC, ZoneId.systemDefault())
               .getRoot();
       planBuilder = planBuilder.planSchemaQueryOrderByHeat(lastPlanNode);
     }

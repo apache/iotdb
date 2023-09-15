@@ -223,11 +223,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLast(
-      Analysis analysis,
-      Filter globalTimeFilter,
-      Ordering timeseriesOrdering,
-      Ordering resultTimeOrder,
-      ZoneId zoneId) {
+      Analysis analysis, Ordering timeseriesOrdering, Ordering resultTimeOrder, ZoneId zoneId) {
     Set<String> deviceAlignedSet = new HashSet<>();
     Set<String> deviceExistViewSet = new HashSet<>();
     // <Device, <Measurement, Expression>>
@@ -248,7 +244,6 @@ public class LogicalPlanBuilder {
                       ? new TreeMap<>(timeseriesOrdering.getStringComparator())
                       : new LinkedHashMap<>())
           .put(outputPath.getMeasurement(), sourceExpression);
-      ;
       if (outputPath.isUnderAlignedEntity()) {
         deviceAlignedSet.add(outputDevice);
       }
@@ -347,7 +342,7 @@ public class LogicalPlanBuilder {
                     analysis.getGroupByParameter(),
                     false,
                     AggregationStep.SINGLE,
-                    Ordering.ASC);
+                    resultTimeOrder);
 
         LastQueryTransformNode transformNode =
             new LastQueryTransformNode(
