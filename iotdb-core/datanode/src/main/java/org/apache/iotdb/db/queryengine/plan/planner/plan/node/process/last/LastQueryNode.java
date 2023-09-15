@@ -65,11 +65,11 @@ public class LastQueryNode extends MultiChildProcessNode {
       List<PlanNode> children,
       Filter timeFilter,
       @Nullable Ordering timeseriesOrdering,
-      boolean containsNonWritableView) {
+      boolean containsLastTransformNode) {
     super(id, children);
     this.timeFilter = timeFilter;
     this.timeseriesOrdering = timeseriesOrdering;
-    this.containsLastTransformNode = containsNonWritableView;
+    this.containsLastTransformNode = containsLastTransformNode;
   }
 
   @Override
