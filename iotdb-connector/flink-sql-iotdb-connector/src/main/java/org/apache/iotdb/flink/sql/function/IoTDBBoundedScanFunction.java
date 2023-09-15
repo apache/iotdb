@@ -20,11 +20,13 @@ package org.apache.iotdb.flink.sql.function;
 
 import org.apache.iotdb.flink.sql.common.Options;
 import org.apache.iotdb.flink.sql.common.Utils;
+import org.apache.iotdb.flink.sql.exception.IllegalSchemaException;
 import org.apache.iotdb.flink.sql.wrapper.SchemaWrapper;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.flink.api.common.io.DefaultInputSplitAssigner;
@@ -110,8 +112,21 @@ public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSpli
     }
     try {
       dataSet = session.executeQueryStatement(sql);
-
       columnNames = dataSet.getColumnNames();
+
+      for (Tuple2<String, DataType> field : tableSchema) {
+        if (!columnNames.contains(field.f0)) {
+          continue;
+        }
+        int index = columnNames.indexOf(field.f0);
+        TSDataType iotdbType = TSDataType.valueOf(dataSet.getColumnTypes().get(index));
+        DataType flinkType = field.f1;
+        if (!Utils.isTypeEqual(iotdbType, flinkType)) {
+          throw new IllegalSchemaException(
+              String.format(
+                  "The data type of column `%s` is different in IoTDB and Flink", field.f0));
+        }
+      }
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new RuntimeException(e);
     }
