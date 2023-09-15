@@ -19,6 +19,48 @@
 
 -->
 
+# Apache IoTDB 1.2.1
+
+## Features & Improvements
+
+- [IOTDB-5557] The metadata query results are inconsistent
+- [IOTDB-5997] Improve efficiency of ConfigNode PartitionInfo loadSnapshot
+- [IOTDB-6019] Fix concurrent update of last query
+- [IOTDB-6036] The mods file is too large, causing Query very slow even OOM problem
+- [IOTDB-6055] Enable auto restart of the pipes stopped by ConfigNode because of critical exception
+- [IOTDB-6066] Add ConfigNode timeslot metric
+- [IOTDB-6073] Add ClientManager metrics
+- [IOTDB-6077] Add force stop
+- [IOTDB-6079] Cluster computing resource balance
+- [IOTDB-6082] Improve disk space metrics
+- [IOTDB-6087] Implement stream interface of Mods read
+- [IOTDB-6090] Add memory estimator on inner space compaction
+- [IOTDB-6092] Factor mods files into memory estimates for cross-space compaction tasks
+- [IOTDB-6093] Add multiple validation methods after compaction
+- [IOTDB-6106] Fixed the timeout parameter not working in thrift asyncClient
+- [IOTDB-6108] AlignedTVList memory calculation is imprecise
+
+## Bugs
+
+- [IOTDB-5855] DataRegion leader Distribution is same as DataRegion Distribution
+- [IOTDB-5860] Total Number of file is wrong
+- [IOTDB-5996] Incorrect time display of show queries
+- [IOTDB-6057] Resolve the compatibility from 1.1.x to 1.2.0
+- [IOTDB-6065] Considering LastCacheContainer in the memory estimation of SchemaCacheEntry
+- [IOTDB-6074] Ignore error message when TagManager createSnapshot
+- [IOTDB-6075] Pipe: File resource races when different tsfile load operations concurrently modify the same tsfile at receiver
+- [IOTDB-6076] Add duplicate checking when upsert alias
+- [IOTDB-6078] fix timeChunk default compressType
+- [IOTDB-6089] Improve the lock behaviour of the pipe heartbeat
+- [IOTDB-6091] Add compression and encoding type check for FastCompactionPerformer
+- [IOTDB-6094] Load：Fix construct tsFileResource bug
+- [IOTDB-6095] Tsfiles in sequence space may be overlap with each other due to LastFlushTime bug
+- [IOTDB-6096] M4 will output zero while meeting null
+- [IOTDB-6097] ipe subscription running with the pattern option may cause OOM
+- [IOTDB-6098] Flush error when writing aligned timeseries
+- [IOTDB-6100] Pipe: Fix running in hybrid mode will cause wal cannot be deleted & some pipe data lost due to wrong ProducerType of Disruptor
+- [IOTDB-6105] Load: NPE when analyzing tsfile
+
 # Apache IoTDB 1.1.0
 
 ## New Features
