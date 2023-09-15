@@ -320,7 +320,9 @@ public class StatementGenerator {
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
     long[] timestamps =
         QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size);
-    TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
+    if (timestamps.length != 0) {
+      TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
+    }
     insertStatement.setTimes(timestamps);
     insertStatement.setColumns(
         QueryDataSetUtils.readTabletValuesFromBuffer(
@@ -355,7 +357,9 @@ public class StatementGenerator {
       insertTabletStatement.setMeasurements(req.measurementsList.get(i).toArray(new String[0]));
       long[] timestamps =
           QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i));
-      TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
+      if (timestamps.length != 0) {
+        TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
+      }
       insertTabletStatement.setTimes(timestamps);
       insertTabletStatement.setColumns(
           QueryDataSetUtils.readTabletValuesFromBuffer(
