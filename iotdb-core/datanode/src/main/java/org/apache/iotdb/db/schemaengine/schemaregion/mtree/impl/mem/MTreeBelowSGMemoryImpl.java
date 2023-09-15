@@ -348,7 +348,7 @@ public class MTreeBelowSGMemoryImpl {
         }
       }
 
-      // create a non-aligned timeseries
+      // create a aligned timeseries
       if (entityMNode.isAlignedNullable() == null) {
         entityMNode.setAligned(true);
       }
