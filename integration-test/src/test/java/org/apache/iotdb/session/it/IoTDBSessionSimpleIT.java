@@ -539,6 +539,42 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertTabletWithWrongTimestampPrecisionTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<MeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
+      schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+      schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+      schemaList.add(new MeasurementSchema("s3", TSDataType.INT32, TSEncoding.RLE));
+      schemaList.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.RLE));
+      schemaList.add(new MeasurementSchema("s5", TSDataType.TEXT, TSEncoding.RLE));
+      schemaList.add(new MeasurementSchema("s6", TSDataType.TEXT, TSEncoding.RLE));
+
+      Tablet tablet = new Tablet("root.sg1.d1", schemaList);
+      for (long time = 1694689856546000000L; time < 1694689856546000010L; time++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, time);
+
+        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (float) time);
+        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
+        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
+        tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
+        tablet.addValue(schemaList.get(5).getMeasurementId(), rowIndex, new Binary("Text" + time));
+        tablet.addValue(schemaList.get(6).getMeasurementId(), rowIndex, "Text" + time);
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void createTimeSeriesWithDoubleTicksTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {

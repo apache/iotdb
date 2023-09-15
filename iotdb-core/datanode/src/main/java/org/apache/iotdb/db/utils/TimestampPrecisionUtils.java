@@ -26,6 +26,8 @@ import java.util.concurrent.TimeUnit;
 public class TimestampPrecisionUtils {
   static String TIMESTAMP_PRECISION =
       CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+  private static boolean isTimestampPrecisionCheckEnabled =
+      CommonDescriptor.getInstance().getConfig().isTimestampPrecisionCheckEnabled();
 
   @FunctionalInterface
   private interface ConvertFunction<T1, T2, R> {
@@ -58,6 +60,9 @@ public class TimestampPrecisionUtils {
 
   /** check whether the input timestamp match the current system timestamp precision. */
   public static void checkTimestampPrecision(long time) {
+    if (!isTimestampPrecisionCheckEnabled) {
+      return;
+    }
     switch (TIMESTAMP_PRECISION) {
       case "ms":
         if (time > 10_000_000_000_000L) {
