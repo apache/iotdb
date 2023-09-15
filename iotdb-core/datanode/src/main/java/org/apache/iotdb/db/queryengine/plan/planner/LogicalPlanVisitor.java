@@ -92,6 +92,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -99,6 +100,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 /**
@@ -127,9 +129,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       planBuilder =
           planBuilder
               .planLast(
-                  analysis.getSourceExpressions(),
-                  analysis.getGlobalTimeFilter(),
-                  analysis.getTimeseriesOrderingForLastQuery())
+                  analysis,
+                  analysis.getTimeseriesOrderingForLastQuery(),
+                  queryStatement.getResultTimeOrder(),
+                  queryStatement.getSelectComponent().getZoneId())
               .planOffset(queryStatement.getRowOffset())
               .planLimit(queryStatement.getRowLimit());
 
@@ -599,7 +602,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         && 0 != analysis.getDataPartitionInfo().getDataPartitionMap().size()) {
       PlanNode lastPlanNode =
           new LogicalPlanBuilder(analysis, context)
-              .planLast(analysis.getSourceExpressions(), analysis.getGlobalTimeFilter(), null)
+              .planLast(analysis, null, ASC, ZoneId.systemDefault())
               .getRoot();
       planBuilder = planBuilder.planSchemaQueryOrderByHeat(lastPlanNode);
     }

@@ -78,6 +78,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
@@ -180,7 +181,8 @@ public enum PlanNodeType {
   LOGICAL_VIEW_SCHEMA_SCAN((short) 77),
   ALTER_LOGICAL_VIEW((short) 78),
   PIPE_ENRICHED_INSERT((short) 79),
-  ;
+  FORECAST((short) 80),
+  LAST_QUERY_TRANSFORM((short) 81);
 
   public static final int BYTES = Short.BYTES;
 
@@ -385,6 +387,13 @@ public enum PlanNodeType {
         return AlterLogicalViewNode.deserialize(buffer);
       case 79:
         return PipeEnrichedInsertNode.deserialize(buffer);
+<<<<<<< HEAD
+=======
+      case 80:
+        return ForecastNode.deserialize(buffer);
+      case 81:
+        return LastQueryTransformNode.deserialize(buffer);
+>>>>>>> 5f5a1d4fb7 (Enhance last query, support non single base series (#11120))
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
