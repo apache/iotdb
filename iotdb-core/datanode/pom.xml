@@ -200,6 +200,17 @@
                     </usedDependencies>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <usedDependencies combine.children="append">
+                        <!-- We need these dependencies as they provide the metric managers used in tests -->
+                        <usedDependency>org.apache.iotdb:dropwizard-metrics</usedDependency>
+                        <usedDependency>org.apache.iotdb:micrometer-metrics</usedDependency>
+                    </usedDependencies>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
     <dependencies>
@@ -474,6 +485,19 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- These two dependencies are needed at runtime -->
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>dropwizard-metrics</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>micrometer-metrics</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

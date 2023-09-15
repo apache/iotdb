@@ -28,10 +28,21 @@
     </parent>
     <artifactId>flink-tsfile-connector</artifactId>
     <name>IoTDB: Connector: Apache Flink TSFile</name>
-    <properties>
-        <!-- Flink 1.14.6 is the last to have flink-streaming-api_2.11 -->
-        <!--flink.version>1.14.6</flink.version-->
-    </properties>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <usedDependencies combine.children="append">
+                        <!-- We need these dependencies as they provide runtime dependencies for tests -->
+                        <usedDependency>org.apache.flink:flink-clients</usedDependency>
+                        <usedDependency>org.apache.hadoop:hadoop-client</usedDependency>
+                    </usedDependencies>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -77,6 +88,18 @@
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-streaming-java</artifactId>
             <version>${flink.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- These are needed as runtime dependencies for our tests -->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-clients</artifactId>
+            <version>${flink.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
