@@ -79,6 +79,7 @@ public class TimestampPrecisionUtilsTest {
       TimestampPrecisionUtils.checkTimestampPrecision(1694689856546L);
       TimestampPrecisionUtils.checkTimestampPrecision(1694689856546000L);
       TimestampPrecisionUtils.checkTimestampPrecision(1694689856546000000L);
+      TimestampPrecisionUtils.checkTimestampPrecision(Long.MAX_VALUE);
     } catch (Exception e) {
       fail(e.getMessage());
     }

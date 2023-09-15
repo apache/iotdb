@@ -134,7 +134,8 @@ public class LoadTsfileAnalyzer {
       } catch (Exception e) {
         LOGGER.warn(String.format("Parse file %s to resource error.", tsFile.getPath()), e);
         throw new SemanticException(
-            String.format("Parse file %s to resource error", tsFile.getPath()));
+            String.format(
+                "Parse file %s to resource error, because %s", tsFile.getPath(), e.getMessage()));
       }
     }
 

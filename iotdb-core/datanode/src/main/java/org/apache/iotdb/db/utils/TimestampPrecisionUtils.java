@@ -56,6 +56,7 @@ public class TimestampPrecisionUtils {
     return convertFunction.apply(sourceTime, sourceUnit);
   }
 
+  /** check whether the input timestamp match the current system timestamp precision. */
   public static void checkTimestampPrecision(long time) {
     switch (TIMESTAMP_PRECISION) {
       case "ms":
