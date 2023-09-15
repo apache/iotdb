@@ -288,8 +288,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaRegionMetric createSchemaRegionMetric() {
-    return new SchemaRegionMemMetric(regionStatistics);
+  public ISchemaRegionMetric createSchemaRegionMetric(String database) {
+    return new SchemaRegionMemMetric(regionStatistics, database);
   }
 
   /**

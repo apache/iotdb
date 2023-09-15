@@ -329,8 +329,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaRegionMetric createSchemaRegionMetric() {
-    return new SchemaRegionCachedMetric(regionStatistics);
+  public ISchemaRegionMetric createSchemaRegionMetric(String database) {
+    return new SchemaRegionCachedMetric(regionStatistics, database);
   }
 
   /** Init from metadata log file. */
