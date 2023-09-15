@@ -255,16 +255,6 @@ struct TGetRegionIdResp {
     2: optional list<common.TConsensusGroupId> dataRegionIdList
 }
 
-struct TGetRegionGroupLeaderCountReq {
-    1: required i32 dataNodeId
-    2: required common.TConsensusGroupType type
-}
-
-struct TGetRegionGroupLeaderCountResp {
-    1: required common.TSStatus status
-    2: optional i32 leaderCount
-}
-
 struct TGetTimeSlotListReq {
     1: optional string database
     3: optional string device
@@ -1374,9 +1364,6 @@ service IConfigNodeRPCService {
 
   /** Get a particular DataPartition's corresponding Regions */
   TGetRegionIdResp getRegionId(TGetRegionIdReq req)
-
-  /** Get all data or schema region group leaders of the specific datanode */
-  TGetRegionGroupLeaderCountResp getRegionGroupLeaderCount(TGetRegionGroupLeaderCountReq req)
 
   /** Get a specific SeriesSlot's TimeSlots by start time and end time */
   TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req)

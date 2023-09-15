@@ -121,8 +121,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupLeaderCountReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupLeaderCountResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -969,12 +967,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       return new TGetRegionIdResp(status);
     }
     return configManager.getRegionId(req);
-  }
-
-  @Override
-  public TGetRegionGroupLeaderCountResp getRegionGroupLeaderCount(
-      TGetRegionGroupLeaderCountReq req) {
-    return configManager.getRegionGroupLeaderCount(req);
   }
 
   @Override

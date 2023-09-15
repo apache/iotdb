@@ -19,19 +19,14 @@
 
 package org.apache.iotdb.db.pipe.extractor.realtime;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupLeaderCountReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
-import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -46,7 +41,6 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
-  private final AtomicBoolean isFirstExtractionDone = new AtomicBoolean(false);
   private final AtomicBoolean hasHistoricalExtractorConsumedAll = new AtomicBoolean(false);
 
   @Override
@@ -208,26 +202,11 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean isWalCapacityThresholdReached() {
-    if (isFirstExtractionDone.compareAndSet(false, true)) {
-      try (final ConfigNodeClient configNodeClient =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-        int leaderDataRegionsNum =
-            configNodeClient
-                .getRegionGroupLeaderCount(
-                    new TGetRegionGroupLeaderCountReq(dataNodeId, TConsensusGroupType.DataRegion))
-                .getLeaderCount();
 
-        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-        return (long) leaderDataRegionsNum * config.getWalBufferSize()
-            > config.getThrottleThreshold();
-      } catch (Exception e) {
-        LOGGER.error("Failed to get leader data regions num from config node", e);
-      }
-      return true;
-    }
+    int leaderDataRegionsNum = PipeAgent.task().getRegionLeaderNum();
 
-    return false;
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    return (long) leaderDataRegionsNum * config.getWalBufferSize() > config.getThrottleThreshold();
   }
 
   private boolean hasHistoricalExtractorConsumedAll() {

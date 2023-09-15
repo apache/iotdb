@@ -140,8 +140,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupLeaderCountReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupLeaderCountResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -1723,19 +1721,6 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? partitionManager.getRegionId(req).convertToRpcGetRegionIdResp()
         : new TGetRegionIdResp(status);
-  }
-
-  @Override
-  public TGetRegionGroupLeaderCountResp getRegionGroupLeaderCount(
-      TGetRegionGroupLeaderCountReq req) {
-    TSStatus status = confirmLeader();
-    TGetRegionGroupLeaderCountResp resp = new TGetRegionGroupLeaderCountResp(status);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      int count = loadManager.getRegionGroupLeaderCount(req.dataNodeId, req.type);
-      resp.setLeaderCount(count);
-    }
-
-    return resp;
   }
 
   @Override

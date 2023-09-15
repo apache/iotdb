@@ -89,8 +89,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupLeaderCountReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupLeaderCountResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -914,13 +912,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getRegionId(req), resp -> !updateConfigNodeLeader(resp.status));
-  }
-
-  @Override
-  public TGetRegionGroupLeaderCountResp getRegionGroupLeaderCount(TGetRegionGroupLeaderCountReq req)
-      throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.getRegionGroupLeaderCount(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

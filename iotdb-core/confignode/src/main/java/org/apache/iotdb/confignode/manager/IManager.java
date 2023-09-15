@@ -82,8 +82,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupLeaderCountReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupLeaderCountResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -612,13 +610,6 @@ public interface IManager {
    * @return TGetRegionIdResp.
    */
   TGetRegionIdResp getRegionId(TGetRegionIdReq req);
-
-  /**
-   * Get the number of data/schema region group leader in the specified datanode.
-   *
-   * @return TGetRegionGroupLeaderCountResp.
-   */
-  TGetRegionGroupLeaderCountResp getRegionGroupLeaderCount(TGetRegionGroupLeaderCountReq req);
 
   /**
    * Get timeSlot(timePartition)。used for Show cluster slots information in
