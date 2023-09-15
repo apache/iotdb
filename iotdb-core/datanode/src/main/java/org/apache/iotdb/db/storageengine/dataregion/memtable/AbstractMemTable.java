@@ -211,7 +211,9 @@ public abstract class AbstractMemTable implements IMemTable {
             Tag.NAME.toString(),
             METRIC_POINT_IN,
             Tag.DATABASE.toString(),
-            database);
+            database,
+            Tag.REGION.toString(),
+            dataRegionId);
   }
 
   @Override
@@ -252,7 +254,9 @@ public abstract class AbstractMemTable implements IMemTable {
             Tag.NAME.toString(),
             METRIC_POINT_IN,
             Tag.DATABASE.toString(),
-            database);
+            database,
+            Tag.REGION.toString(),
+            dataRegionId);
   }
 
   @Override
@@ -273,7 +277,9 @@ public abstract class AbstractMemTable implements IMemTable {
               Tag.NAME.toString(),
               METRIC_POINT_IN,
               Tag.DATABASE.toString(),
-              database);
+              database,
+              Tag.REGION.toString(),
+              dataRegionId);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
@@ -297,7 +303,9 @@ public abstract class AbstractMemTable implements IMemTable {
               Tag.NAME.toString(),
               METRIC_POINT_IN,
               Tag.DATABASE.toString(),
-              database);
+              database,
+              Tag.REGION.toString(),
+              dataRegionId);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
