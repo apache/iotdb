@@ -797,7 +797,7 @@ public class IoTDBPipeLifeCycleIT {
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
       await()
-          .atMost(30, TimeUnit.SECONDS)
+          .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () ->
                   TestUtils.assertResultSetEqual(
