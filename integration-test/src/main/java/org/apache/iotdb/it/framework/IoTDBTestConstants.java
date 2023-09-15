@@ -19,23 +19,9 @@
 
 package org.apache.iotdb.it.framework;
 
-public class IoTDBTestStat implements Comparable<IoTDBTestStat> {
-  private final String name;
-  private final double seconds;
+import java.io.File;
 
-  public IoTDBTestStat(String name, double seconds) {
-    this.name = name;
-    this.seconds = seconds;
-  }
-
-  @Override
-  public int compareTo(IoTDBTestStat o) {
-    // Compare in a reverse order
-    return Double.compare(o.seconds, seconds);
-  }
-
-  @Override
-  public String toString() {
-    return String.format("%.3f\t%s", seconds, name);
-  }
+public class IoTDBTestConstants {
+  public static final String statOutputDir = "target" + File.separator + "test-stats";
+  public static final String statExt = ".stats";
 }

@@ -62,10 +62,18 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-dependency-plugin</artifactId>
-                    <configuration>
-                        <!-- Managing the dependencies of all examples would not provide much, but be a lot of work -->
-                        <skip>true</skip>
-                    </configuration>
+                    <executions>
+                    <execution>
+                        <id>check-dependencies</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>analyze-only</goal>
+                        </goals>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </execution>
+                </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>

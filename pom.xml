@@ -1148,26 +1148,6 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-    <dependencies>
-        <!--dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-        </dependency-->
-        <!--dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency-->
-        <!--dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-jexl3</artifactId>
-            <version>3.2.1</version>
-        </dependency-->
-    </dependencies>
     <build>
         <pluginManagement>
             <plugins>
@@ -1482,7 +1462,7 @@
                     <skip>${spotless.skip}</skip>
                 </configuration>
             </plugin>
-            <!--plugin>
+            <plugin>
                 <groupId>com.github.ekryd.sortpom</groupId>
                 <artifactId>sortpom-maven-plugin</artifactId>
                 <version>3.0.0</version>
@@ -1501,7 +1481,7 @@
                         <phase>verify</phase>
                     </execution>
                 </executions>
-            </plugin-->
+            </plugin>
             <plugin>
                 <groupId>org.eluder.coveralls</groupId>
                 <artifactId>coveralls-maven-plugin</artifactId>

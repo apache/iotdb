@@ -50,7 +50,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.jdbc.Config.VERSION;
-import static org.junit.Assert.fail;
 
 public class RemoteServerEnv implements BaseEnv {
 
@@ -69,7 +68,7 @@ public class RemoteServerEnv implements BaseEnv {
       statement.execute("DELETE DATABASE root;");
     } catch (Exception e) {
       e.printStackTrace();
-      fail(e.getMessage());
+      throw new AssertionError(e.getMessage());
     }
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
@@ -102,7 +101,7 @@ public class RemoteServerEnv implements BaseEnv {
               Config.IOTDB_URL_PREFIX + ip_addr + ":" + port, this.user, this.password);
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
-      fail();
+      throw new AssertionError();
     }
     return connection;
   }
@@ -133,7 +132,7 @@ public class RemoteServerEnv implements BaseEnv {
               this.password);
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
-      fail();
+      throw new AssertionError();
     }
     return connection;
   }

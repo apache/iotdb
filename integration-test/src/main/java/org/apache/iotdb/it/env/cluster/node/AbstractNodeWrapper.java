@@ -109,7 +109,6 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
 import static org.apache.iotdb.it.env.cluster.EnvUtils.fromConsensusAbbrToFullName;
 import static org.apache.iotdb.it.env.cluster.EnvUtils.getTimeForLogDirectory;
 import static org.apache.iotdb.it.env.cluster.EnvUtils.getValueOfIndex;
-import static org.junit.Assert.fail;
 
 public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   private static final Logger logger = IoTDBTestLogger.logger;
@@ -207,7 +206,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       }
     } catch (IOException ex) {
       logger.error("Copy node dir failed", ex);
-      fail();
+      throw new AssertionError();
     }
   }
 
@@ -219,7 +218,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       FileUtils.createParentDirectories(new File(getLogPath()));
     } catch (IOException ex) {
       logger.error("Copy node dir failed", ex);
-      fail();
+      throw new AssertionError();
     }
   }
 
@@ -238,12 +237,12 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
           TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
-          fail("Delete node dir failed. " + e);
+          throw new AssertionError("Delete node dir failed. " + e);
         }
       }
     }
     lastException.printStackTrace();
-    fail("Delete node dir failed.");
+    throw new AssertionError("Delete node dir failed.");
   }
 
   /**
@@ -298,7 +297,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       outputCommonConfig.persistent(getTargetCommonConfigPath());
       outputNodeConfig.persistent(getTargetNodeConfigPath());
     } catch (IOException ex) {
-      fail("Change the config of node failed. " + ex);
+      throw new AssertionError("Change the config of node failed. " + ex);
     }
     this.jvmConfig.override(jvmConfig);
   }
@@ -438,7 +437,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       this.instance = processBuilder.start();
       logger.info("In test {} {} started.", getTestLogDirName(), getId());
     } catch (IOException ex) {
-      fail("Start node failed. " + ex);
+      throw new AssertionError("Start node failed. " + ex);
     }
   }
 
