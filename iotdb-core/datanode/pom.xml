@@ -193,6 +193,11 @@
                         <!-- For some reason this plugin missed it being used for a constant import -->
                         <ignoredDependency>org.apache.iotdb:isession</ignoredDependency>
                     </ignoredDependencies>
+                    <usedDependencies>
+                        <!-- These are used at runtime in tests -->
+                        <usedDependency>io.jsonwebtoken:jjwt-impl</usedDependency>
+                        <usedDependency>io.jsonwebtoken:jjwt-jackson</usedDependency>
+                    </usedDependencies>
                 </configuration>
             </plugin>
         </plugins>
@@ -323,7 +328,7 @@
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
-            <version>0.10.8</version>
+            <version>${jjwt-api.version}</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.milo</groupId>
@@ -474,6 +479,20 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Possibly these need to move into the compile or provided scope -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt-api.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Possibly these need to move into the compile or provided scope -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt-api.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
