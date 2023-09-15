@@ -97,6 +97,7 @@
         <module>iotdb-connector/grafana-connector</module>
         <module>iotdb-connector/spark-tsfile</module>
         <module>iotdb-connector/hadoop</module>
+        <module>iotdb-connector/spark-iotdb-connector</module>
         <module>iotdb-connector/spark-iotdb-connector/scala_2.11</module>
         <module>iotdb-connector/spark-iotdb-connector/scala_2.12</module>
         <module>iotdb-connector/flink-tsfile-connector</module>
