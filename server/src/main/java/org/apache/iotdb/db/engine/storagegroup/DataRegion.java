@@ -850,17 +850,6 @@ public class DataRegion implements IDataRegionForQuery {
     try (SealedTsFileRecoverPerformer recoverPerformer =
         new SealedTsFileRecoverPerformer(sealedTsFile)) {
       recoverPerformer.recover();
-      // pick up crashed compaction target files
-      if (recoverPerformer.hasCrashed()) {
-        if (TsFileResource.getInnerCompactionCount(sealedTsFile.getTsFile().getName()) > 0) {
-          tsFileManager.addForRecover(sealedTsFile, isSeq);
-          return;
-        } else {
-          logger.warn(
-              "Sealed TsFile {} has crashed at zero level, truncate and recover it.",
-              sealedTsFile.getTsFilePath());
-        }
-      }
       sealedTsFile.close();
       tsFileManager.add(sealedTsFile, isSeq);
       tsFileResourceManager.registerSealedTsFileResource(sealedTsFile);
