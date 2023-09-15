@@ -61,7 +61,7 @@ import static org.junit.Assert.assertEquals;
 public class PrimitiveMemTableTest {
 
   String database = "root.test";
-  String dataRegionId = "1";;
+  String dataRegionId = "1";
   double delta;
 
   @Before

@@ -69,22 +69,20 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   private final TsFilePlanRedoer walRedoer;
   // trace result of this recovery
   private final WALRecoverListener recoverListener;
-  private final String database;
+  private final String databaseName;
   private final String dataRegionId;
 
   public UnsealedTsFileRecoverPerformer(
       TsFileResource tsFileResource,
       boolean sequence,
-      Consumer<UnsealedTsFileRecoverPerformer> callbackAfterUnsealedTsFileRecovered,
-      String database,
-      String dataRegionId) {
+      Consumer<UnsealedTsFileRecoverPerformer> callbackAfterUnsealedTsFileRecovered) {
     super(tsFileResource);
+    this.databaseName = tsFileResource.getDatabaseName();
+    this.dataRegionId = tsFileResource.getDataRegionId();
     this.sequence = sequence;
     this.callbackAfterUnsealedTsFileRecovered = callbackAfterUnsealedTsFileRecovered;
-    this.walRedoer = new TsFilePlanRedoer(tsFileResource, sequence, database, dataRegionId);
+    this.walRedoer = new TsFilePlanRedoer(tsFileResource, sequence);
     this.recoverListener = new WALRecoverListener(tsFileResource.getTsFilePath());
-    this.database = database;
-    this.dataRegionId = dataRegionId;
   }
 
   /**
@@ -202,7 +200,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
             walRedoer.resetRecoveryMemTable(memTable);
           }
           // update memtable's database and dataRegionId
-          memTable.setDatabaseAndDataRegionId(database, dataRegionId);
+          memTable.setDatabaseAndDataRegionId(databaseName, dataRegionId);
           break;
         case INSERT_ROW_NODE:
         case INSERT_TABLET_NODE:
@@ -242,10 +240,6 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
       // flush memTable
       try {
         if (!recoveryMemTable.isEmpty() && recoveryMemTable.getSeriesNumber() != 0) {
-          String dataRegionId =
-              tsFileResource.getTsFile().getParentFile().getParentFile().getName();
-          String databaseName =
-              tsFileResource.getTsFile().getParentFile().getParentFile().getParentFile().getName();
           MemTableFlushTask tableFlushTask =
               new MemTableFlushTask(
                   recoveryMemTable,

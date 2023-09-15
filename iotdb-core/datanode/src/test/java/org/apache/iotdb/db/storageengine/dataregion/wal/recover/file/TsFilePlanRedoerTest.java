@@ -69,7 +69,6 @@ import static org.junit.Assert.assertTrue;
 
 public class TsFilePlanRedoerTest {
   private static final String SG_NAME = "root.recover_sg";
-  private static final String DATA_REGION_ID = "1";
   private static final String DEVICE1_NAME = SG_NAME.concat(".d1");
   private static final String DEVICE2_NAME = SG_NAME.concat(".d2");
   private static final String DEVICE3_NAME = SG_NAME.concat(".d3");
@@ -146,8 +145,7 @@ public class TsFilePlanRedoerTest {
         });
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
-    TsFilePlanRedoer planRedoer =
-        new TsFilePlanRedoer(tsFileResource, true, SG_NAME, DATA_REGION_ID);
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true);
     planRedoer.redoInsert(insertRowNode);
 
     // check data in memTable
@@ -219,8 +217,7 @@ public class TsFilePlanRedoerTest {
         });
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
-    TsFilePlanRedoer planRedoer =
-        new TsFilePlanRedoer(tsFileResource, true, SG_NAME, DATA_REGION_ID);
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true);
     planRedoer.redoInsert(insertRowNode);
 
     // check data in memTable
@@ -306,8 +303,7 @@ public class TsFilePlanRedoerTest {
         });
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
-    TsFilePlanRedoer planRedoer =
-        new TsFilePlanRedoer(tsFileResource, true, SG_NAME, DATA_REGION_ID);
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true);
     planRedoer.redoInsert(insertTabletNode);
 
     // check data in memTable
@@ -412,8 +408,7 @@ public class TsFilePlanRedoerTest {
         });
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
-    TsFilePlanRedoer planRedoer =
-        new TsFilePlanRedoer(tsFileResource, true, SG_NAME, DATA_REGION_ID);
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true);
     planRedoer.redoInsert(insertTabletNode);
 
     // check data in memTable
@@ -490,8 +485,7 @@ public class TsFilePlanRedoerTest {
             times.length);
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
-    TsFilePlanRedoer planRedoer =
-        new TsFilePlanRedoer(tsFileResource, true, SG_NAME, DATA_REGION_ID);
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true);
     planRedoer.redoInsert(insertTabletNode);
 
     // check data in memTable
@@ -542,8 +536,7 @@ public class TsFilePlanRedoerTest {
             times.length);
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
-    TsFilePlanRedoer planRedoer =
-        new TsFilePlanRedoer(tsFileResource, false, SG_NAME, DATA_REGION_ID);
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, false);
     planRedoer.redoInsert(insertTabletNode);
 
     // check data in memTable
@@ -600,8 +593,7 @@ public class TsFilePlanRedoerTest {
     // redo DeleteDataNode, vsg processor is used to test IdTable, don't test IdTable here
     File modsFile = new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX));
     assertFalse(modsFile.exists());
-    TsFilePlanRedoer planRedoer =
-        new TsFilePlanRedoer(tsFileResource, false, SG_NAME, DATA_REGION_ID);
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, false);
     planRedoer.redoDelete(deleteDataNode);
     assertTrue(modsFile.exists());
   }
@@ -674,8 +666,7 @@ public class TsFilePlanRedoerTest {
             columns,
             times.length);
     // redo InsertTabletPlan, data region is used to test IdTable, don't test IdTable here
-    TsFilePlanRedoer planRedoer =
-        new TsFilePlanRedoer(tsFileResource, true, SG_NAME, DATA_REGION_ID);
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true);
     insertTabletNode.setMeasurementSchemas(schemas);
     planRedoer.redoInsert(insertTabletNode);
 

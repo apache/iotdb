@@ -416,11 +416,7 @@ public class WALRecoverManagerTest {
     tsFileWithWALResource = new TsFileResource(fileWithWAL);
     UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileWithWALResource,
-            true,
-            performer -> assertFalse(performer.canWrite()),
-            SG_NAME,
-            DATA_REGION_ID);
+            tsFileWithWALResource, true, performer -> assertFalse(performer.canWrite()));
     recoverManager.addRecoverPerformer(recoverPerformer);
     recoverListeners.add(recoverPerformer.getRecoverListener());
 
@@ -430,11 +426,7 @@ public class WALRecoverManagerTest {
     tsFileWithoutWALResource = new TsFileResource(fileWithoutWAL);
     recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileWithoutWALResource,
-            true,
-            performer -> assertFalse(performer.canWrite()),
-            SG_NAME,
-            DATA_REGION_ID);
+            tsFileWithoutWALResource, true, performer -> assertFalse(performer.canWrite()));
     recoverManager.addRecoverPerformer(recoverPerformer);
     recoverListeners.add(recoverPerformer.getRecoverListener());
 
