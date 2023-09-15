@@ -117,7 +117,7 @@ public class IoTDBPipeLifeCycleIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
@@ -128,7 +128,7 @@ public class IoTDBPipeLifeCycleIT {
       }
 
       expectedResSet.add("2,2.0,");
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -141,13 +141,13 @@ public class IoTDBPipeLifeCycleIT {
         fail(e.getMessage());
       }
 
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       expectedResSet.add("3,3.0,");
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
     }
   }
 
@@ -205,7 +205,7 @@ public class IoTDBPipeLifeCycleIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("2,2.0,");
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -218,7 +218,7 @@ public class IoTDBPipeLifeCycleIT {
         fail(e.getMessage());
       }
 
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
     }
   }
 
@@ -264,7 +264,7 @@ public class IoTDBPipeLifeCycleIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
@@ -275,7 +275,7 @@ public class IoTDBPipeLifeCycleIT {
       }
 
       expectedResSet.add("2,2.0,");
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -288,7 +288,7 @@ public class IoTDBPipeLifeCycleIT {
         fail(e.getMessage());
       }
 
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
     }
   }
 
@@ -335,7 +335,7 @@ public class IoTDBPipeLifeCycleIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
@@ -347,7 +347,7 @@ public class IoTDBPipeLifeCycleIT {
       }
 
       expectedResSet.add("2,2.0,");
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -361,7 +361,7 @@ public class IoTDBPipeLifeCycleIT {
         fail(e.getMessage());
       }
 
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
     }
   }
 
@@ -407,7 +407,7 @@ public class IoTDBPipeLifeCycleIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
@@ -418,7 +418,7 @@ public class IoTDBPipeLifeCycleIT {
       }
 
       expectedResSet.add("2,2.0,");
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -431,7 +431,7 @@ public class IoTDBPipeLifeCycleIT {
         fail(e.getMessage());
       }
 
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
     }
   }
 
@@ -475,7 +475,7 @@ public class IoTDBPipeLifeCycleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       expectedResSet.add("1,1.0,");
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
@@ -486,7 +486,7 @@ public class IoTDBPipeLifeCycleIT {
       }
 
       expectedResSet.add("2,2.0,");
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
     }
 
     restartCluster(senderEnv);
@@ -504,7 +504,7 @@ public class IoTDBPipeLifeCycleIT {
       }
 
       expectedResSet.add("3,3.0,");
-      assertDataOnReceiver(receiverEnv, expectedResSet);
+      assertDataOnEnv(receiverEnv, expectedResSet);
     }
   }
 
@@ -659,11 +659,145 @@ public class IoTDBPipeLifeCycleIT {
     }
   }
 
-  private void assertDataOnReceiver(BaseEnv receiverEnv, Set<String> expectedResSet) {
+  @Test
+  public void testDoubleLiving() throws Exception {
+    // Double living is two clusters with pipes connecting each other.
+    DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    String senderIp = senderDataNode.getIp();
+    int senderPort = senderDataNode.getPort();
+    String receiverIp = receiverDataNode.getIp();
+    int receiverPort = receiverDataNode.getPort();
+
+    try (Connection connection = senderEnv.getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 0; i < 100; ++i) {
+        statement.execute(String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
+      }
+      statement.execute("flush");
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+    }
+    try (Connection connection = senderEnv.getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 100; i < 200; ++i) {
+        statement.execute(String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
     try (Connection connection = receiverEnv.getConnection();
         Statement statement = connection.createStatement()) {
+      for (int i = 200; i < 300; ++i) {
+        statement.execute(String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
+      }
+      statement.execute("flush");
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", senderIp);
+      connectorAttributes.put("connector.port", Integer.toString(senderPort));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+    }
+    try (Connection connection = receiverEnv.getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 300; i < 400; ++i) {
+        statement.execute(String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    Set<String> expectedResSet = new HashSet<>();
+    for (int i = 0; i < 400; ++i) {
+      expectedResSet.add(i + ",1.0,");
+    }
+
+    assertDataOnEnv(senderEnv, expectedResSet);
+    assertDataOnEnv(receiverEnv, expectedResSet);
+
+    restartCluster(senderEnv);
+    restartCluster(receiverEnv);
+
+    try (Connection connection = senderEnv.getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 400; i < 500; ++i) {
+        statement.execute(String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
+      }
+      statement.execute("flush");
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    try (Connection connection = receiverEnv.getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 500; i < 600; ++i) {
+        statement.execute(String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
+      }
+      statement.execute("flush");
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    for (int i = 400; i < 600; ++i) {
+      expectedResSet.add(i + ",1.0,");
+    }
+    assertDataOnEnv(senderEnv, expectedResSet);
+    assertDataOnEnv(receiverEnv, expectedResSet);
+  }
+
+  private void assertDataOnEnv(BaseEnv env, Set<String> expectedResSet) {
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
       await()
-          .atMost(600, TimeUnit.SECONDS)
+          .atMost(30, TimeUnit.SECONDS)
           .untilAsserted(
               () ->
                   TestUtils.assertResultSetEqual(

@@ -88,8 +88,8 @@ public class IoTDBPipeClusterIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
 
-    senderEnv.initClusterEnvironment(3, 3);
-    receiverEnv.initClusterEnvironment(3, 3);
+    senderEnv.initClusterEnvironment(3, 3, 60);
+    receiverEnv.initClusterEnvironment(3, 3, 60);
   }
 
   @After
@@ -746,7 +746,7 @@ public class IoTDBPipeClusterIT {
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 1000; ++i) {
           statement.execute(
               String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000));
         }
@@ -768,7 +768,7 @@ public class IoTDBPipeClusterIT {
                   TestUtils.assertResultSetEqual(
                       statement.executeQuery("select count(*) from root.**"),
                       "count(root.db.d1.s1),",
-                      Collections.singleton("100,")));
+                      Collections.singleton("1000,")));
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
