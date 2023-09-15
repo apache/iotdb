@@ -223,11 +223,11 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
             > config.getThrottleThreshold();
       } catch (Exception e) {
         LOGGER.error("Failed to get leader data regions num from config node", e);
-        return true;
       }
+      return true;
     }
 
-    return true;
+    return false;
   }
 
   private boolean hasHistoricalExtractorConsumedAll() {
