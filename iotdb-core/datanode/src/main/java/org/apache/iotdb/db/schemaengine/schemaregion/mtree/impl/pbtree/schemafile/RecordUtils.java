@@ -90,7 +90,7 @@ public class RecordUtils {
    *
    * <ul>
    *   <li>1 bit : usingTemplate, whether using template
-   *   <li>1 bit : isAligned
+   *   <li>2 bit : isAligned (00 for not aligned, 01 for aligned, 10 for null)
    * </ul>
    *
    * @param node
@@ -98,13 +98,13 @@ public class RecordUtils {
    */
   private static ByteBuffer internal2Buffer(ICachedMNode node) {
     byte nodeType = INTERNAL_TYPE;
-    boolean isAligned = false;
+    Boolean isAligned = null;
     int schemaTemplateIdWithState = SchemaConstant.NON_TEMPLATE;
     boolean isUseTemplate = false;
 
     if (node.isDevice()) {
       nodeType = ENTITY_TYPE;
-      isAligned = node.getAsDeviceMNode().isAligned();
+      isAligned = node.getAsDeviceMNode().isAlignedNullable();
       schemaTemplateIdWithState = node.getAsDeviceMNode().getSchemaTemplateIdWithState();
       isUseTemplate = node.getAsDeviceMNode().isUseTemplate();
     }
@@ -193,7 +193,7 @@ public class RecordUtils {
       byte bitFlag = ReadWriteIOUtils.readByte(buffer);
 
       boolean usingTemplate = usingTemplate(bitFlag);
-      boolean isAligned = isAligned(bitFlag);
+      Boolean isAligned = isAligned(bitFlag);
 
       if (nodeType == 0) {
         resNode = nodeFactory.createInternalMNode(null, nodeName);
@@ -314,7 +314,9 @@ public class RecordUtils {
     } else if (node.isDevice()) {
       builder.append("entityNode, ");
 
-      if (node.getAsDeviceMNode().isAligned()) {
+      if (node.getAsDeviceMNode().isAlignedNullable() == null) {
+        builder.append("aligned is null, ");
+      } else if (node.getAsDeviceMNode().isAligned()) {
         builder.append("aligned, ");
       } else {
         builder.append("not aligned, ");
@@ -379,19 +381,25 @@ public class RecordUtils {
 
   // region codex for bit flag
 
-  private static byte encodeInternalStatus(boolean usingTemplate, boolean isAligned) {
+  private static byte encodeInternalStatus(boolean usingTemplate, Boolean isAligned) {
     byte flag = 0;
     if (usingTemplate) {
       flag |= 0x01;
     }
-    if (isAligned) {
+    if (isAligned == null) {
+      flag |= 0x04;
+    } else if (isAligned) {
       flag |= 0x02;
     }
     return flag;
   }
 
-  private static boolean isAligned(byte flag) {
-    return (flag & 0x02) == 2;
+  private static Boolean isAligned(byte flag) {
+    if ((flag & 0x04) != 0) {
+      return null;
+    } else {
+      return (flag & 0x02) == 2;
+    }
   }
 
   private static boolean usingTemplate(byte flag) {
