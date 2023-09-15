@@ -405,11 +405,17 @@ public class IoTDBPipeProtocolIT {
     doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName());
   }
 
+  @Test
+  public void testAirGapConnectorUseNodeUrls() throws Exception {
+    doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName());
+  }
+
   private void doTestUseNodeUrls(String connectorName) throws Exception {
     senderEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setPipeAirGapReceiverEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -419,6 +425,7 @@ public class IoTDBPipeProtocolIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setPipeAirGapReceiverEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -430,7 +437,16 @@ public class IoTDBPipeProtocolIT {
 
     StringBuilder nodeUrlsBuilder = new StringBuilder();
     for (DataNodeWrapper wrapper : receiverEnv.getDataNodeWrapperList()) {
-      nodeUrlsBuilder.append(wrapper.getIp()).append(":").append(wrapper.getPort()).append(",");
+      if (connectorName.equals(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
+        // use default port for convenience
+        nodeUrlsBuilder
+            .append(wrapper.getIp())
+            .append(":")
+            .append(wrapper.getPipeAirGapReceiverPort())
+            .append(",");
+      } else {
+        nodeUrlsBuilder.append(wrapper.getIpAndPortString()).append(",");
+      }
     }
 
     try (SyncConfigNodeIServiceClient client =
@@ -459,6 +475,7 @@ public class IoTDBPipeProtocolIT {
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
 
+      System.out.println(status.getMessage());
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());

@@ -270,4 +270,9 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
     return this;
   }
+
+  @Override
+  public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
+    return this;
+  }
 }

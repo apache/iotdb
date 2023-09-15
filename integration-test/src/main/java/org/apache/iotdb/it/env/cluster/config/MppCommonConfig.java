@@ -372,6 +372,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     return this;
   }
 
+  @Override
+  public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
+    setProperty("pipe_air_gap_receiver_enabled", String.valueOf(isPipeAirGapReceiverEnabled));
+    return this;
+  }
+
   // For part of the log directory
   public String getClusterConfigStr() {
     return fromConsensusFullNameToAbbr(properties.getProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS))
