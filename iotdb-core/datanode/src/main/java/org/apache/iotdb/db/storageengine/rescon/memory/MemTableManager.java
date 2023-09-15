@@ -43,16 +43,16 @@ public class MemTableManager {
     return InstanceHolder.INSTANCE;
   }
 
-  public synchronized IMemTable getAvailableMemTable(String storageGroup)
+  public synchronized IMemTable getAvailableMemTable(String storageGroup, String dataRegionId)
       throws WriteProcessException {
     if (CONFIG.isEnableMemControl()) {
       currentMemtableNumber++;
-      return new PrimitiveMemTable(storageGroup, CONFIG.isEnableMemControl());
+      return new PrimitiveMemTable(storageGroup, dataRegionId, CONFIG.isEnableMemControl());
     }
 
     if (!reachMaxMemtableNumber()) {
       currentMemtableNumber++;
-      return new PrimitiveMemTable(storageGroup);
+      return new PrimitiveMemTable(storageGroup, dataRegionId);
     }
 
     // wait until the total number of memtable is less than the system capacity
@@ -60,7 +60,7 @@ public class MemTableManager {
     while (true) {
       if (!reachMaxMemtableNumber()) {
         currentMemtableNumber++;
-        return new PrimitiveMemTable(storageGroup);
+        return new PrimitiveMemTable(storageGroup, dataRegionId);
       }
       try {
         wait(WAIT_TIME);

@@ -57,7 +57,7 @@ public abstract class AbstractMemTable implements IMemTable {
   /** Each memTable node has a unique int value identifier, init when recovering wal. */
   public static final AtomicLong memTableIdCounter = new AtomicLong(-1);
 
-  private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + 3 * Integer.BYTES + 6 * Long.BYTES;
+  private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + 2 * Integer.BYTES + 6 * Long.BYTES;
 
   private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
@@ -97,21 +97,26 @@ public abstract class AbstractMemTable implements IMemTable {
   private final long createdTime = System.currentTimeMillis();
 
   private String database;
+  private String dataRegionId;
 
   private static final String METRIC_POINT_IN = "pointsIn";
 
   protected AbstractMemTable() {
     this.database = null;
+    this.dataRegionId = null;
     this.memTableMap = new HashMap<>();
   }
 
-  protected AbstractMemTable(String database) {
+  protected AbstractMemTable(String database, String dataRegionId) {
     this.database = database;
+    this.dataRegionId = dataRegionId;
     this.memTableMap = new HashMap<>();
   }
 
-  protected AbstractMemTable(String database, Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
+  protected AbstractMemTable(
+      String database, String dataRegionId, Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
     this.database = database;
+    this.dataRegionId = dataRegionId;
     this.memTableMap = memTableMap;
   }
 
@@ -586,9 +591,6 @@ public abstract class AbstractMemTable implements IMemTable {
       return Byte.BYTES;
     }
     int size = FIXED_SERIALIZED_SIZE;
-    if (database != null && !database.isEmpty()) {
-      size += database.length();
-    }
     for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
       size += ReadWriteIOUtils.sizeToWrite(entry.getKey().toStringID());
       size += Byte.BYTES;
@@ -611,12 +613,6 @@ public abstract class AbstractMemTable implements IMemTable {
     buffer.putLong(totalPointsNumThreshold);
     buffer.putLong(maxPlanIndex);
     buffer.putLong(minPlanIndex);
-    if (database == null || database.isEmpty()) {
-      buffer.putInt(0);
-    } else {
-      buffer.putInt(database.length());
-      buffer.put(database.getBytes());
-    }
 
     buffer.putInt(memTableMap.size());
     for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
@@ -636,12 +632,6 @@ public abstract class AbstractMemTable implements IMemTable {
     totalPointsNumThreshold = stream.readLong();
     maxPlanIndex = stream.readLong();
     minPlanIndex = stream.readLong();
-    int databaseLength = stream.readInt();
-    if (databaseLength != 0) {
-      byte[] bytes = new byte[databaseLength];
-      databaseLength = stream.read(bytes);
-      database = new String(bytes);
-    }
 
     int memTableMapSize = stream.readInt();
     for (int i = 0; i < memTableMapSize; ++i) {
@@ -679,7 +669,7 @@ public abstract class AbstractMemTable implements IMemTable {
         memTable = new NotifyFlushMemTable();
       } else {
         // database will be updated when deserialize
-        PrimitiveMemTable primitiveMemTable = new PrimitiveMemTable(null);
+        PrimitiveMemTable primitiveMemTable = new PrimitiveMemTable();
         primitiveMemTable.deserialize(stream);
         memTable = primitiveMemTable;
       }
@@ -690,5 +680,16 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public String getDatabase() {
     return database;
+  }
+
+  @Override
+  public String getDataRegionId() {
+    return dataRegionId;
+  }
+
+  @Override
+  public void setDatabaseAndDataRegionId(String database, String dataRegionId) {
+    this.database = database;
+    this.dataRegionId = dataRegionId;
   }
 }

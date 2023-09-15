@@ -171,4 +171,8 @@ public interface IMemTable extends WALEntryValue {
   Map<String, Long> getMaxTime();
 
   String getDatabase();
+
+  String getDataRegionId();
+
+  void setDatabaseAndDataRegionId(String database, String dataRegionId);
 }

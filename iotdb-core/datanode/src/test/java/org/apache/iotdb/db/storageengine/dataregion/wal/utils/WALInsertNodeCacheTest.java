@@ -48,6 +48,7 @@ public class WALInsertNodeCacheTest {
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   private static final String databasePath = "root.test_sg";
   private static final String devicePath = databasePath + ".test_d";
+  private static final String dataRegionId = "DataRegion-1";
   private static final WALInsertNodeCache cache = WALInsertNodeCache.getInstance();
   private WALMode prevMode;
   private boolean prevIsClusterMode;
@@ -75,7 +76,7 @@ public class WALInsertNodeCacheTest {
 
   @Test
   public void testLoadUnsealedWALFile() throws Exception {
-    IMemTable memTable = new PrimitiveMemTable(databasePath);
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode.onMemTableCreated(memTable, logDirectory + "/" + "fake.tsfile");
     InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
     node1.setSearchIndex(1);
@@ -92,7 +93,7 @@ public class WALInsertNodeCacheTest {
   @Test
   public void testBatchLoad() throws Exception {
     // write memTable1
-    IMemTable memTable1 = new PrimitiveMemTable(databasePath);
+    IMemTable memTable1 = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode.onMemTableCreated(memTable1, logDirectory + "/" + "fake1.tsfile");
     InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
     node1.setSearchIndex(1);
@@ -103,7 +104,7 @@ public class WALInsertNodeCacheTest {
     WALFlushListener flushListener2 = walNode.log(memTable1.getMemTableId(), node2);
     WALEntryPosition position2 = flushListener2.getWalEntryHandler().getWalEntryPosition();
     // write memTable2
-    IMemTable memTable2 = new PrimitiveMemTable(databasePath);
+    IMemTable memTable2 = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode.onMemTableCreated(memTable2, logDirectory + "/" + "fake2.tsfile");
     InsertRowNode node3 = getInsertRowNode(devicePath, System.currentTimeMillis());
     node1.setSearchIndex(3);

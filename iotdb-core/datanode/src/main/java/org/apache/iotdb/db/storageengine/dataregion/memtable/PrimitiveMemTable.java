@@ -23,25 +23,30 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class PrimitiveMemTable extends AbstractMemTable {
-
-  public PrimitiveMemTable(String database) {
-    super(database);
+  // this constructor only used when deserialize
+  public PrimitiveMemTable() {
+    super();
   }
 
-  public PrimitiveMemTable(String database, boolean enableMemControl) {
-    super(database);
+  public PrimitiveMemTable(String database, String dataRegionId) {
+    super(database, dataRegionId);
+  }
+
+  public PrimitiveMemTable(String database, String dataRegionId, boolean enableMemControl) {
+    super(database, dataRegionId);
     this.disableMemControl = !enableMemControl;
   }
 
-  public PrimitiveMemTable(String database, Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
-    super(database, memTableMap);
+  public PrimitiveMemTable(
+      String database, String dataRegionId, Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
+    super(database, dataRegionId, memTableMap);
   }
 
   @Override
   public IMemTable copy() {
     Map<IDeviceID, IWritableMemChunkGroup> newMap = new HashMap<>(getMemTableMap());
 
-    return new PrimitiveMemTable(getDatabase(), newMap);
+    return new PrimitiveMemTable(getDatabase(), getDataRegionId(), newMap);
   }
 
   @Override

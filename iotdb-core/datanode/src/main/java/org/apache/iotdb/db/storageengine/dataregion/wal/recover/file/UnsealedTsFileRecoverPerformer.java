@@ -69,17 +69,22 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   private final TsFilePlanRedoer walRedoer;
   // trace result of this recovery
   private final WALRecoverListener recoverListener;
+  private final String database;
+  private final String dataRegionId;
 
   public UnsealedTsFileRecoverPerformer(
       TsFileResource tsFileResource,
       boolean sequence,
       Consumer<UnsealedTsFileRecoverPerformer> callbackAfterUnsealedTsFileRecovered,
-      String database) {
+      String database,
+      String dataRegionId) {
     super(tsFileResource);
     this.sequence = sequence;
     this.callbackAfterUnsealedTsFileRecovered = callbackAfterUnsealedTsFileRecovered;
-    this.walRedoer = new TsFilePlanRedoer(tsFileResource, sequence, database);
+    this.walRedoer = new TsFilePlanRedoer(tsFileResource, sequence, database, dataRegionId);
     this.recoverListener = new WALRecoverListener(tsFileResource.getTsFilePath());
+    this.database = database;
+    this.dataRegionId = dataRegionId;
   }
 
   /**
@@ -196,6 +201,8 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           if (!memTable.isSignalMemTable()) {
             walRedoer.resetRecoveryMemTable(memTable);
           }
+          // update memtable's database and dataRegionId
+          memTable.setDatabaseAndDataRegionId(database, dataRegionId);
           break;
         case INSERT_ROW_NODE:
         case INSERT_TABLET_NODE:

@@ -61,6 +61,7 @@ import static org.junit.Assert.assertEquals;
 public class PrimitiveMemTableTest {
 
   String database = "root.test";
+  String dataRegionId = "DataRegion-1";;
   double delta;
 
   @Before
@@ -115,7 +116,7 @@ public class PrimitiveMemTableTest {
 
   @Test
   public void simpleTest() throws IOException, QueryProcessException, MetadataException {
-    IMemTable memTable = new PrimitiveMemTable(database);
+    IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
     int count = 10;
     String deviceId = "d1";
     String[] measurementId = new String[count];
@@ -162,7 +163,7 @@ public class PrimitiveMemTableTest {
 
   @Test
   public void totalSeriesNumberTest() throws IOException, QueryProcessException, MetadataException {
-    IMemTable memTable = new PrimitiveMemTable(database);
+    IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
     int count = 10;
     String deviceId = "d1";
     String[] measurementId = new String[count];
@@ -212,7 +213,7 @@ public class PrimitiveMemTableTest {
 
   @Test
   public void queryWithDeletionTest() throws IOException, QueryProcessException, MetadataException {
-    IMemTable memTable = new PrimitiveMemTable(database);
+    IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
     int count = 10;
     String deviceId = "d1";
     String[] measurementId = new String[count];
@@ -266,7 +267,7 @@ public class PrimitiveMemTableTest {
   @Test
   public void queryAlignChuckWithDeletionTest()
       throws IOException, QueryProcessException, MetadataException {
-    IMemTable memTable = new PrimitiveMemTable(database);
+    IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
     int count = 10;
     String deviceId = "d1";
     String[] measurementId = new String[count];
@@ -427,7 +428,7 @@ public class PrimitiveMemTableTest {
 
   @Test
   public void testFloatType() throws IOException, QueryProcessException, MetadataException {
-    IMemTable memTable = new PrimitiveMemTable(database);
+    IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
     String deviceId = "d1";
     int size = 100;
     write(memTable, deviceId, "s1", TSDataType.FLOAT, TSEncoding.RLE, size);
@@ -436,7 +437,7 @@ public class PrimitiveMemTableTest {
   @Test
   public void testAllType()
       throws IOException, QueryProcessException, MetadataException, WriteProcessException {
-    IMemTable memTable = new PrimitiveMemTable(database);
+    IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
     int count = 10;
     String deviceId = "d1";
     String[] measurementId = new String[count];
@@ -540,7 +541,7 @@ public class PrimitiveMemTableTest {
   @Test
   public void testSerializeSize()
       throws IOException, QueryProcessException, MetadataException, WriteProcessException {
-    IMemTable memTable = new PrimitiveMemTable(database);
+    IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
     int count = 10;
     String deviceId = "d1";
     String[] measurementId = new String[count];

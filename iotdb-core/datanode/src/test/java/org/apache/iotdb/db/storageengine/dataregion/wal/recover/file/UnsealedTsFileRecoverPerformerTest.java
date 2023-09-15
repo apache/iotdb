@@ -67,6 +67,7 @@ public class UnsealedTsFileRecoverPerformerTest {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String SG_NAME = "root.recover_sg";
+  private static final String DATA_REGION_ID = "DataRegion-1";
   private static final String DEVICE1_NAME = SG_NAME.concat(".d1");
   private static final String DEVICE2_NAME = SG_NAME.concat(".d2");
   private static final String FILE_NAME =
@@ -126,7 +127,11 @@ public class UnsealedTsFileRecoverPerformerTest {
     // vsg processor is used to test IdTable, don't test IdTable here
     try (UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileResource, true, performer -> assertFalse(performer.canWrite()), SG_NAME)) {
+            tsFileResource,
+            true,
+            performer -> assertFalse(performer.canWrite()),
+            SG_NAME,
+            DATA_REGION_ID)) {
       recoverPerformer.startRecovery();
       assertTrue(recoverPerformer.hasCrashed());
       assertTrue(recoverPerformer.canWrite());
@@ -185,7 +190,11 @@ public class UnsealedTsFileRecoverPerformerTest {
     // vsg processor is used to test IdTable, don't test IdTable here
     try (UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileResource, true, performer -> assertFalse(performer.canWrite()), SG_NAME)) {
+            tsFileResource,
+            true,
+            performer -> assertFalse(performer.canWrite()),
+            SG_NAME,
+            DATA_REGION_ID)) {
       recoverPerformer.startRecovery();
       assertTrue(recoverPerformer.hasCrashed());
       assertTrue(recoverPerformer.canWrite());
@@ -312,7 +321,11 @@ public class UnsealedTsFileRecoverPerformerTest {
     // vsg processor is used to test IdTable, don't test IdTable here
     try (UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileResource, true, performer -> assertFalse(performer.canWrite()), SG_NAME)) {
+            tsFileResource,
+            true,
+            performer -> assertFalse(performer.canWrite()),
+            SG_NAME,
+            DATA_REGION_ID)) {
       recoverPerformer.startRecovery();
       assertTrue(recoverPerformer.hasCrashed());
       assertTrue(recoverPerformer.canWrite());

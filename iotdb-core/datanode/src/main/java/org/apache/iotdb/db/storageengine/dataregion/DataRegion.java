@@ -679,7 +679,7 @@ public class DataRegion implements IDataRegionForQuery {
       TsFileResource unsealedTsFile, DataRegionRecoveryContext context, boolean isSeq) {
     UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            unsealedTsFile, isSeq, context.recoverPerformers::add, databaseName);
+            unsealedTsFile, isSeq, context.recoverPerformers::add, databaseName, dataRegionId);
     // remember to close UnsealedTsFileRecoverPerformer
     return WALRecoverManager.getInstance().addRecoverPerformer(recoverPerformer);
   }

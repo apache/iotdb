@@ -52,7 +52,7 @@ public class MemTableFlushTaskTest {
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     writer = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(filePath));
-    memTable = new PrimitiveMemTable(storageGroup);
+    memTable = new PrimitiveMemTable(storageGroup, dataRegionId);
   }
 
   @After

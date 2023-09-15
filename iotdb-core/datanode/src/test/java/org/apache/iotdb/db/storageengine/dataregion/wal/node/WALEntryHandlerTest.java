@@ -69,6 +69,7 @@ public class WALEntryHandlerTest {
 
   private static final String databasePath = "root.test_sg";
   private static final String devicePath = databasePath + ".test_d";
+  private static final String dataRegionId = "DataRegion-1";
   private WALMode prevMode;
   private boolean prevIsClusterMode;
   private WALNode walNode1;
@@ -99,7 +100,7 @@ public class WALEntryHandlerTest {
 
   @Test(expected = MemTablePinException.class)
   public void pinDeletedMemTable() throws Exception {
-    IMemTable memTable = new PrimitiveMemTable(databasePath);
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
     WALFlushListener flushListener =
         walNode1.log(
@@ -112,7 +113,7 @@ public class WALEntryHandlerTest {
 
   @Test
   public void pinMemTable() throws Exception {
-    IMemTable memTable = new PrimitiveMemTable(databasePath);
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
     InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
     node1.setSearchIndex(1);
@@ -142,7 +143,7 @@ public class WALEntryHandlerTest {
 
   @Test(expected = MemTablePinException.class)
   public void unpinDeletedMemTable() throws Exception {
-    IMemTable memTable = new PrimitiveMemTable(databasePath);
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
     WALFlushListener flushListener =
         walNode1.log(
@@ -155,7 +156,7 @@ public class WALEntryHandlerTest {
 
   @Test
   public void unpinFlushedMemTable() throws Exception {
-    IMemTable memTable = new PrimitiveMemTable(databasePath);
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
     WALFlushListener flushListener =
         walNode1.log(
@@ -179,7 +180,7 @@ public class WALEntryHandlerTest {
 
   @Test
   public void unpinMemTable() throws Exception {
-    IMemTable memTable = new PrimitiveMemTable(databasePath);
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
     InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
     node1.setSearchIndex(1);
@@ -208,7 +209,7 @@ public class WALEntryHandlerTest {
 
   @Test
   public void getUnFlushedValue() throws Exception {
-    IMemTable memTable = new PrimitiveMemTable(databasePath);
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
     InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
     node1.setSearchIndex(1);
@@ -222,7 +223,7 @@ public class WALEntryHandlerTest {
 
   @Test
   public void getFlushedValue() throws Exception {
-    IMemTable memTable = new PrimitiveMemTable(databasePath);
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
     InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
     node1.setSearchIndex(1);
@@ -248,7 +249,7 @@ public class WALEntryHandlerTest {
       String logDirectory = i % 2 == 0 ? logDirectory1 : logDirectory2;
       Callable<Void> writeTask =
           () -> {
-            IMemTable memTable = new PrimitiveMemTable(databasePath);
+            IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
             walNode.onMemTableCreated(memTable, logDirectory + "/" + "fake.tsfile");
 
             List<WALFlushListener> walFlushListeners = new ArrayList<>();
