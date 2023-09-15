@@ -27,6 +27,7 @@
         <version>1.3.0-SNAPSHOT</version>
     </parent>
     <artifactId>iotdb-distribution</artifactId>
+    <packaging>pom</packaging>
     <name>IoTDB: Distribution</name>
     <build>
         <plugins>

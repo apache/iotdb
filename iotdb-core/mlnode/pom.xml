@@ -27,6 +27,7 @@
         <version>1.3.0-SNAPSHOT</version>
     </parent>
     <artifactId>iotdb-mlnode</artifactId>
+    <packaging>pom</packaging>
     <name>IoTDB: Core: MlNode</name>
     <build>
         <plugins>
@@ -130,28 +131,45 @@
                     </execution>
                 </executions>
             </plugin>
+            <!--plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <ignoredDependencies>
+                        <ignoredDependency>org.apache.iotdb:iotdb-thrift</ignoredDependency>
+                        <ignoredDependency>org.apache.iotdb:iotdb-thrift-common</ignoredDependency>
+                        <ignoredDependency>org.apache.iotdb:iotdb-thrift-confignode</ignoredDependency>
+                        <ignoredDependency>org.apache.iotdb:iotdb-thrift-mlnode</ignoredDependency>
+                    </ignoredDependencies>
+                </configuration>
+            </plugin-->
         </plugins>
     </build>
     <dependencies>
+        <!-- These dependencies are just added to ensure the other modules are built first -->
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-commons</artifactId>
-            <version>${project.version}</version>
+            <version>1.3.0-SNAPSHOT</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift</artifactId>
-            <version>${project.version}</version>
+            <version>1.3.0-SNAPSHOT</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-confignode</artifactId>
-            <version>${project.version}</version>
+            <version>1.3.0-SNAPSHOT</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-mlnode</artifactId>
-            <version>${project.version}</version>
+            <version>1.3.0-SNAPSHOT</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>

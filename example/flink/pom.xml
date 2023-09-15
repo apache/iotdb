@@ -28,6 +28,10 @@
     </parent>
     <artifactId>flink-example</artifactId>
     <name>IoTDB: Example: Apache Flink</name>
+    <properties>
+        <!-- Flink 1.14.6 is the last to have flink-streaming-api_2.11 -->
+        <flink.version>1.14.6</flink.version>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
