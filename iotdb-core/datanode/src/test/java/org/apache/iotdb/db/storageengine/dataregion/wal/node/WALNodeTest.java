@@ -70,7 +70,7 @@ public class WALNodeTest {
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   private static final String databasePath = "root.test_sg";
   private static final String devicePath = databasePath + ".test_d";
-  private static final String dataRegionId = "DataRegion-1";
+  private static final String dataRegionId = "1";
   private WALMode prevMode;
   private boolean prevIsClusterMode;
   private WALNode walNode;

@@ -49,7 +49,7 @@ import static org.junit.Assert.assertTrue;
 
 public class CheckpointManagerTest {
   private static final String database = "root.test";
-  private static final String dataRegionId = "DataRegion-1";
+  private static final String dataRegionId = "1";
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String identifier = String.valueOf(Integer.MAX_VALUE);
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");

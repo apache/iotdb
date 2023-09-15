@@ -41,7 +41,7 @@ public class MemTableFlushTaskTest {
 
   private RestorableTsFileIOWriter writer;
   private String storageGroup = "storage_group1";
-  private String dataRegionId = "DataRegion-1";
+  private String dataRegionId = "1";
   private String filePath =
       TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
   private IMemTable memTable;

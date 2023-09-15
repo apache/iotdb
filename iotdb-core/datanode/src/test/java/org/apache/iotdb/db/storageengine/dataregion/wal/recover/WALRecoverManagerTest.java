@@ -88,7 +88,7 @@ public class WALRecoverManagerTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private static final String SG_NAME = "root.recover_sg";
-  private static final String DATA_REGION_ID = "DataRegion-1";
+  private static final String DATA_REGION_ID = "1";
   private static final String DEVICE1_NAME = SG_NAME.concat(".d1");
   private static final String DEVICE2_NAME = SG_NAME.concat(".d2");
   private static final String FILE_WITH_WAL_NAME =

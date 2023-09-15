@@ -42,7 +42,7 @@ public class CheckpointFileTest {
   private final File checkpointFile =
       new File(TestConstant.BASE_OUTPUT_PATH.concat("_0.checkpoint"));
   private static final String database = "root.test";
-  private static final String dataRegionId = "DataRegion-1";
+  private static final String dataRegionId = "1";
 
   @Before
   public void setUp() throws Exception {

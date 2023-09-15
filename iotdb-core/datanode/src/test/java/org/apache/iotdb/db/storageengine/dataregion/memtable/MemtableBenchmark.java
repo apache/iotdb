@@ -30,7 +30,7 @@ import java.util.Collections;
 public class MemtableBenchmark {
 
   private static String database = "root.test";
-  private static String dataRegionId = "DataRegion-1";
+  private static String dataRegionId = "1";
   private static String deviceId = "d0";
   private static int numOfMeasurement = 10000;
   private static int numOfPoint = 1000;

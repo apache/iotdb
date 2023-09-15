@@ -69,7 +69,7 @@ public class WALEntryHandlerTest {
 
   private static final String databasePath = "root.test_sg";
   private static final String devicePath = databasePath + ".test_d";
-  private static final String dataRegionId = "DataRegion-1";
+  private static final String dataRegionId = "1";
   private WALMode prevMode;
   private boolean prevIsClusterMode;
   private WALNode walNode1;
