@@ -107,4 +107,59 @@ public class TimeChunkWriterTest {
       fail();
     }
   }
+
+  @Test
+  public void testWrite3() {
+    Encoder timeEncoder = new PlainEncoder(TSDataType.INT64, 0);
+    TimeChunkWriter chunkWriter =
+        new TimeChunkWriter("c1", CompressionType.UNCOMPRESSED, TSEncoding.PLAIN, timeEncoder);
+    long[] times = new long[10];
+    for (int i = 0; i < 10; i++) {
+      times[i] = i + 1;
+    }
+    chunkWriter.write(times, 10, 0);
+    chunkWriter.sealCurrentPage();
+    for (int i = 0; i < 10; i++) {
+      times[i] = i + 11;
+    }
+    chunkWriter.write(times, 10, 0);
+    chunkWriter.sealCurrentPage();
+    assertEquals(2, chunkWriter.getNumOfPages());
+    // two pages with statistics size: (82 + 17) * 2 + chunk header size: 9
+    assertEquals(207L, chunkWriter.getCurrentChunkSize());
+
+    try {
+      TestTsFileOutput testTsFileOutput = new TestTsFileOutput();
+      TsFileIOWriter writer = new TsFileIOWriter(testTsFileOutput, true);
+      chunkWriter.writeAllPagesOfChunkToTsFile(writer);
+      PublicBAOS publicBAOS = testTsFileOutput.publicBAOS;
+      ByteBuffer buffer = ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
+      assertEquals(MetaMarker.TIME_CHUNK_HEADER, ReadWriteIOUtils.readByte(buffer));
+      assertEquals("c1", ReadWriteIOUtils.readVarIntString(buffer));
+      assertEquals(198, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
+      assertEquals(TSDataType.VECTOR.serialize(), ReadWriteIOUtils.readByte(buffer));
+      assertEquals(CompressionType.UNCOMPRESSED.serialize(), ReadWriteIOUtils.readByte(buffer));
+      assertEquals(TSEncoding.PLAIN.serialize(), ReadWriteIOUtils.readByte(buffer));
+      assertEquals(198, buffer.remaining());
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testWriteEmptyPage() {
+    Encoder timeEncoder = new PlainEncoder(TSDataType.INT64, 0);
+    TimeChunkWriter chunkWriter =
+        new TimeChunkWriter("c1", CompressionType.UNCOMPRESSED, TSEncoding.PLAIN, timeEncoder);
+    long[] times = new long[10];
+    for (int i = 0; i < 10; i++) {
+      times[i] = i + 1;
+    }
+    chunkWriter.write(times, 10, 0);
+    chunkWriter.sealCurrentPage();
+    chunkWriter.write(times, 0, 0);
+    chunkWriter.sealCurrentPage();
+    assertEquals(1, chunkWriter.getNumOfPages());
+  }
 }

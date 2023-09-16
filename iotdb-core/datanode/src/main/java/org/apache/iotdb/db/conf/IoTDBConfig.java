@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
+import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -54,6 +56,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -90,24 +93,23 @@ public class IoTDBConfig {
       "([" + PATH_SEPARATOR + "])?" + NODE_NAME_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
-  public static final String SYSTEM_DATABASE = "root.__system";
 
-  /** whether to enable the mqtt service. */
+  /** Whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
 
-  /** the mqtt service binding host. */
+  /** The mqtt service binding host. */
   private String mqttHost = "127.0.0.1";
 
-  /** the mqtt service binding port. */
+  /** The mqtt service binding port. */
   private int mqttPort = 1883;
 
-  /** the handler pool size for handing the mqtt messages. */
+  /** The handler pool size for handing the mqtt messages. */
   private int mqttHandlerPoolSize = 1;
 
-  /** the mqtt message payload formatter. */
+  /** The mqtt message payload formatter. */
   private String mqttPayloadFormatter = "json";
 
-  /** max mqtt message size. Unit: byte */
+  /** Max mqtt message size. Unit: byte */
   private int mqttMaxMessageSize = 1048576;
 
   /** Rpc binding address. */
@@ -556,7 +558,8 @@ public class IoTDBConfig {
   private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 8 / 10 / 20;
 
   /** Memory allocated proportion for wal pipe cache */
-  private long allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
+  private long allocateMemoryForWALPipeCache =
+      Math.min(allocateMemoryForConsensus / 2, 3 * getWalFileSizeThresholdInByte());
 
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny
@@ -633,10 +636,10 @@ public class IoTDBConfig {
   private TSEncoding defaultBooleanEncoding = TSEncoding.RLE;
 
   /** INT32 encoding when creating schema automatically is enabled */
-  private TSEncoding defaultInt32Encoding = TSEncoding.RLE;
+  private TSEncoding defaultInt32Encoding = TSEncoding.TS_2DIFF;
 
   /** INT64 encoding when creating schema automatically is enabled */
-  private TSEncoding defaultInt64Encoding = TSEncoding.RLE;
+  private TSEncoding defaultInt64Encoding = TSEncoding.TS_2DIFF;
 
   /** FLOAT encoding when creating schema automatically is enabled */
   private TSEncoding defaultFloatEncoding = TSEncoding.GORILLA;
@@ -797,9 +800,6 @@ public class IoTDBConfig {
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
-  /** time interval in minute for calculating query frequency. Unit: minute */
-  private int frequencyIntervalInMinute = 1;
-
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 30000;
 
@@ -908,7 +908,7 @@ public class IoTDBConfig {
   private int mppDataExchangeKeepAliveTimeInMs = 1000;
 
   /** Thrift socket and connection timeout between data node and config node. */
-  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
@@ -1008,6 +1008,7 @@ public class IoTDBConfig {
   private boolean schemaRatisConsensusLogUnsafeFlushEnable = false;
 
   private int dataRatisConsensusLogForceSyncNum = 128;
+  private int schemaRatisConsensusLogForceSyncNum = 128;
 
   private long dataRatisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long schemaRatisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
@@ -1016,6 +1017,8 @@ public class IoTDBConfig {
   private long schemaRatisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
 
   private int dataRatisConsensusGrpcLeaderOutstandingAppendsMax = 128;
+
+  private int schemaRatisConsensusGrpcLeaderOutstandingAppendsMax = 128;
 
   private long dataRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
   private long schemaRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
@@ -1071,11 +1074,11 @@ public class IoTDBConfig {
   // IoTConsensus Config
   private int maxLogEntriesNumPerBatch = 1024;
   private int maxSizePerBatch = 16 * 1024 * 1024;
-  private int maxPendingBatchesNum = 12;
+  private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
 
   /** Pipe related */
-  private String pipeReceiveFileDir =
+  private String pipeReceiverFileDir =
       systemDir + File.separator + "pipe" + File.separator + "receiver";
 
   /** Resource control */
@@ -1209,7 +1212,7 @@ public class IoTDBConfig {
     triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
     pipeDir = addDataHomeDir(pipeDir);
     pipeTemporaryLibDir = addDataHomeDir(pipeTemporaryLibDir);
-    pipeReceiveFileDir = addDataHomeDir(pipeReceiveFileDir);
+    pipeReceiverFileDir = addDataHomeDir(pipeReceiverFileDir);
     mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
     queryDir = addDataHomeDir(queryDir);
@@ -1257,6 +1260,18 @@ public class IoTDBConfig {
       }
     }
     this.tierDataDirs = tierDataDirs;
+    reloadSystemMetrics();
+  }
+
+  void reloadSystemMetrics() {
+    ArrayList<String> diskDirs = new ArrayList<>();
+    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
+    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getConsensusDir());
+    diskDirs.addAll(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+    diskDirs.addAll(Arrays.asList(CommonDescriptor.getInstance().getConfig().getWalDirs()));
+    diskDirs.add(CommonDescriptor.getInstance().getConfig().getSyncDir());
+    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir());
+    SystemMetrics.getInstance().setDiskDirs(diskDirs);
   }
 
   // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same with IOTDB_HOME
@@ -2510,14 +2525,6 @@ public class IoTDBConfig {
     this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
   }
 
-  public int getFrequencyIntervalInMinute() {
-    return frequencyIntervalInMinute;
-  }
-
-  public void setFrequencyIntervalInMinute(int frequencyIntervalInMinute) {
-    this.frequencyIntervalInMinute = frequencyIntervalInMinute;
-  }
-
   public long getSlowQueryThreshold() {
     return slowQueryThreshold;
   }
@@ -3371,6 +3378,14 @@ public class IoTDBConfig {
     this.dataRatisConsensusLogForceSyncNum = dataRatisConsensusLogForceSyncNum;
   }
 
+  public int getSchemaRatisConsensusLogForceSyncNum() {
+    return schemaRatisConsensusLogForceSyncNum;
+  }
+
+  public void setSchemaRatisConsensusLogForceSyncNum(int schemaRatisConsensusLogForceSyncNum) {
+    this.schemaRatisConsensusLogForceSyncNum = schemaRatisConsensusLogForceSyncNum;
+  }
+
   public long getDataRatisConsensusLogSegmentSizeMax() {
     return dataRatisConsensusLogSegmentSizeMax;
   }
@@ -3396,6 +3411,16 @@ public class IoTDBConfig {
       int dataRatisConsensusGrpcLeaderOutstandingAppendsMax) {
     this.dataRatisConsensusGrpcLeaderOutstandingAppendsMax =
         dataRatisConsensusGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public int getSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax() {
+    return schemaRatisConsensusGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public void setSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax(
+      int schemaRatisConsensusGrpcLeaderOutstandingAppendsMax) {
+    this.schemaRatisConsensusGrpcLeaderOutstandingAppendsMax =
+        schemaRatisConsensusGrpcLeaderOutstandingAppendsMax;
   }
 
   public long getDataRatisConsensusLeaderElectionTimeoutMinMs() {
@@ -3681,12 +3706,12 @@ public class IoTDBConfig {
     return modeMapSizeThreshold;
   }
 
-  public void setPipeReceiverFileDir(String pipeReceiveFileDir) {
-    this.pipeReceiveFileDir = pipeReceiveFileDir;
+  public void setPipeReceiverFileDir(String pipeReceiverFileDir) {
+    this.pipeReceiverFileDir = pipeReceiverFileDir;
   }
 
   public String getPipeReceiverFileDir() {
-    return pipeReceiveFileDir;
+    return pipeReceiverFileDir;
   }
 
   public boolean isQuotaEnable() {

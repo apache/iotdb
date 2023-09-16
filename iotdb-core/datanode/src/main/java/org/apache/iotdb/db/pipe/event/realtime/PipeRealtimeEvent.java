@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.Map;
 
@@ -69,7 +68,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     this.device2Measurements = device2Measurements;
   }
 
-  public Event getEvent() {
+  public EnrichedEvent getEvent() {
     return event;
   }
 
@@ -100,12 +99,20 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean decreaseReferenceCount(String holderMessage) {
+  public boolean decreaseReferenceCount(String holderMessage, boolean shouldReport) {
     // This method must be overridden, otherwise during the real-time data extraction stage, the
-    // current PipeRealtimeEvent rather than the member variable EnrichedEvent will increase
+    // current PipeRealtimeEvent rather than the member variable EnrichedEvent will decrease
     // the reference count, resulting in errors in the reference count of the EnrichedEvent
     // contained in this PipeRealtimeEvent during the processor and connector stages.
-    return event.decreaseReferenceCount(holderMessage);
+    return event.decreaseReferenceCount(holderMessage, shouldReport);
+  }
+
+  @Override
+  public boolean clearReferenceCount(String holderMessage) {
+    // This method must be overridden, otherwise during the real-time data extraction stage, the
+    // current PipeRealtimeEvent rather than the member variable EnrichedEvent will clear
+    // the reference count.
+    return event.clearReferenceCount(holderMessage);
   }
 
   @Override
@@ -127,6 +134,11 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         this.device2Measurements,
         pipeTaskMeta,
         pattern);
+  }
+
+  @Override
+  public boolean isGeneratedByPipe() {
+    return event.isGeneratedByPipe();
   }
 
   @Override

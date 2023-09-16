@@ -138,7 +138,7 @@ public class RouteBalancer {
 
     // Collect the latest data and generate the optimal leader distribution
     Map<TConsensusGroupId, Integer> currentLeaderMap = getLoadManager().getRegionLeaderMap();
-    Map<TConsensusGroupId, Integer> optimalLeadderMap =
+    Map<TConsensusGroupId, Integer> optimalLeaderMap =
         leaderBalancer.generateOptimalLeaderDistribution(
             getPartitionManager().getAllReplicaSetsMap(regionGroupType),
             currentLeaderMap,
@@ -154,7 +154,7 @@ public class RouteBalancer {
     AtomicInteger requestId = new AtomicInteger(0);
     AsyncClientHandler<TRegionLeaderChangeReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.CHANGE_REGION_LEADER);
-    optimalLeadderMap.forEach(
+    optimalLeaderMap.forEach(
         (regionGroupId, newLeaderId) -> {
           if (newLeaderId != -1 && !newLeaderId.equals(currentLeaderMap.get(regionGroupId))) {
             String consensusProtocolClass;

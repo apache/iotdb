@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -37,7 +38,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTaskCoordinator {
 
@@ -48,13 +48,13 @@ public class PipeTaskCoordinator {
   // NEVER EXPOSE THIS DIRECTLY TO THE OUTSIDE
   private final PipeTaskInfo pipeTaskInfo;
 
-  private final ReentrantLock pipeTaskCoordinatorLock;
+  private final PipeTaskCoordinatorLock pipeTaskCoordinatorLock;
   private AtomicReference<PipeTaskInfo> pipeTaskInfoHolder;
 
   public PipeTaskCoordinator(ConfigManager configManager, PipeTaskInfo pipeTaskInfo) {
     this.configManager = configManager;
     this.pipeTaskInfo = pipeTaskInfo;
-    this.pipeTaskCoordinatorLock = new ReentrantLock(true);
+    this.pipeTaskCoordinatorLock = new PipeTaskCoordinatorLock();
   }
 
   /**
@@ -65,7 +65,6 @@ public class PipeTaskCoordinator {
    */
   public AtomicReference<PipeTaskInfo> lock() {
     pipeTaskCoordinatorLock.lock();
-    LOGGER.info("Pipe task coordinator locked.");
 
     pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
     return pipeTaskInfoHolder;
@@ -85,7 +84,6 @@ public class PipeTaskCoordinator {
 
     try {
       pipeTaskCoordinatorLock.unlock();
-      LOGGER.info("Pipe task coordinator unlocked.");
       return true;
     } catch (IllegalMonitorStateException ignored) {
       // This is thrown if unlock() is called without lock() called first.
@@ -141,10 +139,14 @@ public class PipeTaskCoordinator {
   public TShowPipeResp showPipes(TShowPipeReq req) {
     lock();
     try {
-      return ((PipeTableResp)
-              configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+      return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
           .filter(req.whereClause, req.pipeName)
           .convertToTShowPipeResp();
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new PipeTableResp(res, Collections.emptyList()).convertToTShowPipeResp();
     } finally {
       unlock();
     }
@@ -153,10 +155,9 @@ public class PipeTaskCoordinator {
   public TGetAllPipeInfoResp getAllPipeInfo() {
     lock();
     try {
-      return ((PipeTableResp)
-              configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+      return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
           .convertToTGetAllPipeInfoResp();
-    } catch (IOException e) {
+    } catch (IOException | ConsensusException e) {
       LOGGER.warn("Failed to get all pipe info.", e);
       return new TGetAllPipeInfoResp(
           new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage()),

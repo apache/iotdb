@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -84,9 +85,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         .forEach(
             o -> {
               slotList.add(
-                  new Pair<>(o, TimePartitionUtils.getTimePartition(resource.getStartTime(o))));
+                  new Pair<>(o, TimePartitionUtils.getTimePartitionSlot(resource.getStartTime(o))));
               slotList.add(
-                  new Pair<>(o, TimePartitionUtils.getTimePartition(resource.getEndTime(o))));
+                  new Pair<>(o, TimePartitionUtils.getTimePartitionSlot(resource.getEndTime(o))));
             });
 
     if (slotList.isEmpty()) {
@@ -99,9 +100,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       needDecodeTsFile = !isDispatchedToLocal(new HashSet<>(partitionFetcher.apply(slotList)));
     }
 
-    if (!needDecodeTsFile && !resource.resourceFileExists()) {
-      resource.serialize();
-    }
+    PipeAgent.runtime().assignRecoverProgressIndexForTsFileRecovery(resource);
+
+    // we serialize the resource file even if the tsfile does not need to be decoded
+    // or the resource file is already existed because we need to serialize the
+    // progress index of the tsfile
+    resource.serialize();
+
     return needDecodeTsFile;
   }
 

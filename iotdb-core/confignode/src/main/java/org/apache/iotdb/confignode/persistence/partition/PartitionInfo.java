@@ -385,24 +385,42 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Checks whether the specified DataPartition has a predecessor or successor and returns if it
-   * does.
+   * Checks whether the specified DataPartition has a successor and returns if it does.
    *
    * @param database DatabaseName
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
-   * @param timePartitionInterval Time partition interval
-   * @return The specific DataPartition's predecessor if exists, null otherwise
+   * @return The specific DataPartition's successor if exists, null otherwise
    */
-  public TConsensusGroupId getAdjacentDataPartition(
+  public TConsensusGroupId getSuccessorDataPartition(
       String database,
       TSeriesPartitionSlot seriesPartitionSlot,
-      TTimePartitionSlot timePartitionSlot,
-      long timePartitionInterval) {
-    if (databasePartitionTables.containsKey(database)) {
+      TTimePartitionSlot timePartitionSlot) {
+    if (isDatabaseExisted(database)) {
       return databasePartitionTables
           .get(database)
-          .getAdjacentDataPartition(seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
+          .getSuccessorDataPartition(seriesPartitionSlot, timePartitionSlot);
+    } else {
+      return null;
+    }
+  }
+
+  /**
+   * Checks whether the specified DataPartition has a predecessor and returns if it does.
+   *
+   * @param database DatabaseName
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPredecessorDataPartition(
+      String database,
+      TSeriesPartitionSlot seriesPartitionSlot,
+      TTimePartitionSlot timePartitionSlot) {
+    if (isDatabaseExisted(database)) {
+      return databasePartitionTables
+          .get(database)
+          .getPredecessorDataPartition(seriesPartitionSlot, timePartitionSlot);
     } else {
       return null;
     }
@@ -725,6 +743,25 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Only leader use this interface.
    *
+   * <p>Get all the RegionGroups currently owned by the specified Database
+   *
+   * @param database DatabaseName
+   * @param type SchemaRegion or DataRegion
+   * @return List of TConsensusGroupId
+   * @throws DatabaseNotExistsException When the specified Database doesn't exist
+   */
+  public List<TConsensusGroupId> getAllRegionGroupIds(String database, TConsensusGroupType type)
+      throws DatabaseNotExistsException {
+    if (!isDatabaseExisted(database)) {
+      throw new DatabaseNotExistsException(database);
+    }
+
+    return databasePartitionTables.get(database).getAllRegionGroupIds(type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
    * <p>Get the assigned SeriesPartitionSlots count in the specified Database
    *
    * @param database The specified Database
@@ -761,14 +798,14 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Only leader use this interface.
    *
-   * @param storageGroup StorageGroupName
+   * @param database DatabaseName
    * @param type SchemaRegion or DataRegion
    * @return The StorageGroup's Running or Available Regions that sorted by the number of allocated
    *     slots
    */
   public List<Pair<Long, TConsensusGroupId>> getRegionGroupSlotsCounter(
-      String storageGroup, TConsensusGroupType type) {
-    return databasePartitionTables.get(storageGroup).getRegionGroupSlotsCounter(type);
+      String database, TConsensusGroupType type) {
+    return databasePartitionTables.get(database).getRegionGroupSlotsCounter(type);
   }
 
   /**
@@ -782,6 +819,19 @@ public class PartitionInfo implements SnapshotProcessor {
         .values()
         .forEach(i -> schemaPartitionSet.addAll(i.getSchemaRegionIds()));
     return schemaPartitionSet;
+  }
+
+  /**
+   * Get the last DataAllotTable of the specified Database.
+   *
+   * @param database The specified Database
+   * @return The last DataAllotTable
+   */
+  public Map<TSeriesPartitionSlot, TConsensusGroupId> getLastDataAllotTable(String database) {
+    if (isDatabaseExisted(database)) {
+      return databasePartitionTables.get(database).getLastDataAllotTable();
+    }
+    return Collections.emptyMap();
   }
 
   @Override

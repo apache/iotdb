@@ -58,6 +58,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
 
 public class ClusterSchemaInfoTest {
@@ -110,7 +111,8 @@ public class ClusterSchemaInfoTest {
     Assert.assertEquals(storageGroupPathList.size(), clusterSchemaInfo.getDatabaseNames().size());
 
     GetDatabasePlan getStorageGroupReq =
-        new GetDatabasePlan(Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")));
+        new GetDatabasePlan(
+            Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")), ALL_MATCH_SCOPE);
     Map<String, TDatabaseSchema> reloadResult =
         clusterSchemaInfo.getMatchedDatabaseSchemas(getStorageGroupReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);
@@ -143,7 +145,7 @@ public class ClusterSchemaInfoTest {
 
     List<String> pathList =
         clusterSchemaInfo
-            .getPathsSetTemplate(new GetPathsSetTemplatePlan(templateName))
+            .getPathsSetTemplate(new GetPathsSetTemplatePlan(templateName, ALL_MATCH_SCOPE))
             .getPathList();
     Assert.assertEquals(3, pathList.size());
     Assert.assertTrue(pathList.contains("root.test1.template"));

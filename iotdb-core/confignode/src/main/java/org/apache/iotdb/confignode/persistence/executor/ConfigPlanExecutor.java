@@ -31,8 +31,9 @@ import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabase
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
-import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrialPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
@@ -51,7 +52,7 @@ import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLoca
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateBuildInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
@@ -279,8 +280,10 @@ public class ConfigPlanExecutor {
         return udfInfo.getUDFJar((GetUDFJarPlan) req);
       case ShowModel:
         return modelInfo.showModel((ShowModelPlan) req);
-      case ShowTrail:
-        return modelInfo.showTrail((ShowTrailPlan) req);
+      case ShowTrial:
+        return modelInfo.showTrial((ShowTrialPlan) req);
+      case GetModelInfo:
+        return modelInfo.getModelInfo((GetModelInfoPlan) req);
       case GetPipePluginTable:
         return pipeInfo.getPipePluginInfo().showPipePlugins();
       case GetPipePluginJar:
@@ -293,7 +296,7 @@ public class ConfigPlanExecutor {
   }
 
   public TSStatus executeNonQueryPlan(ConfigPhysicalPlan physicalPlan)
-      throws UnknownPhysicalPlanTypeException, AuthException {
+      throws UnknownPhysicalPlanTypeException {
     switch (physicalPlan.getType()) {
       case RegisterDataNode:
         return nodeInfo.registerDataNode((RegisterDataNodePlan) physicalPlan);
@@ -359,13 +362,24 @@ public class ConfigPlanExecutor {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
+      case CreateUserDep:
+      case CreateRoleDep:
+      case DropUserDep:
+      case DropRoleDep:
+      case GrantRoleDep:
+      case GrantUserDep:
+      case GrantRoleToUserDep:
+      case RevokeUserDep:
+      case RevokeRoleDep:
+      case RevokeRoleFromUserDep:
+      case UpdateUserDep:
         return authorInfo.authorNonQuery((AuthorPlan) physicalPlan);
       case ApplyConfigNode:
         return nodeInfo.applyConfigNode((ApplyConfigNodePlan) physicalPlan);
       case RemoveConfigNode:
         return nodeInfo.removeConfigNode((RemoveConfigNodePlan) physicalPlan);
-      case UpdateBuildInfo:
-        return nodeInfo.updateBuildInfo((UpdateBuildInfoPlan) physicalPlan);
+      case UpdateVersionInfo:
+        return nodeInfo.updateVersionInfo((UpdateVersionInfoPlan) physicalPlan);
       case CreateFunction:
         return udfInfo.addUDFInTable((CreateFunctionPlan) physicalPlan);
       case DropFunction:
@@ -559,7 +573,8 @@ public class ConfigPlanExecutor {
     if (-1 == level) {
       // get child paths
       Pair<Set<TSchemaNode>, Set<PartialPath>> matchedChildInNextLevel =
-          clusterSchemaInfo.getChildNodePathInNextLevel(partialPath);
+          clusterSchemaInfo.getChildNodePathInNextLevel(
+              partialPath, getNodePathsPartitionPlan.getScope());
       alreadyMatchedNode = matchedChildInNextLevel.left;
       if (!partialPath.hasMultiLevelMatchWildcard()) {
         needMatchedNode = new HashSet<>();
@@ -578,7 +593,8 @@ public class ConfigPlanExecutor {
     } else {
       // count nodes
       Pair<List<PartialPath>, Set<PartialPath>> matchedChildInNextLevel =
-          clusterSchemaInfo.getNodesListInGivenLevel(partialPath, level);
+          clusterSchemaInfo.getNodesListInGivenLevel(
+              partialPath, level, getNodePathsPartitionPlan.getScope());
       alreadyMatchedNode =
           matchedChildInNextLevel.left.stream()
               .map(path -> new TSchemaNode(path.getFullPath(), MNodeType.UNIMPLEMENT.getNodeType()))

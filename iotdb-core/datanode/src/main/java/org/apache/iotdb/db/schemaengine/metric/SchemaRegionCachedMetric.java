@@ -43,10 +43,10 @@ public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
   // MemSchemaRegionMetric is a subset of CachedSchemaRegionMetric
   private final SchemaRegionMemMetric memSchemaRegionMetric;
 
-  public SchemaRegionCachedMetric(CachedSchemaRegionStatistics regionStatistics) {
+  public SchemaRegionCachedMetric(CachedSchemaRegionStatistics regionStatistics, String database) {
     this.regionStatistics = regionStatistics;
     this.regionTagValue = String.format("SchemaRegion[%d]", regionStatistics.getSchemaRegionId());
-    this.memSchemaRegionMetric = new SchemaRegionMemMetric(regionStatistics);
+    this.memSchemaRegionMetric = new SchemaRegionMemMetric(regionStatistics, database);
   }
 
   @Override

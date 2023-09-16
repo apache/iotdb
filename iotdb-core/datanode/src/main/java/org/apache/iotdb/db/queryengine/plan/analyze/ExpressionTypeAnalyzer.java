@@ -63,7 +63,7 @@ public class ExpressionTypeAnalyzer {
       ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
       analyzer.analyze(expression);
 
-      updateAnalysis(analysis, analyzer);
+      addExpressionTypes(analysis, analyzer);
     }
     return analysis.getType(expression);
   }
@@ -76,7 +76,7 @@ public class ExpressionTypeAnalyzer {
     types.putAll(analyzer.getExpressionTypes());
   }
 
-  private static void updateAnalysis(Analysis analysis, ExpressionTypeAnalyzer analyzer) {
+  private static void addExpressionTypes(Analysis analysis, ExpressionTypeAnalyzer analyzer) {
     analysis.addTypes(analyzer.getExpressionTypes());
   }
 
@@ -269,6 +269,8 @@ public class ExpressionTypeAnalyzer {
             functionExpression,
             TypeInferenceUtils.getBuiltInScalarFunctionDataType(
                 functionExpression, expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
+      } else if (functionExpression.isModelInferenceFunction()) {
+        return setExpressionType(functionExpression, TSDataType.DOUBLE);
       } else {
         return setExpressionType(
             functionExpression,

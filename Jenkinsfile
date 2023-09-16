@@ -87,7 +87,7 @@ pipeline {
             }
             steps {
                 echo 'Building and Unit Test...'
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} clean install -pl '!integration-test' -DskipITs"
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} clean install -DskipITs"
             }
             post {
                 always {
@@ -105,7 +105,7 @@ pipeline {
             }
             steps {
                 echo 'Integration Test...'
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=3 -DintegrationTest.forkCount=3"
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT,with-integration-tests -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=3 -DintegrationTest.forkCount=3"
             }
             post {
                 always {
@@ -190,7 +190,7 @@ BUILD-FAILURE: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]':
 
 Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]</a>"
 """,
-                        to: "dev@iotdb.apache.org"
+                        to: "notifications@iotdb.apache.org"
                     )
                 }
             }
@@ -207,7 +207,7 @@ BUILD-UNSTABLE: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]'
 
 Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]</a>"
 """,
-                        to: "dev@iotdb.apache.org"
+                        to: "notifications@iotdb.apache.org"
                     )
                 }
             }
@@ -224,7 +224,7 @@ BUILD-STABLE: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]':
 
 Is back to normal.
 """,
-                        to: "dev@iotdb.apache.org"
+                        to: "notifications@iotdb.apache.org"
                     )
                 }
             }

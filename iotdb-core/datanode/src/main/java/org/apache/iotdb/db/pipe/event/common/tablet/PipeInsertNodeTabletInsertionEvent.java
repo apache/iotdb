@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
@@ -35,6 +36,7 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.function.BiConsumer;
 
 public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
@@ -46,28 +48,46 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   private final WALEntryHandler walEntryHandler;
   private final ProgressIndex progressIndex;
   private final boolean isAligned;
+  private final boolean isGeneratedByPipe;
 
   private TabletInsertionDataContainer dataContainer;
 
   public PipeInsertNodeTabletInsertionEvent(
-      WALEntryHandler walEntryHandler, ProgressIndex progressIndex, boolean isAligned) {
-    this(walEntryHandler, progressIndex, isAligned, null, null);
+      WALEntryHandler walEntryHandler,
+      ProgressIndex progressIndex,
+      boolean isAligned,
+      boolean isGeneratedByPipe) {
+    this(walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, null, null);
   }
 
   private PipeInsertNodeTabletInsertionEvent(
       WALEntryHandler walEntryHandler,
       ProgressIndex progressIndex,
       boolean isAligned,
+      boolean isGeneratedByPipe,
       PipeTaskMeta pipeTaskMeta,
       String pattern) {
     super(pipeTaskMeta, pattern);
     this.walEntryHandler = walEntryHandler;
     this.progressIndex = progressIndex;
     this.isAligned = isAligned;
+    this.isGeneratedByPipe = isGeneratedByPipe;
   }
 
   public InsertNode getInsertNode() throws WALPipeException {
-    return walEntryHandler.getValue();
+    return walEntryHandler.getInsertNode();
+  }
+
+  public ByteBuffer getByteBuffer() throws WALPipeException {
+    return walEntryHandler.getByteBuffer();
+  }
+
+  // This method is a pre-determination of whether to use binary transfers.
+  // If the insert node is null in cache, it means that we need to read the bytebuffer from the wal,
+  // and when the pattern is default, we can transfer the bytebuffer directly without serializing or
+  // deserializing
+  public InsertNode getInsertNodeViaCacheIfPossible() {
+    return walEntryHandler.getInsertNodeViaCacheIfPossible();
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -104,14 +124,19 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public ProgressIndex getProgressIndex() {
-    return progressIndex;
+    return progressIndex == null ? MinimumProgressIndex.INSTANCE : progressIndex;
   }
 
   @Override
   public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeInsertNodeTabletInsertionEvent(
-        walEntryHandler, progressIndex, isAligned, pipeTaskMeta, pattern);
+        walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, pipeTaskMeta, pattern);
+  }
+
+  @Override
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
@@ -120,7 +145,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     try {
       if (dataContainer == null) {
-        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
+        dataContainer =
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
       }
       return dataContainer.processRowByRow(consumer);
     } catch (Exception e) {
@@ -132,7 +158,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     try {
       if (dataContainer == null) {
-        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
+        dataContainer =
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
       }
       return dataContainer.processTablet(consumer);
     } catch (Exception e) {
@@ -149,12 +176,19 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public Tablet convertToTablet() {
     try {
       if (dataContainer == null) {
-        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
+        dataContainer =
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
       }
       return dataContainer.convertToTablet();
     } catch (Exception e) {
       throw new PipeException("Convert to tablet error.", e);
     }
+  }
+
+  /////////////////////////// parsePattern ///////////////////////////
+
+  public TabletInsertionEvent parseEventWithPattern() {
+    return new PipeRawTabletInsertionEvent(convertToTablet(), isAligned, pipeTaskMeta, this, true);
   }
 
   /////////////////////////// Object ///////////////////////////

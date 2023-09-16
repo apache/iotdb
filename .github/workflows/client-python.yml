@@ -7,7 +7,6 @@ on:
     branches:
       - master
       - 'rel/*'
-      - "new_*"
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -49,6 +48,9 @@ jobs:
           docker images
       - name: Install IoTDB python client requirements
         run: pip3 install -r iotdb-client/client-py/requirements_dev.txt
+      - name: Check code style
+        shell: bash
+        run: black iotdb-client/client-py/ --check --diff
       - name: Integration test
         shell: bash
         run: |

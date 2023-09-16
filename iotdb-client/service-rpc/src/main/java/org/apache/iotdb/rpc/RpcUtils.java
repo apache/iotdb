@@ -21,7 +21,6 @@ package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxTSStatus;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
@@ -81,20 +80,6 @@ public class RpcUtils {
       verifySuccess(status.getSubStatus());
       return;
     }
-    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-      return;
-    }
-    if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new StatementExecutionException(status);
-    }
-  }
-
-  /**
-   * verify success.
-   *
-   * @param status -status
-   */
-  public static void verifySuccess(InfluxTSStatus status) throws StatementExecutionException {
     if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       return;
     }
@@ -167,16 +152,6 @@ public class RpcUtils {
 
   public static TSStatus getStatus(int code, String message) {
     TSStatus status = new TSStatus(code);
-    status.setMessage(message);
-    return status;
-  }
-
-  public static InfluxTSStatus getInfluxDBStatus(TSStatusCode tsStatusCode) {
-    return new InfluxTSStatus(tsStatusCode.getStatusCode());
-  }
-
-  public static InfluxTSStatus getInfluxDBStatus(int code, String message) {
-    InfluxTSStatus status = new InfluxTSStatus(code);
     status.setMessage(message);
     return status;
   }
@@ -272,9 +247,16 @@ public class RpcUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static String parseLongToDateWithPrecision(
       DateTimeFormatter formatter, long timestamp, ZoneId zoneid, String timestampPrecision) {
+    long integerOfDate;
+    StringBuilder digits;
     if ("ms".equals(timestampPrecision)) {
-      long integerOfDate = timestamp / 1000;
-      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000));
+      if (timestamp > 0 || timestamp % 1000 == 0) {
+        integerOfDate = timestamp / 1000;
+        digits = new StringBuilder(Long.toString(timestamp % 1000));
+      } else {
+        integerOfDate = timestamp / 1000 - 1;
+        digits = new StringBuilder(Long.toString(1000 + timestamp % 1000));
+      }
       ZonedDateTime dateTime =
           ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);
@@ -286,8 +268,13 @@ public class RpcUtils {
       }
       return formatDatetimeStr(datetime, digits);
     } else if ("us".equals(timestampPrecision)) {
-      long integerOfDate = timestamp / 1000_000;
-      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
+      if (timestamp > 0 || timestamp % 1000_000 == 0) {
+        integerOfDate = timestamp / 1000_000;
+        digits = new StringBuilder(Long.toString(timestamp % 1000_000));
+      } else {
+        integerOfDate = timestamp / 1000_000 - 1;
+        digits = new StringBuilder(Long.toString(1000_000 + timestamp % 1000_000));
+      }
       ZonedDateTime dateTime =
           ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);
@@ -299,8 +286,13 @@ public class RpcUtils {
       }
       return formatDatetimeStr(datetime, digits);
     } else {
-      long integerOfDate = timestamp / 1000_000_000L;
-      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
+      if (timestamp > 0 || timestamp % 1000_000_000L == 0) {
+        integerOfDate = timestamp / 1000_000_000L;
+        digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
+      } else {
+        integerOfDate = timestamp / 1000_000_000L - 1;
+        digits = new StringBuilder(Long.toString(1000_000_000L + timestamp % 1000_000_000L));
+      }
       ZonedDateTime dateTime =
           ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);

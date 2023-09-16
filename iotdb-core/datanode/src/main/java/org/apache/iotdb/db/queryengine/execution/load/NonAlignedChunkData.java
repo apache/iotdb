@@ -260,7 +260,7 @@ public class NonAlignedChunkData implements ChunkData {
   public static NonAlignedChunkData deserialize(InputStream stream)
       throws IOException, PageException {
     TTimePartitionSlot timePartitionSlot =
-        TimePartitionUtils.getTimePartition(ReadWriteIOUtils.readLong(stream));
+        TimePartitionUtils.getTimePartitionSlot(ReadWriteIOUtils.readLong(stream));
     String device = ReadWriteIOUtils.readString(stream);
     boolean needDecodeChunk = ReadWriteIOUtils.readBool(stream);
     byte chunkType = ReadWriteIOUtils.readByte(stream);

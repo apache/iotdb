@@ -200,6 +200,10 @@ public class CommonDescriptor {
     config.setTimestampPrecision(
         properties.getProperty("timestamp_precision", config.getTimestampPrecision()).trim());
 
+    config.setDatanodeTokenTimeoutMS(
+        Integer.parseInt(
+            properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
+
     String endPointUrl =
         properties.getProperty(
             "target_ml_node_endpoint",
@@ -238,6 +242,11 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
+    config.setModelInferenceExecutionThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "model_inference_execution_thread_count",
+                String.valueOf(config.getModelInferenceExecutionThreadCount()))));
   }
 
   private void loadPipeProps(Properties properties) {
@@ -326,12 +335,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_connector_pending_queue_size",
                 String.valueOf(config.getPipeConnectorPendingQueueSize()))));
-
-    config.setPipeAsyncConnectorRPCThriftCompressionEnabled(
+    config.setPipeConnectorRPCThriftCompressionEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
-                "pipe_async_connector_rpc_thrift_compression_enable",
-                String.valueOf(config.isPipeAsyncConnectorRPCThriftCompressionEnabled()))));
+                "pipe_connector_rpc_thrift_compression_enabled",
+                String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled()))));
+
     config.setPipeAsyncConnectorSelectorNumber(
         Integer.parseInt(
             properties.getProperty(
@@ -377,6 +386,17 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_auto_restart_enabled", String.valueOf(config.getPipeAutoRestartEnabled()))));
+
+    config.setPipeAirGapReceiverEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_air_gap_receiver_enabled",
+                Boolean.toString(config.getPipeAirGapReceiverEnabled()))));
+    config.setPipeAirGapReceiverPort(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_air_gap_receiver_port",
+                Integer.toString(config.getPipeAirGapReceiverPort()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

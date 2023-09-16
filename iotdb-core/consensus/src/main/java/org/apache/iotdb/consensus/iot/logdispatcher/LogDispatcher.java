@@ -299,6 +299,10 @@ public class LogDispatcher {
       return stopped;
     }
 
+    public IoTConsensusServerImpl getImpl() {
+      return impl;
+    }
+
     @Override
     public void run() {
       logger.info("{}: Dispatcher for {} starts", impl.getThisNode(), peer);
@@ -319,8 +323,7 @@ public class LogDispatcher {
               }
             }
           }
-          logDispatcherThreadMetrics.recordConstructBatchTime(
-              (System.nanoTime() - startTime) / batch.getLogEntries().size());
+          logDispatcherThreadMetrics.recordConstructBatchTime(System.nanoTime() - startTime);
           // we may block here if the synchronization pipeline is full
           syncStatus.addNextBatch(batch);
           logEntriesFromWAL.addAndGet(batch.getLogEntriesNumFromWAL());

@@ -57,6 +57,9 @@ public class SqlConstant {
   public static final String TIME_DURATION = "time_duration";
   public static final String MODE = "mode";
 
+  public static final String COUNT_TIME = "count_time";
+  public static final String COUNT_TIME_HEADER = "count_time(*)";
+
   // names of scalar functions
   public static final String DIFF = "diff";
 
@@ -77,6 +80,9 @@ public class SqlConstant {
   public static final String SUBSTRING_FROM = "FROM";
   public static final String SUBSTRING_IS_STANDARD = "isStandard";
   public static final String SUBSTRING_FOR = "FOR";
+
+  public static final String MODEL_ID = "model_id";
+  public static final String PREDICT_LENGTH = "predict_length";
 
   public static String[] getSingleRootArray() {
     return SINGLE_ROOT_ARRAY;

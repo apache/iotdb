@@ -178,7 +178,8 @@ enum TAggregationType {
   EXTREME,
   COUNT_IF,
   TIME_DURATION,
-  MODE
+  MODE,
+  COUNT_TIME
 }
 
 // for MLNode
@@ -190,6 +191,7 @@ enum TrainingState {
   DROPPING
 }
 
-enum ModelTask {
-  FORECAST
+enum TaskType {
+  FORECAST,
+  ANOMALY_DETECTION,
 }

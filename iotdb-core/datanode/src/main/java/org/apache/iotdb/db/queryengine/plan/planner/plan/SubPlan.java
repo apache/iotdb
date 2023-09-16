@@ -60,10 +60,7 @@ public class SubPlan {
   public List<PlanFragment> getPlanFragmentList() {
     List<PlanFragment> result = new ArrayList<>();
     result.add(this.planFragment);
-    this.children.forEach(
-        child -> {
-          result.addAll(child.getPlanFragmentList());
-        });
+    this.children.forEach(child -> result.addAll(child.getPlanFragmentList()));
     return result;
   }
 }

@@ -43,6 +43,7 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -50,9 +51,10 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
-import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
-import org.apache.iotdb.db.auth.AuthorizerManager;
+import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -180,6 +182,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -217,6 +220,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -401,12 +405,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendLoadCommand(TLoadCommandReq req) {
-
-    TSStatus resultStatus =
+    return createTLoadResp(
         StorageEngine.getInstance()
             .executeLoadCommand(
-                LoadTsFileScheduler.LoadCommand.values()[req.commandType], req.uuid);
-    return createTLoadResp(resultStatus);
+                LoadTsFileScheduler.LoadCommand.values()[req.commandType],
+                req.uuid,
+                req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe));
   }
 
   private TLoadResp createTLoadResp(TSStatus resultStatus) {
@@ -779,7 +783,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 for (PartialPath pattern : filteredPatternTree.getAllPathPatterns()) {
                   ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
                       SchemaSourceFactory.getTimeSeriesSchemaCountSource(
-                          pattern, false, null, null);
+                          pattern, false, null, null, SchemaConstant.ALL_MATCH_SCOPE);
                   try (ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
                       schemaSource.getSchemaReader(schemaRegion)) {
                     if (schemaReader.hasNext()) {
@@ -950,6 +954,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .setExceptionMessages(exceptionMessages);
     } catch (Exception e) {
       LOGGER.error("Error occurred when pushing pipe meta", e);
+      return new TPushPipeMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()));
+    }
+  }
+
+  @Override
+  public TPushPipeMetaResp pushSinglePipeMeta(TPushSinglePipeMetaReq req) {
+    try {
+      TPushPipeMetaRespExceptionMessage exceptionMessage;
+      if (req.isSetPipeNameToDrop()) {
+        exceptionMessage = PipeAgent.task().handleDropPipe(req.getPipeNameToDrop());
+      } else if (req.isSetPipeMeta()) {
+        final PipeMeta pipeMeta = PipeMeta.deserialize(ByteBuffer.wrap(req.getPipeMeta()));
+        exceptionMessage = PipeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
+      } else {
+        throw new Exception("Invalid TPushSinglePipeMetaReq");
+      }
+      return exceptionMessage == null
+          ? new TPushPipeMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+          : new TPushPipeMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
+              .setExceptionMessages(Collections.singletonList(exceptionMessage));
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when pushing single pipe meta", e);
       return new TPushPipeMetaResp()
           .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()));
     }
@@ -1157,7 +1186,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
       resp.setLoadSample(loadSample);
     }
-
+    AuthorityChecker.getAuthorityFetcher().refreshToken();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
     resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
     if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {
@@ -1178,7 +1207,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     SchemaEngine.getInstance().updateAndFillSchemaCountMap(req.schemaQuotaCount, resp);
 
     // Update pipe meta if necessary
-    PipeAgent.task().collectPipeMetaList(req, resp);
+    if (req.isNeedPipeMetaList()) {
+      PipeAgent.task().collectPipeMetaList(resp);
+    }
 
     return resp;
   }
@@ -1195,25 +1226,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private Map<TConsensusGroupId, Boolean> getJudgedLeaders() {
     Map<TConsensusGroupId, Boolean> result = new HashMap<>();
-    if (DataRegionConsensusImpl.getInstance() != null) {
-      DataRegionConsensusImpl.getInstance()
-          .getAllConsensusGroupIds()
-          .forEach(
-              groupId ->
-                  result.put(
-                      groupId.convertToTConsensusGroupId(),
-                      DataRegionConsensusImpl.getInstance().isLeader(groupId)));
-    }
+    DataRegionConsensusImpl.getInstance()
+        .getAllConsensusGroupIds()
+        .forEach(
+            groupId ->
+                result.put(
+                    groupId.convertToTConsensusGroupId(),
+                    DataRegionConsensusImpl.getInstance().isLeader(groupId)));
 
-    if (SchemaRegionConsensusImpl.getInstance() != null) {
-      SchemaRegionConsensusImpl.getInstance()
-          .getAllConsensusGroupIds()
-          .forEach(
-              groupId ->
-                  result.put(
-                      groupId.convertToTConsensusGroupId(),
-                      SchemaRegionConsensusImpl.getInstance().isLeader(groupId)));
-    }
+    SchemaRegionConsensusImpl.getInstance()
+        .getAllConsensusGroupIds()
+        .forEach(
+            groupId ->
+                result.put(
+                    groupId.convertToTConsensusGroupId(),
+                    SchemaRegionConsensusImpl.getInstance().isLeader(groupId)));
+
     return result;
   }
 
@@ -1275,13 +1303,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             commonConfig.getDiskSpaceWarningThreshold());
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
         commonConfig.setStatusReason(NodeStatus.DISK_FULL);
+      } else if (commonConfig.getNodeStatus().equals(NodeStatus.ReadOnly)
+          && commonConfig.getStatusReason().equals(NodeStatus.DISK_FULL)) {
+        commonConfig.setNodeStatus(NodeStatus.Running);
+        commonConfig.setStatusReason(null);
       }
     }
   }
 
   @Override
   public TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req) {
-    if (AuthorizerManager.getInstance().invalidateCache(req.getUsername(), req.getRoleName())) {
+    if (AuthorityChecker.invalidateCache(req.getUsername(), req.getRoleName())) {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
     return RpcUtils.getStatus(TSStatusCode.CLEAR_PERMISSION_CACHE_ERROR);
@@ -1414,21 +1446,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     ConsensusGroupId consensusGroupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(tconsensusGroupId);
     if (consensusGroupId instanceof DataRegionId) {
-      ConsensusGenericResponse response =
-          DataRegionConsensusImpl.getInstance().deletePeer(consensusGroupId);
-      if (!response.isSuccess()
-          && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
-        return RpcUtils.getStatus(
-            TSStatusCode.DELETE_REGION_ERROR, response.getException().getMessage());
+      try {
+        DataRegionConsensusImpl.getInstance().deleteLocalPeer(consensusGroupId);
+      } catch (ConsensusException e) {
+        if (!(e instanceof ConsensusGroupNotExistException)) {
+          return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
+        }
       }
       return regionManager.deleteDataRegion((DataRegionId) consensusGroupId);
     } else {
-      ConsensusGenericResponse response =
-          SchemaRegionConsensusImpl.getInstance().deletePeer(consensusGroupId);
-      if (!response.isSuccess()
-          && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
-        return RpcUtils.getStatus(
-            TSStatusCode.DELETE_REGION_ERROR, response.getException().getMessage());
+      try {
+        SchemaRegionConsensusImpl.getInstance().deleteLocalPeer(consensusGroupId);
+      } catch (ConsensusException e) {
+        if (!(e instanceof ConsensusGroupNotExistException)) {
+          return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
+        }
       }
       return regionManager.deleteSchemaRegion((SchemaRegionId) consensusGroupId);
     }
@@ -1463,26 +1495,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private TSStatus transferLeader(ConsensusGroupId regionId, Peer newLeaderPeer) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    ConsensusGenericResponse resp;
-    if (regionId instanceof DataRegionId) {
-      resp = DataRegionConsensusImpl.getInstance().transferLeader(regionId, newLeaderPeer);
-    } else if (regionId instanceof SchemaRegionId) {
-      resp = SchemaRegionConsensusImpl.getInstance().transferLeader(regionId, newLeaderPeer);
-    } else {
+    try {
+      if (regionId instanceof DataRegionId) {
+        DataRegionConsensusImpl.getInstance().transferLeader(regionId, newLeaderPeer);
+      } else if (regionId instanceof SchemaRegionId) {
+        SchemaRegionConsensusImpl.getInstance().transferLeader(regionId, newLeaderPeer);
+      } else {
+        status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
+        status.setMessage("[ChangeRegionLeader] Error Region type: " + regionId);
+        return status;
+      }
+    } catch (ConsensusException e) {
+      LOGGER.warn(
+          "[ChangeRegionLeader] Failed to change the leader of RegionGroup: {}", regionId, e);
       status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
-      status.setMessage("[ChangeRegionLeader] Error Region type: " + regionId);
+      status.setMessage(e.getMessage());
       return status;
     }
 
-    if (!resp.isSuccess()) {
-      LOGGER.warn(
-          "[ChangeRegionLeader] Failed to change the leader of RegionGroup: {}",
-          regionId,
-          resp.getException());
-      status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
-      status.setMessage(resp.getException().getMessage());
-      return status;
-    }
     status.setMessage(
         "[ChangeRegionLeader] Successfully change the leader of RegionGroup: "
             + regionId
@@ -1753,22 +1783,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         peers,
         regionId);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    ConsensusGenericResponse resp;
-    if (regionId instanceof DataRegionId) {
-      resp = DataRegionConsensusImpl.getInstance().createPeer(regionId, peers);
-    } else {
-      resp = SchemaRegionConsensusImpl.getInstance().createPeer(regionId, peers);
-    }
-    if (!resp.isSuccess()) {
-      LOGGER.warn(
-          "{}, CreateNewRegionPeer error, peers: {}, regionId: {}, errorMessage",
-          REGION_MIGRATE_PROCESS,
-          peers,
-          regionId,
-          resp.getException());
-      status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage(resp.getException().getMessage());
-      return status;
+    try {
+      if (regionId instanceof DataRegionId) {
+        DataRegionConsensusImpl.getInstance().createLocalPeer(regionId, peers);
+      } else {
+        SchemaRegionConsensusImpl.getInstance().createLocalPeer(regionId, peers);
+      }
+    } catch (ConsensusException e) {
+      if (!(e instanceof ConsensusGroupAlreadyExistException)) {
+        LOGGER.warn(
+            "{}, CreateNewRegionPeer error, peers: {}, regionId: {}, errorMessage",
+            REGION_MIGRATE_PROCESS,
+            peers,
+            regionId,
+            e);
+        status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+        status.setMessage(e.getMessage());
+        return status;
+      }
     }
     LOGGER.info(
         "{}, Succeed to createNewRegionPeer {} for region {}",

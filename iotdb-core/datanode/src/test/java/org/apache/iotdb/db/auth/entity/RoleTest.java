@@ -21,6 +21,7 @@ package org.apache.iotdb.db.auth.entity;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPrivilegeException;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import org.junit.Assert;
@@ -31,15 +32,29 @@ import java.util.Collections;
 public class RoleTest {
 
   @Test
-  public void testRole() throws IllegalPathException {
+  public void testRole_InitAndSerialize() throws IllegalPathException {
     Role role = new Role("role");
     PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.ln"));
     role.setPrivilegeList(Collections.singletonList(pathPrivilege));
-    role.setPrivileges(new PartialPath("root.ln"), Collections.singleton(1));
-    Assert.assertEquals("Role{name='role', privilegeList=[root.ln : WRITE_DATA]}", role.toString());
+    role.addPathPrivilege(new PartialPath("root.ln"), 1, false);
+    role.addPathPrivilege(new PartialPath("root.ln"), 2, true);
+    Assert.assertEquals(
+        "Role{name='role', pathPrivilegeList=[root.ln : WRITE_DATA"
+            + " READ_SCHEMA_with_grant_option], systemPrivilegeSet=[]}",
+        role.toString());
     Role role1 = new Role("role1");
     role1.deserialize(role.serialize());
     Assert.assertEquals(
-        "Role{name='role', privilegeList=[root.ln : WRITE_DATA]}", role1.toString());
+        "Role{name='role', pathPrivilegeList=[root.ln : "
+            + "WRITE_DATA READ_SCHEMA_with_grant_option], systemPrivilegeSet=[]}",
+        role1.toString());
+  }
+
+  @Test
+  public void TestRole_GrantAndRevoke() throws IllegalPrivilegeException, IllegalPathException {
+    Role role = new Role("role");
+    PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.ln"));
+    role.setPrivilegeList(Collections.singletonList(pathPrivilege));
+    //    role.
   }
 }

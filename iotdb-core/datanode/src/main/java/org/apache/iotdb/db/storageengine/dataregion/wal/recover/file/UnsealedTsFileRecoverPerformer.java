@@ -69,12 +69,16 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   private final TsFilePlanRedoer walRedoer;
   // trace result of this recovery
   private final WALRecoverListener recoverListener;
+  private final String databaseName;
+  private final String dataRegionId;
 
   public UnsealedTsFileRecoverPerformer(
       TsFileResource tsFileResource,
       boolean sequence,
       Consumer<UnsealedTsFileRecoverPerformer> callbackAfterUnsealedTsFileRecovered) {
     super(tsFileResource);
+    this.databaseName = tsFileResource.getDatabaseName();
+    this.dataRegionId = tsFileResource.getDataRegionId();
     this.sequence = sequence;
     this.callbackAfterUnsealedTsFileRecovered = callbackAfterUnsealedTsFileRecovered;
     this.walRedoer = new TsFilePlanRedoer(tsFileResource, sequence);
@@ -195,6 +199,8 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           if (!memTable.isSignalMemTable()) {
             walRedoer.resetRecoveryMemTable(memTable);
           }
+          // update memtable's database and dataRegionId
+          memTable.setDatabaseAndDataRegionId(databaseName, dataRegionId);
           break;
         case INSERT_ROW_NODE:
         case INSERT_TABLET_NODE:
@@ -234,10 +240,6 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
       // flush memTable
       try {
         if (!recoveryMemTable.isEmpty() && recoveryMemTable.getSeriesNumber() != 0) {
-          String dataRegionId =
-              tsFileResource.getTsFile().getParentFile().getParentFile().getName();
-          String databaseName =
-              tsFileResource.getTsFile().getParentFile().getParentFile().getParentFile().getName();
           MemTableFlushTask tableFlushTask =
               new MemTableFlushTask(
                   recoveryMemTable,
@@ -250,7 +252,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         }
 
         // set recover progress index for pipe
-        PipeAgent.runtime().assignRecoverProgressIndexForTsFileRecovery(tsFileResource);
+        PipeAgent.runtime().assignUpdateProgressIndexForTsFileRecovery(tsFileResource);
 
         // if we put following codes in the 'if' clause above, this file can be continued writing
         // into it

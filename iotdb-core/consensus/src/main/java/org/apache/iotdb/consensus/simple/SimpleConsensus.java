@@ -25,15 +25,15 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.IStateMachine.Registry;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
@@ -51,6 +51,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -67,7 +68,8 @@ class SimpleConsensus implements IConsensus {
   private final int thisNodeId;
   private final File storageDir;
   private final IStateMachine.Registry registry;
-  private final Map<ConsensusGroupId, SimpleServerImpl> stateMachineMap = new ConcurrentHashMap<>();
+  private final Map<ConsensusGroupId, SimpleConsensusServerImpl> stateMachineMap =
+      new ConcurrentHashMap<>();
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
@@ -79,14 +81,14 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
-  public void start() throws IOException {
+  public synchronized void start() throws IOException {
     initAndRecover();
   }
 
   private void initAndRecover() throws IOException {
     if (!storageDir.exists()) {
       if (!storageDir.mkdirs()) {
-        logger.warn("Unable to create consensus dir at {}", storageDir);
+        throw new IOException(String.format("Unable to create consensus dir at %s", storageDir));
       }
     } else {
       try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
@@ -95,8 +97,8 @@ class SimpleConsensus implements IConsensus {
           ConsensusGroupId consensusGroupId =
               ConsensusGroupId.Factory.create(
                   Integer.parseInt(items[0]), Integer.parseInt(items[1]));
-          SimpleServerImpl consensus =
-              new SimpleServerImpl(
+          SimpleConsensusServerImpl consensus =
+              new SimpleConsensusServerImpl(
                   new Peer(consensusGroupId, thisNodeId, thisNode),
                   registry.apply(consensusGroupId));
           stateMachineMap.put(consensusGroupId, consensus);
@@ -107,24 +109,20 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
-  public void stop() throws IOException {
-    stateMachineMap.values().parallelStream().forEach(SimpleServerImpl::stop);
+  public synchronized void stop() throws IOException {
+    stateMachineMap.values().parallelStream().forEach(SimpleConsensusServerImpl::stop);
   }
 
   @Override
-  public ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest request) {
-    SimpleServerImpl impl = stateMachineMap.get(groupId);
-    if (impl == null) {
-      return ConsensusWriteResponse.newBuilder()
-          .setException(new ConsensusGroupNotExistException(groupId))
-          .build();
-    }
-
-    TSStatus status;
+  public TSStatus write(ConsensusGroupId groupId, IConsensusRequest request)
+      throws ConsensusException {
+    SimpleConsensusServerImpl impl =
+        Optional.ofNullable(stateMachineMap.get(groupId))
+            .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
     if (impl.isReadOnly()) {
-      status = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
-      status.setMessage("Fail to do non-query operations because system is read-only.");
+      return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
     } else {
+      TSStatus status;
       if (groupId instanceof DataRegionId) {
         long startWriteTime = System.nanoTime();
         status = impl.write(request);
@@ -133,58 +131,59 @@ class SimpleConsensus implements IConsensus {
       } else {
         status = impl.write(request);
       }
+      return status;
     }
-    return ConsensusWriteResponse.newBuilder().setStatus(status).build();
   }
 
   @Override
-  public ConsensusReadResponse read(ConsensusGroupId groupId, IConsensusRequest request) {
-    SimpleServerImpl impl = stateMachineMap.get(groupId);
-    if (impl == null) {
-      return ConsensusReadResponse.newBuilder()
-          .setException(new ConsensusGroupNotExistException(groupId))
-          .build();
-    }
-    return ConsensusReadResponse.newBuilder().setDataSet(impl.read(request)).build();
+  public DataSet read(ConsensusGroupId groupId, IConsensusRequest request)
+      throws ConsensusException {
+    return Optional.ofNullable(stateMachineMap.get(groupId))
+        .orElseThrow(() -> new ConsensusGroupNotExistException(groupId))
+        .read(request);
   }
 
+  @SuppressWarnings("java:S2201")
   @Override
-  public ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers) {
+  public void createLocalPeer(ConsensusGroupId groupId, List<Peer> peers)
+      throws ConsensusException {
     int consensusGroupSize = peers.size();
     if (consensusGroupSize != 1) {
-      return ConsensusGenericResponse.newBuilder()
-          .setException(new IllegalPeerNumException(consensusGroupSize))
-          .build();
+      throw new IllegalPeerNumException(consensusGroupSize);
     }
     if (!peers.contains(new Peer(groupId, thisNodeId, thisNode))) {
-      return ConsensusGenericResponse.newBuilder()
-          .setException(new IllegalPeerEndpointException(thisNode, peers))
-          .build();
+      throw new IllegalPeerEndpointException(thisNode, peers);
     }
     AtomicBoolean exist = new AtomicBoolean(true);
-    stateMachineMap.computeIfAbsent(
-        groupId,
-        k -> {
-          exist.set(false);
-          SimpleServerImpl impl = new SimpleServerImpl(peers.get(0), registry.apply(groupId));
-          impl.start();
-          String path = buildPeerDir(groupId);
-          File file = new File(path);
-          if (!file.mkdirs()) {
-            logger.warn("Unable to create consensus dir for group {} at {}", groupId, path);
-          }
-          return impl;
-        });
+    Optional.ofNullable(
+            stateMachineMap.computeIfAbsent(
+                groupId,
+                k -> {
+                  exist.set(false);
+
+                  String path = buildPeerDir(groupId);
+                  File file = new File(path);
+                  if (!file.mkdirs()) {
+                    logger.warn("Unable to create consensus dir for group {} at {}", groupId, path);
+                    return null;
+                  }
+
+                  SimpleConsensusServerImpl impl =
+                      new SimpleConsensusServerImpl(peers.get(0), registry.apply(groupId));
+                  impl.start();
+                  return impl;
+                }))
+        .orElseThrow(
+            () ->
+                new ConsensusException(
+                    String.format("Unable to create consensus dir for group %s", groupId)));
     if (exist.get()) {
-      return ConsensusGenericResponse.newBuilder()
-          .setException(new ConsensusGroupAlreadyExistException(groupId))
-          .build();
+      throw new ConsensusGroupAlreadyExistException(groupId);
     }
-    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
   }
 
   @Override
-  public ConsensusGenericResponse deletePeer(ConsensusGroupId groupId) {
+  public void deleteLocalPeer(ConsensusGroupId groupId) throws ConsensusException {
     AtomicBoolean exist = new AtomicBoolean(false);
     stateMachineMap.computeIfPresent(
         groupId,
@@ -194,47 +193,38 @@ class SimpleConsensus implements IConsensus {
           FileUtils.deleteDirectory(new File(buildPeerDir(groupId)));
           return null;
         });
-
     if (!exist.get()) {
-      return ConsensusGenericResponse.newBuilder()
-          .setException(new ConsensusGroupNotExistException(groupId))
-          .build();
+      throw new ConsensusGroupNotExistException(groupId);
     }
-    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
   }
 
   @Override
-  public ConsensusGenericResponse addPeer(ConsensusGroupId groupId, Peer peer) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+  public void addRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException {
+    throw new ConsensusException("SimpleConsensus does not support membership changes");
   }
 
   @Override
-  public ConsensusGenericResponse removePeer(ConsensusGroupId groupId, Peer peer) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+  public void removeRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException {
+    throw new ConsensusException("SimpleConsensus does not support membership changes");
   }
 
   @Override
-  public ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer oldPeer, Peer newPeer) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+  public void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException {
+    throw new ConsensusException("SimpleConsensus does not support leader transfer");
   }
 
   @Override
-  public ConsensusGenericResponse changePeer(ConsensusGroupId groupId, List<Peer> newPeers) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
-  }
-
-  @Override
-  public ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
-  }
-
-  @Override
-  public ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+  public void triggerSnapshot(ConsensusGroupId groupId) throws ConsensusException {
+    throw new ConsensusException("SimpleConsensus does not support snapshot trigger currently");
   }
 
   @Override
   public boolean isLeader(ConsensusGroupId groupId) {
+    return true;
+  }
+
+  @Override
+  public boolean isLeaderReady(ConsensusGroupId groupId) {
     return true;
   }
 

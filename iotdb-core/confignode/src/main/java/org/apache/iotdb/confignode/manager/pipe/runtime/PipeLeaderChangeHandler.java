@@ -21,11 +21,11 @@ package org.apache.iotdb.confignode.manager.pipe.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.HashMap;
@@ -62,7 +62,7 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
                 final String databaseName =
                     configManager.getPartitionManager().getRegionStorageGroup(regionGroupId);
                 // pipe only collect user's data, filter metric database here.
-                if (databaseName != null && !databaseName.equals(IoTDBConfig.SYSTEM_DATABASE)) {
+                if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
                   // null or -1 means empty origin leader
                   final int oldLeaderDataNodeId = (pair.left == null ? -1 : pair.left);
                   final int newLeaderDataNodeId = (pair.right == null ? -1 : pair.right);

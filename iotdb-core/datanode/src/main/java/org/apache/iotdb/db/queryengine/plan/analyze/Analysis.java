@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByParame
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
@@ -50,6 +51,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,7 +95,7 @@ public class Analysis {
   private Set<Expression> sourceExpressions;
 
   // input expressions of aggregations to be calculated
-  private Set<Expression> sourceTransformExpressions;
+  private Set<Expression> sourceTransformExpressions = new HashSet<>();
 
   private Expression whereExpression;
 
@@ -126,6 +128,9 @@ public class Analysis {
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Analysis (used in ALIGN BY DEVICE)
   /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // the list of device names
+  private List<PartialPath> deviceList;
 
   // map from output device name to queried devices
   private Map<String, List<String>> outputDeviceToQueriedDevicesMap;
@@ -205,11 +210,19 @@ public class Analysis {
   // timeseries, otherwise it will be null
   private Ordering timeseriesOrderingForLastQuery = null;
 
+  // Used to store view expression in last query which is non-writable
+  private Set<Expression> lastQueryNonWritableViewExpressions;
+  private Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap;
+
+  private Set<Expression> lastQueryBaseExpressions;
+
   // header of result dataset
   private DatasetHeader respDatasetHeader;
 
   // indicate whether the Nodes produce source data are VirtualSourceNodes
   private boolean isVirtualSource = false;
+
+  private ModelInferenceDescriptor modelInferenceDescriptor;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // SELECT INTO Analysis
@@ -254,6 +267,10 @@ public class Analysis {
 
   // extra message from config node, queries wll be sent to these Running DataNodes
   private List<TDataNodeLocation> runningDataNodeLocations;
+
+  // used for limit and offset push down optimizer, if we select all columns from aligned device, we
+  // can use statistics to skip
+  private boolean lastLevelUseWildcard = false;
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -338,7 +355,7 @@ public class Analysis {
       return null;
     }
     TSDataType type = expressionTypes.get(NodeRef.of(expression));
-    checkArgument(type != null, "Expression not analyzed: %s", expression);
+    checkArgument(type != null, "Expression is not analyzed: %s", expression);
     return type;
   }
 
@@ -720,6 +737,40 @@ public class Analysis {
     this.timeseriesOrderingForLastQuery = timeseriesOrderingForLastQuery;
   }
 
+  public Set<Expression> getLastQueryBaseExpressions() {
+    return this.lastQueryBaseExpressions;
+  }
+
+  public void setLastQueryBaseExpressions(Set<Expression> lastQueryBaseExpressions) {
+    this.lastQueryBaseExpressions = lastQueryBaseExpressions;
+  }
+
+  public Set<Expression> getLastQueryNonWritableViewExpressions() {
+    return this.lastQueryNonWritableViewExpressions;
+  }
+
+  public void setLastQueryNonWritableViewExpression(
+      Set<Expression> lastQueryNonWritableViewExpression) {
+    this.lastQueryNonWritableViewExpressions = lastQueryNonWritableViewExpression;
+  }
+
+  public Map<Expression, List<Expression>> getLastQueryNonWritableViewSourceExpressionMap() {
+    return this.lastQueryNonWritableViewSourceExpressionMap;
+  }
+
+  public void setLastQueryNonWritableViewSourceExpressionMap(
+      Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap) {
+    this.lastQueryNonWritableViewSourceExpressionMap = lastQueryNonWritableViewSourceExpressionMap;
+  }
+
+  public ModelInferenceDescriptor getModelInferenceDescriptor() {
+    return modelInferenceDescriptor;
+  }
+
+  public void setModelInferenceDescriptor(ModelInferenceDescriptor modelInferenceDescriptor) {
+    this.modelInferenceDescriptor = modelInferenceDescriptor;
+  }
+
   public Map<String, List<String>> getOutputDeviceToQueriedDevicesMap() {
     return outputDeviceToQueriedDevicesMap;
   }
@@ -731,5 +782,21 @@ public class Analysis {
 
   public Map<String, Set<Expression>> getDeviceToOutputExpressions() {
     return deviceToOutputExpressions;
+  }
+
+  public boolean isLastLevelUseWildcard() {
+    return lastLevelUseWildcard;
+  }
+
+  public void setLastLevelUseWildcard(boolean lastLevelUseWildcard) {
+    this.lastLevelUseWildcard = lastLevelUseWildcard;
+  }
+
+  public void setDeviceList(List<PartialPath> deviceList) {
+    this.deviceList = deviceList;
+  }
+
+  public List<PartialPath> getDeviceList() {
+    return deviceList;
   }
 }

@@ -40,8 +40,12 @@ public class ResourceOnlyCompactionValidator implements CompactionValidator {
       TsFileManager manager,
       List<TsFileResource> targetTsFileList,
       String storageGroupName,
-      long timePartition)
+      long timePartition,
+      boolean isInnerUnSequenceSpaceTask)
       throws IOException {
+    if (isInnerUnSequenceSpaceTask) {
+      return true;
+    }
     return CompactionUtils.validateTsFileResources(manager, storageGroupName, timePartition);
   }
 

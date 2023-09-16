@@ -16,18 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.it.partition;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
-import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -40,27 +39,27 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBPartitionInheritPolicyIT {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBPartitionInheritPolicyIT.class);
-  private static final boolean testEnableDataPartitionInheritPolicy = true;
   private static final String testDataRegionConsensusProtocolClass =
       ConsensusFactory.RATIS_CONSENSUS;
-  private static final int testReplicationFactor = 3;
+  private static final int testReplicationFactor = 1;
+  private static final int testSeriesSlotNum = 1000;
   private static final long testTimePartitionInterval = 604800000;
+  private static final double testDataRegionPerDataNode = 5.0;
 
-  private static final String sg = "root.sg";
-  private static final int storageGroupNum = 2;
-  private static final int testSeriesPartitionSlotNum = 100;
-  private static final int seriesPartitionBatchSize = 10;
+  private static final String database = "root.database";
+  private static final int seriesPartitionSlotBatchSize = 100;
   private static final int testTimePartitionSlotsNum = 100;
   private static final int timePartitionBatchSize = 10;
 
@@ -70,21 +69,19 @@ public class IoTDBPartitionInheritPolicyIT {
         .getConfig()
         .getCommonConfig()
         .setDataRegionConsensusProtocolClass(testDataRegionConsensusProtocolClass)
-        .setEnableDataPartitionInheritPolicy(testEnableDataPartitionInheritPolicy)
         .setDataReplicationFactor(testReplicationFactor)
         .setTimePartitionInterval(testTimePartitionInterval)
-        .setSeriesSlotNum(testSeriesPartitionSlotNum * 10);
+        .setSeriesSlotNum(testSeriesSlotNum)
+        .setDataRegionPerDataNode(testDataRegionPerDataNode);
 
-    // Init 1C3D environment
-    EnvFactory.getEnv().initClusterEnvironment(1, 3);
+    // Init 1C1D environment
+    EnvFactory.getEnv().initClusterEnvironment(1, 1);
 
-    // Set StorageGroups
+    // Set Database
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      for (int i = 0; i < storageGroupNum; i++) {
-        TSStatus status = client.setDatabase(new TDatabaseSchema(sg + i));
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      }
+      TSStatus status = client.setDatabase(new TDatabaseSchema(database));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
   }
 
@@ -95,76 +92,177 @@ public class IoTDBPartitionInheritPolicyIT {
 
   @Test
   public void testDataPartitionInheritPolicy() throws Exception {
+    final long baseStartTime = 1000;
+    Map<TSeriesPartitionSlot, TConsensusGroupId> dataAllotTable1 = new ConcurrentHashMap<>();
 
-    try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      TDataPartitionReq dataPartitionReq = new TDataPartitionReq();
-      TDataPartitionTableResp dataPartitionTableResp;
-      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap;
-
-      for (int i = 0; i < storageGroupNum; i++) {
-        String storageGroup = sg + i;
-        for (int j = 0; j < testSeriesPartitionSlotNum; j += seriesPartitionBatchSize) {
-          // Test inherit predecessor or successor
-          boolean isAscending = (j / 10) % 2 == 0;
-          int step = isAscending ? timePartitionBatchSize : -timePartitionBatchSize;
-          int k = isAscending ? 0 : testTimePartitionSlotsNum - timePartitionBatchSize;
-          while (0 <= k && k < testTimePartitionSlotsNum) {
-            partitionSlotsMap =
-                ConfigNodeTestUtils.constructPartitionSlotsMap(
-                    storageGroup,
-                    j,
-                    j + seriesPartitionBatchSize,
-                    k,
-                    k + timePartitionBatchSize,
-                    testTimePartitionInterval);
-            // Let ConfigNode create DataPartition
-            dataPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
-            for (int retry = 0; retry < 5; retry++) {
-              // Build new Client since it's unstable
-              try (SyncConfigNodeIServiceClient configNodeClient =
-                  (SyncConfigNodeIServiceClient)
-                      EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-                dataPartitionTableResp =
-                    configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
-                if (dataPartitionTableResp != null
-                    && dataPartitionTableResp.getStatus().getCode()
-                        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  ConfigNodeTestUtils.checkDataPartitionTable(
-                      storageGroup,
-                      j,
-                      j + seriesPartitionBatchSize,
-                      k,
-                      k + timePartitionBatchSize,
-                      testTimePartitionInterval,
-                      configNodeClient
-                          .getDataPartitionTable(dataPartitionReq)
-                          .getDataPartitionTable());
-                  break;
-                }
-              } catch (Exception e) {
-                // Retry sometimes in order to avoid request timeout
-                LOGGER.error(e.getMessage());
-                TimeUnit.SECONDS.sleep(1);
-              }
-            }
-            k += step;
-          }
-        }
+    // Test1: divide and inherit DataPartitions from scratch
+    for (long timePartitionSlot = baseStartTime;
+        timePartitionSlot < baseStartTime + testTimePartitionSlotsNum;
+        timePartitionSlot++) {
+      for (int seriesPartitionSlot = 0;
+          seriesPartitionSlot < testSeriesSlotNum;
+          seriesPartitionSlot += seriesPartitionSlotBatchSize) {
+        ConfigNodeTestUtils.getOrCreateDataPartitionWithRetry(
+            database,
+            seriesPartitionSlot,
+            seriesPartitionSlot + seriesPartitionSlotBatchSize,
+            timePartitionSlot,
+            timePartitionSlot + 1,
+            testTimePartitionInterval);
       }
+    }
 
-      // Test DataPartition inherit policy
-      TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
-      showRegionResp
-          .getRegionInfoList()
-          .forEach(
-              regionInfo -> {
-                // All Timeslots belonging to the same SeriesSlot are allocated to the same
-                // DataRegionGroup
-                Assert.assertEquals(
-                    regionInfo.getSeriesSlots() * testTimePartitionSlotsNum,
-                    regionInfo.getTimeSlots());
-              });
+    int mu = (int) (testSeriesSlotNum / testDataRegionPerDataNode);
+    TDataPartitionTableResp dataPartitionTableResp =
+        ConfigNodeTestUtils.getDataPartitionWithRetry(
+            database,
+            0,
+            testSeriesSlotNum,
+            baseStartTime,
+            baseStartTime + testTimePartitionSlotsNum,
+            testTimePartitionInterval);
+    Assert.assertNotNull(dataPartitionTableResp);
+
+    // All DataRegionGroups divide all SeriesSlots evenly
+    final int expectedPartitionNum1 = mu * testTimePartitionSlotsNum;
+    Map<TConsensusGroupId, Integer> counter =
+        ConfigNodeTestUtils.countDataPartition(
+            dataPartitionTableResp.getDataPartitionTable().get(database));
+    counter.forEach((groupId, num) -> Assert.assertEquals(expectedPartitionNum1, num.intValue()));
+
+    // Test DataPartition inherit policy
+    dataPartitionTableResp
+        .getDataPartitionTable()
+        .get(database)
+        .forEach(
+            ((seriesPartitionSlot, timePartitionSlotMap) -> {
+              // All Timeslots belonging to the same SeriesSlot are allocated to the same
+              // DataRegionGroup
+              TConsensusGroupId groupId =
+                  timePartitionSlotMap
+                      .get(new TTimePartitionSlot(baseStartTime * testTimePartitionInterval))
+                      .get(0);
+              timePartitionSlotMap.forEach(
+                  (timePartitionSlot, groupIdList) ->
+                      Assert.assertEquals(groupId, groupIdList.get(0)));
+              dataAllotTable1.put(seriesPartitionSlot, groupId);
+            }));
+
+    // Register a new DataNode to extend DataRegionGroups
+    EnvFactory.getEnv().registerNewDataNode(true);
+
+    // Test2: divide and inherit DataPartitions after extension
+    mu = (int) (testSeriesSlotNum / (testDataRegionPerDataNode * 2));
+    dataPartitionTableResp =
+        ConfigNodeTestUtils.getOrCreateDataPartitionWithRetry(
+            database,
+            0,
+            testSeriesSlotNum,
+            baseStartTime + testTimePartitionSlotsNum,
+            baseStartTime + testTimePartitionSlotsNum + timePartitionBatchSize,
+            testTimePartitionInterval);
+    Assert.assertNotNull(dataPartitionTableResp);
+
+    // All DataRegionGroups divide all SeriesSlots evenly
+    counter =
+        ConfigNodeTestUtils.countDataPartition(
+            dataPartitionTableResp.getDataPartitionTable().get(database));
+    final int expectedPartitionNum2 = mu * timePartitionBatchSize;
+    counter.forEach((groupId, num) -> Assert.assertEquals(expectedPartitionNum2, num.intValue()));
+
+    // Test DataPartition inherit policy
+    AtomicInteger inheritedSeriesSlotNum = new AtomicInteger(0);
+    Map<TSeriesPartitionSlot, TConsensusGroupId> dataAllotTable2 = new ConcurrentHashMap<>();
+    dataPartitionTableResp
+        .getDataPartitionTable()
+        .get(database)
+        .forEach(
+            ((seriesPartitionSlot, timePartitionSlotMap) -> {
+              // All Timeslots belonging to the same SeriesSlot are allocated to the same
+              // DataRegionGroup
+              TConsensusGroupId groupId =
+                  timePartitionSlotMap
+                      .get(
+                          new TTimePartitionSlot(
+                              (baseStartTime + testTimePartitionSlotsNum)
+                                  * testTimePartitionInterval))
+                      .get(0);
+              timePartitionSlotMap.forEach(
+                  (timePartitionSlot, groupIdList) ->
+                      Assert.assertEquals(groupId, groupIdList.get(0)));
+
+              if (dataAllotTable1.containsValue(groupId)) {
+                // The DataRegionGroup has been inherited
+                Assert.assertTrue(dataAllotTable1.containsKey(seriesPartitionSlot));
+                Assert.assertEquals(dataAllotTable1.get(seriesPartitionSlot), groupId);
+                inheritedSeriesSlotNum.incrementAndGet();
+              }
+              dataAllotTable2.put(seriesPartitionSlot, groupId);
+            }));
+    // Exactly half of the SeriesSlots are inherited
+    Assert.assertEquals(testSeriesSlotNum / 2, inheritedSeriesSlotNum.get());
+
+    // Test3: historical DataPartitions will inherit successor
+    Random random = new Random();
+    Set<Integer> allocatedSlots = new HashSet<>();
+    for (int i = 0; i < 10; i++) {
+      int slot = random.nextInt(testSeriesSlotNum);
+      while (allocatedSlots.contains(slot)) {
+        slot = random.nextInt(testSeriesSlotNum);
+      }
+      allocatedSlots.add(slot);
+      dataPartitionTableResp =
+          ConfigNodeTestUtils.getOrCreateDataPartitionWithRetry(
+              database,
+              slot,
+              slot + 1,
+              baseStartTime - 1,
+              baseStartTime,
+              testTimePartitionInterval);
+      Assert.assertNotNull(dataPartitionTableResp);
+
+      TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(slot);
+      TTimePartitionSlot timePartitionSlot =
+          new TTimePartitionSlot((baseStartTime - 1) * testTimePartitionInterval);
+      Assert.assertEquals(
+          dataAllotTable1.get(seriesPartitionSlot),
+          dataPartitionTableResp
+              .getDataPartitionTable()
+              .get(database)
+              .get(seriesPartitionSlot)
+              .get(timePartitionSlot)
+              .get(0));
+    }
+
+    // Test4: future DataPartitions will inherit predecessor
+    allocatedSlots.clear();
+    for (int i = 0; i < 10; i++) {
+      int slot = random.nextInt(testSeriesSlotNum);
+      while (allocatedSlots.contains(slot)) {
+        slot = random.nextInt(testSeriesSlotNum);
+      }
+      allocatedSlots.add(slot);
+      dataPartitionTableResp =
+          ConfigNodeTestUtils.getOrCreateDataPartitionWithRetry(
+              database,
+              slot,
+              slot + 1,
+              baseStartTime + 999,
+              baseStartTime + 1000,
+              testTimePartitionInterval);
+      Assert.assertNotNull(dataPartitionTableResp);
+
+      TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(slot);
+      TTimePartitionSlot timePartitionSlot =
+          new TTimePartitionSlot((baseStartTime + 999) * testTimePartitionInterval);
+      Assert.assertEquals(
+          dataAllotTable2.get(seriesPartitionSlot),
+          dataPartitionTableResp
+              .getDataPartitionTable()
+              .get(database)
+              .get(seriesPartitionSlot)
+              .get(timePartitionSlot)
+              .get(0));
     }
   }
 }

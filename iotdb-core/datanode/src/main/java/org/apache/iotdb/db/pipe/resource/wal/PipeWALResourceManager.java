@@ -24,6 +24,9 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
@@ -33,6 +36,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class PipeWALResourceManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeWALResourceManager.class);
 
   protected final Map<Long, PipeWALResource> memtableIdToPipeWALResourceMap;
 
@@ -55,7 +60,7 @@ public abstract class PipeWALResourceManager {
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         PIPE_WAL_RESOURCE_TTL_CHECKER,
         () -> {
-          Iterator<Map.Entry<Long, PipeWALResource>> iterator =
+          final Iterator<Map.Entry<Long, PipeWALResource>> iterator =
               memtableIdToPipeWALResourceMap.entrySet().iterator();
           while (iterator.hasNext()) {
             final Map.Entry<Long, PipeWALResource> entry = iterator.next();
@@ -66,6 +71,11 @@ public abstract class PipeWALResourceManager {
             try {
               if (entry.getValue().invalidateIfPossible()) {
                 iterator.remove();
+              } else {
+                LOGGER.info(
+                    "WAL (memtableId {}) is still referenced {} times",
+                    entry.getKey(),
+                    entry.getValue().getReferenceCount());
               }
             } finally {
               lock.unlock();

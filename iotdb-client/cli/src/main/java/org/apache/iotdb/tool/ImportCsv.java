@@ -478,7 +478,7 @@ public class ImportCsv extends AbstractCsvTool {
 
     records.forEach(
         recordObj -> {
-          if (Boolean.TRUE.equals(hasStarted.get())) {
+          if (Boolean.TRUE.equals(!hasStarted.get())) {
             hasStarted.set(true);
           } else if (pointSize.get() >= batchPointSize) {
             writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);

@@ -26,8 +26,9 @@ import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePl
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
-import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrialPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
@@ -53,7 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLoca
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateBuildInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
@@ -281,8 +282,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RemoveConfigNode:
           plan = new RemoveConfigNodePlan();
           break;
-        case UpdateBuildInfo:
-          plan = new UpdateBuildInfoPlan();
+        case UpdateVersionInfo:
+          plan = new UpdateVersionInfoPlan();
           break;
         case CreateFunction:
           plan = new CreateFunctionPlan();
@@ -461,8 +462,11 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case ShowModel:
           plan = new ShowModelPlan();
           break;
-        case ShowTrail:
-          plan = new ShowTrailPlan();
+        case ShowTrial:
+          plan = new ShowTrialPlan();
+          break;
+        case GetModelInfo:
+          plan = new GetModelInfoPlan();
           break;
         case CreatePipePlugin:
           plan = new CreatePipePluginPlan();

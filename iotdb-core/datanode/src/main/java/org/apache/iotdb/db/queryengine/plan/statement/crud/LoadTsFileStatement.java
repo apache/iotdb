@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import java.io.File;
@@ -35,18 +37,19 @@ import java.util.Collections;
 import java.util.List;
 
 public class LoadTsFileStatement extends Statement {
-  private File file;
-  private int sgLevel;
+
+  private final File file;
+  private int databaseLevel;
   private boolean verifySchema;
   private boolean deleteAfterLoad;
   private boolean autoCreateDatabase;
 
-  private List<File> tsFiles;
-  private List<TsFileResource> resources;
+  private final List<File> tsFiles;
+  private final List<TsFileResource> resources;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath);
-    this.sgLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = true;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
@@ -68,8 +71,23 @@ public class LoadTsFileStatement extends Statement {
     sortTsFiles(tsFiles);
   }
 
+  protected LoadTsFileStatement() {
+    this.file = null;
+    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+    this.verifySchema = true;
+    this.deleteAfterLoad = true;
+    this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    this.tsFiles = new ArrayList<>();
+    this.resources = new ArrayList<>();
+    this.statementType = StatementType.MULTI_BATCH_INSERT;
+  }
+
   private void findAllTsFile(File file) {
-    for (File nowFile : file.listFiles()) {
+    final File[] files = file.listFiles();
+    if (files == null) {
+      return;
+    }
+    for (File nowFile : files) {
       if (nowFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
         tsFiles.add(nowFile);
       } else if (nowFile.isDirectory()) {
@@ -95,8 +113,8 @@ public class LoadTsFileStatement extends Statement {
     this.deleteAfterLoad = deleteAfterLoad;
   }
 
-  public void setSgLevel(int sgLevel) {
-    this.sgLevel = sgLevel;
+  public void setDatabaseLevel(int databaseLevel) {
+    this.databaseLevel = databaseLevel;
   }
 
   public void setVerifySchema(boolean verifySchema) {
@@ -119,8 +137,8 @@ public class LoadTsFileStatement extends Statement {
     return autoCreateDatabase;
   }
 
-  public int getSgLevel() {
-    return sgLevel;
+  public int getDatabaseLevel() {
+    return databaseLevel;
   }
 
   public List<File> getTsFiles() {
@@ -141,6 +159,12 @@ public class LoadTsFileStatement extends Statement {
   }
 
   @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    // no need to check here, it will be checked in process phase
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitLoadFile(this, context);
   }
@@ -152,8 +176,8 @@ public class LoadTsFileStatement extends Statement {
         + file
         + ", deleteAfterLoad="
         + deleteAfterLoad
-        + ", sgLevel="
-        + sgLevel
+        + ", databaseLevel="
+        + databaseLevel
         + ", verifySchema="
         + verifySchema
         + ", tsFiles Size="

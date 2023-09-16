@@ -91,7 +91,8 @@ public class DataNodeMetricsHelper {
     diskDirs.addAll(Arrays.asList(CommonDescriptor.getInstance().getConfig().getWalDirs()));
     diskDirs.add(CommonDescriptor.getInstance().getConfig().getSyncDir());
     diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir());
-    MetricService.getInstance().addMetricSet(new SystemMetrics(diskDirs));
+    SystemMetrics.getInstance().setDiskDirs(diskDirs);
+    MetricService.getInstance().addMetricSet(SystemMetrics.getInstance());
   }
 
   private static void initCpuMetrics() {

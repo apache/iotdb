@@ -23,10 +23,9 @@ namespace py iotdb.thrift.mlnode
 
 struct TCreateTrainingTaskReq {
   1: required string modelId
-  2: required bool isAuto
-  3: required map<string, string> modelConfigs
-  4: required list<string> queryExpressions
-  5: optional string queryFilter
+  2: required map<string, string> options
+  3: required map<string, string> hyperparameters
+  4: required string datasetFetchSQL
 }
 
 struct TDeleteModelReq {
@@ -36,7 +35,10 @@ struct TDeleteModelReq {
 
 struct TForecastReq {
   1: required string modelPath
-  2: required binary dataset
+  2: required binary inputData
+  3: required list<string> inputTypeList
+  4: required list<string> inputColumnNameList
+  5: required i32 predictLength
 }
 
 struct TForecastResp {

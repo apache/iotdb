@@ -72,17 +72,20 @@ public abstract class PipeSubtask
   public Boolean call() throws Exception {
     boolean hasAtLeastOneEventProcessed = false;
 
-    // If the scheduler allows to schedule, then try to consume an event
-    while (subtaskScheduler.schedule()) {
-      // If the event is consumed successfully, then continue to consume the next event
-      // otherwise, stop consuming
-      if (!executeOnce()) {
-        break;
+    try {
+      // If the scheduler allows to schedule, then try to consume an event
+      while (subtaskScheduler.schedule()) {
+        // If the event is consumed successfully, then continue to consume the next event
+        // otherwise, stop consuming
+        if (!executeOnce()) {
+          break;
+        }
+        hasAtLeastOneEventProcessed = true;
       }
-      hasAtLeastOneEventProcessed = true;
+    } finally {
+      // Reset the scheduler to make sure that the scheduler can schedule again
+      subtaskScheduler.reset();
     }
-    // Reset the scheduler to make sure that the scheduler can schedule again
-    subtaskScheduler.reset();
 
     return hasAtLeastOneEventProcessed;
   }
@@ -193,13 +196,13 @@ public abstract class PipeSubtask
 
   @Override
   public synchronized void close() {
-    releaseLastEvent();
+    releaseLastEvent(false);
   }
 
-  protected void releaseLastEvent() {
+  protected void releaseLastEvent(boolean shouldReport) {
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName());
+        ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName(), shouldReport);
       }
       lastEvent = null;
     }

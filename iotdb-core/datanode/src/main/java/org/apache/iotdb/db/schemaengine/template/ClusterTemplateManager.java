@@ -28,10 +28,12 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
@@ -239,11 +241,13 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   @Override
-  public List<PartialPath> getPathsSetTemplate(String name) {
+  public List<PartialPath> getPathsSetTemplate(String name, PathPatternTree scope) {
     List<PartialPath> listPath = new ArrayList<>();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetPathsSetTemplatesResp resp = configNodeClient.getPathsSetTemplate(name);
+      TGetPathsSetTemplatesResp resp =
+          configNodeClient.getPathsSetTemplate(
+              new TGetPathsSetTemplatesReq(name, scope.serialize()));
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         if (resp.getPathList() != null) {
           resp.getPathList()
@@ -394,7 +398,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   // This is used for template info sync when activating DataNode and registering into cluster. All
   // set and pre-set info will be updated.
   public void updateTemplateSetInfo(byte[] templateSetInfo) {
-    if (templateSetInfo == null) {
+    if (templateSetInfo == null || templateSetInfo.length == 0) {
       return;
     }
     readWriteLock.writeLock().lock();
@@ -405,6 +409,7 @@ public class ClusterTemplateManager implements ITemplateManager {
           TemplateInternalRPCUtil.parseAddAllTemplateSetInfoBytes(buffer);
       for (Map.Entry<Template, List<Pair<String, Boolean>>> entry :
           parsedTemplateSetInfo.entrySet()) {
+
         Template template = entry.getKey();
         templateIdMap.put(template.getId(), template);
         templateNameMap.put(template.getName(), template.getId());

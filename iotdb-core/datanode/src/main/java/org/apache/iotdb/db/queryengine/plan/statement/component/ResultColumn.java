@@ -77,7 +77,7 @@ public class ResultColumn extends StatementNode {
   public ResultColumn(Expression expression, ColumnType columnType) {
     this.expression = expression;
     this.columnType = columnType;
-    alias = null;
+    this.alias = null;
   }
 
   public Expression getExpression() {
@@ -127,6 +127,7 @@ public class ResultColumn extends StatementNode {
   public enum ColumnType {
     RAW,
     AGGREGATION,
-    CONSTANT
+    CONSTANT,
+    MODEL_INFERENCE
   }
 }

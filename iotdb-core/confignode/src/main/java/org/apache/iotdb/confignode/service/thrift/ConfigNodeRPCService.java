@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.service.thrift;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
@@ -48,10 +47,6 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
   public void initSyncedServiceImpl(Object configNodeRPCServerProcessor) {
     this.configNodeRPCServiceProcessor =
         (ConfigNodeRPCServiceProcessor) configNodeRPCServerProcessor;
-
-    super.mbeanName =
-        String.format(
-            "%s:%s=%s", this.getClass().getPackage(), IoTDBConstant.JMX_TYPE, getID().getJmxName());
     super.initSyncedServiceImpl(this.configNodeRPCServiceProcessor);
   }
 
