@@ -45,6 +45,7 @@ import static org.apache.iotdb.jdbc.Config.IOTDB_ERROR_PREFIX;
 
 /** args[]: -h 127.0.0.1 -p 6667 -u root -pw root */
 public class Cli extends AbstractCli {
+
   private static CommandLine commandLine;
   private static LineReader lineReader;
 
