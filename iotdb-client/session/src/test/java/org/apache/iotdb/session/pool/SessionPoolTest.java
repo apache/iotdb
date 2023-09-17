@@ -39,7 +39,6 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionConnection;
 import org.apache.iotdb.session.template.InternalNode;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -64,7 +63,6 @@ import org.mockito.MockitoAnnotations;
 import org.powermock.reflect.Whitebox;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -88,8 +86,7 @@ public class SessionPoolTest {
   @Mock private ISessionPool sessionPool;
 
   @Mock private Session session;
-  @Mock
-  TSExecuteStatementResp execResp;
+  @Mock TSExecuteStatementResp execResp;
   private long queryId;
 
   private long statementId;
@@ -222,28 +219,30 @@ public class SessionPoolTest {
   }
 
   @Test
-  public void testFetchSize(){
+  public void testFetchSize() {
     sessionPool.setFetchSize(1000);
-    Assert.assertEquals(1000,sessionPool.getFetchSize());
+    Assert.assertEquals(1000, sessionPool.getFetchSize());
   }
 
   @Test
-  public void testSetEnableRedirection(){
+  public void testSetEnableRedirection() {
     sessionPool.setEnableRedirection(false);
-    Assert.assertEquals(false,sessionPool.isEnableRedirection());
+    Assert.assertEquals(false, sessionPool.isEnableRedirection());
   }
 
   @Test
-  public void testEnableQueryRedirection(){
+  public void testEnableQueryRedirection() {
     sessionPool.setEnableQueryRedirection(true);
-    Assert.assertEquals(true,sessionPool.isEnableQueryRedirection());
+    Assert.assertEquals(true, sessionPool.isEnableQueryRedirection());
   }
+
   @Test
   public void testTimeZone() throws IoTDBConnectionException, StatementExecutionException {
     String zoneId = ZoneId.systemDefault().getId();
     sessionPool.setTimeZone(ZoneId.systemDefault().getId());
-    Assert.assertEquals(zoneId,sessionPool.getZoneId().toString());
+    Assert.assertEquals(zoneId, sessionPool.getZoneId().toString());
   }
+
   @Test
   public void testTestInsertTablet1() throws IoTDBConnectionException, StatementExecutionException {
     List<MeasurementSchema> schemas = new ArrayList<>();
@@ -487,22 +486,22 @@ public class SessionPoolTest {
 
   @Test
   public void testInsertRecordsOfOneDeviceWithSort()
-          throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     List<Long> timeList = Arrays.asList(1L, 2L);
     List<List<String>> measurementsList =
-            Arrays.asList(
-                    Arrays.asList("temperature", "humidity"), Arrays.asList("voltage", "current"));
+        Arrays.asList(
+            Arrays.asList("temperature", "humidity"), Arrays.asList("voltage", "current"));
     List<List<TSDataType>> typesList =
-            Arrays.asList(
-                    Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT),
-                    Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE));
+        Arrays.asList(
+            Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE));
     List<List<Object>> valuesList =
-            Arrays.asList(Arrays.asList(25.0f, 50.0f), Arrays.asList(220.0, 1.5));
+        Arrays.asList(Arrays.asList(25.0f, 50.0f), Arrays.asList(220.0, 1.5));
     sessionPool.insertRecordsOfOneDevice(
-            "device1", timeList, measurementsList, typesList, valuesList,true);
+        "device1", timeList, measurementsList, typesList, valuesList, true);
     assertEquals(
-            1,
-            ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
+        1,
+        ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
 
   @Test
@@ -610,7 +609,7 @@ public class SessionPoolTest {
     List<List<String>> valuesList =
         Arrays.asList(Arrays.asList("25.0f", "50.0f"), Arrays.asList("220.0", "1.5"));
     sessionPool.insertStringRecordsOfOneDevice(
-            "device1", timeList, measurementsList, valuesList, true);
+        "device1", timeList, measurementsList, valuesList, true);
     assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
@@ -986,15 +985,15 @@ public class SessionPoolTest {
     template = new Template("template1");
     InternalNode iNodeVector = new InternalNode("vector", true);
     MeasurementNode mNodeS1 =
-            new MeasurementNode("s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+        new MeasurementNode("s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     MeasurementNode mNodeS2 =
-            new MeasurementNode("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY);
+        new MeasurementNode("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY);
     iNodeVector.addChild(mNodeS1);
     iNodeVector.addChild(mNodeS2);
     template.addToTemplate(iNodeVector);
     sessionPool.createSchemaTemplate(template);
-    assertEquals(2,iNodeVector.getChildren().size());
-    assertEquals(false,iNodeVector.getChildren().get("s1").isShareTime());
+    assertEquals(2, iNodeVector.getChildren().size());
+    assertEquals(false, iNodeVector.getChildren().get("s1").isShareTime());
     iNodeVector.deleteChild(iNodeVector);
     assertEquals(
         1,
@@ -1077,7 +1076,7 @@ public class SessionPoolTest {
         Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY);
     sessionPool.addUnalignedMeasurementsInTemplate(
         "template5", measurements, dataTypes, encodings, compressionTypes);
-     assertEquals(
+    assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
