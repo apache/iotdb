@@ -309,7 +309,8 @@ public class TsFileProcessor {
     workMemTable =
         MemTableManager.getInstance()
             .getAvailableMemTable(
-                storageGroupName, dataRegionInfo.getDataRegion().getDataRegionId());
+                dataRegionInfo.getDataRegion().getDatabaseName(),
+                dataRegionInfo.getDataRegion().getDataRegionId());
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 
