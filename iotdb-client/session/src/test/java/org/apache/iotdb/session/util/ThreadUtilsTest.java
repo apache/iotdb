@@ -27,7 +27,7 @@ import java.util.concurrent.ThreadFactory;
 public class ThreadUtilsTest {
 
   @Test
-  public void testCreateThreadFactory() {
+  public void createThreadFactory() {
     ThreadFactory daemonThreadFactory = ThreadUtils.createThreadFactory("Test", true);
     Thread thread = daemonThreadFactory.newThread(() -> {});
     Assert.assertEquals("Test-0", thread.getName());
