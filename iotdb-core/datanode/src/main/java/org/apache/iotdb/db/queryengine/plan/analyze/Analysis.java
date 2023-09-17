@@ -210,6 +210,12 @@ public class Analysis {
   // timeseries, otherwise it will be null
   private Ordering timeseriesOrderingForLastQuery = null;
 
+  // Used to store view expression in last query which is non-writable
+  private Set<Expression> lastQueryNonWritableViewExpressions;
+  private Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap;
+
+  private Set<Expression> lastQueryBaseExpressions;
+
   // header of result dataset
   private DatasetHeader respDatasetHeader;
 
@@ -349,7 +355,7 @@ public class Analysis {
       return null;
     }
     TSDataType type = expressionTypes.get(NodeRef.of(expression));
-    checkArgument(type != null, "Expression not analyzed: %s", expression);
+    checkArgument(type != null, "Expression is not analyzed: %s", expression);
     return type;
   }
 
@@ -729,6 +735,32 @@ public class Analysis {
 
   public void setTimeseriesOrderingForLastQuery(Ordering timeseriesOrderingForLastQuery) {
     this.timeseriesOrderingForLastQuery = timeseriesOrderingForLastQuery;
+  }
+
+  public Set<Expression> getLastQueryBaseExpressions() {
+    return this.lastQueryBaseExpressions;
+  }
+
+  public void setLastQueryBaseExpressions(Set<Expression> lastQueryBaseExpressions) {
+    this.lastQueryBaseExpressions = lastQueryBaseExpressions;
+  }
+
+  public Set<Expression> getLastQueryNonWritableViewExpressions() {
+    return this.lastQueryNonWritableViewExpressions;
+  }
+
+  public void setLastQueryNonWritableViewExpression(
+      Set<Expression> lastQueryNonWritableViewExpression) {
+    this.lastQueryNonWritableViewExpressions = lastQueryNonWritableViewExpression;
+  }
+
+  public Map<Expression, List<Expression>> getLastQueryNonWritableViewSourceExpressionMap() {
+    return this.lastQueryNonWritableViewSourceExpressionMap;
+  }
+
+  public void setLastQueryNonWritableViewSourceExpressionMap(
+      Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap) {
+    this.lastQueryNonWritableViewSourceExpressionMap = lastQueryNonWritableViewSourceExpressionMap;
   }
 
   public ModelInferenceDescriptor getModelInferenceDescriptor() {

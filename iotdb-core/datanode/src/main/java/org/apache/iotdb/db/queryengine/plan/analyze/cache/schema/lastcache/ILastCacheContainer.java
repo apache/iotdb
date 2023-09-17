@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 /** this interface declares the operations of LastCache data */
 public interface ILastCacheContainer {
 
-  // get lastCache of monad timseries
+  // get lastCache of monad timeseries
   TimeValuePair getCachedLast();
 
   /**

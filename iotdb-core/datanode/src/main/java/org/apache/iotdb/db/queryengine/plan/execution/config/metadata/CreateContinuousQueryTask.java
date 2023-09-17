@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
@@ -29,21 +30,17 @@ import com.google.common.util.concurrent.ListenableFuture;
 public class CreateContinuousQueryTask implements IConfigTask {
 
   private final CreateContinuousQueryStatement createContinuousQueryStatement;
-
-  private final String sql;
-
-  private final String username;
+  private final MPPQueryContext context;
 
   public CreateContinuousQueryTask(
-      CreateContinuousQueryStatement createContinuousQueryStatement, String sql, String username) {
+      CreateContinuousQueryStatement createContinuousQueryStatement, MPPQueryContext context) {
     this.createContinuousQueryStatement = createContinuousQueryStatement;
-    this.sql = sql;
-    this.username = username;
+    this.context = context;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createContinuousQuery(createContinuousQueryStatement, sql, username);
+    return configTaskExecutor.createContinuousQuery(createContinuousQueryStatement, context);
   }
 }

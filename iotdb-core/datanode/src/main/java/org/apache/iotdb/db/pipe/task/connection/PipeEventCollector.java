@@ -58,7 +58,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
         // We can NOT keep too many PipeHeartbeatEvent in bufferQueue because they may cause OOM.
         if (event instanceof PipeHeartbeatEvent
             && bufferQueue.peekLast() instanceof PipeHeartbeatEvent) {
-          ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName());
+          ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName(), false);
         } else {
           bufferQueue.offer(event);
         }
