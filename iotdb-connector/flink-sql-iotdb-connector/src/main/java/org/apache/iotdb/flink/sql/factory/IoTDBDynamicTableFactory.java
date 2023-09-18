@@ -189,27 +189,27 @@ public class IoTDBDynamicTableFactory
           throw new IllegalOptionException(
               "The option `sql` is required when option `mode` equals `BOUNDED`");
         }
-        String sqlLower = options.get(Options.SQL).toLowerCase();
-        if (!sqlLower.contains("select")
-            || sqlLower.contains("count(")
-            || sqlLower.contains("sum(")
-            || sqlLower.contains("avg(")
-            || sqlLower.contains("extreme(")
-            || sqlLower.contains("max_value(")
-            || sqlLower.contains("min_value(")
-            || sqlLower.contains("first_value(")
-            || sqlLower.contains("last_value(")
-            || sqlLower.contains("max_time(")
-            || sqlLower.contains("min_time(")
-            || sqlLower.contains("group")
-            || sqlLower.contains("where")
-            || sqlLower.contains("create")
-            || sqlLower.contains("count")
-            || sqlLower.contains("delete")
-            || sqlLower.contains("show")) {
-          throw new IllegalOptionException(
-              "The option `sql` only supports basic query statements.");
-        }
+      }
+      String sqlLower = options.get(Options.SQL).toLowerCase();
+      if (!sqlLower.contains("select")
+              || sqlLower.contains("count(")
+              || sqlLower.contains("sum(")
+              || sqlLower.contains("avg(")
+              || sqlLower.contains("extreme(")
+              || sqlLower.contains("max_value(")
+              || sqlLower.contains("min_value(")
+              || sqlLower.contains("first_value(")
+              || sqlLower.contains("last_value(")
+              || sqlLower.contains("max_time(")
+              || sqlLower.contains("min_time(")
+              || sqlLower.contains("group")
+              || sqlLower.contains("where")
+              || sqlLower.contains("create")
+              || sqlLower.contains("count")
+              || sqlLower.contains("delete")
+              || sqlLower.contains("show")) {
+        throw new IllegalOptionException(
+                "The option `sql` only supports basic query statements.");
       }
     }
   }
