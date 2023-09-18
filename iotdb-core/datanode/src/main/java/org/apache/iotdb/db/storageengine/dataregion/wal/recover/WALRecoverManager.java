@@ -87,13 +87,13 @@ public class WALRecoverManager {
       // which means walRecoverManger.addRecoverPerformer method won't be call anymore
       try {
         allDataRegionScannedLatch.await();
+        if (allDataRegionScannedLatch.hasException()) {
+          throw new DataRegionException(allDataRegionScannedLatch.getExceptionMessage());
+        }
         hasStarted = true;
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new WALRecoverException("Fail to recover wal.", e);
-      }
-      if (allDataRegionScannedLatch.hasException()) {
-        throw new DataRegionException(allDataRegionScannedLatch.getExceptionMessage());
       }
       logger.info(
           "Data regions have submitted all unsealed TsFiles, start recovering TsFiles in each wal node.");
