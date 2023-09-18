@@ -25,6 +25,7 @@
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-examples</artifactId>
         <version>1.2.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>flink-sql-example</artifactId>
     <name>IoTDB: Example: Apache Flink SQL</name>

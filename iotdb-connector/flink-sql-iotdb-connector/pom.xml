@@ -25,6 +25,7 @@
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
         <version>1.2.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>flink-sql-iotdb-connector</artifactId>
     <name>IoTDB: Connector: Apache Flink SQL</name>
