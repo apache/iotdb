@@ -26,6 +26,7 @@ import java.util.Random;
 import java.util.stream.Collectors;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.queryengine.execution.load.locseq.LocationStatistics.Statistic;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,14 +36,22 @@ public class ThroughputBasedLocationSequencer implements LocationSequencer {
   private static final Logger logger = LoggerFactory.getLogger(
       ThroughputBasedLocationSequencer.class);
   private Random random = new Random();
+  private long resampleThresholdMS = 10000000;
   private List<TDataNodeLocation> orderedLocations;
 
-  public ThroughputBasedLocationSequencer(TRegionReplicaSet replicaSet, LocationStatistics locationStatistics) {
-    List<Pair<TDataNodeLocation, Double>> locationRanks = rankLocations(replicaSet, locationStatistics);
+  public ThroughputBasedLocationSequencer(TRegionReplicaSet replicaSet,
+      LocationStatistics locationStatistics) {
+    List<Pair<TDataNodeLocation, Double>> locationRanks = rankLocations(replicaSet,
+        locationStatistics);
     orderedLocations = new ArrayList<>(locationRanks.size());
     while (!locationRanks.isEmpty()) {
       // the chosen location is removed from the list
       orderedLocations.add(chooseNextLocation(locationRanks).left);
+    }
+    if (logger.isDebugEnabled()) {
+      logger.debug("Location orders: {}",
+          orderedLocations.stream().map(TDataNodeLocation::getDataNodeId).collect(
+              Collectors.toList()));
     }
   }
 
@@ -53,16 +62,33 @@ public class ThroughputBasedLocationSequencer implements LocationSequencer {
    * @param replicaSet replica set to be ranked
    * @return the nodes and their ranks
    */
-  private List<Pair<TDataNodeLocation, Double>> rankLocations(TRegionReplicaSet replicaSet, LocationStatistics locationStatistics) {
+  private List<Pair<TDataNodeLocation, Double>> rankLocations(TRegionReplicaSet replicaSet,
+      LocationStatistics locationStatistics) {
     List<Pair<TDataNodeLocation, Double>> locations =
         new ArrayList<>(replicaSet.dataNodeLocations.size());
     // retrieve throughput of each node
     double totalThroughput = 0.0;
     for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
       // use Float.MAX_VALUE so that they can be added together
-      double throughput = locationStatistics.getThroughput(dataNodeLocation);
+      Statistic statistic = locationStatistics.getStatistic(dataNodeLocation);
+      double throughput;
+      long lastHitTime = statistic.getLastHitTime();
+      long elapsedTime = System.currentTimeMillis() - lastHitTime;
+      if (lastHitTime > 0 && elapsedTime > resampleThresholdMS) {
+        throughput =
+            statistic.getThroughput() * Math.pow(2, elapsedTime * 1.0 / resampleThresholdMS);
+      } else {
+        throughput = statistic.getThroughput();
+      }
       locations.add(new Pair<>(dataNodeLocation, throughput));
       totalThroughput += throughput;
+    }
+    if (logger.isInfoEnabled()) {
+      logger.debug("Location throughput: {}",
+          locations.stream().map(p -> new Pair<>(p.left.getDataNodeId(), p.right)).collect(
+              Collectors.toList()));
+      logger.debug("Total throughput: {}, first rank {}", totalThroughput,
+          locations.get(0).right / totalThroughput);
     }
 
     // calculate cumulative ranks
@@ -71,7 +97,7 @@ public class ThroughputBasedLocationSequencer implements LocationSequencer {
       Pair<TDataNodeLocation, Double> location = locations.get(i);
       location.right = location.right / totalThroughput + locations.get(i - 1).right;
     }
-    if (logger.isDebugEnabled()) {
+    if (logger.isInfoEnabled()) {
       logger.debug("Location ranks: {}",
           locations.stream().map(p -> new Pair<>(p.left.getDataNodeId(), p.right)).collect(
               Collectors.toList()));
@@ -88,11 +114,21 @@ public class ThroughputBasedLocationSequencer implements LocationSequencer {
         chosen = i;
       }
     }
+    if (chosen == 0 && locations.size() == 3) {
+      logger.info("Dice {}, chosen {}, ranks {}", dice, chosen,
+          locations.stream().map(p -> new Pair<>(p.left.getDataNodeId(), p.right)).collect(
+              Collectors.toList()));
+    }
     Pair<TDataNodeLocation, Double> chosenPair = locations.remove(chosen);
     // update ranks
+    double newTotalRank = 0.0;
     for (Pair<TDataNodeLocation, Double> location : locations) {
-      location.right = location.right / (1 - chosenPair.right);
+      newTotalRank += location.right;
     }
+    for (Pair<TDataNodeLocation, Double> location : locations) {
+      location.right = location.right / newTotalRank;
+    }
+    logger.debug("New ranks {}", locations);
     return chosenPair;
   }
 

@@ -241,6 +241,7 @@ public class NonAlignedChunkData implements ChunkData {
     Statistics<? extends Serializable> statistics =
         Statistics.deserialize(stream, chunkHeader.getDataType());
     chunk = new Chunk(chunkHeader, chunkData, null, statistics);
+    dataSize += chunkData.remaining();
   }
 
   private void buildChunkWriter(InputStream stream) throws IOException, PageException {

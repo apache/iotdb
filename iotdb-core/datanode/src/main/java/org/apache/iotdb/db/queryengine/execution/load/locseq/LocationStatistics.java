@@ -32,40 +32,57 @@ public class LocationStatistics {
   private static final Logger logger = LoggerFactory.getLogger(LocationStatistics.class);
   private Map<TDataNodeLocation, Statistic> locationStatisticMap = new ConcurrentHashMap<>();
 
-  public double getThroughput(TDataNodeLocation location) {
+  public Statistic getStatistic(TDataNodeLocation location) {
     return locationStatisticMap.computeIfAbsent(location,
-        l -> new Statistic()).throughput;
+        l -> new Statistic());
   }
 
-  public void updateThroughput(TDataNodeLocation location, double throughput) {
-    locationStatisticMap.computeIfAbsent(location,
-        l -> new Statistic()).setThroughput(throughput);
-  }
-
-  public void increaseHit(TDataNodeLocation location) {
-    locationStatisticMap.computeIfAbsent(location,
-        l -> new Statistic()).increaseHit();
+  public void updateThroughput(TDataNodeLocation location, double sum, long cnt) {
+    Statistic statistic = locationStatisticMap.computeIfAbsent(location,
+        l -> new Statistic());
+    statistic.updateThroughput(sum, cnt);
+    statistic.increaseHit();
   }
 
   public static class Statistic {
 
-    private double throughput = Float.MAX_VALUE;
+    private double sum = 0.0;
+    private long cnt = 0;
     private int hit;
+    private long lastHitTime;
 
-    public void setThroughput(double throughput) {
-      this.throughput = throughput;
+    public synchronized void updateThroughput(double sum, long cnt) {
+      this.sum += sum;
+      this.cnt += cnt;
     }
 
     public void increaseHit() {
+      lastHitTime = System.currentTimeMillis();
       hit++;
+    }
+
+    public double getThroughput() {
+      if (cnt == 0) {
+        return Float.MAX_VALUE;
+      }
+      return sum / cnt;
     }
 
     @Override
     public String toString() {
       return "{" +
-          "throughput=" + throughput +
+          "throughput=" + getThroughput() +
           ", hit=" + hit +
+          ", lastHitTime=" + lastHitTime +
           '}';
+    }
+
+    public int getHit() {
+      return hit;
+    }
+
+    public long getLastHitTime() {
+      return lastHitTime;
     }
   }
 

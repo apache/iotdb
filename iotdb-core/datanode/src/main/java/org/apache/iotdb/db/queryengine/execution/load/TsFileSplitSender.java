@@ -244,13 +244,17 @@ public class TsFileSplitSender {
       Exception lastConnectionError = null;
       TDataNodeLocation currLocation = null;
       for (TDataNodeLocation location : locationSequencer) {
-        logger.debug("Chose location {}", location.getDataNodeId());
+        if (location.getDataNodeId() == 0) {
+          locationStatistics.logLocationStatistics();
+          logger.info("Chose location {}", location.getDataNodeId());
+        }
         currLocation = location;
         startTime = System.nanoTime();
         for (int i = 0; i < MAX_RETRY; i++) {
           try (SyncDataNodeInternalServiceClient client =
               internalServiceClientManager.borrowClient(currLocation.internalEndPoint)) {
             TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
+            logger.debug("Response from {}: {}", location.getDataNodeId(), loadResp);
             if (!loadResp.isAccepted()) {
               logger.warn(loadResp.message);
               phaseOneFailures.put(
@@ -287,8 +291,8 @@ public class TsFileSplitSender {
         return false;
       }
       long timeConsumption = System.nanoTime() - startTime;
-      locationStatistics.updateThroughput(currLocation, node.getDataSize() * 1.0 / timeConsumption);
-      locationStatistics.increaseHit(currLocation);
+      logger.debug("Time consumption: {}", timeConsumption);
+      locationStatistics.updateThroughput(currLocation, node.getDataSize(), timeConsumption);
       return true;
     }).collect(Collectors.toList());
 
