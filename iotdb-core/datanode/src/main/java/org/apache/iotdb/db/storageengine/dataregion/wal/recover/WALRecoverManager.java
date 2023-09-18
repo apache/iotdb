@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover;
 
+import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -55,7 +56,7 @@ public class WALRecoverManager {
   private volatile boolean hasStarted = false;
   // start recovery after all data regions have submitted unsealed zero-level TsFiles
   @SuppressWarnings("squid:S3077")
-  private volatile CountDownLatch allDataRegionScannedLatch;
+  private volatile ExceptionalCountDownLatch allDataRegionScannedLatch;
   // threads to recover wal nodes
   private ExecutorService recoverThreadPool;
   // stores all UnsealedTsFileRecoverPerformer submitted by data region processors
@@ -90,6 +91,9 @@ public class WALRecoverManager {
         Thread.currentThread().interrupt();
         throw new WALRecoverException("Fail to recover wal.", e);
       }
+      if (allDataRegionScannedLatch.hasException()) {
+        throw new DataRegionException(allDataRegionScannedLatch.getExceptionMessage());
+      }
       logger.info(
           "Data regions have submitted all unsealed TsFiles, start recovering TsFiles in each wal node.");
       // recover each wal node's TsFiles
@@ -110,6 +114,8 @@ public class WALRecoverManager {
       }
       // deal with remaining TsFiles which don't have wal
       asyncRecoverLeftTsFiles();
+    } catch (DataRegionException e) {
+      throw new RuntimeException(e.getMessage());
     } catch (Exception e) {
       for (UnsealedTsFileRecoverPerformer recoverPerformer :
           absolutePath2RecoverPerformer.values()) {
@@ -202,11 +208,11 @@ public class WALRecoverManager {
     return null;
   }
 
-  public CountDownLatch getAllDataRegionScannedLatch() {
+  public ExceptionalCountDownLatch getAllDataRegionScannedLatch() {
     return allDataRegionScannedLatch;
   }
 
-  public void setAllDataRegionScannedLatch(CountDownLatch allDataRegionScannedLatch) {
+  public void setAllDataRegionScannedLatch(ExceptionalCountDownLatch allDataRegionScannedLatch) {
     this.allDataRegionScannedLatch = allDataRegionScannedLatch;
   }
 
