@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.airgap;
 
-public class AirGapOneByteResponse {
+import java.nio.charset.StandardCharsets;
 
-  public static final byte[] OK = new byte[] {0};
-  public static final byte[] FAIL = new byte[] {(byte) 0xFF};
+public class AirGapELanguageConstant {
+  public static final byte[] E_LANGUAGE_PREFIX =
+      ("<!System=IoTDB Version=1.0 Code=UTF-8 Data=1.0!>" + "\n" + "<block:=Free>" + "\n")
+          .getBytes(StandardCharsets.UTF_8);
+  public static final byte[] E_LANGUAGE_SUFFIX =
+      ("\n" + "</block:=Free>").getBytes(StandardCharsets.UTF_8);
 
-  private AirGapOneByteResponse() {
+  private AirGapELanguageConstant() {
     // Utility class
   }
 }
