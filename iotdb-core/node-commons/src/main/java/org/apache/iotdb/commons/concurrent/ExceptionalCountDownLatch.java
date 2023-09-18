@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.concurrent;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** This class adds . */
+/** This class supports passing exception message when using CountDownLatch. */
 public class ExceptionalCountDownLatch {
   private final CountDownLatch latch;
   private final AtomicReference<String> exceptionMessage = new AtomicReference<>();

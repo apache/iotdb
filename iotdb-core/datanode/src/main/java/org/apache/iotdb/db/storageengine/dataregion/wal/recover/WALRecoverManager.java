@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -65,7 +66,7 @@ public class WALRecoverManager {
 
   private WALRecoverManager() {}
 
-  public void recover() throws WALRecoverException {
+  public void recover() throws WALRecoverException, StartupException {
     logger.info("Start recovering wal.");
     try {
       // collect wal nodes' information
@@ -115,7 +116,7 @@ public class WALRecoverManager {
       // deal with remaining TsFiles which don't have wal
       asyncRecoverLeftTsFiles();
     } catch (DataRegionException e) {
-      throw new RuntimeException(e.getMessage());
+      throw new StartupException(e.getMessage());
     } catch (Exception e) {
       for (UnsealedTsFileRecoverPerformer recoverPerformer :
           absolutePath2RecoverPerformer.values()) {
