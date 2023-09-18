@@ -583,7 +583,15 @@ public class DateTimeUtils {
     long res = value;
     switch (durationUnit) {
       case y:
-        res *= 365 * 86_400_000L;
+        if (currentTime == -1) {
+          res *= 365 * 86_400_000L;
+        } else {
+          Calendar calendar = Calendar.getInstance();
+          calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
+          calendar.setTimeInMillis(currentTime);
+          calendar.add(Calendar.YEAR, (int) (value));
+          res = calendar.getTimeInMillis() - currentTime;
+        }
         break;
       case mo:
         if (currentTime == -1) {
