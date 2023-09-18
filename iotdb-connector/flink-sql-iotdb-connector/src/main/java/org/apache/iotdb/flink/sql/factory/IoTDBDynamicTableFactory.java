@@ -184,11 +184,10 @@ public class IoTDBDynamicTableFactory
           throw new IllegalOptionException(
               "The option `cdc.pattern` is required when option `mode` equals `CDC`");
         }
-      } else if (options.get(Options.MODE) == Options.Mode.BOUNDED) {
-        if ((options.get(Options.SQL) == null)) {
-          throw new IllegalOptionException(
-              "The option `sql` is required when option `mode` equals `BOUNDED`");
-        }
+      } else if (options.get(Options.MODE) == Options.Mode.BOUNDED
+          && (options.get(Options.SQL) == null)) {
+        throw new IllegalOptionException(
+            "The option `sql` is required when option `mode` equals `BOUNDED`");
       }
       String sqlLower = options.get(Options.SQL).toLowerCase();
       if (!sqlLower.contains("select")
