@@ -28,11 +28,9 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>flink-sql-iotdb-connector</artifactId>
-    <version>1.2.0-SNAPSHOT</version>
     <name>IoTDB: Connector: Apache Flink SQL</name>
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <flink.version>1.17.0</flink.version>
+        <flink-table-api.version>1.17.0</flink-table-api.version>
     </properties>
     <dependencies>
         <!-- required by implement of flink sql connector -->
@@ -44,12 +42,14 @@
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-table-api-java-bridge</artifactId>
-            <version>${flink.version}</version>
+            <version>${flink-table-api.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-table-common</artifactId>
-            <version>${flink.version}</version>
+            <version>${flink-table-api.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.java-websocket</groupId>
@@ -67,7 +67,19 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <shadedArtifactAttached>true</shadedArtifactAttached>
+                    <shadedClassifierName>jar-with-dependencies</shadedClassifierName>
+                    <createDependencyReducedPom>false</createDependencyReducedPom>
+                </configuration>
             </plugin>
         </plugins>
     </build>
