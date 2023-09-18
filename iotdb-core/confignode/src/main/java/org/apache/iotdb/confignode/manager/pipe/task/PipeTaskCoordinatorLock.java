@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -54,6 +55,35 @@ public class PipeTaskCoordinatorLock {
       LOGGER.error(
           "Interrupted while waiting for PipeTaskCoordinator lock, current thread: {}",
           Thread.currentThread().getName());
+    }
+  }
+
+  boolean tryLock() {
+    try {
+      final long id = idGenerator.incrementAndGet();
+      LOGGER.info(
+          "PipeTaskCoordinator lock (id: {}) waiting for thread {}",
+          id,
+          Thread.currentThread().getName());
+      if (deque.offer(id, 10, TimeUnit.SECONDS)) {
+        LOGGER.info(
+            "PipeTaskCoordinator lock (id: {}) acquired by thread {}",
+            id,
+            Thread.currentThread().getName());
+        return true;
+      } else {
+        LOGGER.info(
+            "PipeTaskCoordinator lock (id: {}) failed to acquire by thread {} because of timeout",
+            id,
+            Thread.currentThread().getName());
+        return false;
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.error(
+          "Interrupted while waiting for PipeTaskCoordinator lock, current thread: {}",
+          Thread.currentThread().getName());
+      return false;
     }
   }
 
