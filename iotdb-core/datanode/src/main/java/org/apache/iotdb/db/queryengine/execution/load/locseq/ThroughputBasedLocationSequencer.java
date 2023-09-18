@@ -114,8 +114,8 @@ public class ThroughputBasedLocationSequencer implements LocationSequencer {
         chosen = i;
       }
     }
-    if (chosen == 0 && locations.size() == 3) {
-      logger.info("Dice {}, chosen {}, ranks {}", dice, chosen,
+    if (chosen == 0 && locations.size() == 3 && logger.isDebugEnabled()) {
+      logger.debug("Dice {}, chosen {}, ranks {}", dice, chosen,
           locations.stream().map(p -> new Pair<>(p.left.getDataNodeId(), p.right)).collect(
               Collectors.toList()));
     }

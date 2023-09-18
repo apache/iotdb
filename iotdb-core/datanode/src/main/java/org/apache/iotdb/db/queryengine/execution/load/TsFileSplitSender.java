@@ -46,6 +46,8 @@ import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.queryengine.execution.load.locseq.LocationSequencer;
 import org.apache.iotdb.db.queryengine.execution.load.locseq.LocationStatistics;
 import org.apache.iotdb.db.queryengine.execution.load.locseq.ThroughputBasedLocationSequencer;
+import org.apache.iotdb.db.queryengine.execution.load.nodesplit.ClusteringMeasurementSplitter;
+import org.apache.iotdb.db.queryengine.execution.load.nodesplit.OrderedMeasurementSplitter;
 import org.apache.iotdb.db.queryengine.execution.load.nodesplit.PieceNodeSplitter;
 import org.apache.iotdb.db.queryengine.execution.load.nodesplit.PieceNodeSplitter.SingletonSplitter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
@@ -81,7 +83,8 @@ public class TsFileSplitSender {
       new ConcurrentHashMap<>();
   private Map<TRegionReplicaSet, Exception> phaseTwoFailures = new HashMap<>();
   private long maxSplitSize;
-  private PieceNodeSplitter pieceNodeSplitter = new SingletonSplitter();
+  private PieceNodeSplitter pieceNodeSplitter = new ClusteringMeasurementSplitter(5, 10);
+//  private PieceNodeSplitter pieceNodeSplitter = new OrderedMeasurementSplitter();
 
   public TsFileSplitSender(
       LoadTsFileNode loadTsFileNode,
@@ -217,7 +220,7 @@ public class TsFileSplitSender {
       Exception lastConnectionError = null;
       TDataNodeLocation currLocation = null;
       for (TDataNodeLocation location : locationSequencer) {
-        if (location.getDataNodeId() == 0) {
+        if (location.getDataNodeId() == 0 && logger.isDebugEnabled()) {
           locationStatistics.logLocationStatistics();
           logger.info("Chose location {}", location.getDataNodeId());
         }
