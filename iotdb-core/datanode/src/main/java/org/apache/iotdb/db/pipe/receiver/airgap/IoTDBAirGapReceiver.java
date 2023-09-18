@@ -47,6 +47,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.zip.CRC32;
 
+import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.INT_LEN;
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
 
 public class IoTDBAirGapReceiver extends WrappedRunnable {
@@ -60,7 +61,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
 
-  private boolean hasELanguage;
+  private boolean isELanguagePayload;
 
   public IoTDBAirGapReceiver(Socket socket, long receiverId) {
     this.socket = socket;
@@ -80,7 +81,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
     try {
       while (!socket.isClosed()) {
-        hasELanguage = false;
+        isELanguagePayload = false;
         receive();
       }
       LOGGER.info(
@@ -171,16 +172,12 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       return new byte[0];
     }
 
-    final ByteBuffer resultBuffer = ByteBuffer.allocate(length);
-    final byte[] readBuffer = new byte[length];
-
-    readTillFull(inputStream, readBuffer);
-    resultBuffer.put(readBuffer);
-
-    if (hasELanguage) {
+    final byte[] resultBuffer = new byte[length];
+    readTillFull(inputStream, resultBuffer);
+    if (isELanguagePayload) {
       skipTillEnough(inputStream, AirGapELanguageConstant.E_LANGUAGE_SUFFIX.length);
     }
-    return resultBuffer.array();
+    return resultBuffer;
   }
 
   /**
@@ -188,23 +185,25 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
    * data to read.
    */
   private int readLength(InputStream inputStream) throws IOException {
-    byte[] lengthBytesStr = new byte[8];
-    readTillFull(inputStream, lengthBytesStr);
+    final byte[] doubleIntLengthBytes = new byte[2 * INT_LEN];
+    readTillFull(inputStream, doubleIntLengthBytes);
 
-    // Judge the 8 bytes of the data instead of 4 bytes, in case the 4 length bytes equal to
-    // exactly the 4 prefix bytes of E_LANGUAGE_PREFIX.
+    // Check the header of the request, if it is an E-Language request, skip the E-Language header.
+    // We assert AirGapELanguageConstant.E_LANGUAGE_PREFIX.length > 2 * INT_LEN here.
     if (Arrays.equals(
-        lengthBytesStr, BytesUtils.subBytes(AirGapELanguageConstant.E_LANGUAGE_PREFIX, 0, 8))) {
-      hasELanguage = true;
-      skipTillEnough(inputStream, (long) AirGapELanguageConstant.E_LANGUAGE_PREFIX.length - 8);
+        doubleIntLengthBytes,
+        BytesUtils.subBytes(AirGapELanguageConstant.E_LANGUAGE_PREFIX, 0, 2 * INT_LEN))) {
+      isELanguagePayload = true;
+      skipTillEnough(
+          inputStream, (long) AirGapELanguageConstant.E_LANGUAGE_PREFIX.length - 2 * INT_LEN);
       return readLength(inputStream);
     }
 
+    final byte[] dataLengthBytes = BytesUtils.subBytes(doubleIntLengthBytes, 0, INT_LEN);
     // for double check
-    byte[] lengthBytes1 = BytesUtils.subBytes(lengthBytesStr, 4, 4);
-
-    return Arrays.equals(BytesUtils.subBytes(lengthBytesStr, 0, 4), lengthBytes1)
-        ? BytesUtils.bytesToInt(lengthBytes1)
+    return Arrays.equals(
+            dataLengthBytes, BytesUtils.subBytes(doubleIntLengthBytes, INT_LEN, INT_LEN))
+        ? BytesUtils.bytesToInt(dataLengthBytes)
         : 0;
   }
 
