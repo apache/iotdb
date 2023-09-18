@@ -355,4 +355,8 @@ public class NonAlignedChunkData implements ChunkData {
   public void setSplitId(int sid) {
     this.splitId = sid;
   }
+
+  public ChunkHeader getChunkHeader() {
+    return chunkHeader;
+  }
 }

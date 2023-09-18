@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.execution.load;
 import static org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileDispatcherImpl.NODE_CONNECTION_ERROR;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,11 +43,11 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
-import org.apache.iotdb.db.queryengine.execution.load.locseq.FixedLocationSequencer;
 import org.apache.iotdb.db.queryengine.execution.load.locseq.LocationSequencer;
 import org.apache.iotdb.db.queryengine.execution.load.locseq.LocationStatistics;
-import org.apache.iotdb.db.queryengine.execution.load.locseq.RandomLocationSequencer;
 import org.apache.iotdb.db.queryengine.execution.load.locseq.ThroughputBasedLocationSequencer;
+import org.apache.iotdb.db.queryengine.execution.load.nodesplit.PieceNodeSplitter;
+import org.apache.iotdb.db.queryengine.execution.load.nodesplit.PieceNodeSplitter.SingletonSplitter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
@@ -82,6 +81,7 @@ public class TsFileSplitSender {
       new ConcurrentHashMap<>();
   private Map<TRegionReplicaSet, Exception> phaseTwoFailures = new HashMap<>();
   private long maxSplitSize;
+  private PieceNodeSplitter pieceNodeSplitter = new SingletonSplitter();
 
   public TsFileSplitSender(
       LoadTsFileNode loadTsFileNode,
@@ -195,33 +195,6 @@ public class TsFileSplitSender {
     return phaseTwoFailures.isEmpty();
   }
 
-
-  /**
-   * Split a piece node by series.
-   * @return a list of piece nodes, each associated to only one series.
-   */
-  private List<LoadTsFilePieceNode> splitPieceNode(LoadTsFilePieceNode pieceNode) {
-    List<LoadTsFilePieceNode> result = new ArrayList<>();
-    String currMeasurement = null;
-    LoadTsFilePieceNode currNode = new LoadTsFilePieceNode(pieceNode.getPlanNodeId(), pieceNode.getTsFile());
-    result.add(currNode);
-    for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
-      if (tsFileData.isModification()) {
-        currNode.addTsFileData(tsFileData);
-        continue;
-      }
-
-      ChunkData chunkData = (ChunkData) tsFileData;
-      if (currMeasurement != null && !currMeasurement.equals(chunkData.firstMeasurement())) {
-        currNode = new LoadTsFilePieceNode(pieceNode.getPlanNodeId(), pieceNode.getTsFile());
-        result.add(currNode);
-      }
-      currMeasurement = chunkData.firstMeasurement();
-      currNode.addTsFileData(tsFileData);
-    }
-    return result;
-  }
-
   public LocationSequencer createLocationSequencer(TRegionReplicaSet replicaSet) {
 //    return new FixedLocationSequencer(replicaSet);
 //    return new RandomLocationSequencer(replicaSet);
@@ -231,7 +204,7 @@ public class TsFileSplitSender {
   public boolean dispatchOnePieceNode(LoadTsFilePieceNode pieceNode, TRegionReplicaSet replicaSet) {
     allReplicaSets.add(replicaSet);
 
-    List<LoadTsFilePieceNode> subNodes = splitPieceNode(pieceNode);
+    List<LoadTsFilePieceNode> subNodes = pieceNodeSplitter.split(pieceNode);
 
     List<Boolean> subNodeResults = subNodes.stream().parallel().map(node -> {
       long startTime = 0;
