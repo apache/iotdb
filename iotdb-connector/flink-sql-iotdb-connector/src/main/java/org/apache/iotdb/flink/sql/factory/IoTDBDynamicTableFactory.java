@@ -192,7 +192,7 @@ public class IoTDBDynamicTableFactory
       }
       String sqlLower = options.get(Options.SQL).toLowerCase();
       if (!sqlLower.contains("select")
-              || sqlLower.contains("count(")
+          && (sqlLower.contains("count(")
               || sqlLower.contains("sum(")
               || sqlLower.contains("avg(")
               || sqlLower.contains("extreme(")
@@ -207,9 +207,8 @@ public class IoTDBDynamicTableFactory
               || sqlLower.contains("create")
               || sqlLower.contains("count")
               || sqlLower.contains("delete")
-              || sqlLower.contains("show")) {
-        throw new IllegalOptionException(
-                "The option `sql` only supports basic query statements.");
+              || sqlLower.contains("show"))) {
+        throw new IllegalOptionException("The option `sql` only supports basic query statements.");
       }
     }
   }
