@@ -196,6 +196,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaSt
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
@@ -1844,6 +1845,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         } else {
           timestamp =
               parseTimeValue(insertMultiValues.get(i).timeValue(), DateTimeUtils.currentTime());
+          TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
         }
       } else {
         if (!isTimeDefault) {

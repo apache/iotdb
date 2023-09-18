@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.protocol.rest.v1.model.InsertTabletRequest;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -37,6 +38,8 @@ public class StatementConstructionHandler {
   public static InsertTabletStatement constructInsertTabletStatement(
       InsertTabletRequest insertTabletRequest)
       throws MetadataException, WriteProcessRejectException {
+    TimestampPrecisionUtils.checkTimestampPrecision(
+        insertTabletRequest.getTimestamps().get(insertTabletRequest.getTimestamps().size() - 1));
     // construct insert statement
     InsertTabletStatement insertStatement = new InsertTabletStatement();
     insertStatement.setDevicePath(

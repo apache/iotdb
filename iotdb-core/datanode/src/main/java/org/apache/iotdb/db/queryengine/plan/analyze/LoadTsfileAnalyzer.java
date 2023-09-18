@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaSta
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -125,7 +126,8 @@ public class LoadTsfileAnalyzer {
       } catch (Exception e) {
         LOGGER.warn(String.format("Parse file %s to resource error.", tsFile.getPath()), e);
         throw new SemanticException(
-            String.format("Parse file %s to resource error", tsFile.getPath()));
+            String.format(
+                "Parse file %s to resource error, because %s", tsFile.getPath(), e.getMessage()));
       }
     }
 
@@ -171,6 +173,7 @@ public class LoadTsfileAnalyzer {
       } else {
         tsFileResource.deserialize();
       }
+      TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
       loadTsFileStatement.addTsFileResource(tsFileResource);
     }
