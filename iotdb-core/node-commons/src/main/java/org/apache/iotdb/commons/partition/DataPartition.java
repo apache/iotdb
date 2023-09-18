@@ -21,10 +21,11 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +34,8 @@ import java.util.stream.Collectors;
 
 // TODO: Remove this class
 public class DataPartition extends Partition {
+  private static long timePartitionInterval =
+      CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
   public static final TRegionReplicaSet NOT_ASSIGNED = new TRegionReplicaSet();
   // Map<StorageGroup, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionMessage>>>>
   private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
@@ -67,17 +70,20 @@ public class DataPartition extends Partition {
     this.dataPartitionMap = dataPartitionMap;
   }
 
-  public List<TRegionReplicaSet> getDataRegionReplicaSet(
-      String deviceName, List<TTimePartitionSlot> timePartitionSlotList) {
+  public List<TRegionReplicaSet> getDataRegionReplicaSet(String deviceName, Filter timeFilter) {
     String storageGroup = getStorageGroupByDevice(deviceName);
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
     if (!dataPartitionMap.containsKey(storageGroup)
         || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
       return Collections.singletonList(NOT_ASSIGNED);
     }
-    // TODO: (xingtanzjr) the timePartitionIdList is ignored
-    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).values().stream()
-        .flatMap(Collection::stream)
+    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
+        .filter(
+            entry ->
+                timeFilter == null
+                    || timeFilter.satisfyStartEndTime(
+                        entry.getKey().startTime, entry.getKey().startTime + timePartitionInterval))
+        .flatMap(entry -> entry.getValue().stream())
         .distinct()
         .collect(Collectors.toList());
   }

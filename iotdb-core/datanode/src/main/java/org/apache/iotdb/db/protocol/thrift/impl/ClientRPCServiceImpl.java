@@ -783,7 +783,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           partitionFetcher.getDataPartitionWithUnclosedTimeRange(
               Collections.singletonMap(db, Collections.singletonList(queryParam)));
       List<TRegionReplicaSet> regionReplicaSets =
-          dataPartition.getDataRegionReplicaSet(deviceId, Collections.emptyList());
+          dataPartition.getDataRegionReplicaSet(deviceId, null);
 
       // no valid DataRegion
       if (regionReplicaSets.isEmpty()
@@ -990,9 +990,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       sgNameToQueryParamsMap.put(database, Collections.singletonList(queryParam));
       DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
       List<DataRegion> dataRegionList = new ArrayList<>();
-      List<TRegionReplicaSet> replicaSets =
-          dataPartition.getDataRegionReplicaSet(
-              deviceId, Collections.singletonList(timePartitionSlot));
+      List<TRegionReplicaSet> replicaSets = dataPartition.getDataRegionReplicaSet(deviceId, null);
       for (TRegionReplicaSet region : replicaSets) {
         dataRegionList.add(
             StorageEngine.getInstance()
