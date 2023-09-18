@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
 import com.google.common.collect.Lists;
@@ -71,14 +72,14 @@ public class StorageEngineTest {
 
   @Test
   public void testGetTimePartitionId() {
-    long timePartitionInterval = StorageEngine.getTimePartitionInterval();
-    Assert.assertEquals(-2, StorageEngine.getTimePartition(-timePartitionInterval - 1));
-    Assert.assertEquals(-1, StorageEngine.getTimePartition(-timePartitionInterval));
-    Assert.assertEquals(-1, StorageEngine.getTimePartition(-1));
-    Assert.assertEquals(0, StorageEngine.getTimePartition(0));
-    Assert.assertEquals(0, StorageEngine.getTimePartition(1));
-    Assert.assertEquals(0, StorageEngine.getTimePartition(timePartitionInterval / 2));
-    Assert.assertEquals(1, StorageEngine.getTimePartition(timePartitionInterval * 2 - 1));
-    Assert.assertEquals(2, StorageEngine.getTimePartition(timePartitionInterval * 2 + 1));
+    long timePartitionInterval = TimePartitionUtils.getTimePartitionInterval();
+    Assert.assertEquals(-2, TimePartitionUtils.getTimePartitionId(-timePartitionInterval - 1));
+    Assert.assertEquals(-1, TimePartitionUtils.getTimePartitionId(-timePartitionInterval));
+    Assert.assertEquals(-1, TimePartitionUtils.getTimePartitionId(-1));
+    Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(0));
+    Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(1));
+    Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(timePartitionInterval / 2));
+    Assert.assertEquals(1, TimePartitionUtils.getTimePartitionId(timePartitionInterval * 2 - 1));
+    Assert.assertEquals(2, TimePartitionUtils.getTimePartitionId(timePartitionInterval * 2 + 1));
   }
 }

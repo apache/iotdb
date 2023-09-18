@@ -16,13 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.utils;
+package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class TimePartitionUtils {
+
+  /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
   private static long timePartitionInterval =
       CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
@@ -54,7 +56,23 @@ public class TimePartitionUtils {
     return upperBoundOfTimePartition;
   }
 
-  @TestOnly
+  public static long getTimePartitionId(long time) {
+    return time > 0 || time % timePartitionInterval == 0
+        ? time / timePartitionInterval
+        : time / timePartitionInterval - 1;
+  }
+
+  public static boolean satisfyPartitionId(long startTime, long endTime, long partitionId) {
+    return getTimePartitionId(startTime) <= partitionId
+        && getTimePartitionId(endTime) >= partitionId;
+  }
+
+  public static boolean satisfyPartitionStartTime(Filter timeFilter, long partitionStartTime) {
+    return timeFilter == null
+        || timeFilter.satisfyStartEndTime(
+            partitionStartTime, partitionStartTime + timePartitionInterval);
+  }
+
   public static void setTimePartitionInterval(long timePartitionInterval) {
     TimePartitionUtils.timePartitionInterval = timePartitionInterval;
   }

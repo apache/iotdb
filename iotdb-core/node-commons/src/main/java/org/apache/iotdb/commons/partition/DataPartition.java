@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
@@ -80,9 +81,7 @@ public class DataPartition extends Partition {
     return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
         .filter(
             entry ->
-                timeFilter == null
-                    || timeFilter.satisfyStartEndTime(
-                        entry.getKey().startTime, entry.getKey().startTime + timePartitionInterval))
+                TimePartitionUtils.satisfyPartitionStartTime(timeFilter, entry.getKey().startTime))
         .flatMap(entry -> entry.getValue().stream())
         .distinct()
         .collect(Collectors.toList());
