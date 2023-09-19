@@ -17,7 +17,8 @@
 
 package org.apache.iotdb.db.protocol.rest.v1.handler;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.protocol.rest.utils.InsertRowDataUtils;
 import org.apache.iotdb.db.protocol.rest.v1.model.InsertRecordsRequest;
@@ -42,14 +43,16 @@ public class StatementConstructionHandler {
 
   public static InsertTabletStatement constructInsertTabletStatement(
       InsertTabletRequest insertTabletRequest)
-      throws IllegalPathException, WriteProcessRejectException {
+      throws MetadataException, WriteProcessRejectException {
     TimestampPrecisionUtils.checkTimestampPrecision(
         insertTabletRequest.getTimestamps().get(insertTabletRequest.getTimestamps().size() - 1));
     // construct insert statement
     InsertTabletStatement insertStatement = new InsertTabletStatement();
     insertStatement.setDevicePath(
         DataNodeDevicePathCache.getInstance().getPartialPath(insertTabletRequest.getDeviceId()));
-    insertStatement.setMeasurements(insertTabletRequest.getMeasurements().toArray(new String[0]));
+    insertStatement.setMeasurements(
+        PathUtils.checkIsLegalSingleMeasurementsAndUpdate(insertTabletRequest.getMeasurements())
+            .toArray(new String[0]));
     List<List<Object>> rawData = insertTabletRequest.getValues();
     List<String> rawDataType = insertTabletRequest.getDataTypes();
 
@@ -176,7 +179,7 @@ public class StatementConstructionHandler {
 
   public static InsertRowsStatement createInsertRowsStatement(
       InsertRecordsRequest insertRecordsRequest)
-      throws IllegalPathException, IoTDBConnectionException {
+      throws MetadataException, IoTDBConnectionException {
 
     // construct insert statement
     InsertRowsStatement insertStatement = new InsertRowsStatement();
@@ -206,7 +209,9 @@ public class StatementConstructionHandler {
           DataNodeDevicePathCache.getInstance()
               .getPartialPath(insertRecordsRequest.getDeviceIds().get(i)));
       statement.setMeasurements(
-          insertRecordsRequest.getMeasurementsList().get(i).toArray(new String[0]));
+          PathUtils.checkIsLegalSingleMeasurementsAndUpdate(
+                  insertRecordsRequest.getMeasurementsList().get(i))
+              .toArray(new String[0]));
       TimestampPrecisionUtils.checkTimestampPrecision(insertRecordsRequest.getTimestamps().get(i));
       statement.setTime(insertRecordsRequest.getTimestamps().get(i));
       statement.setDataTypes(dataTypesList.get(i).toArray(new TSDataType[0]));
