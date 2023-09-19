@@ -27,8 +27,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import java.util.List;
-
 public class PipeTaskConnectorStage extends PipeTaskStage {
 
   protected final PipeParameters pipeConnectorParameters;
@@ -67,7 +65,7 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
     PipeConnectorSubtaskManager.instance().deregister(connectorSubtaskId);
   }
 
-  public List<BoundedBlockingPendingQueue<Event>> getPipeConnectorPendingQueues() {
-    return PipeConnectorSubtaskManager.instance().getPipeConnectorPendingQueues(connectorSubtaskId);
+  public BoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {
+    return PipeConnectorSubtaskManager.instance().getPipeConnectorPendingQueue(connectorSubtaskId);
   }
 }

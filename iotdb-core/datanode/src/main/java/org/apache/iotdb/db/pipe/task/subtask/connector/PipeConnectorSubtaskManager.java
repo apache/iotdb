@@ -46,8 +46,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Supplier;
 
-import static java.util.stream.Collectors.toList;
-
 public class PipeConnectorSubtaskManager {
 
   private static final Map<String, Supplier<PipeConnector>> CONNECTOR_CONSTRUCTORS =
@@ -161,16 +159,17 @@ public class PipeConnectorSubtaskManager {
     }
   }
 
-  public List<BoundedBlockingPendingQueue<Event>> getPipeConnectorPendingQueues(
+  public BoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
       String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(
           "Failed to get PendingQueue. No such subtask: " + attributeSortedString);
     }
 
-    return attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).stream()
-        .map(PipeConnectorSubtaskLifeCycle::getPendingQueue)
-        .collect(toList());
+    return attributeSortedString2SubtaskLifeCycleMap
+        .get(attributeSortedString)
+        .get(0)
+        .getPendingQueue();
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////

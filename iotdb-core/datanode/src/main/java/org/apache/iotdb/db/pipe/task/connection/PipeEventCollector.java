@@ -26,18 +26,15 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.Deque;
 import java.util.LinkedList;
-import java.util.List;
 
 public class PipeEventCollector implements EventCollector, AutoCloseable {
 
-  private final List<BoundedBlockingPendingQueue<Event>> pendingQueues;
-  private int pendingQueueIndex;
+  private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
   private final Deque<Event> bufferQueue;
 
-  public PipeEventCollector(List<BoundedBlockingPendingQueue<Event>> pendingQueues) {
-    this.pendingQueues = pendingQueues;
-    pendingQueueIndex = 0;
+  public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue) {
+    this.pendingQueue = pendingQueue;
     bufferQueue = new LinkedList<>();
   }
 
@@ -48,16 +45,14 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
     }
     if (event instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) event).recordBufferQueueSize(bufferQueue);
-      ((PipeHeartbeatEvent) event).recordConnectorQueuesSize(pendingQueues);
+      ((PipeHeartbeatEvent) event).recordConnectorQueueSize(pendingQueue);
     }
-
-    fastCollectBufferedEvents();
 
     while (!bufferQueue.isEmpty()) {
       final Event bufferedEvent = bufferQueue.peek();
       // Try to put already buffered events into pending queue, if pending queue is full, wait for
       // pending queue to be available with timeout.
-      if (getNextPendingQueue().waitedOffer(bufferedEvent)) {
+      if (pendingQueue.waitedOffer(bufferedEvent)) {
         bufferQueue.poll();
       } else {
         // We can NOT keep too many PipeHeartbeatEvent in bufferQueue because they may cause OOM.
@@ -71,13 +66,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
       }
     }
 
-    // Try to put event into pending queue, if pending queue is full, put it into buffer queue.
-    for (int i = 0, n = pendingQueues.size(); i < n; i++) {
-      if (getNextPendingQueue().directOffer(event)) {
-        return;
-      }
-    }
-    if (!getNextPendingQueue().waitedOffer(event)) {
+    if (!pendingQueue.waitedOffer(event)) {
       bufferQueue.offer(event);
     }
   }
@@ -88,43 +77,15 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
    * @return true if there are still buffered events after this operation, false otherwise.
    */
   public synchronized boolean tryCollectBufferedEvents() {
-    fastCollectBufferedEvents();
-
     while (!bufferQueue.isEmpty()) {
       final Event bufferedEvent = bufferQueue.peek();
-
-      if (getNextPendingQueue().waitedOffer(bufferedEvent)) {
+      if (pendingQueue.waitedOffer(bufferedEvent)) {
         bufferQueue.poll();
       } else {
         return true;
       }
     }
-
     return false;
-  }
-
-  private void fastCollectBufferedEvents() {
-    while (!bufferQueue.isEmpty()) {
-      final Event bufferedEvent = bufferQueue.peek();
-
-      for (int i = 0, n = pendingQueues.size(); i < n; i++) {
-        if (getNextPendingQueue().directOffer(bufferedEvent)) {
-          bufferQueue.poll();
-          break;
-        }
-
-        // If all pending queues are full, wait for pending queue to be available with timeout.
-        if (i == n - 1) {
-          return;
-        }
-      }
-    }
-  }
-
-  private BoundedBlockingPendingQueue<Event> getNextPendingQueue() {
-    final BoundedBlockingPendingQueue<Event> pendingQueue = pendingQueues.get(pendingQueueIndex);
-    pendingQueueIndex = (pendingQueueIndex + 1) % pendingQueues.size();
-    return pendingQueue;
   }
 
   public synchronized void close() {

@@ -39,8 +39,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import java.util.List;
-
 public class PipeTaskProcessorStage extends PipeTaskStage {
 
   private final PipeProcessorSubtaskExecutor executor =
@@ -54,7 +52,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
    * @param pipeProcessorParameters used to create pipe processor
    * @param dataRegionId data region id
    * @param pipeExtractorInputEventSupplier used to input events from pipe extractor
-   * @param pipeConnectorOutputPendingQueues used to output events to pipe connectors
+   * @param pipeConnectorOutputPendingQueue used to output events to pipe connector
    * @throws PipeException if failed to validate or customize
    */
   public PipeTaskProcessorStage(
@@ -63,7 +61,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       PipeParameters pipeProcessorParameters,
       TConsensusGroupId dataRegionId,
       EventSupplier pipeExtractorInputEventSupplier,
-      List<BoundedBlockingPendingQueue<Event>> pipeConnectorOutputPendingQueues) {
+      BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
     final PipeProcessor pipeProcessor =
         pipeProcessorParameters
                 .getStringOrDefault(
@@ -94,7 +92,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     // old one, so we need creationTime to make their hash code different in the map.
     final String taskId = pipeName + "_" + dataRegionId + "_" + creationTime;
     final PipeEventCollector pipeConnectorOutputEventCollector =
-        new PipeEventCollector(pipeConnectorOutputPendingQueues);
+        new PipeEventCollector(pipeConnectorOutputPendingQueue);
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,
