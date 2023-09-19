@@ -359,4 +359,12 @@ public class NonAlignedChunkData implements ChunkData {
   public ChunkHeader getChunkHeader() {
     return chunkHeader;
   }
+
+  public Chunk getChunk() {
+    return chunk;
+  }
+
+  public PublicBAOS getByteStream() {
+    return byteStream;
+  }
 }

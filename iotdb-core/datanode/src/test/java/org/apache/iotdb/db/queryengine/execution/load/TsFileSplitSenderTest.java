@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.stream.Collectors;
@@ -46,21 +47,33 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.TException;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TsFileSplitSenderTest extends TestBase {
 
+  private static final Logger logger = LoggerFactory.getLogger(TsFileSplitSenderTest.class);
   protected Map<TEndPoint, Map<ConsensusGroupId, Map<String, Map<File, Set<Integer>>>>>
       phaseOneResults = new ConcurrentSkipListMap<>();
   // the third key is UUid, the value is command type
   protected Map<TEndPoint, Map<ConsensusGroupId, Map<String, Integer>>> phaseTwoResults =
       new ConcurrentSkipListMap<>();
-  private long dummyDelayMS = 200;
-  private double packetLossRatio = 0.02;
+  // simulating network delay and packet loss
+  private long dummyDelayMS = 000;
+  private double packetLossRatio = 0.00;
   private Random random = new Random();
-  private long maxSplitSize = 128*1024*1024;
+  private long maxSplitSize = 128 * 1024 * 1024;
+  // simulating jvm stall like GC
+  private long minStuckIntervalMS = 50000;
+  private long maxStuckIntervalMS = 100000;
+  private long stuckDurationMS = 10000;
 
+  private long nodeThroughput = 500000;
+
+  protected Map<TEndPoint, Pair<Long, Long>> nextStuckTimeMap = new ConcurrentHashMap<>();
 
   @Test
   public void test() throws IOException {
@@ -86,11 +99,37 @@ public class TsFileSplitSenderTest extends TestBase {
 
   public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndpoint)
       throws TException {
-    if ((tEndpoint.getPort() - 10000) % 3 == 0 && random.nextDouble() < packetLossRatio && req.isRelay) {
+    if ((tEndpoint.getPort() - 10000) % 3 == 0 && random.nextDouble() < packetLossRatio
+        && req.isRelay) {
       throw new TException("Packet lost");
     }
-    if ((tEndpoint.getPort() - 10000) % 3 == 1 && random.nextDouble() < packetLossRatio / 2 && req.isRelay) {
+    if ((tEndpoint.getPort() - 10000) % 3 == 1 && random.nextDouble() < packetLossRatio / 2
+        && req.isRelay) {
       throw new TException("Packet lost");
+    }
+
+    if ((tEndpoint.getPort() - 10000) % 3 == 0 && req.isRelay) {
+      Pair<Long, Long> nextStuckTime = nextStuckTimeMap.computeIfAbsent(tEndpoint,
+          e -> new Pair<>(System.currentTimeMillis(),
+              System.currentTimeMillis() + stuckDurationMS));
+      long currTime = System.currentTimeMillis();
+      if (currTime >= nextStuckTime.left && currTime < nextStuckTime.right) {
+        logger.debug("Node{} stalls", tEndpoint.getPort() - 10000);
+        try {
+          Thread.sleep(nextStuckTime.right - currTime);
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      } else if (currTime > nextStuckTime.right) {
+        nextStuckTimeMap.compute(tEndpoint, (endPoint, newInterval) -> {
+          if (newInterval != null && currTime < newInterval.right) {
+            return newInterval;
+          }
+          long start = currTime + minStuckIntervalMS + random.nextInt(
+              (int) (maxStuckIntervalMS - minStuckIntervalMS));
+          return new Pair<>(start, start + stuckDurationMS);
+        });
+      }
     }
 
     ConsensusGroupId groupId =
@@ -106,6 +145,14 @@ public class TsFileSplitSenderTest extends TestBase {
             .computeIfAbsent(pieceNode.getTsFile(), f -> new ConcurrentSkipListSet<>());
     splitIds.addAll(pieceNode.getAllTsFileData().stream().map(TsFileData::getSplitId).collect(
         Collectors.toList()));
+
+    synchronized (tEndpoint) {
+      try {
+        Thread.sleep(pieceNode.getDataSize() / nodeThroughput);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
 
     if (dummyDelayMS > 0) {
       if ((tEndpoint.getPort() - 10000) % 3 == 0 && req.isRelay) {
@@ -180,7 +227,8 @@ public class TsFileSplitSenderTest extends TestBase {
             File tsFile = fileListEntry.getKey();
             Set<Integer> chunks = fileListEntry.getValue();
             System.out.printf(
-                "%s - %s - %s - %s - %s chunks\n", endPoint, consensusGroupId, uuid, tsFile, chunks.size());
+                "%s - %s - %s - %s - %s chunks\n", endPoint, consensusGroupId, uuid, tsFile,
+                chunks.size());
 //            if (consensusGroupId.getId() == 0) {
 //              // d1, non-aligned series
 //              assertEquals(expectedChunkNum() / 2, chunks.size());

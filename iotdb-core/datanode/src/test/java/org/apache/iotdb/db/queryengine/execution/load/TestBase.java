@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
-import static org.junit.Assert.assertEquals;
-
+import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
-import java.util.Map.Entry;
-import java.util.Random;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import java.util.stream.IntStream;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -47,10 +48,12 @@ import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
-import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.SequenceUtils.DoubleSequenceGenerator;
+import org.apache.iotdb.db.utils.SequenceUtils.DoubleSequenceGeneratorFactory;
+import org.apache.iotdb.db.utils.SequenceUtils.GaussianDoubleSequenceGenerator;
+import org.apache.iotdb.db.utils.SequenceUtils.SimpleDoubleSequenceGenerator;
+import org.apache.iotdb.db.utils.SequenceUtils.UniformDoubleSequenceGenerator;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
@@ -63,37 +66,17 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TField;
-import org.apache.thrift.protocol.TList;
-import org.apache.thrift.protocol.TMap;
-import org.apache.thrift.protocol.TMessage;
 import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.protocol.TProtocolDecorator;
-import org.apache.thrift.protocol.TSet;
-import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.transport.TByteBuffer;
-import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.IntStream;
 
 public class TestBase {
 
@@ -104,13 +87,16 @@ public class TestBase {
   public static final String TEST_TSFILE_PATH =
       BASE_OUTPUT_PATH + "testTsFile".concat(File.separator) + PARTIAL_PATH_STRING;
 
-  protected int fileNum = 100;
+  protected int fileNum = 500;
   // series number of each file, sn non-aligned series and 1 aligned series with sn measurements
   protected int seriesNum = 1000;
   // number of chunks of each series in a file, each series has only one chunk in a file
-  protected double chunkTimeRangeRatio = 0.3;
+  protected double chunkTimeRangeRatio = 0.03;
   // the interval between two consecutive points of a series
-  protected long pointInterval = 10_000;
+  protected long pointInterval = 50_000;
+  protected List<DoubleSequenceGeneratorFactory> sequenceGeneratorFactories = Arrays.asList(
+      new SimpleDoubleSequenceGenerator.Factory(), new UniformDoubleSequenceGenerator.Factory(),
+      new GaussianDoubleSequenceGenerator.Factory());
   protected final List<File> files = new ArrayList<>();
   protected final List<TsFileResource> tsFileResources = new ArrayList<>();
   protected IPartitionFetcher partitionFetcher;
@@ -324,32 +310,39 @@ public class TestBase {
                 try (TsFileWriter writer = new TsFileWriter(file)) {
                   // sn non-aligned series under d1 and 1 aligned series with sn measurements under
                   // d2
+                  List<MeasurementSchema> measurementSchemas = new ArrayList<>();
                   for (int sn = 0; sn < seriesNum; sn++) {
+                    MeasurementSchema measurementSchema = new MeasurementSchema("s" + sn,
+                        TSDataType.DOUBLE);
                     writer.registerTimeseries(
-                        new Path("d1"), new MeasurementSchema("s" + sn, TSDataType.DOUBLE));
+                        new Path("d1"), measurementSchema);
+                    measurementSchemas.add(measurementSchema);
                   }
-                  List<MeasurementSchema> alignedSchemas = new ArrayList<>();
-                  for (int sn = 0; sn < seriesNum; sn++) {
-                    alignedSchemas.add(new MeasurementSchema("s" + sn, TSDataType.DOUBLE));
-                  }
-                  writer.registerAlignedTimeseries(new Path("d2"), alignedSchemas);
+                  writer.registerAlignedTimeseries(new Path("d2"), measurementSchemas);
 
                   // one chunk for each series
                   long timePartitionInterval = TimePartitionUtils.getTimePartitionInterval();
                   long chunkTimeRange = (long) (timePartitionInterval * chunkTimeRangeRatio);
                   int chunkPointNum = (int) (chunkTimeRange / pointInterval);
 
-                  for (int pn = 0; pn < chunkPointNum; pn++) {
-                    long currTime = chunkTimeRange * i + pointInterval * pn;
-                    TSRecord record = new TSRecord(currTime, "d1");
-                    for (int sn = 0; sn < seriesNum; sn++) {
-                      record.addTuple(new DoubleDataPoint("s" + sn, pn * 1.0));
+                  Tablet tablet = new Tablet("d1", measurementSchemas, chunkPointNum);
+                  for (int sn = 0; sn < seriesNum; sn++) {
+                    DoubleSequenceGenerator sequenceGenerator = sequenceGeneratorFactories.get(
+                        sn % sequenceGeneratorFactories.size()).create();
+                    for (int pn = 0; pn < chunkPointNum; pn++) {
+                      if (sn == 0) {
+                        long currTime = chunkTimeRange * i + pointInterval * pn;
+                        tablet.addTimestamp(pn, currTime);
+                      }
+                      tablet.addValue("s" + sn, pn, sequenceGenerator.gen(pn));
                     }
-                    writer.write(record);
-
-                    record.deviceId = "d2";
-                    writer.writeAligned(record);
                   }
+
+                  tablet.rowSize = chunkPointNum;
+                  writer.write(tablet);
+                  tablet.deviceId = "d2";
+                  //writer.writeAligned(tablet);
+
                   writer.flushAllChunkGroups();
                   tsFileResource.updateStartTime("d1", chunkTimeRange * i);
                   tsFileResource.updateStartTime("d2", chunkTimeRange * i);

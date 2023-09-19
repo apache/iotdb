@@ -83,7 +83,7 @@ public class TsFileSplitSender {
       new ConcurrentHashMap<>();
   private Map<TRegionReplicaSet, Exception> phaseTwoFailures = new HashMap<>();
   private long maxSplitSize;
-  private PieceNodeSplitter pieceNodeSplitter = new ClusteringMeasurementSplitter(5, 10);
+  private PieceNodeSplitter pieceNodeSplitter = new ClusteringMeasurementSplitter(10, 10);
 //  private PieceNodeSplitter pieceNodeSplitter = new OrderedMeasurementSplitter();
 
   public TsFileSplitSender(
@@ -207,7 +207,9 @@ public class TsFileSplitSender {
   public boolean dispatchOnePieceNode(LoadTsFilePieceNode pieceNode, TRegionReplicaSet replicaSet) {
     allReplicaSets.add(replicaSet);
 
+    long start = System.currentTimeMillis();
     List<LoadTsFilePieceNode> subNodes = pieceNodeSplitter.split(pieceNode);
+    logger.info("{} splits are generated after {}ms", subNodes.size(), System.currentTimeMillis() - start);
 
     List<Boolean> subNodeResults = subNodes.stream().parallel().map(node -> {
       long startTime = 0;

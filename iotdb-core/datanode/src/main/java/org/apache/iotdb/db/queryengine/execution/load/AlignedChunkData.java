@@ -475,4 +475,12 @@ public class AlignedChunkData implements ChunkData {
   public List<ChunkHeader> getChunkHeaderList() {
     return chunkHeaderList;
   }
+
+  public List<Chunk> getChunkList() {
+    return chunkList;
+  }
+
+  public PublicBAOS getByteStream() {
+    return byteStream;
+  }
 }

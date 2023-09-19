@@ -1,7 +1,9 @@
 package org.apache.iotdb.db.queryengine.execution.load.nodesplit;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,11 +25,13 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 
 public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
 
   private int numCluster;
   private int maxIteration;
+  private int dataSampleLength = 128;
 
   public ClusteringMeasurementSplitter(int numCluster, int maxIteration) {
     this.numCluster = numCluster;
@@ -41,8 +45,8 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
       return new OrderedMeasurementSplitter().split(pieceNode);
     }
 
+    // split by measurement first
     Map<String, LoadTsFilePieceNode> measurementPieceNodeMap = new HashMap<>();
-
     for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
       ChunkData chunkData = (ChunkData) tsFileData;
       String currMeasurement = chunkData.firstMeasurement();
@@ -51,27 +55,29 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
           m -> new LoadTsFilePieceNode(pieceNode.getPlanNodeId(), pieceNode.getTsFile()));
       pieceNodeSplit.addTsFileData(chunkData);
     }
-
+    // use clustering to merge similar measurements
     return clusterPieceNode(measurementPieceNodeMap);
   }
 
   private List<LoadTsFilePieceNode> clusterPieceNode(
       Map<String, LoadTsFilePieceNode> measurementPieceNodeMap) {
+    // convert to feature vector
     Map<String, SeriesFeatureVector> measurementVectorMap = new HashMap<>(
         measurementPieceNodeMap.size());
     for (Entry<String, LoadTsFilePieceNode> entry : measurementPieceNodeMap.entrySet()) {
       measurementVectorMap.put(entry.getKey(), convertToFeature(entry.getValue()));
     }
+    // normalize
     normalize(measurementVectorMap.values());
     Map<String, double[]> doubleVectors = new HashMap<>(measurementPieceNodeMap.size());
     for (Entry<String, SeriesFeatureVector> e : measurementVectorMap.entrySet()) {
       doubleVectors.put(e.getKey(), e.getValue().numericVector);
     }
-
+    // clustering
     VectorDistance distance = new EuclideanDistance();
     Clustering clustering = new KMeans(numCluster, maxIteration);
     List<List<String>> clusterResult = clustering.cluster(doubleVectors, distance);
-
+    // collect result
     List<LoadTsFilePieceNode> clusteredNodes = new ArrayList<>();
     for (List<String> cluster : clusterResult) {
       if (cluster.isEmpty()) {
@@ -104,9 +110,11 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
     int maxEncodingType = Integer.MIN_VALUE;
     int minNumOfPages = Integer.MAX_VALUE;
     int maxNumOfPages = Integer.MIN_VALUE;
+    String firstDataSample = null;
     for (SeriesFeatureVector vector : vectors) {
       if (firstMeasurementId == null) {
         firstMeasurementId = vector.measurementId;
+        firstDataSample = vector.dataSample;
       }
       minDataSize = Math.min(minDataSize, vector.dataSize);
       maxDataSize = Math.max(maxDataSize, vector.dataSize);
@@ -135,6 +143,15 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
               - minEncodingType);
       vector.numericVector[5] =
           (vector.numOfPages - minNumOfPages) * 1.0 / (maxNumOfPages - minNumOfPages);
+      vector.numericVector[6] = service.score(firstDataSample, vector.dataSample);
+      double[] numericVector = vector.numericVector;
+      for (int i = 0; i < numericVector.length; i++) {
+        if (Double.isNaN(numericVector[i])) {
+          numericVector[i] = 0.0;
+        } else if (Double.isInfinite(numericVector[i])) {
+          numericVector[i] = 1.0;
+        }
+      }
     }
   }
 
@@ -143,25 +160,10 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
     SeriesFeatureVector vector = null;
     for (TsFileData tsFileData : allTsFileData) {
       ChunkData chunkData = (ChunkData) tsFileData;
-      if (chunkData.isAligned()) {
-        AlignedChunkData alignedChunkData = (AlignedChunkData) chunkData;
-        List<ChunkHeader> chunkHeaderList = alignedChunkData.getChunkHeaderList();
-
-        for (ChunkHeader header : chunkHeaderList) {
-          if (vector == null) {
-            vector = SeriesFeatureVector.fromChunkHeader(header);
-          } else {
-            vector.mergeChunkHeader(header);
-          }
-        }
+      if (vector == null) {
+        vector = SeriesFeatureVector.fromChunkData(chunkData, dataSampleLength);
       } else {
-        NonAlignedChunkData nonAlignedChunkData = (NonAlignedChunkData) chunkData;
-        ChunkHeader header = nonAlignedChunkData.getChunkHeader();
-        if (vector == null) {
-          vector = SeriesFeatureVector.fromChunkHeader(header);
-        } else {
-          vector.mergeChunkHeader(header);
-        }
+        vector.mergeChunkData(chunkData);
       }
     }
     return vector;
@@ -175,22 +177,67 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
     private CompressionType compressionType;
     private TSEncoding encodingType;
     private int numOfPages;
-    private double[] numericVector = new double[6];
+    private String dataSample;
+    private double[] numericVector = new double[7];
 
-    public static SeriesFeatureVector fromChunkHeader(ChunkHeader header) {
+    public static SeriesFeatureVector fromChunkData(ChunkData data, int dataSampleLength) {
+      ChunkHeader chunkHeader;
+      Chunk chunk;
+      ByteBuffer chunkBuffer;
+      // sample a buffer from the chunk data
+      if (data.isAligned()) {
+        AlignedChunkData alignedChunkData = (AlignedChunkData) data;
+        chunkHeader = alignedChunkData.getChunkHeaderList().get(0);
+        if (!alignedChunkData.getChunkList().isEmpty()) {
+          chunk = alignedChunkData.getChunkList().get(0);
+          ByteBuffer buffer = chunk.getData();
+          int sampleLength = Math.min(dataSampleLength, buffer.remaining());
+          chunkBuffer = buffer.slice();
+          chunkBuffer.limit(sampleLength);
+        } else {
+          chunkBuffer = ByteBuffer.wrap(alignedChunkData.getByteStream().getBuf());
+          int sampleLength = Math.min(dataSampleLength, chunkBuffer.remaining());
+          chunkBuffer.limit(sampleLength);
+        }
+      } else {
+        NonAlignedChunkData nonAlignedChunkData = (NonAlignedChunkData) data;
+        chunkHeader = nonAlignedChunkData.getChunkHeader();
+        chunk = nonAlignedChunkData.getChunk();
+        if (chunk != null) {
+          ByteBuffer buffer = chunk.getData();
+          int sampleLength = Math.min(dataSampleLength, buffer.remaining());
+          chunkBuffer = buffer.slice();
+          chunkBuffer.limit(sampleLength);
+        } else {
+          chunkBuffer = ByteBuffer.wrap(nonAlignedChunkData.getByteStream().getBuf());
+          int sampleLength = Math.min(dataSampleLength, chunkBuffer.remaining());
+          chunkBuffer.limit(sampleLength);
+        }
+      }
+
       SeriesFeatureVector vector = new SeriesFeatureVector();
-      vector.measurementId = header.getMeasurementID();
-      vector.dataSize = header.getDataSize();
-      vector.dataType = header.getDataType();
-      vector.compressionType = header.getCompressionType();
-      vector.encodingType = header.getEncodingType();
-      vector.numOfPages = header.getNumOfPages();
+      vector.measurementId = chunkHeader.getMeasurementID();
+      vector.dataSize = chunkHeader.getDataSize();
+      vector.dataType = chunkHeader.getDataType();
+      vector.compressionType = chunkHeader.getCompressionType();
+      vector.encodingType = chunkHeader.getEncodingType();
+      vector.numOfPages = chunkHeader.getNumOfPages();
+      vector.dataSample = new String(chunkBuffer.array(),
+          chunkBuffer.arrayOffset() + chunkBuffer.position(), chunkBuffer.remaining());
       return vector;
     }
 
-    public void mergeChunkHeader(ChunkHeader header) {
-      dataSize += header.getDataSize();
-      numOfPages += header.getNumOfPages();
+    public void mergeChunkData(ChunkData data) {
+      ChunkHeader chunkHeader;
+      if (data.isAligned()) {
+        AlignedChunkData alignedChunkData = (AlignedChunkData) data;
+        chunkHeader = alignedChunkData.getChunkHeaderList().get(0);
+      } else {
+        NonAlignedChunkData nonAlignedChunkData = (NonAlignedChunkData) data;
+        chunkHeader = nonAlignedChunkData.getChunkHeader();
+      }
+      dataSize += chunkHeader.getDataSize();
+      numOfPages += chunkHeader.getNumOfPages();
     }
   }
 
@@ -236,14 +283,16 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
     @Override
     public List<List<String>> cluster(Map<String, double[]> tagVectorMap, VectorDistance distance) {
       recordCentroidMapping.clear();
+      if (k > tagVectorMap.size()) {
+        k = tagVectorMap.size();
+        this.centroids = new double[k][];
+      }
 
       for (Entry<String, double[]> entry : tagVectorMap.entrySet()) {
         vecLength = entry.getValue().length;
       }
 
-      for (int i = 0; i < k; i++) {
-        centroids[i] = randomCentroid(vecLength);
-      }
+      randomCentroid(vecLength, tagVectorMap);
 
       for (int i = 0; i < maxIteration; i++) {
         if (!assignCentroid(tagVectorMap, distance)) {
@@ -317,12 +366,27 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
       return centroidUpdated.get();
     }
 
-    private double[] randomCentroid(int vecLength) {
-      double[] centroid = new double[vecLength];
-      for (int i = 0; i < vecLength; i++) {
-        centroid[i] = random.nextDouble();
+    private void randomCentroid(int vecLength, Map<String, double[]> tagVectorMap) {
+      pickRandomCentroid(tagVectorMap);
+      // genRandomCentroid(vecLength);
+    }
+
+    private void pickRandomCentroid(Map<String, double[]> tagVectorMap) {
+      List<double[]> recordVectors = tagVectorMap.values().stream().collect(Collectors.toList());
+      Collections.shuffle(recordVectors);
+      for (int i = 0; i < k; i++) {
+        centroids[i] = recordVectors.get(i);
       }
-      return centroid;
+    }
+
+    private void genRandomCentroid(int vecLength) {
+      for (int i = 0; i < k; i++) {
+        double[] centroid = new double[vecLength];
+        for (int j = 0; j < vecLength; j++) {
+          centroid[j] = random.nextDouble();
+        }
+        centroids[i] = centroid;
+      }
     }
   }
 }

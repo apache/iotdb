@@ -358,6 +358,11 @@
             <artifactId>Java-WebSocket</artifactId>
             <version>${websocket.version}</version>
         </dependency>
+        <dependency>
+            <groupId>net.ricecode</groupId>
+            <artifactId>string-similarity</artifactId>
+            <version>1.0.0</version>
+        </dependency>
     </dependencies>
     <profiles>
         <profile>
