@@ -31,10 +31,10 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 public class IoTDBSinkBatchTimerTest {
 
@@ -72,7 +72,7 @@ public class IoTDBSinkBatchTimerTest {
 
     new CountDownLatch(1).await(1000, TimeUnit.MILLISECONDS);
 
-    verifyZeroInteractions(pool);
+    verifyNoInteractions(pool);
   }
 
   @Test
