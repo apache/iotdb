@@ -32,7 +32,7 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyZeroInteractions;
 
 public class IoTDBSinkBatchInsertTest {
 
@@ -61,7 +61,7 @@ public class IoTDBSinkBatchInsertTest {
     tuple.put("values", "36.5");
     ioTDBSink.invoke(tuple, null);
 
-    verifyNoInteractions(pool);
+    verifyZeroInteractions(pool);
 
     tuple = new HashMap();
     tuple.put("device", "root.sg.D01");
@@ -71,7 +71,7 @@ public class IoTDBSinkBatchInsertTest {
     tuple.put("values", "37.2");
     ioTDBSink.invoke(tuple, null);
 
-    verifyNoInteractions(pool);
+    verifyZeroInteractions(pool);
 
     tuple = new HashMap();
     tuple.put("device", "root.sg.D01");
@@ -93,7 +93,7 @@ public class IoTDBSinkBatchInsertTest {
     tuple.put("values", "36.5");
     ioTDBSink.invoke(tuple, null);
 
-    verifyNoInteractions(pool);
+    verifyZeroInteractions(pool);
   }
 
   @Test
@@ -105,7 +105,7 @@ public class IoTDBSinkBatchInsertTest {
     tuple.put("types", "DOUBLE");
     tuple.put("values", "36.5");
     ioTDBSink.invoke(tuple, null);
-    verifyNoInteractions(pool);
+    verifyZeroInteractions(pool);
 
     ioTDBSink.close();
     verify(pool)

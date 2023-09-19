@@ -33,15 +33,51 @@
       <groupId>org.apache.iotdb</groupId>
       <artifactId>tsfile</artifactId>
       <version>1.3.0-SNAPSHOT</version>
+      <exclusions>
+        <!--
+                    We need the flink-shaded-zookeeper-3 dependency for some shaded classes.
+                    Unfortunately, this package also contains commons-io classes. In order
+                    to have only one implementation, we're excluding the official commons-io
+                    package here.
+                -->
+        <exclusion>
+          <groupId>commons-io</groupId>
+          <artifactId>commons-io</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>hadoop-tsfile</artifactId>
       <version>1.3.0-SNAPSHOT</version>
+      <exclusions>
+        <!--
+                   We need the flink-shaded-zookeeper-3 dependency for some shaded classes.
+                   Unfortunately, this package also contains commons-io classes. In order
+                   to have only one implementation, we're excluding the official commons-io
+                   package here.
+               -->
+        <exclusion>
+          <groupId>commons-io</groupId>
+          <artifactId>commons-io</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
+      <exclusions>
+        <!--
+                    We need the flink-shaded-zookeeper-3 dependency for some shaded classes.
+                    Unfortunately, this package also contains commons-io classes. In order
+                    to have only one implementation, we're excluding the official commons-io
+                    package here.
+                -->
+        <exclusion>
+          <groupId>commons-io</groupId>
+          <artifactId>commons-io</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.flink</groupId>
@@ -69,10 +105,27 @@
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-streaming-java</artifactId>
       <scope>test</scope>
+      <exclusions>
+        <!--
+                   We need the flink-shaded-zookeeper-3 dependency for some shaded classes.
+                   Unfortunately, this package also contains commons-io classes. In order
+                   to have only one implementation, we're excluding the official commons-io
+                   package here.
+               -->
+        <exclusion>
+          <groupId>commons-io</groupId>
+          <artifactId>commons-io</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-clients</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-shaded-zookeeper-3</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -91,6 +144,7 @@
             <!-- We need these dependencies as they provide runtime dependencies for tests -->
             <usedDependency>org.apache.flink:flink-clients</usedDependency>
             <usedDependency>org.apache.hadoop:hadoop-client</usedDependency>
+            <usedDependency>org.apache.flink:flink-shaded-zookeeper-3</usedDependency>
           </usedDependencies>
         </configuration>
       </plugin>

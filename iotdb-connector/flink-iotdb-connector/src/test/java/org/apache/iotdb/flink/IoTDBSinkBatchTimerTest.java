@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyZeroInteractions;
 
 public class IoTDBSinkBatchTimerTest {
 
@@ -72,7 +72,7 @@ public class IoTDBSinkBatchTimerTest {
 
     new CountDownLatch(1).await(1000, TimeUnit.MILLISECONDS);
 
-    verifyNoInteractions(pool);
+    verifyZeroInteractions(pool);
   }
 
   @Test
