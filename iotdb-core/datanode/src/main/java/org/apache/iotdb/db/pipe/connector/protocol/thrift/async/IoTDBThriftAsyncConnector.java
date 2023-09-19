@@ -513,7 +513,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
                     .ifPresent(
                         event ->
                             event.decreaseReferenceCount(
-                                IoTDBThriftAsyncConnector.class.getName()))));
+                                IoTDBThriftAsyncConnector.class.getName(), true))));
 
     while (!commitQueue.isEmpty()) {
       final Pair<Long, Runnable> committer = commitQueue.peek();

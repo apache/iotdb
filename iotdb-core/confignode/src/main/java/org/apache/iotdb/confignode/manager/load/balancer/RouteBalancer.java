@@ -183,7 +183,7 @@ public class RouteBalancer {
         });
     if (requestId.get() > 0) {
       // Don't retry ChangeLeader request
-      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler, 1);
+      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNode(clientHandler);
     }
     return differentRegionLeaderMap;
   }

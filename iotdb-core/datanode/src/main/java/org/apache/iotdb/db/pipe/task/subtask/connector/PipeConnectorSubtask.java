@@ -116,7 +116,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
         outputPipeConnector.transfer(event);
       }
 
-      releaseLastEvent();
+      releaseLastEvent(true);
     } catch (PipeConnectionException e) {
       throw e;
     } catch (Exception e) {

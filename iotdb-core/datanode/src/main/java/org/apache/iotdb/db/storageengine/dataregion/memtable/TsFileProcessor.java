@@ -306,7 +306,11 @@ public class TsFileProcessor {
   }
 
   private void createNewWorkingMemTable() throws WriteProcessException {
-    workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
+    workMemTable =
+        MemTableManager.getInstance()
+            .getAvailableMemTable(
+                dataRegionInfo.getDataRegion().getDatabaseName(),
+                dataRegionInfo.getDataRegion().getDataRegionId());
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 
