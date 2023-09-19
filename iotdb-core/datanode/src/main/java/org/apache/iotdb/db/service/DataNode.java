@@ -876,6 +876,7 @@ public class DataNode implements DataNodeMBean {
 
   public void stop() {
     deactivate();
+    SchemaEngine.getInstance().clear();
     try {
       MetricService.getInstance().stop();
       if (schemaRegionConsensusStarted) {
