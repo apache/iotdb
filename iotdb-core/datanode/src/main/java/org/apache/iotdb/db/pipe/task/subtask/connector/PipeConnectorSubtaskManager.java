@@ -65,24 +65,19 @@ public class PipeConnectorSubtaskManager {
         new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      final String connectorKey =
-          pipeConnectorParameters.getStringOrDefault(
-              PipeConnectorConstant.CONNECTOR_KEY,
-              BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
-
       final int connectorNum =
           pipeConnectorParameters.getIntOrDefault(
               PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
               PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
-
-      final BoundedBlockingPendingQueue<Event> pendingQueue =
-          new BoundedBlockingPendingQueue<>(
-              PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
+      final String connectorKey =
+          pipeConnectorParameters.getStringOrDefault(
+              PipeConnectorConstant.CONNECTOR_KEY,
+              BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
       for (int i = 0; i < connectorNum; i++) {
-        PipeConnector pipeConnector =
+        final PipeConnector pipeConnector =
             CONNECTOR_CONSTRUCTORS
                 .getOrDefault(
                     connectorKey,
@@ -102,8 +97,15 @@ public class PipeConnectorSubtaskManager {
         }
 
         // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
+        final BoundedBlockingPendingQueue<Event> pendingQueue =
+            new BoundedBlockingPendingQueue<>(
+                PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
         final PipeConnectorSubtask pipeConnectorSubtask =
-            new PipeConnectorSubtask(attributeSortedString + i, pendingQueue, pipeConnector);
+            new PipeConnectorSubtask(
+                String.format(
+                    "%s_%s_%s", attributeSortedString, pipeRuntimeEnvironment.getCreationTime(), i),
+                pendingQueue,
+                pipeConnector);
         final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
             new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask, pendingQueue);
         pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
@@ -113,10 +115,8 @@ public class PipeConnectorSubtaskManager {
           attributeSortedString, pipeConnectorSubtaskLifeCycleList);
     }
 
-    List<PipeConnectorSubtaskLifeCycle> list =
-        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
-
-    for (PipeConnectorSubtaskLifeCycle lifeCycle : list) {
+    for (final PipeConnectorSubtaskLifeCycle lifeCycle :
+        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
       lifeCycle.register();
     }
 
@@ -128,11 +128,12 @@ public class PipeConnectorSubtaskManager {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
-    for (PipeConnectorSubtaskLifeCycle lifeCycle :
-        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
-      if (lifeCycle.deregister()) {
-        attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
-      }
+    final List<PipeConnectorSubtaskLifeCycle> lifeCycles =
+        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
+    lifeCycles.removeIf(PipeConnectorSubtaskLifeCycle::deregister);
+
+    if (lifeCycles.isEmpty()) {
+      attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
     }
   }
 
@@ -141,7 +142,7 @@ public class PipeConnectorSubtaskManager {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
-    for (PipeConnectorSubtaskLifeCycle lifeCycle :
+    for (final PipeConnectorSubtaskLifeCycle lifeCycle :
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
       lifeCycle.start();
     }
@@ -152,7 +153,7 @@ public class PipeConnectorSubtaskManager {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
-    for (PipeConnectorSubtaskLifeCycle lifeCycle :
+    for (final PipeConnectorSubtaskLifeCycle lifeCycle :
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
       lifeCycle.stop();
     }
@@ -174,7 +175,6 @@ public class PipeConnectorSubtaskManager {
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
   private PipeConnectorSubtaskManager() {
-    // init BuiltinPipePlugin
     CONNECTOR_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
         IoTDBThriftSyncConnector::new);
