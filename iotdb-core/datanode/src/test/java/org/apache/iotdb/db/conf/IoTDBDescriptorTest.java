@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.net.URL;

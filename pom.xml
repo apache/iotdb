@@ -387,6 +387,11 @@
         <version>${flink-shaded-zookeeper-3.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.apache.flink</groupId>
+        <artifactId>flink-table-api-java</artifactId>
+        <version>${flink.version}</version>
+      </dependency>
+      <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
         <version>${guava.version}</version>
