@@ -20,18 +20,18 @@
 
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>org.apache.iotdb</groupId>
-        <artifactId>iotdb-examples</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
-    </parent>
-    <artifactId>mqtt-example</artifactId>
-    <name>IoTDB: Example: MQTT</name>
-    <dependencies>
-        <dependency>
-            <groupId>org.fusesource.mqtt-client</groupId>
-            <artifactId>mqtt-client</artifactId>
-        </dependency>
-    </dependencies>
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>org.apache.iotdb</groupId>
+    <artifactId>iotdb-examples</artifactId>
+    <version>1.3.0-SNAPSHOT</version>
+  </parent>
+  <artifactId>mqtt-example</artifactId>
+  <name>IoTDB: Example: MQTT</name>
+  <dependencies>
+    <dependency>
+      <groupId>org.fusesource.mqtt-client</groupId>
+      <artifactId>mqtt-client</artifactId>
+    </dependency>
+  </dependencies>
 </project>

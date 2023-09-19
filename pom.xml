@@ -436,6 +436,11 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-reload4j</artifactId>
           </exclusion>
+          <!-- Multiple CVEs reported for this, however we are not using Log4j -->
+          <exclusion>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+          </exclusion>
           <exclusion>
             <groupId>javax.xml.bind</groupId>
             <artifactId>jaxb-api</artifactId>
@@ -473,6 +478,11 @@
             <groupId>com.sun.jersey</groupId>
             <artifactId>jersey-server</artifactId>
           </exclusion>
+          <!-- Multiple CVEs are reported for this version, but we're using a newer version -->
+          <exclusion>
+            <groupId>io.netty</groupId>
+            <artifactId>netty</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -504,6 +514,41 @@
           <exclusion>
             <groupId>javax.xml.bind</groupId>
             <artifactId>jaxb-api</artifactId>
+          </exclusion>
+          <!-- There is no way on earth that I can imagine that ivy is really needed (CVEs reported) -->
+          <exclusion>
+            <groupId>org.apache.ivy</groupId>
+            <artifactId>ivy</artifactId>
+          </exclusion>
+          <!-- There is no way on earth that I can imagine that ivy is really needed (CVEs reported) -->
+          <exclusion>
+            <groupId>org.apache.ant</groupId>
+            <artifactId>ant</artifactId>
+          </exclusion>
+          <!-- CVEs reported, but most probably not needed -->
+          <exclusion>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
+          </exclusion>
+          <!-- CVEs reported, but most probably not needed -->
+          <exclusion>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk15on</artifactId>
+          </exclusion>
+          <!-- CVEs reported, but most probably not needed -->
+          <exclusion>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+          </exclusion>
+          <!-- CVEs reported, but most probably not needed -->
+          <exclusion>
+            <groupId>com.cedarsoftware</groupId>
+            <artifactId>json-io</artifactId>
+          </exclusion>
+          <!-- CVEs reported, but most probably not needed -->
+          <exclusion>
+            <groupId>org.apache.calcite</groupId>
+            <artifactId>calcite-core</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -538,6 +583,11 @@
           <exclusion>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j-impl</artifactId>
+          </exclusion>
+          <!-- There is no way on earth that I can imagine that ivy is really needed (CVEs reported) -->
+          <exclusion>
+            <groupId>org.apache.ant</groupId>
+            <artifactId>ant</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -582,6 +632,21 @@
             <groupId>org.spark-project.spark</groupId>
             <artifactId>unused</artifactId>
           </exclusion>
+          <!-- There is no way on earth that I can imagine that ivy is really needed (CVEs reported) -->
+          <exclusion>
+            <groupId>org.apache.ivy</groupId>
+            <artifactId>ivy</artifactId>
+          </exclusion>
+          <!-- CVEs reported, but most probably not needed -->
+          <exclusion>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+          </exclusion>
+          <!-- Multiple CVEs are reported for this version, but we're using a newer version -->
+          <exclusion>
+            <groupId>io.netty</groupId>
+            <artifactId>netty</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -610,6 +675,13 @@
         <groupId>org.apache.spark</groupId>
         <artifactId>spark-core_2.12</artifactId>
         <version>${spark-scala.2.12.version}</version>
+        <exclusions>
+          <!-- There is no way on earth that I can imagine that ivy is really needed (CVEs reported) -->
+          <exclusion>
+            <groupId>org.apache.ivy</groupId>
+            <artifactId>ivy</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>org.apache.spark</groupId>
@@ -665,6 +737,11 @@
           <exclusion>
             <groupId>org.slf4j</groupId>
             <artifactId>jcl-over-slf4j</artifactId>
+          </exclusion>
+          <!-- CVEs reported, but most probably not needed -->
+          <exclusion>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -1094,6 +1171,31 @@
         <version>${jersey.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.glassfish.jersey.core</groupId>
+        <artifactId>jersey-client</artifactId>
+        <version>${jersey.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.glassfish.jersey.core</groupId>
+        <artifactId>jersey-core</artifactId>
+        <version>${jersey.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.glassfish.jersey.core</groupId>
+        <artifactId>jersey-common</artifactId>
+        <version>${jersey.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.glassfish.jersey.core</groupId>
+        <artifactId>jersey-server</artifactId>
+        <version>${jersey.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.glassfish.jersey.containers</groupId>
+        <artifactId>jersey-container-servlet</artifactId>
+        <version>${jersey.version}</version>
+      </dependency>
+      <dependency>
         <groupId>com.rabbitmq</groupId>
         <artifactId>amqp-client</artifactId>
         <version>5.18.0</version>
@@ -1406,6 +1508,104 @@
         <groupId>org.antlr</groupId>
         <artifactId>antlr-runtime</artifactId>
         <version>3.5.2</version>
+      </dependency>
+      <!-- Security Issue:
+        hadoop-mapreduce-client-core (pulls in vulnerable version)
+      -->
+      <dependency>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-stdlib</artifactId>
+        <version>1.9.10</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-stdlib-common</artifactId>
+        <version>1.9.10</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-stdlib-jdk7</artifactId>
+        <version>1.9.10</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-stdlib-jdk8</artifactId>
+        <version>1.9.10</version>
+      </dependency>
+      <!-- Security Issue:
+        hadoop-mapreduce-client-core (pulls in vulnerable version)
+      -->
+      <dependency>
+        <groupId>com.squareup.okio</groupId>
+        <artifactId>okio</artifactId>
+        <version>3.5.0</version>
+      </dependency>
+      <!-- Security Issue:
+        hadoop-mapreduce-client-core (pulls in vulnerable version)
+      -->
+      <dependency>
+        <groupId>com.google.protobuf</groupId>
+        <artifactId>protobuf-java</artifactId>
+        <version>3.24.3</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.protobuf</groupId>
+        <artifactId>protobuf-java-util</artifactId>
+        <version>3.24.3</version>
+      </dependency>
+      <!-- Security Issue:
+        hive-exec (pulls in vulnerable version)
+      -->
+      <dependency>
+        <groupId>org.codehaus.janino</groupId>
+        <artifactId>janino</artifactId>
+        <version>3.1.10</version>
+      </dependency>
+      <dependency>
+        <groupId>org.codehaus.janino</groupId>
+        <artifactId>commons-compiler</artifactId>
+        <version>3.1.10</version>
+      </dependency>
+      <!-- Security Issue:
+        zeppelin-interpreter (pulls in vulnerable version)
+      -->
+      <dependency>
+        <groupId>io.atomix</groupId>
+        <artifactId>atomix</artifactId>
+        <version>3.1.12</version>
+      </dependency>
+      <dependency>
+        <groupId>io.atomix</groupId>
+        <artifactId>atomix-primitive</artifactId>
+        <version>3.1.12</version>
+      </dependency>
+      <dependency>
+        <groupId>io.atomix</groupId>
+        <artifactId>atomix-storage</artifactId>
+        <version>3.1.12</version>
+      </dependency>
+      <dependency>
+        <groupId>io.atomix</groupId>
+        <artifactId>atomix-cluster</artifactId>
+        <version>3.1.12</version>
+      </dependency>
+      <dependency>
+        <groupId>io.atomix</groupId>
+        <artifactId>atomix-utils</artifactId>
+        <version>3.1.12</version>
+      </dependency>
+      <dependency>
+        <groupId>io.atomix</groupId>
+        <artifactId>atomix-raft</artifactId>
+        <version>3.1.12</version>
+      </dependency>
+      <!-- Security Issue:
+       zeppelin-interpreter (pulls in vulnerable version)
+     -->
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-configuration2</artifactId>
+        <version>2.9.0</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -1863,6 +2063,46 @@
                       <groupId>io.netty</groupId>
                       <artifactId>netty-handler</artifactId>
                       <version>4.1.97.Final</version>
+                    </exclude>
+                    <!-- For this CVE no fix exists yet -->
+                    <exclude>
+                      <groupId>org.codehaus.jackson</groupId>
+                      <artifactId>jackson-mapper-asl</artifactId>
+                      <version>1.9.13</version>
+                    </exclude>
+                    <!--
+                      CVE-2016-1000027 seems to effect the HTTP Invoker, which we are not using.
+                      These are marked deprecated anyway and are removed in Spring 6.x. Unfortunately,
+                      we are still stuck at 5.x due to the javax-namespace issues.
+                    -->
+                    <exclude>
+                      <groupId>org.springframework</groupId>
+                      <artifactId>spring-web</artifactId>
+                      <version>5.3.30</version>
+                    </exclude>
+                    <!-- For this CVE no fix exists and will probably never exist -->
+                    <exclude>
+                      <groupId>org.apache.spark</groupId>
+                      <artifactId>spark-core_2.11</artifactId>
+                      <version>2.4.8</version>
+                    </exclude>
+                    <!--
+                      We can't update to a fixed version as we're stuck with this version
+                      as it was the last to support the javax namespace.
+                    -->
+                    <exclude>
+                      <groupId>org.glassfish.jersey.core</groupId>
+                      <artifactId>jersey-common</artifactId>
+                      <version>2.4.8</version>
+                    </exclude>
+                    <!--
+                      TODO: For this CVE no fix exists yet, however we should keep an eye on this:
+                      https://docs.google.com/presentation/d/1W5KU7ffh4dheR8iD54ulABImi6byAhSI-OhEKw2adRo/edit#slide=id.gaf11915f86_0_0
+                    -->
+                    <exclude>
+                      <groupId>io.atomix</groupId>
+                      <artifactId>atomix-raft</artifactId>
+                      <version>3.1.12</version>
                     </exclude>
                   </excludeCoordinates>
                 </banVulnerable>
