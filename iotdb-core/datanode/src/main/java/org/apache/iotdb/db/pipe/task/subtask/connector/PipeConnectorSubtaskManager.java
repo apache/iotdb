@@ -128,11 +128,12 @@ public class PipeConnectorSubtaskManager {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
-    for (PipeConnectorSubtaskLifeCycle lifeCycle :
-        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
-      if (lifeCycle.deregister()) {
-        attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
-      }
+    List<PipeConnectorSubtaskLifeCycle> lifeCycles =
+        attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
+    lifeCycles.removeIf(PipeConnectorSubtaskLifeCycle::deregister);
+
+    if (lifeCycles.isEmpty()) {
+      attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
     }
   }
 
