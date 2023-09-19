@@ -334,6 +334,7 @@ public class MemoryPool {
       MemoryReservationFuture<Void> future = iterator.next();
       synchronized (future) {
         if (future.isCancelled() || future.isDone()) {
+          iterator.remove();
           continue;
         }
         long bytesToReserve = future.getBytesToReserve();

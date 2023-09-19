@@ -50,6 +50,10 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_IOTDB_PASSWORD_KEY = "connector.password";
   public static final String CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE = "root";
 
+  public static final String CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY =
+      "connector.air-gap.e-language.enable";
+  public static final boolean CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_DEFAULT_VALUE = false;
+
   public static final String CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY =
       "connector.air-gap.handshake-timeout-ms";
   public static final int CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE = 5000;

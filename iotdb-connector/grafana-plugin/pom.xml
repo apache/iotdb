@@ -31,7 +31,6 @@
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
-                <version>1.12.1</version>
                 <executions>
                     <execution>
                         <id>install node and yarn</id>
@@ -86,7 +85,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
-                <version>1.8</version>
                 <executions>
                     <execution>
                         <id>test</id>
@@ -95,7 +93,7 @@
                             <goal>run</goal>
                         </goals>
                         <configuration>
-                            <tasks>
+                            <target>
                                 <condition property="osFamily" value="windows">
                                     <os family="windows"/>
                                 </condition>
@@ -108,7 +106,7 @@
                                 <exec executable="/bin/bash" osfamily="unix" failonerror="true">
                                     <arg line="-c ./backend-compile.sh"/>
                                 </exec>
-                            </tasks>
+                            </target>
                         </configuration>
                     </execution>
                 </executions>

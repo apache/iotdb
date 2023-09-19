@@ -1109,7 +1109,7 @@ public class ConfigPhysicalPlanSerDeTest {
     extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(new MinimumProgressIndex(), 1);
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
     pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
@@ -1223,11 +1223,11 @@ public class ConfigPhysicalPlanSerDeTest {
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
                     new PipeTaskMeta(
-                        new MinimumProgressIndex(), 987)); // TODO: replace with IoTConsensus
+                        MinimumProgressIndex.INSTANCE, 987)); // TODO: replace with IoTConsensus
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
                     new PipeTaskMeta(
-                        new MinimumProgressIndex(), 789)); // TODO: replace with IoTConsensus
+                        MinimumProgressIndex.INSTANCE, 789)); // TODO: replace with IoTConsensus
               }
             });
     pipeMetaList.add(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta));
