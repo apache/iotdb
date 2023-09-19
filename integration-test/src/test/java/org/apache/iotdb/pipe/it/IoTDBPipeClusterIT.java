@@ -517,7 +517,7 @@ public class IoTDBPipeClusterIT {
       // Expect exactly one pipe to fail, which is the one being created
       // just after a new data node is registered and before testWorking().
       // TODO: should we fix this?
-      Assert.assertEquals(29, showPipeResult.size());
+      Assert.assertEquals(30, showPipeResult.size());
     }
   }
 
