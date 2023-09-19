@@ -156,7 +156,7 @@
         <enforcer.skip>true</enforcer.skip>
         <!-- Updating the plugin would require us to update the java-format version -->
         <!--spotless.version>2.39.0</spotless.version-->
-        <spotless.version>2.27.1</spotless.version>
+        <spotless.version>2.30.0</spotless.version>
         <!-- Override this to `true`, if you want to disable spotless -->
         <spotless.skip>false</spotless.skip>
         <httpclient.version>4.5.14</httpclient.version>
@@ -782,10 +782,6 @@
                             <importOrder>
                                 <order>org.apache.iotdb,,javax,java,\#</order>
                             </importOrder>
-                            <palantirJavaFormat>
-                                <!-- TODO https://github.com/diffplug/spotless/issues/1774 -->
-                                <version>2.35.0</version>
-                            </palantirJavaFormat>
                             <removeUnusedImports/>
                         </java>
                         <lineEndings>UNIX</lineEndings>
