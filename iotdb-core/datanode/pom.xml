@@ -33,15 +33,6 @@
     <iotdb.test.skip>false</iotdb.test.skip>
     <iotdb.ut.skip>${iotdb.test.skip}</iotdb.ut.skip>
   </properties>
-  <dependencyManagement>
-    <dependencies>
-      <!--dependency>
-                <groupId>de.acosix.alfresco.maven</groupId>
-                <artifactId>de.acosix.alfresco.maven.module.parent-5.0.d</artifactId>
-                <version>1.1.0</version>
-            </dependency-->
-    </dependencies>
-  </dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>org.apache.iotdb</groupId>
@@ -165,7 +156,6 @@
     <dependency>
       <groupId>org.apache.ratis</groupId>
       <artifactId>ratis-common</artifactId>
-      <!--version>${ratis.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -174,12 +164,10 @@
     <dependency>
       <groupId>io.jsonwebtoken</groupId>
       <artifactId>jjwt-api</artifactId>
-      <!--version>${jjwt-api.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.eclipse.milo</groupId>
       <artifactId>stack-core</artifactId>
-      <!--version>0.6.10</version-->
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>
@@ -192,12 +180,10 @@
     <dependency>
       <groupId>jakarta.servlet</groupId>
       <artifactId>jakarta.servlet-api</artifactId>
-      <!--version>4.0.4</version-->
     </dependency>
     <dependency>
       <groupId>org.eclipse.milo</groupId>
       <artifactId>stack-server</artifactId>
-      <!--version>0.6.10</version-->
     </dependency>
     <dependency>
       <groupId>org.checkerframework</groupId>
@@ -206,7 +192,6 @@
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-http</artifactId>
-      <!--version>9.4.51.v20230217</version-->
     </dependency>
     <dependency>
       <groupId>io.netty</groupId>
@@ -223,12 +208,10 @@
     <dependency>
       <groupId>org.antlr</groupId>
       <artifactId>antlr4-runtime</artifactId>
-      <!--version>4.9.3</version-->
     </dependency>
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-util</artifactId>
-      <!--version>9.4.51.v20230217</version-->
     </dependency>
     <dependency>
       <groupId>io.airlift</groupId>
@@ -245,7 +228,6 @@
     <dependency>
       <groupId>org.eclipse.milo</groupId>
       <artifactId>sdk-server</artifactId>
-      <!--version>${milo.version}</version-->
     </dependency>
     <dependency>
       <groupId>commons-cli</groupId>
@@ -254,54 +236,22 @@
     <dependency>
       <groupId>jakarta.validation</groupId>
       <artifactId>jakarta.validation-api</artifactId>
-      <!-- Version 2 was the last to use the javax package name -->
-      <!--version>2.0.2</version-->
     </dependency>
     <dependency>
       <groupId>jakarta.ws.rs</groupId>
       <artifactId>jakarta.ws.rs-api</artifactId>
-      <!--version>2.1.6</version-->
     </dependency>
     <dependency>
       <groupId>org.reflections</groupId>
       <artifactId>reflections</artifactId>
-      <!--version>0.10.2</version-->
     </dependency>
     <dependency>
       <groupId>org.glassfish.jersey.containers</groupId>
       <artifactId>jersey-container-servlet-core</artifactId>
-      <!--version>2.40</version-->
     </dependency>
     <dependency>
       <groupId>io.moquette</groupId>
       <artifactId>moquette-broker</artifactId>
-      <!--version>0.14.3</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>log4j</groupId>
-                    <artifactId>log4j</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.zaxxer</groupId>
-                    <artifactId>HikariCP</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.dropwizard.metrics</groupId>
-                    <artifactId>metrics-jvm</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.bugsnag</groupId>
-                    <artifactId>bugsnag</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.h2database</groupId>
-                    <artifactId>h2-mvstore</artifactId>
-                </exclusion>
-            </exclusions-->
     </dependency>
     <dependency>
       <groupId>com.google.code.gson</groupId>
@@ -311,11 +261,9 @@
       <groupId>io.netty</groupId>
       <artifactId>netty-buffer</artifactId>
     </dependency>
-    <!-- used for communicate with alter manager-->
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-servlet</artifactId>
-      <!--version>9.4.51.v20230217</version-->
     </dependency>
     <dependency>
       <groupId>com.github.ben-manes.caffeine</groupId>
@@ -332,7 +280,6 @@
     <dependency>
       <groupId>org.java-websocket</groupId>
       <artifactId>Java-WebSocket</artifactId>
-      <!--version>${websocket.version}</version-->
     </dependency>
     <dependency>
       <groupId>junit</groupId>
@@ -361,14 +308,12 @@
     <dependency>
       <groupId>io.jsonwebtoken</groupId>
       <artifactId>jjwt-impl</artifactId>
-      <!--version>${jjwt-api.version}</version-->
       <scope>test</scope>
     </dependency>
     <!-- Possibly these need to move into the compile or provided scope -->
     <dependency>
       <groupId>io.jsonwebtoken</groupId>
       <artifactId>jjwt-jackson</artifactId>
-      <!--version>${jjwt-api.version}</version-->
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -389,13 +334,11 @@
     <dependency>
       <groupId>org.apache.ratis</groupId>
       <artifactId>ratis-thirdparty-misc</artifactId>
-      <!--version>1.0.4</version-->
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.nimbusds</groupId>
       <artifactId>oauth2-oidc-sdk</artifactId>
-      <!--version>8.3</version-->
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -403,7 +346,6 @@
       <artifactId>httpclient</artifactId>
       <scope>test</scope>
     </dependency>
-    <!-- for mocked test-->
     <dependency>
       <groupId>org.powermock</groupId>
       <artifactId>powermock-core</artifactId>
@@ -427,7 +369,6 @@
     <dependency>
       <groupId>org.apache.tomcat.embed</groupId>
       <artifactId>tomcat-embed-core</artifactId>
-      <!--version>${tomcat-embed-core.version}</version-->
       <scope>test</scope>
     </dependency>
   </dependencies>

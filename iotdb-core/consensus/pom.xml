@@ -69,42 +69,34 @@
     <dependency>
       <groupId>org.apache.ratis</groupId>
       <artifactId>ratis-server</artifactId>
-      <!--version>${ratis.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.apache.ratis</groupId>
       <artifactId>ratis-server-api</artifactId>
-      <!--version>${ratis.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.apache.ratis</groupId>
       <artifactId>ratis-common</artifactId>
-      <!--version>${ratis.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.apache.ratis</groupId>
       <artifactId>ratis-client</artifactId>
-      <!--version>${ratis.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.apache.ratis</groupId>
       <artifactId>ratis-grpc</artifactId>
-      <!--version>${ratis.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.apache.ratis</groupId>
       <artifactId>ratis-proto</artifactId>
-      <!--version>${ratis.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.apache.ratis</groupId>
       <artifactId>ratis-metrics</artifactId>
-      <!--version>${ratis.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.apache.ratis</groupId>
       <artifactId>ratis-thirdparty-misc</artifactId>
-      <!--version>1.0.4</version-->
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>

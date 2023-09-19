@@ -28,15 +28,6 @@
   </parent>
   <artifactId>flink-sql-iotdb-connector</artifactId>
   <name>IoTDB: Connector: Apache Flink SQL</name>
-  <dependencyManagement>
-    <dependencies>
-      <!--dependency>
-                <groupId>com.esotericsoftware.kryo</groupId>
-                <artifactId>kryo</artifactId>
-                <version>2.24.0</version>
-            </dependency-->
-    </dependencies>
-  </dependencyManagement>
   <dependencies>
     <!-- required by implement of flink sql connector -->
     <dependency>
@@ -71,38 +62,22 @@
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-table-api-java-bridge</artifactId>
-      <!--version>${flink.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.esotericsoftware</groupId>
-                    <artifactId>kryo-shaded</artifactId>
-                </exclusion>
-            </exclusions-->
     </dependency>
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-streaming-java</artifactId>
-      <!--version>${flink.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-core</artifactId>
-      <!--version>${flink.version}</version-->
     </dependency>
-    <!--dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-shaded-zookeeper-3</artifactId>
-            <!- -version>3.7.1-16.1</version- ->
-        </dependency-->
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-table-common</artifactId>
-      <!--version>${flink.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.java-websocket</groupId>
       <artifactId>Java-WebSocket</artifactId>
-      <!--version>${websocket.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>

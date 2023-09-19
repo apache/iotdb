@@ -57,17 +57,14 @@
     <dependency>
       <groupId>io.projectreactor.netty</groupId>
       <artifactId>reactor-netty-http</artifactId>
-      <!--version>${reactor-netty-http.version}</version-->
     </dependency>
     <dependency>
       <groupId>io.projectreactor.netty</groupId>
       <artifactId>reactor-netty-core</artifactId>
-      <!--version>${reactor-netty-http.version}</version-->
     </dependency>
     <dependency>
       <groupId>io.projectreactor</groupId>
       <artifactId>reactor-core</artifactId>
-      <!--version>3.4.24</version-->
     </dependency>
     <dependency>
       <groupId>io.netty</groupId>
@@ -80,7 +77,6 @@
     <dependency>
       <groupId>org.reactivestreams</groupId>
       <artifactId>reactive-streams</artifactId>
-      <!--version>1.0.4</version-->
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>

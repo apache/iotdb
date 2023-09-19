@@ -105,13 +105,10 @@
     <dependency>
       <groupId>org.apache.ratis</groupId>
       <artifactId>ratis-common</artifactId>
-      <!--version>${ratis.version}</version-->
     </dependency>
     <dependency>
       <groupId>jakarta.validation</groupId>
       <artifactId>jakarta.validation-api</artifactId>
-      <!-- Version 2 was the last to use the javax package name -->
-      <!--version>2.0.2</version-->
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>

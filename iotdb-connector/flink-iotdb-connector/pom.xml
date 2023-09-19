@@ -52,23 +52,14 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <!--version>1.7.36</version-->
     </dependency>
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-core</artifactId>
-      <!--version>${flink.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-streaming-java</artifactId>
-      <!--version>${flink.version}</version-->
-      <!--exclusions>
-                <exclusion>
-                    <groupId>com.esotericsoftware</groupId>
-                    <artifactId>kryo-shaded</artifactId>
-                </exclusion>
-            </exclusions-->
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>

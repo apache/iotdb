@@ -62,17 +62,14 @@
     <dependency>
       <groupId>org.osgi</groupId>
       <artifactId>osgi.cmpn</artifactId>
-      <!--version>${osgi.cmpn.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.ops4j.pax.jdbc</groupId>
       <artifactId>pax-jdbc-common</artifactId>
-      <!--version>${pax-jdbc-common.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.osgi</groupId>
       <artifactId>osgi.core</artifactId>
-      <!--version>${org.osgi.core.version}</version-->
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
