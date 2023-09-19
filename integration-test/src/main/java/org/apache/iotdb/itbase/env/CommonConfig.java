@@ -78,6 +78,8 @@ public interface CommonConfig {
 
   CommonConfig setTimestampPrecision(String timestampPrecision);
 
+  CommonConfig setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled);
+
   CommonConfig setConfigNodeRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold);
 
   CommonConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode);

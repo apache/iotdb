@@ -137,6 +137,8 @@ public class CommonConfig {
   /** This variable set timestamp precision as millisecond, microsecond or nanosecond. */
   private String timestampPrecision = "ms";
 
+  private boolean timestampPrecisionCheckEnabled = true;
+
   /** The number of threads in the thread pool that execute model inference tasks. */
   private int modelInferenceExecutionThreadCount = 5;
 
@@ -476,6 +478,14 @@ public class CommonConfig {
 
   public String getTimestampPrecision() {
     return timestampPrecision;
+  }
+
+  public void setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled) {
+    this.timestampPrecisionCheckEnabled = timestampPrecisionCheckEnabled;
+  }
+
+  public boolean isTimestampPrecisionCheckEnabled() {
+    return timestampPrecisionCheckEnabled;
   }
 
   public String getPipeHardlinkBaseDirName() {

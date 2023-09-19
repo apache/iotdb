@@ -117,7 +117,7 @@ public class DataNode implements DataNodeMBean {
 
   private static final File SYSTEM_PROPERTIES =
       SystemFileFactory.INSTANCE.getFile(
-          config.getSchemaDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
+          config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
 
   /**
    * When joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
@@ -210,6 +210,7 @@ public class DataNode implements DataNodeMBean {
     config.setClusterMode(true);
 
     // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
+    IoTDBStartCheck.getInstance().checkOldSystemConfig();
     boolean isFirstStart = IoTDBStartCheck.getInstance().checkIsFirstStart();
 
     // Set this node

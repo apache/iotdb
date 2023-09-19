@@ -169,4 +169,10 @@ public interface IMemTable extends WALEntryValue {
   void setFlushStatus(FlushStatus flushStatus);
 
   Map<String, Long> getMaxTime();
+
+  String getDatabase();
+
+  String getDataRegionId();
+
+  void setDatabaseAndDataRegionId(String database, String dataRegionId);
 }

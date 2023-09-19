@@ -740,6 +740,10 @@ public class IoTConsensusServerImpl {
     return retryService;
   }
 
+  public IoTConsensusServerMetrics getIoTConsensusServerMetrics() {
+    return this.ioTConsensusServerMetrics;
+  }
+
   public boolean isReadOnly() {
     return stateMachine.isReadOnly();
   }
@@ -839,8 +843,16 @@ public class IoTConsensusServerImpl {
      * deserialization of PlanNode to be concurrent
      */
     private TSStatus cacheAndInsertLatestNode(DeserializedBatchIndexedConsensusRequest request) {
+      logger.debug(
+          "cacheAndInsert start: source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}",
+          sourcePeerId,
+          consensusGroupId,
+          requestCache.size(),
+          request.getStartSyncIndex(),
+          request.getEndSyncIndex());
       queueLock.lock();
       try {
+        long insertStartTime = System.nanoTime();
         requestCache.add(request);
         // If the peek is not hold by current thread, it should notify the corresponding thread to
         // process the peek when the queue is full
@@ -898,18 +910,24 @@ public class IoTConsensusServerImpl {
             Thread.currentThread().interrupt();
           }
         }
-        logger.debug(
-            "source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}",
-            sourcePeerId,
-            consensusGroupId,
-            requestCache.size(),
-            request.getStartSyncIndex(),
-            request.getEndSyncIndex());
+        long sortTime = System.nanoTime();
+        ioTConsensusServerMetrics.recordSortCost(sortTime - insertStartTime);
         List<TSStatus> subStatus = new LinkedList<>();
         for (IConsensusRequest insertNode : request.getInsertNodes()) {
           subStatus.add(stateMachine.write(insertNode));
         }
+        long applyTime = System.nanoTime();
+        ioTConsensusServerMetrics.recordApplyCost(applyTime - sortTime);
         queueSortCondition.signalAll();
+        logger.debug(
+            "cacheAndInsert end: source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}, sortTime = {}ms, applyTime = {}ms",
+            sourcePeerId,
+            consensusGroupId,
+            requestCache.size(),
+            request.getStartSyncIndex(),
+            request.getEndSyncIndex(),
+            TimeUnit.NANOSECONDS.toMillis(sortTime - insertStartTime),
+            TimeUnit.NANOSECONDS.toMillis(applyTime - sortTime));
         return new TSStatus().setSubStatus(subStatus);
       } finally {
         queueLock.unlock();

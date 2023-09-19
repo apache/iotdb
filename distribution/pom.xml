@@ -33,7 +33,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>${maven.assembly.version}</version>
                 <executions>
                     <!-- Package binaries-->
                     <execution>
@@ -50,6 +49,7 @@
                                 <descriptor>src/assembly/cli.xml</descriptor>
                                 <descriptor>src/assembly/library-udf.xml</descriptor>
                                 <descriptor>src/assembly/spark-connector.xml</descriptor>
+                                <descriptor>src/assembly/flink-sql-connector.xml</descriptor>
                             </descriptors>
                             <finalName>apache-iotdb-${project.version}</finalName>
                         </configuration>
@@ -62,7 +62,6 @@
             <plugin>
                 <groupId>net.nicoulaj.maven.plugins</groupId>
                 <artifactId>checksum-maven-plugin</artifactId>
-                <version>1.8</version>
                 <executions>
                     <execution>
                         <id>sign-source-release</id>
@@ -85,6 +84,7 @@
                                         <include>apache-iotdb-${project.version}-confignode-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-library-udf-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-spark-connector-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-flink-sql-connector-bin.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>
@@ -128,6 +128,11 @@
             <artifactId>spark-iotdb-connector_2.12</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>flink-sql-iotdb-connector</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
     <profiles>
         <profile>
@@ -137,7 +142,6 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${maven.assembly.version}</version>
                         <executions>
                             <!-- Package binaries-->
                             <execution>
@@ -160,7 +164,6 @@
                     <plugin>
                         <groupId>net.nicoulaj.maven.plugins</groupId>
                         <artifactId>checksum-maven-plugin</artifactId>
-                        <version>1.8</version>
                         <executions>
                             <execution>
                                 <id>sign-source-release</id>
@@ -199,7 +202,6 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${maven.assembly.version}</version>
                         <executions>
                             <!-- Package binaries-->
                             <execution>
@@ -222,7 +224,6 @@
                     <plugin>
                         <groupId>net.nicoulaj.maven.plugins</groupId>
                         <artifactId>checksum-maven-plugin</artifactId>
-                        <version>1.8</version>
                         <executions>
                             <execution>
                                 <id>sign-source-release</id>
