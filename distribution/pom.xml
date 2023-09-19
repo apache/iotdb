@@ -49,6 +49,7 @@
                                 <descriptor>src/assembly/cli.xml</descriptor>
                                 <descriptor>src/assembly/library-udf.xml</descriptor>
                                 <descriptor>src/assembly/spark-connector.xml</descriptor>
+                                <descriptor>src/assembly/flink-sql-connector.xml</descriptor>
                             </descriptors>
                             <finalName>apache-iotdb-${project.version}</finalName>
                         </configuration>
@@ -83,6 +84,7 @@
                                         <include>apache-iotdb-${project.version}-confignode-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-library-udf-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-spark-connector-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-flink-sql-connector-bin.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>
@@ -124,6 +126,11 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>spark-iotdb-connector_2.12</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>flink-sql-iotdb-connector</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

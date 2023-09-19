@@ -40,14 +40,14 @@ public class LastQueryMergeNode extends MultiChildProcessNode {
   // The size of this list is 2 and the first SortItem in this list has higher priority.
   private final Ordering timeseriesOrdering;
 
-  public LastQueryMergeNode(PlanNodeId id, Ordering timeseriesOrdering) {
+  // if children contains LastTransformNode
+  private boolean containsLastTransformNode;
+
+  public LastQueryMergeNode(
+      PlanNodeId id, Ordering timeseriesOrdering, boolean containsLastTransformNode) {
     super(id);
     this.timeseriesOrdering = timeseriesOrdering;
-  }
-
-  public LastQueryMergeNode(PlanNodeId id, List<PlanNode> children, Ordering timeseriesOrdering) {
-    super(id, children);
-    this.timeseriesOrdering = timeseriesOrdering;
+    this.containsLastTransformNode = containsLastTransformNode;
   }
 
   @Override
@@ -62,7 +62,7 @@ public class LastQueryMergeNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new LastQueryMergeNode(getPlanNodeId(), timeseriesOrdering);
+    return new LastQueryMergeNode(getPlanNodeId(), timeseriesOrdering, containsLastTransformNode);
   }
 
   @Override
@@ -135,7 +135,7 @@ public class LastQueryMergeNode extends MultiChildProcessNode {
       timeseriesOrdering = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LastQueryMergeNode(planNodeId, timeseriesOrdering);
+    return new LastQueryMergeNode(planNodeId, timeseriesOrdering, false);
   }
 
   @Override
@@ -145,5 +145,13 @@ public class LastQueryMergeNode extends MultiChildProcessNode {
 
   public Ordering getTimeseriesOrdering() {
     return timeseriesOrdering;
+  }
+
+  public boolean isContainsLastTransformNode() {
+    return this.containsLastTransformNode;
+  }
+
+  public void setContainsNonWritableView() {
+    this.containsLastTransformNode = true;
   }
 }

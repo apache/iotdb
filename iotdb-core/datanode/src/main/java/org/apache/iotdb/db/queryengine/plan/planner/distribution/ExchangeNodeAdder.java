@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -230,6 +231,11 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   }
 
   @Override
+  public PlanNode visitLastQueryTransform(LastQueryTransformNode node, NodeGroupContext context) {
+    return processOneChildNode(node, context);
+  }
+
+  @Override
   public PlanNode visitTimeJoin(TimeJoinNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
   }
@@ -282,11 +288,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
     MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
     List<PlanNode> visitedChildren = new ArrayList<>();
-    node.getChildren()
-        .forEach(
-            child -> {
-              visitedChildren.add(visit(child, context));
-            });
+    node.getChildren().forEach(child -> visitedChildren.add(visit(child, context)));
 
     TRegionReplicaSet dataRegion;
     NodeDistributionType distributionType;
