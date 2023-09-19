@@ -270,7 +270,9 @@ public class IoTDBPipeClusterIT {
         fail();
       }
 
-      try (Connection connection = senderEnv.getConnectionWithSpecifiedDataNode(senderEnv.getDataNodeWrapper(leaderIndex));
+      try (Connection connection =
+              senderEnv.getConnectionWithSpecifiedDataNode(
+                  senderEnv.getDataNodeWrapper(leaderIndex));
           Statement statement = connection.createStatement()) {
         statement.execute("insert into root.db.d1(time, s1) values (2, 2)");
         statement.execute("flush");
