@@ -253,9 +253,10 @@ public class IoTDBPipeClusterIT {
                 }
               });
 
-      boolean flag = false; // ensure the leader is stopped
+      int leaderIndex = -1;
       for (int i = 0; i < 3; ++i) {
         if (senderEnv.getDataNodeWrapper(i).getPort() == leaderPort.get()) {
+          leaderIndex = i;
           senderEnv.shutdownDataNode(i);
           try {
             TimeUnit.SECONDS.sleep(1);
@@ -263,14 +264,13 @@ public class IoTDBPipeClusterIT {
           }
           senderEnv.startDataNode(i);
           ((AbstractEnv) senderEnv).testWorkingNoUnknown();
-          flag = true;
         }
       }
-      if (!flag) {
+      if (leaderIndex == -1) { // ensure the leader is stopped
         fail();
       }
 
-      try (Connection connection = senderEnv.getConnection();
+      try (Connection connection = senderEnv.getConnectionWithSpecifiedDataNode(senderEnv.getDataNodeWrapper(leaderIndex));
           Statement statement = connection.createStatement()) {
         statement.execute("insert into root.db.d1(time, s1) values (2, 2)");
         statement.execute("flush");
