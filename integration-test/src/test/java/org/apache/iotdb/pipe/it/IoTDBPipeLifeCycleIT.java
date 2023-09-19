@@ -767,6 +767,17 @@ public class IoTDBPipeLifeCycleIT {
 
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
+      // Wait for raft log replay
+      await()
+          .atMost(60, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  statement.execute("insert into root.sg1.d1(time, at1) values (400, 1)");
+                } catch (SQLException e) {
+                  fail(e.getMessage());
+                }
+              });
       for (int i = 400; i < 500; ++i) {
         statement.execute(String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
       }
@@ -777,6 +788,17 @@ public class IoTDBPipeLifeCycleIT {
     }
     try (Connection connection = receiverEnv.getConnection();
         Statement statement = connection.createStatement()) {
+      // Wait for raft log replay
+      await()
+          .atMost(60, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  statement.execute("insert into root.sg1.d1(time, at1) values (500, 1)");
+                } catch (SQLException e) {
+                  fail(e.getMessage());
+                }
+              });
       for (int i = 500; i < 600; ++i) {
         statement.execute(String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
       }

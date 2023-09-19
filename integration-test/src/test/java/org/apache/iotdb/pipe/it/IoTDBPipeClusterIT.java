@@ -498,7 +498,7 @@ public class IoTDBPipeClusterIT {
                             .setProcessorAttributes(processorAttributes));
                   } catch (TException e) {
                     e.printStackTrace();
-                    fail();
+                    fail(e.getMessage());
                   }
                   try {
                     Thread.sleep(100);
@@ -809,7 +809,7 @@ public class IoTDBPipeClusterIT {
                   }
                 } catch (Exception e) {
                   e.printStackTrace();
-                  fail();
+                  fail(e.getMessage());
                 }
               });
       t.start();
@@ -834,7 +834,7 @@ public class IoTDBPipeClusterIT {
                   }
                 } catch (Exception e) {
                   e.printStackTrace();
-                  fail();
+                  fail(e.getMessage());
                 }
               });
       t.start();
@@ -899,7 +899,7 @@ public class IoTDBPipeClusterIT {
                       TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
                 } catch (Exception e) {
                   e.printStackTrace();
-                  fail();
+                  fail(e.getMessage());
                 }
               });
       t.start();
