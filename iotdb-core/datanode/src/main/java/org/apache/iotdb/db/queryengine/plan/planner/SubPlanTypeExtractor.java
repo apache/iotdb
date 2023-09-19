@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWin
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
@@ -128,17 +129,31 @@ public class SubPlanTypeExtractor {
 
     @Override
     public Void visitLastQuery(LastQueryNode node, Void context) {
+      if (node.isContainsLastTransformNode()) {
+        return visitPlan(node, context);
+      }
       return null;
     }
 
     @Override
     public Void visitLastQueryMerge(LastQueryMergeNode node, Void context) {
+      if (node.isContainsLastTransformNode()) {
+        return visitPlan(node, context);
+      }
       return null;
     }
 
     @Override
     public Void visitLastQueryCollect(LastQueryCollectNode node, Void context) {
+      if (node.isContainsLastTransformNode()) {
+        return visitPlan(node, context);
+      }
       return null;
+    }
+
+    @Override
+    public Void visitLastQueryTransform(LastQueryTransformNode node, Void context) {
+      return visitPlan(node, context);
     }
 
     // end region PlanNode of last read

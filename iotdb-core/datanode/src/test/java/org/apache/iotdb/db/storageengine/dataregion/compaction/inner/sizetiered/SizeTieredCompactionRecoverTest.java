@@ -182,7 +182,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     out.truncate(((long) (targetTsFileResource.getTsFileSize() * 0.9)));
     out.close();
 
-    tsFileManager.addForRecover(targetTsFileResource, true);
     new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, compactionLogFile, true)
         .doCompaction();
     path =
@@ -1141,7 +1140,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                             + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
     sizeTieredCompactionLogger.logFiles(
         Collections.singletonList(targetTsFileResource), STR_TARGET_FILES);
-    tsFileManager.addForRecover(targetTsFileResource, true);
     sizeTieredCompactionLogger.close();
     MeasurementPath path =
         SchemaTestUtils.getMeasurementPath(

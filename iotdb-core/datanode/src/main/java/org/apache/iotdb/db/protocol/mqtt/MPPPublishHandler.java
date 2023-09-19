@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -134,6 +135,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         InsertRowStatement statement = new InsertRowStatement();
         statement.setDevicePath(
             DataNodeDevicePathCache.getInstance().getPartialPath(event.getDevice()));
+        TimestampPrecisionUtils.checkTimestampPrecision(event.getTimestamp());
         statement.setTime(event.getTimestamp());
         statement.setMeasurements(event.getMeasurements().toArray(new String[0]));
         if (event.getDataTypes() == null) {

@@ -480,7 +480,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       LastQueryScanNode node, DistributionPlanContext context) {
     LastQueryNode mergeNode =
         new LastQueryNode(
-            context.queryContext.getQueryId().genPlanNodeId(), node.getPartitionTimeFilter(), null);
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getPartitionTimeFilter(),
+            null,
+            false);
     return processRawSeriesScan(node, context, mergeNode);
   }
 
@@ -489,7 +492,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       AlignedLastQueryScanNode node, DistributionPlanContext context) {
     LastQueryNode mergeNode =
         new LastQueryNode(
-            context.queryContext.getQueryId().genPlanNodeId(), node.getPartitionTimeFilter(), null);
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getPartitionTimeFilter(),
+            null,
+            false);
     return processRawSeriesScan(node, context, mergeNode);
   }
 
@@ -678,9 +684,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // if the series is from multi regions or order by clause only refer to timeseries, use
     // LastQueryMergeNode
     if (context.oneSeriesInMultiRegion || node.needOrderByTimeseries()) {
-      return new LastQueryMergeNode(id, node.getTimeseriesOrdering());
+      return new LastQueryMergeNode(
+          id, node.getTimeseriesOrdering(), node.isContainsLastTransformNode());
     }
-    return new LastQueryCollectNode(id);
+    return new LastQueryCollectNode(id, node.isContainsLastTransformNode());
   }
 
   @Override

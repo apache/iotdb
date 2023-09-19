@@ -44,6 +44,7 @@
         <module>trigger</module>
         <module>rabbitmq</module>
         <module>rest-java-example</module>
+        <module>flink-sql</module>
     </modules>
     <build>
         <pluginManagement>
