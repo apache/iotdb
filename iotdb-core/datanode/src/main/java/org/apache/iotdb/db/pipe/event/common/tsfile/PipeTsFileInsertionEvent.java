@@ -111,7 +111,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   public boolean hasTimeFilter() {
-    return startTime != Long.MIN_VALUE || endTime != Long.MAX_VALUE;
+    return !(startTime <= resource.getFileStartTime() && resource.getFileEndTime() <= endTime);
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
