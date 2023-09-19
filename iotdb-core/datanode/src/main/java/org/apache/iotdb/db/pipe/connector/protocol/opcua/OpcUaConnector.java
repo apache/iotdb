@@ -28,6 +28,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -67,8 +68,8 @@ public class OpcUaConnector implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaConnector.class);
 
-  private static final Map<String, Pair<AtomicInteger, OpcUaServer>> serverWithReferenceCountMap =
-      new ConcurrentHashMap<>();
+  private static final Map<String, Pair<AtomicInteger, OpcUaServer>>
+      SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP = new ConcurrentHashMap<>();
 
   private String serverKey;
   private OpcUaServer server;
@@ -94,29 +95,31 @@ public class OpcUaConnector implements PipeConnector {
         parameters.getStringOrDefault(
             CONNECTOR_IOTDB_PASSWORD_KEY, CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
 
-    serverKey = httpsBindPort + ":" + tcpBindPort;
+    synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
+      serverKey = httpsBindPort + ":" + tcpBindPort;
 
-    server =
-        serverWithReferenceCountMap
-            .computeIfAbsent(
-                serverKey,
-                key -> {
-                  try {
-                    OpcUaServer newServer =
-                        new OpcUaServerBuilder()
-                            .setTcpBindPort(tcpBindPort)
-                            .setHttpsBindPort(httpsBindPort)
-                            .setUser(user)
-                            .setPassword(password)
-                            .build();
-                    newServer.startup();
-                    return new Pair<>(new AtomicInteger(0), newServer);
-                  } catch (Exception e) {
-                    throw new RuntimeException("Failed to build and startup OpcUaServer", e);
-                  }
-                })
-            .getRight();
-    serverWithReferenceCountMap.get(serverKey).getLeft().incrementAndGet();
+      server =
+          SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP
+              .computeIfAbsent(
+                  serverKey,
+                  key -> {
+                    try {
+                      final OpcUaServer newServer =
+                          new OpcUaServerBuilder()
+                              .setTcpBindPort(tcpBindPort)
+                              .setHttpsBindPort(httpsBindPort)
+                              .setUser(user)
+                              .setPassword(password)
+                              .build();
+                      newServer.startup();
+                      return new Pair<>(new AtomicInteger(0), newServer);
+                    } catch (Exception e) {
+                      throw new PipeException("Failed to build and startup OpcUaServer", e);
+                    }
+                  })
+              .getRight();
+      SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP.get(serverKey).getLeft().incrementAndGet();
+    }
   }
 
   @Override
@@ -264,9 +267,24 @@ public class OpcUaConnector implements PipeConnector {
 
   @Override
   public void close() throws Exception {
-    if (serverWithReferenceCountMap.get(serverKey).getLeft().decrementAndGet() <= 0) {
-      server.shutdown();
-      serverWithReferenceCountMap.remove(serverKey);
+    if (serverKey == null) {
+      return;
+    }
+
+    synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
+      final Pair<AtomicInteger, OpcUaServer> pair =
+          SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP.get(serverKey);
+      if (pair == null) {
+        return;
+      }
+
+      if (pair.getLeft().decrementAndGet() <= 0) {
+        try {
+          pair.getRight().shutdown();
+        } finally {
+          SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP.remove(serverKey);
+        }
+      }
     }
   }
 }

@@ -50,9 +50,10 @@ public class WebSocketConnector implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnector.class);
 
   private static final Map<Integer, Pair<AtomicInteger, WebSocketConnectorServer>>
-      serverWithReferenceCountMap = new ConcurrentHashMap<>();
+      PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP = new ConcurrentHashMap<>();
+
+  private Integer port;
   private WebSocketConnectorServer server;
-  private int port;
 
   public final AtomicLong commitIdGenerator = new AtomicLong(0);
   private final AtomicLong lastCommitId = new AtomicLong(0);
@@ -73,18 +74,20 @@ public class WebSocketConnector implements PipeConnector {
 
   @Override
   public void handshake() throws Exception {
-    server =
-        serverWithReferenceCountMap
-            .computeIfAbsent(
-                port,
-                key -> {
-                  WebSocketConnectorServer newServer =
-                      new WebSocketConnectorServer(new InetSocketAddress(port), this);
-                  newServer.start();
-                  return new Pair<>(new AtomicInteger(0), newServer);
-                })
-            .getRight();
-    serverWithReferenceCountMap.get(port).getLeft().incrementAndGet();
+    synchronized (PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
+      server =
+          PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP
+              .computeIfAbsent(
+                  port,
+                  key -> {
+                    final WebSocketConnectorServer newServer =
+                        new WebSocketConnectorServer(new InetSocketAddress(port), this);
+                    newServer.start();
+                    return new Pair<>(new AtomicInteger(0), newServer);
+                  })
+              .getRight();
+      PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP.get(port).getLeft().incrementAndGet();
+    }
   }
 
   @Override
@@ -126,9 +129,24 @@ public class WebSocketConnector implements PipeConnector {
 
   @Override
   public void close() throws Exception {
-    if (serverWithReferenceCountMap.get(port).getLeft().decrementAndGet() <= 0) {
-      server.stop();
-      serverWithReferenceCountMap.remove(port);
+    if (port == null) {
+      return;
+    }
+
+    synchronized (PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
+      final Pair<AtomicInteger, WebSocketConnectorServer> pair =
+          PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP.get(port);
+      if (pair == null) {
+        return;
+      }
+
+      if (pair.getLeft().decrementAndGet() <= 0) {
+        try {
+          pair.getRight().stop();
+        } finally {
+          PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP.remove(port);
+        }
+      }
     }
   }
 
