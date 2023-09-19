@@ -70,7 +70,6 @@ public class SessionPoolExceptionTest {
     sessionPool = new SessionPool(Arrays.asList("host:11"), "user", "password", 10);
     ConcurrentLinkedDeque<ISession> queue = new ConcurrentLinkedDeque<>();
     queue.add(session);
-    // 设置 SessionPool 对象的内部状态
     Whitebox.setInternalState(sessionPool, "queue", queue);
   }
 
@@ -87,7 +86,6 @@ public class SessionPoolExceptionTest {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
         .insertRecords(anyList(), anyList(), anyList(), anyList(), anyList());
-    // 调用 insertRecords 方法
     List<String> deviceIds = Arrays.asList("device1", "device2");
     List<Long> timeList = Arrays.asList(1L, 2L);
     List<List<String>> measurementsList =
@@ -248,7 +246,6 @@ public class SessionPoolExceptionTest {
     ConcurrentLinkedDeque<ISession> queue = new ConcurrentLinkedDeque<>();
     queue.add(session);
     Whitebox.setInternalState(sessionPool, "queue", queue);
-    // 调用 insertRecords 方法
     List<String> deviceIds = Arrays.asList("device1", "device2");
     List<Long> timeList = Arrays.asList(1L, 2L);
     List<List<String>> measurementsList =
