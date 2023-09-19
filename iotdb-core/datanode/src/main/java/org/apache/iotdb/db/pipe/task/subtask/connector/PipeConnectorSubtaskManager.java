@@ -76,6 +76,11 @@ public class PipeConnectorSubtaskManager {
           pipeConnectorParameters.getStringOrDefault(
               PipeConnectorConstant.CONNECTOR_KEY,
               BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
+      // Shared pending queue for all subtasks
+      final BoundedBlockingPendingQueue<Event> pendingQueue =
+          new BoundedBlockingPendingQueue<>(
+              PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
+
       for (int i = 0; i < connectorNum; i++) {
         final PipeConnector pipeConnector =
             CONNECTOR_CONSTRUCTORS
@@ -97,9 +102,6 @@ public class PipeConnectorSubtaskManager {
         }
 
         // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
-        final BoundedBlockingPendingQueue<Event> pendingQueue =
-            new BoundedBlockingPendingQueue<>(
-                PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
         final PipeConnectorSubtask pipeConnectorSubtask =
             new PipeConnectorSubtask(
                 String.format(
@@ -166,6 +168,7 @@ public class PipeConnectorSubtaskManager {
           "Failed to get PendingQueue. No such subtask: " + attributeSortedString);
     }
 
+    // All subtasks share the same pending queue
     return attributeSortedString2SubtaskLifeCycleMap
         .get(attributeSortedString)
         .get(0)
