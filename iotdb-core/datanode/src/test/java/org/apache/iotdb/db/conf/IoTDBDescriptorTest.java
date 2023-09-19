@@ -30,10 +30,10 @@ import java.net.URL;
 public class IoTDBDescriptorTest {
   private final String confPath = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
 
-  @Before
+  /*@Before
   public void init() {
     org.apache.catalina.webresources.TomcatURLStreamHandlerFactory.getInstance();
-  }
+  }*/
 
   @After
   public void clear() {

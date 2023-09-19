@@ -1846,14 +1846,21 @@
             <phase>validate</phase>
             <configuration>
               <!-- Just generate warnings for now -->
-              <fail>false</fail>
+              <fail>true</fail>
               <rules>
                 <requireJavaVersion>
                   <version>1.8.0</version>
                 </requireJavaVersion>
-                <!-- Disabled for now as it breaks the ability to build single modules -->
-                <!--reactorModuleConvergence/-->
-                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"></banVulnerable>
+                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies">
+                  <excludeCoordinates>
+                    <!-- For this CVE no fix exists yet -->
+                    <exclude>
+                      <groupId>io.netty</groupId>
+                      <artifactId>netty-handler</artifactId>
+                      <version>4.1.97.Final</version>
+                    </exclude>
+                  </excludeCoordinates>
+                </banVulnerable>
               </rules>
             </configuration>
           </execution>
