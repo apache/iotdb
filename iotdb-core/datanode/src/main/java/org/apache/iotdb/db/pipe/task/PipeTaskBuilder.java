@@ -65,7 +65,7 @@ public class PipeTaskBuilder {
             pipeStaticMeta.getProcessorParameters(),
             dataRegionId,
             extractorStage.getEventSupplier(),
-            connectorStage.getPipeConnectorPendingQueue());
+            connectorStage.getPipeConnectorPendingQueues());
 
     return new PipeTask(
         pipeStaticMeta.getPipeName(), dataRegionId, extractorStage, processorStage, connectorStage);

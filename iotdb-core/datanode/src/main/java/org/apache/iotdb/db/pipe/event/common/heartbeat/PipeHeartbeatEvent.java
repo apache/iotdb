@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Deque;
+import java.util.List;
 
 public class PipeHeartbeatEvent extends EnrichedEvent {
 
@@ -155,9 +156,12 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     }
   }
 
-  public void recordConnectorQueueSize(BoundedBlockingPendingQueue<Event> pendingQueue) {
+  public void recordConnectorQueuesSize(List<BoundedBlockingPendingQueue<Event>> pendingQueues) {
     if (shouldPrintMessage) {
-      connectorQueueSize = pendingQueue.size();
+      connectorQueueSize = 0;
+      for (final BoundedBlockingPendingQueue<Event> pendingQueue : pendingQueues) {
+        connectorQueueSize += pendingQueue.size();
+      }
     }
   }
 
