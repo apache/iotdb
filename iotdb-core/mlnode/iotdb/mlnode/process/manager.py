@@ -32,6 +32,44 @@ from iotdb.mlnode.process.task import (ForecastAutoTuningTrainingTask,
                                        ForecastFixedParamTrainingTask,
                                        ForecastingInferenceTask,
                                        _BasicTrainingTask)
+import multiprocessing.pool
+
+
+class NoDaemonProcess(multiprocessing.Process):
+    @property
+    def daemon(self):
+        return False
+
+    @daemon.setter
+    def daemon(self, value):
+        pass
+
+
+class NoDaemonContext(type(multiprocessing.get_context())):
+    Process = NoDaemonProcess
+
+
+# We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
+# because the latter is only a wrapper function, not a proper class.
+class NestablePool(multiprocessing.pool.Pool):
+    def __init__(self, *args, **kwargs):
+        kwargs['context'] = NoDaemonContext()
+        super(NestablePool, self).__init__(*args, **kwargs)
+        self.processes = []
+
+    def apply_async(self, func, args=(), kwds=None, callback=None):
+        if kwds is None:
+            kwds = {}
+        p = self._ctx.Process(target=func, args=args, kwargs=kwds)
+        self.processes.append(p)
+        print(self.processes)
+        super(NestablePool, self).apply_async(func, args=args, kwds=kwds, callback=callback)
+
+    def terminate(self):
+        for p in self._pool:
+            logger.info("terminate process: {}".format(p))
+            p.terminate()
+        super(NestablePool, self).terminate()
 
 
 class TaskManager(object):
@@ -46,8 +84,8 @@ class TaskManager(object):
         """
         self.__shared_resource_manager = mp.Manager()
         self.__pid_info = self.__shared_resource_manager.dict()
-        self.__training_process_pool = mp.Pool(pool_size)
-        self.__inference_process_pool = mp.Pool(pool_size)
+        self.__training_process_pool = NestablePool(pool_size)
+        self.__inference_process_pool = NestablePool(pool_size)
 
     def create_forecast_training_task(self,
                                       model_id: str,

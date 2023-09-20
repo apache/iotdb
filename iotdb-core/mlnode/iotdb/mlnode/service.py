@@ -57,6 +57,3 @@ class MLNode(object):
         logger.info('IoTDB-MLNode has successfully started.')
 
 
-if __name__ == "__main__":
-    server = MLNode()
-    server.start()
