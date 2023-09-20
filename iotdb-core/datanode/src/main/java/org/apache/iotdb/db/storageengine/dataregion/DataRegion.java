@@ -542,6 +542,10 @@ public class DataRegion implements IDataRegionForQuery {
         updatePartitionFileVersion(partitionNum, resource.getVersion());
       }
     } catch (IOException e) {
+      // signal wal recover manager to recover this region's files
+      WALRecoverManager.getInstance()
+          .getAllDataRegionScannedLatch()
+          .countDownWithException(e.getMessage());
       throw new DataRegionException(e);
     }
 

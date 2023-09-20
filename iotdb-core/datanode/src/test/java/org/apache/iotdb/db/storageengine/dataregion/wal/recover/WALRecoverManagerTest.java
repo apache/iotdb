@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover;
 
+import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -72,7 +73,6 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -265,7 +265,7 @@ public class WALRecoverManagerTest {
     // prepare tsFiles
     List<WALRecoverListener> recoverListeners = prepareCrashedTsFile();
     // recover
-    recoverManager.setAllDataRegionScannedLatch(new CountDownLatch(0));
+    recoverManager.setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(0));
     recoverManager.recover();
     // check recover listeners
     try {

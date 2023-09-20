@@ -140,6 +140,9 @@ public class DataNode implements DataNodeMBean {
   private static final String REGISTER_INTERRUPTION =
       "Unexpected interruption when waiting to register to the cluster";
 
+  private boolean schemaRegionConsensusStarted = false;
+  private boolean dataRegionConsensusStarted = false;
+
   private DataNode() {
     // We do not init anything here, so that we can re-initialize the instance in IT.
   }
@@ -487,7 +490,9 @@ public class DataNode implements DataNodeMBean {
 
     try {
       SchemaRegionConsensusImpl.getInstance().start();
+      schemaRegionConsensusStarted = true;
       DataRegionConsensusImpl.getInstance().start();
+      dataRegionConsensusStarted = true;
     } catch (IOException e) {
       throw new StartupException(e);
     }
@@ -871,11 +876,15 @@ public class DataNode implements DataNodeMBean {
 
   public void stop() {
     deactivate();
-
+    SchemaEngine.getInstance().clear();
     try {
       MetricService.getInstance().stop();
-      SchemaRegionConsensusImpl.getInstance().stop();
-      DataRegionConsensusImpl.getInstance().stop();
+      if (schemaRegionConsensusStarted) {
+        SchemaRegionConsensusImpl.getInstance().stop();
+      }
+      if (dataRegionConsensusStarted) {
+        DataRegionConsensusImpl.getInstance().stop();
+      }
     } catch (Exception e) {
       logger.error("Stop data node error", e);
     }

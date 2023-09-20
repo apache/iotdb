@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -28,6 +29,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.ShutdownException;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -83,7 +85,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -192,7 +193,7 @@ public class StorageEngine implements IService {
     isAllSgReady.set(allSgReady);
   }
 
-  public void recover() {
+  public void recover() throws StartupException {
     setAllSgReady(false);
     cachedThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.STORAGE_ENGINE_CACHED_POOL.getName());
@@ -228,7 +229,7 @@ public class StorageEngine implements IService {
     readyDataRegionNum = new AtomicInteger(0);
     // init wal recover manager
     WALRecoverManager.getInstance()
-        .setAllDataRegionScannedLatch(new CountDownLatch(recoverDataRegionNum));
+        .setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(recoverDataRegionNum));
     for (Map.Entry<String, List<DataRegionId>> entry : localDataRegionInfo.entrySet()) {
       String sgName = entry.getKey();
       for (DataRegionId dataRegionId : entry.getValue()) {
@@ -244,6 +245,7 @@ public class StorageEngine implements IService {
               } catch (DataRegionException e) {
                 logger.error(
                     "Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
+                return null;
               }
               dataRegionMap.put(dataRegionId, dataRegion);
               logger.info(
@@ -283,7 +285,7 @@ public class StorageEngine implements IService {
   }
 
   @Override
-  public void start() {
+  public void start() throws StartupException {
     // build time Interval to divide time partition
     initTimePartition();
     // create systemDir
