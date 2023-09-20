@@ -38,12 +38,12 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.connector.legacy.IoTDBSyncReceiver;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -108,7 +108,6 @@ import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaMana
 import org.apache.iotdb.db.storageengine.rescon.quotas.OperationQuota;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -176,7 +175,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import io.airlift.units.Duration;
 import io.jsonwebtoken.lang.Strings;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -784,7 +783,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           partitionFetcher.getDataPartitionWithUnclosedTimeRange(
               Collections.singletonMap(db, Collections.singletonList(queryParam)));
       List<TRegionReplicaSet> regionReplicaSets =
-          dataPartition.getDataRegionReplicaSet(deviceId, Collections.emptyList());
+          dataPartition.getDataRegionReplicaSet(deviceId, null);
 
       // no valid DataRegion
       if (regionReplicaSets.isEmpty()
@@ -952,7 +951,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       paths.add(req.deviceId + "." + sensor);
     }
     TSLastDataQueryReq tsLastDataQueryReq =
-        new TSLastDataQueryReq(req.sessionId, paths, 0, req.statementId);
+        new TSLastDataQueryReq(req.sessionId, paths, Long.MIN_VALUE, req.statementId);
     tsLastDataQueryReq.setFetchSize(req.fetchSize);
     tsLastDataQueryReq.setEnableRedirectQuery(req.enableRedirectQuery);
     tsLastDataQueryReq.setLegalPathNodes(req.legalPathNodes);
@@ -984,16 +983,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // only one database, one device, one time interval
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
       TTimePartitionSlot timePartitionSlot =
-          TimePartitionUtils.getTimePartition(req.getStartTime());
+          TimePartitionUtils.getTimePartitionSlot(req.getStartTime());
       DataPartitionQueryParam queryParam =
           new DataPartitionQueryParam(
               deviceId, Collections.singletonList(timePartitionSlot), false, false);
       sgNameToQueryParamsMap.put(database, Collections.singletonList(queryParam));
       DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
       List<DataRegion> dataRegionList = new ArrayList<>();
-      List<TRegionReplicaSet> replicaSets =
-          dataPartition.getDataRegionReplicaSet(
-              deviceId, Collections.singletonList(timePartitionSlot));
+      List<TRegionReplicaSet> replicaSets = dataPartition.getDataRegionReplicaSet(deviceId, null);
       for (TRegionReplicaSet region : replicaSets) {
         dataRegionList.add(
             StorageEngine.getInstance()
@@ -2528,7 +2525,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus handshake(TSyncIdentityInfo info) throws TException {
-    return IoTDBSyncReceiver.getInstance()
+    return PipeAgent.receiver()
+        .legacy()
         .handshake(
             info,
             SESSION_MANAGER.getCurrSession().getClientAddress(),
@@ -2538,17 +2536,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus sendPipeData(ByteBuffer buff) throws TException {
-    return IoTDBSyncReceiver.getInstance().transportPipeData(buff);
+    return PipeAgent.receiver().legacy().transportPipeData(buff);
   }
 
   @Override
   public TSStatus sendFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff) throws TException {
-    return IoTDBSyncReceiver.getInstance().transportFile(metaInfo, buff);
+    return PipeAgent.receiver().legacy().transportFile(metaInfo, buff);
   }
 
   @Override
   public TPipeTransferResp pipeTransfer(TPipeTransferReq req) {
-    return PipeAgent.receiver().receive(req, partitionFetcher, schemaFetcher);
+    return PipeAgent.receiver().thrift().receive(req, partitionFetcher, schemaFetcher);
   }
 
   @Override
@@ -2688,7 +2686,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSCloseSessionReq req = new TSCloseSessionReq();
       closeSession(req);
     }
-    IoTDBSyncReceiver.getInstance().handleClientExit();
-    PipeAgent.receiver().handleClientExit();
+    PipeAgent.receiver().thrift().handleClientExit();
+    PipeAgent.receiver().legacy().handleClientExit();
   }
 }

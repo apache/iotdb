@@ -21,11 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -80,7 +80,8 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     Set<TTimePartitionSlot> timePartitionSlotSet = new HashSet<>();
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
-      timePartitionSlotSet.add(TimePartitionUtils.getTimePartition(insertRowStatement.getTime()));
+      timePartitionSlotSet.add(
+          TimePartitionUtils.getTimePartitionSlot(insertRowStatement.getTime()));
     }
     return new ArrayList<>(timePartitionSlotSet);
   }

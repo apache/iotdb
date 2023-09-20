@@ -32,11 +32,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class PipeWALResource implements Closeable {
+public abstract class PipeWALResource implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeWALResource.class);
 
-  private final WALEntryHandler walEntryHandler;
+  protected final WALEntryHandler walEntryHandler;
 
   private final AtomicInteger referenceCount;
 
@@ -44,7 +44,7 @@ public class PipeWALResource implements Closeable {
   private final AtomicLong lastLogicalPinTime;
   private final AtomicBoolean isPhysicallyPinned;
 
-  public PipeWALResource(WALEntryHandler walEntryHandler) {
+  protected PipeWALResource(WALEntryHandler walEntryHandler) {
     this.walEntryHandler = walEntryHandler;
 
     referenceCount = new AtomicInteger(0);
@@ -53,11 +53,11 @@ public class PipeWALResource implements Closeable {
     isPhysicallyPinned = new AtomicBoolean(false);
   }
 
-  public void pin() throws PipeRuntimeNonCriticalException {
+  public final void pin() throws PipeRuntimeNonCriticalException {
     if (referenceCount.get() == 0) {
       if (!isPhysicallyPinned.get()) {
         try {
-          walEntryHandler.pinMemTable();
+          pinInternal();
         } catch (MemTablePinException e) {
           throw new PipeRuntimeNonCriticalException(
               String.format(
@@ -75,7 +75,10 @@ public class PipeWALResource implements Closeable {
     referenceCount.incrementAndGet();
   }
 
-  public void unpin() throws PipeRuntimeNonCriticalException {
+  protected abstract void pinInternal()
+      throws MemTablePinException, PipeRuntimeNonCriticalException;
+
+  public final void unpin() throws PipeRuntimeNonCriticalException {
     final int finalReferenceCount = referenceCount.get();
 
     if (finalReferenceCount == 1) {
@@ -90,12 +93,15 @@ public class PipeWALResource implements Closeable {
     referenceCount.decrementAndGet();
   }
 
+  protected abstract void unpinInternal()
+      throws MemTablePinException, PipeRuntimeNonCriticalException;
+
   /**
    * Invalidate the wal if it is unpinned and out of time to live.
    *
    * @return true if the wal is invalidated, false otherwise
    */
-  public boolean invalidateIfPossible() {
+  public final boolean invalidateIfPossible() {
     if (referenceCount.get() > 0) {
       return false;
     }
@@ -114,7 +120,7 @@ public class PipeWALResource implements Closeable {
     if (isPhysicallyPinned.get()) {
       if (System.currentTimeMillis() - lastLogicalPinTime.get() > MIN_TIME_TO_LIVE_IN_MS) {
         try {
-          walEntryHandler.unpinMemTable();
+          unpinInternal();
         } catch (MemTablePinException e) {
           throw new PipeRuntimeNonCriticalException(
               String.format(
@@ -138,10 +144,10 @@ public class PipeWALResource implements Closeable {
   }
 
   @Override
-  public void close() {
+  public final void close() {
     if (isPhysicallyPinned.get()) {
       try {
-        walEntryHandler.unpinMemTable();
+        unpinInternal();
       } catch (MemTablePinException e) {
         LOGGER.error(
             "failed to unpin wal {} when closing pipe wal resource, because {}",
@@ -155,5 +161,9 @@ public class PipeWALResource implements Closeable {
     }
 
     referenceCount.set(0);
+  }
+
+  public int getReferenceCount() {
+    return referenceCount.get();
   }
 }

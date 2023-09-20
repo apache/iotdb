@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.ml;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.exception.ModelInferenceProcessException;
-import org.apache.iotdb.db.protocol.client.MLNodeClient;
+import org.apache.iotdb.commons.client.mlnode.MLNodeClient;
+import org.apache.iotdb.commons.client.mlnode.MLNodeClientManager;
+import org.apache.iotdb.commons.client.mlnode.MLNodeInfo;
+import org.apache.iotdb.db.exception.runtime.ModelInferenceProcessException;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.mlnode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -36,20 +38,16 @@ import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.thrift.TException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class ForecastOperator implements ProcessOperator {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(ForecastOperator.class);
 
   private final OperatorContext operatorContext;
   private final Operator child;
@@ -61,7 +59,6 @@ public class ForecastOperator implements ProcessOperator {
 
   private final TsBlockBuilder inputTsBlockBuilder;
 
-  private MLNodeClient client;
   private final ExecutorService modelInferenceExecutor;
   private ListenableFuture<TForecastResp> forecastExecutionFuture;
 
@@ -158,8 +155,6 @@ public class ForecastOperator implements ProcessOperator {
         resultTsBlock = modifyTimeColumn(resultTsBlock);
         return resultTsBlock;
       } catch (InterruptedException e) {
-        LOGGER.warn(
-            "{}: interrupted when processing write operation future with exception {}", this, e);
         Thread.currentThread().interrupt();
         throw new ModelInferenceProcessException(e.getMessage());
       } catch (ExecutionException e) {
@@ -169,15 +164,12 @@ public class ForecastOperator implements ProcessOperator {
   }
 
   private TsBlock modifyTimeColumn(TsBlock resultTsBlock) {
-    long delta =
-        CommonDescriptor.getInstance().getConfig().getTimestampPrecision().equals("ms")
-            ? 1_000_000L
-            : 1_000L;
-
     TsBlockBuilder newTsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
     TimeColumnBuilder timeColumnBuilder = newTsBlockBuilder.getTimeColumnBuilder();
     for (int i = 0; i < resultTsBlock.getPositionCount(); i++) {
-      timeColumnBuilder.writeLong(resultTsBlock.getTimeByIndex(i) / delta);
+      timeColumnBuilder.writeLong(
+          TimestampPrecisionUtils.convertToCurrPrecision(
+              resultTsBlock.getTimeByIndex(i), TimeUnit.NANOSECONDS));
       newTsBlockBuilder.declarePosition();
     }
     return newTsBlockBuilder.build().appendValueColumns(resultTsBlock.getValueColumns());
@@ -197,26 +189,25 @@ public class ForecastOperator implements ProcessOperator {
   }
 
   private void submitForecastTask() {
-    try {
-      if (client == null) {
-        client = new MLNodeClient();
-      }
-    } catch (TException e) {
-      throw new ModelInferenceProcessException(e.getMessage());
-    }
 
     TsBlock inputTsBlock = inputTsBlockBuilder.build();
     inputTsBlock.reverse();
 
     forecastExecutionFuture =
         Futures.submit(
-            () ->
-                client.forecast(
+            () -> {
+              try (MLNodeClient client =
+                  MLNodeClientManager.getInstance().borrowClient(MLNodeInfo.endPoint)) {
+                return client.forecast(
                     modelPath,
                     inputTsBlock,
                     inputTypeList,
                     inputColumnNameList,
-                    expectedPredictLength),
+                    expectedPredictLength);
+              } catch (Exception e) {
+                throw new ModelInferenceProcessException(e.getMessage());
+              }
+            },
             modelInferenceExecutor);
   }
 
@@ -227,7 +218,6 @@ public class ForecastOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    client.close();
     if (forecastExecutionFuture != null) {
       forecastExecutionFuture.cancel(true);
     }

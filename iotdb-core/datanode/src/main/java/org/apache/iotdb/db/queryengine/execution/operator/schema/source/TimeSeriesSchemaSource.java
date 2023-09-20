@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.view.ViewType;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -39,11 +41,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_MATCH_PATTERN;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 
 public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaInfo> {
 
   private final PartialPath pathPattern;
+  private final PathPatternTree scope;
   private final boolean isPrefixMatch;
   private final long limit;
   private final long offset;
@@ -58,7 +61,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
       long offset,
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
-      boolean needViewDetail) {
+      boolean needViewDetail,
+      PathPatternTree scope) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixMatch;
     this.limit = limit;
@@ -66,6 +70,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     this.schemaFilter = schemaFilter;
     this.templateMap = templateMap;
     this.needViewDetail = needViewDetail;
+    this.scope = scope;
   }
 
   @Override
@@ -79,7 +84,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
               offset,
               isPrefixMatch,
               schemaFilter,
-              needViewDetail));
+              needViewDetail,
+              scope));
     } catch (MetadataException e) {
       throw new SchemaExecutionException(e.getMessage(), e);
     }
@@ -117,7 +123,9 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
 
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
-    return pathPattern.equals(ALL_MATCH_PATTERN) && (schemaFilter == null);
+    return pathPattern.equals(ALL_MATCH_PATTERN)
+        && (schemaFilter == null)
+        && scope.equals(SchemaConstant.ALL_MATCH_SCOPE);
   }
 
   @Override

@@ -24,43 +24,43 @@ from iotdb.mlnode.algorithm.hyperparameter import HyperparameterName
 from iotdb.mlnode.algorithm.models.forecast.dlinear import (DLinear,
                                                             DLinearIndividual)
 from iotdb.mlnode.algorithm.models.forecast.nbeats import NBeats
-from iotdb.mlnode.constant import ForecastModelType
+from iotdb.mlnode.constant import ForecastModelType, OptionsKey
 from iotdb.mlnode.exception import BadConfigValueError
 from iotdb.mlnode.parser import ForecastTaskOptions
 
 
 def create_forecast_model(
-        task_options: ForecastTaskOptions,
+        model_type: ForecastModelType,
         model_configs: Dict,
 ) -> nn.Module:
     """
     Factory method for all support forecasting models
     the given arguments is common configs shared by all forecasting models
     """
-    if task_options.model_type.value not in ForecastModelType.values():
+    if model_type.value not in ForecastModelType.values():
         raise BadConfigValueError('model_name', f'It should be one of {ForecastModelType.values()}')
 
-    if task_options.model_type == ForecastModelType.DLINEAR:
+    if model_type == ForecastModelType.DLINEAR:
         return DLinear(kernel_size=model_configs[HyperparameterName.KERNEL_SIZE.value],
-                       input_len=task_options.input_length,
-                       pred_len=task_options.predict_length,
+                       input_len=model_configs[OptionsKey.INPUT_LENGTH.value],
+                       pred_len=model_configs[OptionsKey.PREDICT_LENGTH.value],
                        input_vars=model_configs[HyperparameterName.INPUT_VARS.value])
-    elif task_options.model_type == ForecastModelType.DLINEAR_INDIVIDUAL:
+    elif model_type == ForecastModelType.DLINEAR_INDIVIDUAL:
         return DLinearIndividual(kernel_size=model_configs[HyperparameterName.KERNEL_SIZE.value],
-                                 input_len=task_options.input_length,
-                                 pred_len=task_options.predict_length,
+                                 input_len=model_configs[OptionsKey.INPUT_LENGTH.value],
+                                 pred_len=model_configs[OptionsKey.PREDICT_LENGTH.value],
                                  input_vars=model_configs[HyperparameterName.INPUT_VARS.value]
                                  )
-    elif task_options.model_type == ForecastModelType.NBEATS:
+    elif model_type == ForecastModelType.NBEATS:
         return NBeats(
             block_type=model_configs[HyperparameterName.BLOCK_TYPE.value],
             d_model=model_configs[HyperparameterName.D_MODEL.value],
             inner_layers=model_configs[HyperparameterName.INNER_LAYERS.value],
             outer_layers=model_configs[HyperparameterName.OUTER_LAYERS.value],
-            input_len=task_options.input_length,
-            pred_len=task_options.predict_length,
+            input_len=model_configs[OptionsKey.INPUT_LENGTH.value],
+            pred_len=model_configs[OptionsKey.PREDICT_LENGTH.value],
             input_vars=model_configs[HyperparameterName.INPUT_VARS.value]
         )
     else:
-        raise BadConfigValueError('model_name', task_options.model_type,
+        raise BadConfigValueError('model_name', model_type,
                                   f'It should be one of {ForecastModelType.values()}')

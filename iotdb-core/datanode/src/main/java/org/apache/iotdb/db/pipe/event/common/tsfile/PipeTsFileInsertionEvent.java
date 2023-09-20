@@ -48,16 +48,19 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final TsFileResource resource;
   private File tsFile;
 
+  private final boolean isGeneratedByPipe;
+
   private final AtomicBoolean isClosed;
 
   private TsFileInsertionDataContainer dataContainer;
 
-  public PipeTsFileInsertionEvent(TsFileResource resource) {
-    this(resource, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+  public PipeTsFileInsertionEvent(TsFileResource resource, boolean isGeneratedByPipe) {
+    this(resource, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource,
+      boolean isGeneratedByPipe,
       PipeTaskMeta pipeTaskMeta,
       String pattern,
       long startTime,
@@ -66,9 +69,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
     this.startTime = startTime;
     this.endTime = endTime;
+    if (hasTimeFilter()) {
+      this.isPatternAndTimeParsed = false;
+    }
 
     this.resource = resource;
     tsFile = resource.getTsFile();
+
+    this.isGeneratedByPipe = isGeneratedByPipe;
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // register close listener if TsFile is not closed
@@ -84,6 +92,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
             });
       }
     }
+    // check again after register close listener in case TsFile is closed during the process
+    isClosed.set(resource.isClosed());
   }
 
   public void waitForTsFileClose() throws InterruptedException {
@@ -109,7 +119,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
-      tsFile = PipeResourceManager.file().increaseFileReference(tsFile, true);
+      tsFile = PipeResourceManager.tsfile().increaseFileReference(tsFile, true);
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -124,7 +134,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
-      PipeResourceManager.file().decreaseFileReference(tsFile);
+      PipeResourceManager.tsfile().decreaseFileReference(tsFile);
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -146,14 +156,20 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath()));
       Thread.currentThread().interrupt();
-      return new MinimumProgressIndex();
+      return MinimumProgressIndex.INSTANCE;
     }
   }
 
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
-    return new PipeTsFileInsertionEvent(resource, pipeTaskMeta, pattern, startTime, endTime);
+    return new PipeTsFileInsertionEvent(
+        resource, isGeneratedByPipe, pipeTaskMeta, pattern, startTime, endTime);
+  }
+
+  @Override
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
@@ -163,7 +179,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     try {
       if (dataContainer == null) {
         waitForTsFileClose();
-        dataContainer = new TsFileInsertionDataContainer(tsFile, getPattern(), startTime, endTime);
+        dataContainer =
+            new TsFileInsertionDataContainer(
+                tsFile, getPattern(), startTime, endTime, pipeTaskMeta, this);
       }
       return dataContainer.toTabletInsertionEvents();
     } catch (InterruptedException e) {

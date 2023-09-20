@@ -21,14 +21,12 @@ package org.apache.iotdb.confignode.it.cluster;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
@@ -36,10 +34,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
-import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
-import org.apache.iotdb.it.env.cluster.MppBaseConfig;
-import org.apache.iotdb.it.env.cluster.MppCommonConfig;
+import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
+import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
+import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -194,15 +192,6 @@ public class IoTDBClusterNodeErrorStartUpIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
       /* Restart with error cluster name */
-
-      TConfigNodeRestartReq configNodeRestartReq =
-          ConfigNodeTestUtils.generateTConfigNodeRestartReq(
-              ERROR_CLUSTER_NAME, 1, registeredConfigNodeWrapper);
-      TSStatus configNodeRestartStatus = client.restartConfigNode(configNodeRestartReq);
-      Assert.assertEquals(
-          TSStatusCode.REJECT_NODE_START.getStatusCode(), configNodeRestartStatus.getCode());
-      Assert.assertTrue(configNodeRestartStatus.getMessage().contains("cluster are inconsistent"));
-
       TDataNodeRestartReq dataNodeRestartReq =
           ConfigNodeTestUtils.generateTDataNodeRestartReq(
               ERROR_CLUSTER_NAME, 2, registeredDataNodeWrapper);
@@ -214,15 +203,6 @@ public class IoTDBClusterNodeErrorStartUpIT {
           dataNodeRestartResp.getStatus().getMessage().contains("cluster are inconsistent"));
 
       /* Restart with error NodeId */
-
-      configNodeRestartReq =
-          ConfigNodeTestUtils.generateTConfigNodeRestartReq(
-              TEST_CLUSTER_NAME, 100, registeredConfigNodeWrapper);
-      configNodeRestartStatus = client.restartConfigNode(configNodeRestartReq);
-      Assert.assertEquals(
-          TSStatusCode.REJECT_NODE_START.getStatusCode(), configNodeRestartStatus.getCode());
-      Assert.assertTrue(configNodeRestartStatus.getMessage().contains("whose nodeId="));
-
       dataNodeRestartReq =
           ConfigNodeTestUtils.generateTDataNodeRestartReq(
               TEST_CLUSTER_NAME, 200, registeredDataNodeWrapper);
@@ -256,13 +236,6 @@ public class IoTDBClusterNodeErrorStartUpIT {
       Assert.assertNotEquals(-1, registeredConfigNodeId);
       int originPort = registeredConfigNodeWrapper.getConsensusPort();
       registeredConfigNodeWrapper.setConsensusPort(-12345);
-      configNodeRestartReq =
-          ConfigNodeTestUtils.generateTConfigNodeRestartReq(
-              TEST_CLUSTER_NAME, registeredConfigNodeId, registeredConfigNodeWrapper);
-      configNodeRestartStatus = client.restartConfigNode(configNodeRestartReq);
-      Assert.assertEquals(
-          TSStatusCode.REJECT_NODE_START.getStatusCode(), configNodeRestartStatus.getCode());
-      Assert.assertTrue(configNodeRestartStatus.getMessage().contains("the internal TEndPoints"));
       registeredConfigNodeWrapper.setConsensusPort(originPort);
 
       int registeredDataNodeId = -1;

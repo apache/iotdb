@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.utils;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -123,8 +124,13 @@ public class TestUtils {
   }
 
   public static void resultSetEqualTest(
-      String sql, String expectedHeader, String[] expectedRetArray, DateFormat df) {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+      String sql,
+      String expectedHeader,
+      String[] expectedRetArray,
+      DateFormat df,
+      String userName,
+      String password) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
       if (df != null) {
         connection.setClientInfo("time_zone", "+00:00");
@@ -140,7 +146,7 @@ public class TestUtils {
 
   public static void resultSetEqualTest(
       String sql, String expectedHeader, String[] expectedRetArray) {
-    resultSetEqualTest(sql, expectedHeader, expectedRetArray, null);
+    resultSetEqualTest(sql, expectedHeader, expectedRetArray, null, "root", "root");
   }
 
   public static void resultSetEqualTest(
@@ -149,12 +155,35 @@ public class TestUtils {
   }
 
   public static void resultSetEqualTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String userName,
+      String password) {
+    resultSetEqualTest(sql, expectedHeader, expectedRetArray, null, userName, password);
+  }
+
+  public static void resultSetEqualTest(
       String sql, String[] expectedHeader, String[] expectedRetArray, DateFormat df) {
     StringBuilder header = new StringBuilder();
     for (String s : expectedHeader) {
       header.append(s).append(",");
     }
-    resultSetEqualTest(sql, header.toString(), expectedRetArray, df);
+    resultSetEqualTest(sql, header.toString(), expectedRetArray, df, "root", "root");
+  }
+
+  public static void resultSetEqualTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      DateFormat df,
+      String userName,
+      String password) {
+    StringBuilder header = new StringBuilder();
+    for (String s : expectedHeader) {
+      header.append(s).append(",");
+    }
+    resultSetEqualTest(sql, header.toString(), expectedRetArray, df, userName, password);
   }
 
   public static void resultSetEqualWithDescOrderTest(
@@ -205,7 +234,11 @@ public class TestUtils {
   }
 
   public static void assertTestFail(String sql, String errMsg) {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    assertTestFail(sql, errMsg, "root", "root");
+  }
+
+  public static void assertTestFail(String sql, String errMsg, String userName, String password) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
       fail("No exception!");
@@ -215,7 +248,12 @@ public class TestUtils {
   }
 
   public static void assertNonQueryTestFail(String sql, String errMsg) {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    assertNonQueryTestFail(sql, errMsg, "root", "root");
+  }
+
+  public static void assertNonQueryTestFail(
+      String sql, String errMsg, String userName, String password) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
       fail("No exception!");
@@ -225,63 +263,89 @@ public class TestUtils {
   }
 
   public static void assertResultSetEqual(
-      ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray)
-      throws SQLException {
+      ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray) {
     assertResultSetEqual(actualResultSet, expectedHeader, expectedRetArray, null);
   }
 
   public static void assertResultSetEqual(
-      ResultSet actualResultSet, String expectedHeader, Set<String> expectedRetSet)
-      throws SQLException {
-    ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
-    StringBuilder header = new StringBuilder();
-    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-      header.append(resultSetMetaData.getColumnName(i)).append(",");
-    }
-    assertEquals(expectedHeader, header.toString());
-
-    Set<String> actualRetSet = new HashSet<>();
-    while (actualResultSet.next()) {
-      StringBuilder builder = new StringBuilder();
+      ResultSet actualResultSet, String expectedHeader, Set<String> expectedRetSet) {
+    try {
+      ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+      StringBuilder header = new StringBuilder();
       for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-        builder.append(actualResultSet.getString(i)).append(",");
+        header.append(resultSetMetaData.getColumnName(i)).append(",");
       }
-      actualRetSet.add(builder.toString());
+      assertEquals(expectedHeader, header.toString());
+
+      Set<String> actualRetSet = new HashSet<>();
+
+      while (actualResultSet.next()) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          builder.append(actualResultSet.getString(i)).append(",");
+        }
+        actualRetSet.add(builder.toString());
+      }
+      assertEquals(expectedRetSet, actualRetSet);
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail(String.valueOf(e));
     }
-    assertEquals(expectedRetSet, actualRetSet);
   }
 
   public static void assertResultSetEqual(
-      ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray, DateFormat df)
-      throws SQLException {
-    ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
-    StringBuilder header = new StringBuilder();
-    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-      header.append(resultSetMetaData.getColumnName(i)).append(",");
-    }
-    assertEquals(expectedHeader, header.toString());
+      ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray, DateFormat df) {
+    try {
+      ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+      StringBuilder header = new StringBuilder();
+      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+        header.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      assertEquals(expectedHeader, header.toString());
 
-    int cnt = 0;
-    while (actualResultSet.next()) {
-      StringBuilder builder = new StringBuilder();
-      if (df != null) {
-        builder.append(df.format(Long.parseLong(actualResultSet.getString(1)))).append(",");
-      } else {
-        builder.append(actualResultSet.getString(1)).append(",");
+      int cnt = 0;
+      while (actualResultSet.next()) {
+        StringBuilder builder = new StringBuilder();
+        if (df != null) {
+          builder.append(df.format(Long.parseLong(actualResultSet.getString(1)))).append(",");
+        } else {
+          builder.append(actualResultSet.getString(1)).append(",");
+        }
+        for (int i = 2; i <= resultSetMetaData.getColumnCount(); i++) {
+          builder.append(actualResultSet.getString(i)).append(",");
+        }
+        assertEquals(expectedRetArray[cnt], builder.toString());
+        cnt++;
       }
-      for (int i = 2; i <= resultSetMetaData.getColumnCount(); i++) {
-        builder.append(actualResultSet.getString(i)).append(",");
-      }
-      assertEquals(expectedRetArray[cnt], builder.toString());
-      cnt++;
+      assertEquals(expectedRetArray.length, cnt);
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail(String.valueOf(e));
     }
-    assertEquals(expectedRetArray.length, cnt);
   }
 
   public static void executeNonQuery(String sql) {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    executeNonQuery(sql, "root", "root");
+  }
+
+  public static void executeNonQuery(String sql, String userName, String password) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void executeQuery(String sql) {
+    executeQuery(sql, "root", "root");
+  }
+
+  public static void executeQuery(String sql, String userName, String password) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
+        Statement statement = connection.createStatement()) {
+      statement.executeQuery(sql);
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -309,6 +373,49 @@ public class TestUtils {
       }
       assertEquals(expectedRetArray.length, count);
     } catch (IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void createUser(String userName, String password) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(String.format("create user %s '%s'", userName, password));
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void grantUserSystemPrivileges(String userName, PrivilegeType privilegeType) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(String.format("grant %s on root.** to user %s", privilegeType, userName));
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void grantUserSeriesPrivilege(
+      String userName, PrivilegeType privilegeType, String path) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(String.format("grant %s on %s to user %s", privilegeType, path, userName));
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void revokeUserSeriesPrivilege(
+      String userName, PrivilegeType privilegeType, String path) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format("revoke %s on %s from user %s", privilegeType, path, userName));
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.processor;
 
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
+import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -46,7 +47,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
 
   private final EventSupplier inputEventSupplier;
   private final PipeProcessor pipeProcessor;
-  private final EventCollector outputEventCollector;
+  private final PipeEventCollector outputEventCollector;
 
   private final AtomicBoolean isClosed;
 
@@ -54,7 +55,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
       String taskID,
       EventSupplier inputEventSupplier,
       PipeProcessor pipeProcessor,
-      EventCollector outputEventCollector) {
+      PipeEventCollector outputEventCollector) {
     super(taskID);
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
@@ -85,22 +86,31 @@ public class PipeProcessorSubtask extends PipeSubtask {
   @Override
   protected synchronized boolean executeOnce() throws Exception {
     final Event event = lastEvent != null ? lastEvent : inputEventSupplier.supply();
-    // record the last event for retry when exception occurs
+    // Record the last event for retry when exception occurs
     lastEvent = event;
     if (event == null) {
-      return false;
+      // Though there is no event to process, there may still be some buffered events
+      // in the outputEventCollector. Return true if there are still buffered events,
+      // false otherwise.
+      return outputEventCollector.tryCollectBufferedEvents();
     }
 
     try {
-      if (event instanceof TabletInsertionEvent) {
-        pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
-      } else if (event instanceof TsFileInsertionEvent) {
-        pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
-      } else {
-        pipeProcessor.process(event, outputEventCollector);
+      // event can be supplied after the subtask is closed, so we need to check isClosed here
+      if (!isClosed.get()) {
+        if (event instanceof TabletInsertionEvent) {
+          pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+        } else if (event instanceof TsFileInsertionEvent) {
+          pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+        } else if (event instanceof PipeHeartbeatEvent) {
+          pipeProcessor.process(event, outputEventCollector);
+          ((PipeHeartbeatEvent) event).onProcessed();
+        } else {
+          pipeProcessor.process(event, outputEventCollector);
+        }
       }
 
-      releaseLastEvent();
+      releaseLastEvent(true);
     } catch (Exception e) {
       throw new PipeException(
           "Error occurred during executing PipeProcessor#process, perhaps need to check "
@@ -127,15 +137,19 @@ public class PipeProcessorSubtask extends PipeSubtask {
     try {
       isClosed.set(true);
 
+      // pipeProcessor closes first, then no more events will be added into outputEventCollector.
+      // only after that, outputEventCollector can be closed.
       pipeProcessor.close();
-
-      // should be called after pipeProcessor.close()
-      super.close();
     } catch (Exception e) {
       LOGGER.info(
           "Error occurred during closing PipeProcessor, perhaps need to check whether the "
               + "implementation of PipeProcessor is correct according to the pipe-api description.",
           e);
+    } finally {
+      outputEventCollector.close();
+
+      // should be called after pipeProcessor.close()
+      super.close();
     }
   }
 

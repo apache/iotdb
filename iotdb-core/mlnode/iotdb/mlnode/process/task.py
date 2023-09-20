@@ -31,7 +31,7 @@ from iotdb.mlnode.algorithm.hyperparameter import (generate_hyperparameters,
 from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.constant import DEFAULT_TRIAL_ID, TRIAL_ID_PREFIX, OptionsKey, ModelInputName
-from iotdb.mlnode.das.dataset import TsForecastDataset
+from iotdb.mlnode.dataset.dataset import TsForecastDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
 from iotdb.mlnode.process.trial import ForecastingTrainingTrial

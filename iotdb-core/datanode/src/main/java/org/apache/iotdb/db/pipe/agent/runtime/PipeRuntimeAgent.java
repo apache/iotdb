@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -28,7 +29,7 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.resource.file.PipeHardlinkFileDirStartupCleaner;
+import org.apache.iotdb.db.pipe.resource.PipeHardlinkFileDirStartupCleaner;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -42,7 +43,9 @@ public class PipeRuntimeAgent implements IService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeAgent.class);
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
-  private static final AtomicBoolean isShutdown = new AtomicBoolean(false);
+  private final AtomicBoolean isShutdown = new AtomicBoolean(false);
+
+  private final PipeCronEventInjector pipeCronEventInjector = new PipeCronEventInjector();
 
   private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
       new SimpleConsensusProgressIndexAssigner();
@@ -51,8 +54,12 @@ public class PipeRuntimeAgent implements IService {
 
   public synchronized void preparePipeResources(
       ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
-    PipeAgent.receiver().cleanPipeReceiverDir();
+    // clean sender (connector) hardlink file dir
     PipeHardlinkFileDirStartupCleaner.clean();
+
+    // clean receiver file dir
+    PipeAgent.receiver().cleanPipeReceiverDir();
+
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
     simpleConsensusProgressIndexAssigner.start();
   }
@@ -61,6 +68,7 @@ public class PipeRuntimeAgent implements IService {
   public synchronized void start() throws StartupException {
     PipeConfig.getInstance().printAllConfigs();
     PipeAgentLauncher.launchPipeTaskAgent();
+    pipeCronEventInjector.start();
 
     isShutdown.set(false);
   }
@@ -72,6 +80,7 @@ public class PipeRuntimeAgent implements IService {
     }
     isShutdown.set(true);
 
+    pipeCronEventInjector.stop();
     PipeAgent.task().dropAllPipeTasks();
   }
 
@@ -93,6 +102,13 @@ public class PipeRuntimeAgent implements IService {
   ////////////////////// Recover ProgressIndex Assigner //////////////////////
 
   public void assignRecoverProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
+    tsFileResource.recoverProgressIndex(
+        new RecoverProgressIndex(
+            DATA_NODE_ID,
+            simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery()));
+  }
+
+  public void assignUpdateProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
     tsFileResource.updateProgressIndex(
         new RecoverProgressIndex(
             DATA_NODE_ID,
@@ -107,6 +123,13 @@ public class PipeRuntimeAgent implements IService {
         pipeTaskMeta,
         pipeRuntimeException.getMessage(),
         pipeRuntimeException);
+
     pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
+
+    // Quick stop all pipes locally if critical exception occurs,
+    // no need to wait for the next heartbeat cycle.
+    if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
+      PipeAgent.task().stopAllPipesWithCriticalException();
+    }
   }
 }

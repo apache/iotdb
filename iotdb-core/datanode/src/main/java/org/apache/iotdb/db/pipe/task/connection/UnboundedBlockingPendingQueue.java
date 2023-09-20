@@ -21,11 +21,23 @@ package org.apache.iotdb.db.pipe.task.connection;
 
 import org.apache.iotdb.pipe.api.event.Event;
 
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
 
 public class UnboundedBlockingPendingQueue<E extends Event> extends BlockingPendingQueue<E> {
 
+  private final BlockingDeque<E> pendingDeque;
+
   public UnboundedBlockingPendingQueue() {
-    super(new LinkedBlockingQueue<>());
+    super(new LinkedBlockingDeque<>());
+    pendingDeque = (BlockingDeque<E>) pendingQueue;
+  }
+
+  public E peekLast() {
+    return pendingDeque.peekLast();
+  }
+
+  public E removeLast() {
+    return pendingDeque.removeLast();
   }
 }

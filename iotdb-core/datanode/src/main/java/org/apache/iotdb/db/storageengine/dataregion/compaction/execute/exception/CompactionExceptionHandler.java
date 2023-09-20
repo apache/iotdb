@@ -226,14 +226,9 @@ public class CompactionExceptionHandler {
       return false;
     }
 
-    // delete source files
-    for (TsFileResource resource : sourceSeqResourceList) {
-      resource.remove();
-    }
-    for (TsFileResource resource : sourceUnseqResourceList) {
-      resource.remove();
-    }
-
+    // delete sources file
+    CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
+        sourceSeqResourceList, sourceUnseqResourceList);
     // delete compaction mods files
     CompactionUtils.deleteCompactionModsFile(sourceSeqResourceList, sourceUnseqResourceList);
 

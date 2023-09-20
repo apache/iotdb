@@ -200,6 +200,16 @@ public class CommonDescriptor {
     config.setTimestampPrecision(
         properties.getProperty("timestamp_precision", config.getTimestampPrecision()).trim());
 
+    config.setTimestampPrecisionCheckEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "timestamp_precision_check_enabled",
+                String.valueOf(config.isTimestampPrecisionCheckEnabled()))));
+
+    config.setDatanodeTokenTimeoutMS(
+        Integer.parseInt(
+            properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
+
     String endPointUrl =
         properties.getProperty(
             "target_ml_node_endpoint",
@@ -238,12 +248,27 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
+    config.setModelInferenceExecutionThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "model_inference_execution_thread_count",
+                String.valueOf(config.getModelInferenceExecutionThreadCount()))));
   }
 
   private void loadPipeProps(Properties properties) {
+    config.setPipeHardlinkBaseDirName(
+        properties.getProperty("pipe_hardlink_base_dir_name", config.getPipeHardlinkBaseDirName()));
     config.setPipeHardlinkTsFileDirName(
         properties.getProperty(
             "pipe_hardlink_tsfile_dir_name", config.getPipeHardlinkTsFileDirName()));
+    config.setPipeHardlinkWALDirName(
+        properties.getProperty("pipe_hardlink_wal_dir_name", config.getPipeHardlinkWALDirName()));
+    config.setPipeHardLinkWALEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_hardlink_wal_enabled",
+                Boolean.toString(config.getPipeHardLinkWALEnabled()))));
+
     config.setPipeDataStructureTabletRowSize(
         Integer.parseInt(
             properties.getProperty(
@@ -316,6 +341,27 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_connector_pending_queue_size",
                 String.valueOf(config.getPipeConnectorPendingQueueSize()))));
+    config.setPipeConnectorRPCThriftCompressionEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_connector_rpc_thrift_compression_enabled",
+                String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled()))));
+
+    config.setPipeAsyncConnectorSelectorNumber(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_async_connector_selector_number",
+                String.valueOf(config.getPipeAsyncConnectorSelectorNumber()))));
+    config.setPipeAsyncConnectorCoreClientNumber(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_async_connector_core_client_number",
+                String.valueOf(config.getPipeAsyncConnectorCoreClientNumber()))));
+    config.setPipeAsyncConnectorMaxClientNumber(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_async_connector_max_client_number",
+                String.valueOf(config.getPipeAsyncConnectorMaxClientNumber()))));
 
     config.setSeperatedPipeHeartbeatEnabled(
         Boolean.parseBoolean(
@@ -346,6 +392,17 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_auto_restart_enabled", String.valueOf(config.getPipeAutoRestartEnabled()))));
+
+    config.setPipeAirGapReceiverEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_air_gap_receiver_enabled",
+                Boolean.toString(config.getPipeAirGapReceiverEnabled()))));
+    config.setPipeAirGapReceiverPort(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_air_gap_receiver_port",
+                Integer.toString(config.getPipeAirGapReceiverPort()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

@@ -74,17 +74,21 @@ class ClusterSchemaFetchExecutor {
   }
 
   private ExecutionResult executionStatement(
-      Long queryId, Statement statement, MPPQueryContext context) {
+      long queryId, Statement statement, MPPQueryContext context) {
+
+    long timeout = context == null ? config.getQueryTimeoutThreshold() : context.getTimeOut();
+    String sql = context == null ? "" : "Fetch Schema for " + context.getQueryType();
+    if (context != null && context.getQueryType() == QueryType.READ) {
+      sql += ", " + context.getQueryId() + " : " + context.getSql();
+    }
     return coordinator.execute(
         statement,
         queryId,
         context == null ? null : context.getSession(),
-        "",
+        sql,
         ClusterPartitionFetcher.getInstance(),
         schemaFetcher,
-        context == null || context.getQueryType().equals(QueryType.WRITE)
-            ? config.getQueryTimeoutThreshold()
-            : context.getTimeOut());
+        timeout);
   }
 
   /**

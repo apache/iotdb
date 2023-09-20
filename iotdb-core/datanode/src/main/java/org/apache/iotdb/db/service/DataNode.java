@@ -31,9 +31,11 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
@@ -48,6 +50,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -107,11 +110,14 @@ public class DataNode implements DataNodeMBean {
 
   private final String mbeanName =
       String.format(
-          "%s:%s=%s", "org.apache.iotdb.datanode.service", IoTDBConstant.JMX_TYPE, "DataNode");
+          "%s:%s=%s",
+          IoTDBConstant.IOTDB_SERVICE_JMX_NAME,
+          IoTDBConstant.JMX_TYPE,
+          ServiceType.DATA_NODE.getJmxName());
 
   private static final File SYSTEM_PROPERTIES =
       SystemFileFactory.INSTANCE.getFile(
-          config.getSchemaDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
+          config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
 
   /**
    * When joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
@@ -133,6 +139,9 @@ public class DataNode implements DataNodeMBean {
 
   private static final String REGISTER_INTERRUPTION =
       "Unexpected interruption when waiting to register to the cluster";
+
+  private boolean schemaRegionConsensusStarted = false;
+  private boolean dataRegionConsensusStarted = false;
 
   private DataNode() {
     // We do not init anything here, so that we can re-initialize the instance in IT.
@@ -204,15 +213,8 @@ public class DataNode implements DataNodeMBean {
     config.setClusterMode(true);
 
     // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
+    IoTDBStartCheck.getInstance().checkOldSystemConfig();
     boolean isFirstStart = IoTDBStartCheck.getInstance().checkIsFirstStart();
-
-    // Check target ConfigNodes
-    for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
-      if (endPoint.getIp().equals("0.0.0.0")) {
-        throw new StartupException(
-            "The ip address of any target_config_node_list couldn't be 0.0.0.0");
-      }
-    }
 
     // Set this node
     thisNode.setIp(config.getInternalAddress());
@@ -361,6 +363,7 @@ public class DataNode implements DataNodeMBean {
     TDataNodeRegisterReq req = new TDataNodeRegisterReq();
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
     req.setClusterName(config.getClusterName());
+    req.setVersionInfo(new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
     TDataNodeRegisterResp dataNodeRegisterResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
@@ -420,6 +423,7 @@ public class DataNode implements DataNodeMBean {
     req.setClusterName(
         config.getClusterName() == null ? DEFAULT_CLUSTER_NAME : config.getClusterName());
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
+    req.setVersionInfo(new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
     TDataNodeRestartResp dataNodeRestartResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
@@ -485,8 +489,10 @@ public class DataNode implements DataNodeMBean {
     logger.info("IoTDB DataNode has started.");
 
     try {
-      SchemaRegionConsensusImpl.setupAndGetInstance().start();
-      DataRegionConsensusImpl.setupAndGetInstance().start();
+      SchemaRegionConsensusImpl.getInstance().start();
+      schemaRegionConsensusStarted = true;
+      DataRegionConsensusImpl.getInstance().start();
+      dataRegionConsensusStarted = true;
     } catch (IOException e) {
       throw new StartupException(e);
     }
@@ -870,13 +876,13 @@ public class DataNode implements DataNodeMBean {
 
   public void stop() {
     deactivate();
-
+    SchemaEngine.getInstance().clear();
     try {
       MetricService.getInstance().stop();
-      if (SchemaRegionConsensusImpl.getInstance() != null) {
+      if (schemaRegionConsensusStarted) {
         SchemaRegionConsensusImpl.getInstance().stop();
       }
-      if (DataRegionConsensusImpl.getInstance() != null) {
+      if (dataRegionConsensusStarted) {
         DataRegionConsensusImpl.getInstance().stop();
       }
     } catch (Exception e) {
@@ -890,6 +896,9 @@ public class DataNode implements DataNodeMBean {
     }
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
       registerManager.register(RestService.getInstance());
+    }
+    if (PipeConfig.getInstance().getPipeAirGapReceiverEnabled()) {
+      registerManager.register(PipeAgent.receiver().airGap());
     }
   }
 

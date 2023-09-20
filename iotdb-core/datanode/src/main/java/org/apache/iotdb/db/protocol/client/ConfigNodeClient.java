@@ -37,12 +37,12 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -78,11 +78,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -148,7 +150,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClient, AutoCloseable {
 
@@ -157,11 +159,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   private static final int RETRY_NUM = 5;
 
   public static final String MSG_RECONNECTION_FAIL =
-      "Fail to connect to any config node. Please check status of ConfigNodes";
+      "Fail to connect to any config node. Please check status of ConfigNodes or logs of connected DataNode";
 
   private static final String MSG_RECONNECTION_DATANODE_FAIL =
       "Failed to connect to ConfigNode %s from DataNode %s when executing %s, Exception:";
-  private static final int RETRY_INTERVAL_MS = 1000;
+  private static final int RETRY_INTERVAL_MS = 2000;
 
   private final ThriftClientProperty property;
 
@@ -309,7 +311,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         configLeader = null;
       }
       logger.warn(
-          "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not leader, try next node",
+          "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not "
+              + "leader or not ready yet, will try again later",
           configNode,
           config.getAddressAndPort());
       return true;
@@ -326,12 +329,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
    * @param <T> the type of rpc result
    * @throws TException if fails more than RETRY_NUM times, throw TException(MSG_RECONNECTION_FAIL)
    */
-  private <T> T executeRemoteCallWithRetry(Operation<T> call, Function<T, Boolean> check)
+  private <T> T executeRemoteCallWithRetry(Operation<T> call, Predicate<T> check)
       throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         T result = call.execute();
-        if (check.apply(result)) {
+        if (check.test(result)) {
           return result;
         }
       } catch (TException e) {
@@ -460,19 +463,15 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TCountDatabaseResp countMatchedDatabases(List<String> storageGroupPathPattern)
-      throws TException {
+  public TCountDatabaseResp countMatchedDatabases(TGetDatabaseReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.countMatchedDatabases(storageGroupPathPattern),
-        resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.countMatchedDatabases(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
-  public TDatabaseSchemaResp getMatchedDatabaseSchemas(List<String> storageGroupPathPattern)
-      throws TException {
+  public TDatabaseSchemaResp getMatchedDatabaseSchemas(TGetDatabaseReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getMatchedDatabaseSchemas(storageGroupPathPattern),
-        resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.getMatchedDatabaseSchemas(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -561,13 +560,27 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support registerConfigNode.");
+  public TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.fetchAuthizedPatternTree(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
-  public TSStatus restartConfigNode(TConfigNodeRestartReq req) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support restartConfigNode.");
+  public TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.checkUserPrivilegeGrantOpt(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  public TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.checkRoleOfUser(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support registerConfigNode.");
   }
 
   @Override
@@ -667,10 +680,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TShowDatabaseResp showDatabase(List<String> storageGroupPathPattern) throws TException {
+  public TShowDatabaseResp showDatabase(TGetDatabaseReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showDatabase(storageGroupPathPattern),
-        resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.showDatabase(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -794,7 +806,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TGetPathsSetTemplatesResp getPathsSetTemplate(String req) throws TException {
+  public TGetPathsSetTemplatesResp getPathsSetTemplate(TGetPathsSetTemplatesReq req)
+      throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getPathsSetTemplate(req), resp -> !updateConfigNodeLeader(resp.status));
   }

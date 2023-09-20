@@ -26,12 +26,13 @@ import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.cluster.AbstractEnv;
-import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
-import org.apache.iotdb.it.env.cluster.MppBaseConfig;
-import org.apache.iotdb.it.env.cluster.MppCommonConfig;
-import org.apache.iotdb.it.env.cluster.MppJVMConfig;
+import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
+import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
+import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 
@@ -41,6 +42,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -50,15 +52,17 @@ import java.util.concurrent.TimeUnit;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBClusterRestartIT {
+  private static final Logger logger = IoTDBTestLogger.logger;
 
   private static final String ratisConsensusProtocolClass =
       "org.apache.iotdb.consensus.ratis.RatisConsensus";
-  private static final int testConfigNodeNum = 2;
-  private static final int testDataNodeNum = 2;
+
   private static final int testReplicationFactor = 2;
 
+  private static final int testConfigNodeNum = 3, testDataNodeNum = 2;
+
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -69,7 +73,6 @@ public class IoTDBClusterRestartIT {
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor);
 
-    // Init 2C2D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
   }
 
@@ -99,7 +102,7 @@ public class IoTDBClusterRestartIT {
       EnvFactory.getEnv().startDataNode(i);
     }
 
-    ((AbstractEnv) EnvFactory.getEnv()).testWorking();
+    ((AbstractEnv) EnvFactory.getEnv()).testWorkingNoUnknown();
   }
 
   @Test
@@ -152,4 +155,20 @@ public class IoTDBClusterRestartIT {
   }
 
   // TODO: Add persistence tests in the future
+
+  @Test
+  public void clusterRestartWithoutSeedConfigNode() {
+    // shutdown all 3 ConfigNodes
+    for (int i = testConfigNodeNum - 1; i >= 0; i--) {
+      EnvFactory.getEnv().shutdownConfigNode(i);
+    }
+    logger.info("Shutdown all ConfigNode");
+    // restart without seed ConfigNode, the cluster should still work
+    for (int i = 1; i < testConfigNodeNum; i++) {
+      EnvFactory.getEnv().startConfigNode(i);
+    }
+    logger.info("Restarted");
+    ((AbstractEnv) EnvFactory.getEnv()).testWorkingOneUnknownOtherRunning();
+    logger.info("Working without Seed-ConfigNode");
+  }
 }

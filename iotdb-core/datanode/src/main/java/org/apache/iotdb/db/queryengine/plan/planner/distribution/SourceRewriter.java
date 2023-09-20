@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -318,7 +318,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           .getSchemaPartitionMap()
           .forEach(
               (storageGroup, deviceGroup) -> {
-                if (storageGroup.equals(IoTDBConfig.SYSTEM_DATABASE)) {
+                if (storageGroup.equals(SchemaConstant.SYSTEM_DATABASE)) {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           regionsOfSystemDatabase.add(schemaRegionReplicaSet));
@@ -358,7 +358,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           .getSchemaPartitionMap()
           .forEach(
               (storageGroup, deviceGroup) -> {
-                if (storageGroup.equals(IoTDBConfig.SYSTEM_DATABASE)) {
+                if (storageGroup.equals(SchemaConstant.SYSTEM_DATABASE)) {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           regionsOfSystemDatabase.add(schemaRegionReplicaSet));
@@ -389,7 +389,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           });
       if (!regionsOfSystemDatabase.isEmpty()) {
         List<PartialPath> filteredPathPatternList =
-            filterPathPattern(patternTree, IoTDBConfig.SYSTEM_DATABASE);
+            filterPathPattern(patternTree, SchemaConstant.SYSTEM_DATABASE);
         regionsOfSystemDatabase.forEach(
             region -> {
               addSchemaSourceNode(
@@ -480,7 +480,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       LastQueryScanNode node, DistributionPlanContext context) {
     LastQueryNode mergeNode =
         new LastQueryNode(
-            context.queryContext.getQueryId().genPlanNodeId(), node.getPartitionTimeFilter(), null);
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getPartitionTimeFilter(),
+            null,
+            false);
     return processRawSeriesScan(node, context, mergeNode);
   }
 
@@ -489,7 +492,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       AlignedLastQueryScanNode node, DistributionPlanContext context) {
     LastQueryNode mergeNode =
         new LastQueryNode(
-            context.queryContext.getQueryId().genPlanNodeId(), node.getPartitionTimeFilter(), null);
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getPartitionTimeFilter(),
+            null,
+            false);
     return processRawSeriesScan(node, context, mergeNode);
   }
 
@@ -678,9 +684,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // if the series is from multi regions or order by clause only refer to timeseries, use
     // LastQueryMergeNode
     if (context.oneSeriesInMultiRegion || node.needOrderByTimeseries()) {
-      return new LastQueryMergeNode(id, node.getTimeseriesOrdering());
+      return new LastQueryMergeNode(
+          id, node.getTimeseriesOrdering(), node.isContainsLastTransformNode());
     }
-    return new LastQueryCollectNode(id);
+    return new LastQueryCollectNode(id, node.isContainsLastTransformNode());
   }
 
   @Override

@@ -31,7 +31,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -104,9 +105,9 @@ public class DataNodeRegionManager {
 
   public TSStatus createSchemaRegion(TRegionReplicaSet regionReplicaSet, String storageGroup) {
     TSStatus tsStatus;
+    SchemaRegionId schemaRegionId = new SchemaRegionId(regionReplicaSet.getRegionId().getId());
     try {
       PartialPath storageGroupPartitionPath = new PartialPath(storageGroup);
-      SchemaRegionId schemaRegionId = new SchemaRegionId(regionReplicaSet.getRegionId().getId());
       schemaEngine.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
       schemaRegionLockMap.put(schemaRegionId, new ReentrantReadWriteLock(false));
       List<Peer> peers = new ArrayList<>();
@@ -117,14 +118,8 @@ public class DataNodeRegionManager {
                 dataNodeLocation.getSchemaRegionConsensusEndPoint().getPort());
         peers.add(new Peer(schemaRegionId, dataNodeLocation.getDataNodeId(), endpoint));
       }
-      ConsensusGenericResponse consensusGenericResponse =
-          SchemaRegionConsensusImpl.getInstance().createPeer(schemaRegionId, peers);
-      if (consensusGenericResponse.isSuccess()) {
-        tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      } else {
-        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
-        tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
-      }
+      SchemaRegionConsensusImpl.getInstance().createLocalPeer(schemaRegionId, peers);
+      tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IllegalPathException e1) {
       LOGGER.error("Create Schema Region {} failed because path is illegal.", storageGroup);
       tsStatus = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
@@ -134,6 +129,12 @@ public class DataNodeRegionManager {
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(
           String.format("Create Schema Region failed because of %s", e2.getMessage()));
+    } catch (ConsensusGroupAlreadyExistException e) {
+      tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      tsStatus.setMessage(String.format("SchemaRegion %d already exists.", schemaRegionId.getId()));
+    } catch (ConsensusException e) {
+      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+      tsStatus.setMessage(e.getMessage());
     }
     return tsStatus;
   }
@@ -141,8 +142,8 @@ public class DataNodeRegionManager {
   public TSStatus createDataRegion(
       TRegionReplicaSet regionReplicaSet, String storageGroup, long ttl) {
     TSStatus tsStatus;
+    DataRegionId dataRegionId = new DataRegionId(regionReplicaSet.getRegionId().getId());
     try {
-      DataRegionId dataRegionId = new DataRegionId(regionReplicaSet.getRegionId().getId());
       storageEngine.createDataRegion(dataRegionId, storageGroup, ttl);
       dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock(false));
       List<Peer> peers = new ArrayList<>();
@@ -153,18 +154,18 @@ public class DataNodeRegionManager {
                 dataNodeLocation.getDataRegionConsensusEndPoint().getPort());
         peers.add(new Peer(dataRegionId, dataNodeLocation.getDataNodeId(), endpoint));
       }
-      ConsensusGenericResponse consensusGenericResponse =
-          DataRegionConsensusImpl.getInstance().createPeer(dataRegionId, peers);
-      if (consensusGenericResponse.isSuccess()) {
-        tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      } else {
-        tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
-        tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
-      }
+      DataRegionConsensusImpl.getInstance().createLocalPeer(dataRegionId, peers);
+      tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (DataRegionException e) {
       LOGGER.error("Create Data Region {} failed because {}", storageGroup, e.getMessage());
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(String.format("Create Data Region failed because of %s", e.getMessage()));
+    } catch (ConsensusGroupAlreadyExistException e) {
+      tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      tsStatus.setMessage(String.format("DataRegion %d already exists.", dataRegionId.getId()));
+    } catch (ConsensusException e) {
+      tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+      tsStatus.setMessage(e.getMessage());
     }
     return tsStatus;
   }

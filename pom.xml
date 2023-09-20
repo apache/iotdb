@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache</groupId>
         <artifactId>apache</artifactId>
-        <version>23</version>
+        <version>30</version>
     </parent>
     <groupId>org.apache.iotdb</groupId>
     <artifactId>iotdb-parent</artifactId>
@@ -79,52 +79,20 @@
         </mailingList>
     </mailingLists>
     <modules>
-        <module>iotdb-core/tsfile</module>
-        <module>iotdb-core/antlr</module>
-        <module>iotdb-protocol/thrift</module>
-        <module>iotdb-protocol/thrift-commons</module>
-        <module>iotdb-protocol/thrift-confignode</module>
-        <module>iotdb-protocol/thrift-iot-consensus</module>
-        <module>iotdb-protocol/thrift-mlnode</module>
-        <module>iotdb-client/service-rpc</module>
-        <module>iotdb-client/jdbc</module>
-        <module>iotdb-client/session</module>
-        <module>iotdb-client/cli</module>
-        <module>iotdb-protocol/openapi</module>
-        <module>iotdb-core/datanode</module>
-        <module>example</module>
-        <module>iotdb-connector/grafana-plugin</module>
-        <module>iotdb-connector/grafana-connector</module>
-        <module>iotdb-connector/spark-tsfile</module>
-        <module>iotdb-connector/hadoop</module>
-        <module>iotdb-connector/spark-iotdb-connector/scala_2.11</module>
-        <module>iotdb-connector/spark-iotdb-connector/scala_2.12</module>
-        <module>iotdb-connector/flink-tsfile-connector</module>
-        <module>iotdb-connector/flink-iotdb-connector</module>
+        <module>iotdb-api</module>
+        <module>iotdb-client</module>
+        <module>iotdb-connector</module>
+        <module>iotdb-core</module>
+        <module>iotdb-protocol</module>
         <module>distribution</module>
-        <module>iotdb-connector/hive-connector</module>
-        <module>iotdb-core/node-commons</module>
-        <module>iotdb-core/confignode</module>
-        <module>iotdb-connector/zeppelin-interpreter</module>
-        <module>iotdb-client/client-py</module>
-        <module>iotdb-client/compile-tools</module>
-        <module>iotdb-client/client-cpp</module>
-        <module>iotdb-core/metrics</module>
-        <module>integration-test</module>
-        <module>iotdb-core/consensus</module>
+        <module>example</module>
         <module>library-udf</module>
-        <module>iotdb-api/udf-api</module>
-        <module>iotdb-api/trigger-api</module>
-        <module>iotdb-api/external-api</module>
-        <module>iotdb-client/isession</module>
-        <module>iotdb-core/mlnode</module>
-        <module>iotdb-api/pipe-api</module>
     </modules>
     <!-- Properties Management -->
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.assembly.version>3.1.0</maven.assembly.version>
+        <maven.assembly.version>3.6.0</maven.assembly.version>
         <scala.library.version>2.12</scala.library.version>
         <scala.version>2.12.10</scala.version>
         <hadoop2.version>2.10.1</hadoop2.version>
@@ -134,16 +102,26 @@
         <logback.version>1.2.11</logback.version>
         <joda.version>2.9.9</joda.version>
         <spark.version>3.3.2</spark.version>
+        <!--flink.version>1.17.0</flink.version-->
         <flink.version>1.14.6</flink.version>
         <common.io.version>2.11.0</common.io.version>
         <commons.collections4>4.4</commons.collections4>
-        <!-- keep consistent with client-cpp/tools/thrift/pom.xml-->
+        <!--
+            Thrift 0.17.0 was the last version that could be used in Java 8 applications,
+            However Thrift 0.17.0 has an invalid entry in the META-INF/MANIFEST.mf file.
+            All versions between 0.17.0 and 0.14.1 have know vulnerabilities, so for now
+            we'll stay at 0.14.1.
+        -->
         <thrift.version>0.14.1</thrift.version>
+        <!-- This is the version of the thrift binary -->
+        <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
         <airline.version>0.8</airline.version>
         <jackson.version>2.13.5</jackson.version>
         <disrupter.version>3.4.2</disrupter.version>
         <jackson.databind.version>2.13.4.2</jackson.databind.version>
-        <antlr4.version>4.8-1</antlr4.version>
+        <antlr4.version>4.9.3</antlr4.version>
+        <!-- All versions 3.10.x and newer require Java 11 -->
+        <!--antlr4.version>4.13.1</antlr4.version-->
         <common.cli.version>1.3.1</common.cli.version>
         <common.codec.version>1.13</common.codec.version>
         <common.collections.version>3.2.2</common.collections.version>
@@ -151,13 +129,13 @@
         <common.logging.version>1.1.3</common.logging.version>
         <common.pool2.version>2.11.1</common.pool2.version>
         <org.slf4j.version>1.7.36</org.slf4j.version>
-        <guava.version>24.1.1</guava.version>
+        <guava.version>32.1.2-jre</guava.version>
         <jline.version>3.21.0</jline.version>
         <jetty.version>9.4.51.v20230217</jetty.version>
         <dropwizard.metrics.version>4.2.7</dropwizard.metrics.version>
         <micrometer.metrics.version>1.6.2</micrometer.metrics.version>
         <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
-        <felix.version>5.1.8</felix.version>
+        <felix.version>5.1.9</felix.version>
         <snappy.version>1.1.8.4</snappy.version>
         <zstd-jni.version>1.5.4-2</zstd-jni.version>
         <netty.version>4.1.94.Final</netty.version>
@@ -169,20 +147,26 @@
         <sonar.java.checkstyle.reportPaths>target/checkstyle-report.xml</sonar.java.checkstyle.reportPaths>
         <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.junit.reportPaths>target/surefire-reports,target/failsafe-reports</sonar.junit.reportPaths>
-        <!-- By default, the argLine is empty-->
         <gson.version>2.8.9</gson.version>
+        <!-- By default, the argLine is empty-->
         <argLine/>
         <!-- whether enable compiling the cpp client-->
         <client-cpp>false</client-cpp>
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
+        <!-- Updating the plugin would require us to update the java-format version -->
+        <!--spotless.version>2.39.0</spotless.version-->
         <spotless.version>2.27.1</spotless.version>
+        <!-- Override this to `true`, if you want to disable spotless -->
+        <spotless.skip>false</spotless.skip>
         <httpclient.version>4.5.14</httpclient.version>
         <httpcore.version>4.4.16</httpcore.version>
         <!-- for REST service -->
         <swagger.core.version>1.6.2</swagger.core.version>
         <servlet.api.version>2.5</servlet.api.version>
-        <openapi.generator.version>5.0.1</openapi.generator.version>
+        <openapi.generator.version>6.6.0</openapi.generator.version>
+        <!-- OpenAPI Generator 7 isn't compatible with Java 8 anymore -->
+        <!--openapi.generator.version>7.0.0</openapi.generator.version-->
         <!-- cli -->
         <progressbar.version>0.9.5</progressbar.version>
         <!-- zeppelin -->
@@ -221,23 +205,32 @@
         <!-- caffeine cache -->
         <caffeine>2.9.3</caffeine>
         <commons-csv.version>1.9.0</commons-csv.version>
-        <commons-lang.version>2.6</commons-lang.version>
         <JTransforms.version>3.1</JTransforms.version>
         <xz.version>1.9</xz.version>
         <!-- codegen -->
-        <drill.freemarker.maven.plugin.version>1.17.0</drill.freemarker.maven.plugin.version>
+        <drill.freemarker.maven.plugin.version>1.21.1</drill.freemarker.maven.plugin.version>
         <codegen.phase>generate-sources</codegen.phase>
+        <cmake-maven-plugin.version>3.26.3-b1</cmake-maven-plugin.version>
+        <cmake.build.type>Release</cmake.build.type>
+        <ctest.skip.tests>false</ctest.skip.tests>
+        <thrift.exec.absolute.path/>
+        <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
+        <boost.include.dir/>
+        <!-- websocket -->
+        <websocket.version>1.5.3</websocket.version>
+        <!-- milo -->
+        <milo.version>0.6.10</milo.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
-        their version in sub-project's pom, but we have to claim themselves again
-        in sub-projects
+        their version in subproject's pom, but we have to claim themselves again
+        in subprojects
     -->
     <dependencyManagement>
         <dependencies>
             <!--
                 in the subprojects, you have to claim logback again, because maybe
-                someone in your dependences uses log4j lib.
+                someone in your dependencies uses log4j lib.
             -->
             <dependency>
                 <groupId>ch.qos.logback</groupId>
@@ -272,7 +265,7 @@
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>[${guava.version},)</version>
+                <version>${guava.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.lmax</groupId>
@@ -623,15 +616,15 @@
                 <version>${commons-csv.version}</version>
             </dependency>
             <dependency>
-                <groupId>commons-lang</groupId>
-                <artifactId>commons-lang</artifactId>
-                <version>${commons-lang.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>com.github.wendykierp</groupId>
                 <artifactId>JTransforms</artifactId>
                 <version>${JTransforms.version}</version>
             </dependency>
+            <!--dependency>
+                <groupId>io.dropwizard.metrics</groupId>
+                <artifactId>metrics-core</artifactId>
+                <version>${dropwizard.metrics.version}</version>
+            </dependency-->
         </dependencies>
     </dependencyManagement>
     <dependencies>
@@ -662,7 +655,7 @@
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>versions-maven-plugin</artifactId>
-                    <version>2.3</version>
+                    <version>2.16.0</version>
                     <configuration>
                         <generateBackupPoms>false</generateBackupPoms>
                     </configuration>
@@ -670,6 +663,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.5.0</version>
                     <configuration>
                         <excludePackageNames>*thrift*</excludePackageNames>
                         <!--
@@ -688,6 +682,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.1.2</version>
                     <configuration>
                         <argLine>${argLine} -Xmx1024m</argLine>
                     </configuration>
@@ -698,11 +693,13 @@
                 <plugin>
                     <groupId>org.sonarsource.scanner.maven</groupId>
                     <artifactId>sonar-maven-plugin</artifactId>
-                    <version>3.6.1.1688</version>
+                    <version>3.9.1.2184</version>
+                    <!--version>3.6.1.1688</version-->
                 </plugin>
                 <plugin>
                     <groupId>org.apache.rat</groupId>
                     <artifactId>apache-rat-plugin</artifactId>
+                    <version>0.15</version>
                     <configuration>
                         <consoleOutput>true</consoleOutput>
                         <excludes>
@@ -740,8 +737,6 @@
                             <exclude>**/.jpeg</exclude>
                             <!--Generated by Apache Release -->
                             <exclude>local-snapshots-dir/**</exclude>
-                            <!-- JSON can't contain comments and therefore no Apache header -->
-                            <exclude>*.json</exclude>
                             <!-- visualization plans -->
                             <exclude>**/*.plan</exclude>
                             <exclude>**/NOTICE-binary</exclude>
@@ -801,13 +796,174 @@
                         </execution>
                     </executions>
                 </plugin>
+                <plugin>
+                    <groupId>com.googlecode.maven-download-plugin</groupId>
+                    <artifactId>download-maven-plugin</artifactId>
+                    <version>1.7.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.googlecode.cmake-maven-project</groupId>
+                    <artifactId>cmake-maven-plugin</artifactId>
+                    <version>3.26.3-b1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.3.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.eluder.coveralls</groupId>
+                    <artifactId>coveralls-maven-plugin</artifactId>
+                    <version>4.3.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>3.4.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>net.revelc.code.formatter</groupId>
+                    <artifactId>formatter-maven-plugin</artifactId>
+                    <version>2.23.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>3.3.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.3.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.1.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-assembly-plugin</artifactId>
+                    <version>${maven.assembly.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.cyclonedx</groupId>
+                    <artifactId>cyclonedx-maven-plugin</artifactId>
+                    <version>2.7.9</version>
+                </plugin>
+                <plugin>
+                    <groupId>net.nicoulaj.maven.plugins</groupId>
+                    <artifactId>checksum-maven-plugin</artifactId>
+                    <version>1.11</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>0.8.10</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.coderplus.maven.plugins</groupId>
+                    <artifactId>copy-rename-maven-plugin</artifactId>
+                    <version>1.0.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-shade-plugin</artifactId>
+                    <version>3.5.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.3.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-dependency-plugin</artifactId>
+                    <version>3.6.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.thrift.tools</groupId>
+                    <artifactId>maven-thrift-plugin</artifactId>
+                    <version>0.1.11</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.bazaarvoice.maven.plugins</groupId>
+                    <artifactId>process-exec-maven-plugin</artifactId>
+                    <version>0.9</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>build-helper-maven-plugin</artifactId>
+                    <version>3.4.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.felix</groupId>
+                    <artifactId>maven-bundle-plugin</artifactId>
+                    <version>${felix.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.m2e</groupId>
+                    <artifactId>lifecycle-mapping</artifactId>
+                    <version>1.0.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.github.eirslett</groupId>
+                    <artifactId>frontend-maven-plugin</artifactId>
+                    <version>1.14.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-antrun-plugin</artifactId>
+                    <version>3.1.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.scala-tools</groupId>
+                    <artifactId>maven-scala-plugin</artifactId>
+                    <version>2.15.2</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.antlr</groupId>
+                    <artifactId>antlr4-maven-plugin</artifactId>
+                    <version>${antlr4.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.drill.tools</groupId>
+                    <artifactId>drill-fmpp-maven-plugin</artifactId>
+                    <version>${drill.freemarker.maven.plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>3.3.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>pl.project13.maven</groupId>
+                    <artifactId>git-commit-id-plugin</artifactId>
+                    <version>4.9.10</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.openapitools</groupId>
+                    <artifactId>openapi-generator-maven-plugin</artifactId>
+                    <version>${openapi.generator.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>au.com.acegi</groupId>
+                    <artifactId>xml-format-maven-plugin</artifactId>
+                    <version>3.2.2</version>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
             <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <configuration>
+                    <skip>${spotless.skip}</skip>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.eluder.coveralls</groupId>
                 <artifactId>coveralls-maven-plugin</artifactId>
-                <version>4.3.0</version>
                 <configuration>
                     <jacocoReports>
                         <jacocoReport>code-coverage/target/jacoco-merged-reports/jacoco.xml</jacocoReport>
@@ -816,10 +972,10 @@
                     <sourceDirectories>
                         <!-- put all source folders not in src/main/java here-->
                         <sourceDirectory>iotdb-core/antlr/target/generated-sources/antlr4</sourceDirectory>
-                        <sourceDirectory>iotdb-protocol/thrift/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>iotdb-protocol/thrift-datanode/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-commons/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-confignode/target/generated-sources/thrift</sourceDirectory>
-                        <sourceDirectory>iotdb-protocol/thrift-iot-consensus/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>iotdb-protocol/thrift-consensus/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/openapi/target/generated-sources/java/src/gen/java</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/openapi/target/generated-sources/java/src/main/java</sourceDirectory>
                         <sourceDirectory>iotdb-core/datanode/target/generated-sources/freemarker/</sourceDirectory>
@@ -854,21 +1010,19 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
-                <version>3.0.0-M2</version>
-                <!--$NO-MVN-MAN-VER$-->
                 <executions>
                     <!-- Ensure we're not mixing dependency versions -->
                     <execution>
                         <id>enforce-version-convergence</id>
                         <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
                         <configuration>
                             <rules>
                                 <dependencyConvergence/>
                             </rules>
                         </configuration>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
                     </execution>
                     <!--
                         Fails the build if classes are included from multiple
@@ -918,12 +1072,17 @@
                     <dependency>
                         <groupId>org.sonatype.ossindex.maven</groupId>
                         <artifactId>ossindex-maven-enforcer-rules</artifactId>
-                        <version>1.0.0</version>
+                        <version>3.2.0</version>
                     </dependency>
                     <dependency>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>extra-enforcer-rules</artifactId>
-                        <version>1.4</version>
+                        <version>1.7.0</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.apache.maven.shared</groupId>
+                        <artifactId>maven-dependency-tree</artifactId>
+                        <version>3.2.1</version>
                     </dependency>
                 </dependencies>
             </plugin>
@@ -955,20 +1114,11 @@
             <plugin>
                 <groupId>net.revelc.code.formatter</groupId>
                 <artifactId>formatter-maven-plugin</artifactId>
-                <version>2.8.1</version>
             </plugin>
             <!--for code style check -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>3.1.2</version>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.puppycrawl.tools</groupId>
-                        <artifactId>checkstyle</artifactId>
-                        <version>8.45.1</version>
-                    </dependency>
-                </dependencies>
                 <executions>
                     <execution>
                         <id>validate</id>
@@ -986,6 +1136,15 @@
                     <configLocation>checkstyle.xml</configLocation>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
                 </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>9.3</version>
+                        <!-- Starting with version 10, checkstyle requires Java 11 -->
+                        <!--version>10.12.3</version-->
+                    </dependency>
+                </dependencies>
             </plugin>
             <!--
               Check if all files contain Apache headers in them.
@@ -1007,7 +1166,6 @@
             <plugin>
                 <groupId>au.com.acegi</groupId>
                 <artifactId>xml-format-maven-plugin</artifactId>
-                <version>3.0.7</version>
                 <executions>
                     <execution>
                         <id>xml-format</id>
@@ -1020,8 +1178,6 @@
                             <indentSize>4</indentSize>
                             <excludes>
                                 <exclude>**/target/**</exclude>
-                                <exclude>**/checkstyle.xml</exclude>
-                                <exclude>**/import-control.xml</exclude>
                             </excludes>
                         </configuration>
                     </execution>
@@ -1050,8 +1206,9 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Separates the unit tests from the integration tests. -->
+            <!-- TODO: Integration-Tests should be executed by the failsafe plugin -->
             <plugin>
-                <!-- Separates the unit tests from the integration tests. -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <executions>
@@ -1095,7 +1252,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.2.0</version>
                 <executions>
                     <execution>
                         <id>create-source-package</id>
@@ -1109,88 +1265,117 @@
         </plugins>
     </build>
     <profiles>
-        <!-- spotless is too slow, so we put it into a profile to skip it if needed -->
-        <profile>
-            <id>spotless</id>
-            <activation>
-                <!-- activeByDefault does not take effect-->
-                <file>
-                    <exists>.</exists>
-                </file>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.diffplug.spotless</groupId>
-                        <artifactId>spotless-maven-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
         <!--
           A set of profiles defining the different properties needed to download and run thrift
           They are automatically activated depending on the OS you are using.
         -->
         <profile>
-            <id>windows</id>
-            <activation>
-                <os>
-                    <family>windows</family>
-                </os>
-            </activation>
-            <properties>
-                <os.classifier>windows-x86_64</os.classifier>
-                <thrift.download-url>http://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
-                <thrift.executable>thrift-${thrift.version}-win-x86_64.exe</thrift.executable>
-                <thrift.skip-making-executable>true</thrift.skip-making-executable>
-                <thrift.exec-cmd.executable>echo</thrift.exec-cmd.executable>
-                <thrift.exec-cmd.args>"Do nothing"</thrift.exec-cmd.args>
-            </properties>
-        </profile>
-        <!-- Has to be listed before "mac" as it seems a mac is both "mac" and "unix" -->
-        <profile>
-            <id>unix</id>
+            <id>.os-unix</id>
             <activation>
                 <os>
                     <family>unix</family>
+                    <name>Linux</name>
+                    <arch>!aarch64</arch>
                 </os>
             </activation>
             <properties>
                 <os.classifier>linux-x86_64</os.classifier>
-                <thrift.download-url>https://gitbox.apache.org/repos/asf?p=iotdb-bin-resources.git;a=blob_plain;f=compile-tools/thrift-0.14-ubuntu;hb=HEAD</thrift.download-url>
-                <thrift.executable>thrift_0.14.1_linux</thrift.executable>
-                <thrift.skip-making-executable>false</thrift.skip-making-executable>
-                <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
-                <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <thrift.executable>thrift</thrift.executable>
             </properties>
         </profile>
         <profile>
-            <id>mac</id>
+            <id>.os-unix-arm</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <name>Linux</name>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.classifier>linux-aarch64</os.classifier>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <thrift.executable>thrift</thrift.executable>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-mac</id>
             <activation>
                 <os>
                     <family>mac</family>
+                    <arch>!aarch64</arch>
                 </os>
             </activation>
             <properties>
                 <os.classifier>mac-x86_64</os.classifier>
-                <thrift.download-url>https://gitbox.apache.org/repos/asf?p=iotdb-bin-resources.git;a=blob_plain;f=compile-tools/thrift-0.14-MacOS;hb=HEAD</thrift.download-url>
-                <thrift.executable>thrift_0.14.1_mac</thrift.executable>
-                <thrift.skip-making-executable>false</thrift.skip-making-executable>
-                <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
-                <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <thrift.executable>thrift</thrift.executable>
+                <boost.include.dir>/usr/local/include</boost.include.dir>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-mac-arm</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.classifier>mac-aarch64</os.classifier>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <thrift.executable>thrift</thrift.executable>
+                <boost.include.dir>/opt/homebrew/opt/boost/include</boost.include.dir>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                    <arch>!aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.classifier>windows-x86_64</os.classifier>
+                <cmake.generator>Visual Studio 17 2022</cmake.generator>
+                <thrift.executable>Release/thrift.exe</thrift.executable>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-windows-arm</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.classifier>windows-aarch64</os.classifier>
+                <cmake.generator>Visual Studio 17 2022</cmake.generator>
+                <thrift.executable>Release/thrift.exe</thrift.executable>
+            </properties>
+        </profile>
+        <profile>
+            <id>.java-9-and-above</id>
+            <activation>
+                <jdk>[9,)</jdk>
+            </activation>
+            <properties>
+                <maven.compiler.release>8</maven.compiler.release>
             </properties>
         </profile>
         <!-- Some APIs were removed in Java 11, so we need to add replacements -->
         <profile>
-            <id>java-11-and-above</id>
+            <id>.java-11-and-above</id>
             <activation>
-                <!-- This needs to be updated as soon as Java 20 is shipped -->
-                <jdk>[11,20)</jdk>
+                <jdk>[11,)</jdk>
             </activation>
             <properties>
-                <maven.compiler.release>8</maven.compiler.release>
+                <argLine>--illegal-access=permit --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
                 <!-- change to 1.15.0 will modify many codes (all are javadocs), we change it to 1.15.0
-                until: iotdb decides to do not support jdk8-->
+                    until: iotdb decides to do not support jdk8-->
                 <google.java.format.version>1.7</google.java.format.version>
             </properties>
             <dependencies>
@@ -1212,14 +1397,24 @@
         <!-- Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default]
           (https://openjdk.java.net/jeps/396) -->
         <profile>
-            <id>java-16-and-above</id>
+            <id>.java-16-and-above</id>
             <activation>
-                <!-- This needs to be updated as soon as Java 20 is shipped -->
-                <jdk>[16,20)</jdk>
+                <jdk>[16,)</jdk>
             </activation>
             <properties>
-                <maven.compiler.release>8</maven.compiler.release>
-                <argLine>--illegal-access=permit --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
+                <argLine>--add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
+            </properties>
+        </profile>
+        <!-- Little helper profile that will disable running the cmake tests when the maven tests are being skipped -->
+        <profile>
+            <id>.skipTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                </property>
+            </activation>
+            <properties>
+                <ctest.skip.tests>true</ctest.skip.tests>
             </properties>
         </profile>
         <!--
@@ -1232,51 +1427,39 @@
           {maven local repo}/.cache/download-maven-plugin
         -->
         <profile>
-            <id>thrift-generation</id>
+            <id>.thrift-generation</id>
             <activation>
                 <file>
                     <exists>src/main/thrift</exists>
                 </file>
             </activation>
             <properties>
-                <thrift.exec.absolute.path>${project.build.directory}/tools/${thrift.executable}</thrift.exec.absolute.path>
+                <thrift.exec.absolute.path>${project.build.directory}/thrift/bin/${thrift.executable}</thrift.exec.absolute.path>
             </properties>
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>com.googlecode.maven-download-plugin</groupId>
-                        <artifactId>download-maven-plugin</artifactId>
-                        <version>1.6.7</version>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>get-thrift-executable</id>
+                                <id>get-thrift</id>
                                 <phase>generate-sources</phase>
                                 <goals>
-                                    <goal>wget</goal>
+                                    <goal>unpack</goal>
                                 </goals>
                                 <configuration>
-                                    <url>${thrift.download-url}</url>
-                                    <outputDirectory>${project.build.directory}/tools</outputDirectory>
-                                    <outputFileName>${thrift.executable}</outputFileName>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>1.6.0</version>
-                        <executions>
-                            <execution>
-                                <id>make-thrift-executable-executable</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>exec</goal>
-                                </goals>
-                                <configuration>
-                                    <skip>${thrift.skip-making-executable}</skip>
-                                    <executable>${thrift.exec-cmd.executable}</executable>
-                                    <commandlineArgs>${thrift.exec-cmd.args}</commandlineArgs>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>org.apache.iotdb.tools</groupId>
+                                            <artifactId>iotdb-tools-thrift</artifactId>
+                                            <version>${iotdb-tools-thrift.version}</version>
+                                            <classifier>${os.classifier}</classifier>
+                                            <type>zip</type>
+                                            <overWrite>true</overWrite>
+                                            <outputDirectory>${project.build.directory}/thrift</outputDirectory>
+                                        </artifactItem>
+                                    </artifactItems>
                                 </configuration>
                             </execution>
                         </executions>
@@ -1284,7 +1467,6 @@
                     <plugin>
                         <groupId>org.apache.thrift.tools</groupId>
                         <artifactId>maven-thrift-plugin</artifactId>
-                        <version>0.1.11</version>
                         <executions>
                             <execution>
                                 <id>generate-thrift-sources-java</id>
@@ -1294,8 +1476,6 @@
                                 </goals>
                                 <configuration>
                                     <generator>java</generator>
-                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                                    <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                 </configuration>
                             </execution>
                             <execution>
@@ -1306,8 +1486,6 @@
                                 </goals>
                                 <configuration>
                                     <generator>py</generator>
-                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                                    <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                     <includes>**/common.thrift,**/client.thrift,**/datanode.thrift,**/confignode.thrift,**/mlnode.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
                                 </configuration>
@@ -1320,16 +1498,25 @@
                                 </goals>
                                 <configuration>
                                     <generator>go</generator>
-                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                                    <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                     <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>
                             </execution>
                         </executions>
+                        <configuration>
+                            <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
+                            <thriftSourceRoot>${project.basedir}/src/main/thrift</thriftSourceRoot>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <!-- Enable integration-testsuite on demand, as this takes quite a long time to run -->
+        <profile>
+            <id>with-integration-tests</id>
+            <modules>
+                <module>integration-test</module>
+            </modules>
         </profile>
         <!-- Make sure the source assembly has the right name -->
         <profile>
@@ -1339,7 +1526,6 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${maven.assembly.version}</version>
                         <executions>
                             <execution>
                                 <id>source-release-assembly</id>
@@ -1365,12 +1551,31 @@
                         </executions>
                     </plugin>
                     <!--
+                      Generate an SBOM for the project
+                    -->
+                    <plugin>
+                        <groupId>org.cyclonedx</groupId>
+                        <artifactId>cyclonedx-maven-plugin</artifactId>
+                        <!-- Only run this in the root module of the project -->
+                        <inherited>false</inherited>
+                        <configuration>
+                            <outputName>apache-${project.artifactId}-${project.version}-sbom</outputName>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>makeAggregateBom</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!--
                       Create SHA512 checksum files for the release artifacts.
                     -->
                     <plugin>
                         <groupId>net.nicoulaj.maven.plugins</groupId>
                         <artifactId>checksum-maven-plugin</artifactId>
-                        <version>1.8</version>
                         <executions>
                             <execution>
                                 <id>sign-source-release</id>
@@ -1399,7 +1604,7 @@
         </profile>
         <!-- code coverage for ut and it, and then merge them together.-->
         <profile>
-            <id>code-coverage</id>
+            <id>with-code-coverage</id>
             <modules>
                 <module>code-coverage</module>
             </modules>
@@ -1410,7 +1615,6 @@
                     <plugin>
                         <groupId>org.jacoco</groupId>
                         <artifactId>jacoco-maven-plugin</artifactId>
-                        <version>0.8.7</version>
                         <configuration>
                             <excludes>
                                 <exclude>org/apache/iotdb/service/sync/thrift/*</exclude>

@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 
 import java.util.List;
@@ -31,7 +33,6 @@ import java.util.List;
  * AST via {@link ASTVisitor}.
  */
 public abstract class Statement extends StatementNode {
-
   protected StatementType statementType = StatementType.NULL;
 
   protected boolean isDebug;
@@ -58,9 +59,11 @@ public abstract class Statement extends StatementNode {
     return false;
   }
 
-  public boolean isAuthenticationRequired() {
-    return true;
-  }
-
   public abstract List<PartialPath> getPaths();
+
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.SUPER_USER.equals(userName),
+        "Only the admin user can perform this operation");
+  }
 }

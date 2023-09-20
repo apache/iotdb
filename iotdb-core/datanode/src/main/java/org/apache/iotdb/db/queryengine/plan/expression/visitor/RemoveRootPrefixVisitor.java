@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ROOT;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 
 public class RemoveRootPrefixVisitor extends ReconstructVisitor<Void> {
 

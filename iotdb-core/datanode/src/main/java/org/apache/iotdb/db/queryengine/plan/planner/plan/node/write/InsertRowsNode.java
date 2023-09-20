@@ -23,13 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -37,6 +37,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -112,11 +113,13 @@ public class InsertRowsNode extends InsertNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    // Do nothing
+  }
 
   @Override
   public boolean equals(Object o) {
@@ -145,7 +148,7 @@ public class InsertRowsNode extends InsertNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return Collections.emptyList();
   }
 
   public static InsertRowsNode deserialize(ByteBuffer byteBuffer) {
@@ -203,6 +206,12 @@ public class InsertRowsNode extends InsertNode {
   }
 
   @Override
+  public void markAsGeneratedByPipe() {
+    isGeneratedByPipe = true;
+    insertRowNodeList.forEach(InsertRowNode::markAsGeneratedByPipe);
+  }
+
+  @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     Map<TRegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
     List<TEndPoint> redirectInfo = new ArrayList<>();
@@ -214,7 +223,7 @@ public class InsertRowsNode extends InsertNode {
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   insertRowNode.devicePath.getFullPath(),
-                  TimePartitionUtils.getTimePartition(insertRowNode.getTime()));
+                  TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()));
       // collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);

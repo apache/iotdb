@@ -102,22 +102,24 @@ public class LoadTsFileScheduler implements IScheduler {
   private final DataPartitionBatchFetcher partitionFetcher;
   private final List<LoadSingleTsFileNode> tsFileNodeList;
   private final PlanFragmentId fragmentId;
-
-  private Set<TRegionReplicaSet> allReplicaSets;
+  private final Set<TRegionReplicaSet> allReplicaSets;
+  private final boolean isGeneratedByPipe;
 
   public LoadTsFileScheduler(
       DistributedQueryPlan distributedQueryPlan,
       MPPQueryContext queryContext,
       QueryStateMachine stateMachine,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
-      IPartitionFetcher partitionFetcher) {
+      IPartitionFetcher partitionFetcher,
+      boolean isGeneratedByPipe) {
     this.queryContext = queryContext;
     this.stateMachine = stateMachine;
     this.tsFileNodeList = new ArrayList<>();
     this.fragmentId = distributedQueryPlan.getRootSubPlan().getPlanFragment().getId();
-    this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager);
+    this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager, isGeneratedByPipe);
     this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
     this.allReplicaSets = new HashSet<>();
+    this.isGeneratedByPipe = isGeneratedByPipe;
 
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
       tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getPlanNodeTree());
@@ -140,7 +142,10 @@ public class LoadTsFileScheduler implements IScheduler {
               node.getTsFileResource().getTsFilePath());
 
         } else if (!node.needDecodeTsFile(
-            partitionFetcher::queryDataPartition)) { // do not decode, load locally
+            slotList ->
+                partitionFetcher.queryDataPartition(
+                    slotList,
+                    queryContext.getSession().getUserName()))) { // do not decode, load locally
           isLoadSingleTsFileSuccess = loadLocally(node);
           node.clean();
 
@@ -279,6 +284,7 @@ public class LoadTsFileScheduler implements IScheduler {
     TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
             (isFirstPhaseSuccess ? LoadCommand.EXECUTE : LoadCommand.ROLLBACK).ordinal(), uuid);
+    loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
     Future<FragInstanceDispatchResult> dispatchResultFuture =
         dispatcher.dispatchCommand(loadCommandReq, allReplicaSets);
 
@@ -429,7 +435,8 @@ public class LoadTsFileScheduler implements IScheduler {
           scheduler.partitionFetcher.queryDataPartition(
               nonDirectionalChunkData.stream()
                   .map(data -> new Pair<>(data.getDevice(), data.getTimePartitionSlot()))
-                  .collect(Collectors.toList()));
+                  .collect(Collectors.toList()),
+              scheduler.queryContext.getSession().getUserName());
       IntStream.range(0, nonDirectionalChunkData.size())
           .forEach(
               i ->
@@ -478,14 +485,15 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     public List<TRegionReplicaSet> queryDataPartition(
-        List<Pair<String, TTimePartitionSlot>> slotList) {
+        List<Pair<String, TTimePartitionSlot>> slotList, String userName) {
       List<TRegionReplicaSet> replicaSets = new ArrayList<>();
       int size = slotList.size();
 
       for (int i = 0; i < size; i += TRANSMIT_LIMIT) {
         List<Pair<String, TTimePartitionSlot>> subSlotList =
             slotList.subList(i, Math.min(size, i + TRANSMIT_LIMIT));
-        DataPartition dataPartition = fetcher.getOrCreateDataPartition(toQueryParam(subSlotList));
+        DataPartition dataPartition =
+            fetcher.getOrCreateDataPartition(toQueryParam(subSlotList), userName);
         replicaSets.addAll(
             subSlotList.stream()
                 .map(pair -> dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right))

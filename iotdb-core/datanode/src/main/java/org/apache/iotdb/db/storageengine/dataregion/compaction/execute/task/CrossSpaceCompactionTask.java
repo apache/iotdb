@@ -61,7 +61,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected List<TsFileResource> holdWriteLockList = new ArrayList<>();
   protected double selectedSeqFileSize = 0;
   protected double selectedUnseqFileSize = 0;
-  protected long memoryCost = 0L;
 
   @SuppressWarnings("squid:S107")
   public CrossSpaceCompactionTask(
@@ -183,7 +182,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         CompactionValidator validator = CompactionValidator.getInstance();
         if (!validator.validateCompaction(
-            tsFileManager, targetTsfileResourceList, storageGroupName, timePartition)) {
+            tsFileManager, targetTsfileResourceList, storageGroupName, timePartition, false)) {
           LOGGER.error(
               "Failed to pass compaction validation, "
                   + "source sequence files is: {}, "
@@ -213,14 +212,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           }
         }
 
-        long[] sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
-        List<String> fileNames = new ArrayList<>(selectedSequenceFiles.size());
-        selectedSequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
-        FileMetrics.getInstance().deleteFile(sequenceFileSize, true, fileNames);
-        fileNames.clear();
-        selectedUnsequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
-        long[] unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
-        FileMetrics.getInstance().deleteFile(unsequenceFileSize, false, fileNames);
+        CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
+            selectedSequenceFiles, selectedUnsequenceFiles);
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
         for (TsFileResource targetResource : targetTsfileResourceList) {
@@ -239,7 +232,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         CompactionMetrics.getInstance().recordSummaryInfo(summary);
 
-        long costTime = (System.currentTimeMillis() - startTime) / 1000;
+        double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
 
         LOGGER.info(
             "{}-{} [Compaction] CrossSpaceCompaction task finishes successfully, "
@@ -247,8 +240,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
                 + "compaction speed is {} MB/s, {}",
             storageGroupName,
             dataRegionId,
-            costTime,
-            (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024 / costTime,
+            String.format("%.2f", costTime),
+            String.format(
+                "%.2f",
+                (selectedSeqFileSize + selectedUnseqFileSize) / 1024.0d / 1024.0d / costTime),
             summary);
       }
       if (logFile.exists()) {
@@ -354,19 +349,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     }
 
     return equalsOtherTask((CrossSpaceCompactionTask) other);
-  }
-
-  private long[] deleteOldFiles(List<TsFileResource> tsFileResourceList) {
-    long[] size = new long[tsFileResourceList.size()];
-    for (int i = 0, length = tsFileResourceList.size(); i < length; ++i) {
-      TsFileResource tsFileResource = tsFileResourceList.get(i);
-      size[i] = tsFileResource.getTsFileSize();
-      tsFileResource.remove();
-      LOGGER.info(
-          "[CrossSpaceCompaction] Delete TsFile :{}.",
-          tsFileResource.getTsFile().getAbsolutePath());
-    }
-    return size;
   }
 
   private void releaseReadAndLockWrite(List<TsFileResource> tsFileResourceList) {

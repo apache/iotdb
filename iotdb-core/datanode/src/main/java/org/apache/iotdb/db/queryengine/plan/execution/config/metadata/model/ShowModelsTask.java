@@ -42,6 +42,8 @@ import java.util.stream.Collectors;
 
 public class ShowModelsTask implements IConfigTask {
 
+  private static final int MODEL_INFO_COLUMN_NUM = 5;
+
   public ShowModelsTask() {
     // do nothing
   }
@@ -83,10 +85,12 @@ public class ShowModelsTask implements IConfigTask {
 
       for (int i = 1; i < listSize; i++) {
         builder.getTimeColumnBuilder().writeLong(0L);
-        for (int columnIndex = 0; columnIndex <= 4; columnIndex++) {
+        for (int columnIndex = 0; columnIndex <= MODEL_INFO_COLUMN_NUM - 1; columnIndex++) {
           builder.getColumnBuilder(columnIndex).writeBinary(Binary.valueOf(""));
         }
-        builder.getColumnBuilder(5).writeBinary(Binary.valueOf(modelHyperparameter.get(i)));
+        builder
+            .getColumnBuilder(MODEL_INFO_COLUMN_NUM)
+            .writeBinary(Binary.valueOf(modelHyperparameter.get(i)));
         builder.declarePosition();
       }
     }

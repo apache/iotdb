@@ -110,12 +110,6 @@ public class ConfigNodeConfig {
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
       RegionBalancer.RegionGroupAllocatePolicy.GREEDY;
 
-  /**
-   * DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
-   * predecessor or successor TimePartitionSlot if set true.
-   */
-  private boolean enableDataPartitionInheritPolicy = true;
-
   /** Max concurrent client number. */
   private int rpcMaxConcurrentClientNum = 65535;
 
@@ -226,8 +220,6 @@ public class ConfigNodeConfig {
   /** RatisConsensus protocol, allow flushing Raft Log asynchronously. */
   private boolean dataRegionRatisLogUnsafeFlushEnable = false;
 
-  private int dataRegionRatisLogForceSyncNum = 128;
-
   private boolean configNodeRatisLogUnsafeFlushEnable = false;
   private boolean schemaRegionRatisLogUnsafeFlushEnable = false;
 
@@ -241,7 +233,13 @@ public class ConfigNodeConfig {
   /** RatisConsensus protocol, flow control window for ratis grpc log appender. */
   private long dataRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
 
+  private int configNodeRatisGrpcLeaderOutstandingAppendsMax = 128;
+  private int schemaRegionRatisGrpcLeaderOutstandingAppendsMax = 128;
   private int dataRegionRatisGrpcLeaderOutstandingAppendsMax = 128;
+
+  private int configNodeRatisLogForceSyncNum = 128;
+  private int schemaRegionRatisLogForceSyncNum = 128;
+  private int dataRegionRatisLogForceSyncNum = 128;
 
   private long configNodeRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
   private long schemaRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
@@ -559,14 +557,6 @@ public class ConfigNodeConfig {
     this.regionGroupAllocatePolicy = regionGroupAllocatePolicy;
   }
 
-  public boolean isEnableDataPartitionInheritPolicy() {
-    return enableDataPartitionInheritPolicy;
-  }
-
-  public void setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
-    this.enableDataPartitionInheritPolicy = enableDataPartitionInheritPolicy;
-  }
-
   public int getThriftServerAwaitTimeForStopService() {
     return thriftServerAwaitTimeForStopService;
   }
@@ -767,6 +757,22 @@ public class ConfigNodeConfig {
     this.dataRegionRatisLogUnsafeFlushEnable = dataRegionRatisLogUnsafeFlushEnable;
   }
 
+  public int getConfigNodeRatisLogForceSyncNum() {
+    return configNodeRatisLogForceSyncNum;
+  }
+
+  public void setConfigNodeRatisLogForceSyncNum(int configNodeRatisLogForceSyncNum) {
+    this.configNodeRatisLogForceSyncNum = configNodeRatisLogForceSyncNum;
+  }
+
+  public int getSchemaRegionRatisLogForceSyncNum() {
+    return schemaRegionRatisLogForceSyncNum;
+  }
+
+  public void setSchemaRegionRatisLogForceSyncNum(int schemaRegionRatisLogForceSyncNum) {
+    this.schemaRegionRatisLogForceSyncNum = schemaRegionRatisLogForceSyncNum;
+  }
+
   public int getDataRegionRatisLogForceSyncNum() {
     return dataRegionRatisLogForceSyncNum;
   }
@@ -789,6 +795,26 @@ public class ConfigNodeConfig {
 
   public void setDataRegionRatisGrpcFlowControlWindow(long dataRegionRatisGrpcFlowControlWindow) {
     this.dataRegionRatisGrpcFlowControlWindow = dataRegionRatisGrpcFlowControlWindow;
+  }
+
+  public int getConfigNodeRatisGrpcLeaderOutstandingAppendsMax() {
+    return configNodeRatisGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public void setConfigNodeRatisGrpcLeaderOutstandingAppendsMax(
+      int configNodeRatisGrpcLeaderOutstandingAppendsMax) {
+    this.configNodeRatisGrpcLeaderOutstandingAppendsMax =
+        configNodeRatisGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public int getSchemaRegionRatisGrpcLeaderOutstandingAppendsMax() {
+    return schemaRegionRatisGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public void setSchemaRegionRatisGrpcLeaderOutstandingAppendsMax(
+      int schemaRegionRatisGrpcLeaderOutstandingAppendsMax) {
+    this.schemaRegionRatisGrpcLeaderOutstandingAppendsMax =
+        schemaRegionRatisGrpcLeaderOutstandingAppendsMax;
   }
 
   public int getDataRegionRatisGrpcLeaderOutstandingAppendsMax() {

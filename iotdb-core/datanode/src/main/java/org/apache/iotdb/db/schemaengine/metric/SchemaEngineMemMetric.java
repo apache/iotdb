@@ -33,7 +33,6 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 public class SchemaEngineMemMetric implements ISchemaEngineMetric {
 
-  private static final String TIME_SERES_CNT = "timeSeries";
   public static final String SCHEMA_REGION_TOTAL_USAGE = "schema_region_total_usage";
   private static final String TOTAL_MEM_USAGE = "schema_region_total_mem_usage";
   private static final String MEM_CAPACITY = "schema_region_mem_capacity";
@@ -41,8 +40,6 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
 
   private static final String SCHEMA_CONSENSUS = "schema_region_consensus";
   private static final String SCHEMA_ENGINE_MODE = "schema_engine_mode";
-
-  private static final String TEMPLATE_SERIES_CNT = "template_series_cnt";
 
   private final MemSchemaEngineStatistics engineStatistics;
 
@@ -52,20 +49,6 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.createAutoGauge(
-        Metric.QUANTITY.toString(),
-        MetricLevel.CORE,
-        engineStatistics,
-        ISchemaEngineStatistics::getTotalSeriesNumber,
-        Tag.NAME.toString(),
-        TIME_SERES_CNT);
-    metricService.createAutoGauge(
-        Metric.QUANTITY.toString(),
-        MetricLevel.IMPORTANT,
-        engineStatistics,
-        ISchemaEngineStatistics::getTemplateSeriesNumber,
-        Tag.NAME.toString(),
-        TEMPLATE_SERIES_CNT);
     metricService.createAutoGauge(
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
@@ -111,13 +94,6 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), TIME_SERES_CNT);
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.QUANTITY.toString(),
-        Tag.NAME.toString(),
-        TEMPLATE_SERIES_CNT);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.MEM.toString(),

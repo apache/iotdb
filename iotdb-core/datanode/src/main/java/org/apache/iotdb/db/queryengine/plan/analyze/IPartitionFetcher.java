@@ -39,7 +39,7 @@ public interface IPartitionFetcher {
    * Get or create schema partition, used in insertion with enable_auto_create_schema is true. if
    * schemaPartition does not exist, then automatically create.
    */
-  SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree);
+  SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree, String userName);
 
   /**
    * Get data partition, used in query scenarios.
@@ -71,18 +71,20 @@ public interface IPartitionFetcher {
    * true and database/series/time slots not exists, then automatically create.
    *
    * @param dataPartitionQueryParams the list of DataPartitionQueryParams
+   * @param userName
    */
-  DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
+  DataPartition getOrCreateDataPartition(
+      List<DataPartitionQueryParam> dataPartitionQueryParams, String userName);
 
   /** Get schema partition and matched nodes according to path pattern tree. */
   default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
-      PathPatternTree patternTree) {
-    return getSchemaNodeManagementPartitionWithLevel(patternTree, null);
+      PathPatternTree patternTree, PathPatternTree scope) {
+    return getSchemaNodeManagementPartitionWithLevel(patternTree, scope, null);
   }
 
   /** Get schema partition and matched nodes according to path pattern tree and node level. */
   SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-      PathPatternTree patternTree, Integer level);
+      PathPatternTree patternTree, PathPatternTree scope, Integer level);
 
   /** Update region cache in partition cache when receive request from config node */
   boolean updateRegionCache(TRegionRouteReq req);

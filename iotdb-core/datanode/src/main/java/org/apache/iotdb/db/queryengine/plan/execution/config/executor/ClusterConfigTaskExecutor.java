@@ -67,6 +67,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
@@ -105,6 +106,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -150,7 +152,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateFunctionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseStatement;
@@ -166,6 +167,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -180,11 +187,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogica
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.RenameLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.CreatePipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.DropPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.ShowPipesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.StartPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
@@ -236,12 +238,12 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.model.ForecastModeInformation.INPUT_TYPE_LIST;
 import static org.apache.iotdb.commons.model.ForecastModeInformation.PREDICT_INDEX_LIST;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.lte;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ROOT;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
@@ -281,11 +283,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to execute create database {} in config node, status is {}.",
-            databaseSchemaStatement.getDatabasePath(),
-            tsStatus);
-        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+        // If database already exists when loading, we do not throw exceptions to avoid printing too
+        // many logs
+        if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
+            && !databaseSchemaStatement.getEnablePrintExceptionLog()) {
+          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        } else {
+          LOGGER.warn(
+              "Failed to execute create database {} in config node, status is {}.",
+              databaseSchemaStatement.getDatabasePath(),
+              tsStatus);
+          future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+        }
+
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
@@ -308,10 +318,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TSStatus tsStatus = configNodeClient.alterDatabase(databaseSchema);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to execute create database {} in config node, status is {}.",
-            databaseSchemaStatement.getDatabasePath(),
-            tsStatus);
+        if (databaseSchemaStatement.getEnablePrintExceptionLog()) {
+          LOGGER.warn(
+              "Failed to execute alter database {} in config node, status is {}.",
+              databaseSchemaStatement.getDatabasePath(),
+              tsStatus);
+        }
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -332,10 +344,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TShowDatabaseResp resp = client.showDatabase(databasePathPattern);
+      TGetDatabaseReq req =
+          new TGetDatabaseReq(
+              databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize());
+      TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
       showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
-    } catch (ClientManagerException | TException e) {
+    } catch (IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -350,11 +365,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         Arrays.asList(countDatabaseStatement.getPathPattern().getNodes());
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TCountDatabaseResp resp = client.countMatchedDatabases(databasePathPattern);
+      TGetDatabaseReq req =
+          new TGetDatabaseReq(
+              databasePathPattern, countDatabaseStatement.getAuthorityScope().serialize());
+      TCountDatabaseResp resp = client.countMatchedDatabases(req);
       databaseNum = resp.getCount();
       // build TSBlock
       CountDatabaseTask.buildTSBlock(databaseNum, future);
-    } catch (ClientManagerException | TException e) {
+    } catch (IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -1131,16 +1149,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     Map<String, Long> databaseToTTL = new HashMap<>();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      ByteBuffer scope = showTTLStatement.getAuthorityScope().serialize();
       if (showTTLStatement.isAll()) {
         List<String> allStorageGroupPathPattern = Arrays.asList("root", "**");
-        TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(allStorageGroupPathPattern);
+        TGetDatabaseReq req = new TGetDatabaseReq(allStorageGroupPathPattern, scope);
+        TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(req);
         for (Map.Entry<String, TDatabaseSchema> entry : resp.getDatabaseSchemaMap().entrySet()) {
           databaseToTTL.put(entry.getKey(), entry.getValue().getTTL());
         }
       } else {
         for (PartialPath databasePath : databasePaths) {
           List<String> databasePathPattern = Arrays.asList(databasePath.getNodes());
-          TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(databasePathPattern);
+          TGetDatabaseReq req = new TGetDatabaseReq(databasePathPattern, scope);
+          TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(req);
           for (Map.Entry<String, TDatabaseSchema> entry : resp.getDatabaseSchemaMap().entrySet()) {
             if (!databaseToTTL.containsKey(entry.getKey())) {
               databaseToTTL.put(entry.getKey(), entry.getValue().getTTL());
@@ -1148,7 +1169,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         }
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
     // build TSBlock
@@ -1325,11 +1346,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> showPathSetTemplate(
       ShowPathSetTemplateStatement showPathSetTemplateStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    String templateName = showPathSetTemplateStatement.getTemplateName();
     try {
       // Send request to some API server
       List<PartialPath> listPath =
-          ClusterTemplateManager.getInstance().getPathsSetTemplate(templateName);
+          ClusterTemplateManager.getInstance()
+              .getPathsSetTemplate(
+                  showPathSetTemplateStatement.getTemplateName(),
+                  showPathSetTemplateStatement.getAuthorityScope());
       // Build TSBlock
       ShowPathSetTemplateTask.buildTSBlock(listPath, future);
     } catch (Exception e) {
@@ -1797,25 +1820,31 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> alterLogicalView(
-      String queryId, AlterLogicalViewStatement alterLogicalViewStatement) {
+      AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     CreateLogicalViewStatement createLogicalViewStatement = new CreateLogicalViewStatement();
     createLogicalViewStatement.setTargetPaths(alterLogicalViewStatement.getTargetPaths());
     createLogicalViewStatement.setSourcePaths(alterLogicalViewStatement.getSourcePaths());
     createLogicalViewStatement.setQueryStatement(alterLogicalViewStatement.getQueryStatement());
 
-    Analyzer.validate(createLogicalViewStatement);
+    Analysis analysis = Analyzer.analyze(createLogicalViewStatement, context);
+    if (analysis.isFailed()) {
+      future.setException(
+          new IoTDBException(
+              analysis.getFailStatus().getMessage(), analysis.getFailStatus().getCode()));
+      return future;
+    }
 
     // Transform all Expressions into ViewExpressions.
     TransformToViewExpressionVisitor transformToViewExpressionVisitor =
         new TransformToViewExpressionVisitor();
-    List<Expression> expressionList = createLogicalViewStatement.getSourceExpressionList();
+    List<Expression> expressionList = alterLogicalViewStatement.getSourceExpressionList();
     List<ViewExpression> viewExpressionList = new ArrayList<>();
     for (Expression expression : expressionList) {
       viewExpressionList.add(transformToViewExpressionVisitor.process(expression, null));
     }
 
-    List<PartialPath> viewPathList = createLogicalViewStatement.getTargetPathList();
+    List<PartialPath> viewPathList = alterLogicalViewStatement.getTargetPathList();
 
     ByteArrayOutputStream stream = new ByteArrayOutputStream();
     try {
@@ -1829,7 +1858,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
 
     TAlterLogicalViewReq req =
-        new TAlterLogicalViewReq(queryId, ByteBuffer.wrap(stream.toByteArray()));
+        new TAlterLogicalViewReq(
+            context.getQueryId().getId(), ByteBuffer.wrap(stream.toByteArray()));
     try (ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
@@ -2012,12 +2042,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createContinuousQuery(
-      CreateContinuousQueryStatement createContinuousQueryStatement, String sql, String username) {
+      CreateContinuousQueryStatement createContinuousQueryStatement, MPPQueryContext context) {
     createContinuousQueryStatement.semanticCheck();
 
     String queryBody = createContinuousQueryStatement.getQueryBody();
     // TODO Do not modify Statement in Analyzer
-    Analyzer.validate(createContinuousQueryStatement.getQueryBodyStatement());
+    Analyzer.analyze(createContinuousQueryStatement.getQueryBodyStatement(), context);
 
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
@@ -2031,9 +2061,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createContinuousQueryStatement.getEndTimeOffset(),
               createContinuousQueryStatement.getTimeoutPolicy().getType(),
               queryBody,
-              sql,
+              context.getSql(),
               createContinuousQueryStatement.getZoneId(),
-              username);
+              context.getSession() == null ? null : context.getSession().getUserName());
       final TSStatus executionStatus = client.createCQ(tCreateCQReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn(
@@ -2090,12 +2120,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createModel(CreateModelStatement createModelStatement) {
+  public SettableFuture<ConfigTaskResult> createModel(
+      CreateModelStatement createModelStatement, MPPQueryContext context) {
     createModelStatement.semanticCheck();
 
     QueryStatement datasetStatement = createModelStatement.getDatasetStatement();
-    Analyzer analyzer = Analyzer.getAnalyzer();
-    Analysis analysis = analyzer.analyze(datasetStatement);
+    Analysis analysis = Analyzer.analyze(datasetStatement, context);
 
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     if (analysis.getOutputExpressions() == null) {
@@ -2111,8 +2141,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     List<TSDataType> inputTypeList = new ArrayList<>();
     for (Expression outputExpression :
         analysis.getOutputExpressions().stream().map(Pair::getLeft).collect(Collectors.toList())) {
+      ResultColumn.ColumnType columnType =
+          ExpressionAnalyzer.identifyOutputColumnType(outputExpression, true);
       formattedSelect.addResultColumn(
-          new ResultColumn(ExpressionAnalyzer.removeRootPrefix(outputExpression)));
+          new ResultColumn(ExpressionAnalyzer.removeRootPrefix(outputExpression), columnType));
       inputTypeList.add(analysis.getType(outputExpression));
     }
     datasetStatement.setSelectComponent(formattedSelect);

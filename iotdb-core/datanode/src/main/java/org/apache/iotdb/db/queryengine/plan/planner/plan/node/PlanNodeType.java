@@ -78,6 +78,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ml.ForecastNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
@@ -94,6 +95,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -179,7 +181,9 @@ public enum PlanNodeType {
   DELETE_LOGICAL_VIEW((short) 76),
   LOGICAL_VIEW_SCHEMA_SCAN((short) 77),
   ALTER_LOGICAL_VIEW((short) 78),
-  FORECAST((short) 79);
+  PIPE_ENRICHED_INSERT((short) 79),
+  FORECAST((short) 80),
+  LAST_QUERY_TRANSFORM((short) 81);
 
   public static final int BYTES = Short.BYTES;
 
@@ -383,7 +387,11 @@ public enum PlanNodeType {
       case 78:
         return AlterLogicalViewNode.deserialize(buffer);
       case 79:
+        return PipeEnrichedInsertNode.deserialize(buffer);
+      case 80:
         return ForecastNode.deserialize(buffer);
+      case 81:
+        return LastQueryTransformNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

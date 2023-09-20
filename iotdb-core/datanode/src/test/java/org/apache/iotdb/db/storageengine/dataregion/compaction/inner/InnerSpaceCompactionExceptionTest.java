@@ -34,7 +34,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.h2.store.fs.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -42,6 +41,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -184,7 +184,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
       tsFileManager.getOrCreateSequenceListByTimePartition(0).remove(resource);
     }
     tsFileManager.getOrCreateSequenceListByTimePartition(0).keepOrderInsert(targetResource);
-    FileUtils.delete(seqResources.get(0).getTsFile().getPath());
+    Files.delete(seqResources.get(0).getTsFile().toPath());
     seqResources.get(0).remove();
     compactionLogger.close();
     Assert.assertTrue(targetResource.getTsFile().exists());

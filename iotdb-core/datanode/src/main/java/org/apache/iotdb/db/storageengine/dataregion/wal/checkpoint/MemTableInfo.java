@@ -116,6 +116,10 @@ public class MemTableInfo implements SerializedSize {
     return pinCount > 0;
   }
 
+  public int getPinCount() {
+    return pinCount;
+  }
+
   public boolean isFlushed() {
     return flushed;
   }

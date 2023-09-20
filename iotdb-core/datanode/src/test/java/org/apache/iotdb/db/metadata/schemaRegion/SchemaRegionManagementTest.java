@@ -22,12 +22,11 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
@@ -98,9 +97,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       List<ITimeSeriesSchemaInfo> result =
           SchemaRegionTestUtil.showTimeseries(
-              schemaRegion,
-              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
+              schemaRegion, new PartialPath("root.sg.**"), false, "tag-key", "tag-value");
 
       ITimeSeriesSchemaInfo seriesResult = result.get(0);
       Assert.assertEquals(
@@ -115,9 +112,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       newSchemaRegion.loadSnapshot(snapshotDir);
       result =
           SchemaRegionTestUtil.showTimeseries(
-              newSchemaRegion,
-              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
+              newSchemaRegion, new PartialPath("root.sg.**"), false, "tag-key", "tag-value");
 
       seriesResult = result.get(0);
       Assert.assertEquals(
@@ -129,9 +124,8 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       result =
           SchemaRegionTestUtil.showTimeseries(
               newSchemaRegion,
-              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                  new PartialPath("root.sg.*.s1"),
-                  Collections.singletonMap(template.getId(), template)));
+              new PartialPath("root.sg.*.s1"),
+              Collections.singletonMap(template.getId(), template));
       result.sort(Comparator.comparing(ISchemaInfo::getFullPath));
       Assert.assertEquals(
           new PartialPath("root.sg.d1.s1").getFullPath(), result.get(0).getFullPath());
@@ -178,9 +172,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       List<ITimeSeriesSchemaInfo> result =
           SchemaRegionTestUtil.showTimeseries(
-              schemaRegion,
-              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
+              schemaRegion, new PartialPath("root.sg.**"), false, "tag-key", "tag-value");
 
       Assert.assertEquals(0, result.size());
 
@@ -190,9 +182,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       newSchemaRegion.loadSnapshot(snapshotDir);
       result =
           SchemaRegionTestUtil.showTimeseries(
-              newSchemaRegion,
-              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
+              newSchemaRegion, new PartialPath("root.sg.**"), false, "tag-key", "tag-value");
 
       Assert.assertEquals(0, result.size());
     } finally {

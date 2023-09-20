@@ -26,6 +26,8 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -49,7 +51,6 @@ import com.google.common.eventbus.EventBus;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -73,7 +74,10 @@ public class LoadManager {
   private final StatisticsService statisticsService;
 
   private final EventBus loadPublisher =
-      new AsyncEventBus("Cluster-LoadPublisher-Thread", Executors.newFixedThreadPool(5));
+      new AsyncEventBus(
+          ThreadName.CONFIG_NODE_LOAD_PUBLISHER.getName(),
+          IoTDBThreadPoolFactory.newFixedThreadPool(
+              5, ThreadName.CONFIG_NODE_LOAD_PUBLISHER.getName()));
 
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
@@ -94,7 +98,7 @@ public class LoadManager {
   /**
    * Generate an optimal CreateRegionGroupsPlan.
    *
-   * @param allotmentMap Map<StorageGroupName, Region allotment>
+   * @param allotmentMap Map<DatabaseName, Region allotment>
    * @param consensusGroupType TConsensusGroupType of RegionGroup to be allocated
    * @return CreateRegionGroupsPlan
    * @throws NotEnoughDataNodeException If there are not enough DataNodes
@@ -110,7 +114,7 @@ public class LoadManager {
    * Allocate SchemaPartitions.
    *
    * @param unassignedSchemaPartitionSlotsMap SchemaPartitionSlots that should be assigned
-   * @return Map<StorageGroupName, SchemaPartitionTable>, the allocating result
+   * @return Map<DatabaseName, SchemaPartitionTable>, the allocating result
    */
   public Map<String, SchemaPartitionTable> allocateSchemaPartition(
       Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
@@ -122,12 +126,21 @@ public class LoadManager {
    * Allocate DataPartitions.
    *
    * @param unassignedDataPartitionSlotsMap DataPartitionSlots that should be assigned
-   * @return Map<StorageGroupName, DataPartitionTable>, the allocating result
+   * @return Map<DatabaseName, DataPartitionTable>, the allocating result
    */
   public Map<String, DataPartitionTable> allocateDataPartition(
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
       throws NoAvailableRegionGroupException {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
+  }
+
+  /**
+   * Re-balance the DataPartitionPolicyTable.
+   *
+   * @param database Database name
+   */
+  public void reBalanceDataPartitionPolicy(String database) {
+    partitionBalancer.reBalanceDataPartitionPolicy(database);
   }
 
   public void broadcastLatestRegionRouteMap() {
@@ -138,12 +151,18 @@ public class LoadManager {
     loadCache.initHeartbeatCache(configManager);
     heartbeatService.startHeartbeatService();
     statisticsService.startLoadStatisticsService();
+    partitionBalancer.setupPartitionBalancer();
   }
 
   public void stopLoadServices() {
     heartbeatService.stopHeartbeatService();
     statisticsService.stopLoadStatisticsService();
     loadCache.clearHeartbeatCache();
+    partitionBalancer.clearPartitionBalancer();
+  }
+
+  public void clearDataPartitionPolicyTable(String database) {
+    partitionBalancer.clearDataPartitionPolicyTable(database);
   }
 
   /**

@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.pipe.plugin.builtin;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBSyncConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBLegacyPipeConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
@@ -76,34 +76,34 @@ public class BuiltinPipePluginTest {
     PipeProcessor processor = new DoNothingProcessor();
     try {
       processor.validate(mock(PipeParameterValidator.class));
-      Assert.fail();
     } catch (Exception ignored) {
+      Assert.fail();
     }
     try {
       processor.customize(
           mock(PipeParameters.class), mock(PipeProcessorRuntimeConfiguration.class));
-      Assert.fail();
     } catch (Exception ignored) {
+      Assert.fail();
     }
     try {
       processor.process(mock(TabletInsertionEvent.class), mock(EventCollector.class));
-      Assert.fail();
     } catch (Exception ignored) {
+      Assert.fail();
     }
     try {
       processor.process(mock(TsFileInsertionEvent.class), mock(EventCollector.class));
-      Assert.fail();
     } catch (Exception ignored) {
+      Assert.fail();
     }
     try {
       processor.process(mock(Event.class), mock(EventCollector.class));
-      Assert.fail();
     } catch (Exception ignored) {
+      Assert.fail();
     }
     try {
       processor.close();
-      Assert.fail();
     } catch (Exception ignored) {
+      Assert.fail();
     }
 
     PipeConnector connector = new DoNothingConnector();
@@ -121,7 +121,7 @@ public class BuiltinPipePluginTest {
       Assert.fail();
     }
 
-    testConnectorAllThrow(new IoTDBSyncConnector());
+    testConnectorAllThrow(new IoTDBLegacyPipeConnector());
     testConnectorAllThrow(new IoTDBThriftConnector());
   }
 

@@ -363,7 +363,8 @@ public class Util {
       }
 
       @Override
-      public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
+      public SchemaPartition getOrCreateSchemaPartition(
+          PathPatternTree patternTree, String userName) {
         return ANALYSIS.getSchemaPartitionInfo();
       }
 
@@ -387,13 +388,13 @@ public class Util {
 
       @Override
       public DataPartition getOrCreateDataPartition(
-          List<DataPartitionQueryParam> dataPartitionQueryParams) {
+          List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
         return ANALYSIS.getDataPartitionInfo();
       }
 
       @Override
       public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-          PathPatternTree patternTree, Integer level) {
+          PathPatternTree patternTree, PathPatternTree scope, Integer level) {
         return null;
       }
 

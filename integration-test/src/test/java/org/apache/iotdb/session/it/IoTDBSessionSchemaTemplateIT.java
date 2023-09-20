@@ -471,18 +471,22 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
 
     Assert.assertTrue(expectedSeries.isEmpty());
 
-    deviceIds = Arrays.asList("root.db.v4.d1", "root.db.v4.d2");
-    timestamps = Arrays.asList(1L, 1L);
     measurements = Arrays.asList("a", "b", "c");
-    allMeasurements = Arrays.asList(measurements, measurements);
-    allTsDataTypes =
-        Arrays.asList(
-            Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.TEXT),
-            Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.INT32));
-    allValues = Arrays.asList(Arrays.asList(1f, 2f, "3"), Arrays.asList(1d, 2d, 3));
 
     try {
-      session.insertRecords(deviceIds, timestamps, allMeasurements, allTsDataTypes, allValues);
+      session.insertRecord(
+          "root.db.v4.d1",
+          1L,
+          measurements,
+          Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.TEXT),
+          Arrays.asList(1f, 2f, "3"));
+      session.insertRecord(
+          "root.db.v4.d2",
+          1L,
+          measurements,
+          Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.INT32),
+          Arrays.asList(1d, 2d, 3));
+      Assert.fail();
     } catch (StatementExecutionException e) {
       Assert.assertTrue(
           e.getMessage()

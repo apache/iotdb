@@ -66,12 +66,8 @@ public class TsFileWriteAlignedWithTablet {
       // register align timeseries
       tsFileWriter.registerAlignedTimeseries(new Path(DEVICE_1), measurementSchemas);
 
-      List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
       // example 1
-      writeMeasurementScheams.add(measurementSchemas.get(0));
-      writeMeasurementScheams.add(measurementSchemas.get(1));
-      writeMeasurementScheams.add(measurementSchemas.get(2));
-      writeAlignedWithTablet(tsFileWriter, DEVICE_1, writeMeasurementScheams, 200000, 0, 0);
+      writeAlignedWithTablet(tsFileWriter, DEVICE_1, measurementSchemas, 200000, 0, 0);
 
       writeNonAlignedWithTablet(tsFileWriter); // write nonAligned timeseries
     } catch (WriteProcessException e) {

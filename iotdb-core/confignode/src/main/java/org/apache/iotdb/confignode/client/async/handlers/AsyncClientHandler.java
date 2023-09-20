@@ -210,7 +210,8 @@ public class AsyncClientHandler<Q, R> {
             dataNodeLocationMap,
             (Map<Integer, TPipeHeartbeatResp>) responseMap,
             countDownLatch);
-      case PUSH_PIPE_META:
+      case PIPE_PUSH_ALL_META:
+      case PIPE_PUSH_SINGLE_META:
         return new PipePushMetaRPCHandler(
             requestType,
             requestId,

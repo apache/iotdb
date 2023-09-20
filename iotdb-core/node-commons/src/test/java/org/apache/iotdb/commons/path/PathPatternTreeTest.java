@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -29,7 +28,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class PathPatternTreeTest {
@@ -56,7 +57,7 @@ public class PathPatternTreeTest {
             new PartialPath("root.sg1.*.t1.s1"),
             new PartialPath("root.sg1.d2.t1.s1")),
         Arrays.asList(new PartialPath("root.sg1.d1.t2.s2"), new PartialPath("root.sg1.*.t1.s1")),
-        Arrays.asList(new PartialPath("root.sg1.d1.t2"), new PartialPath("root.sg1.*")),
+        Arrays.asList(new PartialPath("root.sg1.d1.t2"), new PartialPath("root.sg1.*.t1")),
         true);
   }
 
@@ -259,11 +260,7 @@ public class PathPatternTreeTest {
         compressedDevicePaths.stream().sorted().collect(Collectors.toList()),
         patternTree.getAllDevicePaths().stream().sorted().collect(Collectors.toList()));
 
-    PublicBAOS outputStream = new PublicBAOS();
-    resultPatternTree.serialize(outputStream);
-    ByteBuffer buffer = ByteBuffer.allocate(outputStream.size());
-    buffer.put(outputStream.getBuf(), 0, outputStream.size());
-    buffer.flip();
+    ByteBuffer buffer = resultPatternTree.serialize();
     PathPatternTree tmpPathPatternTree = PathPatternTree.deserialize(buffer);
     Assert.assertEquals(resultPatternTree, tmpPathPatternTree);
   }
@@ -286,5 +283,124 @@ public class PathPatternTreeTest {
     Assert.assertEquals(
         Arrays.asList(new PartialPath("root.sg1.*.t1.s1"), new PartialPath("root.sg1.d1.t2.s2")),
         patternTree.getAllPathPatterns());
+  }
+
+  @Test
+  public void testIntersectWithFullPathPrefixTree1() throws Exception {
+    List<PartialPath> partialPathList =
+        Arrays.asList(
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.*.t1.s1"),
+            new PartialPath("root.sg1.d2.**"));
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath path : partialPathList) {
+      patternTree.appendPathPattern(path);
+    }
+    patternTree.constructTree();
+
+    List<PartialPath> fullPathPrefixList =
+        Arrays.asList(
+            new PartialPath("root.sg1.d1.**"),
+            new PartialPath("root.sg1.d2.**"),
+            new PartialPath("root.sg1.d3.t1.s1"));
+    PathPatternTree fullPathPrefixTree = new PathPatternTree();
+    for (PartialPath path : fullPathPrefixList) {
+      fullPathPrefixTree.appendPathPattern(path);
+    }
+    fullPathPrefixTree.constructTree();
+
+    PathPatternTree res =
+        PathPatternTreeUtils.intersectWithFullPathPrefixTree(patternTree, fullPathPrefixTree);
+    Set<PartialPath> expected =
+        new HashSet<PartialPath>() {
+          {
+            add(new PartialPath("root.sg1.d1.t1.s1"));
+            add(new PartialPath("root.sg1.d2.**"));
+            add(new PartialPath("root.sg1.d3.t1.s1"));
+          }
+        };
+    for (PartialPath path : res.getAllPathPatterns()) {
+      Assert.assertTrue(expected.remove(path));
+    }
+    Assert.assertTrue(expected.isEmpty());
+  }
+
+  @Test
+  public void testIntersectWithFullPathPrefixTree2() throws Exception {
+    List<PartialPath> partialPathList =
+        Arrays.asList(
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.*.t1.s2"),
+            new PartialPath("root.**.t*.**"));
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath path : partialPathList) {
+      patternTree.appendPathPattern(path);
+    }
+    patternTree.constructTree();
+
+    List<PartialPath> fullPathPrefixList =
+        Arrays.asList(new PartialPath("root.sg1.d1.**"), new PartialPath("root.sg1.d2.**"));
+    PathPatternTree fullPathPrefixTree = new PathPatternTree();
+    for (PartialPath path : fullPathPrefixList) {
+      fullPathPrefixTree.appendPathPattern(path);
+    }
+    fullPathPrefixTree.constructTree();
+
+    PathPatternTree res =
+        PathPatternTreeUtils.intersectWithFullPathPrefixTree(patternTree, fullPathPrefixTree);
+    Set<PartialPath> expected =
+        new HashSet<PartialPath>() {
+          {
+            add(new PartialPath("root.sg1.d1.t*.**"));
+            add(new PartialPath("root.sg1.d1.**.t*.**"));
+            add(new PartialPath("root.sg1.d2.t*.**"));
+            add(new PartialPath("root.sg1.d2.**.t*.**"));
+          }
+        };
+    for (PartialPath path : res.getAllPathPatterns()) {
+      Assert.assertTrue(expected.remove(path));
+    }
+    Assert.assertTrue(expected.isEmpty());
+  }
+
+  @Test
+  public void testIntersectWithFullPathPrefixTree3() throws Exception {
+    List<PartialPath> partialPathList =
+        Arrays.asList(
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.*.t1.s2"),
+            new PartialPath("root.**.h*.**"));
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath path : partialPathList) {
+      patternTree.appendPathPattern(path);
+    }
+    patternTree.constructTree();
+
+    List<PartialPath> fullPathPrefixList =
+        Arrays.asList(new PartialPath("root.sg1.d1.**"), new PartialPath("root.sg1.d2.**"));
+    PathPatternTree fullPathPrefixTree = new PathPatternTree();
+    for (PartialPath path : fullPathPrefixList) {
+      fullPathPrefixTree.appendPathPattern(path);
+    }
+    fullPathPrefixTree.constructTree();
+
+    PathPatternTree res =
+        PathPatternTreeUtils.intersectWithFullPathPrefixTree(patternTree, fullPathPrefixTree);
+    Set<PartialPath> expected =
+        new HashSet<PartialPath>() {
+          {
+            add(new PartialPath("root.sg1.d1.h*.**"));
+            add(new PartialPath("root.sg1.d1.t1.s1"));
+            add(new PartialPath("root.sg1.d1.t1.s2"));
+            add(new PartialPath("root.sg1.d1.**.h*.**"));
+            add(new PartialPath("root.sg1.d2.h*.**"));
+            add(new PartialPath("root.sg1.d2.**.h*.**"));
+            add(new PartialPath("root.sg1.d2.t1.s2"));
+          }
+        };
+    for (PartialPath path : res.getAllPathPatterns()) {
+      Assert.assertTrue(expected.remove(path));
+    }
+    Assert.assertTrue(expected.isEmpty());
   }
 }

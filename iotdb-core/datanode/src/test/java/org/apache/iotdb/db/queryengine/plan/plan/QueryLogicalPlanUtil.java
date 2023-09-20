@@ -143,7 +143,7 @@ public class QueryLogicalPlanUtil {
 
     LastQueryNode lastQueryNode =
         new LastQueryNode(
-            queryId.genPlanNodeId(), sourceNodeList, TimeFilter.gt(100), Ordering.ASC);
+            queryId.genPlanNodeId(), sourceNodeList, TimeFilter.gt(100), Ordering.ASC, false);
 
     querySQLs.add(sql);
     sqlToPlanMap.put(sql, lastQueryNode);
@@ -172,7 +172,10 @@ public class QueryLogicalPlanUtil {
             Ordering.ASC));
     sourceNodeList.add(
         new AlignedSeriesScanNode(
-            queryId.genPlanNodeId(), (AlignedPath) schemaMap.get("root.sg.d2.a"), Ordering.ASC));
+            queryId.genPlanNodeId(),
+            (AlignedPath) schemaMap.get("root.sg.d2.a"),
+            Ordering.ASC,
+            false));
 
     for (PlanNode sourceNode : sourceNodeList) {
       if (sourceNode instanceof SeriesScanNode) {

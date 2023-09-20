@@ -29,7 +29,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRes> {
 
@@ -66,8 +66,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
       // update safely deleted search index after current sync index is updated by removeBatch
       thread.updateSafelyDeletedSearchIndex();
     }
-    logDispatcherThreadMetrics.recordSyncLogTimePerRequest(
-        (System.nanoTime() - createTime) / batch.getLogEntries().size());
+    logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
   }
 
   private boolean needRetry(int statusCode) {
@@ -88,31 +87,29 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   }
 
   private void sleepCorrespondingTimeAndRetryAsynchronous() {
-    // TODO handle forever retry
-    CompletableFuture.runAsync(
-        () -> {
-          try {
-            long defaultSleepTime =
-                (long)
-                    (thread.getConfig().getReplication().getBasicRetryWaitTimeMs()
-                        * Math.pow(2, retryCount));
-            Thread.sleep(
-                Math.min(
-                    defaultSleepTime, thread.getConfig().getReplication().getMaxRetryWaitTimeMs()));
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logger.warn("Unexpected interruption during retry pending batch");
-          }
-          if (thread.isStopped()) {
-            logger.debug(
-                "LogDispatcherThread {} has been stopped, "
-                    + "we will not retrying this Batch {} after {} times",
-                thread.getPeer(),
-                batch,
-                retryCount);
-          } else {
-            thread.sendBatchAsync(batch, this);
-          }
-        });
+    long sleepTime =
+        Math.min(
+            (long)
+                (thread.getConfig().getReplication().getBasicRetryWaitTimeMs()
+                    * Math.pow(2, retryCount)),
+            thread.getConfig().getReplication().getMaxRetryWaitTimeMs());
+    thread
+        .getImpl()
+        .getRetryService()
+        .schedule(
+            () -> {
+              if (thread.isStopped()) {
+                logger.debug(
+                    "LogDispatcherThread {} has been stopped, "
+                        + "we will not retrying this Batch {} after {} times",
+                    thread.getPeer(),
+                    batch,
+                    retryCount);
+              } else {
+                thread.sendBatchAsync(batch, this);
+              }
+            },
+            sleepTime,
+            TimeUnit.MILLISECONDS);
   }
 }

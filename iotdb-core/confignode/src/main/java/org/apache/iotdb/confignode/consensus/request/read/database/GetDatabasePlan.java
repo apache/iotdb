@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.database;
 
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 import java.util.List;
@@ -29,7 +30,7 @@ public class GetDatabasePlan extends CountDatabasePlan {
     super(ConfigPhysicalPlanType.GetDatabase);
   }
 
-  public GetDatabasePlan(List<String> storageGroupPathPattern) {
-    super(ConfigPhysicalPlanType.GetDatabase, storageGroupPathPattern);
+  public GetDatabasePlan(List<String> storageGroupPathPattern, PathPatternTree scope) {
+    super(ConfigPhysicalPlanType.GetDatabase, storageGroupPathPattern, scope);
   }
 }

@@ -688,10 +688,10 @@ public class BytesUtils {
    */
   public static byte[] subBytes(byte[] src, int start, int length) {
     if ((start + length) > src.length) {
-      return null;
+      return new byte[0];
     }
     if (length <= 0) {
-      return null;
+      return new byte[0];
     }
     byte[] result = new byte[length];
     System.arraycopy(src, start, result, 0, length);

@@ -22,18 +22,35 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.event.Event;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected String pattern;
+  protected boolean isForwardingPipeRequests;
+
+  protected String pipeName;
   protected String dataRegionId;
   protected PipeTaskMeta pipeTaskMeta;
+
+  // This queue is used to store pending events extracted by the method extract(). The method
+  // supply() will poll events from this queue and send them to the next pipe plugin.
+  protected final UnboundedBlockingPendingQueue<Event> pendingQueue =
+      new UnboundedBlockingPendingQueue<>();
+
+  protected final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   protected PipeRealtimeDataRegionExtractor() {
     // Do nothing
@@ -51,9 +68,14 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         parameters.getStringOrDefault(
             PipeExtractorConstant.EXTRACTOR_PATTERN_KEY,
             PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
+    isForwardingPipeRequests =
+        parameters.getBooleanOrDefault(
+            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
 
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
+    pipeName = environment.getPipeName();
     dataRegionId = String.valueOf(environment.getRegionId());
     pipeTaskMeta = environment.getPipeTaskMeta();
   }
@@ -66,10 +88,43 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   @Override
   public void close() throws Exception {
     PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
+
+    synchronized (isClosed) {
+      clearPendingQueue();
+      isClosed.set(true);
+    }
+  }
+
+  private void clearPendingQueue() {
+    final List<Event> eventsToDrop = new ArrayList<>(pendingQueue.size());
+
+    // processor stage is closed later than extractor stage, {@link supply()} may be called after
+    // processor stage is closed. To avoid concurrent issues, we should clear the pending queue
+    // before clearing all the reference count of the events in the pending queue.
+    pendingQueue.forEach(eventsToDrop::add);
+    pendingQueue.clear();
+
+    eventsToDrop.forEach(
+        event -> {
+          if (event instanceof EnrichedEvent) {
+            ((EnrichedEvent) event)
+                .clearReferenceCount(PipeRealtimeDataRegionExtractor.class.getName());
+          }
+        });
   }
 
   /** @param event the event from the storage engine */
-  public abstract void extract(PipeRealtimeEvent event);
+  public final void extract(PipeRealtimeEvent event) {
+    doExtract(event);
+
+    synchronized (isClosed) {
+      if (isClosed.get()) {
+        clearPendingQueue();
+      }
+    }
+  }
+
+  protected abstract void doExtract(PipeRealtimeEvent event);
 
   public abstract boolean isNeedListenToTsFile();
 
@@ -77,6 +132,14 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public final String getPattern() {
     return pattern;
+  }
+
+  public final boolean isForwardingPipeRequests() {
+    return isForwardingPipeRequests;
+  }
+
+  public final String getPipeName() {
+    return pipeName;
   }
 
   public final PipeTaskMeta getPipeTaskMeta() {

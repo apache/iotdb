@@ -27,6 +27,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
@@ -43,7 +45,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTime
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
@@ -51,7 +52,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropContinuousQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropFunctionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
@@ -67,7 +67,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowPipePluginsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
@@ -78,6 +77,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModel
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowTrialsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
@@ -105,11 +112,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.CreatePipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.DropPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.ShowPipesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.StartPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
@@ -302,6 +304,34 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(loadTsFileStatement, context);
   }
 
+  public R visitPipeEnrichedLoadFile(
+      PipeEnrichedLoadTsFileStatement pipeEnrichedLoadTsFileStatement, C context) {
+    return visitStatement(pipeEnrichedLoadTsFileStatement, context);
+  }
+
+  public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {
+    return visitStatement(insertRowStatement, context);
+  }
+
+  public R visitInsertRows(InsertRowsStatement insertRowsStatement, C context) {
+    return visitStatement(insertRowsStatement, context);
+  }
+
+  public R visitInsertMultiTablets(
+      InsertMultiTabletsStatement insertMultiTabletsStatement, C context) {
+    return visitStatement(insertMultiTabletsStatement, context);
+  }
+
+  public R visitInsertRowsOfOneDevice(
+      InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, C context) {
+    return visitStatement(insertRowsOfOneDeviceStatement, context);
+  }
+
+  public R visitPipeEnrichedInsert(
+      PipeEnrichedInsertBaseStatement pipeEnrichedInsertBaseStatement, C context) {
+    return visitStatement(pipeEnrichedInsertBaseStatement, context);
+  }
+
   /** Data Control Language (DCL) */
   public R visitAuthor(AuthorStatement authorStatement, C context) {
     return visitStatement(authorStatement, context);
@@ -337,24 +367,6 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitCountNodes(CountNodesStatement countStatement, C context) {
     return visitStatement(countStatement, context);
-  }
-
-  public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {
-    return visitStatement(insertRowStatement, context);
-  }
-
-  public R visitInsertRows(InsertRowsStatement insertRowsStatement, C context) {
-    return visitStatement(insertRowsStatement, context);
-  }
-
-  public R visitInsertMultiTablets(
-      InsertMultiTabletsStatement insertMultiTabletsStatement, C context) {
-    return visitStatement(insertMultiTabletsStatement, context);
-  }
-
-  public R visitInsertRowsOfOneDevice(
-      InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, C context) {
-    return visitStatement(insertRowsOfOneDeviceStatement, context);
   }
 
   public R visitSchemaFetch(SchemaFetchStatement schemaFetchStatement, C context) {

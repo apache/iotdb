@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.cli.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
@@ -102,8 +103,6 @@ public class StartClientScriptIT extends AbstractScript {
             ip,
             "-p",
             port,
-            "-maxPRC",
-            "0",
             "-e",
             "\"flush\"",
             "&",
@@ -111,22 +110,6 @@ public class StartClientScriptIT extends AbstractScript {
             "%^errorlevel%");
     builder2.environment().put("CLASSPATH", libPath);
     testOutput(builder2, output2, 0);
-
-    final String[] output3 = {
-      "Error: error format of max print row count, it should be an integer number"
-    };
-    ProcessBuilder builder3 =
-        new ProcessBuilder(
-            "cmd.exe",
-            "/c",
-            sbinPath + File.separator + "start-cli.bat",
-            "-maxPRC",
-            "-1111111111111111111111111111",
-            "&",
-            "exit",
-            "%^errorlevel%");
-    builder3.environment().put("CLASSPATH", libPath);
-    testOutput(builder3, output3, 1);
   }
 
   @Override
@@ -158,23 +141,9 @@ public class StartClientScriptIT extends AbstractScript {
             ip,
             "-p",
             port,
-            "-maxPRC",
-            "0",
             "-e",
             "\"flush\"");
     builder2.environment().put("CLASSPATH", libPath);
     testOutput(builder2, output2, 0);
-
-    final String[] output3 = {
-      "Error: error format of max print row count, it should be an integer number"
-    };
-    ProcessBuilder builder3 =
-        new ProcessBuilder(
-            "sh",
-            sbinPath + File.separator + "start-cli.sh",
-            "-maxPRC",
-            "-1111111111111111111111111111");
-    builder3.environment().put("CLASSPATH", libPath);
-    testOutput(builder3, output3, 1);
   }
 }

@@ -63,7 +63,7 @@ public class ExpressionTypeAnalyzer {
       ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
       analyzer.analyze(expression);
 
-      updateAnalysis(analysis, analyzer);
+      addExpressionTypes(analysis, analyzer);
     }
     return analysis.getType(expression);
   }
@@ -76,7 +76,7 @@ public class ExpressionTypeAnalyzer {
     types.putAll(analyzer.getExpressionTypes());
   }
 
-  private static void updateAnalysis(Analysis analysis, ExpressionTypeAnalyzer analyzer) {
+  private static void addExpressionTypes(Analysis analysis, ExpressionTypeAnalyzer analyzer) {
     analysis.addTypes(analyzer.getExpressionTypes());
   }
 

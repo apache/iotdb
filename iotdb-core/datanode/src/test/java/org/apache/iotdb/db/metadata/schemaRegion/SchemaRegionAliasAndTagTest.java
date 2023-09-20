@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -145,9 +144,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
       String fullPath, String alias, Map<String, String> tags, Map<String, String> attributes) {
     try {
       List<ITimeSeriesSchemaInfo> result =
-          SchemaRegionTestUtil.showTimeseries(
-              schemaRegion,
-              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath(fullPath)));
+          SchemaRegionTestUtil.showTimeseries(schemaRegion, new PartialPath(fullPath));
       Assert.assertEquals(1, result.size());
       Assert.assertEquals(fullPath, result.get(0).getFullPath());
       Assert.assertEquals(alias, result.get(0).getAlias());
@@ -162,9 +159,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
   private void checkAttributes(String fullPath, Map<String, String> attributes) {
     try {
       List<ITimeSeriesSchemaInfo> result =
-          SchemaRegionTestUtil.showTimeseries(
-              schemaRegion,
-              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath(fullPath)));
+          SchemaRegionTestUtil.showTimeseries(schemaRegion, new PartialPath(fullPath));
       Assert.assertEquals(1, result.size());
       Assert.assertEquals(fullPath, result.get(0).getFullPath());
       Assert.assertEquals(attributes, result.get(0).getAttributes());
@@ -177,9 +172,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
   private void checkTags(String fullPath, Map<String, String> tags) {
     try {
       List<ITimeSeriesSchemaInfo> result =
-          SchemaRegionTestUtil.showTimeseries(
-              schemaRegion,
-              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath(fullPath)));
+          SchemaRegionTestUtil.showTimeseries(schemaRegion, new PartialPath(fullPath));
       Assert.assertEquals(1, result.size());
       Assert.assertEquals(fullPath, result.get(0).getFullPath());
       Assert.assertEquals(tags, result.get(0).getTags());
@@ -553,9 +546,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
       prepareTimeseries();
       List<ITimeSeriesSchemaInfo> result =
           SchemaRegionTestUtil.showTimeseries(
-              schemaRegion,
-              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                  new PartialPath("root.sg.wf01.wt01.v1.temp")));
+              schemaRegion, new PartialPath("root.sg.wf01.wt01.v1.temp"));
       Assert.assertEquals(1, result.size());
       // delete timeseries
       PathPatternTree patternTree = new PathPatternTree();
@@ -565,9 +556,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
       schemaRegion.deleteTimeseriesInBlackList(patternTree);
       result =
           SchemaRegionTestUtil.showTimeseries(
-              schemaRegion,
-              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                  new PartialPath("root.sg.wf01.wt01.v1.temp")));
+              schemaRegion, new PartialPath("root.sg.wf01.wt01.v1.temp"));
       Assert.assertEquals(0, result.size());
     } catch (Exception e) {
       logger.error(e.getMessage(), e);

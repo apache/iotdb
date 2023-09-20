@@ -36,7 +36,7 @@ def test_create_forecast_model():
     model_configs[HyperparameterName.INPUT_VARS.value] = 8
     model_configs[OptionsKey.INPUT_LENGTH.value] = d_forecast_task_options.input_length
     model_configs[OptionsKey.PREDICT_LENGTH.value] = d_forecast_task_options.predict_length
-    model = create_forecast_model(d_forecast_task_options, model_configs)
+    model = create_forecast_model(d_forecast_task_options.model_type, model_configs)
     sample_input = torch.randn(1, model_configs[OptionsKey.INPUT_LENGTH.value],
                                model_configs[HyperparameterName.INPUT_VARS.value])
     sample_input = pack_input_dict(sample_input)
@@ -51,7 +51,7 @@ def test_create_forecast_model():
     model_configs[HyperparameterName.INPUT_VARS.name()] = 8
     model_configs[OptionsKey.INPUT_LENGTH.name()] = n_forecast_task_options.input_length
     model_configs[OptionsKey.PREDICT_LENGTH.name()] = n_forecast_task_options.predict_length
-    model = create_forecast_model(n_forecast_task_options, model_configs)
+    model = create_forecast_model(n_forecast_task_options.model_type, model_configs)
     output = model(sample_input)
     assert output.shape[1] == model_configs[OptionsKey.PREDICT_LENGTH.value]
     assert output.shape[2] == model_configs[HyperparameterName.INPUT_VARS.value]
@@ -65,7 +65,7 @@ def test_bad_config_model1():
         d_forecast_task_options = ForecastTaskOptions({OptionsKey.MODEL_TYPE.name(): "dlinear_dummy",
                                                        OptionsKey.AUTO_TUNING.name(): "False"})
         d_configs = {HyperparameterName.KERNEL_SIZE.name(): "25", HyperparameterName.USE_GPU.name(): "False"}
-        create_forecast_model(d_forecast_task_options, d_configs)
+        create_forecast_model(d_forecast_task_options.model_type, d_configs)
     except UnsupportedError as e:
         assert e.message == "model_type dlinear_dummy is not supported in current version"
 

@@ -23,25 +23,17 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>iotdb-parent</artifactId>
+        <artifactId>iotdb-protocol</artifactId>
         <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-thrift-commons</artifactId>
-    <name>rpc-thrift-commons</name>
+    <name>IoTDB: Protocol: Thrift Commons</name>
     <description>RPC (Thrift) common framework.</description>
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.thrift</groupId>
-            <artifactId>libthrift</artifactId>
-        </dependency>
-    </dependencies>
     <build>
         <plugins>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.2.0</version>
                 <executions>
                     <execution>
                         <id>add-source</id>
@@ -59,4 +51,10 @@
             </plugin>
         </plugins>
     </build>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.thrift</groupId>
+            <artifactId>libthrift</artifactId>
+        </dependency>
+    </dependencies>
 </project>

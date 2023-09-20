@@ -144,7 +144,11 @@ public abstract class SeriesCompactionExecutor {
           firstChunkMetadataElement.chunkMetadata.getEndTime() >= nextChunkStartTime;
       boolean isModified = firstChunkMetadataElement.chunkMetadata.isModified();
 
-      if (isChunkOverlap || isModified) {
+      // read current chunk
+      readChunk(firstChunkMetadataElement);
+      boolean forceDecodingChunk = firstChunkMetadataElement.needForceDecoding;
+
+      if (isChunkOverlap || isModified || forceDecodingChunk) {
         // has overlap or modified chunk, then deserialize it
         summary.chunkOverlapOrModified++;
         compactWithOverlapChunks(firstChunkMetadataElement);
@@ -164,7 +168,6 @@ public abstract class SeriesCompactionExecutor {
    */
   private void compactWithOverlapChunks(ChunkMetadataElement overlappedChunkMetadata)
       throws IOException, PageException, WriteProcessException, IllegalPathException {
-    readChunk(overlappedChunkMetadata);
     deserializeChunkIntoPageQueue(overlappedChunkMetadata);
 
     compactPages();
@@ -176,7 +179,6 @@ public abstract class SeriesCompactionExecutor {
    */
   private void compactWithNonOverlapChunk(ChunkMetadataElement chunkMetadataElement)
       throws IOException, PageException, WriteProcessException, IllegalPathException {
-    readChunk(chunkMetadataElement);
     boolean success;
     if (isAligned) {
       success =
@@ -237,11 +239,14 @@ public abstract class SeriesCompactionExecutor {
           firstPageElement.pageHeader.getEndTime() >= nextPageStartTime
               || firstPageElement.pageHeader.getEndTime() >= nextChunkStartTime;
 
-      if (isPageOverlap || modifiedStatus == ModifiedStatus.PARTIAL_DELETED) {
+      if (isPageOverlap
+          || modifiedStatus == ModifiedStatus.PARTIAL_DELETED
+          || firstPageElement.needForceDecoding) {
         // has overlap or modified pages, then deserialize it
         summary.pageOverlapOrModified += 1;
-        pointPriorityReader.addNewPage(firstPageElement);
-        compactWithOverlapPages();
+        if (pointPriorityReader.addNewPageIfPageNotEmpty(firstPageElement)) {
+          compactWithOverlapPages();
+        }
       } else {
         // has none overlap or modified pages, flush it to chunk writer directly
         summary.pageNoneOverlap += 1;
@@ -272,7 +277,9 @@ public abstract class SeriesCompactionExecutor {
     } else {
       // unsealed page is not large enough or page.endTime > file.endTime, then deserialze it
       summary.pageNoneOverlapButDeserialize += 1;
-      pointPriorityReader.addNewPage(pageElement);
+      if (!pointPriorityReader.addNewPageIfPageNotEmpty(pageElement)) {
+        return;
+      }
 
       // write data points of the current page into chunk writer
       TimeValuePair point;
@@ -343,10 +350,12 @@ public abstract class SeriesCompactionExecutor {
           currentPoint.getTimestamp() <= nextPageElement.pageHeader.getEndTime()
               || nextPageElement.pageHeader.getEndTime() >= nextPageStartTime
               || nextPageElement.pageHeader.getEndTime() >= nextChunkStartTime;
-      if (isNextPageOverlap || nextPageModifiedStatus == ModifiedStatus.PARTIAL_DELETED) {
+      if (isNextPageOverlap
+          || nextPageModifiedStatus == ModifiedStatus.PARTIAL_DELETED
+          || nextPageElement.needForceDecoding) {
         // next page is overlapped or modified, then deserialize it
         summary.pageOverlapOrModified++;
-        pointPriorityReader.addNewPage(nextPageElement);
+        pointPriorityReader.addNewPageIfPageNotEmpty(nextPageElement);
       } else {
         // has none overlap or modified pages, flush it to chunk writer directly
         summary.pageFakeOverlap += 1;

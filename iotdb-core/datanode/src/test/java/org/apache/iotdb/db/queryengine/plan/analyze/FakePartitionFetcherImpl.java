@@ -111,13 +111,13 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
+  public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree, String userName) {
     return null;
   }
 
   @Override
   public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-      PathPatternTree patternTree, Integer level) {
+      PathPatternTree patternTree, PathPatternTree scope, Integer level) {
     return null;
   }
 
@@ -224,7 +224,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
   @Override
   public DataPartition getOrCreateDataPartition(
-      List<DataPartitionQueryParam> dataPartitionQueryParams) {
+      List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
 
     // only test root.sg
     DataPartition dataPartition =

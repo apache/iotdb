@@ -21,22 +21,26 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -52,68 +56,237 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 public class ClusterAuthorityFetcher implements IAuthorityFetcher {
-  private static final Logger logger = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
+  private static final CommonConfig CONFIG = CommonDescriptor.getInstance().getConfig();
   private final IAuthorCache iAuthorCache;
-  private IAuthorizer authorizer;
+  private boolean cacheOutDate = false;
+  private long heartBeatTimeStamp = 0;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
+  private static final String CONNECTERROR = "Failed to connect to config node.";
+
   public ClusterAuthorityFetcher(IAuthorCache iAuthorCache) {
     this.iAuthorCache = iAuthorCache;
-    try {
-      authorizer = BasicAuthorizer.getInstance();
-    } catch (AuthException e) {
-      logger.error("get user or role permissionInfo failed because ", e);
+  }
+
+  @Override
+  public List<Integer> checkUserPathPrivileges(
+      String username, List<PartialPath> allPath, int permission) {
+    checkCacheAvailable();
+    List<Integer> posList = new ArrayList<>();
+    User user = iAuthorCache.getUserCache(username);
+    if (user != null) {
+      if (user.isOpenIdUser()) {
+        return posList;
+      }
+      int pos = 0;
+      for (PartialPath path : allPath) {
+        if (!user.checkPathPrivilege(path, permission)) {
+          boolean checkFromRole = false;
+          for (String rolename : user.getRoleList()) {
+            Role cachedRole = iAuthorCache.getRoleCache(rolename);
+            if (cachedRole == null) {
+              return checkPathFromConfigNode(username, allPath, permission);
+            }
+            if (cachedRole.checkPathPrivilege(path, permission)) {
+              checkFromRole = true;
+              break;
+            }
+          }
+          if (!checkFromRole) {
+            posList.add(pos);
+          }
+        }
+        pos++;
+      }
+      return posList;
+    } else {
+      return checkPathFromConfigNode(username, allPath, permission);
     }
   }
 
   @Override
-  public TSStatus checkUserPrivileges(String username, List<PartialPath> allPath, int permission) {
+  public boolean checkUserPrivilegeGrantOpt(
+      String username, List<PartialPath> paths, int permission) {
+    checkCacheAvailable();
+    if (PrivilegeType.values()[permission].isPathRelevant()) {
+      return checkUserPathPriGrantOpt(username, paths, permission);
+    } else {
+      return checkUserSysPriGrantOpt(username, permission);
+    }
+  }
+
+  private boolean checkUserPathPriGrantOpt(
+      String username, List<PartialPath> paths, int permission) {
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
-      for (PartialPath path : allPath) {
-        try {
-          if (!user.isOpenIdUser() || !authorizer.checkUserPrivileges(username, path, permission)) {
-            if (!user.checkPrivilege(path, permission)) {
-              if (user.getRoleList().isEmpty()) {
-                return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
-              }
-              boolean status = false;
-              for (String roleName : user.getRoleList()) {
-                Role role = iAuthorCache.getRoleCache(roleName);
-                // It is detected that the role of the user does not exist in the cache, indicating
-                // that the permission information of the role has changed.
-                // The user cache needs to be initialized
-                if (role == null) {
-                  iAuthorCache.invalidateCache(username, "");
-                  return checkPath(username, allPath, permission);
-                }
-                status = role.checkPrivilege(path, permission);
-                if (status) {
-                  break;
-                }
-              }
-              if (!status) {
-                return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
-              }
+      if (user.isOpenIdUser()) {
+        return true;
+      }
+      for (PartialPath path : paths) {
+        if (!user.checkPathPrivilegeGrantOpt(path, permission)) {
+          boolean checkFromRole = false;
+          for (String roleName : user.getRoleList()) {
+            Role role = iAuthorCache.getRoleCache(roleName);
+            if (role == null) {
+              return checkUserPrivilegeGrantOptFromConfigNode(username, paths, permission);
+            }
+            if (role.checkPathPrivilegeGrantOpt(path, permission)) {
+              checkFromRole = true;
+              break;
             }
           }
-        } catch (AuthException e) {
-          return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+          if (!checkFromRole) {
+            return false;
+          }
+        }
+      }
+      return true;
+    } else {
+      return checkUserPrivilegeGrantOptFromConfigNode(username, paths, permission);
+    }
+  }
+
+  private boolean checkUserSysPriGrantOpt(String username, int permission) {
+    User user = iAuthorCache.getUserCache(username);
+    if (user != null) {
+      if (user.isOpenIdUser()) {
+        return true;
+      }
+      if (!user.checkSysPriGrantOpt(permission)) {
+        for (String roleName : user.getRoleList()) {
+          Role role = iAuthorCache.getRoleCache(roleName);
+          if (role == null) {
+            return checkUserPrivilegeGrantOptFromConfigNode(
+                username, Collections.singletonList(new PartialPath()), permission);
+          }
+          if (role.checkSysPriGrantOpt(permission)) {
+            return true;
+          }
+        }
+        return false;
+      }
+      return true;
+    } else {
+      return checkUserPrivilegeGrantOptFromConfigNode(
+          username, Collections.singletonList(new PartialPath()), permission);
+    }
+  }
+
+  private boolean checkUserPrivilegeGrantOptFromConfigNode(
+      String username, List<PartialPath> paths, int permission) {
+    TCheckUserPrivilegesReq req =
+        new TCheckUserPrivilegesReq(
+            username, AuthUtils.serializePartialPathList(paths), permission);
+    req.setGrantOpt(true);
+    TPermissionInfoResp permissionInfoResp;
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      permissionInfoResp = configNodeClient.checkUserPrivilegeGrantOpt(req);
+    } catch (ClientManagerException | TException e) {
+      LOGGER.error(CONNECTERROR);
+      permissionInfoResp = new TPermissionInfoResp();
+      permissionInfoResp.setStatus(
+          RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
+    }
+    if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  @Override
+  public PathPatternTree getAuthorizedPatternTree(String username, int permission)
+      throws AuthException {
+    PathPatternTree patternTree = new PathPatternTree();
+    User user = iAuthorCache.getUserCache(username);
+    if (user != null) {
+      for (PathPrivilege path : user.getPathPrivilegeList()) {
+        if (path.checkPrivilege(permission)) {
+          patternTree.appendPathPattern(path.getPath());
+        }
+      }
+      for (String roleName : user.getRoleList()) {
+        Role role = iAuthorCache.getRoleCache(roleName);
+        if (role != null) {
+          for (PathPrivilege path : role.getPathPrivilegeList()) {
+            if (path.checkPrivilege(permission)) {
+              patternTree.appendPathPattern(path.getPath());
+            }
+          }
+        } else {
+          return fetchAuthizedPatternTree(username, permission);
+        }
+      }
+      patternTree.constructTree();
+      return patternTree;
+    } else {
+      return fetchAuthizedPatternTree(username, permission);
+    }
+  }
+
+  private PathPatternTree fetchAuthizedPatternTree(String username, int permission)
+      throws AuthException {
+    TCheckUserPrivilegesReq req =
+        new TCheckUserPrivilegesReq(
+            username, AuthUtils.serializePartialPathList(Collections.emptyList()), permission);
+    TAuthizedPatternTreeResp authizedPatternTree = new TAuthizedPatternTreeResp();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      authizedPatternTree = configNodeClient.fetchAuthizedPatternTree(req);
+    } catch (ClientManagerException | TException e) {
+      LOGGER.error(CONNECTERROR);
+      authizedPatternTree.setStatus(
+          RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
+    }
+    if (authizedPatternTree.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      iAuthorCache.putUserCache(username, cacheUser(authizedPatternTree.getPermissionInfo()));
+      return PathPatternTree.deserialize(ByteBuffer.wrap(authizedPatternTree.getPathPatternTree()));
+    } else {
+      throw new AuthException(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR, authizedPatternTree.getStatus().getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus checkUserSysPrivileges(String username, int permission) {
+    checkCacheAvailable();
+    User user = iAuthorCache.getUserCache(username);
+    if (user != null) {
+      if (!user.isOpenIdUser() && (!user.checkSysPrivilege(permission))) {
+        if (user.getRoleList().isEmpty()) {
+          return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+        }
+        boolean status = false;
+        for (String rolename : user.getRoleList()) {
+          Role cacheRole = iAuthorCache.getRoleCache(rolename);
+          if (cacheRole == null) {
+            return checkSysPriFromConfigNode(username, permission);
+          }
+          if (cacheRole.checkSysPrivilege(permission)) {
+            status = true;
+            break;
+          }
+        }
+        if (!status) {
+          return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
         }
       }
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } else {
-      return checkPath(username, allPath, permission);
+      return checkSysPriFromConfigNode(username, permission);
     }
   }
 
@@ -128,7 +301,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       TSStatus tsStatus = configNodeClient.operatePermission(authorizerReq);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        logger.error(
+        LOGGER.warn(
             "Failed to execute {} in config node, status is {}.",
             AuthorType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
             tsStatus);
@@ -137,7 +310,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (ClientManagerException | TException e) {
-      logger.error("Failed to connect to config node.");
+      LOGGER.error(CONNECTERROR);
       future.setException(e);
     } catch (AuthException e) {
       future.setException(e);
@@ -160,7 +333,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       authorizerResp = configNodeClient.queryPermission(authorizerReq);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != authorizerResp.getStatus().getCode()) {
-        logger.error(
+        LOGGER.error(
             "Failed to execute {} in config node, status is {}.",
             AuthorType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
             authorizerResp.getStatus());
@@ -168,13 +341,12 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
             new IoTDBException(
                 authorizerResp.getStatus().message, authorizerResp.getStatus().code));
       } else {
-        AuthorizerManager.getInstance().buildTSBlock(authorizerResp.getAuthorizerInfo(), future);
+        AuthorityChecker.buildTSBlock(authorizerResp, future);
       }
     } catch (ClientManagerException | TException e) {
-      logger.error("Failed to connect to config node.");
+      LOGGER.error(CONNECTERROR);
       authorizerResp.setStatus(
-          RpcUtils.getStatus(
-              TSStatusCode.EXECUTE_STATEMENT_ERROR, "Failed to connect to config node."));
+          RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
       future.setException(
           new IoTDBException(authorizerResp.getStatus().message, authorizerResp.getStatus().code));
     } catch (AuthException e) {
@@ -189,7 +361,27 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
+  public void refreshToken() {
+    long currentTime = System.currentTimeMillis();
+    if (heartBeatTimeStamp == 0) {
+      heartBeatTimeStamp = currentTime;
+      return;
+    }
+    if (currentTime - heartBeatTimeStamp > CONFIG.getDatanodeTokenTimeoutMS()) {
+      cacheOutDate = true;
+    }
+  }
+
+  private void checkCacheAvailable() {
+    if (cacheOutDate) {
+      iAuthorCache.invalidAllCache();
+    }
+    cacheOutDate = false;
+  }
+
+  @Override
   public TSStatus checkUser(String username, String password) {
+    checkCacheAvailable();
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
       if (user.isOpenIdUser()) {
@@ -207,11 +399,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         // Send request to some API server
         status = configNodeClient.login(req);
       } catch (ClientManagerException | TException e) {
-        logger.error("Failed to connect to config node.");
+        LOGGER.error(CONNECTERROR);
         status = new TPermissionInfoResp();
-        status.setStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR, "Failed to connect to config node."));
+        status.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
       } finally {
         if (status == null) {
           status = new TPermissionInfoResp();
@@ -226,7 +416,40 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
   }
 
-  public TSStatus checkPath(String username, List<PartialPath> allPath, int permission) {
+  @Override
+  public boolean checkRole(String userName, String roleName) {
+    checkCacheAvailable();
+    User user = iAuthorCache.getUserCache(userName);
+    if (user != null) {
+      return user.isOpenIdUser() || user.getRoleList().contains(userName);
+    } else {
+      return checkRoleFromConfigNode(userName, roleName);
+    }
+  }
+
+  private TSStatus checkSysPriFromConfigNode(String username, int permission) {
+    TCheckUserPrivilegesReq req =
+        new TCheckUserPrivilegesReq(
+            username, AuthUtils.serializePartialPathList(Collections.emptyList()), permission);
+    TPermissionInfoResp permissionInfoResp;
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      permissionInfoResp = configNodeClient.checkUserPrivileges(req);
+    } catch (ClientManagerException | TException e) {
+      LOGGER.error(CONNECTERROR);
+      permissionInfoResp = new TPermissionInfoResp();
+      permissionInfoResp.setStatus(
+          RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
+    }
+    if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+    }
+    return permissionInfoResp.getStatus();
+  }
+
+  private List<Integer> checkPathFromConfigNode(
+      String username, List<PartialPath> allPath, int permission) {
     TCheckUserPrivilegesReq req =
         new TCheckUserPrivilegesReq(
             username, AuthUtils.serializePartialPathList(allPath), permission);
@@ -236,39 +459,67 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       // Send request to some API server
       permissionInfoResp = configNodeClient.checkUserPrivileges(req);
     } catch (ClientManagerException | TException e) {
-      logger.error("Failed to connect to config node.");
+      LOGGER.error(CONNECTERROR);
       permissionInfoResp = new TPermissionInfoResp();
       permissionInfoResp.setStatus(
-          RpcUtils.getStatus(
-              TSStatusCode.EXECUTE_STATEMENT_ERROR, "Failed to connect to config node."));
+          RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
     }
     if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
-      return permissionInfoResp.getStatus();
+    }
+    return permissionInfoResp.getFailPos();
+  }
+
+  private boolean checkRoleFromConfigNode(String username, String rolename) {
+    TAuthorizerReq req = new TAuthorizerReq();
+    req.setUserName(username);
+    req.setRoleName(rolename);
+    TPermissionInfoResp permissionInfoResp;
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      permissionInfoResp = configNodeClient.checkRoleOfUser(req);
+    } catch (ClientManagerException | TException e) {
+      LOGGER.error(CONNECTERROR);
+      permissionInfoResp = new TPermissionInfoResp();
+      permissionInfoResp.setStatus(
+          RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
+    }
+    if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      return true;
+    } else if (permissionInfoResp.getStatus().getCode()
+        == TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode()) {
+      iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      return false;
     } else {
-      return permissionInfoResp.getStatus();
+      return false;
     }
   }
 
   /** Cache user. */
   public User cacheUser(TPermissionInfoResp tPermissionInfoResp) {
     User user = new User();
-    List<String> privilegeList = tPermissionInfoResp.getUserInfo().getPrivilegeList();
+    List<TPathPrivilege> privilegeList = tPermissionInfoResp.getUserInfo().getPrivilegeList();
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
     user.setName(tPermissionInfoResp.getUserInfo().getUsername());
     user.setPassword(tPermissionInfoResp.getUserInfo().getPassword());
-    for (int i = 0; i < privilegeList.size(); i += 2) {
-      String path = privilegeList.get(i);
-      String privilege = privilegeList.get(i + 1);
+    for (TPathPrivilege tPathPrivilege : privilegeList) {
       try {
-        pathPrivilegeList.add(toPathPrivilege(new PartialPath(path), privilege));
+        PathPrivilege pathPri = new PathPrivilege();
+        pathPri.setPath(new PartialPath(tPathPrivilege.getPath()));
+        pathPri.setPrivileges(tPathPrivilege.getPriSet());
+        pathPri.setGrantOpt(tPathPrivilege.getPriGrantOpt());
+        pathPrivilegeList.add(pathPri);
       } catch (MetadataException e) {
-        logger.error("Failed to parse path {}.", path, e);
+        LOGGER.error("Failed to parse path {}.", tPathPrivilege.getPath(), e);
       }
     }
     user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
     user.setPrivilegeList(pathPrivilegeList);
     user.setRoleList(tPermissionInfoResp.getUserInfo().getRoleList());
+    user.setSysPrivilegeSet(tPermissionInfoResp.getUserInfo().getSysPriSet());
+    user.setSysPriGrantOpt(tPermissionInfoResp.getUserInfo().getSysPriSetGrantOpt());
     for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {
       iAuthorCache.putRoleCache(roleName, cacheRole(roleName, tPermissionInfoResp));
     }
@@ -278,41 +529,25 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   /** Cache role. */
   public Role cacheRole(String roleName, TPermissionInfoResp tPermissionInfoResp) {
     Role role = new Role();
-    List<String> privilegeList = tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
+    List<TPathPrivilege> privilegeList =
+        tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
     role.setName(tPermissionInfoResp.getRoleInfo().get(roleName).getRoleName());
-    for (int i = 0; i < privilegeList.size(); i += 2) {
-      String path = privilegeList.get(i);
-      String privilege = privilegeList.get(i + 1);
+    for (TPathPrivilege tPathPrivilege : privilegeList) {
       try {
-        pathPrivilegeList.add(toPathPrivilege(new PartialPath(path), privilege));
+        PathPrivilege pathPri = new PathPrivilege();
+        pathPri.setPath(new PartialPath(tPathPrivilege.getPath()));
+        pathPri.setPrivileges(tPathPrivilege.getPriSet());
+        pathPri.setGrantOpt(tPathPrivilege.getPriGrantOpt());
+        pathPrivilegeList.add(pathPri);
       } catch (MetadataException e) {
-        logger.error("Failed to parse path {}.", path, e);
+        LOGGER.error("Failed to parse path {}.", tPathPrivilege.getPath(), e);
       }
     }
+    role.setSysPriGrantOpt(tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSetGrantOpt());
+    role.setSysPrivilegeSet(tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSet());
     role.setPrivilegeList(pathPrivilegeList);
     return role;
-  }
-
-  /**
-   * Convert user privilege information obtained from confignode to {@link PathPrivilege}.
-   *
-   * @param path permission path
-   * @param privilege privilegeIds
-   * @return
-   */
-  private PathPrivilege toPathPrivilege(PartialPath path, String privilege) {
-    PathPrivilege pathPrivilege = new PathPrivilege();
-    pathPrivilege.setPath(path);
-    Set<Integer> privilegeIds = new HashSet<>();
-    pathPrivilege.setPrivileges(privilegeIds);
-    if (privilege.trim().length() != 0) {
-      String[] privileges = privilege.replace(" ", "").split(",");
-      for (String p : privileges) {
-        privilegeIds.add(Integer.parseInt(p));
-      }
-    }
-    return pathPrivilege;
   }
 
   private TAuthorizerReq statementToAuthorizerReq(AuthorStatement authorStatement)
@@ -327,6 +562,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         authorStatement.getPassWord() == null ? "" : authorStatement.getPassWord(),
         authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
         AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
+        authorStatement.getGrantOpt(),
         AuthUtils.serializePartialPathList(authorStatement.getNodeNameList()));
   }
 }

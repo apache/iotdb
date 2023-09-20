@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
@@ -47,6 +48,7 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -106,6 +108,7 @@ public class FileLoaderUtils {
       }
     }
     resource.setStatus(TsFileResourceStatus.NORMAL);
+    PipeAgent.runtime().assignRecoverProgressIndexForTsFileRecovery(resource);
     return resource;
   }
 
@@ -199,7 +202,11 @@ public class FileLoaderUtils {
    * @throws IOException IOException may be thrown while reading it from disk.
    */
   public static AlignedTimeSeriesMetadata loadTimeSeriesMetadata(
-      TsFileResource resource, AlignedPath alignedPath, QueryContext context, Filter filter)
+      TsFileResource resource,
+      AlignedPath alignedPath,
+      QueryContext context,
+      Filter filter,
+      boolean queryAllSensors)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -207,14 +214,16 @@ public class FileLoaderUtils {
       AlignedTimeSeriesMetadata alignedTimeSeriesMetadata;
       // If the tsfile is closed, we need to load from tsfile
       if (resource.isClosed()) {
-        alignedTimeSeriesMetadata = loadFromDisk(resource, alignedPath, context, filter);
+        alignedTimeSeriesMetadata =
+            loadFromDisk(resource, alignedPath, context, filter, queryAllSensors);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
             (AlignedTimeSeriesMetadata) resource.getTimeSeriesMetadata(alignedPath);
         if (alignedTimeSeriesMetadata != null) {
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
-              new MemAlignedChunkMetadataLoader(resource, alignedPath, context, filter));
+              new MemAlignedChunkMetadataLoader(
+                  resource, alignedPath, context, filter, queryAllSensors));
         }
       }
 
@@ -250,7 +259,11 @@ public class FileLoaderUtils {
   }
 
   private static AlignedTimeSeriesMetadata loadFromDisk(
-      TsFileResource resource, AlignedPath alignedPath, QueryContext context, Filter filter)
+      TsFileResource resource,
+      AlignedPath alignedPath,
+      QueryContext context,
+      Filter filter,
+      boolean queryAllSensors)
       throws IOException {
     AlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // load all the TimeseriesMetadata of vector, the first one is for time column and the
@@ -273,25 +286,35 @@ public class FileLoaderUtils {
             resource.getTimeIndexType() != 1,
             isDebug);
     if (timeColumn != null) {
-      List<TimeseriesMetadata> valueTimeSeriesMetadataList =
-          new ArrayList<>(valueMeasurementList.size());
-      // if all the queried aligned sensors does not exist, we will return null
-      boolean exist = false;
-      for (String valueMeasurement : valueMeasurementList) {
-        TimeseriesMetadata valueColumn =
-            cache.get(
-                new TimeSeriesMetadataCacheKey(filePath, deviceId, valueMeasurement),
-                allSensors,
-                resource.getTimeIndexType() != 1,
-                isDebug);
-        exist = (exist || (valueColumn != null));
-        valueTimeSeriesMetadataList.add(valueColumn);
-      }
-      if (exist) {
+      // only need time column, like count_time aggregation
+      if (valueMeasurementList.isEmpty()) {
         alignedTimeSeriesMetadata =
-            new AlignedTimeSeriesMetadata(timeColumn, valueTimeSeriesMetadataList);
+            new AlignedTimeSeriesMetadata(timeColumn, Collections.emptyList());
         alignedTimeSeriesMetadata.setChunkMetadataLoader(
-            new DiskAlignedChunkMetadataLoader(resource, alignedPath, context, filter));
+            new DiskAlignedChunkMetadataLoader(
+                resource, alignedPath, context, filter, queryAllSensors));
+      } else {
+        List<TimeseriesMetadata> valueTimeSeriesMetadataList =
+            new ArrayList<>(valueMeasurementList.size());
+        // if all the queried aligned sensors does not exist, we will return null
+        boolean exist = false;
+        for (String valueMeasurement : valueMeasurementList) {
+          TimeseriesMetadata valueColumn =
+              cache.get(
+                  new TimeSeriesMetadataCacheKey(filePath, deviceId, valueMeasurement),
+                  allSensors,
+                  resource.getTimeIndexType() != 1,
+                  isDebug);
+          exist = (exist || (valueColumn != null));
+          valueTimeSeriesMetadataList.add(valueColumn);
+        }
+        if (exist) {
+          alignedTimeSeriesMetadata =
+              new AlignedTimeSeriesMetadata(timeColumn, valueTimeSeriesMetadataList);
+          alignedTimeSeriesMetadata.setChunkMetadataLoader(
+              new DiskAlignedChunkMetadataLoader(
+                  resource, alignedPath, context, filter, queryAllSensors));
+        }
       }
     }
     return alignedTimeSeriesMetadata;

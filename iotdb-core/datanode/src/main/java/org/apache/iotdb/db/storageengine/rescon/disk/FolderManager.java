@@ -63,6 +63,7 @@ public class FolderManager {
     } catch (DiskSpaceInsufficientException e) {
       logger.error("All folders are full, change system mode to read-only.", e);
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+      CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
       throw e;
     }
   }
@@ -73,6 +74,7 @@ public class FolderManager {
     } catch (DiskSpaceInsufficientException e) {
       logger.error("All folders are full, change system mode to read-only.", e);
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+      CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
       throw e;
     }
   }

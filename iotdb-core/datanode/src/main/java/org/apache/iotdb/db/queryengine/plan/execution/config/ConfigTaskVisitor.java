@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountTimeSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateContinuousQueryTask;
@@ -89,14 +90,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateFunctionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropContinuousQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropFunctionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
@@ -109,7 +108,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQue
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowPipePluginsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
@@ -119,6 +117,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModel
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowTrialsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -138,81 +144,78 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.CreatePipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.DropPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.ShowPipesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.StartPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
-public class ConfigTaskVisitor
-    extends StatementVisitor<IConfigTask, ConfigTaskVisitor.TaskContext> {
+public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 
   @Override
-  public IConfigTask visitNode(StatementNode node, TaskContext context) {
+  public IConfigTask visitNode(StatementNode node, MPPQueryContext context) {
     throw new UnsupportedOperationException(
         "Unsupported statement type: " + node.getClass().getName());
   }
 
   @Override
-  public IConfigTask visitStatement(Statement statement, TaskContext context) {
+  public IConfigTask visitStatement(Statement statement, MPPQueryContext context) {
     throw new NotImplementedException("ConfigTask is not implemented for: " + statement);
   }
 
   @Override
-  public IConfigTask visitSetDatabase(DatabaseSchemaStatement statement, TaskContext context) {
+  public IConfigTask visitSetDatabase(DatabaseSchemaStatement statement, MPPQueryContext context) {
     return new DatabaseSchemaTask(statement);
   }
 
   @Override
-  public IConfigTask visitAlterDatabase(DatabaseSchemaStatement statement, TaskContext context) {
+  public IConfigTask visitAlterDatabase(
+      DatabaseSchemaStatement statement, MPPQueryContext context) {
     return new DatabaseSchemaTask(statement);
   }
 
   @Override
   public IConfigTask visitDeleteStorageGroup(
-      DeleteDatabaseStatement statement, TaskContext context) {
+      DeleteDatabaseStatement statement, MPPQueryContext context) {
     return new DeleteStorageGroupTask(statement);
   }
 
   @Override
-  public IConfigTask visitShowStorageGroup(ShowDatabaseStatement statement, TaskContext context) {
+  public IConfigTask visitShowStorageGroup(
+      ShowDatabaseStatement statement, MPPQueryContext context) {
     return new ShowDatabaseTask(statement);
   }
 
   @Override
-  public IConfigTask visitCountStorageGroup(CountDatabaseStatement statement, TaskContext context) {
+  public IConfigTask visitCountStorageGroup(
+      CountDatabaseStatement statement, MPPQueryContext context) {
     return new CountDatabaseTask(statement);
   }
 
   @Override
-  public IConfigTask visitSetTTL(SetTTLStatement statement, TaskContext context) {
+  public IConfigTask visitSetTTL(SetTTLStatement statement, MPPQueryContext context) {
     return new SetTTLTask(statement);
   }
 
   @Override
-  public IConfigTask visitUnSetTTL(UnSetTTLStatement statement, TaskContext context) {
+  public IConfigTask visitUnSetTTL(UnSetTTLStatement statement, MPPQueryContext context) {
     return new UnSetTTLTask(statement);
   }
 
   @Override
-  public IConfigTask visitShowTTL(ShowTTLStatement showTTLStatement, TaskContext context) {
+  public IConfigTask visitShowTTL(ShowTTLStatement showTTLStatement, MPPQueryContext context) {
     return new ShowTTLTask(showTTLStatement);
   }
 
   @Override
   public IConfigTask visitShowVariables(
-      ShowVariablesStatement showVariablesStatement, TaskContext context) {
+      ShowVariablesStatement showVariablesStatement, MPPQueryContext context) {
     return new ShowVariablesTask();
   }
 
   @Override
   public IConfigTask visitShowCluster(
-      ShowClusterStatement showClusterStatement, TaskContext context) {
+      ShowClusterStatement showClusterStatement, MPPQueryContext context) {
     if (showClusterStatement.isDetails()) {
       return new ShowClusterDetailsTask(showClusterStatement);
     } else {
@@ -221,335 +224,318 @@ public class ConfigTaskVisitor
   }
 
   @Override
-  public IConfigTask visitAuthor(AuthorStatement statement, TaskContext context) {
+  public IConfigTask visitAuthor(AuthorStatement statement, MPPQueryContext context) {
     return new AuthorizerTask(statement);
   }
 
   @Override
-  public IConfigTask visitMerge(MergeStatement mergeStatement, TaskContext context) {
+  public IConfigTask visitMerge(MergeStatement mergeStatement, MPPQueryContext context) {
     return new MergeTask(mergeStatement);
   }
 
   @Override
-  public IConfigTask visitFlush(FlushStatement flushStatement, TaskContext context) {
+  public IConfigTask visitFlush(FlushStatement flushStatement, MPPQueryContext context) {
     return new FlushTask(flushStatement);
   }
 
   @Override
-  public IConfigTask visitClearCache(ClearCacheStatement clearCacheStatement, TaskContext context) {
+  public IConfigTask visitClearCache(
+      ClearCacheStatement clearCacheStatement, MPPQueryContext context) {
     return new ClearCacheTask(clearCacheStatement);
   }
 
   @Override
   public IConfigTask visitLoadConfiguration(
-      LoadConfigurationStatement loadConfigurationStatement, TaskContext context) {
+      LoadConfigurationStatement loadConfigurationStatement, MPPQueryContext context) {
     return new LoadConfigurationTask(loadConfigurationStatement);
   }
 
   @Override
   public IConfigTask visitSetSystemStatus(
-      SetSystemStatusStatement setSystemStatusStatement, TaskContext context) {
+      SetSystemStatusStatement setSystemStatusStatement, MPPQueryContext context) {
     return new SetSystemStatusTask(setSystemStatusStatement);
   }
 
   @Override
-  public IConfigTask visitKillQuery(KillQueryStatement killQueryStatement, TaskContext context) {
+  public IConfigTask visitKillQuery(
+      KillQueryStatement killQueryStatement, MPPQueryContext context) {
     return new KillQueryTask(killQueryStatement);
   }
 
   @Override
   public IConfigTask visitCreateFunction(
-      CreateFunctionStatement createFunctionStatement, TaskContext context) {
+      CreateFunctionStatement createFunctionStatement, MPPQueryContext context) {
     return new CreateFunctionTask(createFunctionStatement);
   }
 
   @Override
   public IConfigTask visitDropFunction(
-      DropFunctionStatement dropFunctionStatement, TaskContext context) {
+      DropFunctionStatement dropFunctionStatement, MPPQueryContext context) {
     return new DropFunctionTask(dropFunctionStatement);
   }
 
   @Override
   public IConfigTask visitShowFunctions(
-      ShowFunctionsStatement showFunctionsStatement, TaskContext context) {
+      ShowFunctionsStatement showFunctionsStatement, MPPQueryContext context) {
     return new ShowFunctionsTask();
   }
 
   @Override
   public IConfigTask visitCreateTrigger(
-      CreateTriggerStatement createTriggerStatement, TaskContext context) {
+      CreateTriggerStatement createTriggerStatement, MPPQueryContext context) {
     return new CreateTriggerTask(createTriggerStatement);
   }
 
   @Override
   public IConfigTask visitDropTrigger(
-      DropTriggerStatement dropTriggerStatement, TaskContext context) {
+      DropTriggerStatement dropTriggerStatement, MPPQueryContext context) {
     return new DropTriggerTask(dropTriggerStatement);
   }
 
   @Override
   public IConfigTask visitShowTriggers(
-      ShowTriggersStatement showTriggersStatement, TaskContext context) {
+      ShowTriggersStatement showTriggersStatement, MPPQueryContext context) {
     return new ShowTriggersTask();
   }
 
   @Override
   public IConfigTask visitCreatePipePlugin(
-      CreatePipePluginStatement createPipePluginStatement, TaskContext context) {
+      CreatePipePluginStatement createPipePluginStatement, MPPQueryContext context) {
     return new CreatePipePluginTask(createPipePluginStatement);
   }
 
   @Override
   public IConfigTask visitDropPipePlugin(
-      DropPipePluginStatement dropPipePluginStatement, TaskContext context) {
+      DropPipePluginStatement dropPipePluginStatement, MPPQueryContext context) {
     return new DropPipePluginTask(dropPipePluginStatement);
   }
 
   @Override
   public IConfigTask visitShowPipePlugins(
-      ShowPipePluginsStatement showPipePluginStatement, TaskContext context) {
+      ShowPipePluginsStatement showPipePluginStatement, MPPQueryContext context) {
     return new ShowPipePluginsTask();
   }
 
   @Override
-  public IConfigTask visitShowRegion(ShowRegionStatement showRegionStatement, TaskContext context) {
+  public IConfigTask visitShowRegion(
+      ShowRegionStatement showRegionStatement, MPPQueryContext context) {
     return new ShowRegionTask(showRegionStatement);
   }
 
   @Override
   public IConfigTask visitCreateSchemaTemplate(
-      CreateSchemaTemplateStatement createSchemaTemplateStatement, TaskContext context) {
+      CreateSchemaTemplateStatement createSchemaTemplateStatement, MPPQueryContext context) {
     return new CreateSchemaTemplateTask(createSchemaTemplateStatement);
   }
 
   @Override
   public IConfigTask visitShowNodesInSchemaTemplate(
-      ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement, TaskContext context) {
+      ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement,
+      MPPQueryContext context) {
     return new ShowNodesInSchemaTemplateTask(showNodesInSchemaTemplateStatement);
   }
 
   @Override
   public IConfigTask visitShowSchemaTemplate(
-      ShowSchemaTemplateStatement showSchemaTemplateStatement, TaskContext context) {
+      ShowSchemaTemplateStatement showSchemaTemplateStatement, MPPQueryContext context) {
     return new ShowSchemaTemplateTask(showSchemaTemplateStatement);
   }
 
   @Override
   public IConfigTask visitSetSchemaTemplate(
-      SetSchemaTemplateStatement setSchemaTemplateStatement, TaskContext context) {
-    return new SetSchemaTemplateTask(context.getQueryId(), setSchemaTemplateStatement);
+      SetSchemaTemplateStatement setSchemaTemplateStatement, MPPQueryContext context) {
+    return new SetSchemaTemplateTask(context.getQueryId().getId(), setSchemaTemplateStatement);
   }
 
   @Override
   public IConfigTask visitShowPathSetTemplate(
-      ShowPathSetTemplateStatement showPathSetTemplateStatement, TaskContext context) {
+      ShowPathSetTemplateStatement showPathSetTemplateStatement, MPPQueryContext context) {
     return new ShowPathSetTemplateTask(showPathSetTemplateStatement);
   }
 
   @Override
   public IConfigTask visitDeactivateTemplate(
-      DeactivateTemplateStatement deactivateTemplateStatement, TaskContext context) {
-    return new DeactivateSchemaTemplateTask(context.getQueryId(), deactivateTemplateStatement);
+      DeactivateTemplateStatement deactivateTemplateStatement, MPPQueryContext context) {
+    return new DeactivateSchemaTemplateTask(
+        context.getQueryId().getId(), deactivateTemplateStatement);
   }
 
   @Override
   public IConfigTask visitUnsetSchemaTemplate(
-      UnsetSchemaTemplateStatement unsetSchemaTemplateStatement, TaskContext context) {
-    return new UnsetSchemaTemplateTask(context.getQueryId(), unsetSchemaTemplateStatement);
+      UnsetSchemaTemplateStatement unsetSchemaTemplateStatement, MPPQueryContext context) {
+    return new UnsetSchemaTemplateTask(context.getQueryId().getId(), unsetSchemaTemplateStatement);
   }
 
   @Override
   public IConfigTask visitDropSchemaTemplate(
-      DropSchemaTemplateStatement dropSchemaTemplateStatement, TaskContext context) {
+      DropSchemaTemplateStatement dropSchemaTemplateStatement, MPPQueryContext context) {
     return new DropSchemaTemplateTask(dropSchemaTemplateStatement);
   }
 
   @Override
   public IConfigTask visitAlterSchemaTemplate(
-      AlterSchemaTemplateStatement alterSchemaTemplateStatement, TaskContext context) {
-    return new AlterSchemaTemplateTask(alterSchemaTemplateStatement, context.getQueryId());
+      AlterSchemaTemplateStatement alterSchemaTemplateStatement, MPPQueryContext context) {
+    return new AlterSchemaTemplateTask(alterSchemaTemplateStatement, context.getQueryId().getId());
   }
 
   @Override
   public IConfigTask visitShowDataNodes(
-      ShowDataNodesStatement showDataNodesStatement, TaskContext context) {
+      ShowDataNodesStatement showDataNodesStatement, MPPQueryContext context) {
     return new ShowDataNodesTask(showDataNodesStatement);
   }
 
   @Override
   public IConfigTask visitShowConfigNodes(
-      ShowConfigNodesStatement showConfigNodesStatement, TaskContext context) {
+      ShowConfigNodesStatement showConfigNodesStatement, MPPQueryContext context) {
     return new ShowConfigNodesTask();
   }
 
   @Override
-  public IConfigTask visitShowPipes(ShowPipesStatement showPipesStatement, TaskContext context) {
+  public IConfigTask visitShowPipes(
+      ShowPipesStatement showPipesStatement, MPPQueryContext context) {
     return new ShowPipeTask(showPipesStatement);
   }
 
   @Override
-  public IConfigTask visitDropPipe(DropPipeStatement dropPipeStatement, TaskContext context) {
+  public IConfigTask visitDropPipe(DropPipeStatement dropPipeStatement, MPPQueryContext context) {
     return new DropPipeTask(dropPipeStatement);
   }
 
   @Override
-  public IConfigTask visitCreatePipe(CreatePipeStatement createPipeStatement, TaskContext context) {
+  public IConfigTask visitCreatePipe(
+      CreatePipeStatement createPipeStatement, MPPQueryContext context) {
     return new CreatePipeTask(createPipeStatement);
   }
 
   @Override
-  public IConfigTask visitStartPipe(StartPipeStatement startPipeStatement, TaskContext context) {
+  public IConfigTask visitStartPipe(
+      StartPipeStatement startPipeStatement, MPPQueryContext context) {
     return new StartPipeTask(startPipeStatement);
   }
 
   @Override
-  public IConfigTask visitStopPipe(StopPipeStatement stopPipeStatement, TaskContext context) {
+  public IConfigTask visitStopPipe(StopPipeStatement stopPipeStatement, MPPQueryContext context) {
     return new StopPipeTask(stopPipeStatement);
   }
 
   @Override
   public IConfigTask visitDeleteTimeseries(
-      DeleteTimeSeriesStatement deleteTimeSeriesStatement, TaskContext context) {
-    return new DeleteTimeSeriesTask(context.getQueryId(), deleteTimeSeriesStatement);
+      DeleteTimeSeriesStatement deleteTimeSeriesStatement, MPPQueryContext context) {
+    return new DeleteTimeSeriesTask(context.getQueryId().getId(), deleteTimeSeriesStatement);
   }
 
   @Override
   public IConfigTask visitDeleteLogicalView(
-      DeleteLogicalViewStatement deleteLogicalViewStatement, TaskContext context) {
-    return new DeleteLogicalViewTask(context.getQueryId(), deleteLogicalViewStatement);
+      DeleteLogicalViewStatement deleteLogicalViewStatement, MPPQueryContext context) {
+    return new DeleteLogicalViewTask(context.getQueryId().getId(), deleteLogicalViewStatement);
   }
 
   @Override
   public IConfigTask visitRenameLogicalView(
-      RenameLogicalViewStatement renameLogicalViewStatement, TaskContext context) {
-    return new RenameLogicalViewTask(context.queryId, renameLogicalViewStatement);
+      RenameLogicalViewStatement renameLogicalViewStatement, MPPQueryContext context) {
+    return new RenameLogicalViewTask(context.getQueryId().getId(), renameLogicalViewStatement);
   }
 
   @Override
   public IConfigTask visitAlterLogicalView(
-      AlterLogicalViewStatement alterLogicalViewStatement, TaskContext context) {
-    return new AlterLogicalViewTask(context.queryId, alterLogicalViewStatement);
+      AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context) {
+    return new AlterLogicalViewTask(alterLogicalViewStatement, context);
   }
 
   @Override
   public IConfigTask visitGetRegionId(
-      GetRegionIdStatement getRegionIdStatement, TaskContext context) {
+      GetRegionIdStatement getRegionIdStatement, MPPQueryContext context) {
     return new GetRegionIdTask(getRegionIdStatement);
   }
 
   @Override
   public IConfigTask visitGetSeriesSlotList(
-      GetSeriesSlotListStatement getSeriesSlotListStatement, TaskContext context) {
+      GetSeriesSlotListStatement getSeriesSlotListStatement, MPPQueryContext context) {
     return new GetSeriesSlotListTask(getSeriesSlotListStatement);
   }
 
   @Override
   public IConfigTask visitGetTimeSlotList(
-      GetTimeSlotListStatement getTimeSlotListStatement, TaskContext context) {
+      GetTimeSlotListStatement getTimeSlotListStatement, MPPQueryContext context) {
     return new GetTimeSlotListTask(getTimeSlotListStatement);
   }
 
   @Override
   public IConfigTask visitCountTimeSlotList(
-      CountTimeSlotListStatement countTimeSlotListStatement, TaskContext context) {
+      CountTimeSlotListStatement countTimeSlotListStatement, MPPQueryContext context) {
     return new CountTimeSlotListTask(countTimeSlotListStatement);
   }
 
   @Override
   public IConfigTask visitMigrateRegion(
-      MigrateRegionStatement migrateRegionStatement, TaskContext context) {
+      MigrateRegionStatement migrateRegionStatement, MPPQueryContext context) {
     return new MigrateRegionTask(migrateRegionStatement);
   }
 
   @Override
   public IConfigTask visitCreateContinuousQuery(
-      CreateContinuousQueryStatement createContinuousQueryStatement, TaskContext context) {
-    return new CreateContinuousQueryTask(
-        createContinuousQueryStatement, context.sql, context.username);
+      CreateContinuousQueryStatement createContinuousQueryStatement, MPPQueryContext context) {
+    return new CreateContinuousQueryTask(createContinuousQueryStatement, context);
   }
 
   @Override
   public IConfigTask visitDropContinuousQuery(
-      DropContinuousQueryStatement dropContinuousQueryStatement, TaskContext context) {
+      DropContinuousQueryStatement dropContinuousQueryStatement, MPPQueryContext context) {
     return new DropContinuousQueryTask(dropContinuousQueryStatement);
   }
 
   @Override
   public IConfigTask visitShowContinuousQueries(
-      ShowContinuousQueriesStatement showContinuousQueriesStatement, TaskContext context) {
+      ShowContinuousQueriesStatement showContinuousQueriesStatement, MPPQueryContext context) {
     return new ShowContinuousQueriesTask();
   }
 
   @Override
   public IConfigTask visitSetSpaceQuota(
-      SetSpaceQuotaStatement setSpaceQuotaStatement, TaskContext context) {
+      SetSpaceQuotaStatement setSpaceQuotaStatement, MPPQueryContext context) {
     return new SetSpaceQuotaTask(setSpaceQuotaStatement);
   }
 
   @Override
   public IConfigTask visitShowSpaceQuota(
-      ShowSpaceQuotaStatement showSpaceQuotaStatement, TaskContext context) {
+      ShowSpaceQuotaStatement showSpaceQuotaStatement, MPPQueryContext context) {
     return new ShowSpaceQuotaTask(showSpaceQuotaStatement);
   }
 
   @Override
   public IConfigTask visitSetThrottleQuota(
-      SetThrottleQuotaStatement setThrottleQuotaStatement, TaskContext context) {
+      SetThrottleQuotaStatement setThrottleQuotaStatement, MPPQueryContext context) {
     return new SetThrottleQuotaTask(setThrottleQuotaStatement);
   }
 
   @Override
   public IConfigTask visitShowThrottleQuota(
-      ShowThrottleQuotaStatement showThrottleQuotaStatement, TaskContext context) {
+      ShowThrottleQuotaStatement showThrottleQuotaStatement, MPPQueryContext context) {
     return new ShowThrottleQuotaTask(showThrottleQuotaStatement);
   }
 
   /** ML Model Management */
   @Override
   public IConfigTask visitCreateModel(
-      CreateModelStatement createModelStatement, TaskContext context) {
-    return new CreateModelTask(createModelStatement);
+      CreateModelStatement createModelStatement, MPPQueryContext context) {
+    return new CreateModelTask(createModelStatement, context);
   }
 
   @Override
-  public IConfigTask visitDropModel(DropModelStatement dropModelStatement, TaskContext context) {
+  public IConfigTask visitDropModel(
+      DropModelStatement dropModelStatement, MPPQueryContext context) {
     return new DropModelTask(dropModelStatement.getModelId());
   }
 
   @Override
-  public IConfigTask visitShowModels(ShowModelsStatement showModelsStatement, TaskContext context) {
+  public IConfigTask visitShowModels(
+      ShowModelsStatement showModelsStatement, MPPQueryContext context) {
     return new ShowModelsTask();
   }
 
   @Override
-  public IConfigTask visitShowTrials(ShowTrialsStatement showTrialsStatement, TaskContext context) {
+  public IConfigTask visitShowTrials(
+      ShowTrialsStatement showTrialsStatement, MPPQueryContext context) {
     return new ShowTrialsTask(showTrialsStatement.getModelId());
-  }
-
-  public static class TaskContext {
-
-    private final String queryId;
-
-    private final String sql;
-
-    private final String username;
-
-    public TaskContext(String queryId, String sql, String username) {
-      this.queryId = queryId;
-      this.sql = sql;
-      this.username = username;
-    }
-
-    public String getQueryId() {
-      return queryId;
-    }
-
-    public String getSql() {
-      return sql;
-    }
-
-    public String getUsername() {
-      return username;
-    }
   }
 }

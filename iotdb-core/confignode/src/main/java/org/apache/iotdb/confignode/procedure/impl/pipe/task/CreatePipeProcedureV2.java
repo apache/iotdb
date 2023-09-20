@@ -21,10 +21,12 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.manager.pipe.PipeManager;
@@ -33,9 +35,9 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProced
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -109,11 +111,11 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                     env.getConfigManager()
                         .getPartitionManager()
                         .getRegionStorageGroup(regionGroupId);
-                if (databaseName != null && !databaseName.equals(IoTDBConfig.SYSTEM_DATABASE)) {
+                if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
                   // Pipe only collect user's data, filter metric database here.
                   consensusGroupIdToTaskMetaMap.put(
                       regionGroupId,
-                      new PipeTaskMeta(new MinimumProgressIndex(), regionLeaderNodeId));
+                      new PipeTaskMeta(MinimumProgressIndex.INSTANCE, regionLeaderNodeId));
                 }
               }
             });
@@ -127,25 +129,30 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         "CreatePipeProcedureV2: executeFromWriteConfigNodeConsensus({})",
         createPipeRequest.getPipeName());
 
-    final ConsensusWriteResponse response =
-        env.getConfigManager()
-            .getConsensusManager()
-            .write(new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta));
-    if (!response.isSuccessful()) {
-      throw new PipeException(response.getErrorMessage());
+    TSStatus response;
+    try {
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(response.getMessage());
     }
   }
 
   @Override
   protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeException, IOException {
-    LOGGER.info(
-        "CreatePipeProcedureV2: executeFromOperateOnDataNodes({})",
-        createPipeRequest.getPipeName());
+    final String pipeName = createPipeRequest.getPipeName();
+    LOGGER.info("CreatePipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
     String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(
-            createPipeRequest.getPipeName(), pushPipeMetaToDataNodes(env));
+        parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
       throw new PipeException(
           String.format(
@@ -175,12 +182,19 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         "CreatePipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})",
         createPipeRequest.getPipeName());
 
-    final ConsensusWriteResponse response =
-        env.getConfigManager()
-            .getConsensusManager()
-            .write(new DropPipePlanV2(createPipeRequest.getPipeName()));
-    if (!response.isSuccessful()) {
-      throw new PipeException(response.getErrorMessage());
+    TSStatus response;
+    try {
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new DropPipePlanV2(createPipeRequest.getPipeName()));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(response.getMessage());
     }
   }
 
@@ -190,6 +204,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         "CreatePipeProcedureV2: rollbackFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
+    // Push all pipe metas to datanode, may be time-consuming
     String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(
             createPipeRequest.getPipeName(), pushPipeMetaToDataNodes(env));
