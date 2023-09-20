@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -102,9 +103,6 @@ public class StorageEngine implements IService {
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
-  /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
-  private static long timePartitionInterval = -1;
-
   /**
    * a folder (system/databases/ by default) that persist system info. Each database will have a
    * subfolder under the systemDir.
@@ -149,21 +147,8 @@ public class StorageEngine implements IService {
   }
 
   private static void initTimePartition() {
-    timePartitionInterval = CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
-  }
-
-  public static long getTimePartitionInterval() {
-    if (timePartitionInterval == -1) {
-      initTimePartition();
-    }
-    return timePartitionInterval;
-  }
-
-  public static long getTimePartition(long time) {
-    if (timePartitionInterval == -1) {
-      initTimePartition();
-    }
-    return time / timePartitionInterval;
+    TimePartitionUtils.setTimePartitionInterval(
+        CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
   }
 
   /** block insertion if the insertion is rejected by memory control */
