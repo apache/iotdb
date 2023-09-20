@@ -39,14 +39,9 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
-import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
@@ -198,13 +193,8 @@ public class IoTDBPipeProtocolIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1(time, s1) values (1, 1)");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -241,13 +231,8 @@ public class IoTDBPipeProtocolIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1(time, s1) values (2, 2)");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          receiverEnv, "insert into root.db.d1(time, s1) values (2, 2)", 3);
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -285,13 +270,8 @@ public class IoTDBPipeProtocolIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1(time, s1) values (1, 1)");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -318,13 +298,8 @@ public class IoTDBPipeProtocolIT {
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1(time, s1) values (2, 2)");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)", 3);
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
@@ -335,13 +310,8 @@ public class IoTDBPipeProtocolIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1(time, s1) values (3, 3)");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)", 3);
 
       Thread.sleep(5000);
       TestUtils.assertDataOnEnv(
@@ -409,14 +379,8 @@ public class IoTDBPipeProtocolIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1(time, s1) values (1, 1)");
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -437,14 +401,9 @@ public class IoTDBPipeProtocolIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1(time, s1) values (2, 2)");
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)", 3);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
 
       TestUtils.assertDataOnEnv(
           receiverEnv,

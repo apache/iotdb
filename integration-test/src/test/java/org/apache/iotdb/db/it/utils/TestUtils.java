@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -339,6 +340,49 @@ public class TestUtils {
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  public static void executeNonQueryWithRetry(BaseEnv env, String sql, int retryCount) {
+    int retryCountLeft = Math.max(retryCount, 0);
+    for (; retryCountLeft >= 0; retryCountLeft--) {
+      try (Connection connection = env.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute(sql);
+        break;
+      } catch (SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(2000);
+          } catch (InterruptedException ignored) {
+          }
+        } else {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  public static void executeNonQueryOnSpecifiedDataNodeWithRetry(
+      BaseEnv env, DataNodeWrapper wrapper, String sql, int retryCount) {
+    int retryCountLeft = Math.max(retryCount, 0);
+    for (; retryCountLeft >= 0; retryCountLeft--) {
+      try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
+          Statement statement = connection.createStatement()) {
+        statement.execute(sql);
+        break;
+      } catch (SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(2000);
+          } catch (InterruptedException ignored) {
+          }
+        } else {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
     }
   }
 

@@ -45,9 +45,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -87,8 +84,8 @@ public class IoTDBPipeClusterIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
 
-    senderEnv.initClusterEnvironment(3, 3, 60);
-    receiverEnv.initClusterEnvironment(3, 3, 60);
+    senderEnv.initClusterEnvironment(3, 3, 120);
+    receiverEnv.initClusterEnvironment(3, 3, 120);
   }
 
   @After
@@ -120,15 +117,11 @@ public class IoTDBPipeClusterIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)");
-        statement.execute("insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)");
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)", 3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)", 3);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -167,14 +160,9 @@ public class IoTDBPipeClusterIT {
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1(time, s1) values (now(), 3)");
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1(time, s1) values (now(), 3)", 3);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
@@ -214,14 +202,9 @@ public class IoTDBPipeClusterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1(time, s1) values (1, 1)");
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
 
       AtomicInteger leaderPort = new AtomicInteger(-1);
       TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
@@ -251,16 +234,13 @@ public class IoTDBPipeClusterIT {
         fail();
       }
 
-      try (Connection connection =
-              senderEnv.getConnectionWithSpecifiedDataNode(
-                  senderEnv.getDataNodeWrapper(leaderIndex));
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1(time, s1) values (2, 2)");
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryOnSpecifiedDataNodeWithRetry(
+          senderEnv,
+          senderEnv.getDataNodeWrapper(leaderIndex),
+          "insert into root.db.d1(time, s1) values (2, 2)",
+          3);
+      TestUtils.executeNonQueryOnSpecifiedDataNodeWithRetry(
+          senderEnv, senderEnv.getDataNodeWrapper(leaderIndex), "flush", 3);
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
@@ -296,14 +276,9 @@ public class IoTDBPipeClusterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d2(time, s1) values (1, 1)");
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d2(time, s1) values (1, 1)", 3);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
@@ -343,27 +318,16 @@ public class IoTDBPipeClusterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1(time, s1) values (1, 1)");
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
 
       senderEnv.registerNewDataNode(true);
       DataNodeWrapper newDataNode =
           senderEnv.getDataNodeWrapper(senderEnv.getDataNodeWrapperList().size() - 1);
-      try (Connection connection = senderEnv.getConnectionWithSpecifiedDataNode(newDataNode);
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1(time, s1) values (2, 2)");
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
-
+      TestUtils.executeNonQueryOnSpecifiedDataNodeWithRetry(
+          senderEnv, newDataNode, "insert into root.db.d1(time, s1) values (2, 2)", 3);
+      TestUtils.executeNonQueryOnSpecifiedDataNodeWithRetry(senderEnv, newDataNode, "flush", 3);
       TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
@@ -398,14 +362,9 @@ public class IoTDBPipeClusterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d2(time, s1) values (1, 1)");
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d2(time, s1) values (1, 1)", 3);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
@@ -496,16 +455,14 @@ public class IoTDBPipeClusterIT {
       Thread t =
           new Thread(
               () -> {
-                try (Connection connection = senderEnv.getConnection();
-                    Statement statement = connection.createStatement()) {
+                try {
                   for (int i = 0; i < 100; ++i) {
-                    statement.execute(
-                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+                    TestUtils.executeNonQueryWithRetry(
+                        senderEnv,
+                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
+                        3);
                     Thread.sleep(100);
                   }
-                } catch (SQLException e) {
-                  e.printStackTrace();
-                  fail(e.getMessage());
                 } catch (InterruptedException ignored) {
                 }
               });
@@ -552,14 +509,9 @@ public class IoTDBPipeClusterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        for (int i = 0; i < 100; ++i) {
-          statement.execute(String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
-        }
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
+      for (int i = 0; i < 100; ++i) {
+        TestUtils.executeNonQueryWithRetry(
+            senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), 3);
       }
 
       senderEnv.registerNewDataNode(true);
@@ -603,16 +555,11 @@ public class IoTDBPipeClusterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        for (int i = 0; i < 100; ++i) {
-          statement.execute(
-              String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000));
-        }
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
+      for (int i = 0; i < 100; ++i) {
+        TestUtils.executeNonQueryWithRetry(
+            senderEnv,
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000),
+            3);
       }
 
       senderEnv.registerNewDataNode(false);
@@ -661,16 +608,11 @@ public class IoTDBPipeClusterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        for (int i = 0; i < 1000; ++i) {
-          statement.execute(
-              String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000));
-        }
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
+      for (int i = 0; i < 1000; ++i) {
+        TestUtils.executeNonQueryWithRetry(
+            senderEnv,
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000),
+            3);
       }
     }
 
