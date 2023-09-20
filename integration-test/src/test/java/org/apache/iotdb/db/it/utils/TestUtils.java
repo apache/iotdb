@@ -353,7 +353,7 @@ public class TestUtils {
       } catch (SQLException e) {
         if (retryCountLeft > 0) {
           try {
-            Thread.sleep(2000);
+            Thread.sleep(10000);
           } catch (InterruptedException ignored) {
           }
         } else {
@@ -375,7 +375,7 @@ public class TestUtils {
       } catch (SQLException e) {
         if (retryCountLeft > 0) {
           try {
-            Thread.sleep(2000);
+            Thread.sleep(10000);
           } catch (InterruptedException ignored) {
           }
         } else {
@@ -408,7 +408,7 @@ public class TestUtils {
       } catch (SQLException e) {
         if (retryCountLeft > 0) {
           try {
-            Thread.sleep(2000);
+            Thread.sleep(10000);
           } catch (InterruptedException ignored) {
           }
         } else {
