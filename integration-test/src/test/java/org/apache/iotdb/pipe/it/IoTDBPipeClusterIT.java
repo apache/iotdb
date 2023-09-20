@@ -28,13 +28,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.pipe.it.utils.PipeTestUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -161,7 +161,7 @@ public class IoTDBPipeClusterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -176,7 +176,7 @@ public class IoTDBPipeClusterIT {
         fail(e.getMessage());
       }
 
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -262,15 +262,15 @@ public class IoTDBPipeClusterIT {
         fail(e.getMessage());
       }
 
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
     }
 
-    PipeTestUtils.restartCluster(senderEnv);
-    PipeTestUtils.restartCluster(receiverEnv);
+    TestUtils.restartCluster(senderEnv);
+    TestUtils.restartCluster(receiverEnv);
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -305,7 +305,7 @@ public class IoTDBPipeClusterIT {
         fail(e.getMessage());
       }
 
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.db.d2",
           "count(root.db.d2.s1),",
@@ -364,15 +364,15 @@ public class IoTDBPipeClusterIT {
         fail(e.getMessage());
       }
 
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
     }
 
-    PipeTestUtils.restartCluster(senderEnv);
-    PipeTestUtils.restartCluster(receiverEnv);
+    TestUtils.restartCluster(senderEnv);
+    TestUtils.restartCluster(receiverEnv);
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -407,7 +407,7 @@ public class IoTDBPipeClusterIT {
         fail(e.getMessage());
       }
 
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.db.d2",
           "count(root.db.d2.s1),",
@@ -513,7 +513,7 @@ public class IoTDBPipeClusterIT {
       senderEnv.registerNewDataNode(true);
       t.join();
 
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
@@ -564,7 +564,7 @@ public class IoTDBPipeClusterIT {
 
       senderEnv.registerNewDataNode(true);
 
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
@@ -621,7 +621,7 @@ public class IoTDBPipeClusterIT {
       senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
       ((AbstractEnv) senderEnv).testWorkingNoUnknown();
 
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
@@ -674,9 +674,9 @@ public class IoTDBPipeClusterIT {
       }
     }
 
-    PipeTestUtils.restartCluster(senderEnv);
+    TestUtils.restartCluster(senderEnv);
 
-    PipeTestUtils.assertDataOnEnv(
+    TestUtils.assertDataOnEnv(
         receiverEnv,
         "select count(*) from root.**",
         "count(root.db.d1.s1),",

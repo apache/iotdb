@@ -22,6 +22,8 @@ package org.apache.iotdb.db.it.utils;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -39,10 +41,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -416,6 +420,39 @@ public class TestUtils {
       statement.execute(
           String.format("revoke %s on %s from user %s", privilegeType, path, userName));
     } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void restartCluster(BaseEnv env) throws Exception {
+    for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
+      env.shutdownConfigNode(i);
+    }
+    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
+      env.shutdownDataNode(i);
+    }
+    TimeUnit.SECONDS.sleep(1);
+    for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
+      env.startConfigNode(i);
+    }
+    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
+      env.startDataNode(i);
+    }
+    ((AbstractEnv) env).testWorkingNoUnknown();
+  }
+
+  public static void assertDataOnEnv(
+      BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      await()
+          .atMost(600, TimeUnit.SECONDS)
+          .untilAsserted(
+              () ->
+                  TestUtils.assertResultSetEqual(
+                      statement.executeQuery(sql), expectedHeader, expectedResSet));
+    } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

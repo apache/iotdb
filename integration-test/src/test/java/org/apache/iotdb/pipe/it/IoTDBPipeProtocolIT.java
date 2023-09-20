@@ -24,12 +24,12 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.pipe.it.utils.PipeTestUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
@@ -225,7 +225,7 @@ public class IoTDBPipeProtocolIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -268,7 +268,7 @@ public class IoTDBPipeProtocolIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           senderEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -312,7 +312,7 @@ public class IoTDBPipeProtocolIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -326,7 +326,7 @@ public class IoTDBPipeProtocolIT {
         fail(e.getMessage());
       }
 
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -344,7 +344,7 @@ public class IoTDBPipeProtocolIT {
       }
 
       Thread.sleep(5000);
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
@@ -446,7 +446,7 @@ public class IoTDBPipeProtocolIT {
         fail(e.getMessage());
       }
 
-      PipeTestUtils.assertDataOnEnv(
+      TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
