@@ -28,6 +28,7 @@ import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.file.PathUtils;
+import org.apache.commons.lang3.JavaVersion;
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 
@@ -183,7 +184,9 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     String destPath = getNodePath();
     try {
       try {
-        PathUtils.deleteDirectory(Paths.get(destPath));
+        if (new File(destPath).exists()) {
+          PathUtils.deleteDirectory(Paths.get(destPath));
+        }
       } catch (NoSuchFileException e) {
         // ignored
       }
@@ -200,6 +203,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
                     LinkOption.NOFOLLOW_LINKS,
                     StandardCopyOption.COPY_ATTRIBUTES);
               } catch (IOException e) {
+                logger.error("Got error copying files to node dest dir", e);
                 throw new RuntimeException(e);
               }
             });

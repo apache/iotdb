@@ -691,6 +691,11 @@
         <artifactId>spark-common-utils_2.12</artifactId>
         <version>${spark-scala.2.12.version}</version>
         <exclusions>
+          <!-- We don't want this in the classpath as we're using logback as provider -->
+          <exclusion>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j2-impl</artifactId>
+          </exclusion>
           <exclusion>
             <groupId>org.slf4j</groupId>
             <artifactId>jcl-over-slf4j</artifactId>
@@ -2170,6 +2175,9 @@
             <configuration>
               <outputFile>target/checkstyle-report.xml</outputFile>
               <configLocation>checkstyle.xml</configLocation>
+              <propertyExpansion>
+                baseDir=${project.basedir}
+              </propertyExpansion>
             </configuration>
           </execution>
         </executions>
