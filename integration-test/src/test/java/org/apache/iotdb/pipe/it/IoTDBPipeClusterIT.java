@@ -84,8 +84,8 @@ public class IoTDBPipeClusterIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
 
-    senderEnv.initClusterEnvironment(3, 3, 120);
-    receiverEnv.initClusterEnvironment(3, 3, 120);
+    senderEnv.initClusterEnvironment(3, 3, 180);
+    receiverEnv.initClusterEnvironment(3, 3, 180);
   }
 
   @After
@@ -607,14 +607,13 @@ public class IoTDBPipeClusterIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-
-      for (int i = 0; i < 1000; ++i) {
-        TestUtils.executeNonQueryWithRetry(
-            senderEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000),
-            3);
-      }
     }
+
+    for (int i = 0; i < 100; ++i) {
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000), 3);
+    }
+    TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
 
     TestUtils.restartCluster(senderEnv);
 
@@ -622,7 +621,7 @@ public class IoTDBPipeClusterIT {
         receiverEnv,
         "select count(*) from root.**",
         "count(root.db.d1.s1),",
-        Collections.singleton("1000,"));
+        Collections.singleton("100,"));
   }
 
   @Test

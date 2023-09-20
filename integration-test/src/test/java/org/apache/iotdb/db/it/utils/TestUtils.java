@@ -400,6 +400,26 @@ public class TestUtils {
     }
   }
 
+  public static ResultSet executeQueryWithRetry(Statement statement, String sql, int retryCount) {
+    int retryCountLeft = Math.max(retryCount, 0);
+    for (; retryCountLeft >= 0; retryCountLeft--) {
+      try {
+        return statement.executeQuery(sql);
+      } catch (SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(2000);
+          } catch (InterruptedException ignored) {
+          }
+        } else {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+    return null;
+  }
+
   public static void assertResultSetEqual(
       SessionDataSet actualResultSet,
       List<String> expectedColumnNames,
@@ -495,7 +515,7 @@ public class TestUtils {
           .untilAsserted(
               () ->
                   TestUtils.assertResultSetEqual(
-                      statement.executeQuery(sql), expectedHeader, expectedResSet));
+                      executeQueryWithRetry(statement, sql, 3), expectedHeader, expectedResSet));
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

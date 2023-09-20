@@ -167,13 +167,8 @@ public class IoTDBPipeExtractorIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // insert data to create data region
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (1, 1)");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.sg1.d1(time, at1) values (1, 1)", 3);
 
       String formatString =
           String.format(
@@ -214,33 +209,40 @@ public class IoTDBPipeExtractorIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.nonAligned.1TS (time, s_float) values (now(), 0.5)");
-        statement.execute("insert into root.nonAligned.100TS (time, s_float) values (now(), 0.5)");
-        statement.execute("insert into root.nonAligned.1000TS (time, s_float) values (now(), 0.5)");
-        statement.execute(
-            "insert into root.nonAligned.`1(TS)` (time, s_float) values (now(), 0.5)");
-        statement.execute(
-            "insert into root.nonAligned.6TS.`6` ("
-                + "time, `s_float(1)`, `s_int(1)`, `s_double(1)`, `s_long(1)`, `s_text(1)`, `s_bool(1)`) "
-                + "values (now(), 0.5, 1, 1.5, 2, \"text1\", true)");
-        statement.execute(
-            "insert into root.aligned.1TS (time, s_float) aligned values (now(), 0.5)");
-        statement.execute(
-            "insert into root.aligned.100TS (time, s_float) aligned values (now(), 0.5)");
-        statement.execute(
-            "insert into root.aligned.1000TS (time, s_float) aligned values (now(), 0.5)");
-        statement.execute(
-            "insert into root.aligned.`1(TS)` (time, s_float) aligned values (now(), 0.5)");
-        statement.execute(
-            "insert into root.aligned.6TS.`6` ("
-                + "time, `s_float(1)`, `s_int(1)`, `s_double(1)`, `s_long(1)`, `s_text(1)`, `s_bool(1)`) "
-                + "aligned values (now(), 0.5, 1, 1.5, 2, \"text1\", true)");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.nonAligned.1TS (time, s_float) values (now(), 0.5)", 3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.nonAligned.100TS (time, s_float) values (now(), 0.5)", 3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.nonAligned.1000TS (time, s_float) values (now(), 0.5)", 3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.nonAligned.`1(TS)` (time, s_float) values (now(), 0.5)", 3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv,
+          "insert into root.nonAligned.6TS.`6` ("
+              + "time, `s_float(1)`, `s_int(1)`, `s_double(1)`, `s_long(1)`, `s_text(1)`, `s_bool(1)`) "
+              + "values (now(), 0.5, 1, 1.5, 2, \"text1\", true)",
+          3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.aligned.1TS (time, s_float) aligned values (now(), 0.5)", 3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv,
+          "insert into root.aligned.100TS (time, s_float) aligned values (now(), 0.5)",
+          3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv,
+          "insert into root.aligned.1000TS (time, s_float) aligned values (now(), 0.5)",
+          3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv,
+          "insert into root.aligned.`1(TS)` (time, s_float) aligned values (now(), 0.5)",
+          3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv,
+          "insert into root.aligned.6TS.`6` ("
+              + "time, `s_float(1)`, `s_int(1)`, `s_double(1)`, `s_long(1)`, `s_text(1)`, `s_bool(1)`) "
+              + "aligned values (now(), 0.5, 1, 1.5, 2, \"text1\", true)",
+          3);
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -343,15 +345,11 @@ public class IoTDBPipeExtractorIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
       assertTimeseriesCountOnReceiver(receiverEnv, 0);
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db1.d1 (time, at1) values (1, 10)");
-        statement.execute("insert into root.db2.d1 (time, at1) values (1, 20)");
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db1.d1 (time, at1) values (1, 10)", 3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db2.d1 (time, at1) values (1, 20)", 3);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
 
       extractorAttributes.replace("extractor.pattern", "root.db2");
       status =
@@ -369,15 +367,11 @@ public class IoTDBPipeExtractorIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p2").getCode());
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db1.d1 (time, at1) values (2, 11)");
-        statement.execute("insert into root.db2.d1 (time, at1) values (2, 21)");
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db1.d1 (time, at1) values (2, 11)", 3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db2.d1 (time, at1) values (2, 21)", 3);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
 
       extractorAttributes.remove("extractor.pattern"); // no pattern, will match all databases
       status =
@@ -415,17 +409,15 @@ public class IoTDBPipeExtractorIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1 (time, at1) values (1, 10)");
-        statement.execute("insert into root.db.d2 (time, at1) values (1, 20)");
-        statement.execute("insert into root.db.d3 (time, at1) values (1, 30)");
-        statement.execute("insert into root.db.d4 (time, at1) values (1, 40)");
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1 (time, at1) values (1, 10)", 3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d2 (time, at1) values (1, 20)", 3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d3 (time, at1) values (1, 30)", 3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d4 (time, at1) values (1, 40)", 3);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -483,16 +475,14 @@ public class IoTDBPipeExtractorIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p4").getCode());
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.db.d1 (time, at1) values (2, 11)");
-        statement.execute("insert into root.db.d2 (time, at1) values (2, 21)");
-        statement.execute("insert into root.db.d3 (time, at1) values (2, 31)");
-        statement.execute("insert into root.db.d4 (time, at1) values (2, 41)");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1 (time, at1) values (2, 11)", 3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d2 (time, at1) values (2, 21)", 3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d3 (time, at1) values (2, 31)", 3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d4 (time, at1) values (2, 41)", 3);
 
       try (Connection connection = receiverEnv.getConnection();
           Statement statement = connection.createStatement()) {
@@ -528,19 +518,17 @@ public class IoTDBPipeExtractorIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute(
-            "insert into root.db.d1 (time, at1)"
-                + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)");
-        statement.execute(
-            "insert into root.db.d2 (time, at1)"
-                + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)");
-        statement.execute("flush");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv,
+          "insert into root.db.d1 (time, at1)"
+              + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
+          3);
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv,
+          "insert into root.db.d2 (time, at1)"
+              + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
+          3);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
