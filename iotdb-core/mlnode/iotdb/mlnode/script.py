@@ -33,7 +33,6 @@ def main():
         logger.info("Command line argument must be specified.")
         return
     argument = sys.argv[1]
-    # TODO(lmh): support more commands
     if argument == 'start':
         server = MLNode()
         server.start()
@@ -44,7 +43,6 @@ def main():
             result = os.popen(cmd).read().strip().split()
             if result:
                 pid = result[-1]
-                # 终止指定进程ID的进程
                 os.system(f"taskkill /F /PID {pid}")
                 logger.info(f"Terminated process with PID {pid} that was using port {port}")
             else:
@@ -53,7 +51,6 @@ def main():
             cmd = f"lsof -i:{port} -t"
             pid = os.popen(cmd).read().strip()
             if pid:
-                # 终止指定进程ID的进程
                 os.system(f"kill -9 {pid}")
                 logger.info(f"Terminated process with PID {pid} that was using port {port}")
             else:

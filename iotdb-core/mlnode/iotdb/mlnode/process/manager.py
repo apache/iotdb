@@ -49,8 +49,6 @@ class NoDaemonContext(type(multiprocessing.get_context())):
     Process = NoDaemonProcess
 
 
-# We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
-# because the latter is only a wrapper function, not a proper class.
 class NestablePool(multiprocessing.pool.Pool):
     def __init__(self, *args, **kwargs):
         kwargs['context'] = NoDaemonContext()
@@ -64,12 +62,6 @@ class NestablePool(multiprocessing.pool.Pool):
         self.processes.append(p)
         print(self.processes)
         super(NestablePool, self).apply_async(func, args=args, kwds=kwds, callback=callback)
-
-    def terminate(self):
-        for p in self._pool:
-            logger.info("terminate process: {}".format(p))
-            p.terminate()
-        super(NestablePool, self).terminate()
 
 
 class TaskManager(object):

@@ -41,9 +41,8 @@ class LoggerFilter(logging.Filter):
         pid = os.getpid()
         process_name = multiprocessing.current_process().name
 
-        # 格式化函数调用栈信息
         stack_info = ""
-        frame_info = stack_trace[7]  # 忽略前两个栈帧
+        frame_info = stack_trace[7]
         stack_info += f"File: {frame_info.filename}, Line: {frame_info.lineno}, Function: {frame_info.function}"
 
         return f"PID: {pid} PName: {process_name} Stack Trace:{stack_info}"
@@ -54,10 +53,10 @@ class Logger:
         file_names = ['log_mlnode_debug.log', 'log_mlnode_info.log', 'log_mlnode_warning.log', 'log_mlnode_error.log']
         file_levels = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR]
 
-        if not os.path.exists(log_dir):  # 检查目录是否存在，不存在则创建
+        if not os.path.exists(log_dir):
             os.mkdir(log_dir)
             os.chmod(log_dir, 0o777)
-        for file_name in file_names:  # 检查文件是否存在，不存在则创建
+        for file_name in file_names:
             log_path = log_dir + "/" + file_name
             if not os.path.exists(log_path):
                 f = open(log_path, mode='w', encoding='utf-8')
