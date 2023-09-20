@@ -24,12 +24,12 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.utils.PipeTestUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
@@ -45,9 +45,7 @@ import java.sql.Statement;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
-import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -227,20 +225,11 @@ public class IoTDBPipeProtocolIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.**"),
-                        "count(root.db.d1.s1),",
-                        Collections.singleton("1,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("1,"));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -279,20 +268,11 @@ public class IoTDBPipeProtocolIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.**"),
-                        "count(root.db.d1.s1),",
-                        Collections.singleton("2,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          senderEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("2,"));
     }
   }
 
@@ -332,20 +312,11 @@ public class IoTDBPipeProtocolIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.**"),
-                        "count(root.db.d1.s1),",
-                        Collections.singleton("1,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("1,"));
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
@@ -355,20 +326,11 @@ public class IoTDBPipeProtocolIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.**"),
-                        "count(root.db.d1.s1),",
-                        Collections.singleton("2,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("2,"));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -382,16 +344,11 @@ public class IoTDBPipeProtocolIT {
       }
 
       Thread.sleep(5000);
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        TestUtils.assertResultSetEqual(
-            statement.executeQuery("select count(*) from root.**"),
-            "count(root.db.d1.s1),",
-            Collections.singleton("2,"));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("2,"));
     }
   }
 
@@ -489,20 +446,11 @@ public class IoTDBPipeProtocolIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.**"),
-                        "count(root.db.d1.s1),",
-                        Collections.singleton("2,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("2,"));
     }
   }
 }

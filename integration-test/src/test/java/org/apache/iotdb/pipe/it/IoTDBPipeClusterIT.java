@@ -28,13 +28,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.utils.PipeTestUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -56,7 +56,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -162,20 +161,11 @@ public class IoTDBPipeClusterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.**"),
-                        "count(root.db.d1.s1),",
-                        Collections.singleton("1,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("1,"));
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
@@ -186,20 +176,11 @@ public class IoTDBPipeClusterIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.**"),
-                        "count(root.db.d1.s1),",
-                        Collections.singleton("2,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("2,"));
     }
   }
 
@@ -281,24 +262,15 @@ public class IoTDBPipeClusterIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.db.d1"),
-                        "count(root.db.d1.s1),",
-                        Collections.singleton("2,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.db.d1",
+          "count(root.db.d1.s1),",
+          Collections.singleton("2,"));
     }
 
-    restartCluster(senderEnv);
-    restartCluster(receiverEnv);
+    PipeTestUtils.restartCluster(senderEnv);
+    PipeTestUtils.restartCluster(receiverEnv);
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -333,20 +305,11 @@ public class IoTDBPipeClusterIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.db.d2"),
-                        "count(root.db.d2.s1),",
-                        Collections.singleton("1,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.db.d2",
+          "count(root.db.d2.s1),",
+          Collections.singleton("1,"));
     }
   }
 
@@ -401,24 +364,15 @@ public class IoTDBPipeClusterIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.db.d1"),
-                        "count(root.db.d1.s1),",
-                        Collections.singleton("2,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.db.d1",
+          "count(root.db.d1.s1),",
+          Collections.singleton("2,"));
     }
 
-    restartCluster(senderEnv);
-    restartCluster(receiverEnv);
+    PipeTestUtils.restartCluster(senderEnv);
+    PipeTestUtils.restartCluster(receiverEnv);
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -453,20 +407,11 @@ public class IoTDBPipeClusterIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.db.d2"),
-                        "count(root.db.d2.s1),",
-                        Collections.singleton("1,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.db.d2",
+          "count(root.db.d2.s1),",
+          Collections.singleton("1,"));
     }
   }
 
@@ -516,9 +461,6 @@ public class IoTDBPipeClusterIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
-      // Expect exactly one pipe to fail, which is the one being created
-      // just after a new data node is registered and before testWorking().
-      // TODO: should we fix this?
       Assert.assertEquals(30, showPipeResult.size());
     }
   }
@@ -571,20 +513,11 @@ public class IoTDBPipeClusterIT {
       senderEnv.registerNewDataNode(true);
       t.join();
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.db.d1"),
-                        "count(root.db.d1.s1),",
-                        Collections.singleton("100,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.db.d1",
+          "count(root.db.d1.s1),",
+          Collections.singleton("100,"));
 
       senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
       senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
@@ -631,20 +564,11 @@ public class IoTDBPipeClusterIT {
 
       senderEnv.registerNewDataNode(true);
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.db.d1"),
-                        "count(root.db.d1.s1),",
-                        Collections.singleton("100,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.db.d1",
+          "count(root.db.d1.s1),",
+          Collections.singleton("100,"));
 
       senderEnv.shutdownDataNode(senderEnv.getDataNodeWrapperList().size() - 1);
       senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
@@ -697,20 +621,11 @@ public class IoTDBPipeClusterIT {
       senderEnv.getDataNodeWrapperList().remove(senderEnv.getDataNodeWrapperList().size() - 1);
       ((AbstractEnv) senderEnv).testWorkingNoUnknown();
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.db.d1"),
-                        "count(root.db.d1.s1),",
-                        Collections.singleton("100,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.db.d1",
+          "count(root.db.d1.s1),",
+          Collections.singleton("100,"));
 
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
@@ -759,22 +674,13 @@ public class IoTDBPipeClusterIT {
       }
     }
 
-    restartCluster(senderEnv);
+    PipeTestUtils.restartCluster(senderEnv);
 
-    try (Connection connection = receiverEnv.getConnection();
-        Statement statement = connection.createStatement()) {
-      await()
-          .atMost(600, TimeUnit.SECONDS)
-          .untilAsserted(
-              () ->
-                  TestUtils.assertResultSetEqual(
-                      statement.executeQuery("select count(*) from root.**"),
-                      "count(root.db.d1.s1),",
-                      Collections.singleton("1000,")));
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    PipeTestUtils.assertDataOnEnv(
+        receiverEnv,
+        "select count(*) from root.**",
+        "count(root.db.d1.s1),",
+        Collections.singleton("1000,"));
   }
 
   @Test
@@ -919,25 +825,5 @@ public class IoTDBPipeClusterIT {
           client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true)).pipeInfoList;
       Assert.assertEquals(pipeCount, showPipeResult.size());
     }
-  }
-
-  private void restartCluster(BaseEnv env) {
-    for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
-      env.shutdownConfigNode(i);
-    }
-    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
-      env.shutdownDataNode(i);
-    }
-    try {
-      TimeUnit.SECONDS.sleep(1);
-    } catch (InterruptedException ignored) {
-    }
-    for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
-      env.startConfigNode(i);
-    }
-    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
-      env.startDataNode(i);
-    }
-    ((AbstractEnv) env).testWorkingNoUnknown();
   }
 }

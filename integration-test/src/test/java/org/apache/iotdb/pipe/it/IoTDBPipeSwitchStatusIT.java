@@ -218,7 +218,7 @@ public class IoTDBPipeSwitchStatusIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (1, 1)");
+        statement.execute("insert into root.db.d1(time, s1) values (1, 1)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());

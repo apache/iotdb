@@ -22,13 +22,12 @@ package org.apache.iotdb.pipe.it;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
-import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
-import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.utils.PipeTestUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
@@ -89,7 +88,7 @@ public class IoTDBPipeLifeCycleIT {
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (1, 1)");
+        statement.execute("insert into root.db.d1(time, s1) values (1, 1)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
@@ -117,37 +116,41 @@ public class IoTDBPipeLifeCycleIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (2, 2)");
+        statement.execute("insert into root.db.d1(time, s1) values (2, 2)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
       }
 
       expectedResSet.add("2,2.0,");
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (3, 3)");
+        statement.execute("insert into root.db.d1(time, s1) values (3, 3)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
       }
 
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       expectedResSet.add("3,3.0,");
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
 
@@ -163,7 +166,7 @@ public class IoTDBPipeLifeCycleIT {
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (1, 1)");
+        statement.execute("insert into root.db.d1(time, s1) values (1, 1)");
         statement.execute("flush");
       } catch (SQLException e) {
         e.printStackTrace();
@@ -197,7 +200,7 @@ public class IoTDBPipeLifeCycleIT {
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (2, 2)");
+        statement.execute("insert into root.db.d1(time, s1) values (2, 2)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
@@ -205,20 +208,22 @@ public class IoTDBPipeLifeCycleIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("2,2.0,");
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (3, 3)");
+        statement.execute("insert into root.db.d1(time, s1) values (3, 3)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
       }
 
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
 
@@ -234,7 +239,7 @@ public class IoTDBPipeLifeCycleIT {
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (1, 1)");
+        statement.execute("insert into root.db.d1(time, s1) values (1, 1)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
@@ -264,31 +269,34 @@ public class IoTDBPipeLifeCycleIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (2, 2)");
+        statement.execute("insert into root.db.d1(time, s1) values (2, 2)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
       }
 
       expectedResSet.add("2,2.0,");
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (3, 3)");
+        statement.execute("insert into root.db.d1(time, s1) values (3, 3)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
       }
 
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
 
@@ -304,7 +312,7 @@ public class IoTDBPipeLifeCycleIT {
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (1, 1)");
+        statement.execute("insert into root.db.d1(time, s1) values (1, 1)");
         statement.execute("flush");
       } catch (SQLException e) {
         e.printStackTrace();
@@ -335,11 +343,12 @@ public class IoTDBPipeLifeCycleIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (2, 2)");
+        statement.execute("insert into root.db.d1(time, s1) values (2, 2)");
         statement.execute("flush");
       } catch (SQLException e) {
         e.printStackTrace();
@@ -347,21 +356,23 @@ public class IoTDBPipeLifeCycleIT {
       }
 
       expectedResSet.add("2,2.0,");
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (3, 3)");
+        statement.execute("insert into root.db.d1(time, s1) values (3, 3)");
         statement.execute("flush");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
       }
 
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
 
@@ -377,7 +388,7 @@ public class IoTDBPipeLifeCycleIT {
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (1, 1)");
+        statement.execute("insert into root.db.d1(time, s1) values (1, 1)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
@@ -407,31 +418,34 @@ public class IoTDBPipeLifeCycleIT {
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (2, 2)");
+        statement.execute("insert into root.db.d1(time, s1) values (2, 2)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
       }
 
       expectedResSet.add("2,2.0,");
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (3, 3)");
+        statement.execute("insert into root.db.d1(time, s1) values (3, 3)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
       }
 
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
 
@@ -448,7 +462,7 @@ public class IoTDBPipeLifeCycleIT {
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (1, 1)");
+        statement.execute("insert into root.db.d1(time, s1) values (1, 1)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
@@ -475,36 +489,39 @@ public class IoTDBPipeLifeCycleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       expectedResSet.add("1,1.0,");
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (2, 2)");
+        statement.execute("insert into root.db.d1(time, s1) values (2, 2)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
       }
 
       expectedResSet.add("2,2.0,");
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
 
-    restartCluster(senderEnv);
-    restartCluster(receiverEnv);
+    PipeTestUtils.restartCluster(senderEnv);
+    PipeTestUtils.restartCluster(receiverEnv);
 
     try (SyncConfigNodeIServiceClient ignored =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (3, 3)");
+        statement.execute("insert into root.db.d1(time, s1) values (3, 3)");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
       }
 
       expectedResSet.add("3,3.0,");
-      assertDataOnEnv(receiverEnv, expectedResSet);
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
     }
   }
 
@@ -544,7 +561,7 @@ public class IoTDBPipeLifeCycleIT {
                     Statement statement = connection.createStatement()) {
                   for (int i = 0; i < 100; ++i) {
                     statement.execute(
-                        String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
+                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
                     Thread.sleep(100);
                   }
                 } catch (SQLException e) {
@@ -555,23 +572,14 @@ public class IoTDBPipeLifeCycleIT {
               });
       t.start();
 
-      restartCluster(receiverEnv);
+      PipeTestUtils.restartCluster(receiverEnv);
       t.join();
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.**"),
-                        "count(root.sg1.d1.at1),",
-                        Collections.singleton("100,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("100,"));
     }
   }
 
@@ -619,20 +627,11 @@ public class IoTDBPipeLifeCycleIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        await()
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        statement.executeQuery("select count(*) from root.**"),
-                        "count(root.db.d1.s1),",
-                        Collections.singleton("2,")));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("2,"));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -646,16 +645,11 @@ public class IoTDBPipeLifeCycleIT {
       }
 
       Thread.sleep(5000);
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        TestUtils.assertResultSetEqual(
-            statement.executeQuery("select count(*) from root.**"),
-            "count(root.db.d1.s1),",
-            Collections.singleton("2,"));
-      } catch (Exception e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      PipeTestUtils.assertDataOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("2,"));
     }
   }
 
@@ -673,7 +667,7 @@ public class IoTDBPipeLifeCycleIT {
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
       for (int i = 0; i < 100; ++i) {
-        statement.execute(String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
+        statement.execute(String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
       statement.execute("flush");
     } catch (SQLException e) {
@@ -705,7 +699,7 @@ public class IoTDBPipeLifeCycleIT {
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
       for (int i = 100; i < 200; ++i) {
-        statement.execute(String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
+        statement.execute(String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
     } catch (SQLException e) {
       e.printStackTrace();
@@ -715,7 +709,7 @@ public class IoTDBPipeLifeCycleIT {
     try (Connection connection = receiverEnv.getConnection();
         Statement statement = connection.createStatement()) {
       for (int i = 200; i < 300; ++i) {
-        statement.execute(String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
+        statement.execute(String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
       statement.execute("flush");
     } catch (SQLException e) {
@@ -747,7 +741,7 @@ public class IoTDBPipeLifeCycleIT {
     try (Connection connection = receiverEnv.getConnection();
         Statement statement = connection.createStatement()) {
       for (int i = 300; i < 400; ++i) {
-        statement.execute(String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
+        statement.execute(String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
     } catch (SQLException e) {
       e.printStackTrace();
@@ -759,11 +753,13 @@ public class IoTDBPipeLifeCycleIT {
       expectedResSet.add(i + ",1.0,");
     }
 
-    assertDataOnEnv(senderEnv, expectedResSet);
-    assertDataOnEnv(receiverEnv, expectedResSet);
+    PipeTestUtils.assertDataOnEnv(
+        senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+    PipeTestUtils.assertDataOnEnv(
+        receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
-    restartCluster(senderEnv);
-    restartCluster(receiverEnv);
+    PipeTestUtils.restartCluster(senderEnv);
+    PipeTestUtils.restartCluster(receiverEnv);
 
     try (Connection connection = senderEnv.getConnection();
         Statement statement = connection.createStatement()) {
@@ -773,13 +769,13 @@ public class IoTDBPipeLifeCycleIT {
           .untilAsserted(
               () -> {
                 try {
-                  statement.execute("insert into root.sg1.d1(time, at1) values (400, 1)");
+                  statement.execute("insert into root.db.d1(time, s1) values (400, 1)");
                 } catch (SQLException e) {
                   fail(e.getMessage());
                 }
               });
       for (int i = 400; i < 500; ++i) {
-        statement.execute(String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
+        statement.execute(String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
       statement.execute("flush");
     } catch (SQLException e) {
@@ -794,13 +790,13 @@ public class IoTDBPipeLifeCycleIT {
           .untilAsserted(
               () -> {
                 try {
-                  statement.execute("insert into root.sg1.d1(time, at1) values (500, 1)");
+                  statement.execute("insert into root.db.d1(time, s1) values (500, 1)");
                 } catch (SQLException e) {
                   fail(e.getMessage());
                 }
               });
       for (int i = 500; i < 600; ++i) {
-        statement.execute(String.format("insert into root.sg1.d1(time, at1) values (%s, 1)", i));
+        statement.execute(String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
       statement.execute("flush");
     } catch (SQLException e) {
@@ -811,44 +807,9 @@ public class IoTDBPipeLifeCycleIT {
     for (int i = 400; i < 600; ++i) {
       expectedResSet.add(i + ",1.0,");
     }
-    assertDataOnEnv(senderEnv, expectedResSet);
-    assertDataOnEnv(receiverEnv, expectedResSet);
-  }
-
-  private void assertDataOnEnv(BaseEnv env, Set<String> expectedResSet) {
-    try (Connection connection = env.getConnection();
-        Statement statement = connection.createStatement()) {
-      await()
-          .atMost(600, TimeUnit.SECONDS)
-          .untilAsserted(
-              () ->
-                  TestUtils.assertResultSetEqual(
-                      statement.executeQuery("select * from root.**"),
-                      "Time,root.sg1.d1.at1,",
-                      expectedResSet));
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  private void restartCluster(BaseEnv env) {
-    for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
-      env.shutdownConfigNode(i);
-    }
-    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
-      env.shutdownDataNode(i);
-    }
-    try {
-      TimeUnit.SECONDS.sleep(1);
-    } catch (InterruptedException ignored) {
-    }
-    for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
-      env.startConfigNode(i);
-    }
-    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
-      env.startDataNode(i);
-    }
-    ((AbstractEnv) env).testWorkingNoUnknown();
+    PipeTestUtils.assertDataOnEnv(
+        senderEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
+    PipeTestUtils.assertDataOnEnv(
+        receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
   }
 }
