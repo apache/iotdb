@@ -34,6 +34,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Properties;
 
 @RunWith(IoTDBTestRunner.class)
@@ -108,8 +109,10 @@ public class IoTDBInterpreterIT {
     for (int i = 0; i < 100; i++) {
       String script =
           String.format(
+              Locale.ENGLISH,
               "INSERT INTO root.test.wf02(timestamp,temperature) VALUES(%d,%f)",
-              i, Math.random() * 10);
+              i,
+              Math.random() * 10);
       InterpreterResult actual = interpreter.internalInterpret(script, null);
       Assert.assertNotNull(actual);
       Assert.assertEquals(Code.SUCCESS, actual.code());

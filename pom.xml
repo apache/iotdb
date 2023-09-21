@@ -2175,9 +2175,7 @@
             <configuration>
               <outputFile>target/checkstyle-report.xml</outputFile>
               <configLocation>checkstyle.xml</configLocation>
-              <propertyExpansion>
-                baseDir=${project.basedir}
-              </propertyExpansion>
+              <propertyExpansion>baseDir=${project.basedir}</propertyExpansion>
             </configuration>
           </execution>
         </executions>

@@ -35,6 +35,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Locale;
 
 import static org.junit.Assert.fail;
 
@@ -191,45 +192,125 @@ public class AnomalyIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 100, 56.0));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              100,
+              56.0));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 200, 55.1));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              200,
+              55.1));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 300, 54.2));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              300,
+              54.2));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 400, 56.3));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              400,
+              56.3));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 500, 60.0));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              500,
+              60.0));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 600, 60.5));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              600,
+              60.5));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 700, 64.5));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              700,
+              64.5));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 800, 69.0));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              800,
+              69.0));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 900, 64.2));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              900,
+              64.2));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1000, 62.3));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              1000,
+              62.3));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1100, 58.0));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              1100,
+              58.0));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1200, 58.9));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              1200,
+              58.9));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1300, 52.0));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              1300,
+              52.0));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1400, 62.3));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              1400,
+              62.3));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1500, 61.0));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              1500,
+              61.0));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1600, 64.2));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              1600,
+              64.2));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1700, 61.8));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              1700,
+              61.8));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1800, 64.0));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              1800,
+              64.0));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1900, 63.0));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              1900,
+              63.0));
       statement.addBatch(
-          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 2000, 59.0));
+          String.format(
+              Locale.ENGLISH,
+              "insert into root.vehicle.d0(timestamp,s0) values(%d,%f)",
+              2000,
+              59.0));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",

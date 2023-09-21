@@ -28,7 +28,6 @@ import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.file.PathUtils;
-import org.apache.commons.lang3.JavaVersion;
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 
