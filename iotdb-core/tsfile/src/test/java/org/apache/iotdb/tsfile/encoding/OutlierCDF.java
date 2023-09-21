@@ -367,21 +367,31 @@ public class OutlierCDF {
                 spread_value.add(spread_v);
         }
         ArrayList<ArrayList<Integer>> PDF = new ArrayList<>();
-        
+
 
         ArrayList<Integer> start_value = new ArrayList<>();
         int min_delta_value = ts_block_order_value.get(0);
         start_value.add(min_delta_value);
         int tmp = min_delta_value;
+        ArrayList<Integer> tmp_value = new ArrayList<>();
+        tmp_value.add(min_delta_value);
+        int count = 1;
         for (int i = 1; i < block_size; i++) {
             if(ts_block_order_value.get(i) != tmp){
                 int start_v = ts_block_order_value.get(i);
+                tmp_value.add(count);
+                PDF.add(tmp_value);
+                tmp_value = new ArrayList<>();
                 start_value.add(start_v);
+                tmp_value.add(start_v);
                 tmp =start_v;
+                count = 1;
+            }else{
+                count ++;
             }
-
         }
-
+        tmp_value.add(count);
+        PDF.add(tmp_value);
 
         int final_k_start_value = ts_block_order_value.get(0);
         int final_k_end_value = ts_block_order_value.get(ts_block_order_value.size() - 1);
