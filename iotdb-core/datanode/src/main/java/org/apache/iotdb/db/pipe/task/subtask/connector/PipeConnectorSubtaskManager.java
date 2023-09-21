@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.db.pipe.connector.protocol.airgap.IoTDBAirGapConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.legacy.IoTDBLegacyPipeConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.opcua.OpcUaConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
@@ -190,8 +189,6 @@ public class PipeConnectorSubtaskManager {
     CONNECTOR_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName(),
         IoTDBLegacyPipeConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName(), IoTDBAirGapConnector::new);
     CONNECTOR_CONSTRUCTORS.put(
         BuiltinPipePlugin.WEBSOCKET_CONNECTOR.getPipePluginName(), WebSocketConnector::new);
     CONNECTOR_CONSTRUCTORS.put(
