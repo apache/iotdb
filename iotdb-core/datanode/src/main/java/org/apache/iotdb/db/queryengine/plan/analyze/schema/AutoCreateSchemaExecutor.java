@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -195,16 +196,21 @@ class AutoCreateSchemaExecutor {
       List<String> measurementList,
       List<TSDataType> dataTypeList,
       MPPQueryContext context) {
-    String userName = context.getSession().getUserName();
-    if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-      TSStatus status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkSystemPermission(
-                  userName, PrivilegeType.EXTEND_TEMPLATE.ordinal()),
-              PrivilegeType.EXTEND_TEMPLATE);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+    long startTime = System.nanoTime();
+    try {
+      String userName = context.getSession().getUserName();
+      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+        TSStatus status =
+            AuthorityChecker.getTSStatus(
+                AuthorityChecker.checkSystemPermission(
+                    userName, PrivilegeType.EXTEND_TEMPLATE.ordinal()),
+                PrivilegeType.EXTEND_TEMPLATE);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+        }
       }
+    } finally {
+      PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
     }
     internalExtendTemplate(templateName, measurementList, dataTypeList, null, null, context);
   }
@@ -212,16 +218,21 @@ class AutoCreateSchemaExecutor {
   // Used for insert records or tablets
   void autoExtendTemplate(
       Map<String, TemplateExtendInfo> templateExtendInfoMap, MPPQueryContext context) {
-    String userName = context.getSession().getUserName();
-    if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-      TSStatus status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkSystemPermission(
-                  userName, PrivilegeType.EXTEND_TEMPLATE.ordinal()),
-              PrivilegeType.EXTEND_TEMPLATE);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+    long startTime = System.nanoTime();
+    try {
+      String userName = context.getSession().getUserName();
+      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+        TSStatus status =
+            AuthorityChecker.getTSStatus(
+                AuthorityChecker.checkSystemPermission(
+                    userName, PrivilegeType.EXTEND_TEMPLATE.ordinal()),
+                PrivilegeType.EXTEND_TEMPLATE);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+        }
       }
+    } finally {
+      PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
     }
     TemplateExtendInfo templateExtendInfo;
     for (Map.Entry<String, TemplateExtendInfo> entry : templateExtendInfoMap.entrySet()) {
@@ -509,7 +520,8 @@ class AutoCreateSchemaExecutor {
   // Auto create timeseries and return the existing timeseries info
   private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
       Statement statement, MPPQueryContext context) {
-    TSStatus status = statement.checkPermissionBeforeProcess(context.getSession().getUserName());
+    TSStatus status =
+        AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
     }
