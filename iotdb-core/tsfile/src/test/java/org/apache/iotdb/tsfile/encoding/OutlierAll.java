@@ -369,7 +369,10 @@ public class OutlierAll {
 
 
         ArrayList<Integer> start_value = new ArrayList<>();
-        for (int i = 0; i < max_delta_value_bit_width; i++) {
+        int min_delta_value = ts_block_order_value.get(0);
+        start_value.add(min_delta_value);
+        for (int i = 0; i < max_delta_value; i++) {
+
             int start_v = (int) pow(2, i);
             if (start_v <= k_up_bound_value)
                 start_value.add(start_v);
