@@ -149,7 +149,7 @@
       is for ensuring the SNAPSHOT will stay available. We should however have the Ratis folks do a
       new release soon, as releasing with this version is more than sub-ideal.
     -->
-    <ratis.version>2.5.2-a4398bf-SNAPSHOT</ratis.version>
+    <ratis.version>2.5.2-c97b814-SNAPSHOT</ratis.version>
     <reactive-streams.version>1.0.4</reactive-streams.version>
     <reactor-netty.version>1.1.11</reactor-netty.version>
     <reactor.version>3.5.10</reactor.version>
@@ -382,6 +382,11 @@
       <dependency>
         <groupId>org.apache.flink</groupId>
         <artifactId>flink-table-common</artifactId>
+        <version>${flink.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.flink</groupId>
+        <artifactId>flink-table-test-utils</artifactId>
         <version>${flink.version}</version>
       </dependency>
       <dependency>

@@ -257,7 +257,6 @@
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-table-test-utils</artifactId>
-      <version>${flink.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
