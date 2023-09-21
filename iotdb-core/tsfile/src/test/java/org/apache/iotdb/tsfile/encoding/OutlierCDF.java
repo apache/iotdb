@@ -13,7 +13,7 @@ import java.util.Stack;
 
 import static java.lang.Math.pow;
 
-public class OutlierAll {
+public class OutlierCDF {
 
     public static int getBitWith(int num) {
         if (num == 0) return 1;
@@ -366,7 +366,8 @@ public class OutlierAll {
             if (spread_v >= k_down_bound_value)
                 spread_value.add(spread_v);
         }
-
+        ArrayList<ArrayList<Integer>> PDF = new ArrayList<>();
+        
 
         ArrayList<Integer> start_value = new ArrayList<>();
         int min_delta_value = ts_block_order_value.get(0);
