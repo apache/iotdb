@@ -192,7 +192,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     try {
       for (PartialPath path : node.getPathList()) {
         dataRegion.deleteByDevice(
-            path, node.getDeleteStartTime(), node.getDeleteEndTime(), node.getSearchIndex(), null);
+            path, node.getDeleteStartTime(), node.getDeleteEndTime(), node.getSearchIndex());
       }
       return StatusUtils.OK;
     } catch (IOException e) {
