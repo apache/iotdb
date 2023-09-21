@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Abst
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -66,6 +67,10 @@ public class FileMetrics implements IMetricSet {
   private static final String SEQUENCE = "sequence";
   private static final String UNSEQUENCE = "unsequence";
   private static final String LEVEL = "level";
+  private final Map<String, Map<String, Long>> seqFileSizeGaugeMap = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Long>> unseqFileSizeGaugeMap = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Integer>> seqFileNumGaugeMap = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Integer>> unseqFileNumGaugeMap = new ConcurrentHashMap<>();
   private final AtomicLong seqFileSize = new AtomicLong(0);
   private final AtomicLong unseqFileSize = new AtomicLong(0);
   private final AtomicInteger seqFileNum = new AtomicInteger(0);
@@ -118,37 +123,9 @@ public class FileMetrics implements IMetricSet {
         Metric.FILE_SIZE.toString(),
         MetricLevel.CORE,
         this,
-        o -> o.getFileSize(true),
-        Tag.NAME.toString(),
-        "seq");
-    metricService.createAutoGauge(
-        Metric.FILE_SIZE.toString(),
-        MetricLevel.CORE,
-        this,
-        o -> o.getFileSize(false),
-        Tag.NAME.toString(),
-        "unseq");
-    metricService.createAutoGauge(
-        Metric.FILE_SIZE.toString(),
-        MetricLevel.CORE,
-        this,
         FileMetrics::getModFileSize,
         Tag.NAME.toString(),
         "mods");
-    metricService.createAutoGauge(
-        Metric.FILE_COUNT.toString(),
-        MetricLevel.CORE,
-        this,
-        o -> o.getFileNum(true),
-        Tag.NAME.toString(),
-        "seq");
-    metricService.createAutoGauge(
-        Metric.FILE_COUNT.toString(),
-        MetricLevel.CORE,
-        this,
-        o -> o.getFileNum(false),
-        Tag.NAME.toString(),
-        "unseq");
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.CORE,
@@ -333,8 +310,8 @@ public class FileMetrics implements IMetricSet {
   }
 
   // following are update functions for tsfile metrics
-  public void addFile(long size, boolean seq, String name) {
-    updateGlobalCountAndSize(size, 1, seq);
+  public void addFile(String database, String regionId, long size, boolean seq, String name) {
+    updateGlobalCountAndSize(database, regionId, size, 1, seq);
     try {
       TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
       int level = tsFileName.getInnerCompactionCnt();
@@ -344,13 +321,110 @@ public class FileMetrics implements IMetricSet {
     }
   }
 
-  private void updateGlobalCountAndSize(long sizeDelta, int countDelta, boolean seq) {
+  private void updateGlobalCountAndSize(
+      String database, String regionId, long sizeDelta, int countDelta, boolean seq) {
     if (seq) {
-      seqFileSize.getAndAdd(sizeDelta);
-      seqFileNum.getAndAdd(countDelta);
+      // update sequence file size
+      seqFileSizeGaugeMap.compute(
+          database,
+          (k, v) -> {
+            long size = 0;
+            if (v == null) {
+              v = new ConcurrentHashMap<>();
+            } else if (v.containsKey(regionId)) {
+              size = v.get(regionId);
+            }
+            v.put(regionId, size + sizeDelta);
+            return v;
+          });
+      // update sequence file number
+      seqFileNumGaugeMap.compute(
+          database,
+          (k, v) -> {
+            int count = 0;
+            if (v == null) {
+              v = new ConcurrentHashMap<>();
+            } else if (v.containsKey(regionId)) {
+              count += countDelta;
+            }
+            v.put(regionId, count);
+            return v;
+          });
+      // update sequence file size metric
+      metricService
+          .getOrCreateGauge(
+              Metric.FILE_SIZE.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              "seq",
+              Tag.DATABASE.toString(),
+              database,
+              Tag.REGION.toString(),
+              regionId)
+          .set(seqFileSizeGaugeMap.get(database).get(regionId));
+      // update sequence file number metric
+      metricService
+          .getOrCreateGauge(
+              Metric.FILE_COUNT.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              "seq",
+              Tag.DATABASE.toString(),
+              database,
+              Tag.REGION.toString(),
+              regionId)
+          .set(seqFileNumGaugeMap.get(database).get(regionId));
     } else {
-      unseqFileSize.getAndAdd(sizeDelta);
-      unseqFileNum.getAndAdd(countDelta);
+      // update unsequence file size
+      unseqFileSizeGaugeMap.compute(
+          database,
+          (k, v) -> {
+            long size = 0;
+            if (v == null) {
+              v = new ConcurrentHashMap<>();
+            } else if (v.containsKey(regionId)) {
+              size = v.get(regionId);
+            }
+            v.put(regionId, size + sizeDelta);
+            return v;
+          });
+      // update unsequence file number
+      unseqFileNumGaugeMap.compute(
+          database,
+          (k, v) -> {
+            int count = 0;
+            if (v == null) {
+              v = new ConcurrentHashMap<>();
+            } else if (v.containsKey(regionId)) {
+              count = v.get(regionId);
+            }
+            v.put(regionId, count + countDelta);
+            return v;
+          });
+      // update unsequence file size metric
+      metricService
+          .getOrCreateGauge(
+              Metric.FILE_SIZE.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              "unseq",
+              Tag.DATABASE.toString(),
+              database,
+              Tag.REGION.toString(),
+              regionId)
+          .set(unseqFileSizeGaugeMap.get(database).get(regionId));
+      // update unsequence file number metric
+      metricService
+          .getOrCreateGauge(
+              Metric.FILE_COUNT.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              "unseq",
+              Tag.DATABASE.toString(),
+              database,
+              Tag.REGION.toString(),
+              regionId)
+          .set(unseqFileNumGaugeMap.get(database).get(regionId));
     }
   }
 
@@ -435,19 +509,15 @@ public class FileMetrics implements IMetricSet {
         .set(size);
   }
 
-  public void deleteFile(long[] sizeList, boolean seq, List<String> names) {
-    long totalSize = 0;
-    for (long size : sizeList) {
-      totalSize += size;
-    }
-    updateGlobalCountAndSize(-totalSize, -sizeList.length, seq);
-    for (int i = 0, length = names.size(); i < length; ++i) {
-      int level = -1;
-      String name = names.get(i);
-      long size = sizeList[i];
+  public void deleteFile(boolean seq, List<TsFileResource> tsFileResourceList) {
+    for (TsFileResource tsFileResource : tsFileResourceList) {
+      String name = tsFileResource.getTsFile().getName();
+      long size = tsFileResource.getTsFileSize();
+      updateGlobalCountAndSize(
+          tsFileResource.getDatabaseName(), tsFileResource.getDataRegionId(), -size, -1, seq);
       try {
         TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
-        level = tsFileName.getInnerCompactionCnt();
+        int level = tsFileName.getInnerCompactionCnt();
         updateLevelCountAndSize(-size, -1, seq, level);
       } catch (IOException e) {
         log.warn("Unexpected error occurred when getting tsfile name", e);

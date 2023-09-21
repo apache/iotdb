@@ -258,6 +258,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         if (!targetTsFileResource.isDeleted()) {
           FileMetrics.getInstance()
               .addFile(
+                  targetTsFileResource.getDatabaseName(),
+                  targetTsFileResource.getDataRegionId(),
                   targetTsFileResource.getTsFile().length(),
                   sequence,
                   targetTsFileResource.getTsFile().getName());

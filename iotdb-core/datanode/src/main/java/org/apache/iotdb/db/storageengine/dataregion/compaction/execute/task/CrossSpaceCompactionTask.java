@@ -220,7 +220,11 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           if (!targetResource.isDeleted()) {
             FileMetrics.getInstance()
                 .addFile(
-                    targetResource.getTsFileSize(), true, targetResource.getTsFile().getName());
+                    targetResource.getDatabaseName(),
+                    targetResource.getDataRegionId(),
+                    targetResource.getTsFileSize(),
+                    true,
+                    targetResource.getTsFile().getName());
 
             // set target resources to CLOSED, so that they can be selected to compact
             targetResource.setStatus(TsFileResourceStatus.NORMAL);
