@@ -736,6 +736,18 @@ public class PipeTaskAgent {
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
   }
 
+  ///////////////////////// For log extractor /////////////////////////
+
+  public boolean isPipeStopped(String pipeName) {
+    acquireReadLock();
+    try {
+      return pipeMetaKeeper.getPipeMetaByPipeName(pipeName).getRuntimeMeta().getStatus().get()
+          == PipeStatus.STOPPED;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   ///////////////////////// Manage by dataRegionGroupId /////////////////////////
 
   private void createPipeTask(
