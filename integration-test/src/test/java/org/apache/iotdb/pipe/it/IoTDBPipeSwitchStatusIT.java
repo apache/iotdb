@@ -213,7 +213,7 @@ public class IoTDBPipeSwitchStatusIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -236,7 +236,7 @@ public class IoTDBPipeSwitchStatusIT {
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
-      TestUtils.executeNonQueryWithRetry(senderEnv, "drop database root.**", 3);
+      TestUtils.executeNonQueryWithRetry(senderEnv, "drop database root.**");
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p1").getCode());

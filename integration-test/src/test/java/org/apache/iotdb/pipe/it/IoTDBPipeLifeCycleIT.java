@@ -80,7 +80,7 @@ public class IoTDBPipeLifeCycleIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -108,7 +108,7 @@ public class IoTDBPipeLifeCycleIT {
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)");
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataOnEnv(
@@ -118,7 +118,7 @@ public class IoTDBPipeLifeCycleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)");
 
       TestUtils.assertDataOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
@@ -143,8 +143,8 @@ public class IoTDBPipeLifeCycleIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -172,7 +172,7 @@ public class IoTDBPipeLifeCycleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)");
 
       Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("2,2.0,");
@@ -183,7 +183,7 @@ public class IoTDBPipeLifeCycleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)");
 
       TestUtils.assertDataOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
@@ -201,7 +201,7 @@ public class IoTDBPipeLifeCycleIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -231,7 +231,7 @@ public class IoTDBPipeLifeCycleIT {
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)");
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataOnEnv(
@@ -241,7 +241,7 @@ public class IoTDBPipeLifeCycleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)");
 
       TestUtils.assertDataOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
@@ -259,7 +259,7 @@ public class IoTDBPipeLifeCycleIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -289,7 +289,7 @@ public class IoTDBPipeLifeCycleIT {
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)");
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataOnEnv(
@@ -299,7 +299,7 @@ public class IoTDBPipeLifeCycleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)");
 
       TestUtils.assertDataOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
@@ -317,7 +317,7 @@ public class IoTDBPipeLifeCycleIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -347,7 +347,7 @@ public class IoTDBPipeLifeCycleIT {
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)");
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataOnEnv(
@@ -357,7 +357,7 @@ public class IoTDBPipeLifeCycleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)");
 
       TestUtils.assertDataOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
@@ -376,7 +376,7 @@ public class IoTDBPipeLifeCycleIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -403,7 +403,7 @@ public class IoTDBPipeLifeCycleIT {
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)");
 
       expectedResSet.add("2,2.0,");
       TestUtils.assertDataOnEnv(
@@ -417,7 +417,7 @@ public class IoTDBPipeLifeCycleIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)");
 
       expectedResSet.add("3,3.0,");
       TestUtils.assertDataOnEnv(
@@ -461,8 +461,8 @@ public class IoTDBPipeLifeCycleIT {
                   for (int i = 0; i < 100; ++i) {
                     TestUtils.executeNonQueryWithRetry(
                         senderEnv,
-                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-                        3);
+                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i)
+                    );
                     Thread.sleep(100);
                   }
                 } catch (InterruptedException ignored) {
@@ -491,7 +491,7 @@ public class IoTDBPipeLifeCycleIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       TestUtils.executeNonQueryWithRetry(
-          receiverEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
+          receiverEnv, "insert into root.db.d1(time, s1) values (1, 1)");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -513,7 +513,7 @@ public class IoTDBPipeLifeCycleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)");
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
@@ -525,7 +525,7 @@ public class IoTDBPipeLifeCycleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)");
 
       Thread.sleep(5000);
       TestUtils.assertDataOnEnv(
@@ -549,9 +549,9 @@ public class IoTDBPipeLifeCycleIT {
 
     for (int i = 0; i < 100; ++i) {
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), 3);
+          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
     }
-    TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
+    TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -576,14 +576,14 @@ public class IoTDBPipeLifeCycleIT {
     }
     for (int i = 100; i < 200; ++i) {
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), 3);
+          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
     }
 
     for (int i = 200; i < 300; ++i) {
       TestUtils.executeNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), 3);
+          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
     }
-    TestUtils.executeNonQueryWithRetry(receiverEnv, "flush", 3);
+    TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
@@ -608,7 +608,7 @@ public class IoTDBPipeLifeCycleIT {
     }
     for (int i = 300; i < 400; ++i) {
       TestUtils.executeNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), 3);
+          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
     }
 
     Set<String> expectedResSet = new HashSet<>();
@@ -626,14 +626,14 @@ public class IoTDBPipeLifeCycleIT {
 
     for (int i = 400; i < 500; ++i) {
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), 3);
+          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
     }
-    TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
+    TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
     for (int i = 500; i < 600; ++i) {
       TestUtils.executeNonQueryWithRetry(
-          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), 3);
+          receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
     }
-    TestUtils.executeNonQueryWithRetry(receiverEnv, "flush", 3);
+    TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
 
     for (int i = 400; i < 600; ++i) {
       expectedResSet.add(i + ",1.0,");

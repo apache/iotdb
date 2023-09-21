@@ -343,9 +343,8 @@ public class TestUtils {
     }
   }
 
-  public static void executeNonQueryWithRetry(BaseEnv env, String sql, int retryCount) {
-    int retryCountLeft = Math.max(retryCount, 0);
-    for (; retryCountLeft >= 0; retryCountLeft--) {
+  public static void executeNonQueryWithRetry(BaseEnv env, String sql) {
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
       try (Connection connection = env.getConnection();
           Statement statement = connection.createStatement()) {
         statement.execute(sql);
@@ -365,9 +364,8 @@ public class TestUtils {
   }
 
   public static void executeNonQueryOnSpecifiedDataNodeWithRetry(
-      BaseEnv env, DataNodeWrapper wrapper, String sql, int retryCount) {
-    int retryCountLeft = Math.max(retryCount, 0);
-    for (; retryCountLeft >= 0; retryCountLeft--) {
+      BaseEnv env, DataNodeWrapper wrapper, String sql) {
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
       try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
           Statement statement = connection.createStatement()) {
         statement.execute(sql);
@@ -400,9 +398,8 @@ public class TestUtils {
     }
   }
 
-  public static ResultSet executeQueryWithRetry(Statement statement, String sql, int retryCount) {
-    int retryCountLeft = Math.max(retryCount, 0);
-    for (; retryCountLeft >= 0; retryCountLeft--) {
+  public static ResultSet executeQueryWithRetry(Statement statement, String sql) {
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
       try {
         return statement.executeQuery(sql);
       } catch (SQLException e) {
@@ -515,7 +512,7 @@ public class TestUtils {
           .untilAsserted(
               () ->
                   TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql, 3), expectedHeader, expectedResSet));
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet));
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

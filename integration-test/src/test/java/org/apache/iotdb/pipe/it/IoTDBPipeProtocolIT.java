@@ -194,7 +194,7 @@ public class IoTDBPipeProtocolIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -232,7 +232,7 @@ public class IoTDBPipeProtocolIT {
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
 
       TestUtils.executeNonQueryWithRetry(
-          receiverEnv, "insert into root.db.d1(time, s1) values (2, 2)", 3);
+          receiverEnv, "insert into root.db.d1(time, s1) values (2, 2)");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -271,7 +271,7 @@ public class IoTDBPipeProtocolIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -299,7 +299,7 @@ public class IoTDBPipeProtocolIT {
           Collections.singleton("1,"));
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)");
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
@@ -311,7 +311,7 @@ public class IoTDBPipeProtocolIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (3, 3)");
 
       Thread.sleep(5000);
       TestUtils.assertDataOnEnv(
@@ -380,7 +380,7 @@ public class IoTDBPipeProtocolIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -402,8 +402,8 @@ public class IoTDBPipeProtocolIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)", 3);
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
+          senderEnv, "insert into root.db.d1(time, s1) values (2, 2)");
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       TestUtils.assertDataOnEnv(
           receiverEnv,

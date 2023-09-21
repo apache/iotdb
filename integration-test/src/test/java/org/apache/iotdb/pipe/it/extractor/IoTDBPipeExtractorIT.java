@@ -168,7 +168,7 @@ public class IoTDBPipeExtractorIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // insert data to create data region
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.sg1.d1(time, at1) values (1, 1)", 3);
+          senderEnv, "insert into root.sg1.d1(time, at1) values (1, 1)");
 
       String formatString =
           String.format(
@@ -210,39 +210,39 @@ public class IoTDBPipeExtractorIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.nonAligned.1TS (time, s_float) values (now(), 0.5)", 3);
+          senderEnv, "insert into root.nonAligned.1TS (time, s_float) values (now(), 0.5)");
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.nonAligned.100TS (time, s_float) values (now(), 0.5)", 3);
+          senderEnv, "insert into root.nonAligned.100TS (time, s_float) values (now(), 0.5)");
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.nonAligned.1000TS (time, s_float) values (now(), 0.5)", 3);
+          senderEnv, "insert into root.nonAligned.1000TS (time, s_float) values (now(), 0.5)");
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.nonAligned.`1(TS)` (time, s_float) values (now(), 0.5)", 3);
+          senderEnv, "insert into root.nonAligned.`1(TS)` (time, s_float) values (now(), 0.5)");
       TestUtils.executeNonQueryWithRetry(
           senderEnv,
           "insert into root.nonAligned.6TS.`6` ("
               + "time, `s_float(1)`, `s_int(1)`, `s_double(1)`, `s_long(1)`, `s_text(1)`, `s_bool(1)`) "
-              + "values (now(), 0.5, 1, 1.5, 2, \"text1\", true)",
-          3);
+              + "values (now(), 0.5, 1, 1.5, 2, \"text1\", true)"
+      );
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.aligned.1TS (time, s_float) aligned values (now(), 0.5)", 3);
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv,
-          "insert into root.aligned.100TS (time, s_float) aligned values (now(), 0.5)",
-          3);
+          senderEnv, "insert into root.aligned.1TS (time, s_float) aligned values (now(), 0.5)");
       TestUtils.executeNonQueryWithRetry(
           senderEnv,
-          "insert into root.aligned.1000TS (time, s_float) aligned values (now(), 0.5)",
-          3);
+          "insert into root.aligned.100TS (time, s_float) aligned values (now(), 0.5)"
+      );
       TestUtils.executeNonQueryWithRetry(
           senderEnv,
-          "insert into root.aligned.`1(TS)` (time, s_float) aligned values (now(), 0.5)",
-          3);
+          "insert into root.aligned.1000TS (time, s_float) aligned values (now(), 0.5)"
+      );
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv,
+          "insert into root.aligned.`1(TS)` (time, s_float) aligned values (now(), 0.5)"
+      );
       TestUtils.executeNonQueryWithRetry(
           senderEnv,
           "insert into root.aligned.6TS.`6` ("
               + "time, `s_float(1)`, `s_int(1)`, `s_double(1)`, `s_long(1)`, `s_text(1)`, `s_bool(1)`) "
-              + "aligned values (now(), 0.5, 1, 1.5, 2, \"text1\", true)",
-          3);
+              + "aligned values (now(), 0.5, 1, 1.5, 2, \"text1\", true)"
+      );
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -346,10 +346,10 @@ public class IoTDBPipeExtractorIT {
       assertTimeseriesCountOnReceiver(receiverEnv, 0);
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db1.d1 (time, at1) values (1, 10)", 3);
+          senderEnv, "insert into root.db1.d1 (time, at1) values (1, 10)");
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db2.d1 (time, at1) values (1, 20)", 3);
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
+          senderEnv, "insert into root.db2.d1 (time, at1) values (1, 20)");
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       extractorAttributes.replace("extractor.pattern", "root.db2");
       status =
@@ -368,10 +368,10 @@ public class IoTDBPipeExtractorIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p2").getCode());
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db1.d1 (time, at1) values (2, 11)", 3);
+          senderEnv, "insert into root.db1.d1 (time, at1) values (2, 11)");
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db2.d1 (time, at1) values (2, 21)", 3);
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
+          senderEnv, "insert into root.db2.d1 (time, at1) values (2, 21)");
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       extractorAttributes.remove("extractor.pattern"); // no pattern, will match all databases
       status =
@@ -410,14 +410,14 @@ public class IoTDBPipeExtractorIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1 (time, at1) values (1, 10)", 3);
+          senderEnv, "insert into root.db.d1 (time, at1) values (1, 10)");
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d2 (time, at1) values (1, 20)", 3);
+          senderEnv, "insert into root.db.d2 (time, at1) values (1, 20)");
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d3 (time, at1) values (1, 30)", 3);
+          senderEnv, "insert into root.db.d3 (time, at1) values (1, 30)");
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d4 (time, at1) values (1, 40)", 3);
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
+          senderEnv, "insert into root.db.d4 (time, at1) values (1, 40)");
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -476,13 +476,13 @@ public class IoTDBPipeExtractorIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p4").getCode());
 
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1 (time, at1) values (2, 11)", 3);
+          senderEnv, "insert into root.db.d1 (time, at1) values (2, 11)");
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d2 (time, at1) values (2, 21)", 3);
+          senderEnv, "insert into root.db.d2 (time, at1) values (2, 21)");
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d3 (time, at1) values (2, 31)", 3);
+          senderEnv, "insert into root.db.d3 (time, at1) values (2, 31)");
       TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d4 (time, at1) values (2, 41)", 3);
+          senderEnv, "insert into root.db.d4 (time, at1) values (2, 41)");
 
       try (Connection connection = receiverEnv.getConnection();
           Statement statement = connection.createStatement()) {
@@ -521,14 +521,14 @@ public class IoTDBPipeExtractorIT {
       TestUtils.executeNonQueryWithRetry(
           senderEnv,
           "insert into root.db.d1 (time, at1)"
-              + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
-          3);
+              + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)"
+      );
       TestUtils.executeNonQueryWithRetry(
           senderEnv,
           "insert into root.db.d2 (time, at1)"
-              + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
-          3);
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush", 3);
+              + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)"
+      );
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
