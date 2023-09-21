@@ -572,7 +572,6 @@ class Session(object):
         :param data_types: List of TSDataType, indicate the data type for each sensor
         :param values: List, values to be inserted, for each sensor
         """
-        data_types = [data_type.value for data_type in data_types]
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values
         )
@@ -606,10 +605,6 @@ class Session(object):
         :param types_lst: 2-D List of TSDataType, each element of outer list indicates sensor data types of a device
         :param values_lst: 2-D List, values to be inserted, for each device
         """
-        type_values_lst = []
-        for types in types_lst:
-            data_types = [data_type.value for data_type in types]
-            type_values_lst.append(data_types)
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(device_ids)):
@@ -622,7 +617,7 @@ class Session(object):
                 request.timestamps.append(times[i])
                 request.measurementsList.append(measurements_lst[i])
                 request.valuesList.append(
-                    Session.value_to_bytes(type_values_lst[i], values_lst[i])
+                    Session.value_to_bytes(types_lst[i], values_lst[i])
                 )
             for client, request in request_group.items():
                 try:
@@ -647,7 +642,7 @@ class Session(object):
             return 0
         else:
             request = self.gen_insert_records_req(
-                device_ids, times, measurements_lst, type_values_lst, values_lst
+                device_ids, times, measurements_lst, types_lst, values_lst
             )
             try:
                 return Session.verify_success(self.__client.insertRecords(request))
@@ -679,7 +674,6 @@ class Session(object):
         :param data_types: List of TSDataType, indicate the data type for each sensor
         :param values: List, values to be inserted, for each sensor
         """
-        data_types = [data_type.value for data_type in data_types]
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values, True
         )
@@ -713,10 +707,6 @@ class Session(object):
         :param types_lst: 2-D List of TSDataType, each element of outer list indicates sensor data types of a device
         :param values_lst: 2-D List, values to be inserted, for each device
         """
-        type_values_lst = []
-        for types in types_lst:
-            data_types = [data_type.value for data_type in types]
-            type_values_lst.append(data_types)
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(device_ids)):
@@ -729,7 +719,7 @@ class Session(object):
                 request.timestamps.append(times[i])
                 request.measurementsList.append(measurements_lst[i])
                 request.valuesList.append(
-                    Session.value_to_bytes(type_values_lst[i], values_lst[i])
+                    Session.value_to_bytes(types_lst[i], values_lst[i])
                 )
             for client, request in request_group.items():
                 try:
@@ -754,7 +744,7 @@ class Session(object):
             return 0
         else:
             request = self.gen_insert_records_req(
-                device_ids, times, measurements_lst, type_values_lst, values_lst, True
+                device_ids, times, measurements_lst, types_lst, values_lst, True
             )
             try:
                 return Session.verify_success(self.__client.insertRecords(request))
@@ -784,7 +774,6 @@ class Session(object):
         :param data_types: List of TSDataType, indicate the data type for each sensor
         :param values: List, values to be inserted, for each sensor
         """
-        data_types = [data_type.value for data_type in data_types]
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values
         )
@@ -813,12 +802,8 @@ class Session(object):
         :param types_lst: 2-D List of TSDataType, each element of outer list indicates sensor data types of a device
         :param values_lst: 2-D List, values to be inserted, for each device
         """
-        type_values_lst = []
-        for types in types_lst:
-            data_types = [data_type.value for data_type in types]
-            type_values_lst.append(data_types)
         request = self.gen_insert_records_req(
-            device_ids, times, measurements_lst, type_values_lst, values_lst
+            device_ids, times, measurements_lst, types_lst, values_lst
         )
         try:
             return Session.verify_success(self.__client.testInsertRecords(request))
@@ -1243,7 +1228,6 @@ class Session(object):
         for values, data_types, measurements in zip(
             values_list, types_list, measurements_list
         ):
-            data_types = [data_type.value for data_type in data_types]
             if (len(values) != len(data_types)) or (len(values) != len(measurements)):
                 raise RuntimeError(
                     "insert records of one device error: deviceIds, times, measurementsList and valuesList's size should be equal"
@@ -1439,46 +1423,48 @@ class Session(object):
     def value_to_bytes(data_types, values):
         format_str_list = [">"]
         values_tobe_packed = []
-        for data_type, value in zip(data_types, values):
-            if data_type == TSDataType.BOOLEAN.value:
-                format_str_list.append("c")
-                format_str_list.append("?")
-                values_tobe_packed.append(bytes([TSDataType.BOOLEAN.value]))
+        for i in range(len(data_types)):
+            value = values[i]
+            data_type_value = data_types[i].value
+            # BOOLEAN
+            if data_type_value == 0:
+                format_str_list.append("c?")
+                values_tobe_packed.append(b"\x00")
                 values_tobe_packed.append(value)
-            elif data_type == TSDataType.INT32.value:
-                format_str_list.append("c")
-                format_str_list.append("i")
-                values_tobe_packed.append(bytes([TSDataType.INT32.value]))
+            # INT32
+            elif data_type_value == 1:
+                format_str_list.append("ci")
+                values_tobe_packed.append(b"\x01")
                 values_tobe_packed.append(value)
-            elif data_type == TSDataType.INT64.value:
-                format_str_list.append("c")
-                format_str_list.append("q")
-                values_tobe_packed.append(bytes([TSDataType.INT64.value]))
+            # INT64
+            elif data_type_value == 2:
+                format_str_list.append("cq")
+                values_tobe_packed.append(b"\x02")
                 values_tobe_packed.append(value)
-            elif data_type == TSDataType.FLOAT.value:
-                format_str_list.append("c")
-                format_str_list.append("f")
-                values_tobe_packed.append(bytes([TSDataType.FLOAT.value]))
+            # FLOAT
+            elif data_type_value == 3:
+                format_str_list.append("cf")
+                values_tobe_packed.append(b"\x03")
                 values_tobe_packed.append(value)
-            elif data_type == TSDataType.DOUBLE.value:
-                format_str_list.append("c")
-                format_str_list.append("d")
-                values_tobe_packed.append(bytes([TSDataType.DOUBLE.value]))
+            # DOUBLE
+            elif data_type_value == 4:
+                format_str_list.append("cd")
+                values_tobe_packed.append(b"\x04")
                 values_tobe_packed.append(value)
-            elif data_type == TSDataType.TEXT.value:
+            # TEXT
+            elif data_type_value == 5:
                 if isinstance(value, str):
                     value_bytes = bytes(value, "utf-8")
                 else:
                     value_bytes = value
-                format_str_list.append("c")
-                format_str_list.append("i")
+                format_str_list.append("ci")
                 format_str_list.append(str(len(value_bytes)))
                 format_str_list.append("s")
-                values_tobe_packed.append(bytes([TSDataType.TEXT.value]))
+                values_tobe_packed.append(b"\x05")
                 values_tobe_packed.append(len(value_bytes))
                 values_tobe_packed.append(value_bytes)
             else:
-                raise RuntimeError("Unsupported data type:" + str(data_type))
+                raise RuntimeError("Unsupported data type:" + str(data_types[i]))
         format_str = "".join(format_str_list)
         return struct.pack(format_str, *values_tobe_packed)
 
