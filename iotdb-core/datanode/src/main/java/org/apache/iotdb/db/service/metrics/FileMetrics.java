@@ -321,119 +321,47 @@ public class FileMetrics implements IMetricSet {
 
   private void updateGlobalCountAndSize(
       String database, String regionId, long sizeDelta, int countDelta, boolean seq) {
-    if (seq) {
-      // update sequence file size
-      seqFileSizeMap.compute(
-          database,
-          (k, v) -> {
-            long size = 0;
-            if (v == null) {
-              v = new HashMap<>();
-            } else if (v.containsKey(regionId)) {
-              size = v.get(regionId);
-            }
-            v.put(regionId, size + sizeDelta);
-            return v;
-          });
-      // update sequence file number
-      seqFileNumMap.compute(
-          database,
-          (k, v) -> {
-            int count = 0;
-            if (v == null) {
-              v = new HashMap<>();
-            } else if (v.containsKey(regionId)) {
-              count = v.get(regionId);
-            }
-            v.put(regionId, count + countDelta);
-            return v;
-          });
-    } else {
-      // update unsequence file size
-      unseqFileSizeMap.compute(
-          database,
-          (k, v) -> {
-            long size = 0;
-            if (v == null) {
-              v = new HashMap<>();
-            } else if (v.containsKey(regionId)) {
-              size = v.get(regionId);
-            }
-            v.put(regionId, size + sizeDelta);
-            return v;
-          });
-      // update unsequence file number
-      unseqFileNumMap.compute(
-          database,
-          (k, v) -> {
-            int count = 0;
-            if (v == null) {
-              v = new HashMap<>();
-            } else if (v.containsKey(regionId)) {
-              count = v.get(regionId);
-            }
-            v.put(regionId, count + countDelta);
-            return v;
-          });
-      if (metricService != null) {
-        // update unsequence file size metric
-        metricService
-            .getOrCreateGauge(
-                Metric.FILE_SIZE.toString(),
-                MetricLevel.CORE,
-                Tag.NAME.toString(),
-                "unseq",
-                Tag.DATABASE.toString(),
-                database,
-                Tag.REGION.toString(),
-                regionId)
-            .set(unseqFileSizeMap.get(database).get(regionId));
-        // update unsequence file number metric
-        metricService
-            .getOrCreateGauge(
-                Metric.FILE_COUNT.toString(),
-                MetricLevel.CORE,
-                Tag.NAME.toString(),
-                "unseq",
-                Tag.DATABASE.toString(),
-                database,
-                Tag.REGION.toString(),
-                regionId)
-            .set(unseqFileNumMap.get(database).get(regionId));
-      }
-    }
+    (seq ? seqFileSizeMap : unseqFileSizeMap)
+        .compute(
+            database,
+            (k, v) -> {
+              long size = 0;
+              if (v == null) {
+                v = new HashMap<>();
+              } else if (v.containsKey(regionId)) {
+                size = v.get(regionId);
+              }
+              v.put(regionId, size + sizeDelta);
+              return v;
+            });
+    (seq ? seqFileNumMap : unseqFileNumMap)
+        .compute(
+            database,
+            (k, v) -> {
+              int count = 0;
+              if (v == null) {
+                v = new HashMap<>();
+              } else if (v.containsKey(regionId)) {
+                count = v.get(regionId);
+              }
+              v.put(regionId, count + countDelta);
+              return v;
+            });
     if (metricService != null) {
-      if (seq) {
-        updateGlobalGauge(
-            database,
-            regionId,
-            seqFileSizeMap.get(database).get(regionId),
-            seqFileSizeGaugeMap,
-            SEQUENCE,
-            Metric.FILE_SIZE.toString());
-        updateGlobalGauge(
-            database,
-            regionId,
-            seqFileNumMap.get(database).get(regionId),
-            seqFileNumGaugeMap,
-            SEQUENCE,
-            Metric.FILE_COUNT.toString());
-      } else {
-        updateGlobalGauge(
-            database,
-            regionId,
-            unseqFileSizeMap.get(database).get(regionId),
-            unseqFileSizeGaugeMap,
-            UNSEQUENCE,
-            Metric.FILE_SIZE.toString());
-        updateGlobalGauge(
-            database,
-            regionId,
-            unseqFileNumMap.get(database).get(regionId),
-            unseqFileNumGaugeMap,
-            UNSEQUENCE,
-            Metric.FILE_COUNT.toString());
-      }
+      updateGlobalGauge(
+          database,
+          regionId,
+          (seq ? seqFileSizeMap : unseqFileSizeMap).get(database).get(regionId),
+          (seq ? seqFileSizeGaugeMap : unseqFileSizeGaugeMap),
+          (seq ? SEQUENCE : UNSEQUENCE),
+          Metric.FILE_SIZE.toString());
+      updateGlobalGauge(
+          database,
+          regionId,
+          (seq ? seqFileNumMap : unseqFileNumMap).get(database).get(regionId),
+          (seq ? seqFileNumGaugeMap : unseqFileNumGaugeMap),
+          (seq ? SEQUENCE : UNSEQUENCE),
+          Metric.FILE_COUNT.toString());
     }
   }
 
@@ -469,20 +397,12 @@ public class FileMetrics implements IMetricSet {
   }
 
   private void updateLevelCountAndSize(long sizeDelta, int countDelta, boolean seq, int level) {
-    int count = 0;
-    long totalSize = 0;
-    if (seq) {
-      count =
-          seqLevelTsFileCountMap.compute(level, (k, v) -> v == null ? countDelta : v + countDelta);
-      totalSize =
-          seqLevelTsFileSizeMap.compute(level, (k, v) -> v == null ? sizeDelta : v + sizeDelta);
-    } else {
-      count =
-          unseqLevelTsFileCountMap.compute(
-              level, (k, v) -> v == null ? countDelta : v + countDelta);
-      totalSize =
-          unseqLevelTsFileSizeMap.compute(level, (k, v) -> v == null ? sizeDelta : v + sizeDelta);
-    }
+    int count =
+        (seq ? seqLevelTsFileCountMap : unseqLevelTsFileCountMap)
+            .compute(level, (k, v) -> v == null ? countDelta : v + countDelta);
+    long totalSize =
+        (seq ? seqLevelTsFileSizeMap : unseqLevelTsFileSizeMap)
+            .compute(level, (k, v) -> v == null ? sizeDelta : v + sizeDelta);
     if (metricService != null) {
       updateLevelGauge(
           level,
