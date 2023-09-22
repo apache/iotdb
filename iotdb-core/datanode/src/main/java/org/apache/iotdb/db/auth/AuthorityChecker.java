@@ -101,6 +101,15 @@ public class AuthorityChecker {
     }
   }
 
+  public static TSStatus checkAuthority(Statement statement, String userName) {
+    long startTime = System.nanoTime();
+    try {
+      return statement.checkPermissionBeforeProcess(userName);
+    } finally {
+      PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
+    }
+  }
+
   public static TSStatus getTSStatus(boolean hasPermission, String errMsg) {
     return hasPermission
         ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
@@ -144,30 +153,19 @@ public class AuthorityChecker {
 
   public static boolean checkFullPathPermission(
       String userName, PartialPath fullPath, int permission) {
-    long startTime = System.nanoTime();
-    List<Integer> failIndex =
-        authorityFetcher.checkUserPathPrivileges(
-            userName, Collections.singletonList(fullPath), permission);
-    PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
-    return failIndex.isEmpty();
+    return authorityFetcher
+        .checkUserPathPrivileges(userName, Collections.singletonList(fullPath), permission)
+        .isEmpty();
   }
 
   public static List<Integer> checkFullPathListPermission(
       String userName, List<PartialPath> fullPaths, int permission) {
-    long startTime = System.nanoTime();
-    List<Integer> failIndex =
-        authorityFetcher.checkUserPathPrivileges(userName, fullPaths, permission);
-    PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
-    return failIndex;
+    return authorityFetcher.checkUserPathPrivileges(userName, fullPaths, permission);
   }
 
   public static List<Integer> checkPatternPermission(
       String userName, List<PartialPath> pathPatterns, int permission) {
-    long startTime = System.nanoTime();
-    List<Integer> failIndex =
-        authorityFetcher.checkUserPathPrivileges(userName, pathPatterns, permission);
-    PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
-    return failIndex;
+    return authorityFetcher.checkUserPathPrivileges(userName, pathPatterns, permission);
   }
 
   public static PathPatternTree getAuthorizedPathTree(String userName, int permission)
@@ -176,22 +174,18 @@ public class AuthorityChecker {
   }
 
   public static boolean checkSystemPermission(String userName, int permission) {
-    long startTime = System.nanoTime();
-    TSStatus status = authorityFetcher.checkUserSysPrivileges(userName, permission);
-    PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    return authorityFetcher.checkUserSysPrivileges(userName, permission).getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   public static boolean checkGrantOption(
       String userName, String[] privilegeList, List<PartialPath> nodeNameList) {
-    long startTime = System.nanoTime();
     for (String s : privilegeList) {
       if (!authorityFetcher.checkUserPrivilegeGrantOpt(
           userName, nodeNameList, PrivilegeType.valueOf(s).ordinal())) {
         return false;
       }
     }
-    PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     return true;
   }
 
