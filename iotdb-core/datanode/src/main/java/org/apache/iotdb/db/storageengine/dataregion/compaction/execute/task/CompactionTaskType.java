@@ -16,14 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.storageengine.dataregion.compaction.selector;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
-import java.util.List;
+public enum CompactionTaskType {
+  /** default compaction task type */
+  NORMAL,
 
-public interface IInnerUnseqSpaceSelector extends ICompactionSelector {
-  @Override
-  List<InnerSpaceCompactionTask> selectInnerSpaceTask(List<TsFileResource> resources);
+  /**
+   * in either of the following situations: 1. the TsFile has .mods file whose size exceeds 50 MB.
+   * 2. the TsFile has .mods file and the disk availability rate is lower than the
+   * disk_space_warning_threshold.
+   */
+  MOD_SETTLE
 }

@@ -2199,19 +2199,11 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new ReadPointCompactionPerformer(),
-              new AtomicInteger(0),
-              0L)
-          .start();
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      task.start();
     }
 
     // select cross compaction
@@ -2280,19 +2272,11 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new ReadPointCompactionPerformer(),
-              new AtomicInteger(0),
-              0L)
-          .start();
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      task.start();
     }
 
     // select cross compaction
@@ -2362,19 +2346,11 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new ReadPointCompactionPerformer(),
-              new AtomicInteger(0),
-              0L)
-          .start();
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      task.start();
     }
 
     // select cross compaction
@@ -2445,19 +2421,11 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new ReadPointCompactionPerformer(),
-              new AtomicInteger(0),
-              0L)
-          .start();
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      task.start();
     }
 
     // select cross compaction
@@ -2534,19 +2502,11 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new ReadPointCompactionPerformer(),
-              new AtomicInteger(0),
-              0L)
-          .start();
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      task.start();
     }
 
     // select cross compaction
@@ -2622,19 +2582,11 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new ReadPointCompactionPerformer(),
-              new AtomicInteger(0),
-              0L)
-          .start();
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      task.start();
     }
 
     // select cross compaction
@@ -2711,19 +2663,11 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new ReadPointCompactionPerformer(),
-              new AtomicInteger(0),
-              0L)
-          .start();
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      task.start();
     }
 
     // select cross compaction
@@ -2801,19 +2745,11 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      new InnerSpaceCompactionTask(
-              0,
-              tsFileManager,
-              taskResource,
-              true,
-              new ReadChunkCompactionPerformer(),
-              new AtomicInteger(0),
-              0L)
-          .start();
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      task.start();
     }
 
     // select cross compaction
