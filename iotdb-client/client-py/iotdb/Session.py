@@ -178,7 +178,7 @@ class Session(object):
         if self.__enable_rpc_compression:
             client = Client(TCompactProtocol.TCompactProtocol(transport))
         else:
-            client = Client(TBinaryProtocol.TBinaryProtocol(transport))
+            client = Client(TBinaryProtocol.TBinaryProtocolAccelerated(transport))
 
         open_req = TSOpenSessionReq(
             client_protocol=self.protocol_version,
