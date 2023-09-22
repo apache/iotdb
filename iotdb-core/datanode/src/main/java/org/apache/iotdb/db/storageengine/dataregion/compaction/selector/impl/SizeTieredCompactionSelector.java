@@ -96,7 +96,7 @@ public class SizeTieredCompactionSelector
    * @throws IOException if the name of tsfile is incorrect
    */
   @SuppressWarnings({"squid:S3776", "squid:S135"})
-  private List<List<TsFileResource>> selectSingleLevel(int level) throws IOException {
+  private List<List<TsFileResource>> selectTsFileResourcesByLevel(int level) throws IOException {
     List<TsFileResource> selectedFileList = new ArrayList<>();
     long selectedFileSize = 0L;
     long targetCompactionFileSize = config.getTargetCompactionFileSize();
@@ -161,73 +161,59 @@ public class SizeTieredCompactionSelector
   @Override
   public List<InnerSpaceCompactionTask> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
     this.tsFileResources = tsFileResources;
-    List<InnerSpaceCompactionTask> innerSpaceTaskList = new ArrayList<>();
     try {
-      CompactionTaskType taskType = CompactionTaskType.MOD_SETTLE;
-      // 1. preferentially select files based on mod file
-      List<List<TsFileResource>> selectedTsFileList = selectTsFileBaseOnModFile();
-      if (selectedTsFileList.isEmpty()) {
-        // 2. if a suitable file is not selected in the first step, select the file at the tsFile
-        // level
-        selectedTsFileList = selectTsFileBaseOnLevel();
-        taskType = CompactionTaskType.NORMAL;
+      // 1. preferentially select compaction task based on mod file
+      List<InnerSpaceCompactionTask> taskList = selectTaskBaseOnModFile();
+      if (!taskList.isEmpty()) {
+        return taskList;
       }
-
-      // 3. added to the task queue based on the selected TsFile, performer, and task type.
-      for (List<TsFileResource> selectedTsFileResourceList : selectedTsFileList) {
-        ICompactionPerformer performer =
-            sequence
-                ? IoTDBDescriptor.getInstance()
-                    .getConfig()
-                    .getInnerSeqCompactionPerformer()
-                    .createInstance()
-                : IoTDBDescriptor.getInstance()
-                    .getConfig()
-                    .getInnerUnseqCompactionPerformer()
-                    .createInstance();
-        innerSpaceTaskList.add(
-            new InnerSpaceCompactionTask(
-                timePartition,
-                tsFileManager,
-                selectedTsFileResourceList,
-                sequence,
-                performer,
-                CompactionTaskManager.currentTaskNum,
-                tsFileManager.getNextCompactionTaskId(),
-                taskType));
-      }
+      // 2. if a suitable compaction task is not selected in the first step, select the compaction
+      // task at the tsFile level
+      return selectTaskBaseOnLevel();
     } catch (Exception e) {
       LOGGER.error("Exception occurs while selecting files", e);
     }
-    return innerSpaceTaskList;
+    return Collections.emptyList();
   }
 
-  private List<List<TsFileResource>> selectTsFileBaseOnLevel() throws IOException {
-    List<List<TsFileResource>> taskList = new ArrayList<>();
+  private List<InnerSpaceCompactionTask> selectTaskBaseOnLevel() throws IOException {
     int maxLevel = searchMaxFileLevel();
     for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
-      List<List<TsFileResource>> singleLevelTask = selectSingleLevel(currentLevel);
-      if (!singleLevelTask.isEmpty()) {
-        taskList.addAll(singleLevelTask);
-        break;
+      List<List<TsFileResource>> selectedResourceList = selectTsFileResourcesByLevel(currentLevel);
+      if (!selectedResourceList.isEmpty()) {
+        return createCompactionTasks(selectedResourceList, CompactionTaskType.NORMAL);
       }
     }
-    return taskList;
+    return Collections.emptyList();
   }
 
-  private List<List<TsFileResource>> selectTsFileBaseOnModFile() {
-    List<List<TsFileResource>> taskList = new ArrayList<>();
+  private List<InnerSpaceCompactionTask> selectTaskBaseOnModFile() {
+    List<InnerSpaceCompactionTask> taskList = new ArrayList<>();
     for (TsFileResource tsFileResource : tsFileResources) {
       ModificationFile modFile = tsFileResource.getModFile();
       if (Objects.isNull(modFile) || !modFile.exists()) {
         continue;
       }
       if (modFile.getSize() > MODS_FILE_SIZE_THRESHOLD || !CompactionUtils.isDiskHasSpace()) {
-        taskList.add(Collections.singletonList(tsFileResource));
+        taskList.add(
+            createCompactionTask(
+                Collections.singletonList(tsFileResource), CompactionTaskType.MOD_SETTLE));
         LOGGER.debug("select tsfile {},the mod file size is {}", tsFileResource, modFile.getSize());
       }
     }
     return taskList;
+  }
+
+  private ICompactionPerformer createCompactionPerformer() {
+    return sequence
+        ? IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getInnerSeqCompactionPerformer()
+            .createInstance()
+        : IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getInnerUnseqCompactionPerformer()
+            .createInstance();
   }
 
   private int searchMaxFileLevel() throws IOException {
@@ -240,5 +226,28 @@ public class SizeTieredCompactionSelector
       }
     }
     return maxLevel;
+  }
+
+  private List<InnerSpaceCompactionTask> createCompactionTasks(
+      List<List<TsFileResource>> selectedTsFileResourceList,
+      CompactionTaskType compactionTaskType) {
+    List<InnerSpaceCompactionTask> tasks = new ArrayList<>();
+    for (List<TsFileResource> tsFileResourceList : selectedTsFileResourceList) {
+      tasks.add(createCompactionTask(tsFileResourceList, compactionTaskType));
+    }
+    return tasks;
+  }
+
+  private InnerSpaceCompactionTask createCompactionTask(
+      List<TsFileResource> fileResources, CompactionTaskType compactionTaskType) {
+    return new InnerSpaceCompactionTask(
+        timePartition,
+        tsFileManager,
+        fileResources,
+        sequence,
+        createCompactionPerformer(),
+        CompactionTaskManager.currentTaskNum,
+        tsFileManager.getNextCompactionTaskId(),
+        compactionTaskType);
   }
 }

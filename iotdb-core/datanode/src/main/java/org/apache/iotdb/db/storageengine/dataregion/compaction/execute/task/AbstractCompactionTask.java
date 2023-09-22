@@ -218,6 +218,10 @@ public abstract class AbstractCompactionTask {
     return innerSeqTask;
   }
 
+  public CompactionTaskType getCompactionTaskType() {
+    return compactionTaskType;
+  }
+
   public boolean isDiskSpaceCheckPassed() {
     if (compactionTaskType == CompactionTaskType.MOD_SETTLE) {
       return true;
