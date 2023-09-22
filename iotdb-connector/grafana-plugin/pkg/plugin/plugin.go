@@ -52,7 +52,7 @@ var (
 )
 
 // ApacheIoTDBDatasource creates a new datasource instance.
-func ApacheIoTDBDatasource(d backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+func ApacheIoTDBDatasource(ctx context.Context, d backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 	var dm dataSourceModel
 	if err := json.Unmarshal(d.JSONData, &dm); err != nil {
 		return nil, err
@@ -303,7 +303,7 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 		}
 		times := make([]time.Time, len(queryDataResp.Timestamps))
 		for c := 0; c < len(queryDataResp.Timestamps); c++ {
-			times[c] = time.Unix(0,queryDataResp.Timestamps[c]*1000000)
+			times[c] = time.Unix(0, queryDataResp.Timestamps[c]*1000000)
 		}
 		values := recoverType(queryDataResp.Values[i])
 		frame.Fields = append(frame.Fields,
