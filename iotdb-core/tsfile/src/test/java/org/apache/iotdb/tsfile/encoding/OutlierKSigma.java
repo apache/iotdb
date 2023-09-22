@@ -28,11 +28,13 @@ public class OutlierKSigma {
         bytes[3] = (byte) integer;
         return bytes;
     }
+
     public static byte[] intByte2Bytes(int integer) {
         byte[] bytes = new byte[1];
         bytes[0] = (byte) integer;
         return bytes;
     }
+
     public static byte[] double2Bytes(double dou) {
         long value = Double.doubleToRawLongBits(dou);
         byte[] bytes = new byte[8];
@@ -334,37 +336,42 @@ public class OutlierKSigma {
     private static ArrayList<Byte> learnKDelta(ArrayList<Integer> ts_block, int k) {
 
         int block_size = ts_block.size();
+        int final_right_max = 0;
         ArrayList<Byte> cur_byte = new ArrayList<>();
 
         ArrayList<Integer> min_delta = new ArrayList<>();
         ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
+        System.out.println(ts_block_delta);
 
         int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
 
 
         double sum = 0;
         for (int i = 0; i < block_size; i++) {
+            if(ts_block_delta.get(i) > final_right_max){
+                final_right_max = ts_block_delta.get(i);
+            }
             sum += ts_block_delta.get(i);
         }
-        double mu = sum/block_size;
+        double mu = sum / block_size;
         double variance = 0;
         for (int i = 0; i < block_size; i++) {
-            variance += (ts_block_delta.get(i)-mu)*(ts_block_delta.get(i)-mu);
+            variance += (ts_block_delta.get(i) - mu) * (ts_block_delta.get(i) - mu);
         }
-        double sigma = Math.sqrt(variance/block_size);
+        double sigma = Math.sqrt(variance / block_size);
 
 
-        int final_k_start_value = (int) (mu - k*sigma);
-        int final_k_end_value = (int) (mu - k*sigma);
+        int final_k_start_value = (int) (mu - k * sigma>0?(mu - k * sigma):0);
+        int final_k_end_value = (int) (mu - k * sigma<final_right_max?(mu - k * sigma):final_right_max);
 
-        int final_left_max = 0;
-        int final_right_max = 0;
-        int final_alpha = 1;
+//        int final_left_max = 0;
+//        int final_right_max = 0;
+
 
         // ------------------------- encode data -----------------------------------------
-        if (final_left_max == 0 && final_right_max == 0) {
-            cur_byte = encode2Bytes(ts_block_delta, min_delta.get(0), bit_width);
-        } else {
+//        if (final_left_max == 0 && final_right_max == 0) {
+//            cur_byte = encode2Bytes(ts_block_delta, min_delta.get(0), bit_width);
+//        } else {
             ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
             ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
             ArrayList<Integer> final_left_outlier = new ArrayList<>();
@@ -380,13 +387,13 @@ public class OutlierKSigma {
             for (int i = 1; i < block_size; i++) {
                 if (ts_block_delta.get(i) < final_k_start_value) {
                     final_left_outlier.add(ts_block_delta.get(i));
-                    if (final_alpha == 1)
+//                    if (final_alpha == 1)
                         final_left_outlier_index.add(i);
-                    else {
+//                    else {
                         index_bitmap_outlier += 1;
                         index_bitmap_outlier <<= 1;
                         index_bitmap += 1;
-                    }
+//                    }
 
                     k1++;
 
@@ -394,32 +401,35 @@ public class OutlierKSigma {
                 } else if (ts_block_delta.get(i) > final_k_end_value) {
                     final_right_outlier.add(ts_block_delta.get(i) - final_k_end_value);
 
-                    if (final_alpha == 1)
+//                    if (final_alpha == 1)
                         final_right_outlier_index.add(i);
-                    else {
+//                    else {
                         index_bitmap_outlier <<= 1;
                         index_bitmap += 1;
-                    }
+//                    }
                     k2++;
                 } else {
                     final_normal.add(ts_block_delta.get(i) - final_k_start_value);
                 }
-                if (final_alpha == 0) {
+//                if (final_alpha == 0) {
                     index_bitmap <<= 1;
                     if (i % 8 == 0) {
                         bitmap.add(index_bitmap);
                         index_bitmap = 0;
                     }
-                    if ((k1+k2) % 8 == 0) {
+                    if ((k1 + k2) % 8 == 0) {
                         bitmap_outlier.add(index_bitmap_outlier);
                         index_bitmap_outlier = 0;
                     }
-                }
+//                }
             }
-            if ((k1+k2) % 8 != 0) {
+            if ((k1 + k2) % 8 != 0) {
                 bitmap_outlier.add(index_bitmap_outlier);
             }
-
+            int final_alpha = 1;
+            if(getBitWith(block_size)*(k1+k2) >(block_size+k1+k2)){
+                final_alpha = 0;
+            }
 
             k1 <<= 1;
             k1 += final_alpha;
@@ -440,7 +450,7 @@ public class OutlierKSigma {
             byte[] bit_width_bytes = int2Bytes(bit_width_final);
             for (byte b : bit_width_bytes) cur_byte.add(b);
 
-            int left_bit_width = getBitWith(final_left_max);
+            int left_bit_width = getBitWith(final_k_start_value);
             int right_bit_width = getBitWith(final_right_max - final_k_end_value);
             bit_width_bytes = int2Bytes(left_bit_width);
             for (byte b : bit_width_bytes) cur_byte.add(b);
@@ -448,21 +458,21 @@ public class OutlierKSigma {
             for (byte b : bit_width_bytes) cur_byte.add(b);
 
 
-            if(final_alpha == 0){
-                for(int i:bitmap){
+            if (final_alpha == 0) {
+                for (int i : bitmap) {
                     byte[] index_bytes = intByte2Bytes(i);
                     for (byte b : index_bytes) cur_byte.add(b);
                 }
-                for(int i:bitmap_outlier){
+                for (int i : bitmap_outlier) {
                     byte[] index_bytes = intByte2Bytes(i);
                     for (byte b : index_bytes) cur_byte.add(b);
                 }
-            }else{
-                for(int i:final_left_outlier_index){
+            } else {
+                for (int i : final_left_outlier_index) {
                     byte[] index_bytes = intByte2Bytes(i);
                     for (byte b : index_bytes) cur_byte.add(b);
                 }
-                for(int i:final_right_outlier_index){
+                for (int i : final_right_outlier_index) {
                     byte[] index_bytes = intByte2Bytes(i);
                     for (byte b : index_bytes) cur_byte.add(b);
                 }
@@ -470,9 +480,11 @@ public class OutlierKSigma {
 
 
             cur_byte.addAll(encodeOutlier2Bytes(final_normal, bit_width_final));
-            cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier, left_bit_width));
-            cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier, right_bit_width));
-        }
+            if(final_k_start_value!=0)
+                cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier, left_bit_width));
+            if(final_right_max - final_k_end_value !=0)
+                cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier, right_bit_width));
+//        }
 
 
         return cur_byte;
@@ -491,14 +503,12 @@ public class OutlierKSigma {
         for (byte b : block_size_byte) encoded_result.add(b);
 
 
-//        for (int i = 0; i < 1; i++) {
-        for (int i = 0; i < block_num; i++) {
-//            System.out.println("i="+i);
+        for (int i = 0; i < 1; i++) {
+//        for (int i = 0; i < block_num; i++) {
+
             ArrayList<Integer> ts_block = new ArrayList<>();
-//            ArrayList<Integer> ts_block_reorder = new ArrayList<>();
             for (int j = 0; j < block_size; j++) {
                 ts_block.add(data.get(j + i * block_size));
-//                ts_block_reorder.add(data.get(j + i * block_size));
             }
             ArrayList<Integer> result2 = new ArrayList<>();
 
@@ -506,19 +516,19 @@ public class OutlierKSigma {
 //            splitTimeStamp3(ts_block_reorder, result2);
 
             // time-order
-            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block,k);
+            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k);
             encoded_result.addAll(cur_encoded_result);
 
         }
 
         int remaining_length = length_all - block_num * block_size;
         if (remaining_length <= 3) {
-            for(int i=remaining_length;i>0;i--){
+            for (int i = remaining_length; i > 0; i--) {
                 byte[] timestamp_end_bytes = int2Bytes(data.get(data.size() - i));
                 for (byte b : timestamp_end_bytes) encoded_result.add(b);
             }
 
-        }else{
+        } else {
             ArrayList<Integer> ts_block = new ArrayList<>();
 
             for (int j = block_num * block_size; j < length_all; j++) {
@@ -526,8 +536,18 @@ public class OutlierKSigma {
             }
             ArrayList<Integer> result2 = new ArrayList<>();
             splitTimeStamp3(ts_block, result2);
-
-            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block,k);
+            int supple_length;
+            if (remaining_length % 8 == 0) {
+                supple_length = 1;
+            } else if (remaining_length % 8 == 1) {
+                supple_length = 0;
+            } else {
+                supple_length = 9 - remaining_length % 8;
+            }
+            for (int s = 0; s < supple_length; s++) {
+                ts_block.add(0);
+            }
+            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k);
             encoded_result.addAll(cur_encoded_result);
         }
 //        if (remaining_length != 0 && remaining_length != 1) {
@@ -730,7 +750,7 @@ public class OutlierKSigma {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
         String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-outlier\\";
-        String output_parent_dir = parent_dir + "vldb\\compression_ratio\\outlier";
+        String output_parent_dir = parent_dir + "vldb\\compression_ratio\\k_sigma";
         String input_parent_dir = parent_dir + "iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -784,8 +804,8 @@ public class OutlierKSigma {
             columnIndexes.add(i, i);
         }
 
-//        for (int file_i = 11; file_i < 12; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 11; file_i < 12; file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -805,6 +825,7 @@ public class OutlierKSigma {
                     "Decoding Time",
                     "Points",
                     "Compressed Size",
+                    "k",
                     "Compression Ratio"
             };
             writer.writeRecord(head); // write header to output file
@@ -823,20 +844,21 @@ public class OutlierKSigma {
 
 
 //                for (int index : columnIndexes) {
-                    // add a column to "data"
+                // add a column to "data"
 //                    System.out.println(index);
 
-                    loader.readHeaders();
+                loader.readHeaders();
 //                    data.clear();
-                    while (loader.readRecord()) {
+                while (loader.readRecord()) {
 //                        String value = loader.getValues()[index];
-                        data1.add(Integer.valueOf(loader.getValues()[0]));
-                        data2.add(Integer.valueOf(loader.getValues()[1]));
+                    data1.add(Integer.valueOf(loader.getValues()[0]));
+                    data2.add(Integer.valueOf(loader.getValues()[1]));
 //                        data.add(Integer.valueOf(value));
-                    }
+                }
 //                    System.out.println(data2);
-                    inputStream.close();
+                inputStream.close();
 
+                for (int k = 1; k < 8; k++) {
                     long encodeTime = 0;
                     long decodeTime = 0;
                     double ratio = 0;
@@ -847,11 +869,12 @@ public class OutlierKSigma {
                         ArrayList<Byte> buffer1 = new ArrayList<>();
                         ArrayList<Byte> buffer2 = new ArrayList<>();
                         long buffer_bits = 0;
-                        for (int repeat = 0; repeat < repeatTime2; repeat++){
-                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), 1);
-                            buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), 1);
+                        for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), k);
+                            buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), k);
                         }
-//                        System.out.println(buffer2.size());
+//                        System.out.println(k);
+                        System.out.println((double) buffer1.size() / (double) (data1.size() * Integer.BYTES));
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
 
                         long e = System.nanoTime();
@@ -879,14 +902,14 @@ public class OutlierKSigma {
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
                             String.valueOf(compressed_size),
+                            String.valueOf(k),
                             String.valueOf(ratio)
                     };
                     writer.writeRecord(record);
-                    System.out.println(ratio);
+//                    System.out.println(ratio);
+                }
 
-//                }
-
-//
+                 break;
             }
             writer.close();
 
