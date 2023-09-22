@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
@@ -77,21 +78,41 @@ public abstract class EnrichedEvent implements Event {
   public abstract boolean internallyIncreaseResourceReferenceCount(String holderMessage);
 
   /**
-   * Decrease the reference count of this event. If the reference count is decreased to 0, the event
-   * can be recycled and the data stored in the event is not safe to use, the processing progress of
-   * the event should be reported to the pipe task meta.
+   * Decrease the reference count of this event by 1. If the reference count is decreased to 0, the
+   * event can be recycled and the data stored in the event is not safe to use, the processing
+   * progress of the event should be reported to the pipe task meta.
    *
    * @param holderMessage the message of the invoker
    * @return true if the reference count is decreased successfully, false otherwise
    */
-  public boolean decreaseReferenceCount(String holderMessage) {
+  public boolean decreaseReferenceCount(String holderMessage, boolean shouldReport) {
     boolean isSuccessful = true;
     synchronized (this) {
       if (referenceCount.get() == 1) {
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
-        reportProgress();
+        if (shouldReport) {
+          reportProgress();
+        }
       }
       referenceCount.decrementAndGet();
+    }
+    return isSuccessful;
+  }
+
+  /**
+   * Decrease the reference count of this event to 0, to release the event directly. The event can
+   * be recycled and the data stored in the event is not safe to use.
+   *
+   * @param holderMessage the message of the invoker
+   * @return true if the reference count is decreased successfully, false otherwise
+   */
+  public boolean clearReferenceCount(String holderMessage) {
+    boolean isSuccessful = true;
+    synchronized (this) {
+      if (referenceCount.get() >= 1) {
+        isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
+      }
+      referenceCount.set(0);
     }
     return isSuccessful;
   }
@@ -107,7 +128,9 @@ public abstract class EnrichedEvent implements Event {
 
   protected void reportProgress() {
     if (pipeTaskMeta != null) {
-      pipeTaskMeta.updateProgressIndex(getProgressIndex());
+      final ProgressIndex progressIndex = getProgressIndex();
+      pipeTaskMeta.updateProgressIndex(
+          progressIndex == null ? MinimumProgressIndex.INSTANCE : progressIndex);
     }
   }
 

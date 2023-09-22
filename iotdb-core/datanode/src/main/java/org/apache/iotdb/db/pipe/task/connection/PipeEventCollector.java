@@ -27,7 +27,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import java.util.Deque;
 import java.util.LinkedList;
 
-public class PipeEventCollector implements EventCollector {
+public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
@@ -58,7 +58,7 @@ public class PipeEventCollector implements EventCollector {
         // We can NOT keep too many PipeHeartbeatEvent in bufferQueue because they may cause OOM.
         if (event instanceof PipeHeartbeatEvent
             && bufferQueue.peekLast() instanceof PipeHeartbeatEvent) {
-          ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName());
+          ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName(), false);
         } else {
           bufferQueue.offer(event);
         }
@@ -86,5 +86,15 @@ public class PipeEventCollector implements EventCollector {
       }
     }
     return false;
+  }
+
+  public synchronized void close() {
+    bufferQueue.forEach(
+        event -> {
+          if (event instanceof EnrichedEvent) {
+            ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName());
+          }
+        });
+    bufferQueue.clear();
   }
 }

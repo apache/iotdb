@@ -20,15 +20,16 @@ package org.apache.iotdb.flink.sql.function;
 
 import org.apache.iotdb.flink.sql.common.Options;
 import org.apache.iotdb.flink.sql.common.Utils;
+import org.apache.iotdb.flink.sql.exception.IllegalSchemaException;
 import org.apache.iotdb.flink.sql.wrapper.SchemaWrapper;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.shaded.curator5.com.google.common.cache.Cache;
@@ -43,7 +44,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class IoTDBLookupFunction extends TableFunction<RowData> {
   private final List<Tuple2<String, DataType>> schema;
@@ -52,29 +52,19 @@ public class IoTDBLookupFunction extends TableFunction<RowData> {
   private final List<String> nodeUrls;
   private final String user;
   private final String password;
-  private final String device;
-  private final List<String> measurements;
+  private final String sql;
   private Session session;
 
   private transient Cache<RowData, RowData> cache;
 
   public IoTDBLookupFunction(ReadableConfig options, SchemaWrapper schemaWrapper) {
     this.schema = schemaWrapper.getSchema();
-
+    sql = options.get(Options.SQL);
     cacheMaxRows = options.get(Options.LOOKUP_CACHE_MAX_ROWS);
-
     cacheTTLSec = options.get(Options.LOOKUP_CACHE_TTL_SEC);
-
     nodeUrls = Arrays.asList(options.get(Options.NODE_URLS).split(","));
-
     user = options.get(Options.USER);
-
     password = options.get(Options.PASSWORD);
-
-    device = options.get(Options.DEVICE);
-
-    measurements =
-        schema.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
   }
 
   @Override
@@ -115,10 +105,7 @@ public class IoTDBLookupFunction extends TableFunction<RowData> {
 
     long timestamp = lookupKey.getLong(0);
 
-    String sql =
-        String.format(
-            "SELECT %s FROM %s WHERE TIME=%d",
-            StringUtils.join(measurements, ','), device, timestamp);
+    String sql = String.format("%s WHERE TIME=%d", this.sql, timestamp);
     SessionDataSet dataSet = session.executeQueryStatement(sql);
     List<String> columnNames = dataSet.getColumnNames();
     columnNames.remove("Time");
@@ -137,9 +124,20 @@ public class IoTDBLookupFunction extends TableFunction<RowData> {
 
     ArrayList<Object> values = new ArrayList<>();
     values.add(timestamp);
-    for (Tuple2<String, DataType> filed : schema) {
-      values.add(
-          Utils.getValue(fields.get(columnNames.indexOf(device + '.' + filed.f0)), filed.f1));
+    for (Tuple2<String, DataType> field : schema) {
+      if (!columnNames.contains(field.f0)) {
+        values.add(null);
+        continue;
+      }
+      int index = columnNames.indexOf(field.f0);
+      DataType flinkType = field.f1;
+      TSDataType iotdbType = fields.get(index).getDataType();
+      if (!Utils.isTypeEqual(iotdbType, flinkType)) {
+        throw new IllegalSchemaException(
+            String.format(
+                "The data type of column `%s` is different in IoTDB and Flink", field.f0));
+      }
+      values.add(Utils.getValue(fields.get(index), field.f1));
     }
 
     GenericRowData rowData = GenericRowData.of(values.toArray());

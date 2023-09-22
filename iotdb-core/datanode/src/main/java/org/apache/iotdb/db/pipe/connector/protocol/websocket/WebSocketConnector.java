@@ -39,14 +39,21 @@ import javax.annotation.Nullable;
 
 import java.net.InetSocketAddress;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.Optional;
 import java.util.PriorityQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class WebsocketConnector implements PipeConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(WebsocketConnector.class);
+public class WebSocketConnector implements PipeConnector {
+  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnector.class);
+
+  private static final Map<Integer, Pair<AtomicInteger, WebSocketConnectorServer>>
+      PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP = new ConcurrentHashMap<>();
+
+  private Integer port;
   private WebSocketConnectorServer server;
-  private int port;
 
   public final AtomicLong commitIdGenerator = new AtomicLong(0);
   private final AtomicLong lastCommitId = new AtomicLong(0);
@@ -67,9 +74,19 @@ public class WebsocketConnector implements PipeConnector {
 
   @Override
   public void handshake() throws Exception {
-    if (server == null) {
-      server = new WebSocketConnectorServer(new InetSocketAddress(port), this);
-      server.start();
+    synchronized (PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
+      server =
+          PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP
+              .computeIfAbsent(
+                  port,
+                  key -> {
+                    final WebSocketConnectorServer newServer =
+                        new WebSocketConnectorServer(new InetSocketAddress(port), this);
+                    newServer.start();
+                    return new Pair<>(new AtomicInteger(0), newServer);
+                  })
+              .getRight();
+      PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP.get(port).getLeft().incrementAndGet();
     }
   }
 
@@ -88,7 +105,7 @@ public class WebsocketConnector implements PipeConnector {
     }
     long commitId = commitIdGenerator.incrementAndGet();
     ((EnrichedEvent) tabletInsertionEvent)
-        .increaseReferenceCount(WebsocketConnector.class.getName());
+        .increaseReferenceCount(WebSocketConnector.class.getName());
     server.addEvent(new Pair<>(commitId, tabletInsertionEvent));
   }
 
@@ -100,10 +117,11 @@ public class WebsocketConnector implements PipeConnector {
           tsFileInsertionEvent);
       return;
     }
-    long commitId = commitIdGenerator.incrementAndGet();
-    ((EnrichedEvent) tsFileInsertionEvent)
-        .increaseReferenceCount(WebsocketConnector.class.getName());
-    server.addEvent(new Pair<>(commitId, tsFileInsertionEvent));
+    for (TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+      long commitId = commitIdGenerator.incrementAndGet();
+      ((EnrichedEvent) event).increaseReferenceCount(WebSocketConnector.class.getName());
+      server.addEvent(new Pair<>(commitId, event));
+    }
   }
 
   @Override
@@ -111,7 +129,25 @@ public class WebsocketConnector implements PipeConnector {
 
   @Override
   public void close() throws Exception {
-    server.stop();
+    if (port == null) {
+      return;
+    }
+
+    synchronized (PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
+      final Pair<AtomicInteger, WebSocketConnectorServer> pair =
+          PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP.get(port);
+      if (pair == null) {
+        return;
+      }
+
+      if (pair.getLeft().decrementAndGet() <= 0) {
+        try {
+          pair.getRight().stop();
+        } finally {
+          PORT_TO_REFERENCE_COUNT_AND_SERVER_MAP.remove(port);
+        }
+      }
+    }
   }
 
   public synchronized void commit(long requestCommitId, @Nullable EnrichedEvent enrichedEvent) {
@@ -122,7 +158,8 @@ public class WebsocketConnector implements PipeConnector {
                 Optional.ofNullable(enrichedEvent)
                     .ifPresent(
                         event ->
-                            event.decreaseReferenceCount(WebsocketConnector.class.getName()))));
+                            event.decreaseReferenceCount(
+                                WebSocketConnector.class.getName(), true))));
 
     while (!commitQueue.isEmpty()) {
       final Pair<Long, Runnable> committer = commitQueue.peek();

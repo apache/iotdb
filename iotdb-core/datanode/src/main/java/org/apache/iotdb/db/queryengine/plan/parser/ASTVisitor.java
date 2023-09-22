@@ -255,8 +255,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private static final String GROUP_BY_COMMON_ONLY_ONE_MSG =
       "Only one of group by time or group by variation/series/session can be supported at a time";
 
-  private static final String NEGATIVE_TIMESTAMP_ERROR_MSG =
-      "Please set the time >=0 or after 1970-01-01 00:00:00";
   private static final String LIMIT_CONFIGURATION_ENABLED_ERROR_MSG =
       "Limit configuration is not enabled, please enable it first.";
 
@@ -1577,8 +1575,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (windowType == WindowType.VARIATION_WINDOW) {
       ExpressionContext expressionContext = expressions.get(0);
       GroupByVariationComponent groupByVariationComponent = new GroupByVariationComponent();
-      groupByVariationComponent.setControlColumnExpression(
-          parseExpression(expressionContext, true));
+      Expression expression = parseExpression(expressionContext, true);
+      if (expression.isConstantOperand()) {
+        throw new SemanticException(
+            String.format(
+                "Constant operand [%s] is not allowed in group by variation, there should be an expression",
+                expression.getExpressionString()));
+      }
+      groupByVariationComponent.setControlColumnExpression(expression);
       groupByVariationComponent.setDelta(
           ctx.delta == null ? 0 : Double.parseDouble(ctx.delta.getText()));
       groupByVariationComponent.setIgnoringNull(ignoringNull);
@@ -1590,6 +1594,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           parseExpression(conditionExpressionContext, true));
       if (expressions.size() == 2) {
         groupByConditionComponent.setKeepExpression(parseExpression(expressions.get(1), true));
+      } else {
+        throw new SemanticException("Keep threshold in group by condition should be set");
       }
       groupByConditionComponent.setIgnoringNull(ignoringNull);
       return groupByConditionComponent;
@@ -1600,8 +1606,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       ExpressionContext countExpressionContext = expressions.get(0);
       long countNumber = Long.parseLong(ctx.countNumber.getText());
       GroupByCountComponent groupByCountComponent = new GroupByCountComponent(countNumber);
-      groupByCountComponent.setControlColumnExpression(
-          parseExpression(countExpressionContext, true));
+      Expression expression = parseExpression(countExpressionContext, true);
+      if (expression.isConstantOperand()) {
+        throw new SemanticException(
+            String.format(
+                "Constant operand [%s] is not allowed in group by count, there should be an expression",
+                expression.getExpressionString()));
+      }
+      groupByCountComponent.setControlColumnExpression(expression);
       groupByCountComponent.setIgnoringNull(ignoringNull);
       return groupByCountComponent;
     } else {
@@ -3661,11 +3673,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.time != null) {
       long timestamp = parseTimeValue(ctx.time, DateTimeUtils.currentTime());
-      if (timestamp < 0) {
-        throw new SemanticException(NEGATIVE_TIMESTAMP_ERROR_MSG);
-      } else {
-        getRegionIdStatement.setTimeStamp(timestamp);
-      }
+      getRegionIdStatement.setTimeStamp(timestamp);
     }
     return getRegionIdStatement;
   }
@@ -3689,19 +3697,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.startTime != null) {
       long timestamp = parseTimeValue(ctx.startTime, DateTimeUtils.currentTime());
-      if (timestamp < 0) {
-        throw new SemanticException(NEGATIVE_TIMESTAMP_ERROR_MSG);
-      } else {
-        getTimeSlotListStatement.setStartTime(timestamp);
-      }
+      getTimeSlotListStatement.setStartTime(timestamp);
     }
     if (ctx.endTime != null) {
       long timestamp = parseTimeValue(ctx.endTime, DateTimeUtils.currentTime());
-      if (timestamp < 0) {
-        throw new SemanticException(NEGATIVE_TIMESTAMP_ERROR_MSG);
-      } else {
-        getTimeSlotListStatement.setEndTime(timestamp);
-      }
+      getTimeSlotListStatement.setEndTime(timestamp);
     }
     return getTimeSlotListStatement;
   }

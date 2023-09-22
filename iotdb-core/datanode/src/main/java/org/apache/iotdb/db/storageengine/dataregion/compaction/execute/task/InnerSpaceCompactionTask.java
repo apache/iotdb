@@ -291,8 +291,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             dataRegionId,
             sequence ? "Sequence" : "Unsequence",
             targetTsFileResource.getTsFile().getName(),
-            costTime,
-            selectedFileSize / 1024.0d / 1024.0d / costTime,
+            String.format("%.2f", costTime),
+            String.format("%.2f", selectedFileSize / 1024.0d / 1024.0d / costTime),
             summary);
       }
       if (logFile.exists()) {

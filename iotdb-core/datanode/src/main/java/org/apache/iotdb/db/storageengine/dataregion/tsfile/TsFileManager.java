@@ -47,9 +47,6 @@ public class TsFileManager {
   private TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
   private TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
 
-  private List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
-  private List<TsFileResource> unsequenceRecoverTsFileResources = new ArrayList<>();
-
   private boolean allowCompaction = true;
   private AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
@@ -203,14 +200,6 @@ public class TsFileManager {
           .keepOrderInsert(tsFileResource);
     } finally {
       writeUnlock();
-    }
-  }
-
-  public void addForRecover(TsFileResource tsFileResource, boolean sequence) {
-    if (sequence) {
-      sequenceRecoverTsFileResources.add(tsFileResource);
-    } else {
-      unsequenceRecoverTsFileResources.add(tsFileResource);
     }
   }
 

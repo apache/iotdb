@@ -29,7 +29,6 @@ import org.apache.iotdb.db.protocol.rest.v1.handler.QueryDataSetHandler;
 import org.apache.iotdb.db.protocol.rest.v1.handler.RequestValidationHandler;
 import org.apache.iotdb.db.protocol.rest.v1.handler.StatementConstructionHandler;
 import org.apache.iotdb.db.protocol.rest.v1.model.ExecutionStatus;
-import org.apache.iotdb.db.protocol.rest.v1.model.InsertRecordsRequest;
 import org.apache.iotdb.db.protocol.rest.v1.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.v1.model.SQL;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -42,7 +41,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -178,51 +176,6 @@ public class RestApiServiceImpl extends RestApiService {
             statement,
             sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit());
       }
-    } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
-    } finally {
-      if (queryId != null) {
-        COORDINATOR.cleanupQueryExecution(queryId);
-      }
-    }
-  }
-
-  @Override
-  public Response insertRecords(
-      InsertRecordsRequest insertRecordsRequest, SecurityContext securityContext) {
-    Long queryId = null;
-    try {
-      RequestValidationHandler.validateInsertRecordsRequest(insertRecordsRequest);
-
-      InsertRowsStatement insertRowsStatement =
-          StatementConstructionHandler.createInsertRowsStatement(insertRecordsRequest);
-
-      Response response = authorizationHandler.checkAuthority(securityContext, insertRowsStatement);
-      if (response != null) {
-        return response;
-      }
-      queryId = SESSION_MANAGER.requestQueryId();
-      ExecutionResult result =
-          COORDINATOR.execute(
-              insertRowsStatement,
-              SESSION_MANAGER.requestQueryId(),
-              null,
-              "",
-              partitionFetcher,
-              schemaFetcher,
-              config.getQueryTimeoutThreshold());
-
-      return Response.ok()
-          .entity(
-              (result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                      || result.status.code == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
-                  ? new ExecutionStatus()
-                      .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                      .message(TSStatusCode.SUCCESS_STATUS.name())
-                  : new ExecutionStatus()
-                      .code(result.status.getCode())
-                      .message(result.status.getMessage()))
-          .build();
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {

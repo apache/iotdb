@@ -1206,7 +1206,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     SchemaEngine.getInstance().updateAndFillSchemaCountMap(req.schemaQuotaCount, resp);
 
     // Update pipe meta if necessary
-    PipeAgent.task().collectPipeMetaList(req, resp);
+    if (req.isNeedPipeMetaList()) {
+      PipeAgent.task().collectPipeMetaList(resp);
+    }
 
     return resp;
   }
@@ -1300,8 +1302,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             commonConfig.getDiskSpaceWarningThreshold());
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
         commonConfig.setStatusReason(NodeStatus.DISK_FULL);
-      } else if (commonConfig.getNodeStatus().equals(NodeStatus.ReadOnly)
-          && commonConfig.getStatusReason().equals(NodeStatus.DISK_FULL)) {
+      } else if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
+          && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
         commonConfig.setNodeStatus(NodeStatus.Running);
         commonConfig.setStatusReason(null);
       }

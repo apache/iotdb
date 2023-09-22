@@ -983,7 +983,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // only one database, one device, one time interval
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
       TTimePartitionSlot timePartitionSlot =
-          TimePartitionUtils.getTimePartition(req.getStartTime());
+          TimePartitionUtils.getTimePartitionSlot(req.getStartTime());
       DataPartitionQueryParam queryParam =
           new DataPartitionQueryParam(
               deviceId, Collections.singletonList(timePartitionSlot), false, false);

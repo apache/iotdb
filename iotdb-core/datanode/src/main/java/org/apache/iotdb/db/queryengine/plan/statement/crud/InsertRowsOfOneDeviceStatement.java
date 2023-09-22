@@ -80,7 +80,8 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     Set<TTimePartitionSlot> timePartitionSlotSet = new HashSet<>();
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
-      timePartitionSlotSet.add(TimePartitionUtils.getTimePartition(insertRowStatement.getTime()));
+      timePartitionSlotSet.add(
+          TimePartitionUtils.getTimePartitionSlot(insertRowStatement.getTime()));
     }
     return new ArrayList<>(timePartitionSlotSet);
   }
