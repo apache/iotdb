@@ -333,21 +333,26 @@ public class OutlierKSigma {
     }
 
 
-    private static ArrayList<Byte> learnKDelta(ArrayList<Integer> ts_block, int k) {
+    private static ArrayList<Byte> learnKDelta(ArrayList<Integer> ts_block, int k, int supple_length) {
 
-        int block_size = ts_block.size();
+//        int block_size = ts_block.size();
         int final_right_max = 0;
         ArrayList<Byte> cur_byte = new ArrayList<>();
 
         ArrayList<Integer> min_delta = new ArrayList<>();
         ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
-        System.out.println(ts_block_delta);
+        for (int s = 0; s < supple_length; s++) {
+            ts_block_delta.add(0);
+        }
 
-        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
+        int block_size = ts_block_delta.size();
+//        System.out.println(ts_block_delta);
+
+//        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
 
 
         double sum = 0;
-        for (int i = 0; i < block_size; i++) {
+        for (int i = 1; i < block_size; i++) {
             if(ts_block_delta.get(i) > final_right_max){
                 final_right_max = ts_block_delta.get(i);
             }
@@ -355,23 +360,23 @@ public class OutlierKSigma {
         }
         double mu = sum / block_size;
         double variance = 0;
-        for (int i = 0; i < block_size; i++) {
+        for (int i = 1; i < block_size; i++) {
             variance += (ts_block_delta.get(i) - mu) * (ts_block_delta.get(i) - mu);
         }
         double sigma = Math.sqrt(variance / block_size);
 
-
+//        System.out.println(ts_block_delta);
         int final_k_start_value = (int) (mu - k * sigma>0?(mu - k * sigma):0);
-        int final_k_end_value = (int) (mu - k * sigma<final_right_max?(mu - k * sigma):final_right_max);
+        int final_k_end_value = (int) (mu + k * sigma<final_right_max?(mu + k * sigma):final_right_max);
+//        System.out.println("final_k_start_value: "+final_k_start_value);
+//        System.out.println("final_k_end_value: "+final_k_end_value);
 
 //        int final_left_max = 0;
 //        int final_right_max = 0;
 
 
         // ------------------------- encode data -----------------------------------------
-//        if (final_left_max == 0 && final_right_max == 0) {
-//            cur_byte = encode2Bytes(ts_block_delta, min_delta.get(0), bit_width);
-//        } else {
+
             ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
             ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
             ArrayList<Integer> final_left_outlier = new ArrayList<>();
@@ -503,8 +508,8 @@ public class OutlierKSigma {
         for (byte b : block_size_byte) encoded_result.add(b);
 
 
-        for (int i = 0; i < 1; i++) {
-//        for (int i = 0; i < block_num; i++) {
+//        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < block_num; i++) {
 
             ArrayList<Integer> ts_block = new ArrayList<>();
             for (int j = 0; j < block_size; j++) {
@@ -516,7 +521,7 @@ public class OutlierKSigma {
 //            splitTimeStamp3(ts_block_reorder, result2);
 
             // time-order
-            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k);
+            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k,0);
             encoded_result.addAll(cur_encoded_result);
 
         }
@@ -544,46 +549,11 @@ public class OutlierKSigma {
             } else {
                 supple_length = 9 - remaining_length % 8;
             }
-            for (int s = 0; s < supple_length; s++) {
-                ts_block.add(0);
-            }
-            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k);
+
+            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k,supple_length);
             encoded_result.addAll(cur_encoded_result);
         }
-//        if (remaining_length != 0 && remaining_length != 1) {
-//            ArrayList<Integer> ts_block = new ArrayList<>();
-//
-//            for (int j = block_num * block_size; j < length_all; j++) {
-//                ts_block.add(data.get(j));
-//            }
-//            ArrayList<Integer> result2 = new ArrayList<>();
-//            splitTimeStamp3(ts_block, result2);
-//
-//            int supple_length;
-//            if (remaining_length % 8 == 0) {
-//                supple_length = 1;
-//            } else if (remaining_length % 8 == 1) {
-//                supple_length = 0;
-//            } else {
-//                supple_length = 9 - remaining_length % 8;
-//            }
-//
-//
-////            ts_block_delta =
-////                    getEncodeBitsRegression(ts_block, remaining_length, raw_length, i_star_ready_reorder,threshold);
-//
-//            for (int s = 0; s < supple_length; s++) {
-//                ArrayList<Integer> tmp = new ArrayList<>();
-//                tmp.add(0);
-//                tmp.add(0);
-//                ts_block_delta.add(tmp);
-//            }
-////
-////            ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, result2);
-////            bits_encoded_data += (cur_encoded_result.size() * 8L);
-//////            System.out.println("encoded_result: "+ (cur_encoded_result.size() * 8L));
-//////      encoded_result.addAll(cur_encoded_result);
-//        }
+
 
 
         return encoded_result;
@@ -804,8 +774,8 @@ public class OutlierKSigma {
             columnIndexes.add(i, i);
         }
 
-        for (int file_i = 11; file_i < 12; file_i++) {
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 11; file_i < 12; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -874,7 +844,7 @@ public class OutlierKSigma {
                             buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), k);
                         }
 //                        System.out.println(k);
-                        System.out.println((double) buffer1.size() / (double) (data1.size() * Integer.BYTES));
+//                        System.out.println((double) buffer1.size() / (double) (data1.size() * Integer.BYTES));
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
 
                         long e = System.nanoTime();
@@ -897,7 +867,7 @@ public class OutlierKSigma {
 
                     String[] record = {
                             f.toString(),
-                            "Outlier",
+                            "Outlier-K-Sigma",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
@@ -906,10 +876,10 @@ public class OutlierKSigma {
                             String.valueOf(ratio)
                     };
                     writer.writeRecord(record);
-//                    System.out.println(ratio);
+                    System.out.println(ratio);
                 }
 
-                 break;
+//                 break;
             }
             writer.close();
 
