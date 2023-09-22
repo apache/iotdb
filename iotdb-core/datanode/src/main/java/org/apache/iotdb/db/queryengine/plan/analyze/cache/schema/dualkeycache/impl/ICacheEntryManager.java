@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
+import java.util.List;
+
 /**
  * This interface defines the behaviour of a cache entry manager, which takes the responsibility of
  * cache value status management and cache eviction.
@@ -35,6 +37,8 @@ interface ICacheEntryManager<FK, SK, V, T extends ICacheEntry<SK, V>> {
   void access(T cacheEntry);
 
   void put(T cacheEntry);
+
+  void invalid(List<T> cacheEntryList);
 
   T evict();
 

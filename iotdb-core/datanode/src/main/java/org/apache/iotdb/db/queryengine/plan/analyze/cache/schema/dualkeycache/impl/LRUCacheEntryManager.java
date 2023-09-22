@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Random;
 
@@ -52,6 +53,13 @@ class LRUCacheEntryManager<FK, SK, V>
   @Override
   public void put(LRUCacheEntry<SK, V> cacheEntry) {
     getBelongedList(cacheEntry).add(cacheEntry);
+  }
+
+  @Override
+  public void invalid(List<LRUCacheEntry<SK, V>> cacheEntryList) {
+    for (LRUCacheEntry<SK, V> cacheEntry : cacheEntryList) {
+      getBelongedList(cacheEntry).evict(cacheEntry);
+    }
   }
 
   @Override
@@ -186,6 +194,23 @@ class LRUCacheEntryManager<FK, SK, V>
       cacheEntry.pre = null;
 
       return cacheEntry;
+    }
+
+    synchronized void evict(LRUCacheEntry cacheEntry) {
+      if (head == cacheEntry) {
+        head = cacheEntry.next;
+      }
+      if (tail == cacheEntry) {
+        tail = cacheEntry.pre;
+      }
+      if (cacheEntry.pre != null) {
+        cacheEntry.pre.next = cacheEntry.next;
+      }
+      if (cacheEntry.next != null) {
+        cacheEntry.next.pre = cacheEntry.pre;
+      }
+      cacheEntry.pre = null;
+      cacheEntry.next = null;
     }
 
     synchronized void moveToHead(LRUCacheEntry cacheEntry) {

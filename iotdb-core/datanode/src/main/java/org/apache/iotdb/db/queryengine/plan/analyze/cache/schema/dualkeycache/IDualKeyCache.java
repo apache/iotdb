@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache;
 
+import org.apache.iotdb.commons.path.PartialPath;
+
 import javax.annotation.concurrent.GuardedBy;
+
+import java.util.List;
 
 /**
  * This interfaces defines the behaviour of a dual key cache. A dual key cache supports manage cache
@@ -55,6 +59,20 @@ public interface IDualKeyCache<FK, SK, V> {
    */
   @GuardedBy("DataNodeSchemaCache#writeLock")
   void invalidateAll();
+
+  /**
+   * Invalidate cache values in the cache and clear related cache keys. The cache status and
+   * statistics won't be clear and they can still be accessed via cache.stats().
+   */
+  @GuardedBy("DataNodeSchemaCache#writeLock")
+  void invalidate(String database);
+
+  /**
+   * Invalidate cache values in the cache and clear related cache keys. The cache status and
+   * statistics won't be clear and they can still be accessed via cache.stats().
+   */
+  @GuardedBy("DataNodeSchemaCache#writeLock")
+  void invalidate(List<PartialPath> partialPathList);
 
   /**
    * Clean up all data and info of this cache, including cache keys, cache values and cache stats.

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -233,8 +234,30 @@ public class DataNodeSchemaCache {
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    timeSeriesSchemaCache.updateLastCache(
-        storageGroup, measurementPath, timeValuePair, highPriorityUpdate, latestFlushedTime);
+      timeSeriesSchemaCache.updateLastCache(
+          storageGroup, measurementPath, timeValuePair, highPriorityUpdate, latestFlushedTime);
+  }
+
+  public void invalidate(String database) {
+    deviceUsingTemplateSchemaCache.invalidateCache(database);
+    timeSeriesSchemaCache.invalidate(database);
+  }
+
+  public void invalidate(PathPatternTree patternTree) {
+    List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
+    boolean doPrecise = true;
+    for (PartialPath partialPath : partialPathList) {
+      if (partialPath.getDevicePath().hasWildcard()) {
+        doPrecise = false;
+        break;
+      }
+    }
+    if (doPrecise) {
+      deviceUsingTemplateSchemaCache.invalidateCache(partialPathList);
+      timeSeriesSchemaCache.invalidate(partialPathList);
+    } else {
+      invalidateAll();
+    }
   }
 
   public void invalidateAll() {
