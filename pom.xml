@@ -129,7 +129,7 @@
     <maven.compiler.target>1.8</maven.compiler.target>
     <micrometer.version>1.11.4</micrometer.version>
     <milo.version>0.6.11</milo.version>
-    <!-- It seems that powermock is having issues with the newest mockito verions -->
+    <!-- It seems that powermock is having issues with the newest mockito versions -->
     <mockito.version>2.23.4</mockito.version>
     <!-- This was the last version to support Java 8 -->
     <!--mockito.version>4.11.0</mockito.version-->
@@ -1448,7 +1448,57 @@
       <dependency>
         <groupId>org.apache.avro</groupId>
         <artifactId>avro</artifactId>
-        <version>1.8.1</version>
+        <version>1.8.2</version>
+        <exclusions>
+          <!-- Jackson moved from codehaus to fasterxml and is now the new version -->
+          <exclusion>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-core-asl</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-mapper-asl</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <!-- Security Issue:
+        avro-mapred (pulls in vulnerable version of jackson)
+      -->
+      <dependency>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro-mapred</artifactId>
+        <version>1.8.2</version>
+        <classifier>hadoop2</classifier>
+        <exclusions>
+          <!-- Jackson moved from codehaus to fasterxml and is now the new version -->
+          <exclusion>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-core-asl</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-mapper-asl</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <!-- Security Issue:
+        parquet-hadoop (pulls in vulnerable version of jackson)
+      -->
+      <dependency>
+        <groupId>org.apache.parquet</groupId>
+        <artifactId>parquet-hadoop</artifactId>
+        <version>1.10.1</version>
+        <exclusions>
+          <!-- Jackson moved from codehaus to fasterxml and is now the new version and for the codehaus version CVEs were reported -->
+          <exclusion>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-core-asl</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-mapper-asl</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <!-- Conflict:
         hive-serde (pulls in 9.4.51.v20230217)
@@ -2071,17 +2121,11 @@
                 </requireJavaVersion>
                 <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies">
                   <excludeCoordinates>
-                    <!-- For this CVE no fix exists yet -->
+                    <!-- TODO: For this CVE no fix exists yet (Keep an eye on it) -->
                     <exclude>
                       <groupId>io.netty</groupId>
                       <artifactId>netty-handler</artifactId>
                       <version>4.1.97.Final</version>
-                    </exclude>
-                    <!-- For this CVE no fix exists yet -->
-                    <exclude>
-                      <groupId>org.codehaus.jackson</groupId>
-                      <artifactId>jackson-mapper-asl</artifactId>
-                      <version>1.9.13</version>
                     </exclude>
                     <!--
                       CVE-2016-1000027 seems to effect the HTTP Invoker, which we are not using.
@@ -2093,7 +2137,10 @@
                       <artifactId>spring-web</artifactId>
                       <version>5.3.30</version>
                     </exclude>
-                    <!-- For this CVE no fix exists and will probably never exist -->
+                    <!--
+                      For this CVE no fix exists and will probably never exist
+                      (We should discuss dropping 2.11 anyway)
+                    -->
                     <exclude>
                       <groupId>org.apache.spark</groupId>
                       <artifactId>spark-core_2.11</artifactId>
