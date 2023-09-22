@@ -366,7 +366,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       resetCompactionCandidateStatusForAllSourceFiles();
       return false;
     }
-    if (compactionTaskType == CompactionTaskType.NORMAL && CompactionUtils.isDiskHaveSpace()) {
+    if (compactionTaskType == CompactionTaskType.NORMAL && !CompactionUtils.isDiskHaveSpace()) {
       LOGGER.debug(
           "cross task start check failed because disk free ratio is less than disk_space_warning_threshold");
       return false;
