@@ -29,6 +29,8 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.ILogWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.CheckpointFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALInsertNodeCache;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -259,7 +261,7 @@ public class CheckpointManager implements AutoCloseable {
       }
       MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
       if (!memTableInfo.isPinned()) {
-        WALInsertNodeCache.getInstance().addMemTable(memTableId);
+        WALInsertNodeCache.getInstance(getDataRegionId(memTableInfo)).addMemTable(memTableId);
       }
       memTableInfo.pin();
     } finally {
@@ -289,7 +291,7 @@ public class CheckpointManager implements AutoCloseable {
       MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
       memTableInfo.unpin();
       if (!memTableInfo.isPinned()) {
-        WALInsertNodeCache.getInstance().removeMemTable(memTableId);
+        WALInsertNodeCache.getInstance(getDataRegionId(memTableInfo)).removeMemTable(memTableId);
         if (memTableInfo.isFlushed()) {
           memTableId2Info.remove(memTableId);
         }
@@ -297,6 +299,12 @@ public class CheckpointManager implements AutoCloseable {
     } finally {
       infoLock.unlock();
     }
+  }
+
+  private int getDataRegionId(MemTableInfo memTableInfo) {
+    File memTableInfoTsFile =
+        FSFactoryProducer.getFSFactory().getFile(memTableInfo.getTsFilePath());
+    return TsFileUtils.getDataRegionId(memTableInfoTsFile);
   }
   // endregion
 

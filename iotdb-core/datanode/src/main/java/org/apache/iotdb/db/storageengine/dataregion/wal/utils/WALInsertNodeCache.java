@@ -68,8 +68,7 @@ public class WALInsertNodeCache {
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
                     (position, pair) -> position.getSize())
             .build(new WALInsertNodeCacheLoader());
-    isBatchLoadEnabled =
-        config.getAllocateMemoryForWALPipeCache() >= 3 * config.getWalFileSizeThresholdInByte();
+    isBatchLoadEnabled = true;
   }
 
   @TestOnly
@@ -197,15 +196,15 @@ public class WALInsertNodeCache {
     }
   }
 
-  public static WALInsertNodeCache getInstance() {
-    return InstanceHolder.INSTANCE;
+  public static WALInsertNodeCache getInstance(Integer regionId) {
+    return InstanceHolder.getOrCreateInstance(regionId);
   }
 
   private static class InstanceHolder {
-    private InstanceHolder() {
-      // do nothing
-    }
+    private static final Map<Integer, WALInsertNodeCache> INSTANCE_MAP = new ConcurrentHashMap<>();
 
-    private static final WALInsertNodeCache INSTANCE = new WALInsertNodeCache();
+    public static WALInsertNodeCache getOrCreateInstance(Integer key) {
+      return INSTANCE_MAP.computeIfAbsent(key, k -> new WALInsertNodeCache());
+    }
   }
 }

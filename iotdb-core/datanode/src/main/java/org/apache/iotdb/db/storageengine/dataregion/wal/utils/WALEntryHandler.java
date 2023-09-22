@@ -56,6 +56,11 @@ public class WALEntryHandler {
 
   public WALEntryHandler(WALEntryValue value) {
     this.value = value;
+
+    if (value instanceof InsertNode) {
+      this.walEntryPosition.setWalInsertNodeCache(
+          ((InsertNode) value).getDataRegionReplicaSet().getRegionId().getId());
+    }
   }
 
   /**
