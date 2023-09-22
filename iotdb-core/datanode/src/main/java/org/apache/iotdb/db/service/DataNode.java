@@ -266,7 +266,9 @@ public class DataNode implements DataNodeMBean {
         retry = -1;
       }
     }
-    if (configurationResp == null) {
+    if (configurationResp == null
+        || !configurationResp.isSetStatus()
+        || configurationResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // All tries failed
       logger.error(
           "Cannot pull system configurations from ConfigNode-leader after {} retries",
