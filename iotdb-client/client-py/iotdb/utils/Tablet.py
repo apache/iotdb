@@ -95,7 +95,8 @@ class Tablet(object):
         for i in range(self.__column_number):
             bitmap = None
             bitmaps.append(bitmap)
-            if self.__data_types[i] == TSDataType.BOOLEAN:
+            data_type_value = self.__data_types[i].value
+            if data_type_value == 0:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("?")
                 for j in range(self.__row_number):
@@ -106,7 +107,7 @@ class Tablet(object):
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
 
-            elif self.__data_types[i] == TSDataType.INT32:
+            elif data_type_value == 1:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("i")
                 for j in range(self.__row_number):
@@ -117,7 +118,7 @@ class Tablet(object):
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
 
-            elif self.__data_types[i] == TSDataType.INT64:
+            elif data_type_value == 2:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("q")
                 for j in range(self.__row_number):
@@ -128,7 +129,7 @@ class Tablet(object):
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
 
-            elif self.__data_types[i] == TSDataType.FLOAT:
+            elif data_type_value == 3:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("f")
                 for j in range(self.__row_number):
@@ -139,7 +140,7 @@ class Tablet(object):
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
 
-            elif self.__data_types[i] == TSDataType.DOUBLE:
+            elif data_type_value == 4:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("d")
                 for j in range(self.__row_number):
@@ -150,7 +151,7 @@ class Tablet(object):
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
 
-            elif self.__data_types[i] == TSDataType.TEXT:
+            elif data_type_value == 5:
                 for j in range(self.__row_number):
                     if self.__values[j][i] is not None:
                         if isinstance(self.__values[j][i], str):
