@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * SizeTieredCompactionSelector selects files to be compacted based on the size of files. The
@@ -218,10 +219,10 @@ public class SizeTieredCompactionSelector
     List<List<TsFileResource>> taskList = new ArrayList<>();
     for (TsFileResource tsFileResource : tsFileResources) {
       ModificationFile modFile = tsFileResource.getModFile();
-      if (!modFile.exists()) {
+      if (Objects.isNull(modFile) || !modFile.exists()) {
         continue;
       }
-      if (modFile.getSize() > MODS_FILE_SIZE_THRESHOLD || !CompactionUtils.isDiskHaveSpace()) {
+      if (modFile.getSize() > MODS_FILE_SIZE_THRESHOLD || !CompactionUtils.isDiskHasSpace()) {
         taskList.add(Collections.singletonList(tsFileResource));
         LOGGER.debug("select tsfile {},the mod file size is {}", tsFileResource, modFile.getSize());
       }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -215,5 +216,12 @@ public abstract class AbstractCompactionTask {
 
   public boolean isInnerSeqTask() {
     return innerSeqTask;
+  }
+
+  public boolean isDiskSpaceCheckPassed() {
+    if (compactionTaskType == CompactionTaskType.MOD_SETTLE) {
+      return true;
+    }
+    return CompactionUtils.isDiskHasSpace();
   }
 }

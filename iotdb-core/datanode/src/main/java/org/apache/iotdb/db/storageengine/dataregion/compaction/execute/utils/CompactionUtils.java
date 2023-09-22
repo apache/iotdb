@@ -473,7 +473,7 @@ public class CompactionUtils {
     }
   }
 
-  public static boolean isDiskHaveSpace() {
+  public static boolean isDiskHasSpace() {
     double freeDisk =
         MetricService.getInstance()
             .getAutoGauge(
