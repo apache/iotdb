@@ -2396,6 +2396,16 @@
       <url>scm:git:https://gitbox.apache.org/repos/asf/iotdb-website.git</url>
     </site>
   </distributionManagement>
+  <!--
+    Needed for fetching lt_downsampling_java8 (which is used by library-udf)
+    (Adding this in the root or when building other parts, this transitive dependency can be fetched)
+  -->
+  <repositories>
+    <repository>
+      <id>jitpack.io</id>
+      <url>https://jitpack.io</url>
+    </repository>
+  </repositories>
   <profiles>
     <!--
       A set of profiles defining the different properties needed to download and run thrift
