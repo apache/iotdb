@@ -90,7 +90,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     this.sourceEvent = sourceEvent;
 
     try {
-      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath());
+      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), true, true);
       tsFileReader = new TsFileReader(tsFileSequenceReader);
 
       deviceMeasurementsMapIterator = filterDeviceMeasurementsMapByPattern().entrySet().iterator();
