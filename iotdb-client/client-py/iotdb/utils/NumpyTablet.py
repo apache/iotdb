@@ -145,7 +145,7 @@ class NumpyTablet(object):
             _l = len(bs)
             ret[offset : offset + _l] = bs
             offset += _l
-        return ret
+        return bytes(ret)
 
     def mark_none_value(self, column, row):
         if self.bitmaps is None:
