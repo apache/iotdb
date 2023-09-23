@@ -461,8 +461,7 @@ public class IoTDBPipeLifeCycleIT {
                   for (int i = 0; i < 100; ++i) {
                     TestUtils.executeNonQueryWithRetry(
                         senderEnv,
-                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i)
-                    );
+                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
                     Thread.sleep(100);
                   }
                 } catch (InterruptedException ignored) {

@@ -237,8 +237,7 @@ public class IoTDBPipeClusterIT {
       TestUtils.executeNonQueryOnSpecifiedDataNodeWithRetry(
           senderEnv,
           senderEnv.getDataNodeWrapper(leaderIndex),
-          "insert into root.db.d1(time, s1) values (2, 2)"
-      );
+          "insert into root.db.d1(time, s1) values (2, 2)");
       TestUtils.executeNonQueryOnSpecifiedDataNodeWithRetry(
           senderEnv, senderEnv.getDataNodeWrapper(leaderIndex), "flush");
 
@@ -459,8 +458,7 @@ public class IoTDBPipeClusterIT {
                   for (int i = 0; i < 100; ++i) {
                     TestUtils.executeNonQueryWithRetry(
                         senderEnv,
-                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i)
-                    );
+                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
                     Thread.sleep(100);
                   }
                 } catch (InterruptedException ignored) {
@@ -557,9 +555,7 @@ public class IoTDBPipeClusterIT {
 
       for (int i = 0; i < 100; ++i) {
         TestUtils.executeNonQueryWithRetry(
-            senderEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000)
-        );
+            senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000));
       }
 
       senderEnv.registerNewDataNode(false);

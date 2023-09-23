@@ -221,28 +221,21 @@ public class IoTDBPipeExtractorIT {
           senderEnv,
           "insert into root.nonAligned.6TS.`6` ("
               + "time, `s_float(1)`, `s_int(1)`, `s_double(1)`, `s_long(1)`, `s_text(1)`, `s_bool(1)`) "
-              + "values (now(), 0.5, 1, 1.5, 2, \"text1\", true)"
-      );
+              + "values (now(), 0.5, 1, 1.5, 2, \"text1\", true)");
       TestUtils.executeNonQueryWithRetry(
           senderEnv, "insert into root.aligned.1TS (time, s_float) aligned values (now(), 0.5)");
       TestUtils.executeNonQueryWithRetry(
-          senderEnv,
-          "insert into root.aligned.100TS (time, s_float) aligned values (now(), 0.5)"
-      );
+          senderEnv, "insert into root.aligned.100TS (time, s_float) aligned values (now(), 0.5)");
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.aligned.1000TS (time, s_float) aligned values (now(), 0.5)");
       TestUtils.executeNonQueryWithRetry(
           senderEnv,
-          "insert into root.aligned.1000TS (time, s_float) aligned values (now(), 0.5)"
-      );
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv,
-          "insert into root.aligned.`1(TS)` (time, s_float) aligned values (now(), 0.5)"
-      );
+          "insert into root.aligned.`1(TS)` (time, s_float) aligned values (now(), 0.5)");
       TestUtils.executeNonQueryWithRetry(
           senderEnv,
           "insert into root.aligned.6TS.`6` ("
               + "time, `s_float(1)`, `s_int(1)`, `s_double(1)`, `s_long(1)`, `s_text(1)`, `s_bool(1)`) "
-              + "aligned values (now(), 0.5, 1, 1.5, 2, \"text1\", true)"
-      );
+              + "aligned values (now(), 0.5, 1, 1.5, 2, \"text1\", true)");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -521,13 +514,11 @@ public class IoTDBPipeExtractorIT {
       TestUtils.executeNonQueryWithRetry(
           senderEnv,
           "insert into root.db.d1 (time, at1)"
-              + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)"
-      );
+              + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)");
       TestUtils.executeNonQueryWithRetry(
           senderEnv,
           "insert into root.db.d2 (time, at1)"
-              + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)"
-      );
+              + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)");
       TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       Map<String, String> extractorAttributes = new HashMap<>();
