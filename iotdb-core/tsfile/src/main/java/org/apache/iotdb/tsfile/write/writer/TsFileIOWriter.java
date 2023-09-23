@@ -130,7 +130,7 @@ public class TsFileIOWriter implements AutoCloseable {
     this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), false);
     this.file = file;
     if (resourceLogger.isDebugEnabled()) {
-      resourceLogger.debug("{} writer is opened.", file.getName());
+      //      resourceLogger.debug("{} writer is opened.", file.getName());
     }
     startFile();
   }
@@ -178,7 +178,7 @@ public class TsFileIOWriter implements AutoCloseable {
   public int startChunkGroup(String deviceId) throws IOException {
     this.currentChunkGroupDeviceId = deviceId;
     if (logger.isDebugEnabled()) {
-      logger.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
+      //      logger.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
     }
     chunkMetadataList = new ArrayList<>();
     ChunkGroupHeader chunkGroupHeader = new ChunkGroupHeader(currentChunkGroupDeviceId);
@@ -327,7 +327,7 @@ public class TsFileIOWriter implements AutoCloseable {
 
     long footerIndex = out.getPosition();
     if (logger.isDebugEnabled()) {
-      logger.debug("start to flush the footer,file pos:{}", footerIndex);
+      //      logger.debug("start to flush the footer,file pos:{}", footerIndex);
     }
 
     // write magic string
@@ -336,7 +336,7 @@ public class TsFileIOWriter implements AutoCloseable {
     // close file
     out.close();
     if (resourceLogger.isDebugEnabled() && file != null) {
-      resourceLogger.debug("{} writer is closed.", file.getName());
+      //      resourceLogger.debug("{} writer is closed.", file.getName());
     }
     if (file != null) {
       File chunkMetadataFile = new File(file.getAbsolutePath() + CHUNK_METADATA_TEMP_FILE_SUFFIX);
@@ -346,7 +346,7 @@ public class TsFileIOWriter implements AutoCloseable {
     }
     canWrite = false;
     long cost = System.currentTimeMillis() - startTime;
-    logger.info("Time for flushing metadata is {} ms", cost);
+    //    logger.info("Time for flushing metadata is {} ms", cost);
   }
 
   private void checkInMemoryPathCount() {

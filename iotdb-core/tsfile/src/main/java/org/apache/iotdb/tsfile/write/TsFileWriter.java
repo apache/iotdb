@@ -546,7 +546,7 @@ public class TsFileWriter implements AutoCloseable {
       long memSize = calculateMemSizeForAllGroup();
       assert memSize > 0;
       if (memSize > chunkGroupSizeThreshold) {
-        LOG.debug("start to flush chunk groups, memory space occupy:{}", memSize);
+        //        LOG.debug("start to flush chunk groups, memory space occupy:{}", memSize);
         recordCountForNextMemCheck = recordCount * chunkGroupSizeThreshold / memSize;
         return flushAllChunkGroups();
       } else {
@@ -623,7 +623,7 @@ public class TsFileWriter implements AutoCloseable {
    */
   @Override
   public void close() throws IOException {
-    LOG.info("start close file");
+    //    LOG.info("start close file");
     flushAllChunkGroups();
     fileWriter.endFile();
   }

@@ -166,6 +166,9 @@ public class PageReader implements IPageReader {
 
   private boolean pageSatisfy() {
     Statistics statistics = getStatistics();
+    if (statistics == null) {
+      return true;
+    }
     if (filter == null || filter.allSatisfy(statistics)) {
       long rowCount = statistics.getCount();
       if (paginationController.hasCurOffset(rowCount)) {

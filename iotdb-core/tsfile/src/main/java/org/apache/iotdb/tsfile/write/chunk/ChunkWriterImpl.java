@@ -254,7 +254,8 @@ public class ChunkWriterImpl implements IChunkWriter {
    */
   private void checkPageSizeAndMayOpenANewPage() {
     if (pageWriter.getPointNumber() == maxNumberOfPointsInPage) {
-      logger.debug("current line count reaches the upper bound, write page {}", measurementSchema);
+      //      logger.debug("current line count reaches the upper bound, write page {}",
+      // measurementSchema);
       writePageToPageBuffer();
     } else if (pageWriter.getPointNumber()
         >= valueCountInOnePageForNextCheck) { // need to check memory size
@@ -262,12 +263,13 @@ public class ChunkWriterImpl implements IChunkWriter {
       long currentPageSize = pageWriter.estimateMaxMemSize();
       if (currentPageSize > pageSizeThreshold) { // memory size exceeds threshold
         // we will write the current page
-        logger.debug(
-            "enough size, write page {}, pageSizeThreshold:{}, currentPateSize:{}, valueCountInOnePage:{}",
-            measurementSchema.getMeasurementId(),
-            pageSizeThreshold,
-            currentPageSize,
-            pageWriter.getPointNumber());
+        //        logger.debug(
+        //            "enough size, write page {}, pageSizeThreshold:{}, currentPateSize:{},
+        // valueCountInOnePage:{}",
+        //            measurementSchema.getMeasurementId(),
+        //            pageSizeThreshold,
+        //            currentPageSize,
+        //            pageWriter.getPointNumber());
         writePageToPageBuffer();
         valueCountInOnePageForNextCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
       } else {
