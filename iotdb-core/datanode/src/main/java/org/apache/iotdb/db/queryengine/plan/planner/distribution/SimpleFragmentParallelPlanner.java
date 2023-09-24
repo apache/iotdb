@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastSeriesSourceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -183,7 +184,9 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
         });
 
     if (analysis.getStatement() instanceof QueryStatement
-        || analysis.getStatement() instanceof ShowQueriesStatement) {
+        || analysis.getStatement() instanceof ShowQueriesStatement
+        || (analysis.getStatement() instanceof ShowTimeSeriesStatement
+            && ((ShowTimeSeriesStatement) analysis.getStatement()).isOrderByHeat())) {
       fragmentInstance.getFragment().generateTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);

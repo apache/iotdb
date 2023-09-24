@@ -55,7 +55,7 @@ public class LastQuerySortOperator implements ProcessOperator {
   private int cachedTsBlockRowIndex;
 
   // we must make sure that Operator in children has already been sorted
-  private final List<AbstractUpdateLastCacheOperator> children;
+  private final List<Operator> children;
 
   private final OperatorContext operatorContext;
 
@@ -75,7 +75,7 @@ public class LastQuerySortOperator implements ProcessOperator {
   public LastQuerySortOperator(
       OperatorContext operatorContext,
       TsBlock cachedTsBlock,
-      List<AbstractUpdateLastCacheOperator> children,
+      List<Operator> children,
       Comparator<Binary> timeSeriesComparator) {
     this.cachedTsBlock = cachedTsBlock;
     this.cachedTsBlockSize = cachedTsBlock.getPositionCount();
