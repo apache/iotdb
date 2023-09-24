@@ -38,7 +38,7 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   private final Map<String, String> tagMap;
   private final boolean isAligned;
 
-  private volatile ILastCacheContainer lastCacheContainer = null;
+  private final ILastCacheContainer lastCacheContainer = new LastCacheContainer();
 
   public SchemaCacheEntry(
       String storageGroup,
@@ -76,13 +76,6 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   }
 
   public ILastCacheContainer getLastCacheContainer() {
-    if (lastCacheContainer == null) {
-      synchronized (this) {
-        if (lastCacheContainer == null) {
-          lastCacheContainer = new LastCacheContainer();
-        }
-      }
-    }
     return lastCacheContainer;
   }
 
@@ -106,13 +99,9 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
    */
   public static int estimateSize(SchemaCacheEntry schemaCacheEntry) {
     // each char takes 2B in Java
-    int lastCacheContainerSize =
-        schemaCacheEntry.getLastCacheContainer() == null
-            ? 0
-            : schemaCacheEntry.getLastCacheContainer().estimateSize();
     return 100
         + 2 * schemaCacheEntry.getIMeasurementSchema().getMeasurementId().length()
-        + lastCacheContainerSize;
+        + schemaCacheEntry.getLastCacheContainer().estimateSize();
   }
 
   @Override
