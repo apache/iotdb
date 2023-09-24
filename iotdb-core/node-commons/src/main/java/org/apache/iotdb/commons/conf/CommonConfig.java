@@ -164,8 +164,7 @@ public class CommonConfig {
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private int pipeExtractorMatcherCacheSize = 1024;
-  private int pipeExtractorPendingQueueCapacity = 256;
-  private int pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueCapacity / 2;
+  private int pipeExtractorPendingQueueTsFileLimit = 3;
   private int pipeDataStructureTabletRowSize = 2048;
 
   private long pipeConnectorTimeoutMs = 15 * 60 * 1000L; // 15 minutes
@@ -546,20 +545,12 @@ public class CommonConfig {
     this.pipeExtractorMatcherCacheSize = pipeExtractorMatcherCacheSize;
   }
 
-  public int getPipeExtractorPendingQueueCapacity() {
-    return pipeExtractorPendingQueueCapacity;
+  public int getPipeExtractorPendingQueueTsFileLimit() {
+    return pipeExtractorPendingQueueTsFileLimit;
   }
 
-  public void setPipeExtractorPendingQueueCapacity(int pipeExtractorPendingQueueCapacity) {
-    this.pipeExtractorPendingQueueCapacity = pipeExtractorPendingQueueCapacity;
-  }
-
-  public int getPipeExtractorPendingQueueTabletLimit() {
-    return pipeExtractorPendingQueueTabletLimit;
-  }
-
-  public void setPipeExtractorPendingQueueTabletLimit(int pipeExtractorPendingQueueTabletLimit) {
-    this.pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueTabletLimit;
+  public void setPipeExtractorPendingQueueTsFileLimit(int pipeExtractorPendingQueueTsfileLimit) {
+    this.pipeExtractorPendingQueueTsFileLimit = pipeExtractorPendingQueueTsfileLimit;
   }
 
   public long getPipeConnectorTimeoutMs() {

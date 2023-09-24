@@ -34,14 +34,12 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
-  private final AtomicBoolean hasHistoricalExtractorConsumedAll = new AtomicBoolean(false);
+  private volatile boolean isStartedToSupply = false;
 
   @Override
   protected void doExtract(PipeRealtimeEvent event) {
@@ -72,17 +70,17 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTabletInsertion(PipeRealtimeEvent event) {
-    if (!hasHistoricalExtractorConsumedAll()
-        || isPendingQueueApproachingCapacity()
-        || isWalCapacityThresholdReached()) {
+    if (!isStartedToSupply
+        || mayWalSizeReachThrottleThreshold()
+        || isTsFileEventCountInQueueExceededLimit()) {
       // In the following 3 cases, we should not extract any more tablet events. all the data
       // represented by the tablet events should be carried by the following tsfile event:
       //  1. The historical extractor has not consumed all the data.
-      //  2. The pending queue is approaching capacity
-      //  3. HybridExtractor will first try to do extraction in log mode, and then choose log or
+      //  2. HybridExtractor will first try to do extraction in log mode, and then choose log or
       //  tsfile mode to continue extracting, but if (leader data regions num * Wal size) > (maximum
-      //  size of wal buffer) will cause OOM, so we need to use tsfile mode if the size exceeds the
-      //  threshold.
+      //  size of wal buffer), the write operation will be throttled, so we should not extract any
+      //  more tablet events.
+      //  3. The number of tsfile events in the pending queue has exceeded the limit.
       event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
     }
 
@@ -196,29 +194,23 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     }
   }
 
-  private boolean isPendingQueueApproachingCapacity() {
-    return pendingQueue.size()
-        >= PipeConfig.getInstance().getPipeExtractorPendingQueueTabletLimit();
+  private boolean mayWalSizeReachThrottleThreshold() {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    // Assume that the max data replica factor in common config is 3.
+    // This can be changed in the future.
+    return 3L * PipeAgent.task().getLeaderDataRegionCount() * config.getWalBufferSize()
+        > config.getThrottleThreshold();
   }
 
-  private boolean isWalCapacityThresholdReached() {
-
-    int leaderDataRegionsNum = PipeAgent.task().getRegionLeaderNum();
-
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return (long) leaderDataRegionsNum * config.getWalBufferSize() > config.getThrottleThreshold();
-  }
-
-  private boolean hasHistoricalExtractorConsumedAll() {
-    return hasHistoricalExtractorConsumedAll.get();
-  }
-
-  public void setHasHistoricalExtractorConsumedAll(boolean hasConsumedAll) {
-    hasHistoricalExtractorConsumedAll.set(hasConsumedAll);
+  private boolean isTsFileEventCountInQueueExceededLimit() {
+    return pendingQueue.getTsfileInsertionEventCount()
+        >= PipeConfig.getInstance().getPipeExtractorPendingQueueTsFileLimit();
   }
 
   @Override
   public Event supply() {
+    isStartedToSupply = true;
+
     PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
 
     while (realtimeEvent != null) {

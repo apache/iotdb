@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -117,6 +116,10 @@ public class PipeTaskAgent {
   }
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
+
+  public int getLeaderDataRegionCount() {
+    return pipeTaskManager.getLeaderDataRegionCount();
+  }
 
   public synchronized TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
       PipeMeta pipeMetaFromConfigNode) {
@@ -423,27 +426,6 @@ public class PipeTaskAgent {
                         });
               }
             });
-  }
-
-  public int getRegionLeaderNum() {
-    int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-
-    acquireReadLock();
-    try {
-      PipeMeta pipeMeta = pipeMetaKeeper.getPipeMetaList().iterator().next();
-      Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMap =
-          pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
-
-      return (int)
-          consensusGroupId2TaskMetaMap.keySet().stream()
-              .filter(consensusGroupId -> consensusGroupId.getId() == dataNodeId)
-              .filter(
-                  consensusGroupId ->
-                      TConsensusGroupType.DataRegion.equals(consensusGroupId.getType()))
-              .count();
-    } finally {
-      releaseReadLock();
-    }
   }
 
   ////////////////////////// Manage by Pipe Name //////////////////////////
