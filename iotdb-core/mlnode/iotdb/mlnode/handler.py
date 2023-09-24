@@ -40,14 +40,16 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         self.__task_manager = TaskManager(pool_size=descriptor.get_config().get_mn_mn_task_pool_size())
 
     def deleteModel(self, req: TDeleteModelReq):
+        logger.debug(f"delete model {req.modelId}")
         try:
             model_storage.delete_model(req.modelId)
             return get_status(TSStatusCode.SUCCESS_STATUS)
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))
 
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
+        logger.debug(f"create training task {req.modelId}")
         task = None
         try:
             # parse options
@@ -70,7 +72,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
 
             return get_status(TSStatusCode.SUCCESS_STATUS)
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))
         finally:
             if task is not None:
@@ -78,6 +80,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
                 self.__task_manager.submit_training_task(task)
 
     def forecast(self, req: TForecastReq):
+        logger.debug(f"forecast {req.modelId}")
         model_path, data, pred_length = parse_forecast_request(req)
         try:
             task = self.__task_manager.create_forecast_task(
@@ -91,5 +94,5 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
             resp = TForecastResp(get_status(TSStatusCode.SUCCESS_STATUS), forecast_result)
             return resp
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))

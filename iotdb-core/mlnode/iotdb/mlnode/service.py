@@ -50,6 +50,7 @@ class MLNode(object):
         self.__rpc_service = RPCService()
 
     def start(self) -> None:
+        logger.info('IoTDB-MLNode is starting...')
         self.__rpc_service.start()
 
         # sleep 100ms for waiting the rpc server start.

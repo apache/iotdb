@@ -78,6 +78,8 @@ class TaskManager(object):
         self.__pid_info = self.__shared_resource_manager.dict()
         self.__training_process_pool = NestablePool(pool_size)
         self.__inference_process_pool = NestablePool(pool_size)
+        logger.info(f'Process pool initialized successfully, '
+                    f'pool size: {pool_size}')
 
     def create_forecast_training_task(self,
                                       model_id: str,
@@ -115,6 +117,7 @@ class TaskManager(object):
             )
 
     def submit_training_task(self, task: _BasicTrainingTask) -> None:
+        logger.debug(f'Task: ({task.model_id}) - hyperparameters: {task.hyperparameters} - Submitting training process')
         self.__training_process_pool.apply_async(task, args=())
         logger.info(f'Task: ({task.model_id}) - Training process submitted successfully')
 
@@ -122,6 +125,7 @@ class TaskManager(object):
                              predict_length,
                              data,
                              model_path) -> ForecastingInferenceTask:
+        logger.debug(f'Creating forecasting task - predict_length: {predict_length} - model_path: {model_path}')
         task = ForecastingInferenceTask(
             predict_length,
             self.__pid_info,
@@ -131,6 +135,8 @@ class TaskManager(object):
         return task
 
     def submit_forecast_task(self, task: ForecastingInferenceTask) -> pd.DataFrame:
+        logger.debug(f'Submitting forecasting process - '
+                     f'predict_length: {task.pred_len} - model_path: {task.model_path}')
         read_pipe, send_pipe = mp.Pipe()
         if task is not None:
             self.__inference_process_pool.apply_async(task, args=(send_pipe,))
@@ -142,6 +148,7 @@ class TaskManager(object):
         Kill the process by pid, will check whether the pid is training or inference process
         """
         pid = self.__pid_info[model_id]
+        logger.debug(f'Killing process - model_id: {model_id} - pid: {pid}')
         if sys.platform == 'win32':
             try:
                 process = psutil.Process(pid=pid)

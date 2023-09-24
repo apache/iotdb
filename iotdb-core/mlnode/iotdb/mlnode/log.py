@@ -49,6 +49,16 @@ class LoggerFilter(logging.Filter):
 
 
 class Logger:
+    """
+    Args:
+        log_dir: log directory
+
+    logger_format: log format of global logger
+    logger: global logger with custom format and level
+    file_handlers: file handlers for different levels
+    console_handler: console handler for stdout
+    __lock: lock for logger
+    """
     def __init__(self, log_dir=LOG_DIR):
         file_names = ['log_mlnode_debug.log', 'log_mlnode_info.log', 'log_mlnode_warning.log', 'log_mlnode_error.log']
         file_levels = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR]
@@ -87,34 +97,24 @@ class Logger:
         self.logger.addFilter(LoggerFilter())
         self.__lock = multiprocessing.Lock()
 
-    def debug(self, *args):
+    def debug(self, *args) -> None:
         self.__lock.acquire()
         self.logger.debug(' '.join(map(str, args)))
         self.__lock.release()
 
-    def info(self, *args):
+    def info(self, *args) -> None:
         self.__lock.acquire()
         self.logger.info(' '.join(map(str, args)))
         self.__lock.release()
 
-    def warning(self, *args):
+    def warning(self, *args) -> None:
         self.__lock.acquire()
         self.logger.warning(' '.join(map(str, args)))
         self.__lock.release()
 
-    def warn(self, *args):
-        self.__lock.acquire()
-        self.logger.warning(' '.join(map(str, args)))
-        self.__lock.release()
-
-    def error(self, *args):
+    def error(self, *args) -> None:
         self.__lock.acquire()
         self.logger.error(' '.join(map(str, args)))
-        self.__lock.release()
-
-    def exception(self, *args, exc_info=None):
-        self.__lock.acquire()
-        self.logger.error(' '.join(map(str, args)) + ' ' + str(exc_info))
         self.__lock.release()
 
 

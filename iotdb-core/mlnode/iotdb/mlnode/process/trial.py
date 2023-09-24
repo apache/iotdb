@@ -112,6 +112,7 @@ class ForecastingTrainingTrial(BasicTrial):
         self.metrics_dict = build_metrics(forecast_metric_names)
 
     def train(self, epoch: int) -> float:
+        logger.debug(f'Starting trial training, trial id: {self.trial_id}, epoch: {epoch}')
         self.model.train()
         train_loss = []
         epoch_time = time.time()
@@ -153,6 +154,7 @@ class ForecastingTrainingTrial(BasicTrial):
         return train_loss
 
     def vali(self, epoch: int) -> Tuple[float, Dict]:
+        logger.debug(f'Starting trial vali, trial id: {self.trial_id}, epoch: {epoch}')
         self.model.eval()
         val_loss = []
         metrics_value_dict = {name: [] for name in forecast_metric_names}
@@ -197,6 +199,7 @@ class ForecastingTrainingTrial(BasicTrial):
         """
         Start training with the specified parameters, save the best model and report metrics to the db.
         """
+        logger.info(f'Starting trial, trial id: {self.trial_id}')
         try:
             best_loss = np.inf
             best_metrics_dict = None
@@ -220,5 +223,5 @@ class ForecastingTrainingTrial(BasicTrial):
             self.configNode_client.update_model_info(self.model_id, self.trial_id, model_info)
             return best_loss
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             raise e

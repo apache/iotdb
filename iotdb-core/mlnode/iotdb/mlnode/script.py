@@ -42,7 +42,7 @@ def main():
             cmd = f"netstat -ano | findstr {port}"
             result = os.popen(cmd).read().strip().split()
             if result:
-                pid = result[-1]
+                pid = result[4]
                 os.system(f"taskkill /F /PID {pid}")
                 logger.info(f"Terminated process with PID {pid} that was using port {port}")
             else:
@@ -56,4 +56,4 @@ def main():
             else:
                 logger.info(f"No process found using port {port}")
     else:
-        logger.info("Unknown argument: {}.".format(argument))
+        logger.warning("Unknown argument: {}.".format(argument))
