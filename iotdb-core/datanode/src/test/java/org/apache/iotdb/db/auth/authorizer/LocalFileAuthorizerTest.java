@@ -92,6 +92,11 @@ public class LocalFileAuthorizerTest {
     } catch (AuthException e) {
       assertEquals("Default administrator cannot be deleted", e.getMessage());
     }
+    try {
+      authorizer.deleteUser("nouser");
+    } catch (AuthException e) {
+      assertEquals("User nouser does not exist", e.getMessage());
+    }
   }
 
   @Test
