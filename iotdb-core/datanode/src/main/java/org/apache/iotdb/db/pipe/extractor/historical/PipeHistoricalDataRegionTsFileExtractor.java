@@ -249,6 +249,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         || historicalDataExtractionEndTime < resource.getFileStartTime());
   }
 
+  private boolean isTsFileResourceCoveredByTimeRange(TsFileResource resource) {
+    return historicalDataExtractionStartTime <= resource.getFileStartTime()
+        && historicalDataExtractionEndTime >= resource.getFileEndTime();
+  }
+
   private boolean isTsFileGeneratedAfterExtractionTimeLowerBound(TsFileResource resource) {
     try {
       return historicalDataExtractionTimeLowerBound
@@ -282,7 +287,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             pipeTaskMeta,
             pattern,
             historicalDataExtractionStartTime,
-            historicalDataExtractionEndTime);
+            historicalDataExtractionEndTime,
+            !isTsFileResourceCoveredByTimeRange(resource));
     event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
     try {
       PipeResourceManager.tsfile().unpinTsFileResource(resource);
