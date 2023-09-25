@@ -28,14 +28,6 @@ class TSDataType(IntEnum):
     DOUBLE = 4
     TEXT = 5
 
-    # this method is implemented to avoid the issue reported by:
-    # https://bugs.python.org/issue30545
-    def __eq__(self, other) -> bool:
-        return self.value == other.value
-
-    def __hash__(self):
-        return self.value
-
     def np_dtype(self):
         return {
             TSDataType.BOOLEAN: np.dtype(">?"),
@@ -63,14 +55,6 @@ class TSEncoding(IntEnum):
     SPRINTZ = 12
     RLBE = 13
 
-    # this method is implemented to avoid the issue reported by:
-    # https://bugs.python.org/issue30545
-    def __eq__(self, other) -> bool:
-        return self.value == other.value
-
-    def __hash__(self):
-        return self.value
-
 
 @unique
 class Compressor(IntEnum):
@@ -84,11 +68,3 @@ class Compressor(IntEnum):
     LZ4 = 7
     ZSTD = 8
     LZMA2 = 9
-
-    # this method is implemented to avoid the issue reported by:
-    # https://bugs.python.org/issue30545
-    def __eq__(self, other) -> bool:
-        return self.value == other.value
-
-    def __hash__(self):
-        return self.value

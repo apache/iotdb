@@ -101,9 +101,9 @@ class NumpyTablet(object):
     def get_binary_values(self):
         bs_len = 0
         bs_list = []
-        for i, value in enumerate(self.__values):
+        for data_type, value in zip(self.__data_types, self.__values):
             # TEXT
-            if int(self.__data_types[i]) == 5:
+            if data_type == 5:
                 format_str_list = [">"]
                 values_tobe_packed = []
                 for str_list in value:
