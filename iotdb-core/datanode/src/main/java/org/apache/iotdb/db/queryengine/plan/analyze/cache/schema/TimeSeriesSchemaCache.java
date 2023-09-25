@@ -323,14 +323,14 @@ public class TimeSeriesSchemaCache {
 
           @Override
           public String[] getSecondKeyList() {
-            return missingMeasurements.stream().map(i -> measurements[i]).toArray(String[]::new);
+            return missingMeasurements.stream()
+                .filter(shouldUpdateProvider::test)
+                .map(i -> measurements[i])
+                .toArray(String[]::new);
           }
 
           @Override
           public int updateValue(int index, SchemaCacheEntry value) {
-            if (!shouldUpdateProvider.test(index)) {
-              return 0;
-            }
             return DataNodeLastCacheManager.updateLastCache(
                 value, timeValuePairProvider.apply(index), highPriorityUpdate, latestFlushedTime);
           }
