@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class NodeGroupContext {
+
   protected final MPPQueryContext queryContext;
   private final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
   private final boolean isAlignByDevice;
@@ -41,7 +42,7 @@ public class NodeGroupContext {
     this.queryContext = queryContext;
     this.nodeDistributionMap = new HashMap<>();
     this.isAlignByDevice = isAlignByDevice;
-    this.mostlyUsedDataRegion = isAlignByDevice ? getMostlyUsedDataRegion(root) : null;
+    this.mostlyUsedDataRegion = getMostlyUsedDataRegion(root);
     this.hasExchangeNode = false;
   }
 

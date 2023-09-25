@@ -60,7 +60,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -107,11 +106,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   private PlanNode internalVisitSchemaMerge(
       AbstractSchemaMergeNode node, NodeGroupContext context) {
-    node.getChildren()
-        .forEach(
-            child -> {
-              visit(child, context);
-            });
+    node.getChildren().forEach(child -> visit(child, context));
     NodeDistribution nodeDistribution =
         new NodeDistribution(NodeDistributionType.DIFFERENT_FROM_ALL_CHILDREN);
     PlanNode newNode = node.clone();
@@ -383,6 +378,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   private TRegionReplicaSet calculateDataRegionByChildren(
       List<PlanNode> children, NodeGroupContext context) {
+
     // Step 1: calculate the count of children group by DataRegion.
     Map<TRegionReplicaSet, Long> groupByRegion =
         children.stream()
@@ -402,13 +398,22 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     if (groupByRegion.entrySet().size() == 1) {
       return groupByRegion.entrySet().iterator().next().getKey();
     }
+
     // Step 2: return the RegionReplicaSet with max count
-    return Collections.max(
-            groupByRegion.entrySet().stream()
-                .filter(e -> e.getKey() != DataPartition.NOT_ASSIGNED)
-                .collect(Collectors.toList()),
-            Map.Entry.comparingByValue())
-        .getKey();
+    int maxRegionCount = -1;
+    TRegionReplicaSet result = null;
+    for (Map.Entry<TRegionReplicaSet, Long> entry : groupByRegion.entrySet()) {
+      if (DataPartition.NOT_ASSIGNED.equals(entry.getKey())) {
+        continue;
+      }
+      if (entry.getKey().equals(context.getMostlyUsedDataRegion())) {
+        return entry.getKey();
+      }
+      if (entry.getValue() > maxRegionCount) {
+        result = entry.getKey();
+      }
+    }
+    return result;
   }
 
   private TRegionReplicaSet calculateSchemaRegionByChildren(
