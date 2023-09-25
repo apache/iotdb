@@ -67,26 +67,49 @@ public class FileMetrics implements IMetricSet {
   private static final String SEQUENCE = "sequence";
   private static final String UNSEQUENCE = "unsequence";
   private static final String LEVEL = "level";
+  // database -> regionId -> sequence file size
   private final Map<String, Map<String, Long>> seqFileSizeMap = new ConcurrentHashMap<>();
+  // database -> regionId -> unsequence file size
   private final Map<String, Map<String, Long>> unseqFileSizeMap = new ConcurrentHashMap<>();
+  // database -> regionId -> sequence file number
   private final Map<String, Map<String, Integer>> seqFileNumMap = new ConcurrentHashMap<>();
+  // database -> regionId -> unsequence file number
   private final Map<String, Map<String, Integer>> unseqFileNumMap = new ConcurrentHashMap<>();
+  // database -> regionId -> sequence file size gauge
   private final Map<String, Map<String, Gauge>> seqFileSizeGaugeMap = new ConcurrentHashMap<>();
+  // database -> regionId -> unsequence file size gauge
   private final Map<String, Map<String, Gauge>> unseqFileSizeGaugeMap = new ConcurrentHashMap<>();
+  // database -> regionId -> sequence file number gauge
   private final Map<String, Map<String, Gauge>> seqFileNumGaugeMap = new ConcurrentHashMap<>();
+  // database -> regionId -> unsequence file number gauge
   private final Map<String, Map<String, Gauge>> unseqFileNumGaugeMap = new ConcurrentHashMap<>();
 
   private final AtomicInteger modFileNum = new AtomicInteger(0);
-
   private final AtomicLong modFileSize = new AtomicLong(0);
-  private final Map<Integer, Integer> seqLevelTsFileCountMap = new ConcurrentHashMap<>();
-  private final Map<Integer, Integer> unseqLevelTsFileCountMap = new ConcurrentHashMap<>();
-  private final Map<Integer, Long> seqLevelTsFileSizeMap = new ConcurrentHashMap<>();
-  private final Map<Integer, Long> unseqLevelTsFileSizeMap = new ConcurrentHashMap<>();
-  private final Map<Integer, Gauge> seqLevelCountGaugeMap = new ConcurrentHashMap<>();
-  private final Map<Integer, Gauge> seqLevelSizeGaugeMap = new ConcurrentHashMap<>();
-  private final Map<Integer, Gauge> unseqLevelCountGaugeMap = new ConcurrentHashMap<>();
-  private final Map<Integer, Gauge> unseqLevelSizeGaugeMap = new ConcurrentHashMap<>();
+  // level -> database -> regionId -> sequence file number
+  private final Map<Integer, Map<String, Map<String, Integer>>> seqLevelTsFileCountMap =
+      new ConcurrentHashMap<>();
+  // level -> database -> regionId -> unsequence file number
+  private final Map<Integer, Map<String, Map<String, Integer>>> unseqLevelTsFileCountMap =
+      new ConcurrentHashMap<>();
+  // level -> database -> regionId -> sequence file size
+  private final Map<Integer, Map<String, Map<String, Long>>> seqLevelTsFileSizeMap =
+      new ConcurrentHashMap<>();
+  // level -> database -> regionId -> unsequence file size
+  private final Map<Integer, Map<String, Map<String, Long>>> unseqLevelTsFileSizeMap =
+      new ConcurrentHashMap<>();
+  // level -> database -> regionId -> sequence file number gauge
+  private final Map<Integer, Map<String, Map<String, Gauge>>> seqLevelCountGaugeMap =
+      new ConcurrentHashMap<>();
+  // level -> database -> regionId -> sequence file size gauge
+  private final Map<Integer, Map<String, Map<String, Gauge>>> seqLevelSizeGaugeMap =
+      new ConcurrentHashMap<>();
+  // level -> database -> regionId -> unsequence file number gauge
+  private final Map<Integer, Map<String, Map<String, Gauge>>> unseqLevelCountGaugeMap =
+      new ConcurrentHashMap<>();
+  // level -> database -> regionId -> unsequence file size gauge
+  private final Map<Integer, Map<String, Map<String, Gauge>>> unseqLevelSizeGaugeMap =
+      new ConcurrentHashMap<>();
   private long lastUpdateTime = 0;
 
   // compaction temporal files
@@ -313,7 +336,7 @@ public class FileMetrics implements IMetricSet {
     try {
       TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
       int level = tsFileName.getInnerCompactionCnt();
-      updateLevelCountAndSize(size, 1, seq, level);
+      updateLevelCountAndSize(size, 1, seq, level, database, regionId);
     } catch (IOException e) {
       log.warn("Unexpected error occurred when getting tsfile name", e);
     }
@@ -321,44 +344,48 @@ public class FileMetrics implements IMetricSet {
 
   private void updateGlobalCountAndSize(
       String database, String regionId, long sizeDelta, int countDelta, boolean seq) {
-    (seq ? seqFileSizeMap : unseqFileSizeMap)
-        .compute(
-            database,
-            (k, v) -> {
-              long size = 0;
-              if (v == null) {
-                v = new HashMap<>();
-              } else if (v.containsKey(regionId)) {
-                size = v.get(regionId);
-              }
-              v.put(regionId, size + sizeDelta);
-              return v;
-            });
-    (seq ? seqFileNumMap : unseqFileNumMap)
-        .compute(
-            database,
-            (k, v) -> {
-              int count = 0;
-              if (v == null) {
-                v = new HashMap<>();
-              } else if (v.containsKey(regionId)) {
-                count = v.get(regionId);
-              }
-              v.put(regionId, count + countDelta);
-              return v;
-            });
+    long fileSize =
+        (seq ? seqFileSizeMap : unseqFileSizeMap)
+            .compute(
+                database,
+                (k, v) -> {
+                  long size = 0;
+                  if (v == null) {
+                    v = new HashMap<>();
+                  } else if (v.containsKey(regionId)) {
+                    size = v.get(regionId);
+                  }
+                  v.put(regionId, size + sizeDelta);
+                  return v;
+                })
+            .get(regionId);
+    long fileNum =
+        (seq ? seqFileNumMap : unseqFileNumMap)
+            .compute(
+                database,
+                (k, v) -> {
+                  int count = 0;
+                  if (v == null) {
+                    v = new HashMap<>();
+                  } else if (v.containsKey(regionId)) {
+                    count = v.get(regionId);
+                  }
+                  v.put(regionId, count + countDelta);
+                  return v;
+                })
+            .get(regionId);
     if (metricService != null) {
       updateGlobalGauge(
           database,
           regionId,
-          (seq ? seqFileSizeMap : unseqFileSizeMap).get(database).get(regionId),
+          fileSize,
           (seq ? seqFileSizeGaugeMap : unseqFileSizeGaugeMap),
           (seq ? SEQUENCE : UNSEQUENCE),
           Metric.FILE_SIZE.toString());
       updateGlobalGauge(
           database,
           regionId,
-          (seq ? seqFileNumMap : unseqFileNumMap).get(database).get(regionId),
+          fileNum,
           (seq ? seqFileNumGaugeMap : unseqFileNumGaugeMap),
           (seq ? SEQUENCE : UNSEQUENCE),
           Metric.FILE_COUNT.toString());
@@ -396,22 +423,65 @@ public class FileMetrics implements IMetricSet {
         });
   }
 
-  private void updateLevelCountAndSize(long sizeDelta, int countDelta, boolean seq, int level) {
+  private void updateLevelCountAndSize(
+      long sizeDelta, int countDelta, boolean seq, int level, String database, String regionId) {
     int count =
         (seq ? seqLevelTsFileCountMap : unseqLevelTsFileCountMap)
-            .compute(level, (k, v) -> v == null ? countDelta : v + countDelta);
+            .compute(
+                level,
+                (k, v) -> {
+                  if (v == null) {
+                    v = new HashMap<>();
+                  }
+                  v.compute(
+                      database,
+                      (dk, dv) -> {
+                        if (dv == null) {
+                          dv = new HashMap<>();
+                        }
+                        dv.compute(
+                            regionId, (rdk, rdv) -> rdv == null ? countDelta : rdv + countDelta);
+                        return dv;
+                      });
+                  return v;
+                })
+            .get(database)
+            .get(regionId);
     long totalSize =
         (seq ? seqLevelTsFileSizeMap : unseqLevelTsFileSizeMap)
-            .compute(level, (k, v) -> v == null ? sizeDelta : v + sizeDelta);
+            .compute(
+                level,
+                (k, v) -> {
+                  if (v == null) {
+                    v = new HashMap<>();
+                  }
+                  v.compute(
+                      database,
+                      (dk, dv) -> {
+                        if (dv == null) {
+                          dv = new HashMap<>();
+                        }
+                        dv.compute(
+                            regionId, (rdk, rdv) -> rdv == null ? sizeDelta : rdv + sizeDelta);
+                        return dv;
+                      });
+                  return v;
+                })
+            .get(database)
+            .get(regionId);
     if (metricService != null) {
       updateLevelGauge(
           level,
+          database,
+          regionId,
           count,
           seq ? seqLevelCountGaugeMap : unseqLevelCountGaugeMap,
           seq ? SEQUENCE : UNSEQUENCE,
           FILE_LEVEL_COUNT);
       updateLevelGauge(
           level,
+          database,
+          regionId,
           totalSize,
           seq ? seqLevelSizeGaugeMap : unseqLevelSizeGaugeMap,
           seq ? SEQUENCE : UNSEQUENCE,
@@ -420,18 +490,43 @@ public class FileMetrics implements IMetricSet {
   }
 
   private void updateLevelGauge(
-      int level, long value, Map<Integer, Gauge> gaugeMap, String orderStr, String gaugeName) {
+      int level,
+      String database,
+      String regionId,
+      long value,
+      Map<Integer, Map<String, Map<String, Gauge>>> gaugeMap,
+      String orderStr,
+      String gaugeName) {
     gaugeMap
-        .computeIfAbsent(
+        .compute(
             level,
-            l ->
-                metricService.getOrCreateGauge(
-                    gaugeName,
-                    MetricLevel.CORE,
-                    Tag.TYPE.toString(),
-                    orderStr,
-                    LEVEL,
-                    String.valueOf(level)))
+            (k, v) -> {
+              if (v == null) {
+                v = new HashMap<>();
+              }
+              if (!v.containsKey(database)) {
+                v.put(database, new HashMap<>());
+              }
+              if (!v.get(database).containsKey(regionId)) {
+                v.get(database)
+                    .put(
+                        regionId,
+                        metricService.getOrCreateGauge(
+                            gaugeName,
+                            MetricLevel.CORE,
+                            Tag.NAME.toString(),
+                            orderStr,
+                            Tag.DATABASE.toString(),
+                            database,
+                            Tag.REGION.toString(),
+                            regionId,
+                            LEVEL,
+                            String.valueOf(level)));
+              }
+              return v;
+            })
+        .get(database)
+        .get(regionId)
         .set(value);
   }
 
@@ -444,7 +539,13 @@ public class FileMetrics implements IMetricSet {
       try {
         TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
         int level = tsFileName.getInnerCompactionCnt();
-        updateLevelCountAndSize(-size, -1, seq, level);
+        updateLevelCountAndSize(
+            -size,
+            -1,
+            seq,
+            level,
+            tsFileResource.getDatabaseName(),
+            tsFileResource.getDataRegionId());
       } catch (IOException e) {
         log.warn("Unexpected error occurred when getting tsfile name", e);
       }
