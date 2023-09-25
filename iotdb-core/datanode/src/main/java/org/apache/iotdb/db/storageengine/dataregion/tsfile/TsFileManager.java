@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import java.io.IOException;
@@ -46,9 +47,6 @@ public class TsFileManager {
   private TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
   private TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
 
-  private List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
-  private List<TsFileResource> unsequenceRecoverTsFileResources = new ArrayList<>();
-
   private boolean allowCompaction = true;
   private AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
@@ -67,6 +65,24 @@ public class TsFileManager {
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
       for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
         allResources.addAll(entry.getValue().getArrayList());
+      }
+      return allResources;
+    } finally {
+      readUnlock();
+    }
+  }
+
+  public List<TsFileResource> getTsFileList(boolean sequence, long startTime, long endTime) {
+    // the iteration of ConcurrentSkipListMap is not concurrent secure
+    // so we must add read lock here
+    readLock();
+    try {
+      List<TsFileResource> allResources = new ArrayList<>();
+      Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
+      for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
+        if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
+          allResources.addAll(entry.getValue().getArrayList());
+        }
       }
       return allResources;
     } finally {
@@ -184,14 +200,6 @@ public class TsFileManager {
           .keepOrderInsert(tsFileResource);
     } finally {
       writeUnlock();
-    }
-  }
-
-  public void addForRecover(TsFileResource tsFileResource, boolean sequence) {
-    if (sequence) {
-      sequenceRecoverTsFileResources.add(tsFileResource);
-    } else {
-      unsequenceRecoverTsFileResources.add(tsFileResource);
     }
   }
 
