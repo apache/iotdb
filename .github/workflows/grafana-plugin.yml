@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - "new_*"
+      - 'rel/1.*'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
