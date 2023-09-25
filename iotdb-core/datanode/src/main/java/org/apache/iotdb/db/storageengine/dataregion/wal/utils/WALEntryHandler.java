@@ -56,11 +56,6 @@ public class WALEntryHandler {
 
   public WALEntryHandler(WALEntryValue value) {
     this.value = value;
-
-    if (value instanceof InsertNode) {
-      this.walEntryPosition.setWalInsertNodeCache(
-          ((InsertNode) value).getDataRegionReplicaSet().getRegionId().getId());
-    }
   }
 
   /**
@@ -192,6 +187,11 @@ public class WALEntryHandler {
 
   public void setEntryPosition(long walFileVersionId, long position) {
     this.walEntryPosition.setEntryPosition(walFileVersionId, position);
+    if (this.value instanceof InsertNode) {
+      this.walEntryPosition.setWalInsertNodeCache(
+          ((InsertNode) this.value).getDataRegionReplicaSet().getRegionId().getId());
+    }
+
     this.value = null;
     synchronized (this) {
       this.notifyAll();

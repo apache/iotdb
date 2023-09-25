@@ -68,7 +68,8 @@ public class WALInsertNodeCache {
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
                     (position, pair) -> position.getSize())
             .build(new WALInsertNodeCacheLoader());
-    isBatchLoadEnabled = true;
+    isBatchLoadEnabled =
+        config.getAllocateMemoryForWALPipeCache() >= 3 * config.getWalFileSizeThresholdInByte();
   }
 
   @TestOnly
