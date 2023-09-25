@@ -163,6 +163,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
           public boolean hasNext() {
             while (tabletIterator == null || !tabletIterator.hasNext()) {
               if (!deviceMeasurementsMapIterator.hasNext()) {
+                close();
                 return false;
               }
 
