@@ -55,7 +55,7 @@ public class AuthUtils {
 
   // match number, character, and !@#$%^*()_+-=
   // pattern: ^[-\w!@#\$%\^\(\)\+=]*$
-  private static final String REX_PATTERN = "^[-\\w!@#\\$%\\^\\*()\\+=]*$";
+  private static final String REX_PATTERN = "^[-\\w!@#$%^&*()+=]*$";
 
   private AuthUtils() {
     // Empty constructor
@@ -120,7 +120,7 @@ public class AuthUtils {
     } else if (!str.matches(REX_PATTERN)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER,
-          "The name or password can only contain letters, numbers, underscores or !@#$%^*()_+-=");
+          "The name or password can only contain letters, numbers or !@#$%^*()_+-=");
     }
   }
 
