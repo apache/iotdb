@@ -310,9 +310,9 @@ class Session(object):
         :param attributes: Dictionary, attribute map for time series
         :param alias: String, measurement alias for time series
         """
-        data_type = data_type.value
-        encoding = encoding.value
-        compressor = compressor.value
+        data_type = int(data_type)
+        encoding = int(encoding)
+        compressor = int(compressor)
         request = TSCreateTimeseriesReq(
             self.__session_id,
             ts_path,
@@ -349,9 +349,9 @@ class Session(object):
         :param encoding_lst: List of TSEncoding, encodings for time series
         :param compressor_lst: List of Compressor, compressing types for time series
         """
-        data_type_lst = [data_type.value for data_type in data_type_lst]
-        encoding_lst = [encoding.value for encoding in encoding_lst]
-        compressor_lst = [compressor.value for compressor in compressor_lst]
+        data_type_lst = [int(data_type) for data_type in data_type_lst]
+        encoding_lst = [int(encoding) for encoding in encoding_lst]
+        compressor_lst = [int(compressor) for compressor in compressor_lst]
 
         request = TSCreateAlignedTimeseriesReq(
             self.__session_id,
@@ -399,9 +399,9 @@ class Session(object):
         :param attributes_lst: List of attribute Dictionary, attribute maps for time series
         :param alias_lst: List of alias, measurement alias for time series
         """
-        data_type_lst = [data_type.value for data_type in data_type_lst]
-        encoding_lst = [encoding.value for encoding in encoding_lst]
-        compressor_lst = [compressor.value for compressor in compressor_lst]
+        data_type_lst = [int(data_type) for data_type in data_type_lst]
+        encoding_lst = [int(encoding) for encoding in encoding_lst]
+        compressor_lst = [int(compressor) for compressor in compressor_lst]
 
         request = TSCreateMultiTimeseriesReq(
             self.__session_id,
@@ -937,7 +937,7 @@ class Session(object):
                 request.valuesList.append(tablet_lst[i].get_binary_values())
                 request.sizeList.append(tablet_lst[i].get_row_number())
                 data_type_values = [
-                    data_type.value for data_type in tablet_lst[i].get_data_types()
+                    int(data_type) for data_type in tablet_lst[i].get_data_types()
                 ]
                 request.typesList.append(data_type_values)
             for client, request in request_group.items():
@@ -1031,7 +1031,7 @@ class Session(object):
                 request.valuesList.append(tablet_lst[i].get_binary_values())
                 request.sizeList.append(tablet_lst[i].get_row_number())
                 data_type_values = [
-                    data_type.value for data_type in tablet_lst[i].get_data_types()
+                    int(data_type) for data_type in tablet_lst[i].get_data_types()
                 ]
                 request.typesList.append(data_type_values)
             for client, request in request_group.items():
@@ -1287,7 +1287,7 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def gen_insert_tablet_req(self, tablet, is_aligned=False):
-        data_type_values = [data_type.value for data_type in tablet.get_data_types()]
+        data_type_values = [int(data_type) for data_type in tablet.get_data_types()]
         return TSInsertTabletReq(
             self.__session_id,
             tablet.get_device_id(),
@@ -1307,9 +1307,7 @@ class Session(object):
         type_lst = []
         size_lst = []
         for tablet in tablet_lst:
-            data_type_values = [
-                data_type.value for data_type in tablet.get_data_types()
-            ]
+            data_type_values = [int(data_type) for data_type in tablet.get_data_types()]
             device_id_lst.append(tablet.get_device_id())
             measurements_lst.append(tablet.get_measurements())
             values_lst.append(tablet.get_binary_values())
@@ -1423,9 +1421,8 @@ class Session(object):
     def value_to_bytes(data_types, values):
         format_str_list = [">"]
         values_tobe_packed = []
-        for i in range(len(data_types)):
-            value = values[i]
-            data_type_value = data_types[i].value
+        for data_type, value in zip(data_types, values):
+            data_type_value = int(data_type)
             # BOOLEAN
             if data_type_value == 0:
                 format_str_list.append("c?")
@@ -1899,9 +1896,9 @@ class Session(object):
             template_name,
             is_aligned,
             measurements_path,
-            list(map(lambda x: x.value, data_types)),
-            list(map(lambda x: x.value, encodings)),
-            list(map(lambda x: x.value, compressors)),
+            list(map(lambda x: int(x), data_types)),
+            list(map(lambda x: int(x), encodings)),
+            list(map(lambda x: int(x), compressors)),
         )
         try:
             return Session.verify_success(self.__client.appendSchemaTemplate(request))

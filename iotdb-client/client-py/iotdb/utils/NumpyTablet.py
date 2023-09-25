@@ -103,7 +103,7 @@ class NumpyTablet(object):
         bs_list = []
         for i, value in enumerate(self.__values):
             # TEXT
-            if self.__data_types[i].value == 5:
+            if int(self.__data_types[i]) == 5:
                 format_str_list = [">"]
                 values_tobe_packed = []
                 for str_list in value:

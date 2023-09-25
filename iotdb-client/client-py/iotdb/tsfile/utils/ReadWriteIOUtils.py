@@ -42,11 +42,11 @@ class ReadWriteUtils:
         elif isinstance(value, int):
             cls.write_int(value, format_str_list, values_tobe_packed)
         elif isinstance(value, TSDataType):
-            cls.write_byte(value.value, format_str_list, values_tobe_packed)
+            cls.write_byte(int(value), format_str_list, values_tobe_packed)
         elif isinstance(value, TSEncoding):
-            cls.write_byte(value.value, format_str_list, values_tobe_packed)
+            cls.write_byte(int(value), format_str_list, values_tobe_packed)
         elif isinstance(value, Compressor):
-            cls.write_byte(value.value, format_str_list, values_tobe_packed)
+            cls.write_byte(int(value), format_str_list, values_tobe_packed)
 
     @classmethod
     def write_str(cls, s: str, format_str_list, values_tobe_packed):

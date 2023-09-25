@@ -16,12 +16,12 @@
 # under the License.
 #
 
-from enum import Enum, unique
+from enum import unique, IntEnum
 import numpy as np
 
 
 @unique
-class TSDataType(Enum):
+class TSDataType(IntEnum):
     BOOLEAN = 0
     INT32 = 1
     INT64 = 2
@@ -49,7 +49,7 @@ class TSDataType(Enum):
 
 
 @unique
-class TSEncoding(Enum):
+class TSEncoding(IntEnum):
     PLAIN = 0
     DICTIONARY = 1
     RLE = 2
@@ -74,7 +74,7 @@ class TSEncoding(Enum):
 
 
 @unique
-class Compressor(Enum):
+class Compressor(IntEnum):
     UNCOMPRESSED = 0
     SNAPPY = 1
     GZIP = 2

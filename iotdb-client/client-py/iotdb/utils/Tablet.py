@@ -95,7 +95,7 @@ class Tablet(object):
         for i in range(self.__column_number):
             bitmap = None
             bitmaps.append(bitmap)
-            data_type_value = self.__data_types[i].value
+            data_type_value = int(self.__data_types[i])
             if data_type_value == 0:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("?")
