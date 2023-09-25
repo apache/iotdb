@@ -296,16 +296,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_extractor_matcher_cache_size",
                 String.valueOf(config.getPipeExtractorMatcherCacheSize()))));
-    config.setPipeExtractorPendingQueueCapacity(
+    config.setPipeExtractorPendingQueueTsFileLimit(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_extractor_pending_queue_capacity",
-                String.valueOf(config.getPipeExtractorPendingQueueCapacity()))));
-    config.setPipeExtractorPendingQueueTabletLimit(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_extractor_pending_queue_tablet_limit",
-                String.valueOf(config.getPipeExtractorPendingQueueTabletLimit()))));
+                "pipe_extractor_pending_queue_tsfile_limit",
+                String.valueOf(config.getPipeExtractorPendingQueueTsFileLimit()))));
 
     config.setPipeConnectorTimeoutMs(
         Long.parseLong(
