@@ -176,7 +176,7 @@ class Session(object):
                 raise IoTDBConnectionException(e) from None
 
         if self.__enable_rpc_compression:
-            client = Client(TCompactProtocol.TCompactProtocol(transport))
+            client = Client(TCompactProtocol.TCompactProtocolAccelerated(transport))
         else:
             client = Client(TBinaryProtocol.TBinaryProtocolAccelerated(transport))
 
