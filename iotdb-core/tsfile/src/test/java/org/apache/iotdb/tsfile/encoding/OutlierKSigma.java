@@ -840,7 +840,7 @@ public class OutlierKSigma {
                         ArrayList<Byte> buffer2 = new ArrayList<>();
                         long buffer_bits = 0;
                         for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), k);
+//                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), k);
                             buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), k);
                         }
 //                        System.out.println(k);
@@ -849,9 +849,9 @@ public class OutlierKSigma {
 
                         long e = System.nanoTime();
                         encodeTime += ((e - s) / repeatTime2);
-                        compressed_size += buffer1.size();
+//                        compressed_size += buffer1.size();
                         compressed_size += buffer2.size();
-                        double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES * 2);
+                        double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
                         ratio += ratioTmp;
                         s = System.nanoTime();
                         //          for(int repeat=0;repeat<repeatTime2;repeat++)

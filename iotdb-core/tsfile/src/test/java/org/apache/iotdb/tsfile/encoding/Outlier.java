@@ -601,7 +601,17 @@ public class Outlier {
             }
             ArrayList<Integer> result2 = new ArrayList<>();
             splitTimeStamp3(ts_block, result2);
-
+            int supple_length;
+            if (remaining_length % 8 == 0) {
+                supple_length = 1;
+            } else if (remaining_length % 8 == 1) {
+                supple_length = 0;
+            } else {
+                supple_length = 9 - remaining_length % 8;
+            }
+            for (int s = 0; s < supple_length; s++) {
+                ts_block.add(0);
+            }
             ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block);
             encoded_result.addAll(cur_encoded_result);
         }
@@ -923,7 +933,7 @@ public class Outlier {
                         ArrayList<Byte> buffer2 = new ArrayList<>();
                         long buffer_bits = 0;
                         for (int repeat = 0; repeat < repeatTime2; repeat++){
-                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
+//                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
                             buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i));
                         }
 //                        System.out.println(buffer2.size());
@@ -931,9 +941,9 @@ public class Outlier {
 
                         long e = System.nanoTime();
                         encodeTime += ((e - s) / repeatTime2);
-                        compressed_size += buffer1.size();
+//                        compressed_size += buffer1.size();
                         compressed_size += buffer2.size();
-                        double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES * 2);
+                        double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
                         ratio += ratioTmp;
                         s = System.nanoTime();
                         //          for(int repeat=0;repeat<repeatTime2;repeat++)

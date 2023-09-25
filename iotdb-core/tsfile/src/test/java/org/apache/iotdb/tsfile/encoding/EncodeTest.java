@@ -127,8 +127,8 @@ public class EncodeTest {
       assert tempList != null;
       int fileRepeat = 0;
       ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
-      for (int i = 0; i < 2; i++) {
-        columnIndexes.add(i, i);
+      for (int i = 1; i < 2; i++) {
+        columnIndexes.add(i);
       }
       for (File f : tempList) {
         System.out.println(f);
