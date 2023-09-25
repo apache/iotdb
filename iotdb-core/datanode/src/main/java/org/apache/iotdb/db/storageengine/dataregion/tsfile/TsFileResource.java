@@ -1189,6 +1189,14 @@ public class TsFileResource {
   }
 
   public ProgressIndex getMaxProgressIndex() {
-    return maxProgressIndex == null ? new MinimumProgressIndex() : maxProgressIndex;
+    return maxProgressIndex == null ? MinimumProgressIndex.INSTANCE : maxProgressIndex;
+  }
+
+  public String getDatabaseName() {
+    return file.getParentFile().getParentFile().getParentFile().getName();
+  }
+
+  public String getDataRegionId() {
+    return file.getParentFile().getParentFile().getName();
   }
 }

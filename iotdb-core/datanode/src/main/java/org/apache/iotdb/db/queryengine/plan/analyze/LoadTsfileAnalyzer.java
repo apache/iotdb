@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -45,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaSta
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -133,7 +135,8 @@ public class LoadTsfileAnalyzer {
       } catch (Exception e) {
         LOGGER.warn(String.format("Parse file %s to resource error.", tsFile.getPath()), e);
         throw new SemanticException(
-            String.format("Parse file %s to resource error", tsFile.getPath()));
+            String.format(
+                "Parse file %s to resource error, because %s", tsFile.getPath(), e.getMessage()));
       }
     }
 
@@ -179,6 +182,7 @@ public class LoadTsfileAnalyzer {
       } else {
         tsFileResource.deserialize();
       }
+      TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
       loadTsFileStatement.addTsFileResource(tsFileResource);
     }
@@ -273,26 +277,31 @@ public class LoadTsfileAnalyzer {
           // not a timeseries, skip ++currentBatchTimeseriesCount
         } else {
           // check WRITE_DATA permission of timeseries
-          String userName = context.getSession().getUserName();
-          if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-            TSStatus status;
-            try {
-              List<PartialPath> paths =
-                  Collections.singletonList(
-                      new PartialPath(device, timeseriesMetadata.getMeasurementId()));
-              status =
-                  AuthorityChecker.getTSStatus(
-                      AuthorityChecker.checkFullPathListPermission(
-                          userName, paths, PrivilegeType.WRITE_DATA.ordinal()),
-                      paths,
-                      PrivilegeType.WRITE_DATA);
-            } catch (IllegalPathException e) {
-              throw new RuntimeException(e);
+          long startTime = System.nanoTime();
+          try {
+            String userName = context.getSession().getUserName();
+            if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+              TSStatus status;
+              try {
+                List<PartialPath> paths =
+                    Collections.singletonList(
+                        new PartialPath(device, timeseriesMetadata.getMeasurementId()));
+                status =
+                    AuthorityChecker.getTSStatus(
+                        AuthorityChecker.checkFullPathListPermission(
+                            userName, paths, PrivilegeType.WRITE_DATA.ordinal()),
+                        paths,
+                        PrivilegeType.WRITE_DATA);
+              } catch (IllegalPathException e) {
+                throw new RuntimeException(e);
+              }
+              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                throw new AuthException(
+                    TSStatusCode.representOf(status.getCode()), status.getMessage());
+              }
             }
-            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              throw new AuthException(
-                  TSStatusCode.representOf(status.getCode()), status.getMessage());
-            }
+          } finally {
+            PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
           }
           final Pair<CompressionType, TSEncoding> compressionEncodingPair =
               reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
@@ -418,7 +427,8 @@ public class LoadTsfileAnalyzer {
 
     private void executeSetDatabaseStatement(Statement statement) throws LoadFileException {
       final long queryId = SessionManager.getInstance().requestQueryId();
-      TSStatus status = statement.checkPermissionBeforeProcess(context.getSession().getUserName());
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
       }

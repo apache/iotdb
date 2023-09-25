@@ -76,7 +76,7 @@ public class PipeMetaDeSerTest {
               {
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
-                    new PipeTaskMeta(new MinimumProgressIndex(), 987));
+                    new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987));
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 234),
                     new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789));

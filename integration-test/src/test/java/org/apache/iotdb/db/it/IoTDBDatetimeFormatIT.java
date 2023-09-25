@@ -44,6 +44,7 @@ public class IoTDBDatetimeFormatIT {
 
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecisionCheckEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

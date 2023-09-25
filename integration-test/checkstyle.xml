@@ -41,7 +41,7 @@
         <module name="Regexp">
             <property name="format" value="(@RunWith\(IoTDBTestRunner\.class\))|(extends AbstractSchemaIT)"/>
             <property name="ignoreComments" value="true"/>
-            <property name="illegalPattern" value="false" />
+            <property name="illegalPattern" value="false"/>
             <property name="message" value="Test cases should run with IoTDBTestRunner."/>
         </module>
     </module>

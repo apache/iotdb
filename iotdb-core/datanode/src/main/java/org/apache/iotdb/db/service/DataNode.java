@@ -117,7 +117,7 @@ public class DataNode implements DataNodeMBean {
 
   private static final File SYSTEM_PROPERTIES =
       SystemFileFactory.INSTANCE.getFile(
-          config.getSchemaDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
+          config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
 
   /**
    * When joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
@@ -139,6 +139,9 @@ public class DataNode implements DataNodeMBean {
 
   private static final String REGISTER_INTERRUPTION =
       "Unexpected interruption when waiting to register to the cluster";
+
+  private boolean schemaRegionConsensusStarted = false;
+  private boolean dataRegionConsensusStarted = false;
 
   private DataNode() {
     // We do not init anything here, so that we can re-initialize the instance in IT.
@@ -210,6 +213,7 @@ public class DataNode implements DataNodeMBean {
     config.setClusterMode(true);
 
     // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
+    IoTDBStartCheck.getInstance().checkOldSystemConfig();
     boolean isFirstStart = IoTDBStartCheck.getInstance().checkIsFirstStart();
 
     // Set this node
@@ -262,7 +266,9 @@ public class DataNode implements DataNodeMBean {
         retry = -1;
       }
     }
-    if (configurationResp == null) {
+    if (configurationResp == null
+        || !configurationResp.isSetStatus()
+        || configurationResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // All tries failed
       logger.error(
           "Cannot pull system configurations from ConfigNode-leader after {} retries",
@@ -486,7 +492,9 @@ public class DataNode implements DataNodeMBean {
 
     try {
       SchemaRegionConsensusImpl.getInstance().start();
+      schemaRegionConsensusStarted = true;
       DataRegionConsensusImpl.getInstance().start();
+      dataRegionConsensusStarted = true;
     } catch (IOException e) {
       throw new StartupException(e);
     }
@@ -870,11 +878,15 @@ public class DataNode implements DataNodeMBean {
 
   public void stop() {
     deactivate();
-
+    SchemaEngine.getInstance().clear();
     try {
       MetricService.getInstance().stop();
-      SchemaRegionConsensusImpl.getInstance().stop();
-      DataRegionConsensusImpl.getInstance().stop();
+      if (schemaRegionConsensusStarted) {
+        SchemaRegionConsensusImpl.getInstance().stop();
+      }
+      if (dataRegionConsensusStarted) {
+        DataRegionConsensusImpl.getInstance().stop();
+      }
     } catch (Exception e) {
       logger.error("Stop data node error", e);
     }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
@@ -123,7 +124,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public ProgressIndex getProgressIndex() {
-    return progressIndex;
+    return progressIndex == null ? MinimumProgressIndex.INSTANCE : progressIndex;
   }
 
   @Override

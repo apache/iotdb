@@ -44,7 +44,7 @@ public class LastQueryOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
 
-  private final List<AbstractUpdateLastCacheOperator> children;
+  private final List<Operator> children;
 
   private final int inputOperatorsCount;
 
@@ -53,9 +53,7 @@ public class LastQueryOperator implements ProcessOperator {
   private TsBlockBuilder tsBlockBuilder;
 
   public LastQueryOperator(
-      OperatorContext operatorContext,
-      List<AbstractUpdateLastCacheOperator> children,
-      TsBlockBuilder builder) {
+      OperatorContext operatorContext, List<Operator> children, TsBlockBuilder builder) {
     this.operatorContext = operatorContext;
     this.children = children;
     this.inputOperatorsCount = children.size();

@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover;
 
+import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -55,7 +57,7 @@ public class WALRecoverManager {
   private volatile boolean hasStarted = false;
   // start recovery after all data regions have submitted unsealed zero-level TsFiles
   @SuppressWarnings("squid:S3077")
-  private volatile CountDownLatch allDataRegionScannedLatch;
+  private volatile ExceptionalCountDownLatch allDataRegionScannedLatch;
   // threads to recover wal nodes
   private ExecutorService recoverThreadPool;
   // stores all UnsealedTsFileRecoverPerformer submitted by data region processors
@@ -64,7 +66,7 @@ public class WALRecoverManager {
 
   private WALRecoverManager() {}
 
-  public void recover() throws WALRecoverException {
+  public void recover() throws WALRecoverException, StartupException {
     logger.info("Start recovering wal.");
     try {
       // collect wal nodes' information
@@ -85,6 +87,9 @@ public class WALRecoverManager {
       // which means walRecoverManger.addRecoverPerformer method won't be call anymore
       try {
         allDataRegionScannedLatch.await();
+        if (allDataRegionScannedLatch.hasException()) {
+          throw new DataRegionException(allDataRegionScannedLatch.getExceptionMessage());
+        }
         hasStarted = true;
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -110,6 +115,8 @@ public class WALRecoverManager {
       }
       // deal with remaining TsFiles which don't have wal
       asyncRecoverLeftTsFiles();
+    } catch (DataRegionException e) {
+      throw new StartupException(e.getMessage());
     } catch (Exception e) {
       for (UnsealedTsFileRecoverPerformer recoverPerformer :
           absolutePath2RecoverPerformer.values()) {
@@ -202,11 +209,11 @@ public class WALRecoverManager {
     return null;
   }
 
-  public CountDownLatch getAllDataRegionScannedLatch() {
+  public ExceptionalCountDownLatch getAllDataRegionScannedLatch() {
     return allDataRegionScannedLatch;
   }
 
-  public void setAllDataRegionScannedLatch(CountDownLatch allDataRegionScannedLatch) {
+  public void setAllDataRegionScannedLatch(ExceptionalCountDownLatch allDataRegionScannedLatch) {
     this.allDataRegionScannedLatch = allDataRegionScannedLatch;
   }
 
