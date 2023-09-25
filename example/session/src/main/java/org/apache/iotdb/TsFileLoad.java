@@ -74,9 +74,6 @@ public class TsFileLoad {
       }
     }
 
-    System.out.println(
-        "Total renamed tsfile number: " + tsfileList.size() + System.lineSeparator());
-
     for (String tsfileName : tsfileList) {
       File oldFile = new File(tsfileName);
       if (!oldFile.renameTo(new File(tsfileName.substring(0, tsfileName.length() - 7)))) {
@@ -104,6 +101,9 @@ public class TsFileLoad {
         }
       }
     }
+
+    System.out.println(
+        "Total renamed tsfile number: " + tsfileList.size() + System.lineSeparator());
 
     CountDownLatch countDownLatch = new CountDownLatch(parallelism);
     List<String> failedTsFileList = new ArrayList<>();
