@@ -110,6 +110,12 @@ public class AuthorityChecker {
     }
   }
 
+  public static TSStatus getOptTSStatus(boolean hasGrantOpt, String errMsg) {
+    return hasGrantOpt
+        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        : new TSStatus(TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode()).setMessage(errMsg);
+  }
+
   public static TSStatus getTSStatus(boolean hasPermission, String errMsg) {
     return hasPermission
         ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
@@ -182,7 +188,7 @@ public class AuthorityChecker {
       String userName, String[] privilegeList, List<PartialPath> nodeNameList) {
     for (String s : privilegeList) {
       if (!authorityFetcher.checkUserPrivilegeGrantOpt(
-          userName, nodeNameList, PrivilegeType.valueOf(s).ordinal())) {
+          userName, nodeNameList, PrivilegeType.valueOf(s.toUpperCase()).ordinal())) {
         return false;
       }
     }

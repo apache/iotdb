@@ -897,8 +897,7 @@ public class ProcedureManager {
       if (isSucceed) {
         return RpcUtils.SUCCESS_STATUS;
       } else {
-        return new TSStatus(TSStatusCode.AUTH_OPERATE_EXCEPTION.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+        return new TSStatus(statusList.get(0).getCode()).setMessage(statusList.get(0).getMessage());
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.AUTH_OPERATE_EXCEPTION.getStatusCode())
