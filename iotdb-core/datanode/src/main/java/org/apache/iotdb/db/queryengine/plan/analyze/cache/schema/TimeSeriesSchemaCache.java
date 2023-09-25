@@ -328,6 +328,9 @@ public class TimeSeriesSchemaCache {
 
           @Override
           public int updateValue(int index, SchemaCacheEntry value) {
+            if (!shouldUpdateProvider.test(index)) {
+              return 0;
+            }
             return DataNodeLastCacheManager.updateLastCache(
                 value, timeValuePairProvider.apply(index), highPriorityUpdate, latestFlushedTime);
           }
