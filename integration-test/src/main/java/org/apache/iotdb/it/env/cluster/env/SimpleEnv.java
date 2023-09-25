@@ -30,4 +30,10 @@ public class SimpleEnv extends AbstractEnv {
   public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
     super.initEnvironment(configNodesNum, dataNodesNum);
   }
+
+  @Override
+  public void initClusterEnvironment(
+      int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
+    super.initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount);
+  }
 }
