@@ -1461,7 +1461,7 @@ class Session(object):
                 values_tobe_packed.append(len(value_bytes))
                 values_tobe_packed.append(value_bytes)
             else:
-                raise RuntimeError("Unsupported data type:" + str(data_types[i]))
+                raise RuntimeError("Unsupported data type:" + str(data_type))
         format_str = "".join(format_str_list)
         return struct.pack(format_str, *values_tobe_packed)
 
