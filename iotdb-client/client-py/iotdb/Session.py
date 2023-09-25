@@ -1422,34 +1422,34 @@ class Session(object):
         format_str_list = [">"]
         values_tobe_packed = []
         for data_type, value in zip(data_types, values):
-            data_type_value = int(data_type)
+            data_type = int(data_type)
             # BOOLEAN
-            if data_type_value == 0:
+            if data_type == 0:
                 format_str_list.append("c?")
                 values_tobe_packed.append(b"\x00")
                 values_tobe_packed.append(value)
             # INT32
-            elif data_type_value == 1:
+            elif data_type == 1:
                 format_str_list.append("ci")
                 values_tobe_packed.append(b"\x01")
                 values_tobe_packed.append(value)
             # INT64
-            elif data_type_value == 2:
+            elif data_type == 2:
                 format_str_list.append("cq")
                 values_tobe_packed.append(b"\x02")
                 values_tobe_packed.append(value)
             # FLOAT
-            elif data_type_value == 3:
+            elif data_type == 3:
                 format_str_list.append("cf")
                 values_tobe_packed.append(b"\x03")
                 values_tobe_packed.append(value)
             # DOUBLE
-            elif data_type_value == 4:
+            elif data_type == 4:
                 format_str_list.append("cd")
                 values_tobe_packed.append(b"\x04")
                 values_tobe_packed.append(value)
             # TEXT
-            elif data_type_value == 5:
+            elif data_type == 5:
                 if isinstance(value, str):
                     value_bytes = bytes(value, "utf-8")
                 else:
