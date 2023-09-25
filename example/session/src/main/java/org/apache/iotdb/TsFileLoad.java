@@ -181,8 +181,10 @@ public class TsFileLoad {
     while (true) {
       try {
         countDownLatch.await();
-        System.out.println("Failed tsfile List: ");
-        failedTsFileList.forEach(System.out::println);
+        if (!failedTsFileList.isEmpty()) {
+          System.out.println("Failed tsfile List: ");
+          failedTsFileList.forEach(System.out::println);
+        }
         break;
       } catch (InterruptedException e) {
         // ignore
