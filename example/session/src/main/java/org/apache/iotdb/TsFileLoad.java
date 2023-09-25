@@ -141,7 +141,7 @@ public class TsFileLoad {
                 int fileIndex = index.getAndIncrement();
                 while (fileIndex < tsfileList.size()) {
                   String tsfilePath = tsfileList.get(fileIndex);
-                  String loadTsFileSql = "load '" + tsfilePath + "' sgLevel=2";
+                  String loadTsFileSql = "load '" + tsfilePath + "' sgLevel=1";
                   try {
                     System.out.println("start to execute: " + loadTsFileSql);
                     session.executeNonQueryStatement(loadTsFileSql);
