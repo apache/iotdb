@@ -105,9 +105,13 @@ public interface PipeProcessor extends PipePlugin {
    */
   default void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws Exception {
-    for (final TabletInsertionEvent tabletInsertionEvent :
-        tsFileInsertionEvent.toTabletInsertionEvents()) {
-      process(tabletInsertionEvent, eventCollector);
+    try {
+      for (final TabletInsertionEvent tabletInsertionEvent :
+          tsFileInsertionEvent.toTabletInsertionEvents()) {
+        process(tabletInsertionEvent, eventCollector);
+      }
+    } finally {
+      tsFileInsertionEvent.close();
     }
   }
 
