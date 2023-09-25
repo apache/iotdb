@@ -25,11 +25,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
+        with:
+          repository: 'iotdb/grafana-plugin'
       - name: Setup Node.js environment
         uses: actions/setup-node@v3
         with:
-          node-version: "14.x"
+          node-version: "1.20"
+
 
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
@@ -53,13 +55,26 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.node-version }}-nodemodules-
 
+      - name: list dir
+        run: |
+          ls
+          yarn install --frozen-lockfile
+          yarn build
+
       - name: Install dependencies and Build and test frontend
         run: |
           cd iotdb-connector/grafana-plugin/
           yarn install --frozen-lockfile
           yarn build
 
-      - name: Install dependencies and Build backend
-        run: |
-          cd iotdb-connector/grafana-plugin/
-          ./backend-compile.sh
+#      - name: Install dependencies and Build backend
+#        run: |
+#          cd iotdb-connector/grafana-plugin/
+#          ./backend-compile.sh
+
+      - name: Build backend
+        if: steps.check-for-backend.outputs.has-backend == 'true'
+        uses: magefile/mage-action@v1
+        with:
+          version: latest
+          args: buildAll
