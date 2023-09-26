@@ -38,7 +38,6 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -108,6 +107,7 @@ import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaMana
 import org.apache.iotdb.db.storageengine.rescon.quotas.OperationQuota;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -783,7 +783,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           partitionFetcher.getDataPartitionWithUnclosedTimeRange(
               Collections.singletonMap(db, Collections.singletonList(queryParam)));
       List<TRegionReplicaSet> regionReplicaSets =
-          dataPartition.getDataRegionReplicaSet(deviceId, null);
+          dataPartition.getDataRegionReplicaSet(deviceId, Collections.emptyList());
 
       // no valid DataRegion
       if (regionReplicaSets.isEmpty()
@@ -990,7 +990,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       sgNameToQueryParamsMap.put(database, Collections.singletonList(queryParam));
       DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
       List<DataRegion> dataRegionList = new ArrayList<>();
-      List<TRegionReplicaSet> replicaSets = dataPartition.getDataRegionReplicaSet(deviceId, null);
+      List<TRegionReplicaSet> replicaSets =
+          dataPartition.getDataRegionReplicaSet(
+              deviceId, Collections.singletonList(timePartitionSlot));
       for (TRegionReplicaSet region : replicaSets) {
         dataRegionList.add(
             StorageEngine.getInstance()

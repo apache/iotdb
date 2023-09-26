@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import java.io.IOException;
@@ -65,24 +64,6 @@ public class TsFileManager {
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
       for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
         allResources.addAll(entry.getValue().getArrayList());
-      }
-      return allResources;
-    } finally {
-      readUnlock();
-    }
-  }
-
-  public List<TsFileResource> getTsFileList(boolean sequence, long startTime, long endTime) {
-    // the iteration of ConcurrentSkipListMap is not concurrent secure
-    // so we must add read lock here
-    readLock();
-    try {
-      List<TsFileResource> allResources = new ArrayList<>();
-      Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
-      for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
-        if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
-          allResources.addAll(entry.getValue().getArrayList());
-        }
       }
       return allResources;
     } finally {

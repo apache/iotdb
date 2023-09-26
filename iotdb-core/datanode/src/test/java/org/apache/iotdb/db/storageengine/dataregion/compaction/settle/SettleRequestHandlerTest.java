@@ -147,7 +147,7 @@ public class SettleRequestHandlerTest {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
       if (i != 2) {
         dataRegion.deleteByDevice(
-            new PartialPath(deviceId, measurementId), 3L * i + 1, 3L * i + 1, -1);
+            new PartialPath(deviceId, measurementId), 3L * i + 1, 3L * i + 1, -1, null);
       }
     }
   }

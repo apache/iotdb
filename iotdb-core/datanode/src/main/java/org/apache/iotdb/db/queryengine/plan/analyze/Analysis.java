@@ -268,11 +268,13 @@ public class Analysis {
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
-    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), timefilter);
+    // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
+    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), null);
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
-    return dataPartition.getDataRegionReplicaSet(deviceName, globalTimeFilter);
+    // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
+    return dataPartition.getDataRegionReplicaSet(deviceName, null);
   }
 
   public Statement getStatement() {
