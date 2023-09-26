@@ -111,7 +111,7 @@ class LRUCacheEntryManager<FK, SK, V>
   static class LRUCacheEntry<SK, V> implements ICacheEntry<SK, V> {
 
     private final SK secondKey;
-    private final ICacheEntryGroup cacheEntryGroup;
+    private volatile ICacheEntryGroup cacheEntryGroup;
 
     private V value;
 
@@ -137,6 +137,11 @@ class LRUCacheEntryManager<FK, SK, V>
     @Override
     public ICacheEntryGroup getBelongedGroup() {
       return cacheEntryGroup;
+    }
+
+    @Override
+    public void setBelongedGroup(ICacheEntryGroup belongedGroup) {
+      this.cacheEntryGroup = belongedGroup;
     }
 
     @Override

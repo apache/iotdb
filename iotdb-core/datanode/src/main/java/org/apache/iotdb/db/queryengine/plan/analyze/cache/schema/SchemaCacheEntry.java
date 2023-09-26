@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.ILastCacheContainer;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.LastCacheContainer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -38,7 +39,7 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   private final Map<String, String> tagMap;
   private final boolean isAligned;
 
-  private final ILastCacheContainer lastCacheContainer = new LastCacheContainer();
+  private volatile ILastCacheContainer lastCacheContainer = null;
 
   public SchemaCacheEntry(
       String storageGroup,
@@ -79,6 +80,24 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
     return lastCacheContainer;
   }
 
+  public int updateLastCache(
+      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
+
+    if (lastCacheContainer == null) {
+      synchronized (this) {
+        if (lastCacheContainer == null) {
+          ILastCacheContainer tmp = new LastCacheContainer();
+          int changeSize = tmp.estimateSize();
+          changeSize += tmp.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+          lastCacheContainer = tmp;
+          return changeSize;
+        }
+      }
+    }
+    return lastCacheContainer.updateCachedLast(
+        timeValuePair, highPriorityUpdate, latestFlushedTime);
+  }
+
   /**
    * Total basic 100B
    *
@@ -99,9 +118,13 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
    */
   public static int estimateSize(SchemaCacheEntry schemaCacheEntry) {
     // each char takes 2B in Java
+    int lastCacheContainerSize =
+        schemaCacheEntry.getLastCacheContainer() == null
+            ? 0
+            : schemaCacheEntry.getLastCacheContainer().estimateSize();
     return 100
         + 2 * schemaCacheEntry.getIMeasurementSchema().getMeasurementId().length()
-        + schemaCacheEntry.getLastCacheContainer().estimateSize();
+        + lastCacheContainerSize;
   }
 
   @Override

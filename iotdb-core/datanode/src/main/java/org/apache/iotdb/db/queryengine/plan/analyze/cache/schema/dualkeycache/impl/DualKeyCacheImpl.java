@@ -123,12 +123,17 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
         if (cacheEntry == null) {
           updating.updateValue(i, null);
         } else {
-          int changeSize;
+          int changeSize = 0;
           synchronized (cacheEntry) {
-            changeSize = updating.updateValue(i, cacheEntry.getValue());
-            cacheEntryManager.access(cacheEntry);
-            if (changeSize != 0) {
-              cacheStats.increaseMemoryUsage(changeSize);
+            if (cacheEntry.getBelongedGroup() != null) {
+              // Only update the value when the cache entry is not evicted.
+              // If the cache entry is evicted, getBelongedGroup is null.
+              // Synchronized is to guarantee the cache entry is not evicted during the update.
+              changeSize = updating.updateValue(i, cacheEntry.getValue());
+              cacheEntryManager.access(cacheEntry);
+              if (changeSize != 0) {
+                cacheStats.increaseMemoryUsage(changeSize);
+              }
             }
           }
           if (changeSize != 0 && cacheStats.isExceedMemoryCapacity()) {
@@ -212,6 +217,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       evictedSize.getAndAdd(sizeComputer.computeValueSize(evictCacheEntry.getValue()));
 
       ICacheEntryGroup<FK, SK, V, T> belongedGroup = evictCacheEntry.getBelongedGroup();
+      evictCacheEntry.setBelongedGroup(null);
       belongedGroup.removeCacheEntry(evictCacheEntry.getSecondKey());
       evictedSize.getAndAdd(sizeComputer.computeSecondKeySize(evictCacheEntry.getSecondKey()));
 
