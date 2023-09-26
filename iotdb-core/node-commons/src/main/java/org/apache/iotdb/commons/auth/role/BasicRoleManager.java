@@ -19,8 +19,10 @@
 package org.apache.iotdb.commons.auth.role;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.concurrent.HashLock;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -44,6 +46,8 @@ public abstract class BasicRoleManager implements IRoleManager {
   protected IRoleAccessor accessor;
   protected HashLock lock;
 
+  private boolean preVersion = false;
+
   BasicRoleManager(LocalFileRoleAccessor accessor) {
     this.roleMap = new HashMap<>();
     this.accessor = accessor;
@@ -60,7 +64,6 @@ public abstract class BasicRoleManager implements IRoleManager {
 
   @Override
   public boolean createRole(String rolename) throws AuthException {
-    AuthUtils.validateRolename(rolename);
 
     Role role = getRole(rolename);
     if (role != null) {
@@ -94,7 +97,18 @@ public abstract class BasicRoleManager implements IRoleManager {
             TSStatusCode.ROLE_NOT_EXIST, String.format("No such role %s", rolename));
       }
       if (path != null) {
-        AuthUtils.validatePatternPath(path);
+        if (preVersion) {
+          AuthUtils.validatePath(path);
+          if (role.getServiceReady()) {
+            try {
+              AuthUtils.validatePatternPath(path);
+            } catch (AuthException e) {
+              role.setServiceReady(false);
+            }
+          }
+        } else {
+          AuthUtils.validatePatternPath(path);
+        }
         role.addPathPrivilege(path, privilegeId, grantOpt);
       } else {
         role.getSysPrivilege().add(privilegeId);
@@ -117,15 +131,30 @@ public abstract class BasicRoleManager implements IRoleManager {
         throw new AuthException(
             TSStatusCode.ROLE_NOT_EXIST, String.format("No such role %s", rolename));
       }
-      if (!role.hasPrivilegeToRevoke(path, privilegeId)) {
-        return false;
-      }
-      if (path != null) {
-        AuthUtils.validatePatternPath(path);
-        role.removePathPrivilege(path, privilegeId);
+      if (preVersion) {
+        if (path != null) {
+          if (AuthUtils.hasPrivilege(path, privilegeId, role.getPathPrivilegeList())) {
+            return false;
+          }
+          AuthUtils.validatePath(path);
+          AuthUtils.removePrivilegePre(path, privilegeId, role.getPathPrivilegeList());
+        } else {
+          if (role.getSysPrivilege().contains(privilegeId)) {
+            return false;
+          }
+          role.getSysPrivilege().remove(privilegeId);
+        }
       } else {
-        role.getSysPrivilege().remove(privilegeId);
-        role.getSysPriGrantOpt().remove(privilegeId);
+        if (!role.hasPrivilegeToRevoke(path, privilegeId)) {
+          return false;
+        }
+        if (path != null) {
+          AuthUtils.validatePatternPath(path);
+          role.removePathPrivilege(path, privilegeId);
+        } else {
+          role.getSysPrivilege().remove(privilegeId);
+          role.getSysPriGrantOpt().remove(privilegeId);
+        }
       }
       return true;
     } finally {
@@ -170,5 +199,32 @@ public abstract class BasicRoleManager implements IRoleManager {
         }
       }
     }
+  }
+
+  @Override
+  public void setPreVersion(boolean preVersion) {
+    this.preVersion = preVersion;
+  }
+
+  @Override
+  public void checkAndRefreshPathPri() {
+    roleMap.forEach(
+        (rolename, role) -> {
+          if (!role.getServiceReady()) {
+            for (PathPrivilege pathPri : role.getPathPrivilegeList()) {
+              try {
+                AuthUtils.validatePatternPath(pathPri.getPath());
+              } catch (AuthException e) {
+                PartialPath path = pathPri.getPath();
+                try {
+                  pathPri.setPath(AuthUtils.convertPatternPath(path));
+                } catch (IllegalPathException illegalE) {
+                  //
+                }
+              }
+            }
+          }
+          role.setServiceReady(true);
+        });
   }
 }
