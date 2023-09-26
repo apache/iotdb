@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.ILastCacheContainer;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.LastCacheContainer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -79,20 +80,22 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
     return lastCacheContainer;
   }
 
-  /**
-   * Get and init last cache container. Notice that this method may change estimated size of this.
-   *
-   * @return last cache container which is not null
-   */
-  public ILastCacheContainer getAndInitLastCacheContainer() {
+  public int updateLastCache(
+      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
+
     if (lastCacheContainer == null) {
       synchronized (this) {
         if (lastCacheContainer == null) {
-          lastCacheContainer = new LastCacheContainer();
+          ILastCacheContainer tmp = new LastCacheContainer();
+          int changeSize = tmp.estimateSize();
+          changeSize += tmp.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+          lastCacheContainer = tmp;
+          return changeSize;
         }
       }
     }
-    return lastCacheContainer;
+    return lastCacheContainer.updateCachedLast(
+        timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
   /**

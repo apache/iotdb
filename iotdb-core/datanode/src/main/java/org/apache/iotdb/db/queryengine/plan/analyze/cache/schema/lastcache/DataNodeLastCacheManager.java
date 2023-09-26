@@ -63,8 +63,6 @@ public class DataNodeLastCacheManager {
     if (!CACHE_ENABLED || null == entry) {
       return 0;
     }
-    ILastCacheContainer lastCacheContainer = entry.getAndInitLastCacheContainer();
-    return lastCacheContainer.updateCachedLast(
-        timeValuePair, highPriorityUpdate, latestFlushedTime);
+    return entry.updateLastCache(timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 }
