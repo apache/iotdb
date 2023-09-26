@@ -77,7 +77,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     switch (state) {
       case USING_TSFILE:
         // Ignore the tablet event.
-        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
         break;
       case EMPTY:
       case USING_TABLET:
@@ -94,7 +94,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
           // Ignore the tablet event.
-          event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+          event.decreaseReferenceCount(
+              PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
         }
         break;
       default:
@@ -130,12 +131,16 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
           // Ignore the tsfile event.
-          event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+          event.decreaseReferenceCount(
+              PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
         }
         break;
       case USING_TABLET:
-        // All the tablet events have been extracted, so we can ignore the tsfile event.
-        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+        // All the tablet events have been extracted, so we can ignore the tsFile event.
+        // Report this event for SimpleProgressIndex, which does not have progressIndex for wal.
+        // This report won't affect IoTProgressIndex since the previous wal events have been
+        // successfully transferred here.
+        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName(), true);
         break;
       default:
         throw new UnsupportedOperationException(
@@ -157,7 +162,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       // If the last event in the pending queue is a heartbeat event, we should not extract any more
       // heartbeat events to avoid OOM when the pipe is stopped.
       // Besides, the printable event has higher priority to stay in queue to enable metrics report.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
       return;
     }
 
@@ -174,7 +179,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       // pipe progress.
 
       // ignore this event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
     }
   }
 
@@ -205,7 +210,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                 eventToSupply.getClass(), this));
       }
 
-      realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+      realtimeEvent.decreaseReferenceCount(
+          PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
 
       if (suppliedEvent != null) {
         return suppliedEvent;

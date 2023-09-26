@@ -292,8 +292,12 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     }
 
     if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
-      for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
-        transfer(event);
+      try {
+        for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+          transfer(event);
+        }
+      } finally {
+        tsFileInsertionEvent.close();
       }
       return;
     }
@@ -513,7 +517,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
                     .ifPresent(
                         event ->
                             event.decreaseReferenceCount(
-                                IoTDBThriftAsyncConnector.class.getName()))));
+                                IoTDBThriftAsyncConnector.class.getName(), true))));
 
     while (!commitQueue.isEmpty()) {
       final Pair<Long, Runnable> committer = commitQueue.peek();

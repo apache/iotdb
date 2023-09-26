@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -757,17 +758,6 @@ public class DataRegion implements IDataRegionForQuery {
     try (SealedTsFileRecoverPerformer recoverPerformer =
         new SealedTsFileRecoverPerformer(sealedTsFile)) {
       recoverPerformer.recover();
-      // pick up crashed compaction target files
-      if (recoverPerformer.hasCrashed()) {
-        if (TsFileResource.getInnerCompactionCount(sealedTsFile.getTsFile().getName()) > 0) {
-          tsFileManager.addForRecover(sealedTsFile, isSeq);
-          return;
-        } else {
-          logger.warn(
-              "Sealed TsFile {} has crashed at zero level, truncate and recover it.",
-              sealedTsFile.getTsFilePath());
-        }
-      }
       sealedTsFile.close();
       tsFileManager.add(sealedTsFile, isSeq);
       tsFileResourceManager.registerSealedTsFileResource(sealedTsFile);
@@ -840,7 +830,7 @@ public class DataRegion implements IDataRegionForQuery {
         return;
       }
       // init map
-      long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
+      long timePartitionId = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
 
       if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
         TimePartitionManager.getInstance()
@@ -925,7 +915,7 @@ public class DataRegion implements IDataRegionForQuery {
       int before = loc;
       // before time partition
       long beforeTimePartition =
-          StorageEngine.getTimePartition(insertTabletNode.getTimes()[before]);
+          TimePartitionUtils.getTimePartitionId(insertTabletNode.getTimes()[before]);
       // init map
 
       if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(beforeTimePartition)) {
@@ -1772,9 +1762,12 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** Seperate tsfiles in TsFileManager to sealedList and unsealedList. */
   private void separateTsFile(
-      List<TsFileResource> sealedResource, List<TsFileResource> unsealedResource) {
+      List<TsFileResource> sealedResource,
+      List<TsFileResource> unsealedResource,
+      long startTime,
+      long endTime) {
     tsFileManager
-        .getTsFileList(true)
+        .getTsFileList(true, startTime, endTime)
         .forEach(
             tsFileResource -> {
               if (tsFileResource.isClosed()) {
@@ -1784,7 +1777,7 @@ public class DataRegion implements IDataRegionForQuery {
               }
             });
     tsFileManager
-        .getTsFileList(false)
+        .getTsFileList(false, startTime, endTime)
         .forEach(
             tsFileResource -> {
               if (tsFileResource.isClosed()) {
@@ -1800,15 +1793,9 @@ public class DataRegion implements IDataRegionForQuery {
    * @param startTime
    * @param endTime
    * @param searchIndex
-   * @param timePartitionFilter
    * @throws IOException
    */
-  public void deleteByDevice(
-      PartialPath pattern,
-      long startTime,
-      long endTime,
-      long searchIndex,
-      TimePartitionFilter timePartitionFilter)
+  public void deleteByDevice(PartialPath pattern, long startTime, long endTime, long searchIndex)
       throws IOException {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
@@ -1836,7 +1823,7 @@ public class DataRegion implements IDataRegionForQuery {
 
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
-          logDeletionInWAL(startTime, endTime, searchIndex, pattern, timePartitionFilter);
+          logDeletionInWAL(startTime, endTime, searchIndex, pattern);
 
       for (WALFlushListener walFlushListener : walListeners) {
         if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
@@ -1849,17 +1836,15 @@ public class DataRegion implements IDataRegionForQuery {
 
       List<TsFileResource> sealedTsFileResource = new ArrayList<>();
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
-      separateTsFile(sealedTsFileResource, unsealedTsFileResource);
+      separateTsFile(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
       // deviceMatchInfo is used for filter the matched deviceId in TsFileResource
       // deviceMatchInfo contains the DeviceId means this device matched the pattern
       Set<String> deviceMatchInfo = new HashSet<>();
-      deleteDataInFiles(
-          unsealedTsFileResource, deletion, devicePaths, timePartitionFilter, deviceMatchInfo);
+      deleteDataInFiles(unsealedTsFileResource, deletion, devicePaths, deviceMatchInfo);
       writeUnlock();
       hasReleasedLock = true;
 
-      deleteDataInFiles(
-          sealedTsFileResource, deletion, devicePaths, timePartitionFilter, deviceMatchInfo);
+      deleteDataInFiles(sealedTsFileResource, deletion, devicePaths, deviceMatchInfo);
 
     } catch (Exception e) {
       throw new IOException(e);
@@ -1871,13 +1856,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private List<WALFlushListener> logDeletionInWAL(
-      long startTime,
-      long endTime,
-      long searchIndex,
-      PartialPath path,
-      TimePartitionFilter timePartitionFilter) {
-    long timePartitionStartId = StorageEngine.getTimePartition(startTime);
-    long timePartitionEndId = StorageEngine.getTimePartition(endTime);
+      long startTime, long endTime, long searchIndex, PartialPath path) {
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
     if (config.getWalMode() == WALMode.DISABLE) {
       return walFlushListeners;
@@ -1886,19 +1865,13 @@ public class DataRegion implements IDataRegionForQuery {
         new DeleteDataNode(new PlanNodeId(""), Collections.singletonList(path), startTime, endTime);
     deleteDataNode.setSearchIndex(searchIndex);
     for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
-      if (timePartitionStartId <= entry.getKey()
-          && entry.getKey() <= timePartitionEndId
-          && (timePartitionFilter == null
-              || timePartitionFilter.satisfy(databaseName, entry.getKey()))) {
+      if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
         WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
         walFlushListeners.add(walFlushListener);
       }
     }
     for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
-      if (timePartitionStartId <= entry.getKey()
-          && entry.getKey() <= timePartitionEndId
-          && (timePartitionFilter == null
-              || timePartitionFilter.satisfy(databaseName, entry.getKey()))) {
+      if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
         WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
         walFlushListeners.add(walFlushListener);
       }
@@ -1911,12 +1884,7 @@ public class DataRegion implements IDataRegionForQuery {
       Set<PartialPath> devicePaths,
       long deleteStart,
       long deleteEnd,
-      TimePartitionFilter timePartitionFilter,
       Set<String> deviceMatchInfo) {
-    if (timePartitionFilter != null
-        && !timePartitionFilter.satisfy(databaseName, tsFileResource.getTimePartition())) {
-      return true;
-    }
     long fileStartTime = tsFileResource.getTimeIndex().getMinStartTime();
     long fileEndTime = tsFileResource.getTimeIndex().getMaxEndTime();
 
@@ -1977,7 +1945,6 @@ public class DataRegion implements IDataRegionForQuery {
       Collection<TsFileResource> tsFileResourceList,
       Deletion deletion,
       Set<PartialPath> devicePaths,
-      TimePartitionFilter timePartitionFilter,
       Set<String> deviceMatchInfo)
       throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
@@ -1986,7 +1953,6 @@ public class DataRegion implements IDataRegionForQuery {
           devicePaths,
           deletion.getStartTime(),
           deletion.getEndTime(),
-          timePartitionFilter,
           deviceMatchInfo)) {
         continue;
       }
@@ -2365,7 +2331,7 @@ public class DataRegion implements IDataRegionForQuery {
   private void updateLastFlushTime(TsFileResource newTsFileResource) {
     for (String device : newTsFileResource.getDevices()) {
       long endTime = newTsFileResource.getEndTime(device);
-      long timePartitionId = StorageEngine.getTimePartition(endTime);
+      long timePartitionId = TimePartitionUtils.getTimePartitionId(endTime);
       lastFlushTimeMap.updateFlushedTime(timePartitionId, device, endTime);
       lastFlushTimeMap.updateGlobalFlushedTime(device, endTime);
     }
@@ -2725,7 +2691,7 @@ public class DataRegion implements IDataRegionForQuery {
           continue;
         }
         // init map
-        long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
+        long timePartitionId = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
 
         if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
           TimePartitionManager.getInstance()
@@ -2917,17 +2883,6 @@ public class DataRegion implements IDataRegionForQuery {
   public interface UpdateEndTimeCallBack {
 
     void call(TsFileProcessor caller, Map<String, Long> updateMap, long systemFlushTime);
-  }
-
-  @FunctionalInterface
-  public interface CompactionRecoverCallBack {
-    void call();
-  }
-
-  @FunctionalInterface
-  public interface TimePartitionFilter {
-
-    boolean satisfy(String storageGroupName, long timePartitionId);
   }
 
   @FunctionalInterface

@@ -20,11 +20,13 @@ package org.apache.iotdb.flink.sql.function;
 
 import org.apache.iotdb.flink.sql.common.Options;
 import org.apache.iotdb.flink.sql.common.Utils;
+import org.apache.iotdb.flink.sql.exception.IllegalSchemaException;
 import org.apache.iotdb.flink.sql.wrapper.SchemaWrapper;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
@@ -122,8 +124,20 @@ public class IoTDBLookupFunction extends TableFunction<RowData> {
 
     ArrayList<Object> values = new ArrayList<>();
     values.add(timestamp);
-    for (Tuple2<String, DataType> filed : schema) {
-      values.add(Utils.getValue(fields.get(columnNames.indexOf(filed.f0)), filed.f1));
+    for (Tuple2<String, DataType> field : schema) {
+      if (!columnNames.contains(field.f0)) {
+        values.add(null);
+        continue;
+      }
+      int index = columnNames.indexOf(field.f0);
+      DataType flinkType = field.f1;
+      TSDataType iotdbType = fields.get(index).getDataType();
+      if (!Utils.isTypeEqual(iotdbType, flinkType)) {
+        throw new IllegalSchemaException(
+            String.format(
+                "The data type of column `%s` is different in IoTDB and Flink", field.f0));
+      }
+      values.add(Utils.getValue(fields.get(index), field.f1));
     }
 
     GenericRowData rowData = GenericRowData.of(values.toArray());

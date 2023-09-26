@@ -156,7 +156,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath()));
       Thread.currentThread().interrupt();
-      return new MinimumProgressIndex();
+      return MinimumProgressIndex.INSTANCE;
     }
   }
 
@@ -185,16 +185,29 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       }
       return dataContainer.toTabletInsertionEvents();
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      close();
+
       final String errorMsg =
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
-      Thread.currentThread().interrupt();
       throw new PipeException(errorMsg);
     } catch (IOException e) {
+      close();
+
       final String errorMsg = String.format("Read TsFile %s error.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
+    }
+  }
+
+  /** Release the resource of data container. */
+  @Override
+  public void close() {
+    if (dataContainer != null) {
+      dataContainer.close();
+      dataContainer = null;
     }
   }
 

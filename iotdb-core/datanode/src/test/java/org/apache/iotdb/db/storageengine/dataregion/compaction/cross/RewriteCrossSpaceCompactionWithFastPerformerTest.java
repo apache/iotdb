@@ -587,8 +587,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
                 + "s0"),
         0,
         1000,
-        0,
-        null);
+        0);
 
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -613,8 +612,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
                 + "s0"),
         0,
         1200,
-        0,
-        null);
+        0);
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource resource = seqResources.get(i);
       resource.resetModFile();
@@ -708,8 +706,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
                 + "s0"),
         0,
         1000,
-        0,
-        null);
+        0);
 
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -734,8 +731,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
                 + "s0"),
         0,
         1200,
-        0,
-        null);
+        0);
     vsgp.deleteByDevice(
         new PartialPath(
             COMPACTION_TEST_SG
@@ -746,8 +742,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
                 + "s0"),
         0,
         1800,
-        0,
-        null);
+        0);
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource resource = seqResources.get(i);
       resource.resetModFile();

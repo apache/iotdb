@@ -29,6 +29,8 @@ import java.util.Collections;
 /** Memtable insert benchmark. Bench the Memtable and get its performance. */
 public class MemtableBenchmark {
 
+  private static String database = "root.test";
+  private static String dataRegionId = "1";
   private static String deviceId = "d0";
   private static int numOfMeasurement = 10000;
   private static int numOfPoint = 1000;
@@ -43,7 +45,7 @@ public class MemtableBenchmark {
   }
 
   public static void main(String[] args) throws IllegalPathException {
-    IMemTable memTable = new PrimitiveMemTable();
+    IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
     final long startTime = System.currentTimeMillis();
     // cpu not locality
     for (int i = 0; i < numOfPoint; i++) {

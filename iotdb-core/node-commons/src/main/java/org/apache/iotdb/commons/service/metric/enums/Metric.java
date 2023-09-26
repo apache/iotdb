@@ -36,6 +36,7 @@ public enum Metric {
   SERIES_SLOT_NUM_IN_DATABASE("series_slot_num_in_database"),
   TIME_SLOT_NUM_IN_DATABASE("time_slot_num_in_database"),
   REGION_GROUP_NUM_IN_DATABASE("region_group_num_in_database"),
+  REPLICATION_FACTOR("replication_factor"),
   // protocol related
   ENTRY("entry"),
   SESSION_IDLE_TIME("session_idle_time"),
@@ -45,6 +46,8 @@ public enum Metric {
   // consensus related
   STAGE("stage"),
   IOT_CONSENSUS("iot_consensus"),
+  IOT_SEND_LOG("iot_send_log"),
+  IOT_RECEIVE_LOG("iot_receive_log"),
   RATIS_CONSENSUS_WRITE("ratis_consensus_write"),
   RATIS_CONSENSUS_READ("ratis_consensus_read"),
   // storage engine related
