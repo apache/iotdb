@@ -45,6 +45,8 @@ import org.slf4j.LoggerFactory;
 import javax.validation.constraints.NotNull;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeConnectorSubtask extends PipeSubtask {
 
@@ -53,6 +55,9 @@ public class PipeConnectorSubtask extends PipeSubtask {
   // For input and output
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
   private final PipeConnector outputPipeConnector;
+  private final AtomicBoolean isClosed = new AtomicBoolean(false);
+  // The lock will be held if subtask is transferring
+  private final ReentrantLock isTransferringLock = new ReentrantLock();
 
   // For thread pool to execute callbacks
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
@@ -97,6 +102,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
       return false;
     }
 
+    isTransferringLock.lock();
     try {
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
@@ -125,6 +131,13 @@ public class PipeConnectorSubtask extends PipeSubtask {
               + "whether the implementation of PipeConnector is correct "
               + "according to the pipe-api description.",
           e);
+    } finally {
+      isTransferringLock.unlock();
+      synchronized (isClosed) {
+        if (isClosed.get()) {
+          doClose();
+        }
+      }
     }
 
     return true;
@@ -232,10 +245,25 @@ public class PipeConnectorSubtask extends PipeSubtask {
   }
 
   @Override
+  public void close() {
+    synchronized (isClosed) {
+      isClosed.set(true);
+    }
+    // If tryLock() fails, the connector subtask should be transferring now and will call doClose()
+    // after transfer complete. doClose() will be called at least once.
+    if (isTransferringLock.tryLock()) {
+      try {
+        doClose();
+      } finally {
+        isTransferringLock.unlock();
+      }
+    }
+  }
+
   // Synchronized for outputPipeConnector.close() and releaseLastEvent() in super.close()
   // make sure that the lastEvent will not be updated after pipeProcessor.close() to avoid
   // resource leak because of the lastEvent is not released.
-  public synchronized void close() {
+  private synchronized void doClose() {
     try {
       outputPipeConnector.close();
     } catch (Exception e) {
