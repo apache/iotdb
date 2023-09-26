@@ -38,7 +38,7 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   private final Map<String, String> tagMap;
   private final boolean isAligned;
 
-  private final ILastCacheContainer lastCacheContainer = new LastCacheContainer();
+  private ILastCacheContainer lastCacheContainer = null;
 
   public SchemaCacheEntry(
       String storageGroup,
@@ -80,6 +80,22 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   }
 
   /**
+   * Get and init last cache container. Notice that this method may change estimated size of this.
+   *
+   * @return last cache container which is not null
+   */
+  public ILastCacheContainer getAndInitLastCacheContainer() {
+    if (lastCacheContainer == null) {
+      synchronized (this) {
+        if (lastCacheContainer == null) {
+          lastCacheContainer = new LastCacheContainer();
+        }
+      }
+    }
+    return lastCacheContainer;
+  }
+
+  /**
    * Total basic 100B
    *
    * <ul>
@@ -99,9 +115,13 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
    */
   public static int estimateSize(SchemaCacheEntry schemaCacheEntry) {
     // each char takes 2B in Java
+    int lastCacheContainerSize =
+        schemaCacheEntry.getLastCacheContainer() == null
+            ? 0
+            : schemaCacheEntry.getLastCacheContainer().estimateSize();
     return 100
         + 2 * schemaCacheEntry.getIMeasurementSchema().getMeasurementId().length()
-        + schemaCacheEntry.getLastCacheContainer().estimateSize();
+        + lastCacheContainerSize;
   }
 
   @Override
