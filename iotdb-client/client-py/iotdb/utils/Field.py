@@ -21,17 +21,12 @@ from .IoTDBConstants import TSDataType
 
 
 class Field(object):
-    def __init__(self, data_type):
+    def __init__(self, data_type, value=None):
         """
         :param data_type: TSDataType
         """
         self.__data_type = data_type
-        self.__bool_value = None
-        self.__int_value = None
-        self.__long_value = None
-        self.__float_value = None
-        self.__double_value = None
-        self.__binary_value = None
+        self.__value = value
 
     @staticmethod
     def copy(field):
@@ -62,70 +57,72 @@ class Field(object):
         return self.__data_type is None
 
     def set_bool_value(self, value):
-        self.__bool_value = value
+        self.__value = value
 
     def get_bool_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        return self.__bool_value
+        if self.__data_type != TSDataType.BOOLEAN:
+            return None
+        return self.__value
 
     def set_int_value(self, value):
-        self.__int_value = value
+        self.__value = value
 
     def get_int_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        return self.__int_value
+        if self.__data_type != TSDataType.INT32:
+            return None
+        return self.__value
 
     def set_long_value(self, value):
-        self.__long_value = value
+        self.__value = value
 
     def get_long_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        return self.__long_value
+        if self.__data_type != TSDataType.INT64:
+            return None
+        return self.__value
 
     def set_float_value(self, value):
-        self.__float_value = value
+        self.__value = value
 
     def get_float_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        return self.__float_value
+        if self.__data_type != TSDataType.FLOAT:
+            return None
+        return self.__value
 
     def set_double_value(self, value):
-        self.__double_value = value
+        self.__value = value
 
     def get_double_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        return self.__double_value
+        if self.__data_type != TSDataType.DOUBLE:
+            return None
+        return self.__value
 
     def set_binary_value(self, value):
-        self.__binary_value = value
+        self.__value = value
 
     def get_binary_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        return self.__binary_value
+        if self.__data_type != TSDataType.TEXT:
+            return None
+        return self.__value
 
     def get_string_value(self):
         if self.__data_type is None:
             return "None"
-        elif self.__data_type == TSDataType.BOOLEAN:
-            return str(self.__bool_value)
-        elif self.__data_type == TSDataType.INT64:
-            return str(self.__long_value)
-        elif self.__data_type == TSDataType.INT32:
-            return str(self.__int_value)
-        elif self.__data_type == TSDataType.FLOAT:
-            return str(self.__float_value)
-        elif self.__data_type == TSDataType.DOUBLE:
-            return str(self.__double_value)
         elif self.__data_type == TSDataType.TEXT:
-            return self.__binary_value.decode("utf-8")
+            return self.__value.decode("utf-8")
         else:
-            raise Exception("unsupported data type {}".format(self.__data_type))
+            return str(self.__value)
 
     def __str__(self):
         return self.get_string_value()
@@ -136,20 +133,10 @@ class Field(object):
         """
         if self.__data_type is None:
             return None
-        elif data_type == TSDataType.BOOLEAN:
-            return self.get_bool_value()
-        elif data_type == TSDataType.INT32:
-            return self.get_int_value()
-        elif data_type == TSDataType.INT64:
-            return self.get_long_value()
-        elif data_type == TSDataType.FLOAT:
-            return self.get_float_value()
-        elif data_type == TSDataType.DOUBLE:
-            return self.get_double_value()
-        elif data_type == TSDataType.TEXT:
-            return self.get_binary_value()
-        else:
-            raise Exception("unsupported data type {}".format(data_type))
+        return self.__value
+
+    def set_value(self, value):
+        self.__value = value
 
     @staticmethod
     def get_field(value, data_type):
@@ -159,19 +146,5 @@ class Field(object):
         """
         if value is None:
             return None
-        field = Field(data_type)
-        if data_type == TSDataType.BOOLEAN:
-            field.set_bool_value(value)
-        elif data_type == TSDataType.INT32:
-            field.set_int_value(value)
-        elif data_type == TSDataType.INT64:
-            field.set_long_value(value)
-        elif data_type == TSDataType.FLOAT:
-            field.set_float_value(value)
-        elif data_type == TSDataType.DOUBLE:
-            field.set_double_value(value)
-        elif data_type == TSDataType.TEXT:
-            field.set_binary_value(value)
-        else:
-            raise Exception("unsupported data type {}".format(data_type))
+        field = Field(data_type, value)
         return field

@@ -27,13 +27,17 @@ from iotdb.thrift.rpc.IClientRPCService import TSFetchResultsReq, TSCloseOperati
 from iotdb.utils.IoTDBConstants import TSDataType
 
 logger = logging.getLogger("IoTDB")
+shift_table = tuple([0x80 >> i for i in range(8)])
+
+
+def _to_bitbuffer(b):
+    return bytes("{:0{}b}".format(int(binascii.hexlify(b), 16), 8 * len(b)), "utf-8")
 
 
 class IoTDBRpcDataSet(object):
     TIMESTAMP_STR = "Time"
     # VALUE_IS_NULL = "The value got by %s (column name) is NULL."
     START_INDEX = 2
-    FLAG = 0x80
 
     def __init__(
         self,
@@ -64,7 +68,8 @@ class IoTDBRpcDataSet(object):
         self.__column_ordinal_dict = {}
         if not ignore_timestamp:
             self.__column_name_list.append(IoTDBRpcDataSet.TIMESTAMP_STR)
-            self.__column_type_list.append(TSDataType.INT64)
+            # TSDataType.INT64 for time
+            self.__column_type_list.append(2)
             self.__column_ordinal_dict[IoTDBRpcDataSet.TIMESTAMP_STR] = 1
 
         if column_name_index is not None:
@@ -107,6 +112,9 @@ class IoTDBRpcDataSet(object):
         self.__empty_resultSet = False
         self.__has_cached_record = False
         self.__rows_index = 0
+        self.__is_null_info = [
+            False for _ in range(len(self.__column_type_deduplicated_list))
+        ]
 
     def close(self):
         if self.__is_closed:
@@ -156,11 +164,6 @@ class IoTDBRpcDataSet(object):
             return True
         return False
 
-    def _to_bitbuffer(self, b):
-        return bytes(
-            "{:0{}b}".format(int(binascii.hexlify(b), 16), 8 * len(b)), "utf-8"
-        )
-
     def resultset_to_pandas(self):
         result = {}
         for column_name in self.__column_name_list:
@@ -197,25 +200,25 @@ class IoTDBRpcDataSet(object):
                 value_buffer_len = len(value_buffer)
 
                 data_array = None
-                if data_type == TSDataType.DOUBLE:
+                if data_type == 4:
                     data_array = np.frombuffer(
                         value_buffer, np.dtype(np.double).newbyteorder(">")
                     )
-                elif data_type == TSDataType.FLOAT:
+                elif data_type == 3:
                     data_array = np.frombuffer(
                         value_buffer, np.dtype(np.float32).newbyteorder(">")
                     )
-                elif data_type == TSDataType.BOOLEAN:
+                elif data_type == 0:
                     data_array = np.frombuffer(value_buffer, np.dtype("?"))
-                elif data_type == TSDataType.INT32:
+                elif data_type == 1:
                     data_array = np.frombuffer(
                         value_buffer, np.dtype(np.int32).newbyteorder(">")
                     )
-                elif data_type == TSDataType.INT64:
+                elif data_type == 2:
                     data_array = np.frombuffer(
                         value_buffer, np.dtype(np.int64).newbyteorder(">")
                     )
-                elif data_type == TSDataType.TEXT:
+                elif data_type == 5:
                     j = 0
                     offset = 0
                     data_array = []
@@ -239,29 +242,27 @@ class IoTDBRpcDataSet(object):
                 self.__query_data_set.valueList[location] = None
 
                 if len(data_array) < total_length:
-                    if data_type == TSDataType.INT32 or data_type == TSDataType.INT64:
+                    if data_type == 1 or data_type == 2:
                         tmp_array = np.full(total_length, np.nan, np.float32)
-                    elif (
-                        data_type == TSDataType.FLOAT or data_type == TSDataType.DOUBLE
-                    ):
+                    elif data_type == 3 or data_type == 4:
                         tmp_array = np.full(total_length, np.nan, data_array.dtype)
-                    elif data_type == TSDataType.BOOLEAN:
+                    elif data_type == 0:
                         tmp_array = np.full(total_length, np.nan, np.float32)
-                    elif data_type == TSDataType.TEXT:
+                    elif data_type == 5:
                         tmp_array = np.full(total_length, None, dtype=data_array.dtype)
 
                     bitmap_buffer = self.__query_data_set.bitmapList[location]
-                    buffer = self._to_bitbuffer(bitmap_buffer)
+                    buffer = _to_bitbuffer(bitmap_buffer)
                     bit_mask = (np.frombuffer(buffer, "u1") - ord("0")).astype(bool)
                     if len(bit_mask) != total_length:
                         bit_mask = bit_mask[:total_length]
                     tmp_array[bit_mask] = data_array
 
-                    if data_type == TSDataType.INT32:
+                    if data_type == 1:
                         tmp_array = pd.Series(tmp_array).astype("Int32")
-                    elif data_type == TSDataType.INT64:
+                    elif data_type == 2:
                         tmp_array = pd.Series(tmp_array).astype("Int64")
-                    elif data_type == TSDataType.BOOLEAN:
+                    elif data_type == 0:
                         tmp_array = pd.Series(tmp_array).astype("boolean")
 
                     data_array = tmp_array
@@ -287,34 +288,27 @@ class IoTDBRpcDataSet(object):
         # simulating buffer, read 8 bytes from data set and discard first 8 bytes which have been read.
         self.__time_bytes = self.__query_data_set.time[:8]
         self.__query_data_set.time = self.__query_data_set.time[8:]
-        for i in range(len(self.__query_data_set.bitmapList)):
-            bitmap_buffer = self.__query_data_set.bitmapList[i]
-
+        for i, bitmap_buffer in enumerate(self.__query_data_set.bitmapList):
             # another 8 new rows, should move the bitmap buffer position to next byte
             if self.__rows_index % 8 == 0:
                 self.__current_bitmap[i] = bitmap_buffer[0]
                 self.__query_data_set.bitmapList[i] = bitmap_buffer[1:]
-            if not self.is_null(i, self.__rows_index):
+            if not self.is_null(self.__current_bitmap[i], self.__rows_index):
+                self.__is_null_info[i] = False
                 value_buffer = self.__query_data_set.valueList[i]
                 data_type = self.__column_type_deduplicated_list[i]
 
                 # simulating buffer
-                if data_type == TSDataType.BOOLEAN:
+                if data_type == 0:
                     self.__value[i] = value_buffer[:1]
                     self.__query_data_set.valueList[i] = value_buffer[1:]
-                elif data_type == TSDataType.INT32:
+                elif data_type == 1 or data_type == 3:
                     self.__value[i] = value_buffer[:4]
                     self.__query_data_set.valueList[i] = value_buffer[4:]
-                elif data_type == TSDataType.INT64:
+                elif data_type == 2 or data_type == 4:
                     self.__value[i] = value_buffer[:8]
                     self.__query_data_set.valueList[i] = value_buffer[8:]
-                elif data_type == TSDataType.FLOAT:
-                    self.__value[i] = value_buffer[:4]
-                    self.__query_data_set.valueList[i] = value_buffer[4:]
-                elif data_type == TSDataType.DOUBLE:
-                    self.__value[i] = value_buffer[:8]
-                    self.__query_data_set.valueList[i] = value_buffer[8:]
-                elif data_type == TSDataType.TEXT:
+                elif data_type == 5:
                     length = int.from_bytes(
                         value_buffer[:4], byteorder="big", signed=False
                     )
@@ -322,6 +316,8 @@ class IoTDBRpcDataSet(object):
                     self.__query_data_set.valueList[i] = value_buffer[4 + length :]
                 else:
                     raise RuntimeError("unsupported data type {}.".format(data_type))
+            else:
+                self.__is_null_info[i] = True
         self.__rows_index += 1
         self.__has_cached_record = True
 
@@ -347,10 +343,10 @@ class IoTDBRpcDataSet(object):
                 "Cannot fetch result from server, because of network connection: ", e
             )
 
-    def is_null(self, index, row_num):
-        bitmap = self.__current_bitmap[index]
-        shift = row_num % 8
-        return ((IoTDBRpcDataSet.FLAG >> shift) & (bitmap & 0xFF)) == 0
+    @staticmethod
+    def is_null(bitmap, row_num):
+        shift = shift_table[row_num % 8]
+        return shift & bitmap == 0
 
     def is_null_by_index(self, column_index):
         index = (
@@ -360,14 +356,20 @@ class IoTDBRpcDataSet(object):
         # time column will never be None
         if index < 0:
             return True
-        return self.is_null(index, self.__rows_index - 1)
+        return self.is_null(self.__current_bitmap[index], self.__rows_index - 1)
 
     def is_null_by_name(self, column_name):
         index = self.__column_ordinal_dict[column_name] - IoTDBRpcDataSet.START_INDEX
         # time column will never be None
         if index < 0:
             return True
-        return self.is_null(index, self.__rows_index - 1)
+        return self.is_null(self.__current_bitmap[index], self.__rows_index - 1)
+
+    def is_null_by_location(self, location):
+        # time column will never be None
+        if location < 0:
+            return True
+        return self.__is_null_info[location]
 
     def find_column_name_by_index(self, column_index):
         if column_index <= 0:
