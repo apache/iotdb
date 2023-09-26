@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.github.benmanes.caffeine.cache.Weigher;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -62,11 +61,7 @@ public class WALInsertNodeCache {
   private WALInsertNodeCache() {
     lruCache =
         Caffeine.newBuilder()
-            // TODO: pipe module should determine how to configure this param
-            .maximumWeight(config.getAllocateMemoryForWALPipeCache())
-            .weigher(
-                (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
-                    (position, pair) -> position.getSize())
+            .maximumSize(config.getWalBufferQueueCapacity())
             .build(new WALInsertNodeCacheLoader());
     isBatchLoadEnabled =
         config.getAllocateMemoryForWALPipeCache() >= 3 * config.getWalFileSizeThresholdInByte();
@@ -146,6 +141,9 @@ public class WALInsertNodeCache {
     @Override
     public @NonNull Map<@NonNull WALEntryPosition, @NonNull Pair<ByteBuffer, InsertNode>> loadAll(
         @NonNull Iterable<? extends @NonNull WALEntryPosition> keys) {
+
+      lruCache.invalidateAll();
+
       Map<WALEntryPosition, Pair<ByteBuffer, InsertNode>> res = new HashMap<>();
 
       for (WALEntryPosition pos : keys) {
@@ -192,7 +190,6 @@ public class WALInsertNodeCache {
               e);
         }
       }
-
       return res;
     }
   }
