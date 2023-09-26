@@ -58,7 +58,7 @@ public class PathPatternTreeTest {
             new PartialPath("root.sg1.*.t1.s1"),
             new PartialPath("root.sg1.d2.t1.s1")),
         Arrays.asList(new PartialPath("root.sg1.d1.t2.s2"), new PartialPath("root.sg1.*.t1.s1")),
-        Arrays.asList(new PartialPath("root.sg1.d1.t2"), new PartialPath("root.sg1.*.t1")),
+        Arrays.asList(new PartialPath("root.sg1.d1.t2"), new PartialPath("root.sg1.*")),
         true);
   }
 
