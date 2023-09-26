@@ -1206,9 +1206,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     SchemaEngine.getInstance().updateAndFillSchemaCountMap(req.schemaQuotaCount, resp);
 
     // Update pipe meta if necessary
-    if (req.isNeedPipeMetaList()) {
-      PipeAgent.task().collectPipeMetaList(resp);
-    }
+    PipeAgent.task().collectPipeMetaList(req, resp);
 
     return resp;
   }
