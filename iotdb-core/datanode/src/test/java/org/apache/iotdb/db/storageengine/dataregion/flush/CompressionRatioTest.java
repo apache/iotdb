@@ -30,6 +30,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Locale;
 
 import static org.junit.Assert.assertEquals;
@@ -49,7 +50,6 @@ public class CompressionRatioTest {
     EnvironmentUtils.envSetUp();
     FileUtils.forceMkdir(new File(directory));
     compressionRatio.reset();
-    compressionRatio.restore();
   }
 
   @After
@@ -59,93 +59,49 @@ public class CompressionRatioTest {
 
   @Test
   public void testCompressionRatio() throws IOException {
-    double compressionRatioSum = 0;
-    int calcuTimes = 0;
-    if (new File(
-            directory,
-            String.format(
-                Locale.ENGLISH,
-                CompressionRatio.RATIO_FILE_PATH_FORMAT,
-                compressionRatioSum,
-                calcuTimes))
-        .exists()) {
-      fail();
-    }
-    double compressionRatio = 10;
-    for (int i = 0; i < 500; i += compressionRatio) {
-      this.compressionRatio.updateRatio(compressionRatio);
-      if (new File(
-              directory,
-              String.format(
-                  Locale.ENGLISH,
-                  CompressionRatio.RATIO_FILE_PATH_FORMAT,
-                  compressionRatioSum,
-                  calcuTimes))
-          .exists()) {
-        fail();
-      }
-      calcuTimes++;
-      compressionRatioSum += compressionRatio;
+    long totalMemorySize = 10;
+    long totalDiskSize = 5;
+
+    for (int i = 0; i < 5; i ++) {
+      this.compressionRatio.updateRatio(10, 5);
       if (!new File(
               directory,
               String.format(
                   Locale.ENGLISH,
                   CompressionRatio.RATIO_FILE_PATH_FORMAT,
-                  compressionRatioSum,
-                  calcuTimes))
+                  totalMemorySize,
+                  totalDiskSize))
           .exists()) {
         fail();
       }
-      assertEquals(
-          0, Double.compare(compressionRatioSum / calcuTimes, this.compressionRatio.getRatio()));
+      assertEquals(2, this.compressionRatio.getRatio(), 0.1);
+      totalMemorySize += 10;
+      totalDiskSize += 5;
     }
   }
 
   @Test
   public void testRestore() throws IOException {
-    double compressionRatioSum = 0;
-    int calcuTimes = 0;
-    if (new File(
-            directory,
-            String.format(
-                Locale.ENGLISH,
-                CompressionRatio.RATIO_FILE_PATH_FORMAT,
-                compressionRatioSum,
-                calcuTimes))
-        .exists()) {
-      fail();
-    }
-    int compressionRatio = 10;
-    for (int i = 0; i < 100; i += compressionRatio) {
-      this.compressionRatio.updateRatio(compressionRatio);
-      if (new File(
-              directory,
-              String.format(
-                  Locale.ENGLISH,
-                  CompressionRatio.RATIO_FILE_PATH_FORMAT,
-                  compressionRatioSum,
-                  calcuTimes))
-          .exists()) {
-        fail();
-      }
-      calcuTimes++;
-      compressionRatioSum += compressionRatio;
-      if (!new File(
-              directory,
-              String.format(
-                  Locale.ENGLISH,
-                  CompressionRatio.RATIO_FILE_PATH_FORMAT,
-                  compressionRatioSum,
-                  calcuTimes))
-          .exists()) {
-        fail();
-      }
-      assertEquals(
-          0, Double.compare(compressionRatioSum / calcuTimes, this.compressionRatio.getRatio()));
-    }
-    this.compressionRatio.restore();
-    assertEquals(10, this.compressionRatio.getCalcTimes());
-    assertEquals(
-        0, Double.compare(compressionRatioSum / calcuTimes, this.compressionRatio.getRatio()));
+    Files.createFile(
+        new File(
+                directory,
+                String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, 1000, 100))
+            .toPath());
+    Files.createFile(
+        new File(
+                directory,
+                String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, 1000, 200))
+            .toPath());
+    Files.createFile(
+        new File(
+                directory,
+                String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, 1000, 500))
+            .toPath());
+
+    compressionRatio.restore();
+
+    // if multiple files exist in the system due to some exceptions, restore the file with the
+    // largest diskSize to the memory
+    assertEquals(2, compressionRatio.getRatio(), 0.1);
   }
 }

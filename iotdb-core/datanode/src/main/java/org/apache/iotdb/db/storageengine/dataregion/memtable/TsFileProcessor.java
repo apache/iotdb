@@ -1329,7 +1329,7 @@ public class TsFileProcessor {
       String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
       WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);
-      CompressionRatio.getInstance().updateRatio(compressionRatio);
+      CompressionRatio.getInstance().updateRatio(totalMemTableSize, writer.getPos());
     } catch (IOException e) {
       logger.error(
           "{}: {} update compression ratio failed",

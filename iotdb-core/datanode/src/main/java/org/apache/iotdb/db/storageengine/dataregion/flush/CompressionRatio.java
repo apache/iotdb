@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.storageengine.dataregion.flush;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
-import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,16 +32,17 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This class is used to count, compute and persist the compression ratio of tsfiles. Whenever the
  * task of closing a file ends, the compression ratio of the file is calculated based on the total
- * MemTable size and the total size of the tsfile on disk. {@code compressionRatioSum} records the
- * sum of these compression ratios, and {@Code calcTimes} records the number of closed file tasks.
- * When the compression rate of the current system is obtained, the average compression ratio is
- * returned as the result, that is {@code compressionRatioSum}/{@Code calcTimes}. At the same time,
- * each time the compression ratio statistics are updated, these two parameters are persisted on
- * disk for system recovery.
+ * MemTable size and the total size of the tsfile on disk. {@code totalMemorySize} records the data
+ * size of memory, and {@code totalDiskSize} records the data size of disk. When the compression
+ * rate of the current system is obtained, the average compression ratio is returned as the result,
+ * that is {@code totalMemorySize}/{@code totalDiskSize}. At the same time, each time the
+ * compression ratio statistics are updated, these two parameters are persisted on disk for system
+ * recovery.
  */
 public class CompressionRatio {
 
@@ -55,19 +56,17 @@ public class CompressionRatio {
 
   private static final String SEPARATOR = "-";
 
-  static final String RATIO_FILE_PATH_FORMAT = FILE_PREFIX + "%f" + SEPARATOR + "%d";
+  static final String RATIO_FILE_PATH_FORMAT = FILE_PREFIX + "%d" + SEPARATOR + "%d";
 
-  private static final double DEFAULT_COMPRESSION_RATIO = 2.0;
+  /** The data size on memory */
+  private static AtomicLong totalMemorySize = new AtomicLong(0);
 
-  private AtomicDouble compressionRatio = new AtomicDouble(DEFAULT_COMPRESSION_RATIO);
-
-  /** The total sum of all compression ratios. */
-  private double compressionRatioSum;
-
-  /** The number of compression ratios. */
-  private long calcTimes;
+  /** The data size on disk */
+  private long totalDiskSize = 0L;
 
   private File directory;
+
+  private String oldFileName = String.format(RATIO_FILE_PATH_FORMAT, 0, 0);
 
   private CompressionRatio() {
     directory =
@@ -83,30 +82,26 @@ public class CompressionRatio {
   /**
    * Whenever the task of closing a file ends, the compression ratio of the file is calculated and
    * call this method.
-   *
-   * @param currentCompressionRatio the compression ratio of the closing file.
    */
-  public synchronized void updateRatio(double currentCompressionRatio) throws IOException {
-    File oldFile =
-        SystemFileFactory.INSTANCE.getFile(
-            directory,
-            String.format(Locale.ENGLISH, RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
-    compressionRatioSum += currentCompressionRatio;
-    calcTimes++;
+  public synchronized void updateRatio(long memorySize, long diskSize) throws IOException {
+    File oldFile = SystemFileFactory.INSTANCE.getFile(directory, oldFileName);
+
+    totalMemorySize.addAndGet(memorySize);
+    totalDiskSize += diskSize;
     File newFile =
         SystemFileFactory.INSTANCE.getFile(
             directory,
-            String.format(Locale.ENGLISH, RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
+            String.format(
+                Locale.ENGLISH, RATIO_FILE_PATH_FORMAT, totalMemorySize.get(), totalDiskSize));
     persist(oldFile, newFile);
-    compressionRatio.set(compressionRatioSum / calcTimes);
     if (LOGGER.isInfoEnabled()) {
-      LOGGER.info("Compression ratio is {}", compressionRatio.get());
+      LOGGER.info("Compression ratio is {}", (double) totalMemorySize.get() / totalDiskSize);
     }
   }
 
   /** Get the average compression ratio for all closed files */
   public double getRatio() {
-    return compressionRatio.get();
+    return (double) totalMemorySize.get() / totalDiskSize;
   }
 
   private void persist(File oldFile, File newFile) throws IOException {
@@ -124,6 +119,7 @@ public class CompressionRatio {
           oldFile.getAbsolutePath(),
           newFile.getAbsolutePath());
     }
+    this.oldFileName = newFile.getName();
   }
 
   private void checkDirectoryExist() throws IOException {
@@ -139,48 +135,46 @@ public class CompressionRatio {
     }
     File[] ratioFiles = directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX));
     if (ratioFiles != null && ratioFiles.length > 0) {
-      long maxTimes = 0;
-      double maxCompressionRatioSum = 0;
       int maxRatioIndex = 0;
       for (int i = 0; i < ratioFiles.length; i++) {
-        String[] splits = ratioFiles[i].getName().split("-");
-        long times = Long.parseLong(splits[2]);
-        if (times > maxTimes) {
-          maxTimes = times;
-          maxCompressionRatioSum = Double.parseDouble(splits[1]);
+        String[] fileNameArray = ratioFiles[i].getName().split("-");
+        long diskSize = Long.parseLong(fileNameArray[2]);
+        if (diskSize > totalDiskSize) {
+          totalMemorySize = new AtomicLong(Long.parseLong(fileNameArray[1]));
+          totalDiskSize = diskSize;
           maxRatioIndex = i;
         }
       }
-      calcTimes = maxTimes;
-      compressionRatioSum = maxCompressionRatioSum;
-      if (calcTimes != 0) {
-        compressionRatio.set(compressionRatioSum / calcTimes);
-      }
       LOGGER.debug(
-          "After restoring from compression ratio file, compressionRatioSum = {}, calcTimes = {}",
-          compressionRatioSum,
-          calcTimes);
+          "After restoring from compression ratio file, total memory size = {}, total disk size = {}",
+          totalMemorySize,
+          totalDiskSize);
       for (int i = 0; i < ratioFiles.length; i++) {
         if (i != maxRatioIndex) {
           Files.delete(ratioFiles[i].toPath());
-          ratioFiles[i].delete();
         }
       }
     }
   }
 
-  /** Only for test */
-  void reset() {
-    calcTimes = 0;
-    compressionRatioSum = 0;
+  @TestOnly
+  void reset() throws IOException {
+    if (!directory.exists()) {
+      return;
+    }
+    File[] ratioFiles = directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX));
+    if (ratioFiles == null) {
+      return;
+    }
+    for (File file : ratioFiles) {
+      Files.delete(file.toPath());
+    }
+    totalMemorySize = new AtomicLong(0);
+    totalDiskSize = 0L;
   }
 
-  public double getCompressionRatioSum() {
-    return compressionRatioSum;
-  }
-
-  long getCalcTimes() {
-    return calcTimes;
+  public static void decreaseDuplicatedMemorySize(long size) {
+    totalMemorySize.addAndGet(-size);
   }
 
   public static CompressionRatio getInstance() {
