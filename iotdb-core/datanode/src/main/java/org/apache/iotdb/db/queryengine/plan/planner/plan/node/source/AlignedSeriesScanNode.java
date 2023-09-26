@@ -55,10 +55,10 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
   private Ordering scanOrder = Ordering.ASC;
 
-  // time filter for current series, could be null if doesn't exist
+  // time filter for current series, could be null if it doesn't exist
   @Nullable private Filter timeFilter;
 
-  // value filter for current series, could be null if doesn't exist
+  // value filter for current series, could be null if it doesn't exist
   @Nullable private Filter valueFilter;
 
   // Limit for result set. The default value is -1, which means no limit
