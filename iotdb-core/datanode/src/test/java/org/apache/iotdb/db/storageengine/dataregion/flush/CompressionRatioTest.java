@@ -62,7 +62,7 @@ public class CompressionRatioTest {
     long totalMemorySize = 10;
     long totalDiskSize = 5;
 
-    for (int i = 0; i < 5; i ++) {
+    for (int i = 0; i < 5; i++) {
       this.compressionRatio.updateRatio(10, 5);
       if (!new File(
               directory,
