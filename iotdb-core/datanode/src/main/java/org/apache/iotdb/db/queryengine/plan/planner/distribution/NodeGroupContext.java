@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -45,6 +46,8 @@ public class NodeGroupContext {
     this.nodeDistributionMap = new HashMap<>();
     if (statement instanceof QueryStatement) {
       this.isAlignByDevice = ((QueryStatement) statement).isAlignByDevice();
+      this.mostlyUsedDataRegion = getMostlyUsedDataRegion(root);
+    } else if (statement instanceof ShowTimeSeriesStatement) {
       this.mostlyUsedDataRegion = getMostlyUsedDataRegion(root);
     }
     this.hasExchangeNode = false;
