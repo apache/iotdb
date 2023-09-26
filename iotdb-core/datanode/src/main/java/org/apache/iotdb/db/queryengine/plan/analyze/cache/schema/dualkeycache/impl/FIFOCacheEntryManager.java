@@ -105,7 +105,7 @@ public class FIFOCacheEntryManager<FK, SK, V>
   static class FIFOCacheEntry<SK, V> implements ICacheEntry<SK, V> {
 
     private final SK secondKey;
-    private ICacheEntryGroup cacheEntryGroup;
+    private volatile ICacheEntryGroup cacheEntryGroup;
 
     private V value;
 
