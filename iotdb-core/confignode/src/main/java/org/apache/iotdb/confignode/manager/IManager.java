@@ -599,7 +599,7 @@ public interface IManager {
   TGetAllPipeInfoResp getAllPipeInfo();
 
   /**
-   * Get RegionId。used for Show cluster slots information in
+   * Get RegionId. used for Show cluster slots information in
    * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
    *
    * @return TGetRegionIdResp.
