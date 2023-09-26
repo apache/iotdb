@@ -387,13 +387,8 @@ public enum PlanNodeType {
         return AlterLogicalViewNode.deserialize(buffer);
       case 79:
         return PipeEnrichedInsertNode.deserialize(buffer);
-<<<<<<< HEAD
-=======
-      case 80:
-        return ForecastNode.deserialize(buffer);
       case 81:
         return LastQueryTransformNode.deserialize(buffer);
->>>>>>> 5f5a1d4fb7 (Enhance last query, support non single base series (#11120))
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

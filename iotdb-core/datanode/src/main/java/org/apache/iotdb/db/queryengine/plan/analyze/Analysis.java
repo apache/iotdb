@@ -758,14 +758,6 @@ public class Analysis {
     this.lastQueryNonWritableViewSourceExpressionMap = lastQueryNonWritableViewSourceExpressionMap;
   }
 
-  public ModelInferenceDescriptor getModelInferenceDescriptor() {
-    return modelInferenceDescriptor;
-  }
-
-  public void setModelInferenceDescriptor(ModelInferenceDescriptor modelInferenceDescriptor) {
-    this.modelInferenceDescriptor = modelInferenceDescriptor;
-  }
-
   public Map<String, List<String>> getOutputDeviceToQueriedDevicesMap() {
     return outputDeviceToQueriedDevicesMap;
   }
