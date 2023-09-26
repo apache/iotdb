@@ -124,6 +124,18 @@ public class IoTDBConfig {
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
 
+  /** Enable the thrift rpcPort Service ssl. */
+  private boolean enableSSL = false;
+
+  /** ssl key Store Path. */
+  private String keyStorePath = "";
+
+  /** ssl key Store password. */
+  private String keyStorePwd = "";
+
+  /** ssl client timeout(ms). */
+  private int clientTimeout = 300000;
+
   /** Rpc Selector thread num */
   private int rpcSelectorThreadCount = 1;
 
@@ -1155,6 +1167,38 @@ public class IoTDBConfig {
 
   public void setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     this.udfCollectorMemoryBudgetInMB = udfCollectorMemoryBudgetInMB;
+  }
+
+  public boolean isEnableSSL() {
+    return enableSSL;
+  }
+
+  public void setEnableSSL(boolean enableSSL) {
+    this.enableSSL = enableSSL;
+  }
+
+  public String getKeyStorePath() {
+    return keyStorePath;
+  }
+
+  public void setKeyStorePath(String keyStorePath) {
+    this.keyStorePath = keyStorePath;
+  }
+
+  public String getKeyStorePwd() {
+    return keyStorePwd;
+  }
+
+  public void setKeyStorePwd(String keyStorePwd) {
+    this.keyStorePwd = keyStorePwd;
+  }
+
+  public int getClientTimeout() {
+    return clientTimeout;
+  }
+
+  public void setClientTimeout(int clientTimeout) {
+    this.clientTimeout = clientTimeout;
   }
 
   public int getUdfInitialByteArrayLengthForMemoryControl() {

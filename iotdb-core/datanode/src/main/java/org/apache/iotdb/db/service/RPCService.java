@@ -59,17 +59,35 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
   public void initThriftServiceThread() throws IllegalAccessException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     try {
-      thriftServiceThread =
-          new ThriftServiceThread(
-              processor,
-              getID().getName(),
-              ThreadName.CLIENT_RPC_PROCESSOR.getName(),
-              config.getRpcAddress(),
-              config.getRpcPort(),
-              config.getRpcMaxConcurrentClientNum(),
-              config.getThriftServerAwaitTimeForStopService(),
-              new RPCServiceThriftHandler(impl),
-              IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
+      if (config.isEnableSSL()) {
+        thriftServiceThread =
+            new ThriftServiceThread(
+                processor,
+                getID().getName(),
+                ThreadName.CLIENT_RPC_PROCESSOR.getName(),
+                config.getRpcAddress(),
+                config.getRpcPort(),
+                config.getRpcMaxConcurrentClientNum(),
+                config.getThriftServerAwaitTimeForStopService(),
+                new RPCServiceThriftHandler(impl),
+                IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable(),
+                config.getKeyStorePath(),
+                config.getKeyStorePwd(),
+                config.getClientTimeout());
+      } else {
+        thriftServiceThread =
+            new ThriftServiceThread(
+                processor,
+                getID().getName(),
+                ThreadName.CLIENT_RPC_PROCESSOR.getName(),
+                config.getRpcAddress(),
+                config.getRpcPort(),
+                config.getRpcMaxConcurrentClientNum(),
+                config.getThriftServerAwaitTimeForStopService(),
+                new RPCServiceThriftHandler(impl),
+                IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
+      }
+
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

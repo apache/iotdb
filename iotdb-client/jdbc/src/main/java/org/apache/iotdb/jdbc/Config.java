@@ -69,4 +69,10 @@ public class Config {
 
   /** Key of connection's time zone. */
   public static final String TIME_ZONE = "time_zone";
+
+  public static final String ENABLE_SSL = "enable_ssl";
+
+  public static final String TRUST_STORE = "trust_store";
+
+  public static final String TRUST_STORE_PWD = "trust_store_pwd";
 }

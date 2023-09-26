@@ -469,11 +469,22 @@ public class IoTDBConnection implements Connection {
   private void openTransport() throws TTransportException {
     RpcTransportFactory.setDefaultBufferCapacity(params.getThriftDefaultBufferSize());
     RpcTransportFactory.setThriftMaxFrameSize(params.getThriftMaxFrameSize());
-    transport =
-        RpcTransportFactory.INSTANCE.getTransport(
-            params.getHost(), params.getPort(), getNetworkTimeout());
-    if (!transport.isOpen()) {
-      transport.open();
+
+    if (params.isEnableSSL()) {
+      transport =
+          RpcTransportFactory.INSTANCE.getTransport(
+              params.getHost(),
+              params.getPort(),
+              getNetworkTimeout(),
+              params.getTrustStore(),
+              params.getTrustStorePwd());
+    } else {
+      transport =
+          RpcTransportFactory.INSTANCE.getTransport(
+              params.getHost(), params.getPort(), getNetworkTimeout());
+      if (!transport.isOpen()) {
+        transport.open();
+      }
     }
   }
 
