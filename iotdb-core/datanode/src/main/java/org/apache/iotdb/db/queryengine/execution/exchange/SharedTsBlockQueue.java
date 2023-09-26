@@ -269,7 +269,7 @@ public class SharedTsBlockQueue {
     if (!blocked.isDone()) {
       blocked.set(null);
     }
-    if(!canAddTsBlock.isDone()){
+    if (!canAddTsBlock.isDone()) {
       canAddTsBlock.set(null);
     }
     if (blockedOnMemory != null) {
@@ -308,7 +308,7 @@ public class SharedTsBlockQueue {
     if (!blocked.isDone()) {
       blocked.cancel(true);
     }
-    if(!canAddTsBlock.isDone()){
+    if (!canAddTsBlock.isDone()) {
       canAddTsBlock.set(null);
     }
     if (blockedOnMemory != null) {
@@ -336,7 +336,7 @@ public class SharedTsBlockQueue {
     if (!blocked.isDone()) {
       blocked.setException(t);
     }
-    if(!canAddTsBlock.isDone()){
+    if (!canAddTsBlock.isDone()) {
       canAddTsBlock.set(null);
     }
     if (blockedOnMemory != null) {
