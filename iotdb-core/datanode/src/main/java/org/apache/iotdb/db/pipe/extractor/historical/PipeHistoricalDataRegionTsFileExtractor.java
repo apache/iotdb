@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -74,7 +73,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private long historicalDataExtractionTimeLowerBound; // Arrival time
 
-  private Queue<TsFileResource> pendingQueue;
+  private Queue<PipeTsFileInsertionEvent> pendingQueue;
 
   @Override
   public void validate(PipeParameterValidator validator) {
@@ -193,7 +192,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       try {
         pendingQueue = new ArrayDeque<>(tsFileManager.size(true) + tsFileManager.size(false));
 
-        final Collection<TsFileResource> sequenceTsFileResources =
+        final Collection<PipeTsFileInsertionEvent> sequenceFileInsertionEvents =
             tsFileManager.getTsFileList(true).stream()
                 .filter(
                     resource ->
@@ -203,10 +202,19 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             && !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
+                .map(
+                    resource ->
+                        new PipeTsFileInsertionEvent(
+                            resource,
+                            false,
+                            pipeTaskMeta,
+                            pattern,
+                            historicalDataExtractionStartTime,
+                            historicalDataExtractionEndTime))
                 .collect(Collectors.toList());
-        pendingQueue.addAll(sequenceTsFileResources);
+        pendingQueue.addAll(sequenceFileInsertionEvents);
 
-        final Collection<TsFileResource> unsequenceTsFileResources =
+        final Collection<PipeTsFileInsertionEvent> unsequenceFileInsertionEvents =
             tsFileManager.getTsFileList(false).stream()
                 .filter(
                     resource ->
@@ -216,26 +224,29 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             && !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
+                .map(
+                    resource ->
+                        new PipeTsFileInsertionEvent(
+                            resource,
+                            false,
+                            pipeTaskMeta,
+                            pattern,
+                            historicalDataExtractionStartTime,
+                            historicalDataExtractionEndTime))
                 .collect(Collectors.toList());
-        pendingQueue.addAll(unsequenceTsFileResources);
+        pendingQueue.addAll(unsequenceFileInsertionEvents);
 
         pendingQueue.forEach(
-            resource -> {
-              // Pin the resource, in case the file is removed by compaction or anything.
-              // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
-              try {
-                PipeResourceManager.tsfile().pinTsFileResource(resource);
-              } catch (IOException e) {
-                LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath());
-              }
-            });
+            event ->
+                event.increaseReferenceCount(
+                    PipeHistoricalDataRegionTsFileExtractor.class.getName()));
 
         LOGGER.info(
             "Pipe: start to extract historical TsFile, data region {}, "
                 + "sequence file count {}, unsequence file count {}",
             dataRegionId,
-            sequenceTsFileResources.size(),
-            unsequenceTsFileResources.size());
+            sequenceFileInsertionEvents.size(),
+            unsequenceFileInsertionEvents.size());
       } finally {
         tsFileManager.readUnlock();
       }
@@ -270,28 +281,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     if (pendingQueue == null) {
       return null;
     }
-    TsFileResource resource = pendingQueue.poll();
-    if (resource == null) {
-      return null;
-    }
 
-    final PipeTsFileInsertionEvent event =
-        new PipeTsFileInsertionEvent(
-            resource,
-            false,
-            pipeTaskMeta,
-            pattern,
-            historicalDataExtractionStartTime,
-            historicalDataExtractionEndTime);
-    event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
-    try {
-      PipeResourceManager.tsfile().unpinTsFileResource(resource);
-    } catch (IOException e) {
-      LOGGER.warn(
-          "Pipe: failed to unpin TsFileResource after creating event, original path: {}",
-          resource.getTsFilePath());
-    }
-    return event;
+    return pendingQueue.poll();
   }
 
   public synchronized boolean hasConsumedAll() {
@@ -302,15 +293,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   public synchronized void close() {
     if (pendingQueue != null) {
       pendingQueue.forEach(
-          resource -> {
-            try {
-              PipeResourceManager.tsfile().unpinTsFileResource(resource);
-            } catch (IOException e) {
-              LOGGER.warn(
-                  "Pipe: failed to unpin TsFileResource after dropping pipe, original path: {}",
-                  resource.getTsFilePath());
-            }
-          });
+          event ->
+              event.clearReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName()));
       pendingQueue.clear();
       pendingQueue = null;
     }
