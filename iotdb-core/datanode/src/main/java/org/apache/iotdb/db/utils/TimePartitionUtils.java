@@ -23,35 +23,17 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 public class TimePartitionUtils {
-  private static long timePartitionInterval =
+  public static long timePartitionInterval =
       CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
-  public static TTimePartitionSlot getTimePartitionSlot(long time) {
+  public static TTimePartitionSlot getTimePartition(long time) {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
-    if (time > 0 || time % timePartitionInterval == 0) {
-      timePartitionSlot.setStartTime(time / timePartitionInterval * timePartitionInterval);
-    } else {
-      timePartitionSlot.setStartTime((time / timePartitionInterval - 1) * timePartitionInterval);
-    }
+    timePartitionSlot.setStartTime(time - time % timePartitionInterval);
     return timePartitionSlot;
   }
 
   public static long getTimePartitionInterval() {
     return timePartitionInterval;
-  }
-
-  public static long getTimePartitionUpperBound(long time) {
-    long upperBoundOfTimePartition;
-    if (time > 0 || time % TimePartitionUtils.timePartitionInterval == 0) {
-      upperBoundOfTimePartition =
-          (time / TimePartitionUtils.timePartitionInterval + 1)
-              * TimePartitionUtils.timePartitionInterval;
-    } else {
-      upperBoundOfTimePartition =
-          (time / TimePartitionUtils.timePartitionInterval)
-              * TimePartitionUtils.timePartitionInterval;
-    }
-    return upperBoundOfTimePartition;
   }
 
   @TestOnly

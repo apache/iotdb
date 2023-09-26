@@ -68,17 +68,4 @@ public class StorageEngineTest {
     rg1.syncDeleteDataFiles();
     rg2.syncDeleteDataFiles();
   }
-
-  @Test
-  public void testGetTimePartitionId() {
-    long timePartitionInterval = StorageEngine.getTimePartitionInterval();
-    Assert.assertEquals(-2, StorageEngine.getTimePartition(-timePartitionInterval - 1));
-    Assert.assertEquals(-1, StorageEngine.getTimePartition(-timePartitionInterval));
-    Assert.assertEquals(-1, StorageEngine.getTimePartition(-1));
-    Assert.assertEquals(0, StorageEngine.getTimePartition(0));
-    Assert.assertEquals(0, StorageEngine.getTimePartition(1));
-    Assert.assertEquals(0, StorageEngine.getTimePartition(timePartitionInterval / 2));
-    Assert.assertEquals(1, StorageEngine.getTimePartition(timePartitionInterval * 2 - 1));
-    Assert.assertEquals(2, StorageEngine.getTimePartition(timePartitionInterval * 2 + 1));
-  }
 }

@@ -85,9 +85,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         .forEach(
             o -> {
               slotList.add(
-                  new Pair<>(o, TimePartitionUtils.getTimePartitionSlot(resource.getStartTime(o))));
+                  new Pair<>(o, TimePartitionUtils.getTimePartition(resource.getStartTime(o))));
               slotList.add(
-                  new Pair<>(o, TimePartitionUtils.getTimePartitionSlot(resource.getEndTime(o))));
+                  new Pair<>(o, TimePartitionUtils.getTimePartition(resource.getEndTime(o))));
             });
 
     if (slotList.isEmpty()) {

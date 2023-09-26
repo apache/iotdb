@@ -85,7 +85,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -1021,7 +1020,9 @@ public class PartitionManager {
     }
 
     if (req.isSetTimeStamp()) {
-      plan.setTimeSlotId(TimePartitionUtils.getTimePartitionSlot(req.getTimeStamp()));
+      plan.setTimeSlotId(
+          new TTimePartitionSlot(
+              req.getTimeStamp() - req.getTimeStamp() % COMMON_CONFIG.getTimePartitionInterval()));
     }
     try {
       return (GetRegionIdResp) getConsensusManager().read(plan);

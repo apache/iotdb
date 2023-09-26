@@ -388,7 +388,7 @@ public class AlignedChunkData implements ChunkData {
 
   public static AlignedChunkData deserialize(InputStream stream) throws IOException, PageException {
     TTimePartitionSlot timePartitionSlot =
-        TimePartitionUtils.getTimePartitionSlot(ReadWriteIOUtils.readLong(stream));
+        TimePartitionUtils.getTimePartition(ReadWriteIOUtils.readLong(stream));
     String device = ReadWriteIOUtils.readString(stream);
     boolean needDecodeChunk = ReadWriteIOUtils.readBool(stream);
     int chunkHeaderListSize = ReadWriteIOUtils.readInt(stream);

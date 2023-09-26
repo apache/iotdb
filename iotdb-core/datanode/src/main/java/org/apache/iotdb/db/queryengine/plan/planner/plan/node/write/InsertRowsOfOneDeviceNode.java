@@ -156,7 +156,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   devicePath.getFullPath(),
-                  TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()));
+                  TimePartitionUtils.getTimePartition(insertRowNode.getTime()));
       List<InsertRowNode> tmpMap =
           splitMap.computeIfAbsent(dataRegionReplicaSet, k -> new ArrayList<>());
       List<Integer> tmpIndexMap =

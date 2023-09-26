@@ -223,7 +223,7 @@ public class InsertRowsNode extends InsertNode {
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   insertRowNode.devicePath.getFullPath(),
-                  TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()));
+                  TimePartitionUtils.getTimePartition(insertRowNode.getTime()));
       // collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
