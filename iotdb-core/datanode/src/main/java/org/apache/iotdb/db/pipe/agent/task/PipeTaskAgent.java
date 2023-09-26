@@ -117,6 +117,10 @@ public class PipeTaskAgent {
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
+  public int getLeaderDataRegionCount() {
+    return pipeTaskManager.getLeaderDataRegionCount();
+  }
+
   public synchronized TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
       PipeMeta pipeMetaFromConfigNode) {
     acquireWriteLock();

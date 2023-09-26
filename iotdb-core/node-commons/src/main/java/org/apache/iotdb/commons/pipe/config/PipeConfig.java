@@ -81,12 +81,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeExtractorMatcherCacheSize();
   }
 
-  public int getPipeExtractorPendingQueueCapacity() {
-    return COMMON_CONFIG.getPipeExtractorPendingQueueCapacity();
-  }
-
-  public int getPipeExtractorPendingQueueTabletLimit() {
-    return COMMON_CONFIG.getPipeExtractorPendingQueueTabletLimit();
+  public int getPipeExtractorPendingQueueTsFileLimit() {
+    return COMMON_CONFIG.getPipeExtractorPendingQueueTsFileLimit();
   }
 
   /////////////////////////////// Connector ///////////////////////////////
@@ -186,9 +182,8 @@ public class PipeConfig {
         "PipeExtractorAssignerDisruptorRingBufferSize: {}",
         getPipeExtractorAssignerDisruptorRingBufferSize());
     LOGGER.info("PipeExtractorMatcherCacheSize: {}", getPipeExtractorMatcherCacheSize());
-    LOGGER.info("PipeExtractorPendingQueueCapacity: {}", getPipeExtractorPendingQueueCapacity());
     LOGGER.info(
-        "PipeExtractorPendingQueueTabletLimit: {}", getPipeExtractorPendingQueueTabletLimit());
+        "PipeExtractorPendingQueueTsFileLimit: {}", getPipeExtractorPendingQueueTsFileLimit());
 
     LOGGER.info("PipeConnectorTimeoutMs: {}", getPipeConnectorTimeoutMs());
     LOGGER.info("PipeConnectorReadFileBufferSize: {}", getPipeConnectorReadFileBufferSize());
