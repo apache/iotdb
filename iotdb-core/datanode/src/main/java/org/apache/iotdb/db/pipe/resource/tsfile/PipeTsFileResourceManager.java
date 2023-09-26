@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.File;
 import java.io.IOException;
@@ -177,5 +178,13 @@ public class PipeTsFileResourceManager {
    */
   public synchronized int getFileReferenceCount(File hardlinkOrCopiedFile) {
     return hardlinkOrCopiedFileToReferenceMap.getOrDefault(hardlinkOrCopiedFile.getPath(), 0);
+  }
+
+  public synchronized void pinTsFileResource(TsFileResource resource) throws IOException {
+    increaseFileReference(resource.getTsFile(), true);
+  }
+
+  public synchronized void unpinTsFileResource(TsFileResource resource) throws IOException {
+    decreaseFileReference(getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()));
   }
 }

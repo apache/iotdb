@@ -140,8 +140,7 @@ public class IOTDBLoadTsFileIT {
 
       statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_0));
       statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_1));
-    } catch (IoTDBSQLException e) {
-      LOGGER.info(String.format("delete storage group message : %s", e.getMessage()));
+    } catch (IoTDBSQLException ignored) {
     }
   }
 
@@ -642,7 +641,7 @@ public class IOTDBLoadTsFileIT {
 
   @Test
   public void testLoadWithEmptyTsFile() throws Exception {
-    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {}
+    try (TsFileGenerator ignored = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {}
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -652,6 +651,39 @@ public class IOTDBLoadTsFileIT {
       try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
         Assert.assertFalse(resultSet.next());
       }
+    }
+  }
+
+  @Test
+  public void testLoadTsFileWithWrongTimestampPrecision() throws Exception {
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_0,
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_00,
+              SchemaConfig.MEASUREMENT_01,
+              SchemaConfig.MEASUREMENT_02,
+              SchemaConfig.MEASUREMENT_03));
+      generator.registerAlignedTimeseries(
+          SchemaConfig.DEVICE_1,
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_10,
+              SchemaConfig.MEASUREMENT_11,
+              SchemaConfig.MEASUREMENT_12,
+              SchemaConfig.MEASUREMENT_13));
+      // generate ns timestamp
+      generator.generateData(
+          SchemaConfig.DEVICE_0, 100000, PARTITION_INTERVAL / 10_000, false, 1694689856546000000L);
+      generator.generateData(
+          SchemaConfig.DEVICE_1, 100000, PARTITION_INTERVAL / 10_000, true, 1694689856546000000L);
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute(String.format("load \"%s\"", tmpDir.getAbsolutePath()));
+    } catch (IoTDBSQLException e) {
+      Assert.assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
     }
   }
 

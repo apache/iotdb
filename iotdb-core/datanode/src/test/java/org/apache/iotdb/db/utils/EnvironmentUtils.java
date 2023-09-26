@@ -269,13 +269,12 @@ public class EnvironmentUtils {
 
     createAllDir();
 
-    StorageEngine.getInstance().start();
-
-    SchemaEngine.getInstance().init();
-
-    CompactionTaskManager.getInstance().start();
-
     try {
+      StorageEngine.getInstance().start();
+
+      SchemaEngine.getInstance().init();
+
+      CompactionTaskManager.getInstance().start();
       WALManager.getInstance().start();
       FlushManager.getInstance().start();
     } catch (StartupException e) {

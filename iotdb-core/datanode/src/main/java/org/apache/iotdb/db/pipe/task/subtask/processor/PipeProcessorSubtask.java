@@ -110,7 +110,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
         }
       }
 
-      releaseLastEvent();
+      releaseLastEvent(true);
     } catch (Exception e) {
       throw new PipeException(
           "Error occurred during executing PipeProcessor#process, perhaps need to check "

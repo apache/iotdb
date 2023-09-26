@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewException;
@@ -46,7 +47,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.function.IntPredicate;
 
 public class TimeSeriesSchemaCache {
 
@@ -223,12 +225,6 @@ public class TimeSeriesSchemaCache {
     return new Pair<>(indexOfMissingMeasurements, missedPathStringList);
   }
 
-  public void put(ClusterSchemaTree schemaTree) {
-    for (MeasurementPath measurementPath : schemaTree.getAllMeasurement()) {
-      putSingleMeasurementPath(schemaTree.getBelongedDatabase(measurementPath), measurementPath);
-    }
-  }
-
   public void putSingleMeasurementPath(String storageGroup, MeasurementPath measurementPath) {
     SchemaCacheEntry schemaCacheEntry =
         new SchemaCacheEntry(
@@ -251,6 +247,7 @@ public class TimeSeriesSchemaCache {
   }
 
   /** get SchemaCacheEntry and update last cache */
+  @TestOnly
   public void updateLastCache(
       PartialPath devicePath,
       String measurement,
@@ -273,8 +270,8 @@ public class TimeSeriesSchemaCache {
       String[] measurements,
       MeasurementSchema[] measurementSchemas,
       boolean isAligned,
-      Function<Integer, TimeValuePair> timeValuePairProvider,
-      Function<Integer, Boolean> shouldUpdateProvider,
+      IntFunction<TimeValuePair> timeValuePairProvider,
+      IntPredicate shouldUpdateProvider,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
     SchemaCacheEntry entry;
@@ -293,7 +290,7 @@ public class TimeSeriesSchemaCache {
 
           @Override
           public int updateValue(int index, SchemaCacheEntry value) {
-            if (!shouldUpdateProvider.apply(index)) {
+            if (!shouldUpdateProvider.test(index)) {
               return 0;
             }
             if (value == null) {
@@ -317,10 +314,28 @@ public class TimeSeriesSchemaCache {
           }
         }
       }
-
-      DataNodeLastCacheManager.updateLastCache(
-          entry, timeValuePairProvider.apply(index), highPriorityUpdate, latestFlushedTime);
     }
+    dualKeyCache.update(
+        new IDualKeyCacheUpdating<PartialPath, String, SchemaCacheEntry>() {
+          @Override
+          public PartialPath getFirstKey() {
+            return devicePath;
+          }
+
+          @Override
+          public String[] getSecondKeyList() {
+            return missingMeasurements.stream().map(i -> measurements[i]).toArray(String[]::new);
+          }
+
+          @Override
+          public int updateValue(int index, SchemaCacheEntry value) {
+            return DataNodeLastCacheManager.updateLastCache(
+                value,
+                timeValuePairProvider.apply(missingMeasurements.get(index)),
+                highPriorityUpdate,
+                latestFlushedTime);
+          }
+        });
   }
 
   /**
@@ -343,16 +358,31 @@ public class TimeSeriesSchemaCache {
           entry =
               new SchemaCacheEntry(
                   storageGroup,
-                  (MeasurementSchema) measurementPath.getMeasurementSchema(),
+                  measurementPath.getMeasurementSchema(),
                   measurementPath.getTagMap(),
                   measurementPath.isUnderAlignedEntity());
           dualKeyCache.put(seriesPath.getDevicePath(), seriesPath.getMeasurement(), entry);
         }
       }
     }
+    dualKeyCache.update(
+        new IDualKeyCacheUpdating<PartialPath, String, SchemaCacheEntry>() {
+          @Override
+          public PartialPath getFirstKey() {
+            return measurementPath.getDevicePath();
+          }
 
-    DataNodeLastCacheManager.updateLastCache(
-        entry, timeValuePair, highPriorityUpdate, latestFlushedTime);
+          @Override
+          public String[] getSecondKeyList() {
+            return new String[] {measurementPath.getMeasurement()};
+          }
+
+          @Override
+          public int updateValue(int index, SchemaCacheEntry value) {
+            return DataNodeLastCacheManager.updateLastCache(
+                value, timeValuePair, highPriorityUpdate, latestFlushedTime);
+          }
+        });
   }
 
   public void invalidateAll() {

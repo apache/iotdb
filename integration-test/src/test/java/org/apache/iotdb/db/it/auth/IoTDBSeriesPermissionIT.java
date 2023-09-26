@@ -143,7 +143,9 @@ public class IoTDBSeriesPermissionIT {
         showTimeSeriesColumnHeaders.stream()
             .map(ColumnHeader::getColumnName)
             .toArray(String[]::new),
-        new String[] {"root.test.d1.s1,null,root.test,INT32,RLE,LZ4,null,null,null,null,BASE,"},
+        new String[] {
+          "root.test.d1.s1,null,root.test,INT32,TS_2DIFF,LZ4,null,null,null,null,BASE,"
+        },
         "test1",
         "test123");
     resultSetEqualTest(
