@@ -95,16 +95,16 @@
             <configuration>
               <target>
                 <condition property="osFamily" value="windows">
-                  <os family="windows"/>
+                  <os family="windows"></os>
                 </condition>
                 <condition property="osFamily" value="unix">
-                  <os family="unix"/>
+                  <os family="unix"></os>
                 </condition>
                 <exec executable="C:\\Windows\\System32\\cmd.exe" failonerror="true" osfamily="windows">
-                  <arg line="/c backend-compile.bat"/>
+                  <arg line="/c backend-compile.bat"></arg>
                 </exec>
                 <exec executable="/bin/bash" failonerror="true" osfamily="unix">
-                  <arg line="-c ./backend-compile.sh"/>
+                  <arg line="-c ./backend-compile.sh"></arg>
                 </exec>
               </target>
             </configuration>

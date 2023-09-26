@@ -2389,13 +2389,6 @@
     <system>Jira</system>
     <url>https://issues.apache.org/jira/browse/iotdb</url>
   </issueManagement>
-  <!-- Only configure the site distribution as the rest is handled by the apache parent -->
-  <distributionManagement>
-    <site>
-      <id>apache.website</id>
-      <url>scm:git:https://gitbox.apache.org/repos/asf/iotdb-website.git</url>
-    </site>
-  </distributionManagement>
   <!--
     Needed for fetching lt_downsampling_java8 (which is used by library-udf)
     (Adding this in the root or when building other parts, this transitive dependency can be fetched)
@@ -2406,6 +2399,13 @@
       <url>https://jitpack.io</url>
     </repository>
   </repositories>
+  <!-- Only configure the site distribution as the rest is handled by the apache parent -->
+  <distributionManagement>
+    <site>
+      <id>apache.website</id>
+      <url>scm:git:https://gitbox.apache.org/repos/asf/iotdb-website.git</url>
+    </site>
+  </distributionManagement>
   <profiles>
     <!--
       A set of profiles defining the different properties needed to download and run thrift

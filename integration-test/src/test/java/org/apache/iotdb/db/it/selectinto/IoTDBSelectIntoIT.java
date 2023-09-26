@@ -39,6 +39,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
@@ -100,7 +101,7 @@ public class IoTDBSelectIntoIT {
     }
     for (int time = 0; time < 12; time++) {
       SELECT_INTO_SQL_LIST.add(
-          String.format(
+          String.format(Locale.ENGLISH,
               "INSERT INTO root.sg_type.d_0(time, s_int32, s_int64, s_float, s_double, s_boolean, s_text) "
                   + "VALUES (%d, %d, %d, %f, %f, %s, 'text%d')",
               time, time, time, (float) time, (double) time, time % 2 == 0, time));
