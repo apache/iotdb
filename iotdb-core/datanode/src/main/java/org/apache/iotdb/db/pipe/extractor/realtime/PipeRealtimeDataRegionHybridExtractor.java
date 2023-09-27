@@ -203,7 +203,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean isTsFileEventCountInQueueExceededLimit() {
-    return pendingQueue.getTsfileInsertionEventCount()
+    return pendingQueue.getTsFileInsertionEventCount()
         >= PipeConfig.getInstance().getPipeExtractorPendingQueueTsFileLimit();
   }
 
