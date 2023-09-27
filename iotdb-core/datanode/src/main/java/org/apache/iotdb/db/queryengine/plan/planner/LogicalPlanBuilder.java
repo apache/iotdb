@@ -221,7 +221,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLast(
-      Analysis analysis, Ordering timeseriesOrdering, Ordering resultTimeOrder, ZoneId zoneId) {
+      Analysis analysis, Ordering timeseriesOrdering, ZoneId zoneId) {
     Set<String> deviceAlignedSet = new HashSet<>();
     Set<String> deviceExistViewSet = new HashSet<>();
     // <Device, <Measurement, Expression>>
@@ -304,53 +304,7 @@ public class LogicalPlanBuilder {
       }
     }
 
-    Set<Expression> lastQueryNonWriteViewExpressions =
-        analysis.getLastQueryNonWritableViewExpressions();
-    Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap =
-        analysis.getLastQueryNonWritableViewSourceExpressionMap();
-    if (lastQueryNonWriteViewExpressions != null) {
-      for (Expression expression : lastQueryNonWriteViewExpressions) {
-        Set<Expression> sourceTransformExpressions = Collections.singleton(expression);
-        FunctionExpression maxTimeAgg =
-            new FunctionExpression(
-                MAX_TIME, new LinkedHashMap<>(), Collections.singletonList(expression));
-        FunctionExpression lastValueAgg =
-            new FunctionExpression(
-                LAST_VALUE, new LinkedHashMap<>(), Collections.singletonList(expression));
-        analyzeExpression(analysis, expression);
-        analyzeExpression(analysis, maxTimeAgg);
-        analyzeExpression(analysis, lastValueAgg);
-
-        Set<Expression> sources =
-            new LinkedHashSet<>(lastQueryNonWritableViewSourceExpressionMap.get(expression));
-        LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-        planBuilder =
-            planBuilder
-                .planRawDataSource(
-                    sources,
-                    resultTimeOrder,
-                    analysis.getGlobalTimeFilter(),
-                    analysis.isLastLevelUseWildcard())
-                .planWhereAndSourceTransform(
-                    null, sourceTransformExpressions, false, zoneId, resultTimeOrder)
-                .planAggregation(
-                    new LinkedHashSet<>(Arrays.asList(maxTimeAgg, lastValueAgg)),
-                    null,
-                    analysis.getGroupByTimeParameter(),
-                    analysis.getGroupByParameter(),
-                    false,
-                    AggregationStep.SINGLE,
-                    resultTimeOrder);
-
-        LastQueryTransformNode transformNode =
-            new LastQueryTransformNode(
-                context.getQueryId().genPlanNodeId(),
-                planBuilder.getRoot(),
-                expression.getViewPath().getFullPath(),
-                analysis.getType(expression).toString());
-        sourceNodeList.add(transformNode);
-      }
-    }
+    processLastQueryTransformNode(analysis, sourceNodeList, zoneId);
 
     if (timeseriesOrdering != null) {
       sourceNodeList.sort(
@@ -377,7 +331,7 @@ public class LogicalPlanBuilder {
             sourceNodeList,
             analysis.getGlobalTimeFilter(),
             timeseriesOrdering,
-            lastQueryNonWriteViewExpressions != null);
+            analysis.getLastQueryNonWritableViewExpressions() != null);
 
     ColumnHeaderConstant.lastQueryColumnHeaders.forEach(
         columnHeader ->
@@ -386,6 +340,57 @@ public class LogicalPlanBuilder {
                 .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
 
     return this;
+  }
+
+  private void processLastQueryTransformNode(
+      Analysis analysis, List<PlanNode> sourceNodeList, ZoneId zoneId) {
+    Set<Expression> lastQueryNonWriteViewExpressions =
+        analysis.getLastQueryNonWritableViewExpressions();
+    Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap =
+        analysis.getLastQueryNonWritableViewSourceExpressionMap();
+    if (lastQueryNonWriteViewExpressions != null) {
+      for (Expression expression : lastQueryNonWriteViewExpressions) {
+        Set<Expression> sourceTransformExpressions = Collections.singleton(expression);
+        FunctionExpression maxTimeAgg =
+            new FunctionExpression(
+                MAX_TIME, new LinkedHashMap<>(), Collections.singletonList(expression));
+        FunctionExpression lastValueAgg =
+            new FunctionExpression(
+                LAST_VALUE, new LinkedHashMap<>(), Collections.singletonList(expression));
+        analyzeExpression(analysis, expression);
+        analyzeExpression(analysis, maxTimeAgg);
+        analyzeExpression(analysis, lastValueAgg);
+
+        Set<Expression> sources =
+            new LinkedHashSet<>(lastQueryNonWritableViewSourceExpressionMap.get(expression));
+        LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+        planBuilder =
+            planBuilder
+                .planRawDataSource(
+                    sources,
+                    Ordering.DESC,
+                    analysis.getGlobalTimeFilter(),
+                    analysis.isLastLevelUseWildcard())
+                .planWhereAndSourceTransform(
+                    null, sourceTransformExpressions, false, zoneId, Ordering.DESC)
+                .planAggregation(
+                    new LinkedHashSet<>(Arrays.asList(maxTimeAgg, lastValueAgg)),
+                    null,
+                    analysis.getGroupByTimeParameter(),
+                    analysis.getGroupByParameter(),
+                    false,
+                    AggregationStep.SINGLE,
+                    Ordering.DESC);
+
+        LastQueryTransformNode transformNode =
+            new LastQueryTransformNode(
+                context.getQueryId().genPlanNodeId(),
+                planBuilder.getRoot(),
+                expression.getViewPath().getFullPath(),
+                analysis.getType(expression).toString());
+        sourceNodeList.add(transformNode);
+      }
+    }
   }
 
   public LogicalPlanBuilder planAggregationSource(

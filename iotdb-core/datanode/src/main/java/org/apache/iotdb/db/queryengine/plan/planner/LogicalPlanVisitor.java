@@ -100,7 +100,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 /**
@@ -131,7 +130,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               .planLast(
                   analysis,
                   analysis.getTimeseriesOrderingForLastQuery(),
-                  queryStatement.getResultTimeOrder(),
                   queryStatement.getSelectComponent().getZoneId())
               .planOffset(queryStatement.getRowOffset())
               .planLimit(queryStatement.getRowLimit());
@@ -596,13 +594,14 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 showTimeSeriesStatement.isPrefixPath(),
                 analysis.getRelatedTemplateInfo())
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
+
     // show latest timeseries
     if (showTimeSeriesStatement.isOrderByHeat()
         && null != analysis.getDataPartitionInfo()
         && 0 != analysis.getDataPartitionInfo().getDataPartitionMap().size()) {
       PlanNode lastPlanNode =
           new LogicalPlanBuilder(analysis, context)
-              .planLast(analysis, null, ASC, ZoneId.systemDefault())
+              .planLast(analysis, null, ZoneId.systemDefault())
               .getRoot();
       planBuilder = planBuilder.planSchemaQueryOrderByHeat(lastPlanNode);
     }
