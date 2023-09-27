@@ -218,8 +218,10 @@ public class LoadTsFileManager {
       }
     }
 
+    // method is synchronized because the chunks in a chunk group may be sent in parallel
     @SuppressWarnings("squid:S3824")
     private synchronized void write(DataPartitionInfo partitionInfo, ChunkData chunkData) throws IOException {
+      // ensure that retransmission will not result in writing duplicated data
       if (receivedSplitIds.contains(chunkData.getSplitId())) {
         return;
       }
@@ -249,7 +251,9 @@ public class LoadTsFileManager {
       receivedSplitIds.add(chunkData.getSplitId());
     }
 
+    // method is synchronized because the chunks in a chunk group may be sent in parallel
     private synchronized void writeDeletion(TsFileData deletionData) throws IOException {
+      // ensure that retransmission will not result in writing duplicated data
       if (receivedSplitIds.contains(deletionData.getSplitId())) {
         return;
       }

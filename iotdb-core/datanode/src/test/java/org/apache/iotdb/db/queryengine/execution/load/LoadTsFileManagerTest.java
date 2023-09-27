@@ -94,6 +94,7 @@ public class LoadTsFileManagerTest extends TestBase {
     ConsensusGroupId d1GroupId = Factory.create(TConsensusGroupType.DataRegion.getValue(), 0);
     DataRegion dataRegion = dataRegionMap.get(d1GroupId.convertToTConsensusGroupId());
     List<TsFileResource> tsFileList = dataRegion.getTsFileManager().getTsFileList(false);
+    // all input files should be shallow-merged into one
     System.out.printf("Loaded TsFiles: %s\n", tsFileList);
     assertEquals(1, tsFileList.size());
 
@@ -101,16 +102,18 @@ public class LoadTsFileManagerTest extends TestBase {
     long chunkTimeRange = (long) (timePartitionInterval * chunkTimeRangeRatio);
     int chunkPointNum = (int) (chunkTimeRange / pointInterval);
     long endTime = chunkTimeRange * (fileNum - 1) + pointInterval * (chunkPointNum - 1);
-
+    // check device time
     TsFileResource tsFileResource = tsFileList.get(0);
     for (int i = 0; i < deviceNum; i++) {
       assertEquals(0, tsFileResource.getStartTime("d" + i));
       assertEquals(endTime, tsFileResource.getEndTime("d" + i));
     }
 
+    // read and check the generated file
     try (TsFileReader reader = new TsFileReader(
         new TsFileSequenceReader(tsFileResource.getTsFile().getPath()))) {
       for (int dn = 0; dn < deviceNum; dn++) {
+        // "Simple_" is generated with linear function and is easy to check
         QueryExpression queryExpression = QueryExpression.create(
             Collections.singletonList(new Path("d" + dn, "Simple_22", false)), null);
         QueryDataSet dataSet = reader.query(queryExpression);

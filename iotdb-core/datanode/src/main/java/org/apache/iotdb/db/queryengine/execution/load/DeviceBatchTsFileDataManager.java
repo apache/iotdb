@@ -45,6 +45,7 @@ public class DeviceBatchTsFileDataManager extends TsFileDataManager {
         return false;
       }
     }
+    // add the chunk into the batch
     currentDeviceId = chunkData.getDevice();
     nonDirectionalChunkData.add(chunkData);
     dataSize += chunkData.getDataSize();
