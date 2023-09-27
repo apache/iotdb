@@ -44,6 +44,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   // used to filter data
   private final long startTime;
   private final long endTime;
+  private final boolean needParseTime;
 
   private final TsFileResource resource;
   private File tsFile;
@@ -55,7 +56,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private TsFileInsertionDataContainer dataContainer;
 
   public PipeTsFileInsertionEvent(TsFileResource resource, boolean isGeneratedByPipe) {
-    this(resource, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    this(resource, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE, false);
   }
 
   public PipeTsFileInsertionEvent(
@@ -64,12 +65,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       PipeTaskMeta pipeTaskMeta,
       String pattern,
       long startTime,
-      long endTime) {
+      long endTime,
+      boolean needParseTime) {
     super(pipeTaskMeta, pattern);
 
     this.startTime = startTime;
     this.endTime = endTime;
-    if (hasTimeFilter()) {
+    this.needParseTime = needParseTime;
+
+    if (needParseTime) {
       this.isPatternAndTimeParsed = false;
     }
 
@@ -108,10 +112,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public File getTsFile() {
     return tsFile;
-  }
-
-  public boolean hasTimeFilter() {
-    return startTime != Long.MIN_VALUE || endTime != Long.MAX_VALUE;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -164,7 +164,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeTsFileInsertionEvent(
-        resource, isGeneratedByPipe, pipeTaskMeta, pattern, startTime, endTime);
+        resource, isGeneratedByPipe, pipeTaskMeta, pattern, startTime, endTime, needParseTime);
   }
 
   @Override
