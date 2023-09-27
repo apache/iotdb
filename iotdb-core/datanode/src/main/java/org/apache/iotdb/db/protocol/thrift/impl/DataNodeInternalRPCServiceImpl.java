@@ -516,8 +516,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaCache cache = DataNodeSchemaCache.getInstance();
     cache.takeWriteLock();
     try {
-      // todo implement precise timeseries clean rather than clean all
-      cache.invalidateAll();
+      cache.invalidate(PathPatternTree.deserialize(req.pathPatternTree).getAllPathPatterns());
     } finally {
       cache.releaseWriteLock();
     }

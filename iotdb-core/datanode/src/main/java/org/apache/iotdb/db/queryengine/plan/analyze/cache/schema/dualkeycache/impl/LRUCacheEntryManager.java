@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.Random;
 
@@ -56,10 +55,11 @@ class LRUCacheEntryManager<FK, SK, V>
   }
 
   @Override
-  public void invalid(List<LRUCacheEntry<SK, V>> cacheEntryList) {
-    for (LRUCacheEntry<SK, V> cacheEntry : cacheEntryList) {
-      getBelongedList(cacheEntry).evict(cacheEntry);
-    }
+  public void invalid(LRUCacheEntry<SK, V> cacheEntry) {
+    cacheEntry.next.pre = cacheEntry.pre;
+    cacheEntry.pre.next = cacheEntry.next;
+    cacheEntry.next = null;
+    cacheEntry.pre = null;
   }
 
   @Override
@@ -166,81 +166,49 @@ class LRUCacheEntryManager<FK, SK, V>
 
   private static class LRULinkedList {
 
-    private LRUCacheEntry head;
-    private LRUCacheEntry tail;
+    // head.next is the most recently used entry
+    private final LRUCacheEntry head;
+    private final LRUCacheEntry tail;
+
+    public LRULinkedList() {
+      head = new LRUCacheEntry(null, null, null);
+      tail = new LRUCacheEntry(null, null, null);
+      head.next = tail;
+      tail.pre = head;
+    }
 
     synchronized void add(LRUCacheEntry cacheEntry) {
-      if (head == null) {
-        head = cacheEntry;
-        tail = cacheEntry;
-        return;
-      }
-
-      head.pre = cacheEntry;
-      cacheEntry.next = head;
-
-      head = cacheEntry;
+      cacheEntry.next = head.next;
+      cacheEntry.pre = head;
+      head.next.pre = cacheEntry;
+      head.next = cacheEntry;
     }
 
     synchronized LRUCacheEntry evict() {
-      if (tail == null) {
+      if (tail.pre == head) {
         return null;
       }
-
-      LRUCacheEntry cacheEntry = tail;
-      tail = tail.pre;
-
-      if (tail == null) {
-        head = null;
-      } else {
-        tail.next = null;
-      }
-
+      LRUCacheEntry cacheEntry = tail.pre;
+      cacheEntry.pre.next = cacheEntry.next;
+      cacheEntry.next.pre = cacheEntry.pre;
+      cacheEntry.next = null;
       cacheEntry.pre = null;
-
       return cacheEntry;
     }
 
-    synchronized void evict(LRUCacheEntry cacheEntry) {
-      if (head == cacheEntry) {
-        head = cacheEntry.next;
-      }
-      if (tail == cacheEntry) {
-        tail = cacheEntry.pre;
-      }
-      if (cacheEntry.pre != null) {
-        cacheEntry.pre.next = cacheEntry.next;
-      }
-      if (cacheEntry.next != null) {
-        cacheEntry.next.pre = cacheEntry.pre;
-      }
-      cacheEntry.pre = null;
-      cacheEntry.next = null;
-    }
-
     synchronized void moveToHead(LRUCacheEntry cacheEntry) {
-      if (head == null) {
-        // this cache entry has been evicted and the cache list is empty
+      if (cacheEntry.next == null || cacheEntry.pre == null) {
+        // this cache entry has been evicted
         return;
       }
-
-      if (cacheEntry.pre == null) {
-        // this entry is head
-        return;
-      }
-
+      // remove cache entry from the list
       cacheEntry.pre.next = cacheEntry.next;
-
-      if (cacheEntry.next != null) {
-        cacheEntry.next.pre = cacheEntry.pre;
-      }
-
-      cacheEntry.pre = null;
-
-      head.pre = cacheEntry;
-      cacheEntry.next = head;
-
-      head = cacheEntry;
+      cacheEntry.next.pre = cacheEntry.pre;
+      // add cache entry to the head
+      cacheEntry.next = head.next;
+      cacheEntry.pre = head;
+      head.next.pre = cacheEntry;
+      head.next = cacheEntry;
     }
   }
 }

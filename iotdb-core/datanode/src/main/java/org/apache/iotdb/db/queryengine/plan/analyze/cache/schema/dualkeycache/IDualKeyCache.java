@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import javax.annotation.concurrent.GuardedBy;
 
@@ -82,4 +83,7 @@ public interface IDualKeyCache<FK, SK, V> {
 
   /** Return all the current cache status and statistics. */
   IDualKeyCacheStats stats();
+
+  @TestOnly
+  void evictOneEntry();
 }

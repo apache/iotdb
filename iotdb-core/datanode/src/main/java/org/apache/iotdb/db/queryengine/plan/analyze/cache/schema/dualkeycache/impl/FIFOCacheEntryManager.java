@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
-import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class FIFOCacheEntryManager<FK, SK, V>
@@ -53,15 +50,11 @@ public class FIFOCacheEntryManager<FK, SK, V>
   }
 
   @Override
-  public void invalid(List<FIFOCacheEntry<SK, V>> cacheEntryList) {
-    Set<FIFOCacheEntry<SK, V>> cacheEntrySet = new HashSet<>(cacheEntryList);
-    // 1. find target FIFOLinkedList
-    // 2. evict target FIFOCacheEntry
-    for (int i = 0; i < SLOT_NUM; i++) {
-      if (fifoLinkedLists[i] != null) {
-        fifoLinkedLists[i].evict(cacheEntrySet);
-      }
-    }
+  public void invalid(FIFOCacheEntry<SK, V> cacheEntry) {
+    cacheEntry.next.pre = cacheEntry.pre;
+    cacheEntry.pre.next = cacheEntry.next;
+    cacheEntry.next = null;
+    cacheEntry.pre = null;
   }
 
   @Override
@@ -125,6 +118,7 @@ public class FIFOCacheEntryManager<FK, SK, V>
     private V value;
 
     private FIFOCacheEntry<SK, V> pre = null;
+    private FIFOCacheEntry<SK, V> next = null;
 
     private FIFOCacheEntry(SK secondKey, V value, ICacheEntryGroup cacheEntryGroup) {
       this.secondKey = secondKey;
@@ -174,59 +168,34 @@ public class FIFOCacheEntryManager<FK, SK, V>
 
   private static class FIFOLinkedList<SK, V> {
 
-    FIFOCacheEntry head;
-    FIFOCacheEntry tail;
+    // head.next is the newest
+    private final FIFOCacheEntry head;
+    private final FIFOCacheEntry tail;
+
+    public FIFOLinkedList() {
+      head = new FIFOCacheEntry(null, null, null);
+      tail = new FIFOCacheEntry(null, null, null);
+      head.next = tail;
+      tail.pre = head;
+    }
 
     synchronized void add(FIFOCacheEntry cacheEntry) {
-      if (head == null) {
-        head = cacheEntry;
-        tail = cacheEntry;
-        return;
-      }
-
-      head.pre = cacheEntry;
-
-      head = cacheEntry;
+      cacheEntry.next = head.next;
+      cacheEntry.pre = head;
+      head.next.pre = cacheEntry;
+      head.next = cacheEntry;
     }
 
     synchronized FIFOCacheEntry evict() {
-      if (tail == null) {
+      if (tail.pre == head) {
         return null;
       }
-
-      FIFOCacheEntry cacheEntry = tail;
-      tail = tail.pre;
-
-      if (tail == null) {
-        head = null;
-      }
-
+      FIFOCacheEntry cacheEntry = tail.pre;
+      cacheEntry.pre.next = cacheEntry.next;
+      cacheEntry.next.pre = cacheEntry.pre;
+      cacheEntry.next = null;
       cacheEntry.pre = null;
-
       return cacheEntry;
-    }
-
-    synchronized void evict(Set<FIFOCacheEntry<SK, V>> cacheEntrySet) {
-      while (tail != null && cacheEntrySet.contains(tail)) {
-        FIFOCacheEntry tmp = tail.pre;
-        tmp.pre = null;
-        tail = tmp;
-      }
-      if (tail == null) {
-        head = null;
-        return;
-      }
-      FIFOCacheEntry cur = tail;
-      while (cur.pre != null) {
-        if (cacheEntrySet.contains(cur.pre)) {
-          FIFOCacheEntry tmp = tail.pre;
-          cur.pre = cur.pre.pre;
-          tmp.pre = null;
-        } else {
-          cur = cur.pre;
-        }
-      }
-      head = cur;
     }
   }
 }

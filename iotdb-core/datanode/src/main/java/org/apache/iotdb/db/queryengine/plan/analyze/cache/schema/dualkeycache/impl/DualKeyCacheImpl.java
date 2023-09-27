@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheComputation;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
@@ -250,7 +250,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   @Override
   public void invalidate(String database) {
     int estimateSize = 0;
-    List<T> evictList = new ArrayList<>();
     for (FK device : firstKeyMap.getAllKeys()) {
       if (device.toString().startsWith(database)) {
         estimateSize += sizeComputer.computeFirstKeySize(device);
@@ -259,12 +258,11 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
           Map.Entry<SK, T> entry = it.next();
           estimateSize += sizeComputer.computeSecondKeySize(entry.getKey());
           estimateSize += sizeComputer.computeValueSize(entry.getValue().getValue());
-          evictList.add(entry.getValue());
+          cacheEntryManager.invalid(entry.getValue());
         }
         firstKeyMap.remove(device);
       }
     }
-    cacheEntryManager.invalid(evictList);
     cacheStats.decreaseMemoryUsage(estimateSize);
   }
 
@@ -272,7 +270,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   public void invalidate(List<PartialPath> partialPathList) {
     int estimateSize = 0;
     for (PartialPath path : partialPathList) {
-      List<T> evictList = new ArrayList<>();
       String measurement = path.getMeasurement();
       Function<FK, Boolean> deviceFilter;
       Function<SK, Boolean> measurementFilter;
@@ -292,7 +289,9 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
             if (Boolean.TRUE.equals(measurementFilter.apply(entry.getKey()))) {
               estimateSize += sizeComputer.computeSecondKeySize(entry.getKey());
               estimateSize += sizeComputer.computeValueSize(entry.getValue().getValue());
-              evictList.add(entry.getValue());
+              cacheEntryManager.invalid(entry.getValue());
+              it.remove();
+            } else {
               allSKInvalid = false;
             }
           }
@@ -302,7 +301,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
           }
         }
       }
-      cacheEntryManager.invalid(evictList);
     }
 
     cacheStats.decreaseMemoryUsage(estimateSize);
@@ -323,6 +321,12 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   @Override
   public IDualKeyCacheStats stats() {
     return cacheStats;
+  }
+
+  @Override
+  @TestOnly
+  public void evictOneEntry() {
+    cacheStats.decreaseMemoryUsage(evictOneCacheEntry());
   }
 
   /**

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -256,8 +255,7 @@ public class DataNodeSchemaCache {
     timeSeriesSchemaCache.invalidate(database);
   }
 
-  public void invalidate(PathPatternTree patternTree) {
-    List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
+  public void invalidate(List<PartialPath> partialPathList) {
     boolean doPrecise = true;
     for (PartialPath partialPath : partialPathList) {
       if (partialPath.getDevicePath().hasWildcard()) {
