@@ -29,12 +29,29 @@
     </parent>
     <artifactId>iotdb-server</artifactId>
     <name>IoTDB Server</name>
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
     <properties>
         <iotdb.test.skip>false</iotdb.test.skip>
         <iotdb.it.skip>${iotdb.test.skip}</iotdb.it.skip>
         <iotdb.ut.skip>${iotdb.test.skip}</iotdb.ut.skip>
     </properties>
     <dependencies>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-math3</artifactId>
+            <version>3.5</version>
+        </dependency>
+        <!-- Sampling  -->
+        <dependency>
+            <groupId>com.github.ggalmazor</groupId>
+            <artifactId>lt_downsampling_java8</artifactId>
+            <version>0.0.6</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>service-rpc</artifactId>
@@ -260,6 +277,14 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>9</source>
+                    <target>9</target>
+                </configuration>
             </plugin>
         </plugins>
     </build>
