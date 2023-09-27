@@ -15,27 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-from enum import Enum, unique
+from enum import unique, IntEnum
 import numpy as np
 
 
 @unique
-class TSDataType(Enum):
+class TSDataType(IntEnum):
     BOOLEAN = 0
     INT32 = 1
     INT64 = 2
     FLOAT = 3
     DOUBLE = 4
     TEXT = 5
-
-    # this method is implemented to avoid the issue reported by:
-    # https://bugs.python.org/issue30545
-    def __eq__(self, other) -> bool:
-        return self.value == other.value
-
-    def __hash__(self):
-        return self.value
 
     def np_dtype(self):
         return {
@@ -49,7 +40,7 @@ class TSDataType(Enum):
 
 
 @unique
-class TSEncoding(Enum):
+class TSEncoding(IntEnum):
     PLAIN = 0
     DICTIONARY = 1
     RLE = 2
@@ -64,17 +55,9 @@ class TSEncoding(Enum):
     SPRINTZ = 12
     RLBE = 13
 
-    # this method is implemented to avoid the issue reported by:
-    # https://bugs.python.org/issue30545
-    def __eq__(self, other) -> bool:
-        return self.value == other.value
-
-    def __hash__(self):
-        return self.value
-
 
 @unique
-class Compressor(Enum):
+class Compressor(IntEnum):
     UNCOMPRESSED = 0
     SNAPPY = 1
     GZIP = 2
@@ -85,11 +68,3 @@ class Compressor(Enum):
     LZ4 = 7
     ZSTD = 8
     LZMA2 = 9
-
-    # this method is implemented to avoid the issue reported by:
-    # https://bugs.python.org/issue30545
-    def __eq__(self, other) -> bool:
-        return self.value == other.value
-
-    def __hash__(self):
-        return self.value

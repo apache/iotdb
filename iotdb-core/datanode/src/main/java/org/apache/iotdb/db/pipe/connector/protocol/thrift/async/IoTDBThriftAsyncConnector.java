@@ -292,8 +292,12 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     }
 
     if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
-      for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
-        transfer(event);
+      try {
+        for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+          transfer(event);
+        }
+      } finally {
+        tsFileInsertionEvent.close();
       }
       return;
     }

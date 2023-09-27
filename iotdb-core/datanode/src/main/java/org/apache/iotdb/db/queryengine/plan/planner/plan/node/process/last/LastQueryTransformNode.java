@@ -108,6 +108,13 @@ public class LastQueryTransformNode extends SingleChildProcessNode {
     return Objects.hash(super.hashCode(), viewPath, dataType);
   }
 
+  @Override
+  public String toString() {
+    return String.format(
+        "LastQueryTransformNode-%s:[ViewPath: %s, DataType: %s]",
+        this.getPlanNodeId(), viewPath, dataType);
+  }
+
   public String getViewPath() {
     return this.viewPath;
   }

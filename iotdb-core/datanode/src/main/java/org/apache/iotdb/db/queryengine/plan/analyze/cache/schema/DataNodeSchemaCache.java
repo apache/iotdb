@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
@@ -42,7 +43,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.function.IntPredicate;
 
 /**
  * This class takes the responsibility of metadata cache management of all DataRegions under
@@ -191,6 +193,7 @@ public class DataNodeSchemaCache {
   }
 
   /** get SchemaCacheEntry and update last cache */
+  @TestOnly
   public void updateLastCache(
       PartialPath devicePath,
       String measurement,
@@ -207,20 +210,25 @@ public class DataNodeSchemaCache {
       String[] measurements,
       MeasurementSchema[] measurementSchemas,
       boolean isAligned,
-      Function<Integer, TimeValuePair> timeValuePairProvider,
-      Function<Integer, Boolean> shouldUpdateProvider,
+      IntFunction<TimeValuePair> timeValuePairProvider,
+      IntPredicate shouldUpdateProvider,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    timeSeriesSchemaCache.updateLastCache(
-        database,
-        devicePath,
-        measurements,
-        measurementSchemas,
-        isAligned,
-        timeValuePairProvider,
-        shouldUpdateProvider,
-        highPriorityUpdate,
-        latestFlushedTime);
+    takeReadLock();
+    try {
+      timeSeriesSchemaCache.updateLastCache(
+          database,
+          devicePath,
+          measurements,
+          measurementSchemas,
+          isAligned,
+          timeValuePairProvider,
+          shouldUpdateProvider,
+          highPriorityUpdate,
+          latestFlushedTime);
+    } finally {
+      releaseReadLock();
+    }
   }
 
   /**
@@ -233,8 +241,13 @@ public class DataNodeSchemaCache {
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    timeSeriesSchemaCache.updateLastCache(
-        storageGroup, measurementPath, timeValuePair, highPriorityUpdate, latestFlushedTime);
+    takeReadLock();
+    try {
+      timeSeriesSchemaCache.updateLastCache(
+          storageGroup, measurementPath, timeValuePair, highPriorityUpdate, latestFlushedTime);
+    } finally {
+      releaseReadLock();
+    }
   }
 
   public void invalidateAll() {

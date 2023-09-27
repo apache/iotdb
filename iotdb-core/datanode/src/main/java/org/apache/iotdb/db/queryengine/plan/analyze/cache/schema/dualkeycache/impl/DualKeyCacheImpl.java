@@ -115,13 +115,21 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
         if (cacheEntry == null) {
           updating.updateValue(i, null);
         } else {
-          int changeSize = updating.updateValue(i, cacheEntry.getValue());
-          cacheEntryManager.access(cacheEntry);
-          if (changeSize != 0) {
-            cacheStats.increaseMemoryUsage(changeSize);
-            if (cacheStats.isExceedMemoryCapacity()) {
-              executeCacheEviction(changeSize);
+          int changeSize = 0;
+          synchronized (cacheEntry) {
+            if (cacheEntry.getBelongedGroup() != null) {
+              // Only update the value when the cache entry is not evicted.
+              // If the cache entry is evicted, getBelongedGroup is null.
+              // Synchronized is to guarantee the cache entry is not evicted during the update.
+              changeSize = updating.updateValue(i, cacheEntry.getValue());
+              cacheEntryManager.access(cacheEntry);
+              if (changeSize != 0) {
+                cacheStats.increaseMemoryUsage(changeSize);
+              }
             }
+          }
+          if (changeSize != 0 && cacheStats.isExceedMemoryCapacity()) {
+            executeCacheEviction(changeSize);
           }
           hitCount++;
         }
@@ -194,31 +202,34 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     if (evictCacheEntry == null) {
       return 0;
     }
-    AtomicInteger evictedSize = new AtomicInteger(0);
-    evictedSize.getAndAdd(sizeComputer.computeValueSize(evictCacheEntry.getValue()));
+    synchronized (evictCacheEntry) {
+      AtomicInteger evictedSize = new AtomicInteger(0);
+      evictedSize.getAndAdd(sizeComputer.computeValueSize(evictCacheEntry.getValue()));
 
-    ICacheEntryGroup<FK, SK, V, T> belongedGroup = evictCacheEntry.getBelongedGroup();
-    belongedGroup.removeCacheEntry(evictCacheEntry.getSecondKey());
-    evictedSize.getAndAdd(sizeComputer.computeSecondKeySize(evictCacheEntry.getSecondKey()));
+      ICacheEntryGroup<FK, SK, V, T> belongedGroup = evictCacheEntry.getBelongedGroup();
+      evictCacheEntry.setBelongedGroup(null);
+      belongedGroup.removeCacheEntry(evictCacheEntry.getSecondKey());
+      evictedSize.getAndAdd(sizeComputer.computeSecondKeySize(evictCacheEntry.getSecondKey()));
 
-    if (belongedGroup.isEmpty()) {
-      firstKeyMap.compute(
-          belongedGroup.getFirstKey(),
-          (firstKey, cacheEntryGroup) -> {
-            if (cacheEntryGroup == null) {
-              // has been removed by other threads
-              return null;
-            }
-            if (cacheEntryGroup.isEmpty()) {
-              evictedSize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
-              return null;
-            }
+      if (belongedGroup.isEmpty()) {
+        firstKeyMap.compute(
+            belongedGroup.getFirstKey(),
+            (firstKey, cacheEntryGroup) -> {
+              if (cacheEntryGroup == null) {
+                // has been removed by other threads
+                return null;
+              }
+              if (cacheEntryGroup.isEmpty()) {
+                evictedSize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
+                return null;
+              }
 
-            // some other thread has put value to it
-            return cacheEntryGroup;
-          });
+              // some other thread has put value to it
+              return cacheEntryGroup;
+            });
+      }
+      return evictedSize.get();
     }
-    return evictedSize.get();
   }
 
   @Override

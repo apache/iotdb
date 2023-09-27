@@ -24,18 +24,17 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import java.util.Deque;
 import java.util.LinkedList;
 
 public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
-  private final Deque<Event> bufferQueue;
+  private final EnrichedDeque<Event> bufferQueue;
 
   public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue) {
     this.pendingQueue = pendingQueue;
-    bufferQueue = new LinkedList<>();
+    bufferQueue = new EnrichedDeque<>(new LinkedList<>());
   }
 
   @Override
