@@ -189,9 +189,7 @@ public class DualKeyCacheTest {
           }
         });
     int tmp = SchemaCacheEntry.estimateSize(schemaCacheEntry);
-    schemaCacheEntry
-        .getLastCacheContainer()
-        .updateCachedLast(new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)), true, 0L);
+    schemaCacheEntry.updateLastCache(new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)), true, 0L);
     expectedSize += (SchemaCacheEntry.estimateSize(schemaCacheEntry) - tmp) * 2;
     Assert.assertEquals(expectedSize, dualKeyCache.stats().memoryUsage());
   }
