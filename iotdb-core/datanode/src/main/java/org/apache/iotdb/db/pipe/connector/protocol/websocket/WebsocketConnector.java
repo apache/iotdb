@@ -86,7 +86,7 @@ public class WebSocketConnector implements PipeConnector {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "WebsocketConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+          "WebSocketConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Current event: {}.",
           tabletInsertionEvent);
       return;
@@ -101,7 +101,7 @@ public class WebSocketConnector implements PipeConnector {
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "WebsocketConnector only support PipeTsFileInsertionEvent. Current event: {}.",
+          "WebSocketConnector only support PipeTsFileInsertionEvent. Current event: {}.",
           tsFileInsertionEvent);
       return;
     }
@@ -134,7 +134,6 @@ public class WebSocketConnector implements PipeConnector {
                         event ->
                             event.decreaseReferenceCount(
                                 WebSocketConnector.class.getName(), true))));
-
     while (!commitQueue.isEmpty()) {
       final Pair<Long, Runnable> committer = commitQueue.peek();
       if (lastCommitId.get() + 1 != committer.left) {
