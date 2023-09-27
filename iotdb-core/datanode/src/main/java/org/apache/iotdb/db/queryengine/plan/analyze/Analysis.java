@@ -209,8 +209,7 @@ public class Analysis {
   // timeseries, otherwise it will be null
   private Ordering timeseriesOrderingForLastQuery = null;
 
-  // Used to store view expression in last query which is non-writable
-  private Set<Expression> lastQueryNonWritableViewExpressions;
+  // Key: non-writable view expression, Value: corresponding source expressions
   private Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap;
 
   private Set<Expression> lastQueryBaseExpressions;
@@ -738,15 +737,6 @@ public class Analysis {
 
   public void setLastQueryBaseExpressions(Set<Expression> lastQueryBaseExpressions) {
     this.lastQueryBaseExpressions = lastQueryBaseExpressions;
-  }
-
-  public Set<Expression> getLastQueryNonWritableViewExpressions() {
-    return this.lastQueryNonWritableViewExpressions;
-  }
-
-  public void setLastQueryNonWritableViewExpression(
-      Set<Expression> lastQueryNonWritableViewExpression) {
-    this.lastQueryNonWritableViewExpressions = lastQueryNonWritableViewExpression;
   }
 
   public Map<Expression, List<Expression>> getLastQueryNonWritableViewSourceExpressionMap() {

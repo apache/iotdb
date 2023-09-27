@@ -437,7 +437,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, List<Expression> selectExpressions, ISchemaTree schemaTree) {
     Set<Expression> sourceExpressions = new LinkedHashSet<>();
     Set<Expression> lastQueryBaseExpressions = new LinkedHashSet<>();
-    Set<Expression> lastQueryNonWritableViewExpressions = null;
     Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap = null;
 
     for (Expression selectExpression : selectExpressions) {
@@ -447,13 +446,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           lastQueryBaseExpressions.add(lastQuerySourceExpression);
           sourceExpressions.add(lastQuerySourceExpression);
         } else {
-          if (lastQueryNonWritableViewExpressions == null) {
-            lastQueryNonWritableViewExpressions = new LinkedHashSet<>();
+          if (lastQueryNonWritableViewSourceExpressionMap == null) {
             lastQueryNonWritableViewSourceExpressionMap = new HashMap<>();
           }
           List<Expression> sourceExpressionsOfNonWritableView =
               searchSourceExpressions(lastQuerySourceExpression);
-          lastQueryNonWritableViewExpressions.add(lastQuerySourceExpression);
           lastQueryNonWritableViewSourceExpressionMap.put(
               lastQuerySourceExpression, sourceExpressionsOfNonWritableView);
           sourceExpressions.addAll(sourceExpressionsOfNonWritableView);
@@ -463,7 +460,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     analysis.setSourceExpressions(sourceExpressions);
     analysis.setLastQueryBaseExpressions(lastQueryBaseExpressions);
-    analysis.setLastQueryNonWritableViewExpression(lastQueryNonWritableViewExpressions);
     analysis.setLastQueryNonWritableViewSourceExpressionMap(
         lastQueryNonWritableViewSourceExpressionMap);
   }
