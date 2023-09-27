@@ -474,6 +474,10 @@ public class CompactionUtils {
   }
 
   public static boolean isDiskHasSpace() {
+    return isDiskHasSpace(0d);
+  }
+
+  public static boolean isDiskHasSpace(double redundancy) {
     double freeDisk =
         MetricService.getInstance()
             .getAutoGauge(
@@ -493,7 +497,7 @@ public class CompactionUtils {
 
     if (freeDisk != 0 && totalDisk != 0) {
       return freeDisk / totalDisk
-          > CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold();
+          > CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold() + redundancy;
     }
     return true;
   }
