@@ -41,6 +41,7 @@ import java.util.Locale;
 import static org.junit.Assert.fail;
 
 public class MyTest6 {
+  // test LTTB
 
   private static final String TIMESTAMP_STR = "Time";
 

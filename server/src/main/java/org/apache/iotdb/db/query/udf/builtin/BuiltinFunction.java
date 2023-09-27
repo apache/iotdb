@@ -49,7 +49,8 @@ public enum BuiltinFunction {
   BOTTOM_K("BOTTOM_K", UDTFBottomK.class),
   M4("M4", UDTFM4MAC.class),
   M4_TW("M4_TW", UDTFM4.class),
-  Sample("SAMPLE", UDTFSample.class);
+  Sample("SAMPLE", UDTFSample.class),
+  MinMax("MINMAX", UDTFMinMax.class);
   ;
 
   private final String functionName;
