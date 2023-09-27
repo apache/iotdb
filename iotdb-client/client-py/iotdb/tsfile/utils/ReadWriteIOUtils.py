@@ -39,14 +39,14 @@ class ReadWriteUtils:
             cls.write_bool(value, format_str_list, values_tobe_packed)
         elif isinstance(value, str):
             cls.write_str(value, format_str_list, values_tobe_packed)
+        elif isinstance(value, TSDataType):
+            cls.write_byte(bytes([int(value)]), format_str_list, values_tobe_packed)
+        elif isinstance(value, TSEncoding):
+            cls.write_byte(bytes([int(value)]), format_str_list, values_tobe_packed)
+        elif isinstance(value, Compressor):
+            cls.write_byte(bytes([int(value)]), format_str_list, values_tobe_packed)
         elif isinstance(value, int):
             cls.write_int(value, format_str_list, values_tobe_packed)
-        elif isinstance(value, TSDataType):
-            cls.write_byte(value.value, format_str_list, values_tobe_packed)
-        elif isinstance(value, TSEncoding):
-            cls.write_byte(value.value, format_str_list, values_tobe_packed)
-        elif isinstance(value, Compressor):
-            cls.write_byte(value.value, format_str_list, values_tobe_packed)
 
     @classmethod
     def write_str(cls, s: str, format_str_list, values_tobe_packed):
@@ -73,5 +73,5 @@ class ReadWriteUtils:
 
     @classmethod
     def write_byte(cls, b, format_str_list, values_tobe_packed):
-        format_str_list.append("b")
+        format_str_list.append("c")
         values_tobe_packed.append(b)

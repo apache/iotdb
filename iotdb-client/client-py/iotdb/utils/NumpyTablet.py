@@ -101,8 +101,9 @@ class NumpyTablet(object):
     def get_binary_values(self):
         bs_len = 0
         bs_list = []
-        for i, value in enumerate(self.__values):
-            if self.__data_types[i] == TSDataType.TEXT:
+        for data_type, value in zip(self.__data_types, self.__values):
+            # TEXT
+            if data_type == 5:
                 format_str_list = [">"]
                 values_tobe_packed = []
                 for str_list in value:
@@ -118,6 +119,7 @@ class NumpyTablet(object):
                     values_tobe_packed.append(value_bytes)
                 format_str = "".join(format_str_list)
                 bs = struct.pack(format_str, *values_tobe_packed)
+            # Non-TEXT
             else:
                 bs = value.tobytes()
             bs_list.append(bs)
@@ -145,7 +147,7 @@ class NumpyTablet(object):
             _l = len(bs)
             ret[offset : offset + _l] = bs
             offset += _l
-        return ret
+        return bytes(ret)
 
     def mark_none_value(self, column, row):
         if self.bitmaps is None:
