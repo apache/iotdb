@@ -38,7 +38,6 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 @SuppressWarnings("java:S106") // for console outputs
 public class CommonUtils {
@@ -111,9 +110,6 @@ public class CommonUtils {
   }
 
   public static boolean checkCanCastType(TSDataType src, TSDataType dest) {
-    if (Objects.isNull(src)) {
-      return true;
-    }
     switch (src) {
       case INT32:
         if (dest == TSDataType.INT64 || dest == TSDataType.FLOAT || dest == TSDataType.DOUBLE) {
@@ -132,9 +128,6 @@ public class CommonUtils {
   }
 
   public static Object castValue(TSDataType srcDataType, TSDataType destDataType, Object value) {
-    if (Objects.isNull(value)) {
-      return null;
-    }
     switch (srcDataType) {
       case INT32:
         if (destDataType == TSDataType.INT64) {
