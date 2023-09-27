@@ -57,14 +57,23 @@ class SessionDataSet(object):
             query_data_set,
             1024,
         )
-        self.column_size = self.iotdb_rpc_data_set.get_column_size()
-        self.is_ignore_timestamp = self.iotdb_rpc_data_set.get_ignore_timestamp()
+        self.column_size = self.iotdb_rpc_data_set.column_size
+        self.is_ignore_timestamp = self.iotdb_rpc_data_set.ignore_timestamp
         self.column_names = tuple(self.iotdb_rpc_data_set.get_column_names())
-        self.column_ordinal_dict = self.iotdb_rpc_data_set.get_column_ordinal_dict()
+        self.column_ordinal_dict = self.iotdb_rpc_data_set.column_ordinal_dict
         self.column_type_deduplicated_list = tuple(
-            self.iotdb_rpc_data_set.get_column_type_deduplicated_list()
+            self.iotdb_rpc_data_set.column_type_deduplicated_list
         )
-        self.__field_list = [Field(data_type) for data_type in self.column_type_deduplicated_list]
+        if self.is_ignore_timestamp:
+            self.__field_list = [
+                Field(data_type)
+                for data_type in self.iotdb_rpc_data_set.get_column_types()
+            ]
+        else:
+            self.__field_list = [
+                Field(data_type)
+                for data_type in self.iotdb_rpc_data_set.get_column_types()[1:]
+            ]
 
     def __enter__(self):
         return self
@@ -88,7 +97,7 @@ class SessionDataSet(object):
         return self.iotdb_rpc_data_set.next()
 
     def next(self):
-        if not self.iotdb_rpc_data_set.get_has_cached_record():
+        if not self.iotdb_rpc_data_set.has_cached_record:
             if not self.has_next():
                 return None
         self.iotdb_rpc_data_set.has_cached_record = False
@@ -96,41 +105,41 @@ class SessionDataSet(object):
 
     def construct_row_record_from_value_array(self):
         if self.is_ignore_timestamp:
-            start = 0
-            end = self.column_size
+            offset = 0
         else:
-            start = 1
-            end = self.column_size + 1
-        for index in range(start, end):
-            column_name = self.column_names[index]
+            offset = 1
+        for index in range(self.column_size):
+            column_name = self.column_names[index + offset]
+            # IoTDBRpcDataSet.START_INDEX = 2
             location = self.column_ordinal_dict[column_name] - 2
-            if not self.iotdb_rpc_data_set.is_null_by_location(location):
-                value_bytes = self.iotdb_rpc_data_set.get_values()[location]
+            if not self.iotdb_rpc_data_set.is_null_info[location]:
+                value_bytes = self.iotdb_rpc_data_set.value[location]
                 data_type = self.column_type_deduplicated_list[location]
                 if data_type == 0:
                     value = struct.unpack(">?", value_bytes)[0]
-                    self.__field_list[index - 1].set_value(value)
+                    self.__field_list[index].value = value
                 elif data_type == 1:
                     value = struct.unpack(">i", value_bytes)[0]
-                    self.__field_list[index - 1].set_value(value)
+                    self.__field_list[index].value = value
                 elif data_type == 2:
                     value = struct.unpack(">q", value_bytes)[0]
-                    self.__field_list[index - 1].set_value(value)
+                    self.__field_list[index].value = value
                 elif data_type == 3:
                     value = struct.unpack(">f", value_bytes)[0]
-                    self.__field_list[index - 1].set_value(value)
+                    self.__field_list[index].value = value
                 elif data_type == 4:
                     value = struct.unpack(">d", value_bytes)[0]
-                    self.__field_list[index - 1].set_value(value)
+                    self.__field_list[index].value = value
                 elif data_type == 5:
-                    self.__field_list[index - 1].set_value(value_bytes)
+                    self.__field_list[index].value = value_bytes
                 else:
                     raise RuntimeError("unsupported data type {}.".format(data_type))
             else:
-                self.__field_list[index - 1].set_value(None)
+                self.__field_list[index].value = None
 
         return RowRecord(
-            struct.unpack(">q", self.iotdb_rpc_data_set.get_time_bytes())[0], self.__field_list
+            struct.unpack(">q", self.iotdb_rpc_data_set.time_bytes)[0],
+            self.__field_list,
         )
 
     def close_operation_handle(self):

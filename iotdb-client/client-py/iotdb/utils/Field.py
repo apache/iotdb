@@ -26,7 +26,7 @@ class Field(object):
         :param data_type: TSDataType
         """
         self.__data_type = data_type
-        self.__value = value
+        self.value = value
 
     @staticmethod
     def copy(field):
@@ -57,72 +57,72 @@ class Field(object):
         return self.__data_type is None
 
     def set_bool_value(self, value):
-        self.__value = value
+        self.value = value
 
     def get_bool_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.BOOLEAN:
             return None
-        return self.__value
+        return self.value
 
     def set_int_value(self, value):
-        self.__value = value
+        self.value = value
 
     def get_int_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.INT32:
             return None
-        return self.__value
+        return self.value
 
     def set_long_value(self, value):
-        self.__value = value
+        self.value = value
 
     def get_long_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.INT64:
             return None
-        return self.__value
+        return self.value
 
     def set_float_value(self, value):
-        self.__value = value
+        self.value = value
 
     def get_float_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.FLOAT:
             return None
-        return self.__value
+        return self.value
 
     def set_double_value(self, value):
-        self.__value = value
+        self.value = value
 
     def get_double_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.DOUBLE:
             return None
-        return self.__value
+        return self.value
 
     def set_binary_value(self, value):
-        self.__value = value
+        self.value = value
 
     def get_binary_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.TEXT:
             return None
-        return self.__value
+        return self.value
 
     def get_string_value(self):
-        if self.__data_type is None:
+        if self.__data_type is None or self.value is None:
             return "None"
         elif self.__data_type == TSDataType.TEXT:
-            return self.__value.decode("utf-8")
+            return self.value.decode("utf-8")
         else:
-            return str(self.__value)
+            return str(self.value)
 
     def __str__(self):
         return self.get_string_value()
@@ -133,10 +133,10 @@ class Field(object):
         """
         if self.__data_type is None:
             return None
-        return self.__value
+        return self.value
 
     def set_value(self, value):
-        self.__value = value
+        self.value = value
 
     @staticmethod
     def get_field(value, data_type):

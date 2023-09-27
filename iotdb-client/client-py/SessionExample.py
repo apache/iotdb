@@ -26,7 +26,7 @@ session.open()
 #
 # print("todf cost: " + str(int(datetime.now().timestamp() * 1000) - startTime) + "ms")
 startTime = int(datetime.now().timestamp() * 1000)
-with session.execute_query_statement("select ** from root") as data_set:
+with session.execute_query_statement("select * from root.**") as data_set:
     data_set.get_column_names()
     data_set.get_column_types()
     while data_set.has_next():
