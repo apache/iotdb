@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public class PipeEnrichedInsertBaseStatement extends InsertBaseStatement {
 
@@ -68,7 +67,7 @@ public class PipeEnrichedInsertBaseStatement extends InsertBaseStatement {
 
   @Override
   public boolean isQuery() {
-    return !Objects.isNull(insertBaseStatement) && insertBaseStatement.isQuery();
+    return insertBaseStatement.isQuery();
   }
 
   @Override
