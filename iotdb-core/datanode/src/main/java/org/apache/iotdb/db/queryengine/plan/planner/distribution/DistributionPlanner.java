@@ -81,11 +81,7 @@ public class DistributionPlanner {
   public PlanNode addExchangeNode(PlanNode root) {
     ExchangeNodeAdder adder = new ExchangeNodeAdder(this.analysis);
     NodeGroupContext nodeGroupContext =
-        new NodeGroupContext(
-            context,
-            analysis.getStatement() instanceof QueryStatement
-                && (((QueryStatement) analysis.getStatement()).isAlignByDevice()),
-            root);
+        new NodeGroupContext(context, analysis.getStatement(), root);
     PlanNode newRoot = adder.visit(root, nodeGroupContext);
     adjustUpStream(newRoot, nodeGroupContext);
     return newRoot;

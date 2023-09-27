@@ -196,164 +196,182 @@ public class DualKeyCacheTest {
     Assert.assertEquals(expectedSize, dualKeyCache.stats().memoryUsage());
   }
 
-
   @Test
   public void testInvalidDatabase() throws IllegalPathException {
-      IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateCache();
-      dualKeyCache.invalidate("root.db1");
-      Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s1"));
-      Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s2"));
-      Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1"), "s11"));
-      Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s1"));
-      Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s2"));
-      int expectSize = PartialPath.estimateSize(new PartialPath("root.db2.d1"))
-              + computeStringSize("s1")*2+
-              SchemaCacheEntry.estimateSize(new SchemaCacheEntry(
-                      "root.db1",
-                      new MeasurementSchema("s1", TSDataType.INT32),
-                      Collections.emptyMap(),
-                      false))*2;
-      Assert.assertEquals(expectSize,dualKeyCache.stats().memoryUsage());
-      dualKeyCache.evictOneEntry();
-      expectSize = PartialPath.estimateSize(new PartialPath("root.db2.d1"))
-              + computeStringSize("s1")+
-              SchemaCacheEntry.estimateSize(new SchemaCacheEntry(
-                      "root.db1",
-                      new MeasurementSchema("s1", TSDataType.INT32),
-                      Collections.emptyMap(),
-                      false));
-      Assert.assertEquals(expectSize,dualKeyCache.stats().memoryUsage());
-      dualKeyCache.evictOneEntry();
-      Assert.assertEquals(0,dualKeyCache.stats().memoryUsage());
+    IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateCache();
+    dualKeyCache.invalidate("root.db1");
+    Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s1"));
+    Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s2"));
+    Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1"), "s11"));
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s1"));
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s2"));
+    int expectSize =
+        PartialPath.estimateSize(new PartialPath("root.db2.d1"))
+            + computeStringSize("s1") * 2
+            + SchemaCacheEntry.estimateSize(
+                    new SchemaCacheEntry(
+                        "root.db1",
+                        new MeasurementSchema("s1", TSDataType.INT32),
+                        Collections.emptyMap(),
+                        false))
+                * 2;
+    Assert.assertEquals(expectSize, dualKeyCache.stats().memoryUsage());
+    dualKeyCache.evictOneEntry();
+    expectSize =
+        PartialPath.estimateSize(new PartialPath("root.db2.d1"))
+            + computeStringSize("s1")
+            + SchemaCacheEntry.estimateSize(
+                new SchemaCacheEntry(
+                    "root.db1",
+                    new MeasurementSchema("s1", TSDataType.INT32),
+                    Collections.emptyMap(),
+                    false));
+    Assert.assertEquals(expectSize, dualKeyCache.stats().memoryUsage());
+    dualKeyCache.evictOneEntry();
+    Assert.assertEquals(0, dualKeyCache.stats().memoryUsage());
   }
 
   @Test
   public void testInvalidPathPattern1() throws IllegalPathException {
-      IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateCache();
-      dualKeyCache.invalidate(Arrays.asList(new PartialPath("root.db2.**"), new PartialPath("root.db1.d1.s1")));
-      Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s1"));
-      Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s2"));
-      Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1"), "s11"));
-      Assert.assertNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s1"));
-      Assert.assertNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s2"));
-      int expectSize = PartialPath.estimateSize(new PartialPath("root.db1.d1"))
-              +PartialPath.estimateSize(new PartialPath("root.db1"))
-              + computeStringSize("s1")+computeStringSize("s11")+
-              SchemaCacheEntry.estimateSize(new SchemaCacheEntry(
-                      "root.db1",
-                      new MeasurementSchema("s1", TSDataType.INT32),
-                      Collections.emptyMap(),
-                      false))+SchemaCacheEntry.estimateSize(new SchemaCacheEntry(
-                      "root.db1",
-                      new MeasurementSchema("s11", TSDataType.INT32),
-                      Collections.emptyMap(),
-                      false));
-      Assert.assertEquals(expectSize,dualKeyCache.stats().memoryUsage());
-      dualKeyCache.evictOneEntry();
-      dualKeyCache.evictOneEntry();
-      Assert.assertEquals(0,dualKeyCache.stats().memoryUsage());
+    IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateCache();
+    dualKeyCache.invalidate(
+        Arrays.asList(new PartialPath("root.db2.**"), new PartialPath("root.db1.d1.s1")));
+    Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s1"));
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s2"));
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1"), "s11"));
+    Assert.assertNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s1"));
+    Assert.assertNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s2"));
+    int expectSize =
+        PartialPath.estimateSize(new PartialPath("root.db1.d1"))
+            + PartialPath.estimateSize(new PartialPath("root.db1"))
+            + computeStringSize("s1")
+            + computeStringSize("s11")
+            + SchemaCacheEntry.estimateSize(
+                new SchemaCacheEntry(
+                    "root.db1",
+                    new MeasurementSchema("s1", TSDataType.INT32),
+                    Collections.emptyMap(),
+                    false))
+            + SchemaCacheEntry.estimateSize(
+                new SchemaCacheEntry(
+                    "root.db1",
+                    new MeasurementSchema("s11", TSDataType.INT32),
+                    Collections.emptyMap(),
+                    false));
+    Assert.assertEquals(expectSize, dualKeyCache.stats().memoryUsage());
+    dualKeyCache.evictOneEntry();
+    dualKeyCache.evictOneEntry();
+    Assert.assertEquals(0, dualKeyCache.stats().memoryUsage());
   }
 
   @Test
   public void testInvalidPathPattern2() throws IllegalPathException {
-      IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateCache();
-      dualKeyCache.invalidate(Arrays.asList(new PartialPath("root.db1.**"), new PartialPath("root.db2.d1.*1")));
-      Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s1"));
-      Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s2"));
-      Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1"), "s11"));
-      Assert.assertNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s1"));
-      Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s2"));
-      int expectSize = PartialPath.estimateSize(new PartialPath("root.db2.d1"))
-              + computeStringSize("s2")+
-              SchemaCacheEntry.estimateSize(new SchemaCacheEntry(
-                      "root.db2",
-                      new MeasurementSchema("s2", TSDataType.INT32),
-                      Collections.emptyMap(),
-                      false));
-      Assert.assertEquals(expectSize,dualKeyCache.stats().memoryUsage());
-      dualKeyCache.evictOneEntry();
-      Assert.assertEquals(0,dualKeyCache.stats().memoryUsage());
+    IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateCache();
+    dualKeyCache.invalidate(
+        Arrays.asList(new PartialPath("root.db1.**"), new PartialPath("root.db2.d1.*1")));
+    Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s1"));
+    Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s2"));
+    Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1"), "s11"));
+    Assert.assertNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s1"));
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s2"));
+    int expectSize =
+        PartialPath.estimateSize(new PartialPath("root.db2.d1"))
+            + computeStringSize("s2")
+            + SchemaCacheEntry.estimateSize(
+                new SchemaCacheEntry(
+                    "root.db2",
+                    new MeasurementSchema("s2", TSDataType.INT32),
+                    Collections.emptyMap(),
+                    false));
+    Assert.assertEquals(expectSize, dualKeyCache.stats().memoryUsage());
+    dualKeyCache.evictOneEntry();
+    Assert.assertEquals(0, dualKeyCache.stats().memoryUsage());
   }
 
-
-    private IDualKeyCache<PartialPath, String, SchemaCacheEntry> generateCache() throws IllegalPathException {
-        DualKeyCacheBuilder<PartialPath, String, SchemaCacheEntry> dualKeyCacheBuilder =
-                new DualKeyCacheBuilder<>();
-        IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache =
-                dualKeyCacheBuilder
-                        .cacheEvictionPolicy(DualKeyCachePolicy.valueOf(policy))
-                        .memoryCapacity(2000) // actual threshold is 1600
-                        .firstKeySizeComputer(PartialPath::estimateSize)
-                        .secondKeySizeComputer(this::computeStringSize)
-                        .valueSizeComputer(SchemaCacheEntry::estimateSize)
-                        .build();
-        dualKeyCache.put(
-                new PartialPath("root.db1.d1"),
-                "s1",
-                new SchemaCacheEntry(
+  private IDualKeyCache<PartialPath, String, SchemaCacheEntry> generateCache()
+      throws IllegalPathException {
+    DualKeyCacheBuilder<PartialPath, String, SchemaCacheEntry> dualKeyCacheBuilder =
+        new DualKeyCacheBuilder<>();
+    IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache =
+        dualKeyCacheBuilder
+            .cacheEvictionPolicy(DualKeyCachePolicy.valueOf(policy))
+            .memoryCapacity(2000) // actual threshold is 1600
+            .firstKeySizeComputer(PartialPath::estimateSize)
+            .secondKeySizeComputer(this::computeStringSize)
+            .valueSizeComputer(SchemaCacheEntry::estimateSize)
+            .build();
+    dualKeyCache.put(
+        new PartialPath("root.db1.d1"),
+        "s1",
+        new SchemaCacheEntry(
+            "root.db1",
+            new MeasurementSchema("s1", TSDataType.INT32),
+            Collections.emptyMap(),
+            false));
+    dualKeyCache.put(
+        new PartialPath("root.db1.d1"),
+        "s2",
+        new SchemaCacheEntry(
+            "root.db1",
+            new MeasurementSchema("s1", TSDataType.INT32),
+            Collections.emptyMap(),
+            false));
+    dualKeyCache.put(
+        new PartialPath("root.db1"),
+        "s11",
+        new SchemaCacheEntry(
+            "root.db1",
+            new MeasurementSchema("s11", TSDataType.INT32),
+            Collections.emptyMap(),
+            false));
+    dualKeyCache.put(
+        new PartialPath("root.db1.d1"),
+        "s2",
+        new SchemaCacheEntry(
+            "root.db1",
+            new MeasurementSchema("s1", TSDataType.INT32),
+            Collections.emptyMap(),
+            false));
+    dualKeyCache.put(
+        new PartialPath("root.db2.d1"),
+        "s1",
+        new SchemaCacheEntry(
+            "root.db2",
+            new MeasurementSchema("s1", TSDataType.INT32),
+            Collections.emptyMap(),
+            false));
+    dualKeyCache.put(
+        new PartialPath("root.db2.d1"),
+        "s2",
+        new SchemaCacheEntry(
+            "root.db2",
+            new MeasurementSchema("s1", TSDataType.INT32),
+            Collections.emptyMap(),
+            false));
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s1"));
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s2"));
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1"), "s11"));
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s1"));
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s2"));
+    int expectSize =
+        PartialPath.estimateSize(new PartialPath("root.db1.d1")) * 2
+            + PartialPath.estimateSize(new PartialPath("root.db1"))
+            + computeStringSize("s1") * 4
+            + computeStringSize("s11")
+            + SchemaCacheEntry.estimateSize(
+                    new SchemaCacheEntry(
                         "root.db1",
                         new MeasurementSchema("s1", TSDataType.INT32),
                         Collections.emptyMap(),
-                        false));
-        dualKeyCache.put(
-                new PartialPath("root.db1.d1"),
-                "s2",
+                        false))
+                * 4
+            + SchemaCacheEntry.estimateSize(
                 new SchemaCacheEntry(
-                        "root.db1",
-                        new MeasurementSchema("s1", TSDataType.INT32),
-                        Collections.emptyMap(),
-                        false));
-        dualKeyCache.put(
-                new PartialPath("root.db1"),
-                "s11",
-                new SchemaCacheEntry(
-                        "root.db1",
-                        new MeasurementSchema("s11", TSDataType.INT32),
-                        Collections.emptyMap(),
-                        false));
-        dualKeyCache.put(
-                new PartialPath("root.db1.d1"),
-                "s2",
-                new SchemaCacheEntry(
-                        "root.db1",
-                        new MeasurementSchema("s1", TSDataType.INT32),
-                        Collections.emptyMap(),
-                        false));
-        dualKeyCache.put(
-                new PartialPath("root.db2.d1"),
-                "s1",
-                new SchemaCacheEntry(
-                        "root.db2",
-                        new MeasurementSchema("s1", TSDataType.INT32),
-                        Collections.emptyMap(),
-                        false));
-        dualKeyCache.put(
-                new PartialPath("root.db2.d1"),
-                "s2",
-                new SchemaCacheEntry(
-                        "root.db2",
-                        new MeasurementSchema("s1", TSDataType.INT32),
-                        Collections.emptyMap(),
-                        false));
-        Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s1"));
-        Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s2"));
-        Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1"), "s11"));
-        Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s1"));
-        Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s2"));
-        int expectSize = PartialPath.estimateSize(new PartialPath("root.db1.d1")) * 2
-                + PartialPath.estimateSize(new PartialPath("root.db1"))
-                + computeStringSize("s1")*4+computeStringSize("s11")+
-                SchemaCacheEntry.estimateSize(new SchemaCacheEntry(
-                        "root.db1",
-                        new MeasurementSchema("s1", TSDataType.INT32),
-                        Collections.emptyMap(),
-                        false))*4+
-                SchemaCacheEntry.estimateSize(new SchemaCacheEntry(
-                        "root.db1",
-                        new MeasurementSchema("s11", TSDataType.INT32),
-                        Collections.emptyMap(),
-                        false));
-        Assert.assertEquals(expectSize,dualKeyCache.stats().memoryUsage());
-        return dualKeyCache;
-    }
+                    "root.db1",
+                    new MeasurementSchema("s11", TSDataType.INT32),
+                    Collections.emptyMap(),
+                    false));
+    Assert.assertEquals(expectSize, dualKeyCache.stats().memoryUsage());
+    return dualKeyCache;
+  }
 }
