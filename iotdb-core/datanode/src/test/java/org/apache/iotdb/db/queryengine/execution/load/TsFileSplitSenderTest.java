@@ -120,6 +120,7 @@ public class TsFileSplitSenderTest extends TestBase {
     long start = System.currentTimeMillis();
     splitSender.start();
     long timeConsumption = System.currentTimeMillis() - start;
+    thread.interrupt();
 
     printPhaseResult();
     long transmissionTime = splitSender.getStatistic().compressedSize.get() / nodeThroughput;

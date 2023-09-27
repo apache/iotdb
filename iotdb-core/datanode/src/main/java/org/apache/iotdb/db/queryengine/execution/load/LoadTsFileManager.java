@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -195,12 +197,14 @@ public class LoadTsFileManager {
     private Map<DataPartitionInfo, TsFileIOWriter> dataPartition2Writer;
     private Map<DataPartitionInfo, String> dataPartition2LastDevice;
     private boolean isClosed;
+    private Set<Integer> receivedSplitIds;
 
     private TsFileWriterManager(File taskDir) {
       this.taskDir = taskDir;
       this.dataPartition2Writer = new HashMap<>();
       this.dataPartition2LastDevice = new HashMap<>();
       this.isClosed = false;
+      this.receivedSplitIds = new HashSet<>();
 
       clearDir(taskDir);
     }
@@ -215,7 +219,10 @@ public class LoadTsFileManager {
     }
 
     @SuppressWarnings("squid:S3824")
-    private void write(DataPartitionInfo partitionInfo, ChunkData chunkData) throws IOException {
+    private synchronized void write(DataPartitionInfo partitionInfo, ChunkData chunkData) throws IOException {
+      if (receivedSplitIds.contains(chunkData.getSplitId())) {
+        return;
+      }
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
@@ -239,15 +246,20 @@ public class LoadTsFileManager {
         dataPartition2LastDevice.put(partitionInfo, chunkData.getDevice());
       }
       chunkData.writeToFileWriter(writer);
+      receivedSplitIds.add(chunkData.getSplitId());
     }
 
-    private void writeDeletion(TsFileData deletionData) throws IOException {
+    private synchronized void writeDeletion(TsFileData deletionData) throws IOException {
+      if (receivedSplitIds.contains(deletionData.getSplitId())) {
+        return;
+      }
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
       for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
         deletionData.writeToFileWriter(entry.getValue());
       }
+      receivedSplitIds.add(deletionData.getSplitId());
     }
 
     private void loadAll(boolean isGeneratedByPipe) throws IOException, LoadFileException {

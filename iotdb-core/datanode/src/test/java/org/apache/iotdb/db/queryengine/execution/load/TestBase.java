@@ -22,7 +22,9 @@ package org.apache.iotdb.db.queryengine.execution.load;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.GB;
 
 import java.util.Comparator;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -41,8 +43,15 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.utils.SequenceUtils.DoubleSequenceGenerator;
 import org.apache.iotdb.db.utils.SequenceUtils.DoubleSequenceGeneratorFactory;
 import org.apache.iotdb.db.utils.SequenceUtils.GaussianDoubleSequenceGenerator;
@@ -91,11 +100,11 @@ import java.util.stream.IntStream;
 public class TestBase {
 
   private static final Logger logger = LoggerFactory.getLogger(TestBase.class);
-  public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
+  public static final String BASE_OUTPUT_PATH = "target".concat(File.separator).concat("loadTest");
   public static final String PARTIAL_PATH_STRING =
       "%s" + File.separator + "%d" + File.separator + "%d" + File.separator;
   public static final String TEST_TSFILE_PATH =
-      BASE_OUTPUT_PATH + "testTsFile".concat(File.separator) + PARTIAL_PATH_STRING;
+      BASE_OUTPUT_PATH + File.separator + "testTsFile".concat(File.separator) + PARTIAL_PATH_STRING;
 
   protected int fileNum = 100;
   // series number of each file, sn non-aligned series and 1 aligned series with sn measurements
@@ -117,6 +126,7 @@ public class TestBase {
   protected IPartitionFetcher partitionFetcher;
   // the key is deviceId, not partitioned by time in the simple test
   protected Map<String, TRegionReplicaSet> partitionTable = new HashMap<>();
+  protected Map<TConsensusGroupId, DataRegion> dataRegionMap = new HashMap<>();
   protected Map<ConsensusGroupId, TRegionReplicaSet> groupId2ReplicaSetMap = new HashMap<>();
   protected IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
@@ -125,7 +135,7 @@ public class TestBase {
   private int groupSizeInByte;
 
   @Before
-  public void setup() throws IOException, WriteProcessException {
+  public void setup() throws IOException, WriteProcessException, DataRegionException {
     setupFiles();
     logger.info("{} files set up", files.size());
     partitionFetcher = dummyPartitionFetcher();
@@ -137,9 +147,8 @@ public class TestBase {
 
   @After
   public void cleanup() {
-    for (File file : files) {
-      file.delete();
-    }
+    FileUtils.deleteDirectory(new File(BASE_OUTPUT_PATH));
+    FileUtils.deleteDirectory(new File("target" + File.separator + "data"));
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(groupSizeInByte);
   }
 
@@ -165,7 +174,8 @@ public class TestBase {
         .setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
-  public TLoadResp handleTsLoadCommand(TLoadCommandReq req, TEndPoint tEndpoint) {
+  public TLoadResp handleTsLoadCommand(TLoadCommandReq req, TEndPoint tEndpoint)
+      throws LoadFileException, IOException {
     return new TLoadResp()
         .setAccepted(true)
         .setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -195,8 +205,12 @@ public class TestBase {
                 }
 
                 @Override
-                public TLoadResp sendLoadCommand(TLoadCommandReq req) {
-                  return handleTsLoadCommand(req, getTEndpoint());
+                public TLoadResp sendLoadCommand(TLoadCommandReq req) throws TException {
+                  try {
+                    return handleTsLoadCommand(req, getTEndpoint());
+                  } catch (LoadFileException | IOException e) {
+                    throw new TException(e);
+                  }
                 }
 
                 @Override
@@ -218,7 +232,7 @@ public class TestBase {
         };
   }
 
-  public void setupPartitionTable() {
+  public void setupPartitionTable() throws DataRegionException {
     ConsensusGroupId d1GroupId = Factory.create(TConsensusGroupType.DataRegion.getValue(), 0);
     TRegionReplicaSet d1Replicas =
         new TRegionReplicaSet(
@@ -233,8 +247,14 @@ public class TestBase {
                 new TDataNodeLocation()
                     .setDataNodeId(2)
                     .setInternalEndPoint(new TEndPoint("localhost", 10002))));
+
+    WALRecoverManager.getInstance()
+        .setAllDataRegionScannedLatch(new CountDownLatch(0));
+    DataRegion dataRegion = new DataRegion(BASE_OUTPUT_PATH, d1GroupId.toString(),
+        new DirectFlushPolicy(), "root.loadTest");
     for (int i = 0; i < deviceNum; i++) {
       partitionTable.put("d" + i, d1Replicas);
+      dataRegionMap.put(d1GroupId.convertToTConsensusGroupId(), dataRegion);
     }
 
     groupId2ReplicaSetMap.put(d1GroupId, d1Replicas);
@@ -334,8 +354,9 @@ public class TestBase {
       schemaGeneratorPairs.add(new Pair<>(measurementSchema, measurementGeneratorPair.right));
     }
     schemaGeneratorPairs.sort(Comparator.comparing(s -> s.left.getMeasurementId()));
-    List<MeasurementSchema> measurementSchemas = schemaGeneratorPairs.stream().map(m -> m.left).collect(
-        Collectors.toList());
+    List<MeasurementSchema> measurementSchemas = schemaGeneratorPairs.stream().map(m -> m.left)
+        .collect(
+            Collectors.toList());
     IntStream.range(0, fileNum)
         .parallel()
         .forEach(
@@ -352,7 +373,8 @@ public class TestBase {
                   // dd2
                   for (int sn = 0; sn < seriesNum; sn++) {
                     for (int dn = 0; dn < deviceNum; dn++) {
-                      writer.registerTimeseries(new Path("d"+dn), schemaGeneratorPairs.get(sn).left);
+                      writer.registerTimeseries(new Path("d" + dn),
+                          schemaGeneratorPairs.get(sn).left);
                     }
                   }
                   writer.registerAlignedTimeseries(new Path("dd1"), measurementSchemas);
@@ -387,8 +409,8 @@ public class TestBase {
 
                   writer.flushAllChunkGroups();
                   for (int dn = 0; dn < deviceNum; dn++) {
-                    tsFileResource.updateStartTime("d"+dn, chunkTimeRange * i);
-                    tsFileResource.updateEndTime("d"+dn, chunkTimeRange * (i + 1));
+                    tsFileResource.updateStartTime("d" + dn, chunkTimeRange * i);
+                    tsFileResource.updateEndTime("d" + dn, chunkTimeRange * (i + 1));
                   }
                 }
 
