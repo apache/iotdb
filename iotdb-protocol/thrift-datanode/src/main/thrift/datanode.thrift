@@ -310,6 +310,8 @@ struct TTsFilePieceReq{
     3: required common.TConsensusGroupId consensusGroupId
     // if isRelay is true, the receiver should forward the request to other replicas in the group
     4: optional bool isRelay
+    5: optional i8 compressionType
+    6: optional i32 uncompressedLength
 }
 
 struct TLoadCommandReq{

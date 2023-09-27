@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.load.nodesplit;
 
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+
 import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 
 public interface PieceNodeSplitter {
   List<LoadTsFilePieceNode> split(LoadTsFilePieceNode pieceNode);

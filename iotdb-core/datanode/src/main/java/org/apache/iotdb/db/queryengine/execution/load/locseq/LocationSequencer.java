@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.load.locseq;
 
-import java.util.Iterator;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 
-public interface LocationSequencer extends Iterable<TDataNodeLocation> {
-
-
-}
+public interface LocationSequencer extends Iterable<TDataNodeLocation> {}

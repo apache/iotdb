@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
-import static org.junit.Assert.assertEquals;
-
 import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class TsFileSplitterTest extends TestBase {
   private List<TsFileData> resultSet = new ArrayList<>();
@@ -44,7 +44,8 @@ public class TsFileSplitterTest extends TestBase {
       // System.out.println(tsFileData);
     }
     System.out.printf(
-        "%d/%d splits after %dms\n", resultSet.size(), expectedChunkNum(), System.currentTimeMillis() - start);
+        "%d/%d splits after %dms\n",
+        resultSet.size(), expectedChunkNum(), System.currentTimeMillis() - start);
     assertEquals(resultSet.size(), expectedChunkNum());
   }
 

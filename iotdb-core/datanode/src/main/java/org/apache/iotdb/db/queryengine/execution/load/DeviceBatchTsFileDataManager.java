@@ -19,19 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
-import java.io.File;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
-/**
- * Like TsFileDataManager, but one batch (TsFilePieceNode) belongs to the same device.
- */
-public class DeviceBatchTsFileDataManager extends TsFileDataManager{
+import java.io.File;
+
+/** Like TsFileDataManager, but one batch (TsFilePieceNode) belongs to the same device. */
+public class DeviceBatchTsFileDataManager extends TsFileDataManager {
 
   private String currentDeviceId;
 
-  public DeviceBatchTsFileDataManager(DispatchFunction dispatchFunction,
+  public DeviceBatchTsFileDataManager(
+      DispatchFunction dispatchFunction,
       PlanNodeId planNodeId,
-      File targetFile, DataPartitionBatchFetcher partitionBatchFetcher, long maxMemorySize) {
+      File targetFile,
+      DataPartitionBatchFetcher partitionBatchFetcher,
+      long maxMemorySize) {
     super(dispatchFunction, planNodeId, targetFile, partitionBatchFetcher, maxMemorySize);
   }
 

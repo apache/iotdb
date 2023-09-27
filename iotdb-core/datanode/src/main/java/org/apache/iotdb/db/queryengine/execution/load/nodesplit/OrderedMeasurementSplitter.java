@@ -19,23 +19,26 @@
 
 package org.apache.iotdb.db.queryengine.execution.load.nodesplit;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.queryengine.execution.load.ChunkData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 
-public class OrderedMeasurementSplitter implements PieceNodeSplitter{
+import java.util.ArrayList;
+import java.util.List;
+
+public class OrderedMeasurementSplitter implements PieceNodeSplitter {
 
   /**
    * Split a piece node by series.
+   *
    * @return a list of piece nodes, each associated to only one series.
    */
   @Override
   public List<LoadTsFilePieceNode> split(LoadTsFilePieceNode pieceNode) {
     List<LoadTsFilePieceNode> result = new ArrayList<>();
     String currMeasurement = null;
-    LoadTsFilePieceNode currNode = new LoadTsFilePieceNode(pieceNode.getPlanNodeId(), pieceNode.getTsFile());
+    LoadTsFilePieceNode currNode =
+        new LoadTsFilePieceNode(pieceNode.getPlanNodeId(), pieceNode.getTsFile());
     result.add(currNode);
     for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
       if (tsFileData.isModification()) {

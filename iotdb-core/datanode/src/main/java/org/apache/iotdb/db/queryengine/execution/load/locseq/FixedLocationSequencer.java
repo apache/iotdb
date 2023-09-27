@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.load.locseq;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
-public class FixedLocationSequencer implements LocationSequencer{
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+public class FixedLocationSequencer implements LocationSequencer {
 
   private List<TDataNodeLocation> orderedLocations;
 

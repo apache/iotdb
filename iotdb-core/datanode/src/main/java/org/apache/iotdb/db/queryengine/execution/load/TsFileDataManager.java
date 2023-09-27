@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.execution.load;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
-import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -101,8 +100,7 @@ public class TsFileDataManager {
     // start to dispatch from the biggest TsFilePieceNode
     List<TRegionReplicaSet> sortedReplicaSets =
         replicaSet2Piece.keySet().stream()
-            .sorted(
-                Comparator.comparingLong(o -> replicaSet2Piece.get(o).getDataSize()).reversed())
+            .sorted(Comparator.comparingLong(o -> replicaSet2Piece.get(o).getDataSize()).reversed())
             .collect(Collectors.toList());
 
     for (TRegionReplicaSet sortedReplicaSet : sortedReplicaSets) {
@@ -125,7 +123,6 @@ public class TsFileDataManager {
     }
     return true;
   }
-
 
   protected void routeChunkData() {
     if (nonDirectionalChunkData.isEmpty()) {
@@ -161,7 +158,8 @@ public class TsFileDataManager {
     routeChunkData();
 
     for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
-      if (entry.getValue().getDataSize() > 0 && !dispatchFunction.dispatchOnePieceNode(entry.getValue(), entry.getKey())) {
+      if (entry.getValue().getDataSize() > 0
+          && !dispatchFunction.dispatchOnePieceNode(entry.getValue(), entry.getKey())) {
         logger.warn("Dispatch piece node {} of TsFile {} error.", entry.getValue(), targetFile);
         return false;
       }

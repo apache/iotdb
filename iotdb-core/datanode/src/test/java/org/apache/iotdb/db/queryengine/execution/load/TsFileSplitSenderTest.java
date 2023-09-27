@@ -19,19 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Comparator;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Random;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -47,11 +35,30 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.apache.thrift.TException;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
+import static org.junit.Assert.assertEquals;
 
 public class TsFileSplitSenderTest extends TestBase {
 
@@ -69,18 +76,38 @@ public class TsFileSplitSenderTest extends TestBase {
   // simulating jvm stall like GC
   private long minStuckIntervalMS = 50000;
   private long maxStuckIntervalMS = 100000;
-  private long stuckDurationMS = 10000;
+  private long stuckDurationMS = 0;
 
-  private long nodeThroughput = 500000;
+  private long nodeThroughput = 10_000;
 
   protected Map<TEndPoint, Pair<Long, Long>> nextStuckTimeMap = new ConcurrentHashMap<>();
+  private AtomicLong sumHandleTime = new AtomicLong();
+  private AtomicLong decompressTime = new AtomicLong();
+  private AtomicLong deserializeTime = new AtomicLong();
+  private AtomicLong relayTime = new AtomicLong();
+  private AtomicLong maxMemoryUsage = new AtomicLong();
 
   @Test
   public void test() throws IOException {
+    Thread thread = new Thread(() -> {
+      while (!Thread.interrupted()) {
+        long preUsage = maxMemoryUsage.get();
+        long newUsage = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+        if (preUsage < newUsage) {
+          maxMemoryUsage.set(newUsage);
+        }
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          return;
+        }
+      }
+    });
+    thread.start();
+
     LoadTsFileNode loadTsFileNode =
         new LoadTsFileNode(new PlanNodeId("testPlanNode"), tsFileResources);
-    DataPartitionBatchFetcher partitionBatchFetcher =
-        dummyDataPartitionBatchFetcher();
+    DataPartitionBatchFetcher partitionBatchFetcher = dummyDataPartitionBatchFetcher();
     TsFileSplitSender splitSender =
         new TsFileSplitSender(
             loadTsFileNode,
@@ -88,30 +115,44 @@ public class TsFileSplitSenderTest extends TestBase {
             TimePartitionUtils.getTimePartitionInterval(),
             internalServiceClientManager,
             false,
-            maxSplitSize);
+            maxSplitSize,
+            100);
     long start = System.currentTimeMillis();
     splitSender.start();
     long timeConsumption = System.currentTimeMillis() - start;
 
     printPhaseResult();
-    System.out.printf("Split ends after %dms", timeConsumption);
+    long transmissionTime = splitSender.getStatistic().compressedSize.get() / nodeThroughput;
+    System.out.printf("Split ends after %dms + %dms (Transmission) = %dms\n", timeConsumption,
+        transmissionTime, timeConsumption + transmissionTime);
+    System.out.printf("Handle sum %dns\n", sumHandleTime.get());
+    System.out.printf("Decompress sum %dns\n", decompressTime.get());
+    System.out.printf("Deserialize sum %dns\n", deserializeTime.get());
+    System.out.printf("Relay sum %dns\n", relayTime.get());
+    System.out.printf("Memory usage %dMB\n", maxMemoryUsage.get() / MB);
   }
 
   public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndpoint)
-      throws TException {
-    if ((tEndpoint.getPort() - 10000) % 3 == 0 && random.nextDouble() < packetLossRatio
+      throws TException, IOException {
+    long handleStart = System.nanoTime();
+    if ((tEndpoint.getPort() - 10000) % 3 == 0
+        && random.nextDouble() < packetLossRatio
         && req.isRelay) {
       throw new TException("Packet lost");
     }
-    if ((tEndpoint.getPort() - 10000) % 3 == 1 && random.nextDouble() < packetLossRatio / 2
+    if ((tEndpoint.getPort() - 10000) % 3 == 1
+        && random.nextDouble() < packetLossRatio / 2
         && req.isRelay) {
       throw new TException("Packet lost");
     }
 
-    if ((tEndpoint.getPort() - 10000) % 3 == 0 && req.isRelay) {
-      Pair<Long, Long> nextStuckTime = nextStuckTimeMap.computeIfAbsent(tEndpoint,
-          e -> new Pair<>(System.currentTimeMillis(),
-              System.currentTimeMillis() + stuckDurationMS));
+    if ((tEndpoint.getPort() - 10000) % 3 == 0 && req.isRelay && stuckDurationMS > 0) {
+      Pair<Long, Long> nextStuckTime =
+          nextStuckTimeMap.computeIfAbsent(
+              tEndpoint,
+              e ->
+                  new Pair<>(
+                      System.currentTimeMillis(), System.currentTimeMillis() + stuckDurationMS));
       long currTime = System.currentTimeMillis();
       if (currTime >= nextStuckTime.left && currTime < nextStuckTime.right) {
         logger.debug("Node{} stalls", tEndpoint.getPort() - 10000);
@@ -121,38 +162,52 @@ public class TsFileSplitSenderTest extends TestBase {
           throw new RuntimeException(e);
         }
       } else if (currTime > nextStuckTime.right) {
-        nextStuckTimeMap.compute(tEndpoint, (endPoint, newInterval) -> {
-          if (newInterval != null && currTime < newInterval.right) {
-            return newInterval;
-          }
-          long start = currTime + minStuckIntervalMS + random.nextInt(
-              (int) (maxStuckIntervalMS - minStuckIntervalMS));
-          return new Pair<>(start, start + stuckDurationMS);
-        });
+        nextStuckTimeMap.compute(
+            tEndpoint,
+            (endPoint, newInterval) -> {
+              if (newInterval != null && currTime < newInterval.right) {
+                return newInterval;
+              }
+              long start =
+                  currTime
+                      + minStuckIntervalMS
+                      + random.nextInt((int) (maxStuckIntervalMS - minStuckIntervalMS));
+              return new Pair<>(start, start + stuckDurationMS);
+            });
       }
     }
 
+    long decompressStart = System.nanoTime();
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
-    LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(
-        req.body.slice());
+    ByteBuffer buf = req.body.slice();
+    if (req.isSetCompressionType()) {
+      CompressionType compressionType = CompressionType.deserialize(req.compressionType);
+      IUnCompressor unCompressor = IUnCompressor.getUnCompressor(compressionType);
+      int uncompressedLength = req.getUncompressedLength();
+      ByteBuffer allocate = ByteBuffer.allocate(uncompressedLength);
+      unCompressor.uncompress(buf.array(), buf.arrayOffset() + buf.position(), buf.remaining(),
+          allocate.array(), 0);
+      allocate.limit(uncompressedLength);
+      buf = allocate;
+    }
+    decompressTime.addAndGet(System.nanoTime() - decompressStart);
+
+    long deserializeStart = System.nanoTime();
+    LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(buf);
+    deserializeTime.addAndGet(System.nanoTime() - deserializeStart);
     Set<Integer> splitIds =
         phaseOneResults
-            .computeIfAbsent(tEndpoint, e -> new ConcurrentSkipListMap<>(
-                Comparator.comparingInt(ConsensusGroupId::getId)))
+            .computeIfAbsent(
+                tEndpoint,
+                e -> new ConcurrentSkipListMap<>(Comparator.comparingInt(ConsensusGroupId::getId)))
             .computeIfAbsent(groupId, g -> new ConcurrentSkipListMap<>())
             .computeIfAbsent(req.uuid, id -> new ConcurrentSkipListMap<>())
             .computeIfAbsent(pieceNode.getTsFile(), f -> new ConcurrentSkipListSet<>());
-    splitIds.addAll(pieceNode.getAllTsFileData().stream().map(TsFileData::getSplitId).collect(
-        Collectors.toList()));
-
-    synchronized (tEndpoint) {
-      try {
-        Thread.sleep(pieceNode.getDataSize() / nodeThroughput);
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-    }
+    splitIds.addAll(
+        pieceNode.getAllTsFileData().stream()
+            .map(TsFileData::getSplitId)
+            .collect(Collectors.toList()));
 
     if (dummyDelayMS > 0) {
       if ((tEndpoint.getPort() - 10000) % 3 == 0 && req.isRelay) {
@@ -173,17 +228,25 @@ public class TsFileSplitSenderTest extends TestBase {
 
     // forward to other replicas in the group
     if (req.isRelay) {
+      long relayStart = System.nanoTime();
       req.isRelay = false;
       TRegionReplicaSet regionReplicaSet = groupId2ReplicaSetMap.get(groupId);
-      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+      regionReplicaSet.getDataNodeLocations().stream().parallel().forEach(dataNodeLocation -> {
         TEndPoint otherPoint = dataNodeLocation.getInternalEndPoint();
         if (!otherPoint.equals(tEndpoint)) {
-          handleTsFilePieceNode(req, otherPoint);
+          try {
+            handleTsFilePieceNode(req, otherPoint);
+          } catch (TException | IOException e) {
+            throw new RuntimeException(e);
+          }
         }
-      }
+      });
+      relayTime.addAndGet(System.nanoTime() - relayStart);
     }
 
-    return new TLoadResp().setAccepted(true)
+    sumHandleTime.addAndGet(System.nanoTime() - handleStart);
+    return new TLoadResp()
+        .setAccepted(true)
         .setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
@@ -191,7 +254,8 @@ public class TsFileSplitSenderTest extends TestBase {
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
     phaseTwoResults
-        .computeIfAbsent(tEndpoint,
+        .computeIfAbsent(
+            tEndpoint,
             e -> new ConcurrentSkipListMap<>(Comparator.comparingInt(ConsensusGroupId::getId)))
         .computeIfAbsent(groupId, g -> new ConcurrentSkipListMap<>())
         .computeIfAbsent(req.uuid, id -> req.commandType);
@@ -208,7 +272,8 @@ public class TsFileSplitSenderTest extends TestBase {
       }
     }
 
-    return new TLoadResp().setAccepted(true)
+    return new TLoadResp()
+        .setAccepted(true)
         .setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
@@ -217,8 +282,8 @@ public class TsFileSplitSenderTest extends TestBase {
     for (Entry<TEndPoint, Map<ConsensusGroupId, Map<String, Map<File, Set<Integer>>>>>
         tEndPointMapEntry : phaseOneResults.entrySet()) {
       TEndPoint endPoint = tEndPointMapEntry.getKey();
-      for (Entry<ConsensusGroupId, Map<String, Map<File, Set<Integer>>>>
-          consensusGroupIdMapEntry : tEndPointMapEntry.getValue().entrySet()) {
+      for (Entry<ConsensusGroupId, Map<String, Map<File, Set<Integer>>>> consensusGroupIdMapEntry :
+          tEndPointMapEntry.getValue().entrySet()) {
         ConsensusGroupId consensusGroupId = consensusGroupIdMapEntry.getKey();
         for (Entry<String, Map<File, Set<Integer>>> stringMapEntry :
             consensusGroupIdMapEntry.getValue().entrySet()) {
@@ -227,15 +292,15 @@ public class TsFileSplitSenderTest extends TestBase {
             File tsFile = fileListEntry.getKey();
             Set<Integer> chunks = fileListEntry.getValue();
             System.out.printf(
-                "%s - %s - %s - %s - %s chunks\n", endPoint, consensusGroupId, uuid, tsFile,
-                chunks.size());
-//            if (consensusGroupId.getId() == 0) {
-//              // d1, non-aligned series
-//              assertEquals(expectedChunkNum() / 2, chunks.size());
-//            } else {
-//              // d2, aligned series
-//              assertEquals(expectedChunkNum() / 2 / seriesNum, chunks.size());
-//            }
+                "%s - %s - %s - %s - %s chunks\n",
+                endPoint, consensusGroupId, uuid, tsFile, chunks.size());
+            //            if (consensusGroupId.getId() == 0) {
+            //              // d1, non-aligned series
+            //              assertEquals(expectedChunkNum() / 2, chunks.size());
+            //            } else {
+            //              // d2, aligned series
+            //              assertEquals(expectedChunkNum() / 2 / seriesNum, chunks.size());
+            //            }
           }
         }
       }
@@ -252,8 +317,9 @@ public class TsFileSplitSenderTest extends TestBase {
             consensusGroupIdMapEntry.getValue().entrySet()) {
           String uuid = stringMapEntry.getKey();
           int command = stringMapEntry.getValue();
-          System.out.printf("%s - %s - %s - %s\n", endPoint, consensusGroupId, uuid,
-              LoadCommand.values()[command]);
+          System.out.printf(
+              "%s - %s - %s - %s\n",
+              endPoint, consensusGroupId, uuid, LoadCommand.values()[command]);
           assertEquals(LoadCommand.EXECUTE.ordinal(), command);
         }
       }

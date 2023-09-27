@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
-import static org.junit.Assert.assertEquals;
-
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
@@ -32,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.assertEquals;
 
 public class MergedTsFileSplitterTest extends TestBase {
 
@@ -52,7 +52,8 @@ public class MergedTsFileSplitterTest extends TestBase {
                 new SynchronousQueue<>(),
                 new IoTThreadFactory("MergedTsFileSplitter"),
                 "MergedTsFileSplitter"),
-            TimePartitionUtils.getTimePartitionInterval());
+            TimePartitionUtils.getTimePartitionInterval(),
+            fileNum);
     try {
       splitter.splitTsFileByDataPartition();
       for (TsFileData tsFileData : resultSet) {

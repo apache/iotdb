@@ -36,7 +36,7 @@ public class SequenceUtils {
       return id * 1.0;
     }
 
-    public static class Factory implements DoubleSequenceGeneratorFactory{
+    public static class Factory implements DoubleSequenceGeneratorFactory {
       @Override
       public DoubleSequenceGenerator create() {
         return new SimpleDoubleSequenceGenerator();
@@ -46,32 +46,60 @@ public class SequenceUtils {
 
   public static class UniformDoubleSequenceGenerator implements DoubleSequenceGenerator {
 
+    private double bound;
     private Random random = new Random();
-    @Override
-    public double gen(int id) {
-      return random.nextDouble();
+
+    public UniformDoubleSequenceGenerator(double bound) {
+      this.bound = bound;
     }
 
-    public static class Factory implements DoubleSequenceGeneratorFactory{
+    @Override
+    public double gen(int id) {
+      return random.nextDouble() * bound;
+    }
+
+    public static class Factory implements DoubleSequenceGeneratorFactory {
+      private double bound;
+
+      public Factory(double bound) {
+        this.bound = bound;
+      }
+
       @Override
       public DoubleSequenceGenerator create() {
-        return new UniformDoubleSequenceGenerator();
+        return new UniformDoubleSequenceGenerator(bound);
       }
     }
   }
 
   public static class GaussianDoubleSequenceGenerator implements DoubleSequenceGenerator {
 
+    private double mean;
+    private double stderr;
     private Random random = new Random();
-    @Override
-    public double gen(int id) {
-      return random.nextGaussian();
+
+    public GaussianDoubleSequenceGenerator(double mean, double stderr) {
+      this.mean = mean;
+      this.stderr = stderr;
     }
 
-    public static class Factory implements DoubleSequenceGeneratorFactory{
+    @Override
+    public double gen(int id) {
+      return mean + random.nextGaussian() * stderr;
+    }
+
+    public static class Factory implements DoubleSequenceGeneratorFactory {
+      private double mean;
+      private double stderr;
+
+      public Factory(double mean, double stderr) {
+        this.mean = mean;
+        this.stderr = stderr;
+      }
+
       @Override
       public DoubleSequenceGenerator create() {
-        return new GaussianDoubleSequenceGenerator();
+        return new GaussianDoubleSequenceGenerator(mean, stderr);
       }
     }
   }

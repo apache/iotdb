@@ -36,7 +36,6 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
 import org.apache.iotdb.db.queryengine.execution.load.DataPartitionBatchFetcher;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileDataManager;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;

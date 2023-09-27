@@ -19,16 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.execution.load.locseq;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 public class RandomLocationSequencer implements LocationSequencer {
 
   private List<TDataNodeLocation> orderedLocations;
+
   public RandomLocationSequencer(TRegionReplicaSet replicaSet) {
     orderedLocations = new ArrayList<>(replicaSet.dataNodeLocations);
     Collections.shuffle(orderedLocations);

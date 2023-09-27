@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.execution.load.locseq;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class LocationStatistics {
 
@@ -33,13 +35,11 @@ public class LocationStatistics {
   private Map<TDataNodeLocation, Statistic> locationStatisticMap = new ConcurrentHashMap<>();
 
   public Statistic getStatistic(TDataNodeLocation location) {
-    return locationStatisticMap.computeIfAbsent(location,
-        l -> new Statistic());
+    return locationStatisticMap.computeIfAbsent(location, l -> new Statistic());
   }
 
   public void updateThroughput(TDataNodeLocation location, double sum, long cnt) {
-    Statistic statistic = locationStatisticMap.computeIfAbsent(location,
-        l -> new Statistic());
+    Statistic statistic = locationStatisticMap.computeIfAbsent(location, l -> new Statistic());
     statistic.updateThroughput(sum, cnt);
     statistic.increaseHit();
   }
@@ -70,11 +70,14 @@ public class LocationStatistics {
 
     @Override
     public String toString() {
-      return "{" +
-          "throughput=" + getThroughput() +
-          ", hit=" + hit +
-          ", lastHitTime=" + lastHitTime +
-          '}';
+      return "{"
+          + "throughput="
+          + getThroughput()
+          + ", hit="
+          + hit
+          + ", lastHitTime="
+          + lastHitTime
+          + '}';
     }
 
     public int getHit() {
@@ -88,9 +91,11 @@ public class LocationStatistics {
 
   public void logLocationStatistics() {
     if (logger.isInfoEnabled()) {
-      logger.info("Location throughput: {}", locationStatisticMap.entrySet().stream()
-          .map(e -> new Pair<>(e.getKey().getDataNodeId(), e.getValue()))
-          .collect(Collectors.toList()));
+      logger.info(
+          "Location throughput: {}",
+          locationStatisticMap.entrySet().stream()
+              .map(e -> new Pair<>(e.getKey().getDataNodeId(), e.getValue()))
+              .collect(Collectors.toList()));
     }
   }
 }
