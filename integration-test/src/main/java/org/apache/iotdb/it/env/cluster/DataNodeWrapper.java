@@ -33,6 +33,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   private final int schemaRegionConsensusPort;
   private final int mqttPort;
 
+  private final int restServicePort;
+
   private final String defaultNodePropertiesFile =
       EnvUtils.getFilePathFromSysVar("DefaultDataNodeProperties");
   private final String defaultCommonPropertiesFile =
@@ -46,7 +48,9 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     this.internalPort = portList[2];
     this.dataRegionConsensusPort = portList[3];
     this.schemaRegionConsensusPort = portList[4];
+
     this.mqttPort = portList[5];
+    this.restServicePort = portList[10] + 6000;
 
     // Initialize mutable properties
     reloadMutableFields();
@@ -55,6 +59,11 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     // Override mqtt properties of super class
     immutableCommonProperties.setProperty("mqtt_host", super.getIp());
     immutableCommonProperties.setProperty("mqtt_port", String.valueOf(this.mqttPort));
+    immutableCommonProperties.setProperty("rest_service_port", String.valueOf(restServicePort));
+    immutableCommonProperties.setProperty("enable_rest_service", "true");
+    immutableCommonProperties.setProperty("enable_swagger", "false");
+    immutableCommonProperties.setProperty("rest_query_default_row_size_limit", "10000");
+    immutableCommonProperties.setProperty("cache_expire_in_seconds", "28800");
 
     immutableNodeProperties.setProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST, targetConfigNode);
     immutableNodeProperties.setProperty("dn_system_dir", MppBaseConfig.NULL_VALUE);
@@ -140,6 +149,9 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     mutableCommonProperties.put("max_tsblock_size_in_bytes", "1024");
     mutableCommonProperties.put("page_size_in_byte", "1024");
 
+    mutableCommonProperties.put("enable_rest_service", "true");
+    mutableCommonProperties.put("rest_service_port", String.valueOf(this.restServicePort));
+
     mutableNodeProperties.put("dn_join_cluster_retry_interval_ms", "1000");
     mutableNodeProperties.put("dn_connection_timeout_ms", "30000");
     mutableNodeProperties.put("dn_metric_internal_reporter_type", "MEMORY");
@@ -205,6 +217,10 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   public int getDataRegionConsensusPort() {
     return dataRegionConsensusPort;
+  }
+
+  public int getRestServicePort() {
+    return restServicePort;
   }
 
   public int getSchemaRegionConsensusPort() {
