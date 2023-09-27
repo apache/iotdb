@@ -51,6 +51,7 @@ public abstract class PipeSubtask
 
   // For controlling the subtask execution
   protected final AtomicBoolean shouldStopSubmittingSelf = new AtomicBoolean(true);
+  protected final AtomicBoolean isClosed = new AtomicBoolean(false);
   protected PipeSubtaskScheduler subtaskScheduler;
 
   // For fail-over
@@ -88,6 +89,11 @@ public abstract class PipeSubtask
     }
 
     return hasAtLeastOneEventProcessed;
+  }
+
+  /** Should be synchronized with {@link PipeSubtask#releaseLastEvent} */
+  protected synchronized void setLastEvent(Event event) {
+    lastEvent = event;
   }
 
   /**
@@ -194,12 +200,15 @@ public abstract class PipeSubtask
     return !shouldStopSubmittingSelf.get();
   }
 
+  // synchronized for close() and releaseLastEvent(). make sure that the lastEvent
+  // will not be updated after pipeProcessor.close() to avoid resource leak
+  // because of the lastEvent is not released.
   @Override
-  public synchronized void close() {
+  public void close() {
     releaseLastEvent(false);
   }
 
-  protected void releaseLastEvent(boolean shouldReport) {
+  protected synchronized void releaseLastEvent(boolean shouldReport) {
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent) {
         ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName(), shouldReport);
