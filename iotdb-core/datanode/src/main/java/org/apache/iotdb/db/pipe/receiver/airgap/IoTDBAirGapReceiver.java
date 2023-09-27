@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.receiver.airgap;
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverAgent;
@@ -47,7 +46,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.zip.CRC32;
 
-import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.INT_LEN;
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
 
 public class IoTDBAirGapReceiver extends WrappedRunnable {
@@ -60,8 +58,6 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   private final IoTDBThriftReceiverAgent agent;
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
-
-  private boolean isELanguagePayload;
 
   public IoTDBAirGapReceiver(Socket socket, long receiverId) {
     this.socket = socket;
@@ -81,7 +77,6 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
     try {
       while (!socket.isClosed()) {
-        isELanguagePayload = false;
         receive();
       }
       LOGGER.info(
@@ -115,7 +110,6 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
       // Removed the used checksum
       final ByteBuffer byteBuffer = ByteBuffer.wrap(data, LONG_LEN, data.length - LONG_LEN);
-
       // Pseudo request, to reuse logic in IoTDBThriftReceiverAgent
       final AirGapPseudoTPipeTransferRequest req =
           (AirGapPseudoTPipeTransferRequest)
@@ -172,12 +166,17 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       return new byte[0];
     }
 
-    final byte[] resultBuffer = new byte[length];
-    readTillFull(inputStream, resultBuffer);
-    if (isELanguagePayload) {
-      skipTillEnough(inputStream, AirGapELanguageConstant.E_LANGUAGE_SUFFIX.length);
+    final ByteBuffer resultBuffer = ByteBuffer.allocate(length);
+    final byte[] readBuffer = new byte[length];
+
+    int alreadyReadBytes = 0;
+    int currentReadBytes;
+    while (alreadyReadBytes < length) {
+      currentReadBytes = inputStream.read(readBuffer, 0, length - alreadyReadBytes);
+      resultBuffer.put(readBuffer, 0, currentReadBytes);
+      alreadyReadBytes += currentReadBytes;
     }
-    return resultBuffer;
+    return resultBuffer.array();
   }
 
   /**
@@ -185,40 +184,17 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
    * data to read.
    */
   private int readLength(InputStream inputStream) throws IOException {
-    final byte[] doubleIntLengthBytes = new byte[2 * INT_LEN];
-    readTillFull(inputStream, doubleIntLengthBytes);
-
-    // Check the header of the request, if it is an E-Language request, skip the E-Language header.
-    // We assert AirGapELanguageConstant.E_LANGUAGE_PREFIX.length > 2 * INT_LEN here.
-    if (Arrays.equals(
-        doubleIntLengthBytes,
-        BytesUtils.subBytes(AirGapELanguageConstant.E_LANGUAGE_PREFIX, 0, 2 * INT_LEN))) {
-      isELanguagePayload = true;
-      skipTillEnough(
-          inputStream, (long) AirGapELanguageConstant.E_LANGUAGE_PREFIX.length - 2 * INT_LEN);
-      return readLength(inputStream);
+    byte[] lengthBytes0 = new byte[4];
+    if (inputStream.read(lengthBytes0) < 4) {
+      return 0;
     }
 
-    final byte[] dataLengthBytes = BytesUtils.subBytes(doubleIntLengthBytes, 0, INT_LEN);
     // for double check
-    return Arrays.equals(
-            dataLengthBytes, BytesUtils.subBytes(doubleIntLengthBytes, INT_LEN, INT_LEN))
-        ? BytesUtils.bytesToInt(dataLengthBytes)
-        : 0;
-  }
-
-  private void readTillFull(InputStream inputStream, byte[] readBuffer) throws IOException {
-    int alreadyReadBytes = 0;
-    while (alreadyReadBytes < readBuffer.length) {
-      alreadyReadBytes +=
-          inputStream.read(readBuffer, alreadyReadBytes, readBuffer.length - alreadyReadBytes);
+    byte[] lengthBytes1 = new byte[4];
+    if (inputStream.read(lengthBytes1) < 4) {
+      return 0;
     }
-  }
 
-  private void skipTillEnough(InputStream inputStream, long length) throws IOException {
-    int currentSkippedBytes = 0;
-    while (currentSkippedBytes < length) {
-      currentSkippedBytes += inputStream.skip(length - currentSkippedBytes);
-    }
+    return Arrays.equals(lengthBytes0, lengthBytes1) ? BytesUtils.bytesToInt(lengthBytes0) : 0;
   }
 }

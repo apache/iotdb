@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
@@ -60,8 +59,6 @@ import java.util.List;
 import java.util.zip.CRC32;
 
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
 
@@ -75,7 +72,6 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   private final List<Boolean> isSocketAlive = new ArrayList<>();
 
   private int handshakeTimeoutMs;
-  private boolean eLanguageEnable;
 
   private long currentClientIndex = 0;
 
@@ -102,12 +98,6 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
             CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE);
     LOGGER.info(
         "IoTDBAirGapConnector is customized with handshakeTimeoutMs: {}.", handshakeTimeoutMs);
-
-    eLanguageEnable =
-        parameters.getBooleanOrDefault(
-            CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY,
-            CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_DEFAULT_VALUE);
-    LOGGER.info("IoTDBAirGapConnector is customized with eLanguageEnable: {}.", eLanguageEnable);
   }
 
   @Override
@@ -364,8 +354,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     }
 
     final BufferedOutputStream outputStream = new BufferedOutputStream(socket.getOutputStream());
-    bytes = enrichWithLengthAndChecksum(bytes);
-    outputStream.write(eLanguageEnable ? enrichWithELanguage(bytes) : bytes);
+    outputStream.write(enrichWithLengthAndChecksum(bytes));
     outputStream.flush();
 
     final byte[] response = new byte[1];
@@ -383,14 +372,6 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     // double length as simple checksum
     return BytesUtils.concatByteArrayList(
         Arrays.asList(length, length, BytesUtils.longToBytes(crc32.getValue()), bytes));
-  }
-
-  private byte[] enrichWithELanguage(byte[] bytes) {
-    return BytesUtils.concatByteArrayList(
-        Arrays.asList(
-            AirGapELanguageConstant.E_LANGUAGE_PREFIX,
-            bytes,
-            AirGapELanguageConstant.E_LANGUAGE_SUFFIX));
   }
 
   @Override

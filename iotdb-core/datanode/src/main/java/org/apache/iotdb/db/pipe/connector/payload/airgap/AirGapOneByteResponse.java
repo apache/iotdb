@@ -23,8 +23,4 @@ public class AirGapOneByteResponse {
 
   public static final byte[] OK = new byte[] {0};
   public static final byte[] FAIL = new byte[] {(byte) 0xFF};
-
-  private AirGapOneByteResponse() {
-    // Utility class
-  }
 }
