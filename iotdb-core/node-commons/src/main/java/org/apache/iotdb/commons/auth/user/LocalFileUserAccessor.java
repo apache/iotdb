@@ -435,10 +435,16 @@ public class LocalFileUserAccessor implements IUserAccessor {
         IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
         for (int i = 0; i < privilegeNum; i++) {
           PathPrivilege pathPrivilege = user.getPathPrivilegeList().get(i);
-          IOUtils.writePathPrivilege(
-              outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
+          IOUtils.writeString(
+              outputStream,
+              pathPrivilege.getPath().getFullPath(),
+              STRING_ENCODING,
+              encodingBufferLocal);
+          IOUtils.writeInt(outputStream, pathPrivilege.getPrivileges().size(), encodingBufferLocal);
+          for (Integer item : pathPrivilege.getPrivileges()) {
+            IOUtils.writeInt(outputStream, item, encodingBufferLocal);
+          }
         }
-
         int userNum = user.getRoleList().size();
         IOUtils.writeInt(outputStream, userNum, encodingBufferLocal);
         for (int i = 0; i < userNum; i++) {

@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -62,6 +63,11 @@ public abstract class BasicUserManager implements IUserManager {
     this.preVersion = preVersion;
   }
 
+  @Override
+  @TestOnly
+  public boolean preVersion() {
+    return this.preVersion;
+  }
   // FOR PRE VERSION DONE ------
 
   /**
@@ -206,7 +212,7 @@ public abstract class BasicUserManager implements IUserManager {
       }
       if (preVersion) {
         if (path != null) {
-          if (AuthUtils.hasPrivilege(path, privilegeId, user.getPathPrivilegeList())) {
+          if (!AuthUtils.hasPrivilege(path, privilegeId, user.getPathPrivilegeList())) {
             return false;
           }
           AuthUtils.validatePath(path);
@@ -366,20 +372,25 @@ public abstract class BasicUserManager implements IUserManager {
   @Override
   public void checkAndRefreshPathPri() {
     userMap.forEach(
-        (username, user) -> {
+        (rolename, user) -> {
           if (!user.getServiceReady()) {
+            List<PathPrivilege> priCopy = new ArrayList<>();
             for (PathPrivilege pathPri : user.getPathPrivilegeList()) {
               try {
                 AuthUtils.validatePatternPath(pathPri.getPath());
+                priCopy.add(pathPri);
               } catch (AuthException e) {
                 PartialPath path = pathPri.getPath();
                 try {
-                  pathPri.setPath(AuthUtils.convertPatternPath(path));
-                } catch (IllegalPathException pathE) {
-                  ///
+                  for (Integer pri : pathPri.getPrivileges()) {
+                    AuthUtils.addPrivilege(AuthUtils.convertPatternPath(path), pri, priCopy, false);
+                  }
+                } catch (IllegalPathException illegalE) {
+                  //
                 }
               }
             }
+            user.setPrivilegeList(priCopy);
           }
           user.setServiceReady(true);
         });

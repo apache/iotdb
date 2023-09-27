@@ -103,5 +103,7 @@ public interface IRoleManager extends SnapshotProcessor {
 
   void setPreVersion(boolean preVersion);
 
+  boolean preVersion();
+
   void checkAndRefreshPathPri();
 }

@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -451,5 +452,17 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void setRoleForPreVersion(boolean preVersion) {
     roleManager.setPreVersion(preVersion);
+  }
+
+  @Override
+  @TestOnly
+  public boolean forUserPreVersion() {
+    return this.userManager.preVersion();
+  }
+
+  @Override
+  @TestOnly
+  public boolean forRolePreVersion() {
+    return this.roleManager.preVersion();
   }
 }

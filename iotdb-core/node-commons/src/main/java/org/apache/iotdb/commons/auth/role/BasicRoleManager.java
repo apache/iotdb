@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.concurrent.HashLock;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.io.IOException;
@@ -133,7 +134,7 @@ public abstract class BasicRoleManager implements IRoleManager {
       }
       if (preVersion) {
         if (path != null) {
-          if (AuthUtils.hasPrivilege(path, privilegeId, role.getPathPrivilegeList())) {
+          if (!AuthUtils.hasPrivilege(path, privilegeId, role.getPathPrivilegeList())) {
             return false;
           }
           AuthUtils.validatePath(path);
@@ -207,22 +208,33 @@ public abstract class BasicRoleManager implements IRoleManager {
   }
 
   @Override
+  @TestOnly
+  public boolean preVersion() {
+    return this.preVersion;
+  }
+
+  @Override
   public void checkAndRefreshPathPri() {
     roleMap.forEach(
         (rolename, role) -> {
           if (!role.getServiceReady()) {
+            List<PathPrivilege> priCopy = new ArrayList<>();
             for (PathPrivilege pathPri : role.getPathPrivilegeList()) {
               try {
                 AuthUtils.validatePatternPath(pathPri.getPath());
+                priCopy.add(pathPri);
               } catch (AuthException e) {
                 PartialPath path = pathPri.getPath();
                 try {
-                  pathPri.setPath(AuthUtils.convertPatternPath(path));
+                  for (Integer pri : pathPri.getPrivileges()) {
+                    AuthUtils.addPrivilege(AuthUtils.convertPatternPath(path), pri, priCopy, false);
+                  }
                 } catch (IllegalPathException illegalE) {
                   //
                 }
               }
             }
+            role.setPrivilegeList(priCopy);
           }
           role.setServiceReady(true);
         });

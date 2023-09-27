@@ -216,19 +216,23 @@ public class IOUtils {
       }
       PathPrivilege pathPriv = new PathPrivilege(ppath);
       int priNum = inputStream.readInt();
+      boolean isPathRelevant = false;
       for (int j = 0; j < priNum; j++) {
         PriPrivilegeType priType = PriPrivilegeType.values()[inputStream.readInt()];
         if (priType.isAccept()) {
           for (PrivilegeType item : priType.getSubPri()) {
             if (item.isPathRelevant()) {
               pathPriv.grantPrivilege(item.ordinal(), false);
+              isPathRelevant = true;
             } else {
               role.getSysPrivilege().add(item.ordinal());
             }
           }
         }
       }
-      pathPrivilegeList.add(pathPriv);
+      if (isPathRelevant) {
+        pathPrivilegeList.add(pathPriv);
+      }
     }
     role.setPrivilegeList(pathPrivilegeList);
   }

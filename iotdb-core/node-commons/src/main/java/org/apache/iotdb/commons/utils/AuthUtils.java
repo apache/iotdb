@@ -311,7 +311,7 @@ public class AuthUtils {
   public static boolean hasPrivilege(
       PartialPath path, int privilegeId, List<PathPrivilege> privilegeList) {
     for (PathPrivilege pathPrivilege : privilegeList) {
-      if (pathPrivilege.getPath().matchFullPath(path)
+      if (pathPrivilege.getPath().equals(path)
           && pathPrivilege.getPrivileges().contains(privilegeId)) {
         return true;
       }

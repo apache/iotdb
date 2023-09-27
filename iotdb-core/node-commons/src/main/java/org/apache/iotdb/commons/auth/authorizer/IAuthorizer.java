@@ -271,6 +271,10 @@ public interface IAuthorizer extends SnapshotProcessor {
 
   void setRoleForPreVersion(boolean preVersion);
 
+  boolean forUserPreVersion();
+
+  boolean forRolePreVersion();
+
   /**
    * Create a user with given username and password. New users will only be granted no privileges.
    *

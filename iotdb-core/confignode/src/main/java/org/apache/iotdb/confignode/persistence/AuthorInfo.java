@@ -182,10 +182,10 @@ public class AuthorInfo implements SnapshotProcessor {
     String password = authorPlan.getPassword();
     String newPassword = authorPlan.getNewPassword();
     Set<Integer> permissions = authorPlan.getPermissions();
-    if (authorType.ordinal() >= ConfigPhysicalPlanType.CreateUserDep.ordinal()
-        && authorType.ordinal() <= ConfigPhysicalPlanType.ListRoleUsersDep.ordinal()) {
-      HashSet<Integer> pricopy = new HashSet<>(permissions);
-      for (int permission : pricopy) {
+    if (authorType.ordinal() >= ConfigPhysicalPlanType.GrantRoleDep.ordinal()
+        && authorType.ordinal() <= ConfigPhysicalPlanType.RevokeRoleFromUserDep.ordinal()) {
+      HashSet<Integer> pricopy = new HashSet<>();
+      for (int permission : permissions) {
         PriPrivilegeType type = PriPrivilegeType.values()[permission];
         if (type.isAccept()) {
           for (PrivilegeType item : type.getSubPri()) {

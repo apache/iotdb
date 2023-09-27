@@ -155,5 +155,7 @@ public interface IUserManager extends SnapshotProcessor {
 
   void setPreVersion(boolean perVersion);
 
+  boolean preVersion();
+
   void checkAndRefreshPathPri();
 }

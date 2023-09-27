@@ -55,6 +55,7 @@ public enum PriPrivilegeType {
       PrivilegeType.USE_UDF,
       PrivilegeType.MANAGE_DATABASE,
       PrivilegeType.MAINTAIN,
+      PrivilegeType.EXTEND_TEMPLATE,
       PrivilegeType.AUDIT);
 
   boolean accept = false;
