@@ -116,22 +116,17 @@ class SessionDataSet(object):
                 value_bytes = self.iotdb_rpc_data_set.value[location]
                 data_type = self.column_type_deduplicated_list[location]
                 if data_type == 0:
-                    value = struct.unpack(">?", value_bytes)[0]
-                    self.__field_list[index].value = value
+                    self.__field_list[index].value = struct.unpack(">?", value_bytes)[0]
                 elif data_type == 1:
-                    value = struct.unpack(">i", value_bytes)[0]
-                    self.__field_list[index].value = value
+                    self.__field_list[index].value = struct.unpack(">i", value_bytes)[0]
                 elif data_type == 2:
-                    value = struct.unpack(">q", value_bytes)[0]
-                    self.__field_list[index].value = value
+                    self.__field_list[index].value = struct.unpack(">q", value_bytes)[0]
                 elif data_type == 3:
-                    value = struct.unpack(">f", value_bytes)[0]
-                    self.__field_list[index].value = value
+                    self.__field_list[index].value = struct.unpack(">f", value_bytes)[0]
                 elif data_type == 4:
-                    value = struct.unpack(">d", value_bytes)[0]
-                    self.__field_list[index].value = value
+                    self.__field_list[index].value = struct.unpack(">d", value_bytes)[0]
                 elif data_type == 5:
-                    self.__field_list[index].value = value_bytes
+                    self.__field_list[index].value = bytes(value_bytes)
                 else:
                     raise RuntimeError("unsupported data type {}.".format(data_type))
             else:

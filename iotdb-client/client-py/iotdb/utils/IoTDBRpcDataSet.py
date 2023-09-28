@@ -99,12 +99,19 @@ class IoTDBRpcDataSet(object):
                         TSDataType[column_type_list[i]]
                     )
 
-        self.time_bytes = bytes(0)
+        self.time_bytes = memoryview(b"\x00")
         self.__current_bitmap = [
             bytes(0) for _ in range(len(self.column_type_deduplicated_list))
         ]
         self.value = [None for _ in range(len(self.column_type_deduplicated_list))]
         self.__query_data_set = query_data_set
+        self.__query_data_set.time = memoryview(self.__query_data_set.time)
+        self.__query_data_set.valueList = [
+            memoryview(value) for value in self.__query_data_set.valueList
+        ]
+        self.__query_data_set.bitmapList = [
+            memoryview(bitmap) for bitmap in self.__query_data_set.bitmapList
+        ]
         self.__is_closed = False
         self.__empty_resultSet = False
         self.has_cached_record = False
@@ -191,8 +198,6 @@ class IoTDBRpcDataSet(object):
                 data_type = self.column_type_deduplicated_list[location]
                 value_buffer = self.__query_data_set.valueList[location]
                 value_buffer_len = len(value_buffer)
-
-                data_array = None
                 if data_type == 4:
                     data_array = np.frombuffer(
                         value_buffer, np.dtype(np.double).newbyteorder(">")
@@ -281,17 +286,17 @@ class IoTDBRpcDataSet(object):
         # simulating buffer, read 8 bytes from data set and discard first 8 bytes which have been read.
         self.time_bytes = self.__query_data_set.time[:8]
         self.__query_data_set.time = self.__query_data_set.time[8:]
-        for i, bitmap_buffer in enumerate(self.__query_data_set.bitmapList):
-            bitmap = self.__current_bitmap[i]
+        for i, (value_buffer, data_type) in enumerate(
+            zip(self.__query_data_set.valueList, self.column_type_deduplicated_list)
+        ):
             # another 8 new rows, should move the bitmap buffer position to next byte
             if self.__rows_index % 8 == 0:
-                bitmap = self.__current_bitmap[i] = bitmap_buffer[0]
+                bitmap_buffer = self.__query_data_set.bitmapList[i]
+                self.__current_bitmap[i] = bitmap_buffer[0]
                 self.__query_data_set.bitmapList[i] = bitmap_buffer[1:]
-            is_null = shift_table[self.__rows_index % 8] & bitmap == 0
+            is_null = shift_table[self.__rows_index % 8] & self.__current_bitmap[i] == 0
             self.is_null_info[i] = is_null
             if not is_null:
-                value_buffer = self.__query_data_set.valueList[i]
-                data_type = self.column_type_deduplicated_list[i]
                 # simulating buffer
                 if data_type == 0:
                     self.value[i] = value_buffer[:1]
@@ -329,6 +334,13 @@ class IoTDBRpcDataSet(object):
                 self.__empty_resultSet = True
             else:
                 self.__query_data_set = resp.queryDataSet
+                self.__query_data_set.time = memoryview(self.__query_data_set.time)
+                self.__query_data_set.valueList = [
+                    memoryview(value) for value in self.__query_data_set.valueList
+                ]
+                self.__query_data_set.bitmapList = [
+                    memoryview(bitmap) for bitmap in self.__query_data_set.bitmapList
+                ]
             return resp.hasResultSet
         except TTransport.TException as e:
             raise RuntimeError(
