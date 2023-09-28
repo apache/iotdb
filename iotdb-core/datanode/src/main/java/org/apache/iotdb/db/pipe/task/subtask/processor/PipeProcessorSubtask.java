@@ -118,6 +118,8 @@ public class PipeProcessorSubtask extends PipeSubtask {
                 + "whether the implementation of PipeProcessor is correct "
                 + "according to the pipe-api description.",
             e);
+      } else {
+        releaseLastEvent(false);
       }
     }
 

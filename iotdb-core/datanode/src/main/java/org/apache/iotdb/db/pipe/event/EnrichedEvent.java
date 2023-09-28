@@ -95,6 +95,7 @@ public abstract class EnrichedEvent implements Event {
         }
       }
       referenceCount.decrementAndGet();
+      referenceCount.compareAndSet(-1, 0);
     }
     return isSuccessful;
   }

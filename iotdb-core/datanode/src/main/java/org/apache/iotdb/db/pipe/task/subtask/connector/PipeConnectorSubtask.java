@@ -124,6 +124,8 @@ public class PipeConnectorSubtask extends PipeSubtask {
     } catch (PipeConnectionException e) {
       if (!isClosed.get()) {
         throw e;
+      } else {
+        releaseLastEvent(false);
       }
     } catch (Exception e) {
       if (!isClosed.get()) {
@@ -132,6 +134,8 @@ public class PipeConnectorSubtask extends PipeSubtask {
                 + "whether the implementation of PipeConnector is correct "
                 + "according to the pipe-api description.",
             e);
+      } else {
+        releaseLastEvent(false);
       }
     }
 
