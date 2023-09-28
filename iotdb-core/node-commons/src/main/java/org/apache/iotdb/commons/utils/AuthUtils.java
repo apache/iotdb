@@ -370,7 +370,7 @@ public class AuthUtils {
     Iterator<PathPrivilege> it = privilegeList.iterator();
     while (it.hasNext()) {
       PathPrivilege pathPri = it.next();
-      if (pathPri.getPath().matchFullPath(path)) {
+      if (pathPri.getPath().equals(path)) {
         pathPri.revokePrivilege(privilegeId);
         if (pathPri.getPrivileges().isEmpty()) {
           it.remove();
