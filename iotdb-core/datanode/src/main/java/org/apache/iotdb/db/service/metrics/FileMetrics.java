@@ -336,7 +336,7 @@ public class FileMetrics implements IMetricSet {
     try {
       TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
       int level = tsFileName.getInnerCompactionCnt();
-      updateLevelCountAndSize(size, 1, seq, level, database, regionId);
+      updateLevelCountAndSize(database, regionId, size, 1, seq, level);
     } catch (IOException e) {
       log.warn("Unexpected error occurred when getting tsfile name", e);
     }
@@ -424,7 +424,7 @@ public class FileMetrics implements IMetricSet {
   }
 
   private void updateLevelCountAndSize(
-      long sizeDelta, int countDelta, boolean seq, int level, String database, String regionId) {
+      String database, String regionId, long sizeDelta, int countDelta, boolean seq, int level) {
     int count =
         (seq ? seqLevelTsFileCountMap : unseqLevelTsFileCountMap)
             .compute(
@@ -540,12 +540,11 @@ public class FileMetrics implements IMetricSet {
         TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
         int level = tsFileName.getInnerCompactionCnt();
         updateLevelCountAndSize(
-            -size,
+            tsFileResource.getDatabaseName(), tsFileResource.getDataRegionId(), -size,
             -1,
             seq,
-            level,
-            tsFileResource.getDatabaseName(),
-            tsFileResource.getDataRegionId());
+            level
+        );
       } catch (IOException e) {
         log.warn("Unexpected error occurred when getting tsfile name", e);
       }
