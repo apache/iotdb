@@ -113,6 +113,12 @@ public abstract class PipeSubtask
 
   @Override
   public void onFailure(@NotNull Throwable throwable) {
+    if (isClosed.get()) {
+      LOGGER.info("onFailure in pipe subtask, ignored because pipe is dropped.");
+      releaseLastEvent(false);
+      return;
+    }
+
     if (retryCount.get() == 0) {
       LOGGER.warn(
           "Failed to execute subtask {}({}), because of {}. Will retry for {} times.",

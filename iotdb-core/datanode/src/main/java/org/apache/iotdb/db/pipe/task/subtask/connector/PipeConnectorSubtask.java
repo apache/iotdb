@@ -125,6 +125,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
       if (!isClosed.get()) {
         throw e;
       } else {
+        LOGGER.info("PipeConnectionException in pipe transfer, ignored because pipe is dropped.");
         releaseLastEvent(false);
       }
     } catch (Exception e) {
@@ -135,6 +136,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
                 + "according to the pipe-api description.",
             e);
       } else {
+        LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.");
         releaseLastEvent(false);
       }
     }
@@ -145,6 +147,8 @@ public class PipeConnectorSubtask extends PipeSubtask {
   @Override
   public void onFailure(@NotNull Throwable throwable) {
     if (isClosed.get()) {
+      LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.");
+      releaseLastEvent(false);
       return;
     }
 

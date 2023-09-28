@@ -119,6 +119,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
                 + "according to the pipe-api description.",
             e);
       } else {
+        LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.");
         releaseLastEvent(false);
       }
     }
