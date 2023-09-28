@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.extractor.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
@@ -68,9 +67,14 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
   private void extractTabletInsertion(PipeRealtimeEvent event) {
     if (shouldUseFileMode()) {
-      // if the pipe is stopped and the pending queue is approaching capacity, we should switch to
-      // file mode
-      // to avoid OOM.
+      // If the pipe is stopped and one of the following 2 condition is met, we should not extract
+      // any more tablet events. all the data represented by the tablet events should be carried
+      // by the following tsfile event:
+      //  1. HybridExtractor will first try to do extraction in log mode, and then choose log or
+      //  tsfile mode to continue extracting, but if (leader data regions num * Wal size) > (maximum
+      //  size of wal buffer), the write operation will be throttled, so we should not extract any
+      //  more tablet events.
+      //  2. The number of tsfile events in the pending queue has exceeded the limit.
       event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
     }
 
@@ -178,8 +182,8 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
   }
 
   private boolean shouldUseFileMode() {
-    return pendingQueue.size() >= PipeConfig.getInstance().getPipeExtractorPendingQueueTabletLimit()
-        && PipeAgent.task().isPipeStopped(pipeName);
+    return PipeAgent.task().isPipeStopped(pipeName)
+        && (mayWalSizeReachThrottleThreshold() || isTsFileEventCountInQueueExceededLimit());
   }
 
   @Override

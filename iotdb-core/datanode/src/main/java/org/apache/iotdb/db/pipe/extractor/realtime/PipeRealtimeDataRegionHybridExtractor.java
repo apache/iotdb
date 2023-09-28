@@ -20,9 +20,6 @@
 package org.apache.iotdb.db.pipe.extractor.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
@@ -192,19 +189,6 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       // ignore this event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
     }
-  }
-
-  private boolean mayWalSizeReachThrottleThreshold() {
-    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    // Assume that the max data replica factor in common config is 3.
-    // This can be changed in the future.
-    return 3L * PipeAgent.task().getLeaderDataRegionCount() * config.getWalBufferSize()
-        > config.getThrottleThreshold();
-  }
-
-  private boolean isTsFileEventCountInQueueExceededLimit() {
-    return pendingQueue.getTsFileInsertionEventCount()
-        >= PipeConfig.getInstance().getPipeExtractorPendingQueueTsFileLimit();
   }
 
   @Override
