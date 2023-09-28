@@ -227,7 +227,7 @@ class IoTDBRpcDataSet(object):
                             signed=False,
                         )
                         offset += 4
-                        value_bytes = value_buffer[offset : offset + length]
+                        value_bytes = bytes(value_buffer[offset : offset + length])
                         value = value_bytes.decode("utf-8")
                         data_array.append(value)
                         j += 1
