@@ -53,7 +53,6 @@ public class PipeConnectorSubtask extends PipeSubtask {
   // For input and output
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
   private final PipeConnector outputPipeConnector;
-  // The lock will be held if subtask is transferring
 
   // For thread pool to execute callbacks
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
