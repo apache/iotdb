@@ -46,6 +46,8 @@ public class AuthUtilsTest {
     AuthUtils.validatePassword("he!l*^^+=");
     AuthUtils.validatePassword("he!!l*^^+=");
     AuthUtils.validatePassword("he!!l*()^^+=");
+    AuthUtils.validateUsername("!@#$%&^&*()_+-=");
+    AuthUtils.validateUsername("!@!%^&!@#%$#@#$%&^&*()_+-=");
     Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePassword("he!!l\\*()^^+="));
     Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePassword("he!l^^ +="));
     Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePassword("he"));

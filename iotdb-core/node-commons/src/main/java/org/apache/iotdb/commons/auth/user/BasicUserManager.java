@@ -139,9 +139,11 @@ public abstract class BasicUserManager implements IUserManager {
   @Override
   public boolean deleteUser(String username) {
     lock.writeLock(username);
-    userMap.remove(username);
-    lock.writeUnlock(username);
-    return true;
+    try {
+      return userMap.remove(username) != null;
+    } finally {
+      lock.writeUnlock(username);
+    }
   }
 
   @Override

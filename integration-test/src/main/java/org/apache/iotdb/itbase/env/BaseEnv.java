@@ -47,6 +47,15 @@ public interface BaseEnv {
    */
   void initClusterEnvironment(int configNodesNum, int dataNodesNum);
 
+  /**
+   * Init a cluster with the specified number of ConfigNodes and DataNodes.
+   *
+   * @param configNodesNum the number of ConfigNodes.
+   * @param dataNodesNum the number of DataNodes.
+   * @param testWorkingRetryCount the retry count when testing the availability of cluster
+   */
+  void initClusterEnvironment(int configNodesNum, int dataNodesNum, int testWorkingRetryCount);
+
   /** Destroy the cluster and all the configurations. */
   void cleanClusterEnvironment();
 

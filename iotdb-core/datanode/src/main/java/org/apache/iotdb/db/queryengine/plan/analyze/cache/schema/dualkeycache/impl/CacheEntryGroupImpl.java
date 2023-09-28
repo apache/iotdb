@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,6 +44,11 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   @Override
   public T getCacheEntry(SK secondKey) {
     return secondKey == null ? null : cacheEntryMap.get(secondKey);
+  }
+
+  @Override
+  public Iterator<Map.Entry<SK, T>> getAllCacheEntries() {
+    return cacheEntryMap.entrySet().iterator();
   }
 
   @Override

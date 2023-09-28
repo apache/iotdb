@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.connection.EnrichedDeque;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -31,8 +32,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 import com.lmax.disruptor.RingBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Deque;
 
 public class PipeHeartbeatEvent extends EnrichedEvent {
 
@@ -46,9 +45,20 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private long timeProcessed;
   private long timeTransferred;
 
+  // Do not report disruptor tablet or tsFile size separately since
+  // The disruptor is usually nearly empty.
   private int disruptorSize;
+
+  private int extractorQueueTabletSize;
+  private int extractorQueueTsFileSize;
   private int extractorQueueSize;
+
+  private int bufferQueueTabletSize;
+  private int bufferQueueTsFileSize;
   private int bufferQueueSize;
+
+  private int connectorQueueTabletSize;
+  private int connectorQueueTsFileSize;
   private int connectorQueueSize;
 
   private final boolean shouldPrintMessage;
@@ -145,18 +155,24 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   public void recordExtractorQueueSize(UnboundedBlockingPendingQueue<Event> pendingQueue) {
     if (shouldPrintMessage) {
+      extractorQueueTabletSize = pendingQueue.getTabletInsertionEventCount();
+      extractorQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();
       extractorQueueSize = pendingQueue.size();
     }
   }
 
-  public void recordBufferQueueSize(Deque<Event> bufferQueue) {
+  public void recordBufferQueueSize(EnrichedDeque<Event> bufferQueue) {
     if (shouldPrintMessage) {
+      bufferQueueTabletSize = bufferQueue.getTabletInsertionEventCount();
+      bufferQueueTsFileSize = bufferQueue.getTsFileInsertionEventCount();
       bufferQueueSize = bufferQueue.size();
     }
   }
 
   public void recordConnectorQueueSize(BoundedBlockingPendingQueue<Event> pendingQueue) {
     if (shouldPrintMessage) {
+      connectorQueueTabletSize = pendingQueue.getTabletInsertionEventCount();
+      connectorQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();
       connectorQueueSize = pendingQueue.size();
     }
   }
@@ -175,10 +191,25 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         timeTransferred != 0 ? (timeTransferred - timePublished) + "ms" : unknownMessage;
 
     final String disruptorSizeMessage = Integer.toString(disruptorSize);
+
+    final String extractorQueueTabletSizeMessage =
+        timeAssigned != 0 ? Integer.toString(extractorQueueTabletSize) : unknownMessage;
+    final String extractorQueueTsFileSizeMessage =
+        timeAssigned != 0 ? Integer.toString(extractorQueueTsFileSize) : unknownMessage;
     final String extractorQueueSizeMessage =
         timeAssigned != 0 ? Integer.toString(extractorQueueSize) : unknownMessage;
+
+    final String bufferQueueTabletSizeMessage =
+        timeProcessed != 0 ? Integer.toString(bufferQueueTabletSize) : unknownMessage;
+    final String bufferQueueTsFileSizeMessage =
+        timeProcessed != 0 ? Integer.toString(bufferQueueTsFileSize) : unknownMessage;
     final String bufferQueueSizeMessage =
         timeProcessed != 0 ? Integer.toString(bufferQueueSize) : unknownMessage;
+
+    final String connectorQueueTabletSizeMessage =
+        timeProcessed != 0 ? Integer.toString(connectorQueueTabletSize) : unknownMessage;
+    final String connectorQueueTsFileSizeMessage =
+        timeProcessed != 0 ? Integer.toString(connectorQueueTsFileSize) : unknownMessage;
     final String connectorQueueSizeMessage =
         timeProcessed != 0 ? Integer.toString(connectorQueueSize) : unknownMessage;
 
@@ -199,10 +230,22 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + totalTimeMessage
         + ", disruptorSize="
         + disruptorSizeMessage
+        + ", extractorQueueTabletSize="
+        + extractorQueueTabletSizeMessage
+        + ", extractorQueueTsFileSize="
+        + extractorQueueTsFileSizeMessage
         + ", extractorQueueSize="
         + extractorQueueSizeMessage
+        + ", bufferQueueTabletSize="
+        + bufferQueueTabletSizeMessage
+        + ", bufferQueueTsFileSize="
+        + bufferQueueTsFileSizeMessage
         + ", bufferQueueSize="
         + bufferQueueSizeMessage
+        + ", connectorQueueTabletSize="
+        + connectorQueueTabletSizeMessage
+        + ", connectorQueueTsFileSize="
+        + connectorQueueTsFileSizeMessage
         + ", connectorQueueSize="
         + connectorQueueSizeMessage
         + "}";

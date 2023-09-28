@@ -385,4 +385,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
     return this;
   }
+
+  @Override
+  public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
+    dnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
+    cnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
+    return this;
+  }
 }

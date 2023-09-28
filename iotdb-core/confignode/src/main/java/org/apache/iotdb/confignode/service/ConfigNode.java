@@ -350,7 +350,9 @@ public class ConfigNode implements ConfigNodeMBean {
         return;
       } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         targetConfigNode = status.getRedirectNode();
-        LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
+        LOGGER.info("ConfigNode need redirect to  {}, retry {} ...", targetConfigNode, retry);
+      } else if (status.getCode() == TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode()) {
+        LOGGER.warn("The result of register self ConfigNode is {}, retry {} ...", status, retry);
       } else {
         throw new StartupException(status.getMessage());
       }
