@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -60,9 +59,6 @@ import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -676,45 +672,46 @@ public class QueryExecution implements IQueryExecution {
       tsstatus = stateMachine.getFailureStatus();
     }
 
-    // collect redirect info to client for writing
-    // if 0.13_data_insert_adapt is true and ClientVersion is NOT V_1_0, stop returning redirect
-    // info to client
-    if (analysis.getStatement() instanceof InsertBaseStatement
-        && !analysis.isFinishQueryAfterAnalyze()
-        && (!config.isEnable13DataInsertAdapt()
-            || IoTDBConstant.ClientVersion.V_1_0.equals(context.getSession().getVersion()))) {
-      InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
-      List<TEndPoint> redirectNodeList = analysis.getRedirectNodeList();
-      if (insertStatement instanceof InsertRowsStatement
-          || insertStatement instanceof InsertMultiTabletsStatement) {
-        // multiple devices
-        if (statusCode == TSStatusCode.SUCCESS_STATUS) {
-          boolean needRedirect = false;
-          List<TSStatus> subStatus = new ArrayList<>();
-          for (TEndPoint endPoint : redirectNodeList) {
-            // redirect writing only if the redirectEndPoint is not the current node
-            if (!config.getAddressAndPort().equals(endPoint)) {
-              subStatus.add(
-                  RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS).setRedirectNode(endPoint));
-              needRedirect = true;
-            } else {
-              subStatus.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-            }
-          }
-          if (needRedirect) {
-            tsstatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
-            tsstatus.setSubStatus(subStatus);
-          }
-        }
-      } else {
-        // single device
-        TEndPoint redirectEndPoint = redirectNodeList.get(0);
-        // redirect writing only if the redirectEndPoint is not the current node
-        if (!config.getAddressAndPort().equals(redirectEndPoint)) {
-          tsstatus.setRedirectNode(redirectEndPoint);
-        }
-      }
-    }
+    //    // collect redirect info to client for writing
+    //    // if 0.13_data_insert_adapt is true and ClientVersion is NOT V_1_0, stop returning
+    // redirect
+    //    // info to client
+    //    if (analysis.getStatement() instanceof InsertBaseStatement
+    //        && !analysis.isFinishQueryAfterAnalyze()
+    //        && (!config.isEnable13DataInsertAdapt()
+    //            || IoTDBConstant.ClientVersion.V_1_0.equals(context.getSession().getVersion()))) {
+    //      InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
+    //      List<TEndPoint> redirectNodeList = analysis.getRedirectNodeList();
+    //      if (insertStatement instanceof InsertRowsStatement
+    //          || insertStatement instanceof InsertMultiTabletsStatement) {
+    //        // multiple devices
+    //        if (statusCode == TSStatusCode.SUCCESS_STATUS) {
+    //          boolean needRedirect = false;
+    //          List<TSStatus> subStatus = new ArrayList<>();
+    //          for (TEndPoint endPoint : redirectNodeList) {
+    //            // redirect writing only if the redirectEndPoint is not the current node
+    //            if (!config.getAddressAndPort().equals(endPoint)) {
+    //              subStatus.add(
+    //                  RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS).setRedirectNode(endPoint));
+    //              needRedirect = true;
+    //            } else {
+    //              subStatus.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    //            }
+    //          }
+    //          if (needRedirect) {
+    //            tsstatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+    //            tsstatus.setSubStatus(subStatus);
+    //          }
+    //        }
+    //      } else {
+    //        // single device
+    //        TEndPoint redirectEndPoint = redirectNodeList.get(0);
+    //        // redirect writing only if the redirectEndPoint is not the current node
+    //        if (!config.getAddressAndPort().equals(redirectEndPoint)) {
+    //          tsstatus.setRedirectNode(redirectEndPoint);
+    //        }
+    //      }
+    //    }
 
     return new ExecutionResult(context.getQueryId(), tsstatus);
   }
