@@ -56,7 +56,7 @@ class Field(object):
     def is_null(self):
         return self.__data_type is None
 
-    def set_bool_value(self, value):
+    def set_bool_value(self, value: bool):
         self.value = value
 
     def get_bool_value(self):
@@ -66,7 +66,7 @@ class Field(object):
             return None
         return self.value
 
-    def set_int_value(self, value):
+    def set_int_value(self, value: int):
         self.value = value
 
     def get_int_value(self):
@@ -76,7 +76,7 @@ class Field(object):
             return None
         return self.value
 
-    def set_long_value(self, value):
+    def set_long_value(self, value: int):
         self.value = value
 
     def get_long_value(self):
@@ -86,7 +86,7 @@ class Field(object):
             return None
         return self.value
 
-    def set_float_value(self, value):
+    def set_float_value(self, value: float):
         self.value = value
 
     def get_float_value(self):
@@ -96,7 +96,7 @@ class Field(object):
             return None
         return self.value
 
-    def set_double_value(self, value):
+    def set_double_value(self, value: float):
         self.value = value
 
     def get_double_value(self):
@@ -106,7 +106,7 @@ class Field(object):
             return None
         return self.value
 
-    def set_binary_value(self, value):
+    def set_binary_value(self, value: bytes):
         self.value = value
 
     def get_binary_value(self):

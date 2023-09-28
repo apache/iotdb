@@ -142,6 +142,11 @@ class IoTDBRpcDataSet(object):
 
             self.__is_closed = True
             self.__client = None
+            self.__query_data_set.time.release()
+            for value in self.__query_data_set.valueList:
+                value.release()
+            for bitmap in self.__query_data_set.bitmapList:
+                bitmap.release()
 
     def next(self):
         if self.has_cached_result():
@@ -333,6 +338,11 @@ class IoTDBRpcDataSet(object):
             if not resp.hasResultSet:
                 self.__empty_resultSet = True
             else:
+                self.__query_data_set.time.release()
+                for value in self.__query_data_set.valueList:
+                    value.release()
+                for bitmap in self.__query_data_set.bitmapList:
+                    bitmap.release()
                 self.__query_data_set = resp.queryDataSet
                 self.__query_data_set.time = memoryview(self.__query_data_set.time)
                 self.__query_data_set.valueList = [
