@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -27,6 +28,10 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -149,6 +154,16 @@ public abstract class AbstractCompactionTask {
    * @return true if the task is valid else false
    */
   public abstract boolean checkValidAndSetMerging();
+
+  public abstract void transitSourceFilesToMerging() throws FileCannotTransitToCompactingException;
+
+  public abstract long getEstimatedMemoryCost() throws IOException;
+
+  public abstract int getProcessedFileNum();
+
+  public boolean isCompactionAllowed() {
+    return tsFileManager.isAllowCompaction();
+  }
 
   @Override
   public int hashCode() {

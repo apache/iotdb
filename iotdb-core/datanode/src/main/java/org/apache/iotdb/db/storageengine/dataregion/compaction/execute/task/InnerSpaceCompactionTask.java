@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
@@ -518,6 +519,28 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
     }
     return true;
+  }
+
+  @Override
+  public void transitSourceFilesToMerging() throws FileCannotTransitToCompactingException {
+    for (TsFileResource f : selectedTsFileResourceList) {
+      if (!f.setStatus(TsFileResourceStatus.COMPACTING)) {
+        throw new FileCannotTransitToCompactingException(f);
+      }
+    }
+  }
+
+  @Override
+  public long getEstimatedMemoryCost() throws IOException {
+    if (memoryCost == 0L) {
+      memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
+    }
+    return memoryCost;
+  }
+
+  @Override
+  public int getProcessedFileNum() {
+    return selectedTsFileResourceList.size();
   }
 
   @Override

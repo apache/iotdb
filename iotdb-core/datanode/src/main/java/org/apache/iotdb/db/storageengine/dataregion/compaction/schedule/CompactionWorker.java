@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import org.slf4j.Logger;
@@ -28,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -55,15 +60,39 @@ public class CompactionWorker implements Runnable {
         log.warn("CompactionThread-{} terminates because interruption", threadId);
         return;
       }
+      if (task == null || !task.isCompactionAllowed()) {
+        log.info("Compaction task is not allowed to be executed by TsFileManager. Task {}", task);
+        return;
+      }
+      long estimatedMemoryCost = 0L;
+      boolean memoryAcquired = false;
+      boolean fileHandleAcquired = false;
       try {
-        if (task != null && task.checkValidAndSetMerging()) {
-          CompactionTaskSummary summary = task.getSummary();
-          CompactionTaskFuture future = new CompactionTaskFuture(summary);
-          CompactionTaskManager.getInstance().recordTask(task, future);
-          task.start();
+        task.transitSourceFilesToMerging();
+        estimatedMemoryCost = task.getEstimatedMemoryCost();
+        memoryAcquired = SystemInfo.getInstance().addCompactionMemoryCost(estimatedMemoryCost, 60);
+        fileHandleAcquired =
+            SystemInfo.getInstance().addCompactionFileNum(task.getProcessedFileNum(), 60);
+        CompactionTaskSummary summary = task.getSummary();
+        CompactionTaskFuture future = new CompactionTaskFuture(summary);
+        CompactionTaskManager.getInstance().recordTask(task, future);
+        task.start();
+      } catch (FileCannotTransitToCompactingException
+          | IOException
+          | CompactionMemoryNotEnoughException
+          | CompactionFileCountExceededException e) {
+        log.info("CompactionTask {} cannot be executed. Reason: {}", task, e);
+      } catch (InterruptedException e) {
+        log.warn("InterruptedException occurred when preparing compaction task. {}", task, e);
+        Thread.currentThread().interrupt();
+      } finally {
+        task.resetCompactionCandidateStatusForAllSourceFiles();
+        if (memoryAcquired) {
+          SystemInfo.getInstance().resetCompactionMemoryCost(estimatedMemoryCost);
         }
-      } catch (Exception e) {
-        log.error("CompactionWorker.run(), Exception.", e);
+        if (fileHandleAcquired) {
+          SystemInfo.getInstance().decreaseCompactionFileNumCost(task.getProcessedFileNum());
+        }
       }
     }
   }

@@ -188,7 +188,7 @@ public class SystemInfo {
     this.flushingMemTablesCost -= flushingMemTableCost;
   }
 
-  public void addCompactionFileNum(int fileNum, long timeOutInSecond)
+  public boolean addCompactionFileNum(int fileNum, long timeOutInSecond)
       throws InterruptedException, CompactionFileCountExceededException {
     if (fileNum > totalFileLimitForCrossTask) {
       // source file num is greater than the max file num for compaction
@@ -210,12 +210,13 @@ public class SystemInfo {
       Thread.sleep(100);
       originFileNum = this.compactionFileNumCost.get();
     }
+    return true;
   }
 
-  public void addCompactionMemoryCost(long memoryCost, long timeOutInSecond)
+  public boolean addCompactionMemoryCost(long memoryCost, long timeOutInSecond)
       throws InterruptedException, CompactionMemoryNotEnoughException {
     if (!config.isEnableCompactionMemControl()) {
-      return;
+      return false;
     }
     if (memoryCost > memorySizeForCompaction) {
       // required memory cost is greater than the total memory budget for compaction
@@ -239,6 +240,7 @@ public class SystemInfo {
       Thread.sleep(100);
       originSize = this.compactionMemoryCost.get();
     }
+    return true;
   }
 
   public synchronized void resetCompactionMemoryCost(long compactionMemoryCost) {

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
@@ -398,6 +399,30 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
               selectedSequenceFiles.size() + selectedUnsequenceFiles.size());
     }
     return addReadLockSuccess;
+  }
+
+  @Override
+  public void transitSourceFilesToMerging() throws FileCannotTransitToCompactingException {
+    for (TsFileResource f : selectedSequenceFiles) {
+      if (!f.setStatus(TsFileResourceStatus.COMPACTING)) {
+        throw new FileCannotTransitToCompactingException(f);
+      }
+    }
+    for (TsFileResource f : selectedUnsequenceFiles) {
+      if (!f.setStatus(TsFileResourceStatus.COMPACTING)) {
+        throw new FileCannotTransitToCompactingException(f);
+      }
+    }
+  }
+
+  @Override
+  public long getEstimatedMemoryCost() {
+    return memoryCost;
+  }
+
+  @Override
+  public int getProcessedFileNum() {
+    return selectedSequenceFiles.size() + selectedUnsequenceFiles.size();
   }
 
   private boolean addReadLock(List<TsFileResource> tsFileResourceList) {
