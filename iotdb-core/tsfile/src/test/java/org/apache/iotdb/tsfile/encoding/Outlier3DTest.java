@@ -330,6 +330,82 @@ public class Outlier3DTest {
         return encoded_result;
     }
 
+    private static int bosEncode(ArrayList<Integer> ts_block, int x_c, int beta, int supple_length) {
+
+//        int block_size = ts_block.size();
+        int final_right_max = Integer.MIN_VALUE;
+        ArrayList<Byte> cur_byte = new ArrayList<>();
+
+        ArrayList<Integer> min_delta = new ArrayList<>();
+        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
+        for (int s = 0; s < supple_length; s++) {
+            ts_block_delta.add(0);
+        }
+
+        int block_size = ts_block_delta.size();
+        ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta);
+        quickSort(ts_block_order_value, 0, 1, block_size - 1);
+//        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
+
+
+        double sum = 0;
+        for (int i = 1; i < block_size; i++) {
+            if (ts_block_delta.get(i) > final_right_max) {
+                final_right_max = ts_block_delta.get(i);
+            }
+            sum += ts_block_delta.get(i);
+        }
+        double mu = sum / block_size;
+        double variance = 0;
+        for (int i = 1; i < block_size; i++) {
+            variance += (ts_block_delta.get(i) - mu) * (ts_block_delta.get(i) - mu);
+        }
+        double sigma = Math.sqrt(variance / block_size);
+
+        ArrayList<Integer> PDF = new ArrayList<>();
+        int min_delta_value = ts_block_order_value.get(0);
+        int tmp = min_delta_value;
+        int final_i = 0;
+
+
+        for (int i = 1; i < block_size; i++) {
+            if(ts_block_order_value.get(i) != tmp){
+                int start_v = ts_block_order_value.get(i);
+                PDF.add(tmp);
+                tmp =start_v;
+                final_i = i;
+            }
+        }
+        if(final_i!=block_size-1){
+            PDF.add(tmp);
+        }
+
+
+        int final_k_start_i = x_c >= PDF.size() ? (PDF.size()-1) : x_c;
+        int final_k_start_value = PDF.get(final_k_start_i);
+        int max_delta = PDF.get(PDF.size()-1);
+        int final_k_end_value = (int) (final_k_start_value+ Math.pow(2,beta) > max_delta? max_delta:(final_k_start_value+ Math.pow(2,beta)));
+        int cost =0;
+
+        int k1 = 0;
+        int k2 = 0;
+
+        for (int i = 1; i < block_size; i++) {
+            if (ts_block_delta.get(i) < final_k_start_value) {
+                k1++;
+            } else if (ts_block_delta.get(i) > final_k_end_value) {
+                k2++;
+            }
+        }
+        int left_bit_width = getBitWith(final_k_start_value);
+        int right_bit_width = getBitWith(final_right_max - final_k_end_value);
+        cost += left_bit_width*k1;
+        cost += right_bit_width*k2;
+        cost += beta*(block_size-1-k1-k2);
+        cost += Math.min(getBitWith(block_size) * (k1 + k2) , (block_size + k1 + k2));
+
+        return cost;
+    }
 
     private static ArrayList<Byte> learnKDelta(ArrayList<Integer> ts_block, int x_c, int beta, int supple_length) {
 
@@ -363,9 +439,29 @@ public class Outlier3DTest {
         }
         double sigma = Math.sqrt(variance / block_size);
 
-        int final_k_start_i = x_c >= ts_block_order_value.size() ? (ts_block_order_value.size()-1) : x_c;
-        int final_k_start_value = ts_block_order_value.get(final_k_start_i);
-        int final_k_end_value = (int) (final_k_start_value+ Math.pow(2,beta));
+        ArrayList<Integer> PDF = new ArrayList<>();
+        int min_delta_value = ts_block_order_value.get(0);
+        int tmp = min_delta_value;
+        int final_i = 0;
+
+
+        for (int i = 1; i < block_size; i++) {
+            if(ts_block_order_value.get(i) != tmp){
+                int start_v = ts_block_order_value.get(i);
+                PDF.add(tmp);
+                tmp =start_v;
+                final_i = i;
+            }
+        }
+        if(final_i!=block_size-1){
+            PDF.add(tmp);
+        }
+
+
+        int final_k_start_i = x_c >= PDF.size() ? (PDF.size()-1) : x_c;
+        int final_k_start_value = PDF.get(final_k_start_i);
+        int max_delta = PDF.get(PDF.size()-1);
+        int final_k_end_value = (int) (final_k_start_value+ Math.pow(2,beta) > max_delta?max_delta:(final_k_start_value+ Math.pow(2,beta)));
 
 
         // ------------------------- encode data -----------------------------------------
@@ -496,6 +592,7 @@ public class Outlier3DTest {
         byte[] length_all_bytes = int2Bytes(length_all);
         for (byte b : length_all_bytes) encoded_result.add(b);
         int block_num = length_all / block_size;
+        int bits_number = 0;
 
         byte[] block_size_byte = int2Bytes(block_size);
         for (byte b : block_size_byte) encoded_result.add(b);
@@ -511,11 +608,9 @@ public class Outlier3DTest {
             ArrayList<Integer> result2 = new ArrayList<>();
 
             splitTimeStamp3(ts_block, result2);
-//            splitTimeStamp3(ts_block_reorder, result2);
 
             // time-order
-            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, x_c, beta, 0);
-            encoded_result.addAll(cur_encoded_result);
+            bits_number += bosEncode(ts_block, x_c, beta, 0);
 
         }
 
@@ -548,7 +643,7 @@ public class Outlier3DTest {
 //        }
 
 
-        return encoded_result.size();
+        return bits_number;
     }
 
 
@@ -733,32 +828,33 @@ public class Outlier3DTest {
 
         for (int i = 0; i < dataset_name.size(); i++) {
             input_path_list.add(input_parent_dir + dataset_name.get(i));
+            dataset_block_size.add(1024);
         }
 
         output_path_list.add(output_parent_dir + "\\CS-Sensors_ratio.csv"); // 0
-        dataset_block_size.add(1024);
+//        dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "\\Metro-Traffic_ratio.csv");// 1
-        dataset_block_size.add(512);
+//        dataset_block_size.add(512);
         output_path_list.add(output_parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
-        dataset_block_size.add(512);
+//        dataset_block_size.add(512);
         output_path_list.add(output_parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
-        dataset_block_size.add(256);
+//        dataset_block_size.add(256);
         output_path_list.add(output_parent_dir + "\\GW-Magnetic_ratio.csv"); //4
-        dataset_block_size.add(128);
+//        dataset_block_size.add(128);
         output_path_list.add(output_parent_dir + "\\TY-Fuel_ratio.csv");//5
-        dataset_block_size.add(64);
+//        dataset_block_size.add(64);
         output_path_list.add(output_parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
-        dataset_block_size.add(128);
+//        dataset_block_size.add(128);
         output_path_list.add(output_parent_dir + "\\Vehicle-Charge_ratio.csv");//7
-        dataset_block_size.add(512);
+//        dataset_block_size.add(512);
         output_path_list.add(output_parent_dir + "\\Nifty-Stocks_ratio.csv");//8
-        dataset_block_size.add(256);
+//        dataset_block_size.add(256);
         output_path_list.add(output_parent_dir + "\\TH-Climate_ratio.csv");//9
-        dataset_block_size.add(512);
+//        dataset_block_size.add(512);
         output_path_list.add(output_parent_dir + "\\TY-Transport_ratio.csv");//10
-        dataset_block_size.add(512);
+//        dataset_block_size.add(512);
         output_path_list.add(output_parent_dir + "\\EPM-Education_ratio.csv");//11
-        dataset_block_size.add(512);
+//        dataset_block_size.add(512);
 
 
         ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
@@ -819,8 +915,8 @@ public class Outlier3DTest {
                 }
 //                    System.out.println(data2);
                 inputStream.close();
-                for (int x_c = 0; x_c < 17; x_c++) {
-                    for (int beta = 1; beta < 8; beta++) {
+                for (int x_c = 0; x_c < 500; x_c+=20) {
+                    for (int beta = 1; beta < 12; beta++) {
                         long encodeTime = 0;
                         long decodeTime = 0;
                         double ratio = 0;
@@ -870,11 +966,10 @@ public class Outlier3DTest {
 //                            String.valueOf(ratio)
                         };
                         writer.writeRecord(record);
-                        System.out.println(ratio);
+//                        System.out.println(ratio);
                     }
-
-                    break;
                 }
+                break;
             }
 
             writer.close();
