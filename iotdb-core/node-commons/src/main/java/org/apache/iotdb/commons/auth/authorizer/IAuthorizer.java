@@ -266,4 +266,23 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException IOException
    */
   void replaceAllRoles(Map<String, Role> roles) throws AuthException;
+
+  void setUserForPreVersion(boolean preVersion);
+
+  void setRoleForPreVersion(boolean preVersion);
+
+  boolean forUserPreVersion();
+
+  boolean forRolePreVersion();
+
+  /**
+   * Create a user with given username and password. New users will only be granted no privileges.
+   *
+   * @param username is not null or empty
+   * @param password is not null or empty
+   * @throws AuthException if the given username or password is illegal or the user already exists.
+   */
+  void createUserWithoutCheck(String username, String password) throws AuthException;
+
+  void checkUserPathPrivilege();
 }
