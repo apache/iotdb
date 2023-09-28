@@ -244,8 +244,6 @@ public class PipeConnectorSubtask extends PipeSubtask {
   @Override
   public void close() {
     isClosed.set(true);
-    // If tryLock() fails, the connector subtask should be transferring now and will call doClose()
-    // after transfer complete. doClose() will be called at least once.
     try {
       outputPipeConnector.close();
     } catch (Exception e) {
