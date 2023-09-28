@@ -36,6 +36,8 @@ interface ICacheEntryManager<FK, SK, V, T extends ICacheEntry<SK, V>> {
 
   void put(T cacheEntry);
 
+  void invalid(T cacheEntry);
+
   T evict();
 
   void cleanUp();

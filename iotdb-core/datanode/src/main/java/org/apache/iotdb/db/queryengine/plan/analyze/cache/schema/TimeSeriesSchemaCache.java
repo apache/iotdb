@@ -55,6 +55,7 @@ public class TimeSeriesSchemaCache {
   private static final Logger logger = LoggerFactory.getLogger(DataNodeSchemaCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  // <device, measurement, entry>
   private final IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache;
 
   TimeSeriesSchemaCache() {
@@ -386,6 +387,14 @@ public class TimeSeriesSchemaCache {
 
   public void invalidateAll() {
     dualKeyCache.invalidateAll();
+  }
+
+  public void invalidate(String database) {
+    dualKeyCache.invalidate(database);
+  }
+
+  public void invalidate(List<PartialPath> partialPathList) {
+    dualKeyCache.invalidate(partialPathList);
   }
 
   public void cleanUp() {
