@@ -93,6 +93,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
     if (isClosed.get()) {
       return false;
     }
+
     final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
     // Record this event for retrying on connection failure or other exceptions
     setLastEvent(event);
@@ -142,6 +143,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
     if (isClosed.get()) {
       return;
     }
+
     // Retry to connect to the target system if the connection is broken
     if (throwable instanceof PipeConnectionException) {
       LOGGER.warn(

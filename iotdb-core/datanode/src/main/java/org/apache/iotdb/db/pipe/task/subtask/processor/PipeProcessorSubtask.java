@@ -84,6 +84,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
     if (isClosed.get()) {
       return false;
     }
+
     final Event event = lastEvent != null ? lastEvent : inputEventSupplier.supply();
     // Record the last event for retry when exception occurs
     setLastEvent(event);
