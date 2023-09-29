@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -38,14 +39,9 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
@@ -216,13 +212,8 @@ public class IoTDBPipeSwitchStatusIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("insert into root.sg1.d1(time, at1) values (1, 1)");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -245,13 +236,7 @@ public class IoTDBPipeSwitchStatusIT {
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("drop database root.**");
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
+      TestUtils.executeNonQueryWithRetry(senderEnv, "drop database root.**");
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p1").getCode());

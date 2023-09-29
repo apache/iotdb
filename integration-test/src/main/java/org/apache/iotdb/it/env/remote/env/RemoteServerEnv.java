@@ -81,6 +81,12 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public void initClusterEnvironment(
+      int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
+    initClusterEnvironment();
+  }
+
+  @Override
   public void cleanClusterEnvironment() {
     clientManager.close();
     clusterConfig = new RemoteClusterConfig();

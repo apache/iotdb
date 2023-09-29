@@ -87,6 +87,11 @@ public class IdentitySinkNode extends MultiChildrenSinkNode {
     }
   }
 
+  @Override
+  public String toString() {
+    return String.format("IdentitySinkNode-%s", this.getPlanNodeId());
+  }
+
   public static IdentitySinkNode deserialize(ByteBuffer byteBuffer) {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<DownStreamChannelLocation> downStreamChannelLocationList = new ArrayList<>();

@@ -128,9 +128,13 @@ public interface PipeConnector extends PipePlugin {
    * @throws Exception the user can throw errors if necessary
    */
   default void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    for (final TabletInsertionEvent tabletInsertionEvent :
-        tsFileInsertionEvent.toTabletInsertionEvents()) {
-      transfer(tabletInsertionEvent);
+    try {
+      for (final TabletInsertionEvent tabletInsertionEvent :
+          tsFileInsertionEvent.toTabletInsertionEvents()) {
+        transfer(tabletInsertionEvent);
+      }
+    } finally {
+      tsFileInsertionEvent.close();
     }
   }
 
