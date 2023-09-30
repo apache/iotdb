@@ -41,7 +41,7 @@ import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
 
 public class SessionDataSet {
 
-  private final IoTDBRpcDataSet ioTDBRpcDataSet;
+  public final IoTDBRpcDataSet ioTDBRpcDataSet;
   private String finishResult;
 
   public SessionDataSet(

@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.db.integration.m4;
 
-import static org.junit.Assert.fail;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.util.Locale;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
@@ -33,10 +26,19 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBStatement;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.Locale;
+
+import static org.junit.Assert.fail;
 
 public class MyTest8 {
   // test MinMax-LSM
@@ -94,12 +96,7 @@ public class MyTest8 {
     prepareData1();
 
     String[] res =
-        new String[] {
-          "0,5[1],30[10]",
-          "25,8[25],40[30]",
-          "50,8[52],18[54]",
-          "75,null,null"
-        };
+        new String[] {"0,5[1],30[10]", "25,8[25],40[30]", "50,8[52],18[54]", "75,null,null"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -139,12 +136,7 @@ public class MyTest8 {
     prepareData5();
 
     String[] res =
-        new String[] {
-          "0,5[1],30[10]",
-          "25,8[25],40[30]",
-          "50,null,null",
-          "75,null,null"
-        };
+        new String[] {"0,5[1],30[10]", "25,8[25],40[30]", "50,null,null", "75,null,null"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -266,12 +258,7 @@ public class MyTest8 {
     prepareData2();
 
     String[] res =
-        new String[] {
-          "0,5[1],30[10]",
-          "25,8[25],20[27]",
-          "50,null,null",
-          "75,null,null"
-        };
+        new String[] {"0,5[1],30[10]", "25,8[25],20[27]", "50,null,null", "75,null,null"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -394,12 +381,7 @@ public class MyTest8 {
     prepareData3();
 
     String[] res =
-        new String[] {
-          "0,1[10],10[2]",
-          "25,2[40],8[30]",
-          "50,4[72],20[62]",
-          "75,1[90],11[80]"
-        };
+        new String[] {"0,1[10],10[2]", "25,2[40],8[30]", "50,4[72],20[62]", "75,1[90],11[80]"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -474,12 +456,7 @@ public class MyTest8 {
     prepareData3_2();
 
     String[] res =
-        new String[] {
-          "0,1[10],10[2]",
-          "25,2[40],8[30]",
-          "50,4[72],20[62]",
-          "75,1[90],11[80]"
-        };
+        new String[] {"0,1[10],10[2]", "25,2[40],8[30]", "50,4[72],20[62]", "75,1[90],11[80]"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -554,12 +531,7 @@ public class MyTest8 {
     prepareData4();
 
     String[] res =
-        new String[] {
-          "0,5[1],30[10]",
-          "25,8[25],30[45]",
-          "50,8[52],18[54]",
-          "75,null,null"
-        };
+        new String[] {"0,5[1],30[10]", "25,8[25],30[45]", "50,8[52],18[54]", "75,null,null"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
