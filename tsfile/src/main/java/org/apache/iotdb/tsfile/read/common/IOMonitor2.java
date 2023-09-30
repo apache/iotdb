@@ -30,6 +30,8 @@ public class IOMonitor2 {
     GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoTimeIndex, // cpv_noTimeIndex
     GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoValueIndex, // cpv_noValueIndex
     GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoTimeValueIndex, // cpv_noTimeValueIndex
+
+    GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_EnableMinMaxLSM, // MinMax-LSM
     GroupByWithoutValueFilterDataSet_LocalGroupByExecutor_UseStatistics, // moc
     GroupByWithoutValueFilterDataSet_LocalGroupByExecutor_NotUseStatistics // mac_groupBy
   }

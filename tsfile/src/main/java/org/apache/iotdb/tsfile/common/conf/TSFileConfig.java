@@ -27,6 +27,8 @@ import java.nio.charset.Charset;
 /** TSFileConfig is a configure class. Every variables is public and has default value. */
 public class TSFileConfig implements Serializable {
 
+  private boolean enableMinMaxLSM = false;
+
   private boolean useStatistics = true;
 
   private boolean useTimeIndex = true;
@@ -156,6 +158,14 @@ public class TSFileConfig implements Serializable {
   private int batchSize = 1000;
 
   public TSFileConfig() {}
+
+  public boolean isEnableMinMaxLSM() {
+    return enableMinMaxLSM;
+  }
+
+  public void setEnableMinMaxLSM(boolean enableMinMaxLSM) {
+    this.enableMinMaxLSM = enableMinMaxLSM;
+  }
 
   public boolean isUseStatistics() {
     return useStatistics;

@@ -105,6 +105,10 @@ public class TSFileDescriptor {
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
+      conf.setEnableMinMaxLSM(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enableMinMaxLSM", Boolean.toString(conf.isEnableMinMaxLSM()))));
       conf.setUseStatistics(
           Boolean.parseBoolean(
               properties.getProperty("use_Statistics", Boolean.toString(conf.isUseStatistics()))));

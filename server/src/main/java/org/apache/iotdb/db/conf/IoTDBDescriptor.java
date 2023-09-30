@@ -898,6 +898,14 @@ public class IoTDBDescriptor {
   private void loadTsFileProps(Properties properties) {
     TSFileDescriptor.getInstance()
         .getConfig()
+        .setEnableMinMaxLSM(
+            Boolean.parseBoolean(
+                properties.getProperty(
+                    "enableMinMaxLSM",
+                    Boolean.toString(
+                        TSFileDescriptor.getInstance().getConfig().isEnableMinMaxLSM()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setUseStatistics(
             Boolean.parseBoolean(
                 properties.getProperty(
