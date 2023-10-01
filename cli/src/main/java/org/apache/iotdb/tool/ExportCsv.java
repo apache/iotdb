@@ -40,7 +40,11 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -342,9 +346,9 @@ public class ExportCsv extends AbstractCsvTool {
     while (sessionDataSet.hasNext()) {
       RowRecord rowRecord = sessionDataSet.next();
       ArrayList<String> record = new ArrayList<>();
-      if (rowRecord.getTimestamp() != 0) {
-        record.add(timeTrans(rowRecord.getTimestamp()));
-      }
+      //      if (rowRecord.getTimestamp() != 0) {
+      record.add(timeTrans(rowRecord.getTimestamp()));
+      //      }
       rowRecord
           .getFields()
           .forEach(
