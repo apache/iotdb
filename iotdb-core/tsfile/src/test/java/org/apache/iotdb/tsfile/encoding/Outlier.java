@@ -345,7 +345,8 @@ public class Outlier {
         ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
         ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta);
         ArrayList<Integer> ts_block_bit_width = getBitWith(ts_block_delta);
-        quickSort(ts_block_order_value, 0, 1, block_size - 1);
+        Collections.sort(ts_block_order_value);
+//        quickSort(ts_block_order_value, 0, 1, block_size - 1);
 
 //        System.out.println("quickSort");
         int bit_width = getBitWith(ts_block_delta.get(block_size - 1));

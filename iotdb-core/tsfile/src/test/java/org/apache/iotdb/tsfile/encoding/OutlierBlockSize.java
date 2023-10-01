@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Stack;
 
 import static java.lang.Math.pow;
@@ -345,7 +346,8 @@ public class OutlierBlockSize {
         ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
         ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta);
         ArrayList<Integer> ts_block_bit_width = getBitWith(ts_block_delta);
-        quickSort(ts_block_order_value, 0, 1, block_size - 1);
+        Collections.sort(ts_block_order_value);
+//        quickSort(ts_block_order_value, 0, 1, block_size - 1);
 
 //        System.out.println("quickSort");
         int bit_width = getBitWith(ts_block_delta.get(block_size - 1));

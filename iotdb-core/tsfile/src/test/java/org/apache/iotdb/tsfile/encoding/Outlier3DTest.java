@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Stack;
 
 public class Outlier3DTest {
@@ -330,7 +331,7 @@ public class Outlier3DTest {
         return encoded_result;
     }
 
-    private static int bosEncode(ArrayList<Integer> ts_block, int x_c, int beta, int supple_length) {
+    private static int bosEncode(ArrayList<Integer> ts_block, double x_c, int beta, int supple_length) {
 
 //        int block_size = ts_block.size();
         int final_right_max = Integer.MIN_VALUE;
@@ -344,7 +345,8 @@ public class Outlier3DTest {
 
         int block_size = ts_block_delta.size();
         ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta);
-        quickSort(ts_block_order_value, 0, 1, block_size - 1);
+        Collections.sort(ts_block_order_value);
+//        quickSort(ts_block_order_value, 0, 1, block_size - 1);
 //        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
 
 
@@ -381,7 +383,10 @@ public class Outlier3DTest {
         }
 
 
-        int final_k_start_i = x_c >= PDF.size() ? (PDF.size()-1) : x_c;
+        int final_k_start_i = (int) ((double) PDF.size() * x_c);
+        if(final_k_start_i > PDF.size()-1){
+            final_k_start_i = PDF.size()-1;
+        }
         int final_k_start_value = PDF.get(final_k_start_i);
         int max_delta = PDF.get(PDF.size()-1);
         int final_k_end_value = (int) (final_k_start_value+ Math.pow(2,beta) > max_delta? max_delta:(final_k_start_value+ Math.pow(2,beta)));
@@ -585,7 +590,7 @@ public class Outlier3DTest {
     }
 
     public static int ReorderingRegressionEncoder(
-            ArrayList<Integer> data, int block_size, int x_c, int beta) throws IOException {
+            ArrayList<Integer> data, int block_size, double x_c, int beta) throws IOException {
         block_size++;
         ArrayList<Byte> encoded_result = new ArrayList<Byte>();
         int length_all = data.size();
@@ -915,8 +920,8 @@ public class Outlier3DTest {
                 }
 //                    System.out.println(data2);
                 inputStream.close();
-                for (int x_c = 0; x_c < 500; x_c+=20) {
-                    for (int beta = 1; beta < 12; beta++) {
+                for (double x_c = 0; x_c < 1.009; x_c+=0.01) {
+                    for (int beta = 1; beta < 15; beta++) {
                         long encodeTime = 0;
                         long decodeTime = 0;
                         double ratio = 0;
