@@ -82,8 +82,8 @@ public abstract class PipeWALResourceManager {
             }
           }
         },
-        PipeWALResource.MIN_TIME_TO_LIVE_IN_MS,
-        PipeWALResource.MIN_TIME_TO_LIVE_IN_MS,
+        PipeWALResource.WAL_MIN_TIME_TO_LIVE_IN_MS,
+        PipeWALResource.WAL_MIN_TIME_TO_LIVE_IN_MS,
         TimeUnit.MILLISECONDS);
   }
 

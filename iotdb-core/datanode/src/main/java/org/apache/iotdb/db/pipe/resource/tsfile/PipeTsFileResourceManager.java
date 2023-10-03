@@ -19,9 +19,18 @@
 
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TsFileReader;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,14 +38,54 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTsFileResourceManager {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResourceManager.class);
 
-  private final Map<String, Integer> hardlinkOrCopiedFileToReferenceMap = new HashMap<>();
+  private final Map<String, PipeTsFileResource> hardlinkOrCopiedFileToTsFileResourceMap =
+      new HashMap<>();
+  private final ReentrantLock lock = new ReentrantLock();
 
-  /** Cache the File objects here to avoid redundancy */
-  private final Map<String, File> fileNameToFileMap = new HashMap<>();
+  private static final ScheduledExecutorService PIPE_TSFILE_RESOURCE_TTL_CHECKER =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.PIPE_TSFILE_RESOURCE_TTL_CHECKER.getName());
+
+  public PipeTsFileResourceManager() {
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        PIPE_TSFILE_RESOURCE_TTL_CHECKER,
+        () -> {
+          final Iterator<Map.Entry<String, PipeTsFileResource>> iterator =
+              hardlinkOrCopiedFileToTsFileResourceMap.entrySet().iterator();
+          while (iterator.hasNext()) {
+            final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
+
+            lock.lock();
+            try {
+              if (entry.getValue().closeIfOutOfTimeToLive()) {
+                iterator.remove();
+              } else {
+                LOGGER.info(
+                    "Pipe file (file name: {}) is still referenced {} times",
+                    entry.getKey(),
+                    entry.getValue().getReferenceCount());
+              }
+            } catch (IOException e) {
+              LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
+            } finally {
+              lock.unlock();
+            }
+          }
+        },
+        PipeTsFileResource.TSFILE_MIN_TIME_TO_LIVE_IN_MS,
+        PipeTsFileResource.TSFILE_MIN_TIME_TO_LIVE_IN_MS,
+        TimeUnit.MILLISECONDS);
+  }
 
   /**
    * given a file, create a hardlink or copy it to pipe dir, maintain a reference count for the
@@ -57,34 +106,49 @@ public class PipeTsFileResourceManager {
    * @return the hardlink or copied file
    * @throws IOException when create hardlink or copy file failed
    */
-  public synchronized File increaseFileReference(File file, boolean isTsFile) throws IOException {
-    // if the file is already a hardlink or copied file, just increase reference count and return it
-    if (increaseReferenceIfExists(file.getPath())) {
-      return file;
-    }
+  public File increaseFileReference(File file, boolean isTsFile) throws IOException {
+    lock.lock();
+    try {
+      // if the file is already a hardlink or copied file, just increase reference count and return
+      // it
+      if (increaseReferenceIfExists(file.getPath())) {
+        return file;
+      }
 
-    // if the file is not a hardlink or copied file, check if there is a related hardlink or copied
-    // file in pipe dir. if so, increase reference count and return it
-    final File hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file);
-    if (increaseReferenceIfExists(hardlinkOrCopiedFile.getPath())) {
-      return fileNameToFileMap.get(hardlinkOrCopiedFile.getPath());
-    }
+      // if the file is not a hardlink or copied file, check if there is a related hardlink or
+      // copied
+      // file in pipe dir. if so, increase reference count and return it
+      final File hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file);
+      if (increaseReferenceIfExists(hardlinkOrCopiedFile.getPath())) {
+        return hardlinkOrCopiedFileToTsFileResourceMap
+            .get(hardlinkOrCopiedFile.getPath())
+            .getFile();
+      }
 
-    // if the file is not a hardlink or copied file, and there is no related hardlink or copied
-    // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
-    // the hardlink or copied file, and return the hardlink or copied file.
-    hardlinkOrCopiedFileToReferenceMap.put(hardlinkOrCopiedFile.getPath(), 1);
-    fileNameToFileMap.put(hardlinkOrCopiedFile.getPath(), hardlinkOrCopiedFile);
-    // if the file is a tsfile, create a hardlink in pipe dir and return it.
-    // otherwise, copy the file (.mod or .resource) to pipe dir and return it.
-    return isTsFile
-        ? createHardLink(file, hardlinkOrCopiedFile)
-        : copyFile(file, hardlinkOrCopiedFile);
+      // if the file is a tsfile, create a hardlink in pipe dir and will return it.
+      // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
+      final File resultFile =
+          isTsFile
+              ? createHardLink(file, hardlinkOrCopiedFile)
+              : copyFile(file, hardlinkOrCopiedFile);
+      // if the file is not a hardlink or copied file, and there is no related hardlink or copied
+      // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
+      // the hardlink or copied file, and return the hardlink or copied file.
+      hardlinkOrCopiedFileToTsFileResourceMap.put(
+          resultFile.getPath(), new PipeTsFileResource(resultFile, isTsFile));
+      return resultFile;
+    } finally {
+      lock.unlock();
+    }
   }
 
   private boolean increaseReferenceIfExists(String path) {
-    hardlinkOrCopiedFileToReferenceMap.computeIfPresent(path, (key, value) -> value + 1);
-    return hardlinkOrCopiedFileToReferenceMap.containsKey(path);
+    PipeTsFileResource resource = hardlinkOrCopiedFileToTsFileResourceMap.get(path);
+    if (resource != null) {
+      resource.increaseAndGetReference();
+      return true;
+    }
+    return false;
   }
 
   private static File getHardlinkOrCopiedFileInPipeDir(File file) throws IOException {
@@ -158,15 +222,16 @@ public class PipeTsFileResourceManager {
    * @param hardlinkOrCopiedFile the copied or hardlinked file
    * @throws IOException when delete file failed
    */
-  public synchronized void decreaseFileReference(File hardlinkOrCopiedFile) throws IOException {
-    final Integer updatedReference =
-        hardlinkOrCopiedFileToReferenceMap.computeIfPresent(
-            hardlinkOrCopiedFile.getPath(), (file, reference) -> reference - 1);
-
-    if (updatedReference != null && updatedReference == 0) {
-      Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
-      hardlinkOrCopiedFileToReferenceMap.remove(hardlinkOrCopiedFile.getPath());
-      fileNameToFileMap.remove(hardlinkOrCopiedFile.getPath());
+  public void decreaseFileReference(File hardlinkOrCopiedFile) {
+    lock.lock();
+    try {
+      String filePath = hardlinkOrCopiedFile.getPath();
+      PipeTsFileResource resource = hardlinkOrCopiedFileToTsFileResourceMap.get(filePath);
+      if (resource != null) {
+        resource.decreaseAndGetReference();
+      }
+    } finally {
+      lock.unlock();
     }
   }
 
@@ -176,15 +241,105 @@ public class PipeTsFileResourceManager {
    * @param hardlinkOrCopiedFile the copied or hardlinked file
    * @return the reference count of the file
    */
-  public synchronized int getFileReferenceCount(File hardlinkOrCopiedFile) {
-    return hardlinkOrCopiedFileToReferenceMap.getOrDefault(hardlinkOrCopiedFile.getPath(), 0);
+  public int getFileReferenceCount(File hardlinkOrCopiedFile) {
+    lock.lock();
+    try {
+      String filePath = hardlinkOrCopiedFile.getPath();
+      PipeTsFileResource resource = hardlinkOrCopiedFileToTsFileResourceMap.get(filePath);
+      return resource != null ? resource.getReferenceCount() : 0;
+    } finally {
+      lock.unlock();
+    }
   }
 
-  public synchronized void pinTsFileResource(TsFileResource resource) throws IOException {
-    increaseFileReference(resource.getTsFile(), true);
+  /**
+   * get the cached {@link TsFileSequenceReader} of the tsfile.
+   *
+   * @param hardlinkOrCopiedTsFile the copied or hard-linked tsfile
+   * @return the {@link TsFileSequenceReader} of the file, or {@code null} if the {@link
+   *     TsFileSequenceReader} is not cached.
+   */
+  public TsFileSequenceReader getTsFileSequenceReaderFromCache(File hardlinkOrCopiedTsFile)
+      throws IOException {
+    lock.lock();
+    try {
+      return hardlinkOrCopiedFileToTsFileResourceMap
+          .get(hardlinkOrCopiedTsFile.getPath())
+          .getTsFileSequenceReader();
+    } finally {
+      lock.unlock();
+    }
   }
 
-  public synchronized void unpinTsFileResource(TsFileResource resource) throws IOException {
-    decreaseFileReference(getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()));
+  /**
+   * get the cached {@link TsFileReader} of the file.
+   *
+   * @param hardlinkOrCopiedTsFile the copied or hardlinked file
+   * @return the {@link TsFileReader} of the file, or {@code null} if the {@link TsFileReader} is
+   *     not cached.
+   */
+  public TsFileReader getTsFileReaderFromCache(File hardlinkOrCopiedTsFile) throws IOException {
+    lock.lock();
+    try {
+      return hardlinkOrCopiedFileToTsFileResourceMap
+          .get(hardlinkOrCopiedTsFile.getPath())
+          .getTsFileReader();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public Map<String, List<String>> getDeviceMeasurementsMapFromCache(File hardlinkOrCopiedTsFile)
+      throws IOException {
+    lock.lock();
+    try {
+      return hardlinkOrCopiedFileToTsFileResourceMap
+          .get(hardlinkOrCopiedTsFile.getPath())
+          .getDeviceMeasurementsMap();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public Map<String, Boolean> getDeviceIsAlignedMapFromCache(File hardlinkOrCopiedTsFile)
+      throws IOException {
+    lock.lock();
+    try {
+      return hardlinkOrCopiedFileToTsFileResourceMap
+          .get(hardlinkOrCopiedTsFile.getPath())
+          .getDeviceIsAlignedMap();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public Map<String, TSDataType> getMeasurementDataTypeMapFromCache(File hardlinkOrCopiedTsFile)
+      throws IOException {
+    lock.lock();
+    try {
+      return hardlinkOrCopiedFileToTsFileResourceMap
+          .get(hardlinkOrCopiedTsFile.getPath())
+          .getMeasurementDataTypeMap();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public void pinTsFileResource(TsFileResource resource) throws IOException {
+    lock.lock();
+    try {
+      increaseFileReference(resource.getTsFile(), true);
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public void unpinTsFileResource(TsFileResource resource) throws IOException {
+    lock.lock();
+    try {
+      decreaseFileReference(getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()));
+    } finally {
+      lock.unlock();
+    }
   }
 }

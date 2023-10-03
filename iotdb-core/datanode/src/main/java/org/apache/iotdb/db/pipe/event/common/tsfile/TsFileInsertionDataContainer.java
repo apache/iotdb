@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -58,12 +59,12 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
   private final EnrichedEvent sourceEvent; // used to report progress
 
-  private final TsFileSequenceReader tsFileSequenceReader;
-  private final TsFileReader tsFileReader;
+  private TsFileSequenceReader tsFileSequenceReader;
+  private TsFileReader tsFileReader;
 
   private final Iterator<Map.Entry<String, List<String>>> deviceMeasurementsMapIterator;
-  private final Map<String, Boolean> deviceIsAlignedMap;
-  private final Map<String, TSDataType> measurementDataTypeMap;
+  private Map<String, Boolean> deviceIsAlignedMap;
+  private Map<String, TSDataType> measurementDataTypeMap;
 
   public TsFileInsertionDataContainer(File tsFile, String pattern, long startTime, long endTime)
       throws IOException {
@@ -90,23 +91,27 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     this.sourceEvent = sourceEvent;
 
     try {
-      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), true, true);
-      tsFileReader = new TsFileReader(tsFileSequenceReader);
+      tsFileSequenceReader = PipeResourceManager.tsfile().getTsFileSequenceReaderFromCache(tsFile);
+      tsFileReader = PipeResourceManager.tsfile().getTsFileReaderFromCache(tsFile);
 
-      deviceMeasurementsMapIterator = filterDeviceMeasurementsMapByPattern().entrySet().iterator();
-      deviceIsAlignedMap = readDeviceIsAlignedMap();
-      measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
+      deviceMeasurementsMapIterator =
+          filterDeviceMeasurementsMapByPattern(tsFile).entrySet().iterator();
+      deviceIsAlignedMap = PipeResourceManager.tsfile().getDeviceIsAlignedMapFromCache(tsFile);
+      measurementDataTypeMap =
+          PipeResourceManager.tsfile().getMeasurementDataTypeMapFromCache(tsFile);
     } catch (Exception e) {
       close();
       throw e;
     }
   }
 
-  private Map<String, List<String>> filterDeviceMeasurementsMapByPattern() throws IOException {
-    final Map<String, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
+  private Map<String, List<String>> filterDeviceMeasurementsMapByPattern(File tsFile)
+      throws IOException {
+    Map<String, List<String>> originalDeviceMeasurementsMap =
+        PipeResourceManager.tsfile().getDeviceMeasurementsMapFromCache(tsFile);
 
-    for (Map.Entry<String, List<String>> entry :
-        tsFileSequenceReader.getDeviceMeasurementsMap().entrySet()) {
+    final Map<String, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
+    for (Map.Entry<String, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
       final String deviceId = entry.getKey();
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
@@ -213,21 +218,5 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   }
 
   @Override
-  public void close() {
-    try {
-      if (tsFileReader != null) {
-        tsFileReader.close();
-      }
-    } catch (IOException e) {
-      LOGGER.warn("Failed to close TsFileReader", e);
-    }
-
-    try {
-      if (tsFileSequenceReader != null) {
-        tsFileSequenceReader.close();
-      }
-    } catch (IOException e) {
-      LOGGER.warn("Failed to close TsFileSequenceReader", e);
-    }
-  }
+  public void close() {}
 }

@@ -40,7 +40,7 @@ public abstract class PipeWALResource implements Closeable {
 
   private final AtomicInteger referenceCount;
 
-  public static final long MIN_TIME_TO_LIVE_IN_MS = 1000L * 60;
+  public static final long WAL_MIN_TIME_TO_LIVE_IN_MS = 1000L * 60;
   private final AtomicLong lastLogicalPinTime;
   private final AtomicBoolean isPhysicallyPinned;
 
@@ -118,7 +118,7 @@ public abstract class PipeWALResource implements Closeable {
    */
   private boolean unpinPhysicallyIfOutOfTimeToLive() {
     if (isPhysicallyPinned.get()) {
-      if (System.currentTimeMillis() - lastLogicalPinTime.get() > MIN_TIME_TO_LIVE_IN_MS) {
+      if (System.currentTimeMillis() - lastLogicalPinTime.get() > WAL_MIN_TIME_TO_LIVE_IN_MS) {
         try {
           unpinInternal();
         } catch (MemTablePinException e) {
