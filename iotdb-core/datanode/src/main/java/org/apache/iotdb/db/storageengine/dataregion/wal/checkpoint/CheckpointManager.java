@@ -29,8 +29,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.ILogWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.CheckpointFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALInsertNodeCache;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -302,9 +300,7 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   private int getDataRegionId(MemTableInfo memTableInfo) {
-    File memTableInfoTsFile =
-        FSFactoryProducer.getFSFactory().getFile(memTableInfo.getTsFilePath());
-    return TsFileUtils.getDataRegionId(memTableInfoTsFile);
+    return Integer.parseInt(memTableInfo.getMemTable().getDataRegionId());
   }
   // endregion
 
@@ -355,6 +351,16 @@ public class CheckpointManager implements AutoCloseable {
     }
 
     return totalCost;
+  }
+
+  public int getRegionId(long memtableId) {
+    MemTableInfo info = memTableId2Info.get(memtableId);
+    if (info == null) {
+      logger.warn("memtableId {} not found in MemTableId2Info", memtableId);
+      return -1;
+    }
+
+    return Integer.parseInt(info.getMemTable().getDataRegionId());
   }
 
   @Override

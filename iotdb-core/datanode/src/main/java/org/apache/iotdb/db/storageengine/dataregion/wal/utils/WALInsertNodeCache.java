@@ -202,7 +202,7 @@ public class WALInsertNodeCache {
     private static final Map<Integer, WALInsertNodeCache> INSTANCE_MAP = new ConcurrentHashMap<>();
 
     public static WALInsertNodeCache getOrCreateInstance(Integer key) {
-      return INSTANCE_MAP.computeIfAbsent(key, k -> new WALInsertNodeCache());
+      return INSTANCE_MAP.computeIfAbsent(key, k -> k != -1 ? new WALInsertNodeCache() : null);
     }
   }
 }

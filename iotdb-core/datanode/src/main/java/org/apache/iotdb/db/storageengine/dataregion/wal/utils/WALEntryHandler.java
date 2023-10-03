@@ -187,10 +187,7 @@ public class WALEntryHandler {
 
   public void setEntryPosition(long walFileVersionId, long position) {
     this.walEntryPosition.setEntryPosition(walFileVersionId, position);
-    if (this.value instanceof InsertNode) {
-      this.walEntryPosition.setWalInsertNodeCache(
-          ((InsertNode) this.value).getDataRegionReplicaSet().getRegionId().getId());
-    }
+    this.walEntryPosition.setWalInsertNodeCache(walNode.getRegionId(memTableId));
 
     this.value = null;
     synchronized (this) {
