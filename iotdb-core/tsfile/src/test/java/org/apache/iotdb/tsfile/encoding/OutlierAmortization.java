@@ -11,9 +11,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Stack;
 
-import static java.lang.Math.pow;
-
-public class OutlierKSigma {
+public class OutlierAmortization {
 
     public static int getBitWith(int num) {
         if (num == 0) return 1;
@@ -333,7 +331,7 @@ public class OutlierKSigma {
     }
 
 
-    private static ArrayList<Byte> learnKDelta(ArrayList<Integer> ts_block, int k, int supple_length) {
+    private static ArrayList<Byte> learnKDelta(ArrayList<Integer> ts_block, int k, int q, int supple_length) {
 
 //        int block_size = ts_block.size();
         int final_right_max = 0;
@@ -366,8 +364,41 @@ public class OutlierKSigma {
         double sigma = Math.sqrt(variance / block_size);
 
 //        System.out.println(ts_block_delta);
-        int final_k_start_value = (int) (mu - k * sigma>0?(mu - k * sigma):0);
-        int final_k_end_value = (int) (mu + k * sigma<final_right_max?(mu + k * sigma):final_right_max);
+
+        int final_k_start_value = 0;
+        int final_k_end_value = final_right_max;
+        int min_bits = 0;
+        min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size - 1));
+
+        for(int q_i = 1;q_i <= q;q_i++){
+            double half_beta = ( (double) q_i / (double) q) *  (double) k / sigma ;
+            int k_start_value = (int) (mu - half_beta>0?(mu - half_beta):0);
+            int k_end_value = (int) (mu + half_beta<final_right_max?(mu + half_beta):final_right_max);
+            int k1 = 0;
+            int k2 = 0;
+            for (int i = 1; i < block_size; i++) {
+                if (ts_block_delta.get(i) < final_k_start_value) {
+                    k1++;
+                } else if (ts_block_delta.get(i) > final_k_end_value) {
+                    k2++;
+                }
+            }
+            int cur_bits = 0;
+            cur_bits += Math.min((k1+k2)*getBitWith(block_size),block_size+k1+k2);
+            cur_bits += k1 * getBitWith(k_start_value);
+            cur_bits += (block_size-k1-k2) * getBitWith(k_end_value-k_start_value);
+            cur_bits += k2 * getBitWith(final_right_max-k_end_value);
+
+            if (cur_bits < min_bits) {
+                min_bits = cur_bits;
+                final_k_start_value = k_start_value;
+                final_k_end_value = k_end_value;
+            }
+
+        }
+
+
+
 //        System.out.println("final_k_start_value: "+final_k_start_value);
 //        System.out.println("final_k_end_value: "+final_k_end_value);
 
@@ -496,7 +527,7 @@ public class OutlierKSigma {
     }
 
     public static ArrayList<Byte> ReorderingRegressionEncoder(
-            ArrayList<Integer> data, int block_size, int k) throws IOException {
+            ArrayList<Integer> data, int block_size, int k, int q) throws IOException {
         block_size++;
         ArrayList<Byte> encoded_result = new ArrayList<Byte>();
         int length_all = data.size();
@@ -521,7 +552,7 @@ public class OutlierKSigma {
 //            splitTimeStamp3(ts_block_reorder, result2);
 
             // time-order
-            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k,0);
+            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k,q,0);
             encoded_result.addAll(cur_encoded_result);
 
         }
@@ -550,7 +581,7 @@ public class OutlierKSigma {
                 supple_length = 9 - remaining_length % 8;
             }
 
-            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k,supple_length);
+            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k,q,supple_length);
             encoded_result.addAll(cur_encoded_result);
         }
 
@@ -720,7 +751,7 @@ public class OutlierKSigma {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/k_sigma";
+        String output_parent_dir = parent_dir + "vldb/compression_ratio/amortization";
         String input_parent_dir = parent_dir + "iotdb_test_small/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -828,7 +859,7 @@ public class OutlierKSigma {
 //                    System.out.println(data2);
                 inputStream.close();
 
-                for (int k = 1; k < 8; k++) {
+                for (int k = 1; k < 2; k++) {
                     long encodeTime = 0;
                     long decodeTime = 0;
                     double ratio = 0;
@@ -841,7 +872,7 @@ public class OutlierKSigma {
                         long buffer_bits = 0;
                         for (int repeat = 0; repeat < repeatTime2; repeat++) {
 //                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), k);
-                            buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), k);
+                            buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), k,10);
                         }
 //                        System.out.println(k);
 //                        System.out.println((double) buffer1.size() / (double) (data1.size() * Integer.BYTES));

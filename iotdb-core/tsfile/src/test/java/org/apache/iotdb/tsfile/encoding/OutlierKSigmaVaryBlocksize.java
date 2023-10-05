@@ -11,9 +11,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Stack;
 
-import static java.lang.Math.pow;
-
-public class OutlierKSigma {
+public class OutlierKSigmaVaryBlocksize {
 
     public static int getBitWith(int num) {
         if (num == 0) return 1;
@@ -720,7 +718,7 @@ public class OutlierKSigma {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/k_sigma";
+        String output_parent_dir = parent_dir + "vldb/compression_ratio/block_size_k_sigma";
         String input_parent_dir = parent_dir + "iotdb_test_small/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -795,7 +793,7 @@ public class OutlierKSigma {
                     "Decoding Time",
                     "Points",
                     "Compressed Size",
-                    "k",
+                    "Block Size",
                     "Compression Ratio"
             };
             writer.writeRecord(head); // write header to output file
@@ -811,8 +809,6 @@ public class OutlierKSigma {
                 ArrayList<Integer> data1 = new ArrayList<>();
                 ArrayList<Integer> data2 = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> data_decoded = new ArrayList<>();
-
-
 //                for (int index : columnIndexes) {
                 // add a column to "data"
 //                    System.out.println(index);
@@ -827,57 +823,60 @@ public class OutlierKSigma {
                 }
 //                    System.out.println(data2);
                 inputStream.close();
-
-                for (int k = 1; k < 8; k++) {
-                    long encodeTime = 0;
-                    long decodeTime = 0;
-                    double ratio = 0;
-                    double compressed_size = 0;
-                    int repeatTime2 = 1;
-                    for (int i = 0; i < repeatTime; i++) {
-                        long s = System.nanoTime();
-                        ArrayList<Byte> buffer1 = new ArrayList<>();
-                        ArrayList<Byte> buffer2 = new ArrayList<>();
-                        long buffer_bits = 0;
-                        for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                for(int block_size_i=4;block_size_i<14;block_size_i++){
+                    int block_size= (int) Math.pow(2,block_size_i);
+                    for (int k = 1; k < 2; k++) {
+                        long encodeTime = 0;
+                        long decodeTime = 0;
+                        double ratio = 0;
+                        double compressed_size = 0;
+                        int repeatTime2 = 1;
+                        for (int i = 0; i < repeatTime; i++) {
+                            long s = System.nanoTime();
+                            ArrayList<Byte> buffer1 = new ArrayList<>();
+                            ArrayList<Byte> buffer2 = new ArrayList<>();
+                            long buffer_bits = 0;
+                            for (int repeat = 0; repeat < repeatTime2; repeat++) {
 //                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), k);
-                            buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), k);
-                        }
+                                buffer2 = ReorderingRegressionEncoder(data2, block_size, k);
+                            }
 //                        System.out.println(k);
 //                        System.out.println((double) buffer1.size() / (double) (data1.size() * Integer.BYTES));
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
 
-                        long e = System.nanoTime();
-                        encodeTime += ((e - s) / repeatTime2);
+                            long e = System.nanoTime();
+                            encodeTime += ((e - s) / repeatTime2);
 //                        compressed_size += buffer1.size();
-                        compressed_size += buffer2.size();
-                        double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
-                        ratio += ratioTmp;
-                        s = System.nanoTime();
-                        //          for(int repeat=0;repeat<repeatTime2;repeat++)
-                        //            data_decoded = ReorderingRegressionDecoder(buffer);
-                        e = System.nanoTime();
-                        decodeTime += ((e - s) / repeatTime2);
+                            compressed_size += buffer2.size();
+                            double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
+                            ratio += ratioTmp;
+                            s = System.nanoTime();
+                            //          for(int repeat=0;repeat<repeatTime2;repeat++)
+                            //            data_decoded = ReorderingRegressionDecoder(buffer);
+                            e = System.nanoTime();
+                            decodeTime += ((e - s) / repeatTime2);
+                        }
+
+                        ratio /= repeatTime;
+                        compressed_size /= repeatTime;
+                        encodeTime /= repeatTime;
+                        decodeTime /= repeatTime;
+
+                        String[] record = {
+                                f.toString(),
+                                "Outlier-K-Sigma",
+                                String.valueOf(encodeTime),
+                                String.valueOf(decodeTime),
+                                String.valueOf(data1.size()),
+                                String.valueOf(compressed_size),
+                                String.valueOf(block_size_i),
+                                String.valueOf(ratio)
+                        };
+                        writer.writeRecord(record);
+                        System.out.println(ratio);
                     }
-
-                    ratio /= repeatTime;
-                    compressed_size /= repeatTime;
-                    encodeTime /= repeatTime;
-                    decodeTime /= repeatTime;
-
-                    String[] record = {
-                            f.toString(),
-                            "Outlier-K-Sigma",
-                            String.valueOf(encodeTime),
-                            String.valueOf(decodeTime),
-                            String.valueOf(data1.size()),
-                            String.valueOf(compressed_size),
-                            String.valueOf(k),
-                            String.valueOf(ratio)
-                    };
-                    writer.writeRecord(record);
-                    System.out.println(ratio);
                 }
+
 
 //                 break;
             }
