@@ -123,6 +123,8 @@ public class TracingManager {
     writeChunksInfo(queryId, tracingInfo.getTotalChunkNum(), tracingInfo.getTotalChunkPoints());
     writeOverlappedPageInfo(
         queryId, tracingInfo.getTotalPageNum(), tracingInfo.getOverlappedPageNum());
+    writeUpdatedPointNumInfo(
+        queryId, tracingInfo.getTotalChunkPoints(), tracingInfo.getUpdatedPointNum());
   }
 
   public void writeTsFileInfo(
@@ -182,6 +184,18 @@ public class TracingManager {
             .append(
                 String.format(
                     "%d overlapped pages in total %d pages.\n", overlappedPageNum, totalPageNum));
+    writer.write(builder.toString());
+  }
+
+  public void writeUpdatedPointNumInfo(long queryId, long totalChunkPoints, long updatedPointNum)
+      throws IOException {
+    StringBuilder builder =
+        new StringBuilder(String.format(QUERY_ID, queryId))
+            .append(" - Rate of updated points: ")
+            .append(String.format("%.1f%%, ", (double) updatedPointNum / totalChunkPoints * 100))
+            .append(
+                String.format(
+                    "%d updated points in total %d points.\n", updatedPointNum, totalChunkPoints));
     writer.write(builder.toString());
   }
 

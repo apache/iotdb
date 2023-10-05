@@ -308,7 +308,8 @@ public class TsFileSketchTool {
   }
 
   private static Pair<String, String> checkArgs(String[] args) {
-    String filename = "D:\\plain-plain-noindex.tsfile";
+    String filename =
+        "D:\\github\\mid\\iotdb-server-0.12.4\\data\\data\\unsequence\\root.game\\0\\0\\1696508586460-2-0-0.tsfile";
     String outFile = "TsFile_sketch_view.txt";
     if (args.length == 1) {
       filename = args[0];

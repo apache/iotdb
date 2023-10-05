@@ -35,6 +35,8 @@ public class TracingInfo {
   private long totalChunkPoints = 0;
   private int totalPageNum = 0;
   private int overlappedPageNum = 0;
+
+  private long updatedPointNum = 0;
   private Set<TsFileResource> seqFileSet = new HashSet<>();
   private Set<TsFileResource> unSeqFileSet = new HashSet<>();
 
@@ -61,12 +63,20 @@ public class TracingInfo {
     this.overlappedPageNum++;
   }
 
+  public void addUpdatedPointNum() {
+    this.updatedPointNum++;
+  }
+
   public int getTotalPageNum() {
     return totalPageNum;
   }
 
   public int getOverlappedPageNum() {
     return overlappedPageNum;
+  }
+
+  public long getUpdatedPointNum() {
+    return updatedPointNum;
   }
 
   public Set<TsFileResource> getSeqFileSet() {

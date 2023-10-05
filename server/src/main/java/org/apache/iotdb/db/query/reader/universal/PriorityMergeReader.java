@@ -40,6 +40,8 @@ public class PriorityMergeReader implements IPointReader {
 
   protected PriorityQueue<Element> heap;
 
+  private QueryContext context;
+
   public PriorityMergeReader() {
     heap =
         new PriorityQueue<>(
@@ -77,6 +79,7 @@ public class PriorityMergeReader implements IPointReader {
   public void addReader(
       IPointReader reader, MergeReaderPriority priority, long endTime, QueryContext context)
       throws IOException {
+    this.context = context;
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
       currentReadStopTime = Math.max(currentReadStopTime, endTime);
@@ -152,6 +155,10 @@ public class PriorityMergeReader implements IPointReader {
 
   protected void updateHeap(long topTime, long topNextTime) throws IOException {
     while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+        // TODO tracing
+        TracingManager.getInstance().getTracingInfo(context.getQueryId()).addUpdatedPointNum();
+      }
       Element e = heap.poll();
       if (!e.hasNext()) {
         e.reader.close();
