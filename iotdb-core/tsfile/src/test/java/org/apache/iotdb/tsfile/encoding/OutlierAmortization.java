@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Stack;
 
+import static java.lang.Math.pow;
+
 public class OutlierAmortization {
 
     public static int getBitWith(int num) {
@@ -367,34 +369,44 @@ public class OutlierAmortization {
 
         int final_k_start_value = 0;
         int final_k_end_value = final_right_max;
+        int max_delta_value_bit_width = getBitWith(final_right_max);
+        ArrayList<Integer> spread_value = new ArrayList<>();
+        for (int i = 1; i < max_delta_value_bit_width; i++) {
+            int spread_v = (int) pow(2, i) - 1;
+            spread_value.add(spread_v);
+        }
+
         int min_bits = 0;
         min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size - 1));
 
         for(int q_i = 1;q_i <= q;q_i++){
             double half_beta = ( (double) q_i / (double) q) *  (double) k / sigma ;
             int k_start_value = (int) (mu - half_beta>0?(mu - half_beta):0);
-            int k_end_value = (int) (mu + half_beta<final_right_max?(mu + half_beta):final_right_max);
-            int k1 = 0;
-            int k2 = 0;
-            for (int i = 1; i < block_size; i++) {
-                if (ts_block_delta.get(i) < final_k_start_value) {
-                    k1++;
-                } else if (ts_block_delta.get(i) > final_k_end_value) {
-                    k2++;
+            for (int k_spread_value : spread_value) {
+                int k_end_value = k_spread_value + k_start_value;
+
+                k_end_value = Math.min(k_end_value, final_right_max);
+                int k1 = 0;
+                int k2 = 0;
+                for (int i = 1; i < block_size; i++) {
+                    if (ts_block_delta.get(i) < final_k_start_value) {
+                        k1++;
+                    } else if (ts_block_delta.get(i) > final_k_end_value) {
+                        k2++;
+                    }
+                }
+                int cur_bits = 0;
+                cur_bits += Math.min((k1 + k2) * getBitWith(block_size), block_size + k1 + k2);
+                cur_bits += k1 * getBitWith(k_start_value);
+                cur_bits += (block_size - k1 - k2) * getBitWith(k_spread_value);
+                cur_bits += k2 * getBitWith(final_right_max - k_end_value);
+
+                if (cur_bits < min_bits) {
+                    min_bits = cur_bits;
+                    final_k_start_value = k_start_value;
+                    final_k_end_value = k_end_value;
                 }
             }
-            int cur_bits = 0;
-            cur_bits += Math.min((k1+k2)*getBitWith(block_size),block_size+k1+k2);
-            cur_bits += k1 * getBitWith(k_start_value);
-            cur_bits += (block_size-k1-k2) * getBitWith(k_end_value-k_start_value);
-            cur_bits += k2 * getBitWith(final_right_max-k_end_value);
-
-            if (cur_bits < min_bits) {
-                min_bits = cur_bits;
-                final_k_start_value = k_start_value;
-                final_k_end_value = k_end_value;
-            }
-
         }
 
 
@@ -898,7 +910,7 @@ public class OutlierAmortization {
 
                     String[] record = {
                             f.toString(),
-                            "Outlier-K-Sigma",
+                            "Outlier-Amortization",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),

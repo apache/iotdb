@@ -629,7 +629,8 @@ public class OutlierCDFVaryBlocksize {
                 for (byte b : timestamp_end_bytes) encoded_result.add(b);
             }
 
-        }else{
+        }
+        else{
             ArrayList<Integer> ts_block = new ArrayList<>();
 
             for (int j = block_num * block_size; j < length_all; j++) {

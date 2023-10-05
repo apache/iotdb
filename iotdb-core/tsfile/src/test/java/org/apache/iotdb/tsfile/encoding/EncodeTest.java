@@ -98,7 +98,8 @@ public class EncodeTest {
         TSEncoding.RLE,
         TSEncoding.SPRINTZ,
         TSEncoding.GORILLA,
-        TSEncoding.RLBE
+        TSEncoding.RLBE,
+              TSEncoding.CHIMP
       };
       // select compression algorithms
       CompressionType[] compressList = {
