@@ -294,14 +294,6 @@ public class OutlierCDF {
             int bit_width) {
         ArrayList<Byte> encoded_result = new ArrayList<>();
 
-//        // encode value0
-//        byte[] value0_byte = int2Bytes(ts_block_delta.get(0));
-//        for (byte b : value0_byte) encoded_result.add(b);
-//
-
-        // encode value
-        byte[] value_bytes = bitPacking(ts_block_delta, 0, bit_width);
-        for (byte b : value_bytes) encoded_result.add(b);
 
         int n_k = ts_block_delta.size();
         int n_k_b = n_k / 8;
@@ -330,7 +322,6 @@ public class OutlierCDF {
 
         return encoded_result;
     }
-
 
     private static ArrayList<Byte> learnKDelta(ArrayList<Integer> ts_block, int supple_length) {
 

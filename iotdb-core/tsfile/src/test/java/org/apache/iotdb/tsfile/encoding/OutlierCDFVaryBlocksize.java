@@ -296,14 +296,6 @@ public class OutlierCDFVaryBlocksize {
             int bit_width) {
         ArrayList<Byte> encoded_result = new ArrayList<>();
 
-//        // encode value0
-//        byte[] value0_byte = int2Bytes(ts_block_delta.get(0));
-//        for (byte b : value0_byte) encoded_result.add(b);
-//
-
-        // encode value
-        byte[] value_bytes = bitPacking(ts_block_delta, 0, bit_width);
-        for (byte b : value_bytes) encoded_result.add(b);
 
         int n_k = ts_block_delta.size();
         int n_k_b = n_k / 8;
@@ -332,7 +324,6 @@ public class OutlierCDFVaryBlocksize {
 
         return encoded_result;
     }
-
 
     private static ArrayList<Byte> learnKDelta(ArrayList<Integer> ts_block, int supple_length) {
 
@@ -410,15 +401,15 @@ public class OutlierCDFVaryBlocksize {
                 int k_end_value = k_spread_value + k_start_value;
 
                 int cur_bits = 0;
-
-                k1 = PDF.get(start_value_i).get(1);
+                int cur_k1 = PDF.get(start_value_i).get(1);
+                int cur_k2 = 0;
                 int max_normal = 0;
                 int min_upper_outlier = 0;
                 int PDF_size = PDF.size();
                 for (int tmp_j = start_value_i; tmp_j < PDF_size; tmp_j++) {
                     max_normal = PDF.get(tmp_j).get(0);
                     if (max_normal >= k_end_value) {
-                        k2 = block_size - PDF.get(tmp_j).get(1);
+                        cur_k2 = block_size - PDF.get(tmp_j).get(1);
                         if (tmp_j != PDF_size - 1)
                             min_upper_outlier = PDF.get(tmp_j + 1).get(0);
                         else
@@ -427,42 +418,16 @@ public class OutlierCDFVaryBlocksize {
                     }
                 }
 
-                cur_bits += Math.min((k1 + k2) * getBitWith(block_size), block_size + k1 + k2);
-                cur_bits += k1 * getBitWith(k_start_value);
-                cur_bits += (block_size - k1 - k2) * getBitWith(k_spread_value);
-                cur_bits += k2 * getBitWith(max_delta_value - min_upper_outlier);
+                cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
+                cur_bits += cur_k1 * getBitWith(k_start_value);
+                cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_spread_value);
+                cur_bits += cur_k2 * getBitWith(max_delta_value - min_upper_outlier);
 
-//                for (int i = 1; i < block_size; i++) {
-//                    if (ts_block_delta.get(i) < k_start_value) {
-//                        if (ts_block_delta.get(i) > left_max) {
-//                            left_max = ts_block_delta.get(i);
-//                        }
-//                        k1++;
-//                        k++;
-//
-//                    } else if (ts_block_delta.get(i) > k_end_value) {
-//                        if (ts_block_delta.get(i) > right_max) {
-//                            right_max = ts_block_delta.get(i);
-//                        }
-//                        k++;
-//                    }
-//                }
 
-//                int alpha = k * getBitWith(block_size - 2) <= (block_size - 1) ? 1 : 0;
-//                if (alpha == 1) {
-//                    cur_bits += k * getBitWith(block_size - 2);
-//                } else {
-//                    cur_bits += (block_size - 1);
-//                }
-//                cur_bits += getBitWith(k_spread_value) * (block_size - 1 - k);
-//                cur_bits += k1 * getBitWith(left_max);
-//                cur_bits += (k - k1) * getBitWith(right_max - k_end_value);
-//
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
-//                    final_alpha = alpha;
-//                    final_left_max = left_max;
-//                    final_right_max = right_max
+                    k1 = cur_k1;
+                    k2 = cur_k2;
                     final_k_start_value = k_start_value;
                     final_k_end_value = k_end_value;
                 }
@@ -578,6 +543,13 @@ public class OutlierCDFVaryBlocksize {
                 }
             }
 
+//            System.out.println("n-k1-k2: "+(final_normal.size()));
+//            System.out.println(bit_width_final);
+//            System.out.println("k1:"+k1);
+//            System.out.println(left_bit_width);
+//            System.out.println("k2:"+k2);
+//            System.out.println(right_bit_width);
+
 
             cur_byte.addAll(encodeOutlier2Bytes(final_normal, bit_width_final));
             if (k1 != 0)
@@ -586,7 +558,7 @@ public class OutlierCDFVaryBlocksize {
                 cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier, right_bit_width));
         }
 
-
+//        System.out.println(cur_byte.size());
         return cur_byte;
     }
 
@@ -646,9 +618,7 @@ public class OutlierCDFVaryBlocksize {
             } else {
                 supple_length = 9 - remaining_length % 8;
             }
-//            for (int s = 0; s < supple_length; s++) {
-//                ts_block.add(0);
-//            }
+
 
             ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, supple_length);
             encoded_result.addAll(cur_encoded_result);
@@ -921,7 +891,7 @@ public class OutlierCDFVaryBlocksize {
             columnIndexes.add(i, i);
         }
 
-//        for (int file_i = 11; file_i < 12; file_i++) {
+//        for (int file_i = 8; file_i < 9; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -974,7 +944,7 @@ public class OutlierCDFVaryBlocksize {
                 }
 //                    System.out.println(data2);
                 inputStream.close();
-//                for(int block_size_i=4;block_size_i<5;block_size_i++) {
+//                for(int block_size_i=6;block_size_i<7;block_size_i++) {
                 for (int block_size_i = 4; block_size_i < 14; block_size_i++) {
                     int block_size = (int) Math.pow(2, block_size_i);
                     long encodeTime = 0;
@@ -1026,9 +996,7 @@ public class OutlierCDFVaryBlocksize {
                     System.out.println(ratio);
                 }
 //                break;
-//                }
 
-//
             }
             writer.close();
 

@@ -295,14 +295,6 @@ public class OutlierAmortizationVaryBlocksize {
             int bit_width) {
         ArrayList<Byte> encoded_result = new ArrayList<>();
 
-//        // encode value0
-//        byte[] value0_byte = int2Bytes(ts_block_delta.get(0));
-//        for (byte b : value0_byte) encoded_result.add(b);
-//
-
-        // encode value
-        byte[] value_bytes = bitPacking(ts_block_delta, 0, bit_width);
-        for (byte b : value_bytes) encoded_result.add(b);
 
         int n_k = ts_block_delta.size();
         int n_k_b = n_k / 8;
@@ -532,7 +524,7 @@ public class OutlierAmortizationVaryBlocksize {
         if (k2 != 0)
             cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier, right_bit_width));
 
-
+//        System.out.println(cur_byte.size());
         return cur_byte;
     }
 
@@ -559,9 +551,7 @@ public class OutlierAmortizationVaryBlocksize {
             ArrayList<Integer> result2 = new ArrayList<>();
 
             splitTimeStamp3(ts_block, result2);
-//            splitTimeStamp3(ts_block_reorder, result2);
 
-            // time-order
             ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k, q, 0);
             encoded_result.addAll(cur_encoded_result);
 
@@ -814,7 +804,7 @@ public class OutlierAmortizationVaryBlocksize {
             columnIndexes.add(i, i);
         }
 
-//        for (int file_i = 11; file_i < 12; file_i++) {
+//        for (int file_i = 8; file_i < 9; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -867,7 +857,7 @@ public class OutlierAmortizationVaryBlocksize {
                 }
 //                    System.out.println(data2);
                 inputStream.close();
-
+//                for (int block_size_i = 6; block_size_i < 7; block_size_i++) {
                 for (int block_size_i = 4; block_size_i < 14; block_size_i++) {
                     int block_size = (int) Math.pow(2, block_size_i);
                     long encodeTime = 0;

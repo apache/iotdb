@@ -299,8 +299,8 @@ public class OutlierKSigmaVaryBlocksize {
 //
 
         // encode value
-        byte[] value_bytes = bitPacking(ts_block_delta, 0, bit_width);
-        for (byte b : value_bytes) encoded_result.add(b);
+//        byte[] value_bytes = bitPacking(ts_block_delta, 0, bit_width);
+//        for (byte b : value_bytes) encoded_result.add(b);
 
         int n_k = ts_block_delta.size();
         int n_k_b = n_k / 8;
@@ -386,8 +386,6 @@ public class OutlierKSigmaVaryBlocksize {
                 index_bitmap += 1;
 
                 k1++;
-
-
             } else if (ts_block_delta.get(i) > final_k_end_value) {
                 final_right_outlier.add(ts_block_delta.get(i) - final_k_end_value);
 
@@ -463,6 +461,12 @@ public class OutlierKSigmaVaryBlocksize {
             }
         }
 
+//        System.out.println("n-k1-k2: "+(final_normal.size()));
+//        System.out.println(bit_width_final);
+//        System.out.println("k1:"+k1);
+//        System.out.println(left_bit_width);
+//        System.out.println("k2:"+k2);
+//        System.out.println(right_bit_width);
 
         cur_byte.addAll(encodeOutlier2Bytes(final_normal, bit_width_final));
         if (k1 != 0)
@@ -470,7 +474,7 @@ public class OutlierKSigmaVaryBlocksize {
         if (k2 != 0)
             cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier, right_bit_width));
 
-
+//        System.out.println(cur_byte.size());
         return cur_byte;
     }
 
@@ -752,7 +756,7 @@ public class OutlierKSigmaVaryBlocksize {
             columnIndexes.add(i, i);
         }
 
-//        for (int file_i = 11; file_i < 12; file_i++) {
+//        for (int file_i = 8; file_i < 9; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -803,6 +807,7 @@ public class OutlierKSigmaVaryBlocksize {
                 }
 //                    System.out.println(data2);
                 inputStream.close();
+//                for (int block_size_i = 6; block_size_i < 7; block_size_i++) {
                 for (int block_size_i = 4; block_size_i < 14; block_size_i++) {
                     int block_size = (int) Math.pow(2, block_size_i);
                     for (int k = 1; k < 2; k++) {
