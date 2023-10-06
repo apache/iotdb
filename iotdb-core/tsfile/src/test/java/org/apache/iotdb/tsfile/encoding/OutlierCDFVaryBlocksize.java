@@ -410,8 +410,6 @@ public class OutlierCDFVaryBlocksize {
                 int k_end_value = k_spread_value + k_start_value;
 
                 int cur_bits = 0;
-//                int left_max = Integer.MIN_VALUE;
-//                int right_max = Integer.MIN_VALUE;
 
                 k1 = PDF.get(start_value_i).get(1);
                 int max_normal = 0;

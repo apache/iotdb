@@ -344,10 +344,6 @@ public class OutlierKSigmaVaryBlocksize {
         }
 
         int block_size = ts_block_delta.size();
-//        System.out.println(ts_block_delta);
-
-//        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
-
 
         double sum = 0;
         for (int i = 1; i < block_size; i++) {
@@ -363,14 +359,8 @@ public class OutlierKSigmaVaryBlocksize {
         }
         double sigma = Math.sqrt(variance / block_size);
 
-//        System.out.println(ts_block_delta);
-        int final_k_start_value = (int) (mu - k * sigma > 0 ? (mu - k * sigma) : 0);
-        int final_k_end_value = (int) (mu + k * sigma < final_right_max ? (mu + k * sigma) : final_right_max);
-//        System.out.println("final_k_start_value: "+final_k_start_value);
-//        System.out.println("final_k_end_value: "+final_k_end_value);
-
-//        int final_left_max = 0;
-//        int final_right_max = 0;
+        int final_k_start_value = (int) Math.max( Math.floor( mu - (double)k * sigma) , 0 );
+        int final_k_end_value = (int) Math.min(Math.floor( mu + (double)k * sigma), final_right_max );
 
 
         // ------------------------- encode data -----------------------------------------
@@ -390,13 +380,10 @@ public class OutlierKSigmaVaryBlocksize {
         for (int i = 1; i < block_size; i++) {
             if (ts_block_delta.get(i) < final_k_start_value) {
                 final_left_outlier.add(ts_block_delta.get(i));
-//                    if (final_alpha == 1)
                 final_left_outlier_index.add(i);
-//                    else {
                 index_bitmap_outlier += 1;
                 index_bitmap_outlier <<= 1;
                 index_bitmap += 1;
-//                    }
 
                 k1++;
 
@@ -404,17 +391,13 @@ public class OutlierKSigmaVaryBlocksize {
             } else if (ts_block_delta.get(i) > final_k_end_value) {
                 final_right_outlier.add(ts_block_delta.get(i) - final_k_end_value);
 
-//                    if (final_alpha == 1)
                 final_right_outlier_index.add(i);
-//                    else {
                 index_bitmap_outlier <<= 1;
                 index_bitmap += 1;
-//                    }
                 k2++;
             } else {
                 final_normal.add(ts_block_delta.get(i) - final_k_start_value);
             }
-//                if (final_alpha == 0) {
             index_bitmap <<= 1;
             if (i % 8 == 0) {
                 bitmap.add(index_bitmap);
@@ -424,7 +407,7 @@ public class OutlierKSigmaVaryBlocksize {
                 bitmap_outlier.add(index_bitmap_outlier);
                 index_bitmap_outlier = 0;
             }
-//                }
+
         }
         if ((k1 + k2) % 8 != 0) {
             bitmap_outlier.add(index_bitmap_outlier);
