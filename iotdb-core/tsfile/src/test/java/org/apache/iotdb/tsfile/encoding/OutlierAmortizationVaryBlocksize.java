@@ -13,7 +13,7 @@ import java.util.Stack;
 
 import static java.lang.Math.pow;
 
-public class OutlierAmortizationVaryQ {
+public class OutlierAmortizationVaryBlocksize {
 
     public static int getBitWith(int num) {
         if (num == 0) return 1;
@@ -353,7 +353,7 @@ public class OutlierAmortizationVaryQ {
 
         double sum = 0;
         for (int i = 1; i < block_size; i++) {
-            if(ts_block_delta.get(i) > final_right_max){
+            if (ts_block_delta.get(i) > final_right_max) {
                 final_right_max = ts_block_delta.get(i);
             }
             sum += ts_block_delta.get(i);
@@ -379,9 +379,9 @@ public class OutlierAmortizationVaryQ {
         int min_bits = 0;
         min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size - 1));
 
-        for(int q_i = 1;q_i <= q;q_i++){
-            double half_beta = ( (double) q_i / (double) q) *  (double) k * sigma ;
-            int k_start_value = (int) Math.max(Math.floor(mu - half_beta),0);
+        for (int q_i = 1; q_i <= q; q_i++) {
+            double half_beta = ((double) q_i / (double) q) * (double) k / sigma;
+            int k_start_value = (int) (mu - half_beta > 0 ? (mu - half_beta) : 0);
             for (int k_spread_value : spread_value) {
                 int k_end_value = k_spread_value + k_start_value;
 
@@ -406,12 +406,8 @@ public class OutlierAmortizationVaryQ {
                     final_k_start_value = k_start_value;
                     final_k_end_value = k_end_value;
                 }
-                if(k_end_value == final_right_max){
-                    break;
-                }
             }
         }
-
 
 
 //        System.out.println("final_k_start_value: "+final_k_start_value);
@@ -478,17 +474,17 @@ public class OutlierAmortizationVaryQ {
             bitmap_outlier.add(index_bitmap_outlier);
         }
         int final_alpha = 1;
-        if(getBitWith(block_size)*(k1+k2) >(block_size+k1+k2)){
+        if (getBitWith(block_size) * (k1 + k2) > (block_size + k1 + k2)) {
             final_alpha = 0;
         }
 
-        k1 <<= 1;
-        k1 += final_alpha;
-        k1 <<= 16;
-        k1 += k2;
+        int k_byte = (k1 << 1);
+        k_byte += final_alpha;
+        k_byte += (k2 << 16);
 
-        byte[] k1_bytes = int2Bytes(k1);
-        for (byte b : k1_bytes) cur_byte.add(b);
+        byte[] k_bytes = int2Bytes(k_byte);
+        for (byte b : k_bytes) cur_byte.add(b);
+
 
         byte[] value0_bytes = int2Bytes(ts_block_delta.get(0));
         for (byte b : value0_bytes) cur_byte.add(b);
@@ -531,11 +527,10 @@ public class OutlierAmortizationVaryQ {
 
 
         cur_byte.addAll(encodeOutlier2Bytes(final_normal, bit_width_final));
-        if(final_k_start_value!=0)
+        if (k1 != 0)
             cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier, left_bit_width));
-        if(final_right_max - final_k_end_value !=0)
+        if (k2 != 0)
             cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier, right_bit_width));
-//        }
 
 
         return cur_byte;
@@ -567,7 +562,7 @@ public class OutlierAmortizationVaryQ {
 //            splitTimeStamp3(ts_block_reorder, result2);
 
             // time-order
-            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k,q,0);
+            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k, q, 0);
             encoded_result.addAll(cur_encoded_result);
 
         }
@@ -596,10 +591,9 @@ public class OutlierAmortizationVaryQ {
                 supple_length = 9 - remaining_length % 8;
             }
 
-            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k,q,supple_length);
+            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k, q, supple_length);
             encoded_result.addAll(cur_encoded_result);
         }
-
 
 
         return encoded_result;
@@ -766,7 +760,7 @@ public class OutlierAmortizationVaryQ {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/vary_q";
+        String output_parent_dir = parent_dir + "vldb/compression_ratio/block_size_amortization";
         String input_parent_dir = parent_dir + "iotdb_test_small/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -841,7 +835,7 @@ public class OutlierAmortizationVaryQ {
                     "Decoding Time",
                     "Points",
                     "Compressed Size",
-                    "Q",
+                    "Block Size",
                     "Compression Ratio"
             };
             writer.writeRecord(head); // write header to output file
@@ -874,7 +868,8 @@ public class OutlierAmortizationVaryQ {
 //                    System.out.println(data2);
                 inputStream.close();
 
-                for (int q = 1; q < 15; q++) {
+                for (int block_size_i = 4; block_size_i < 14; block_size_i++) {
+                    int block_size = (int) Math.pow(2, block_size_i);
                     long encodeTime = 0;
                     long decodeTime = 0;
                     double ratio = 0;
@@ -887,7 +882,7 @@ public class OutlierAmortizationVaryQ {
                         long buffer_bits = 0;
                         for (int repeat = 0; repeat < repeatTime2; repeat++) {
 //                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), k);
-                            buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), 2,q);
+                            buffer2 = ReorderingRegressionEncoder(data2, block_size, 2, 10);
                         }
 //                        System.out.println(k);
 //                        System.out.println((double) buffer1.size() / (double) (data1.size() * Integer.BYTES));
@@ -918,7 +913,7 @@ public class OutlierAmortizationVaryQ {
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
                             String.valueOf(compressed_size),
-                            String.valueOf(q),
+                            String.valueOf(block_size_i),
                             String.valueOf(ratio)
                     };
                     writer.writeRecord(record);

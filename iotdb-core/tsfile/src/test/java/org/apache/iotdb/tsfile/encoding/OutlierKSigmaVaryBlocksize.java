@@ -351,7 +351,7 @@ public class OutlierKSigmaVaryBlocksize {
 
         double sum = 0;
         for (int i = 1; i < block_size; i++) {
-            if(ts_block_delta.get(i) > final_right_max){
+            if (ts_block_delta.get(i) > final_right_max) {
                 final_right_max = ts_block_delta.get(i);
             }
             sum += ts_block_delta.get(i);
@@ -364,8 +364,8 @@ public class OutlierKSigmaVaryBlocksize {
         double sigma = Math.sqrt(variance / block_size);
 
 //        System.out.println(ts_block_delta);
-        int final_k_start_value = (int) (mu - k * sigma>0?(mu - k * sigma):0);
-        int final_k_end_value = (int) (mu + k * sigma<final_right_max?(mu + k * sigma):final_right_max);
+        int final_k_start_value = (int) (mu - k * sigma > 0 ? (mu - k * sigma) : 0);
+        int final_k_end_value = (int) (mu + k * sigma < final_right_max ? (mu + k * sigma) : final_right_max);
 //        System.out.println("final_k_start_value: "+final_k_start_value);
 //        System.out.println("final_k_end_value: "+final_k_end_value);
 
@@ -375,119 +375,117 @@ public class OutlierKSigmaVaryBlocksize {
 
         // ------------------------- encode data -----------------------------------------
 
-            ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
-            ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
-            ArrayList<Integer> final_left_outlier = new ArrayList<>();
-            ArrayList<Integer> final_right_outlier = new ArrayList<>();
-            ArrayList<Integer> final_normal = new ArrayList<>();
+        ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
+        ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
+        ArrayList<Integer> final_left_outlier = new ArrayList<>();
+        ArrayList<Integer> final_right_outlier = new ArrayList<>();
+        ArrayList<Integer> final_normal = new ArrayList<>();
 
-            int k1 = 0;
-            int k2 = 0;
-            ArrayList<Integer> bitmap = new ArrayList<>();
-            ArrayList<Integer> bitmap_outlier = new ArrayList<>();
-            int index_bitmap = 0;
-            int index_bitmap_outlier = 0;
-            for (int i = 1; i < block_size; i++) {
-                if (ts_block_delta.get(i) < final_k_start_value) {
-                    final_left_outlier.add(ts_block_delta.get(i));
+        int k1 = 0;
+        int k2 = 0;
+        ArrayList<Integer> bitmap = new ArrayList<>();
+        ArrayList<Integer> bitmap_outlier = new ArrayList<>();
+        int index_bitmap = 0;
+        int index_bitmap_outlier = 0;
+        for (int i = 1; i < block_size; i++) {
+            if (ts_block_delta.get(i) < final_k_start_value) {
+                final_left_outlier.add(ts_block_delta.get(i));
 //                    if (final_alpha == 1)
-                        final_left_outlier_index.add(i);
+                final_left_outlier_index.add(i);
 //                    else {
-                        index_bitmap_outlier += 1;
-                        index_bitmap_outlier <<= 1;
-                        index_bitmap += 1;
+                index_bitmap_outlier += 1;
+                index_bitmap_outlier <<= 1;
+                index_bitmap += 1;
 //                    }
 
-                    k1++;
+                k1++;
 
 
-                } else if (ts_block_delta.get(i) > final_k_end_value) {
-                    final_right_outlier.add(ts_block_delta.get(i) - final_k_end_value);
+            } else if (ts_block_delta.get(i) > final_k_end_value) {
+                final_right_outlier.add(ts_block_delta.get(i) - final_k_end_value);
 
 //                    if (final_alpha == 1)
-                        final_right_outlier_index.add(i);
+                final_right_outlier_index.add(i);
 //                    else {
-                        index_bitmap_outlier <<= 1;
-                        index_bitmap += 1;
+                index_bitmap_outlier <<= 1;
+                index_bitmap += 1;
 //                    }
-                    k2++;
-                } else {
-                    final_normal.add(ts_block_delta.get(i) - final_k_start_value);
-                }
-//                if (final_alpha == 0) {
-                    index_bitmap <<= 1;
-                    if (i % 8 == 0) {
-                        bitmap.add(index_bitmap);
-                        index_bitmap = 0;
-                    }
-                    if ((k1 + k2) % 8 == 0) {
-                        bitmap_outlier.add(index_bitmap_outlier);
-                        index_bitmap_outlier = 0;
-                    }
-//                }
-            }
-            if ((k1 + k2) % 8 != 0) {
-                bitmap_outlier.add(index_bitmap_outlier);
-            }
-            int final_alpha = 1;
-            if(getBitWith(block_size)*(k1+k2) >(block_size+k1+k2)){
-                final_alpha = 0;
-            }
-
-            k1 <<= 1;
-            k1 += final_alpha;
-            k1 <<= 16;
-            k1 += k2;
-
-            byte[] k1_bytes = int2Bytes(k1);
-            for (byte b : k1_bytes) cur_byte.add(b);
-
-            byte[] value0_bytes = int2Bytes(ts_block_delta.get(0));
-            for (byte b : value0_bytes) cur_byte.add(b);
-            byte[] min_delta_bytes = int2Bytes(min_delta.get(0));
-            for (byte b : min_delta_bytes) cur_byte.add(b);
-
-            byte[] final_k_start_value_bytes = int2Bytes(final_k_start_value);
-            for (byte b : final_k_start_value_bytes) cur_byte.add(b);
-            int bit_width_final = getBitWith(final_k_end_value - final_k_start_value);
-            byte[] bit_width_bytes = int2Bytes(bit_width_final);
-            for (byte b : bit_width_bytes) cur_byte.add(b);
-
-            int left_bit_width = getBitWith(final_k_start_value);
-            int right_bit_width = getBitWith(final_right_max - final_k_end_value);
-            bit_width_bytes = int2Bytes(left_bit_width);
-            for (byte b : bit_width_bytes) cur_byte.add(b);
-            bit_width_bytes = int2Bytes(right_bit_width);
-            for (byte b : bit_width_bytes) cur_byte.add(b);
-
-
-            if (final_alpha == 0) {
-                for (int i : bitmap) {
-                    byte[] index_bytes = intByte2Bytes(i);
-                    for (byte b : index_bytes) cur_byte.add(b);
-                }
-                for (int i : bitmap_outlier) {
-                    byte[] index_bytes = intByte2Bytes(i);
-                    for (byte b : index_bytes) cur_byte.add(b);
-                }
+                k2++;
             } else {
-                for (int i : final_left_outlier_index) {
-                    byte[] index_bytes = intByte2Bytes(i);
-                    for (byte b : index_bytes) cur_byte.add(b);
-                }
-                for (int i : final_right_outlier_index) {
-                    byte[] index_bytes = intByte2Bytes(i);
-                    for (byte b : index_bytes) cur_byte.add(b);
-                }
+                final_normal.add(ts_block_delta.get(i) - final_k_start_value);
             }
+//                if (final_alpha == 0) {
+            index_bitmap <<= 1;
+            if (i % 8 == 0) {
+                bitmap.add(index_bitmap);
+                index_bitmap = 0;
+            }
+            if ((k1 + k2) % 8 == 0) {
+                bitmap_outlier.add(index_bitmap_outlier);
+                index_bitmap_outlier = 0;
+            }
+//                }
+        }
+        if ((k1 + k2) % 8 != 0) {
+            bitmap_outlier.add(index_bitmap_outlier);
+        }
+        int final_alpha = 1;
+        if (getBitWith(block_size) * (k1 + k2) > (block_size + k1 + k2)) {
+            final_alpha = 0;
+        }
+
+        int k_byte = (k1 << 1);
+        k_byte += final_alpha;
+        k_byte += (k2 << 16);
+
+        byte[] k_bytes = int2Bytes(k_byte);
+        for (byte b : k_bytes) cur_byte.add(b);
+
+        byte[] value0_bytes = int2Bytes(ts_block_delta.get(0));
+        for (byte b : value0_bytes) cur_byte.add(b);
+        byte[] min_delta_bytes = int2Bytes(min_delta.get(0));
+        for (byte b : min_delta_bytes) cur_byte.add(b);
+
+        byte[] final_k_start_value_bytes = int2Bytes(final_k_start_value);
+        for (byte b : final_k_start_value_bytes) cur_byte.add(b);
+        int bit_width_final = getBitWith(final_k_end_value - final_k_start_value);
+        byte[] bit_width_bytes = int2Bytes(bit_width_final);
+        for (byte b : bit_width_bytes) cur_byte.add(b);
+
+        int left_bit_width = getBitWith(final_k_start_value);
+        int right_bit_width = getBitWith(final_right_max - final_k_end_value);
+        bit_width_bytes = int2Bytes(left_bit_width);
+        for (byte b : bit_width_bytes) cur_byte.add(b);
+        bit_width_bytes = int2Bytes(right_bit_width);
+        for (byte b : bit_width_bytes) cur_byte.add(b);
 
 
-            cur_byte.addAll(encodeOutlier2Bytes(final_normal, bit_width_final));
-            if(final_k_start_value!=0)
-                cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier, left_bit_width));
-            if(final_right_max - final_k_end_value !=0)
-                cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier, right_bit_width));
-//        }
+        if (final_alpha == 0) {
+            for (int i : bitmap) {
+                byte[] index_bytes = intByte2Bytes(i);
+                for (byte b : index_bytes) cur_byte.add(b);
+            }
+            for (int i : bitmap_outlier) {
+                byte[] index_bytes = intByte2Bytes(i);
+                for (byte b : index_bytes) cur_byte.add(b);
+            }
+        } else {
+            for (int i : final_left_outlier_index) {
+                byte[] index_bytes = intByte2Bytes(i);
+                for (byte b : index_bytes) cur_byte.add(b);
+            }
+            for (int i : final_right_outlier_index) {
+                byte[] index_bytes = intByte2Bytes(i);
+                for (byte b : index_bytes) cur_byte.add(b);
+            }
+        }
+
+
+        cur_byte.addAll(encodeOutlier2Bytes(final_normal, bit_width_final));
+        if (k1 != 0)
+            cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier, left_bit_width));
+        if (k2 != 0)
+            cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier, right_bit_width));
 
 
         return cur_byte;
@@ -519,7 +517,7 @@ public class OutlierKSigmaVaryBlocksize {
 //            splitTimeStamp3(ts_block_reorder, result2);
 
             // time-order
-            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k,0);
+            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k, 0);
             encoded_result.addAll(cur_encoded_result);
 
         }
@@ -548,10 +546,9 @@ public class OutlierKSigmaVaryBlocksize {
                 supple_length = 9 - remaining_length % 8;
             }
 
-            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k,supple_length);
+            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k, supple_length);
             encoded_result.addAll(cur_encoded_result);
         }
-
 
 
         return encoded_result;
@@ -823,8 +820,8 @@ public class OutlierKSigmaVaryBlocksize {
                 }
 //                    System.out.println(data2);
                 inputStream.close();
-                for(int block_size_i=4;block_size_i<14;block_size_i++){
-                    int block_size= (int) Math.pow(2,block_size_i);
+                for (int block_size_i = 4; block_size_i < 14; block_size_i++) {
+                    int block_size = (int) Math.pow(2, block_size_i);
                     for (int k = 1; k < 2; k++) {
                         long encodeTime = 0;
                         long decodeTime = 0;
