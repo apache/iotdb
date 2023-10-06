@@ -295,6 +295,8 @@ public class OutlierKSigma {
             int bit_width) {
         ArrayList<Byte> encoded_result = new ArrayList<>();
 
+        byte[] value_bytes = bitPacking(ts_block_delta, 0, bit_width);
+        for (byte b : value_bytes) encoded_result.add(b);
 
         int n_k = ts_block_delta.size();
         int n_k_b = n_k / 8;
@@ -337,14 +339,10 @@ public class OutlierKSigma {
         }
 
         int block_size = ts_block_delta.size();
-//        System.out.println(ts_block_delta);
-
-//        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
-
 
         double sum = 0;
         for (int i = 1; i < block_size; i++) {
-            if(ts_block_delta.get(i) > final_right_max){
+            if (ts_block_delta.get(i) > final_right_max) {
                 final_right_max = ts_block_delta.get(i);
             }
             sum += ts_block_delta.get(i);
@@ -355,134 +353,140 @@ public class OutlierKSigma {
             variance += (ts_block_delta.get(i) - mu) * (ts_block_delta.get(i) - mu);
         }
         double sigma = Math.sqrt(variance / block_size);
-
-//        System.out.println(ts_block_delta);
-        int final_k_start_value = (int) (mu - k * sigma>0?(mu - k * sigma):0);
-        int final_k_end_value = (int) (mu + k * sigma<final_right_max?(mu + k * sigma):final_right_max);
-//        System.out.println("final_k_start_value: "+final_k_start_value);
-//        System.out.println("final_k_end_value: "+final_k_end_value);
-
-//        int final_left_max = 0;
-//        int final_right_max = 0;
+//        System.out.println(mu);
+//        System.out.println(variance);
+        int final_k_start_value = (int) Math.max( Math.floor( mu - (double)k * sigma) , 0 );
+        int final_k_end_value = (int) Math.min(Math.floor( mu + (double)k * sigma), final_right_max );
 
 
         // ------------------------- encode data -----------------------------------------
 
-            ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
-            ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
-            ArrayList<Integer> final_left_outlier = new ArrayList<>();
-            ArrayList<Integer> final_right_outlier = new ArrayList<>();
-            ArrayList<Integer> final_normal = new ArrayList<>();
+        ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
+        ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
+        ArrayList<Integer> final_left_outlier = new ArrayList<>();
+        ArrayList<Integer> final_right_outlier = new ArrayList<>();
+        ArrayList<Integer> final_normal = new ArrayList<>();
 
-            int k1 = 0;
-            int k2 = 0;
-            ArrayList<Integer> bitmap = new ArrayList<>();
-            ArrayList<Integer> bitmap_outlier = new ArrayList<>();
-            int index_bitmap = 0;
-            int index_bitmap_outlier = 0;
-            for (int i = 1; i < block_size; i++) {
-                if (ts_block_delta.get(i) < final_k_start_value) {
-                    final_left_outlier.add(ts_block_delta.get(i));
-//                    if (final_alpha == 1)
-                        final_left_outlier_index.add(i);
-//                    else {
-                        index_bitmap_outlier += 1;
-                        index_bitmap_outlier <<= 1;
-                        index_bitmap += 1;
-//                    }
+        int k1 = 0;
+        int k2 = 0;
 
-                    k1++;
-
-
-                } else if (ts_block_delta.get(i) > final_k_end_value) {
-                    final_right_outlier.add(ts_block_delta.get(i) - final_k_end_value);
-
-//                    if (final_alpha == 1)
-                        final_right_outlier_index.add(i);
-//                    else {
-                        index_bitmap_outlier <<= 1;
-                        index_bitmap += 1;
-//                    }
-                    k2++;
-                } else {
-                    final_normal.add(ts_block_delta.get(i) - final_k_start_value);
+        ArrayList<Integer> bitmap_outlier = new ArrayList<>();
+        int index_bitmap_outlier = 0;
+        int cur_index_bitmap_outlier_bits = 0;
+        for (int i = 1; i < block_size; i++) {
+            if (ts_block_delta.get(i) < final_k_start_value) {
+                final_left_outlier.add(ts_block_delta.get(i));
+                final_left_outlier_index.add(i);
+                if(cur_index_bitmap_outlier_bits%8!=7){
+                    index_bitmap_outlier += 3;
+                    index_bitmap_outlier <<= 2;
+                }else{
+                    index_bitmap_outlier += 1;
+                    bitmap_outlier.add(index_bitmap_outlier);
+                    index_bitmap_outlier = 1;
+                    index_bitmap_outlier <<= 1;
                 }
-//                if (final_alpha == 0) {
-                    index_bitmap <<= 1;
-                    if (i % 8 == 0) {
-                        bitmap.add(index_bitmap);
-                        index_bitmap = 0;
-                    }
-                    if ((k1 + k2) % 8 == 0) {
-                        bitmap_outlier.add(index_bitmap_outlier);
-                        index_bitmap_outlier = 0;
-                    }
-//                }
-            }
-            if ((k1 + k2) % 8 != 0) {
-                bitmap_outlier.add(index_bitmap_outlier);
-            }
-            int final_alpha = 1;
-            if(getBitWith(block_size)*(k1+k2) >(block_size+k1+k2)){
-                final_alpha = 0;
-            }
+                cur_index_bitmap_outlier_bits += 2;
+//                    index_bitmap += 1;
 
-            k1 <<= 1;
-            k1 += final_alpha;
-            k1 <<= 16;
-            k1 += k2;
-
-            byte[] k1_bytes = int2Bytes(k1);
-            for (byte b : k1_bytes) cur_byte.add(b);
-
-            byte[] value0_bytes = int2Bytes(ts_block_delta.get(0));
-            for (byte b : value0_bytes) cur_byte.add(b);
-            byte[] min_delta_bytes = int2Bytes(min_delta.get(0));
-            for (byte b : min_delta_bytes) cur_byte.add(b);
-
-            byte[] final_k_start_value_bytes = int2Bytes(final_k_start_value);
-            for (byte b : final_k_start_value_bytes) cur_byte.add(b);
-            int bit_width_final = getBitWith(final_k_end_value - final_k_start_value);
-            byte[] bit_width_bytes = int2Bytes(bit_width_final);
-            for (byte b : bit_width_bytes) cur_byte.add(b);
-
-            int left_bit_width = getBitWith(final_k_start_value);
-            int right_bit_width = getBitWith(final_right_max - final_k_end_value);
-            bit_width_bytes = int2Bytes(left_bit_width);
-            for (byte b : bit_width_bytes) cur_byte.add(b);
-            bit_width_bytes = int2Bytes(right_bit_width);
-            for (byte b : bit_width_bytes) cur_byte.add(b);
-
-
-            if (final_alpha == 0) {
-                for (int i : bitmap) {
-                    byte[] index_bytes = intByte2Bytes(i);
-                    for (byte b : index_bytes) cur_byte.add(b);
+                k1++;
+            } else if (ts_block_delta.get(i) > final_k_end_value) {
+                final_right_outlier.add(ts_block_delta.get(i) - final_k_end_value);
+                final_right_outlier_index.add(i);
+                if(cur_index_bitmap_outlier_bits%8!=7){
+                    index_bitmap_outlier += 2;
+                    index_bitmap_outlier <<= 2;
+                }else{
+                    index_bitmap_outlier += 1;
+                    bitmap_outlier.add(index_bitmap_outlier);
+                    index_bitmap_outlier = 0;
+                    index_bitmap_outlier <<= 1;
                 }
-                for (int i : bitmap_outlier) {
-                    byte[] index_bytes = intByte2Bytes(i);
-                    for (byte b : index_bytes) cur_byte.add(b);
-                }
+//                    index_bitmap += 1;
+                k2++;
+                cur_index_bitmap_outlier_bits += 2;
             } else {
-                for (int i : final_left_outlier_index) {
-                    byte[] index_bytes = intByte2Bytes(i);
-                    for (byte b : index_bytes) cur_byte.add(b);
-                }
-                for (int i : final_right_outlier_index) {
-                    byte[] index_bytes = intByte2Bytes(i);
-                    for (byte b : index_bytes) cur_byte.add(b);
-                }
+                final_normal.add(ts_block_delta.get(i) - final_k_start_value);
+                index_bitmap_outlier <<= 1;
+                cur_index_bitmap_outlier_bits += 1;
             }
+            if (cur_index_bitmap_outlier_bits % 8 == 0) {
+                bitmap_outlier.add(index_bitmap_outlier);
+                index_bitmap_outlier = 0;
+            }
+        }
+        if (cur_index_bitmap_outlier_bits % 8 != 0) {
+            bitmap_outlier.add(index_bitmap_outlier);
+        }
+        int final_alpha = 1;
+        if (getBitWith(block_size) * (k1 + k2) > (block_size + k1 + k2)) {
+            final_alpha = 0;
+        }
+//        System.out.println("final_k_start_value: "+(final_k_start_value));
+//        System.out.println("final_k_end_value: "+(final_k_end_value));
+
+        int k_byte = (k1 << 1);
+        k_byte += final_alpha;
+        k_byte += (k2 << 16);
+
+        byte[] k_bytes = int2Bytes(k_byte);
+        for (byte b : k_bytes) cur_byte.add(b);
+
+        byte[] value0_bytes = int2Bytes(ts_block_delta.get(0));
+        for (byte b : value0_bytes) cur_byte.add(b);
+        byte[] min_delta_bytes = int2Bytes(min_delta.get(0));
+        for (byte b : min_delta_bytes) cur_byte.add(b);
+
+        byte[] final_k_start_value_bytes = int2Bytes(final_k_start_value);
+        for (byte b : final_k_start_value_bytes) cur_byte.add(b);
+        int bit_width_final = getBitWith(final_k_end_value - final_k_start_value);
+        byte[] bit_width_bytes = int2Bytes(bit_width_final);
+        for (byte b : bit_width_bytes) cur_byte.add(b);
+
+        int left_bit_width = getBitWith(final_k_start_value);
+        int right_bit_width = getBitWith(final_right_max - final_k_end_value);
+        bit_width_bytes = int2Bytes(left_bit_width);
+        for (byte b : bit_width_bytes) cur_byte.add(b);
+        bit_width_bytes = int2Bytes(right_bit_width);
+        for (byte b : bit_width_bytes) cur_byte.add(b);
 
 
-            cur_byte.addAll(encodeOutlier2Bytes(final_normal, bit_width_final));
-            if(final_k_start_value!=0)
-                cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier, left_bit_width));
-            if(final_right_max - final_k_end_value !=0)
-                cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier, right_bit_width));
-//        }
+        if (final_alpha == 0) {
+//            for (int i : bitmap) {
+//                byte[] index_bytes = intByte2Bytes(i);
+//                for (byte b : index_bytes) cur_byte.add(b);
+//            }
+            for (int i : bitmap_outlier) {
+                byte[] index_bytes = intByte2Bytes(i);
+                for (byte b : index_bytes) cur_byte.add(b);
+            }
+        } else {
+            cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size)));
+            cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size)));
+        }
+        int cur_bits = 0;
+        cur_bits += Math.min((k1 + k2) * getBitWith(block_size), block_size + k1 + k2);
+        if (k1 != 0)
+            cur_bits += k1 * getBitWith(final_k_start_value);
+        if (k1 + k2 != block_size)
+            cur_bits += (block_size - k1 - k2) * getBitWith(final_k_end_value - final_k_start_value);
+        if (k2 != 0)
+            cur_bits += k2 * getBitWith(final_right_max - final_k_end_value);
+//        System.out.println(cur_bits);
+//        System.out.println("n-k1-k2: "+(final_normal.size()));
+//        System.out.println(bit_width_final);
+//        System.out.println("k1:"+k1);
+//        System.out.println(left_bit_width);
+//        System.out.println("k2:"+k2);
+//        System.out.println(right_bit_width);
+//        System.out.println(cur_byte.size());
+        cur_byte.addAll(encodeOutlier2Bytes(final_normal, bit_width_final));
+        if (k1 != 0)
+            cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier, left_bit_width));
+        if (k2 != 0)
+            cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier, right_bit_width));
 
-
+//        System.out.println(cur_byte.size());
         return cur_byte;
     }
 

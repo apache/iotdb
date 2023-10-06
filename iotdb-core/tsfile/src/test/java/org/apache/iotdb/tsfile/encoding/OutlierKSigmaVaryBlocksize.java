@@ -298,9 +298,9 @@ public class OutlierKSigmaVaryBlocksize {
 //        for (byte b : value0_byte) encoded_result.add(b);
 //
 
-        // encode value
-//        byte[] value_bytes = bitPacking(ts_block_delta, 0, bit_width);
-//        for (byte b : value_bytes) encoded_result.add(b);
+//         encode value
+        byte[] value_bytes = bitPacking(ts_block_delta, 0, bit_width);
+        for (byte b : value_bytes) encoded_result.add(b);
 
         int n_k = ts_block_delta.size();
         int n_k_b = n_k / 8;
@@ -358,7 +358,8 @@ public class OutlierKSigmaVaryBlocksize {
             variance += (ts_block_delta.get(i) - mu) * (ts_block_delta.get(i) - mu);
         }
         double sigma = Math.sqrt(variance / block_size);
-
+//        System.out.println(mu);
+//        System.out.println(variance);
         int final_k_start_value = (int) Math.max( Math.floor( mu - (double)k * sigma) , 0 );
         int final_k_end_value = (int) Math.min(Math.floor( mu + (double)k * sigma), final_right_max );
 
@@ -373,47 +374,61 @@ public class OutlierKSigmaVaryBlocksize {
 
         int k1 = 0;
         int k2 = 0;
-        ArrayList<Integer> bitmap = new ArrayList<>();
+
         ArrayList<Integer> bitmap_outlier = new ArrayList<>();
-        int index_bitmap = 0;
         int index_bitmap_outlier = 0;
+        int cur_index_bitmap_outlier_bits = 0;
         for (int i = 1; i < block_size; i++) {
             if (ts_block_delta.get(i) < final_k_start_value) {
                 final_left_outlier.add(ts_block_delta.get(i));
                 final_left_outlier_index.add(i);
-                index_bitmap_outlier += 1;
-                index_bitmap_outlier <<= 1;
-                index_bitmap += 1;
+                if(cur_index_bitmap_outlier_bits%8!=7){
+                    index_bitmap_outlier += 3;
+                    index_bitmap_outlier <<= 2;
+                }else{
+                    index_bitmap_outlier += 1;
+                    bitmap_outlier.add(index_bitmap_outlier);
+                    index_bitmap_outlier = 1;
+                    index_bitmap_outlier <<= 1;
+                }
+                cur_index_bitmap_outlier_bits += 2;
+//                    index_bitmap += 1;
 
                 k1++;
             } else if (ts_block_delta.get(i) > final_k_end_value) {
                 final_right_outlier.add(ts_block_delta.get(i) - final_k_end_value);
-
                 final_right_outlier_index.add(i);
-                index_bitmap_outlier <<= 1;
-                index_bitmap += 1;
+                if(cur_index_bitmap_outlier_bits%8!=7){
+                    index_bitmap_outlier += 2;
+                    index_bitmap_outlier <<= 2;
+                }else{
+                    index_bitmap_outlier += 1;
+                    bitmap_outlier.add(index_bitmap_outlier);
+                    index_bitmap_outlier = 0;
+                    index_bitmap_outlier <<= 1;
+                }
+//                    index_bitmap += 1;
                 k2++;
+                cur_index_bitmap_outlier_bits += 2;
             } else {
                 final_normal.add(ts_block_delta.get(i) - final_k_start_value);
+                index_bitmap_outlier <<= 1;
+                cur_index_bitmap_outlier_bits += 1;
             }
-            index_bitmap <<= 1;
-            if (i % 8 == 0) {
-                bitmap.add(index_bitmap);
-                index_bitmap = 0;
-            }
-            if ((k1 + k2) % 8 == 0) {
+            if (cur_index_bitmap_outlier_bits % 8 == 0) {
                 bitmap_outlier.add(index_bitmap_outlier);
                 index_bitmap_outlier = 0;
             }
-
         }
-        if ((k1 + k2) % 8 != 0) {
+        if (cur_index_bitmap_outlier_bits % 8 != 0) {
             bitmap_outlier.add(index_bitmap_outlier);
         }
         int final_alpha = 1;
         if (getBitWith(block_size) * (k1 + k2) > (block_size + k1 + k2)) {
             final_alpha = 0;
         }
+//        System.out.println("final_k_start_value: "+(final_k_start_value));
+//        System.out.println("final_k_end_value: "+(final_k_end_value));
 
         int k_byte = (k1 << 1);
         k_byte += final_alpha;
@@ -442,32 +457,34 @@ public class OutlierKSigmaVaryBlocksize {
 
 
         if (final_alpha == 0) {
-            for (int i : bitmap) {
-                byte[] index_bytes = intByte2Bytes(i);
-                for (byte b : index_bytes) cur_byte.add(b);
-            }
+//            for (int i : bitmap) {
+//                byte[] index_bytes = intByte2Bytes(i);
+//                for (byte b : index_bytes) cur_byte.add(b);
+//            }
             for (int i : bitmap_outlier) {
                 byte[] index_bytes = intByte2Bytes(i);
                 for (byte b : index_bytes) cur_byte.add(b);
             }
         } else {
-            for (int i : final_left_outlier_index) {
-                byte[] index_bytes = intByte2Bytes(i);
-                for (byte b : index_bytes) cur_byte.add(b);
-            }
-            for (int i : final_right_outlier_index) {
-                byte[] index_bytes = intByte2Bytes(i);
-                for (byte b : index_bytes) cur_byte.add(b);
-            }
+            cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size)));
+            cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size)));
         }
-
+        int cur_bits = 0;
+        cur_bits += Math.min((k1 + k2) * getBitWith(block_size), block_size + k1 + k2);
+        if (k1 != 0)
+            cur_bits += k1 * getBitWith(final_k_start_value);
+        if (k1 + k2 != block_size)
+            cur_bits += (block_size - k1 - k2) * getBitWith(final_k_end_value - final_k_start_value);
+        if (k2 != 0)
+            cur_bits += k2 * getBitWith(final_right_max - final_k_end_value);
+//        System.out.println(cur_bits);
 //        System.out.println("n-k1-k2: "+(final_normal.size()));
 //        System.out.println(bit_width_final);
 //        System.out.println("k1:"+k1);
 //        System.out.println(left_bit_width);
 //        System.out.println("k2:"+k2);
 //        System.out.println(right_bit_width);
-
+//        System.out.println(cur_byte.size());
         cur_byte.addAll(encodeOutlier2Bytes(final_normal, bit_width_final));
         if (k1 != 0)
             cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier, left_bit_width));
@@ -701,7 +718,7 @@ public class OutlierKSigmaVaryBlocksize {
     }
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
+        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/";
         String output_parent_dir = parent_dir + "vldb/compression_ratio/block_size_k_sigma";
         String input_parent_dir = parent_dir + "iotdb_test_small/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -756,8 +773,8 @@ public class OutlierKSigmaVaryBlocksize {
             columnIndexes.add(i, i);
         }
 
-//        for (int file_i = 8; file_i < 9; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 9; file_i < 10; file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -807,10 +824,10 @@ public class OutlierKSigmaVaryBlocksize {
                 }
 //                    System.out.println(data2);
                 inputStream.close();
-//                for (int block_size_i = 6; block_size_i < 7; block_size_i++) {
-                for (int block_size_i = 4; block_size_i < 14; block_size_i++) {
+//                for (int block_size_i = 9; block_size_i < 10; block_size_i++) {
+                for (int block_size_i = 13; block_size_i > 3; block_size_i--) {
                     int block_size = (int) Math.pow(2, block_size_i);
-                    for (int k = 1; k < 2; k++) {
+                    for (int k = 2; k < 3; k++) {
                         long encodeTime = 0;
                         long decodeTime = 0;
                         double ratio = 0;
