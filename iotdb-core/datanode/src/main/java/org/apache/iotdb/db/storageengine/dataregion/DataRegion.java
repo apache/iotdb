@@ -2932,6 +2932,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (!deleted) {
         deletedCondition.await();
       }
+      FileMetrics.getInstance().deleteRegion(databaseName, dataRegionId);
     } catch (InterruptedException e) {
       logger.error("Interrupted When waiting for data region deleted.");
       Thread.currentThread().interrupt();
