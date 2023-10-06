@@ -469,14 +469,14 @@ public class OutlierKSigmaVaryBlocksize {
             cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size)));
             cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size)));
         }
-        int cur_bits = 0;
-        cur_bits += Math.min((k1 + k2) * getBitWith(block_size), block_size + k1 + k2);
-        if (k1 != 0)
-            cur_bits += k1 * getBitWith(final_k_start_value);
-        if (k1 + k2 != block_size)
-            cur_bits += (block_size - k1 - k2) * getBitWith(final_k_end_value - final_k_start_value);
-        if (k2 != 0)
-            cur_bits += k2 * getBitWith(final_right_max - final_k_end_value);
+//        int cur_bits = 0;
+//        cur_bits += Math.min((k1 + k2) * getBitWith(block_size), block_size + k1 + k2);
+//        if (k1 != 0)
+//            cur_bits += k1 * getBitWith(final_k_start_value);
+//        if (k1 + k2 != block_size)
+//            cur_bits += (block_size - k1 - k2) * getBitWith(final_k_end_value - final_k_start_value);
+//        if (k2 != 0)
+//            cur_bits += k2 * getBitWith(final_right_max - final_k_end_value);
 //        System.out.println(cur_bits);
 //        System.out.println("n-k1-k2: "+(final_normal.size()));
 //        System.out.println(bit_width_final);

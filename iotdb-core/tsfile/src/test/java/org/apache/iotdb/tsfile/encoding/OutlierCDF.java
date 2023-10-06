@@ -905,27 +905,27 @@ public class OutlierCDF {
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
         dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-        dataset_block_size.add(512);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-        dataset_block_size.add(512);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        dataset_block_size.add(256);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-        dataset_block_size.add(128);
+        dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-        dataset_block_size.add(64);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-        dataset_block_size.add(128);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-        dataset_block_size.add(512);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-        dataset_block_size.add(256);
+        dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-        dataset_block_size.add(512);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-        dataset_block_size.add(512);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
-        dataset_block_size.add(512);
+        dataset_block_size.add(1024);
 
 //        String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-outlier\\";
 //        String output_parent_dir = parent_dir + "vldb\\compression_ratio\\outlier";

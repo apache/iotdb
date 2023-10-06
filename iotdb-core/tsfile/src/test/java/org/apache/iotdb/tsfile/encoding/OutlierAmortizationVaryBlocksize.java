@@ -370,48 +370,119 @@ public class OutlierAmortizationVaryBlocksize {
         int min_bits = 0;
         min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size - 1));
 
-        for (int q_i = 1; q_i <= q; q_i++) {
-            double half_beta = ((double) q_i / (double) q) * (double) k * sigma;
-            int k_start_value = (int) Math.max(Math.floor(mu - half_beta), 0);
+        int bucket_num = (int) Math.ceil (((double) final_right_max +1) / (double) q);
+        ArrayList<Integer> bucket_count = new ArrayList<>();
+        for(int i=0;i<bucket_num;i++){
+            bucket_count.add(0);
+        }
+        for (int i = 1; i < block_size; i++) {
+            int tmp_i = ts_block_delta.get(i)/q;
+            int tmp_count = bucket_count.get(tmp_i);
+            tmp_count ++;
+            bucket_count.set(tmp_i,tmp_count);
+        }
+        ArrayList<Integer> PDF = new ArrayList<>();
+        int cumulative = 0;
+        ArrayList<Integer> bucket_no_zero = new ArrayList<>();
+        for(int i=0;i<bucket_num;i++){
+            int count = bucket_count.get(i);
+            PDF.add(cumulative);
+            cumulative += count;
+            if(count != 0){
+                bucket_no_zero.add(i);
+            }
+        }
+        PDF.add(cumulative);
+        final_right_max = (final_right_max / q + 1) * q;
+        int bucket_no_zero_size = bucket_no_zero.size();
+        for(int i =0;i<bucket_no_zero_size;i++){
+            int k_start_value = bucket_no_zero.get(i) * q;
             for (int k_spread_value : spread_value) {
-                int k_end_value = k_spread_value + k_start_value;
+                int k_end_value = Math.min(k_spread_value + k_start_value, final_right_max);
 
-                k_end_value = Math.min(k_end_value, final_right_max);
-                int k1 = 0;
-                int k2 = 0;
-                for (int i = 1; i < block_size; i++) {
-                    if (ts_block_delta.get(i) < k_start_value) {
-                        k1++;
-                    } else if (ts_block_delta.get(i) > k_end_value) {
-                        k2++;
-                    }
-                }
                 int cur_bits = 0;
-                cur_bits += Math.min((k1 + k2) * getBitWith(block_size), block_size + k1 + k2);
-                if (k1 != 0)
-                    cur_bits += k1 * getBitWith(k_start_value);
-                if (k1 + k2 != block_size)
-                    cur_bits += (block_size - k1 - k2) * getBitWith(k_end_value - k_start_value);
-                if (k2 != 0)
-                    cur_bits += k2 * getBitWith(final_right_max - k_end_value);
-//if(q_i==q&&k_end_value<=64){
-//    System.out.println("qi: "+q_i);
-//    System.out.println("min_bits: "+min_bits);
-//    System.out.println("cur_bits: "+cur_bits);
-//    System.out.println("k_spread_value: "+k_spread_value);
-//    System.out.println("k_end_value: "+k_end_value);
-//    System.out.println("k1:"+k1);
-//    System.out.println("k2:"+k2);
-//}
+                int cur_k1 = PDF.get(i);
+
+
+                int min_upper_outlier = 0;
+                int k_end_value_bucket = k_end_value/q ;
+                k_end_value = k_end_value_bucket *q;
+                int cur_k2 = block_size - PDF.get(k_end_value_bucket);
+
+
+                cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
+                if (cur_k1 != 0)
+                    cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
+                if (cur_k1 + cur_k2 != block_size)
+                    cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
+                if (cur_k2 != 0)
+                    cur_bits += cur_k2 * getBitWith(final_right_max - k_end_value);//min_upper_outlier
+//
+//                if(left_max <= 1603 && k_start_value>=1603&& k_end_value <= 5083 && min_upper_outlier>=5083 ){
+//                    System.out.println("index_cost: "+(Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2)));
+//                    System.out.println("k_end_value: "+(k_end_value));
+//                    System.out.println("min_upper_outlier: "+(min_upper_outlier));
+//                    System.out.println("cur_k1: "+(cur_k1));
+//                    System.out.println("cur_k2: "+(cur_k2));
+//                    System.out.println("cur_bits: "+(cur_bits));
+//                    System.out.println("min_bits: "+(min_bits));
+//                    System.out.println("min_bits: "+(getBitWith(k_start_value)));
+//                    System.out.println("min_bits: "+(getBitWith(k_end_value - k_start_value)));
+//                    System.out.println("min_bits: "+(getBitWith(max_delta_value - k_end_value)));
+//                }
+
                 if (cur_bits < min_bits) {
-//                    System.out.println("qi: "+q_i);
                     min_bits = cur_bits;
                     final_k_start_value = k_start_value;
                     final_k_end_value = k_end_value;
                 }
-                if(k_end_value == final_right_max) break;
+                if (k_end_value == final_right_max)
+                    break;
             }
         }
+
+//        for (int q_i = 1; q_i <= q; q_i++) {
+//            double half_beta = ((double) q_i / (double) q) * (double) k * sigma;
+//            int k_start_value = (int) Math.max(Math.floor(mu - half_beta), 0);
+//            for (int k_spread_value : spread_value) {
+//                int k_end_value = k_spread_value + k_start_value;
+//
+//                k_end_value = Math.min(k_end_value, final_right_max);
+//                int k1 = 0;
+//                int k2 = 0;
+//                for (int i = 1; i < block_size; i++) {
+//                    if (ts_block_delta.get(i) < k_start_value) {
+//                        k1++;
+//                    } else if (ts_block_delta.get(i) > k_end_value) {
+//                        k2++;
+//                    }
+//                }
+//                int cur_bits = 0;
+//                cur_bits += Math.min((k1 + k2) * getBitWith(block_size), block_size + k1 + k2);
+//                if (k1 != 0)
+//                    cur_bits += k1 * getBitWith(k_start_value);
+//                if (k1 + k2 != block_size)
+//                    cur_bits += (block_size - k1 - k2) * getBitWith(k_end_value - k_start_value);
+//                if (k2 != 0)
+//                    cur_bits += k2 * getBitWith(final_right_max - k_end_value);
+////if(q_i==q&&k_end_value<=64){
+////    System.out.println("qi: "+q_i);
+////    System.out.println("min_bits: "+min_bits);
+////    System.out.println("cur_bits: "+cur_bits);
+////    System.out.println("k_spread_value: "+k_spread_value);
+////    System.out.println("k_end_value: "+k_end_value);
+////    System.out.println("k1:"+k1);
+////    System.out.println("k2:"+k2);
+////}
+//                if (cur_bits < min_bits) {
+////                    System.out.println("qi: "+q_i);
+//                    min_bits = cur_bits;
+//                    final_k_start_value = k_start_value;
+//                    final_k_end_value = k_end_value;
+//                }
+//                if(k_end_value == final_right_max) break;
+//            }
+//        }
 
 
 //        System.out.println("final_k_start_value: "+final_k_start_value);
