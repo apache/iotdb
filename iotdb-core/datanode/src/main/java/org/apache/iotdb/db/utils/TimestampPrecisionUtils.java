@@ -37,7 +37,7 @@ public class TimestampPrecisionUtils {
   private static final ConvertFunction<Long, TimeUnit, Long> convertFunction;
 
   static {
-    switch (timestampPrecision) {
+    switch (TIMESTAMP_PRECISION) {
       case "ms":
         convertFunction = TimeUnit.MILLISECONDS::convert;
         break;

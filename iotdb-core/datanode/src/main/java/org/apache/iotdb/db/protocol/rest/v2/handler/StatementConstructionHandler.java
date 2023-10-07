@@ -43,7 +43,7 @@ public class StatementConstructionHandler {
 
   public static InsertTabletStatement constructInsertTabletStatement(
       InsertTabletRequest insertTabletRequest)
-      throws IllegalPathException, WriteProcessRejectException {
+      throws MetadataException, WriteProcessRejectException {
     TimestampPrecisionUtils.checkTimestampPrecision(
         insertTabletRequest.getTimestamps().get(insertTabletRequest.getTimestamps().size() - 1));
     // construct insert statement
