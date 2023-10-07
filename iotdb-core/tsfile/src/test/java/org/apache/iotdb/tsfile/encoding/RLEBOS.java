@@ -723,29 +723,19 @@ public class RLEBOS {
         }
 
         for (int k = 0; k < block_num; k++) {
-            ArrayList<Integer> time_list = new ArrayList<>();
             ArrayList<Integer> value_list = new ArrayList<>();
 
             ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
 
-            int time0 = bytes2Integer(encoded, decode_pos, 4);
-            decode_pos += 4;
+
             int value0 = bytes2Integer(encoded, decode_pos, 4);
             decode_pos += 4;
 
-            float theta0_r = bytes2float(encoded, decode_pos);
-            decode_pos += 4;
-            float theta1_r = bytes2float(encoded, decode_pos);
-            decode_pos += 4;
             float theta0_v = bytes2float(encoded, decode_pos);
             decode_pos += 4;
             float theta1_v = bytes2float(encoded, decode_pos);
             decode_pos += 4;
 
-            int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
-            decode_pos += 4;
-            time_list = decodebitPacking(encoded, decode_pos, max_bit_width_time, 0, block_size);
-            decode_pos += max_bit_width_time * (block_size - 1) / 8;
 
             int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
             decode_pos += 4;
@@ -755,12 +745,8 @@ public class RLEBOS {
             int td_common = bytes2Integer(encoded, decode_pos, 4);
             decode_pos += 4;
 
-            int ti_pre = time0;
             int vi_pre = value0;
             for (int i = 0; i < block_size - 1; i++) {
-                int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
-                time_list.set(i, ti);
-                ti_pre = ti;
 
                 int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
                 value_list.set(i, vi);
@@ -768,13 +754,10 @@ public class RLEBOS {
             }
 
             ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
-            ts_block_tmp0.add(time0);
             ts_block_tmp0.add(value0);
             ts_block.add(ts_block_tmp0);
             for (int i = 0; i < block_size - 1; i++) {
-                int ti = (time_list.get(i) - time0) * td_common + time0;
                 ArrayList<Integer> ts_block_tmp = new ArrayList<>();
-                ts_block_tmp.add(ti);
                 ts_block_tmp.add(value_list.get(i));
                 ts_block.add(ts_block_tmp);
             }
@@ -783,40 +766,25 @@ public class RLEBOS {
         }
 
         if (remain_length == 1) {
-            int timestamp_end = bytes2Integer(encoded, decode_pos, 4);
-            decode_pos += 4;
             int value_end = bytes2Integer(encoded, decode_pos, 4);
             decode_pos += 4;
             ArrayList<Integer> ts_block_end = new ArrayList<>();
-            ts_block_end.add(timestamp_end);
             ts_block_end.add(value_end);
             data.add(ts_block_end);
         }
         if (remain_length != 0 && remain_length != 1) {
-            ArrayList<Integer> time_list = new ArrayList<>();
             ArrayList<Integer> value_list = new ArrayList<>();
 
             ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
 
-            int time0 = bytes2Integer(encoded, decode_pos, 4);
-            decode_pos += 4;
             int value0 = bytes2Integer(encoded, decode_pos, 4);
             decode_pos += 4;
 
-            float theta0_r = bytes2float(encoded, decode_pos);
-            decode_pos += 4;
-            float theta1_r = bytes2float(encoded, decode_pos);
-            decode_pos += 4;
             float theta0_v = bytes2float(encoded, decode_pos);
             decode_pos += 4;
             float theta1_v = bytes2float(encoded, decode_pos);
             decode_pos += 4;
 
-            int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
-            decode_pos += 4;
-            time_list =
-                    decodebitPacking(encoded, decode_pos, max_bit_width_time, 0, remain_length + zero_number);
-            decode_pos += max_bit_width_time * (remain_length + zero_number - 1) / 8;
 
             int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
             decode_pos += 4;
@@ -828,12 +796,8 @@ public class RLEBOS {
             int td_common = bytes2Integer(encoded, decode_pos, 4);
             decode_pos += 4;
 
-            int ti_pre = time0;
             int vi_pre = value0;
             for (int i = 0; i < remain_length + zero_number - 1; i++) {
-                int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
-                time_list.set(i, ti);
-                ti_pre = ti;
 
                 int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
                 value_list.set(i, vi);
@@ -841,13 +805,10 @@ public class RLEBOS {
             }
 
             ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
-            ts_block_tmp0.add(time0);
             ts_block_tmp0.add(value0);
             ts_block.add(ts_block_tmp0);
             for (int i = 0; i < remain_length + zero_number - 1; i++) {
-                int ti = (time_list.get(i) - time0) * td_common + time0;
                 ArrayList<Integer> ts_block_tmp = new ArrayList<>();
-                ts_block_tmp.add(ti);
                 ts_block_tmp.add(value_list.get(i));
                 ts_block.add(ts_block_tmp);
             }
