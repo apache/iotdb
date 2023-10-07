@@ -14,7 +14,7 @@ import java.util.Stack;
 
 import static java.lang.Math.pow;
 
-public class OutlierCDF {
+public class RLEBOS {
 
     public static int getBitWith(int num) {
         if (num == 0) return 1;

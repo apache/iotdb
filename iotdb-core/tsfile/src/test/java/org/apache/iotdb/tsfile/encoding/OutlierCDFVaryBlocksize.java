@@ -240,7 +240,7 @@ public class OutlierCDFVaryBlocksize {
             ArrayList<Integer> min_delta) {
         ArrayList<Integer> ts_block_delta = new ArrayList<>();
 
-        ts_block_delta.add(ts_block.get(0));
+//        ts_block_delta.add(ts_block.get(0));
         int value_delta_min = Integer.MAX_VALUE;
         for (int i = 1; i < ts_block.size(); i++) {
 
@@ -251,7 +251,9 @@ public class OutlierCDFVaryBlocksize {
             }
 
         }
+        min_delta.add(ts_block.get(0));
         min_delta.add(value_delta_min);
+
         for (int i = 1; i < ts_block.size(); i++) {
             int epsilon_v = ts_block.get(i) - value_delta_min - ts_block.get(i - 1);
             ts_block_delta.add(epsilon_v);
@@ -269,22 +271,22 @@ public class OutlierCDFVaryBlocksize {
 
     public static ArrayList<Byte> encode2Bytes(
             ArrayList<Integer> ts_block,
-            int min_delta,
+            ArrayList<Integer>  min_delta,
             int bit_width) {
         ArrayList<Byte> encoded_result = new ArrayList<>();
 
         // encode value0
-        byte[] value0_byte = int2Bytes(ts_block.get(0));
+        byte[] value0_byte = int2Bytes(min_delta.get(0));
         for (byte b : value0_byte) encoded_result.add(b);
 
         // encode theta
-        byte[] value_min_byte = int2Bytes(min_delta);
+        byte[] value_min_byte = int2Bytes(min_delta.get(1));
         for (byte b : value_min_byte) encoded_result.add(b);
 
         // encode value
         byte[] max_bit_width_value_byte = int2Bytes(bit_width);
         for (byte b : max_bit_width_value_byte) encoded_result.add(b);
-        byte[] value_bytes = bitPacking(ts_block, 1, bit_width);
+        byte[] value_bytes = bitPacking(ts_block, 0, bit_width);
         for (byte b : value_bytes) encoded_result.add(b);
 
 
@@ -329,7 +331,7 @@ public class OutlierCDFVaryBlocksize {
 
     private static ArrayList<Byte> learnKDelta(ArrayList<Integer> ts_block, int supple_length) {
 
-        int block_size = ts_block.size();
+        int block_size = ts_block.size()-1;
         ArrayList<Byte> cur_byte = new ArrayList<>();
 
         ArrayList<Integer> min_delta = new ArrayList<>();
@@ -339,6 +341,7 @@ public class OutlierCDFVaryBlocksize {
             ts_block_delta.add(0);
             ts_block_order_value.add(0);
         }
+//        System.out.println(ts_block_order_value);
         Collections.sort(ts_block_order_value);
 //        quickSort(ts_block_order_value, 0, 1, block_size - 1);
 
@@ -422,7 +425,11 @@ public class OutlierCDFVaryBlocksize {
                 for (int tmp_j = start_value_i; tmp_j < PDF_size; tmp_j++) {
                     max_normal = PDF.get(tmp_j).get(0);
                     if (max_normal >= k_end_value) {
-                        cur_k2 = block_size - PDF.get(tmp_j).get(1);
+                        if(max_normal > k_end_value)
+                            cur_k2 = block_size - PDF.get(tmp_j-1).get(1);
+                        else if (max_normal == k_end_value) {
+                            cur_k2 = block_size - PDF.get(tmp_j).get(1);
+                        }
                         if (tmp_j != PDF_size - 1)
                             min_upper_outlier = PDF.get(tmp_j + 1).get(0);
                         else
@@ -450,6 +457,21 @@ public class OutlierCDFVaryBlocksize {
 //                    System.out.println("min_bits: "+(getBitWith(k_start_value)));
 //                    System.out.println("min_bits: "+(getBitWith(k_end_value - k_start_value)));
 //                    System.out.println("min_bits: "+(getBitWith(max_delta_value - k_end_value)));
+//                }
+//                if(k_start_value == 49 && k_end_value == 50 ){
+//                    System.out.println("index_cost: "+(Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2)));
+//                    System.out.println("max_delta_value: "+(max_delta_value));
+//                    System.out.println(" getBitWith(left_max)：" +  getBitWith(left_max));
+//                    System.out.println(" getBitWith(k_end_value - k_start_value)：" + getBitWith(k_end_value - k_start_value));
+//                    System.out.println(" getBitWith(max_delta_value - min_upper_outlier)：" + getBitWith(max_delta_value - min_upper_outlier));
+//                    System.out.println("k_start_value: "+(k_start_value));
+//                    System.out.println("k_end_value: "+(k_end_value));
+//                    System.out.println("left_max: "+(left_max));
+//                    System.out.println("min_upper_outlier: "+(min_upper_outlier));
+//                    System.out.println("cur_k1: "+(cur_k1));
+//                    System.out.println("cur_k2: "+(cur_k2));
+//                    System.out.println("cur_bits: "+(cur_bits));
+//                    System.out.println("min_bits: "+(min_bits));
 //                }
 
                 if (cur_bits < min_bits) {
@@ -481,7 +503,7 @@ public class OutlierCDFVaryBlocksize {
 
         // ------------------------- encode data -----------------------------------------
         if (final_left_max == 0 && final_k_end_value == max_delta_value) {
-            cur_byte = encode2Bytes(ts_block_delta, min_delta.get(0), bit_width);
+            cur_byte = encode2Bytes(ts_block_delta, min_delta, bit_width);
         }
         else {
             ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
@@ -496,7 +518,7 @@ public class OutlierCDFVaryBlocksize {
             int index_bitmap = 0;
             int index_bitmap_outlier = 0;
             int cur_index_bitmap_outlier_bits = 0;
-            for (int i = 1; i < block_size; i++) {
+            for (int i = 0; i < block_size; i++) {
                 if (ts_block_delta.get(i) < final_k_start_value) {
                     final_left_outlier.add(ts_block_delta.get(i));
                     final_left_outlier_index.add(i);
@@ -552,9 +574,9 @@ public class OutlierCDFVaryBlocksize {
             for (byte b : k_bytes) cur_byte.add(b);
 
 
-            byte[] value0_bytes = int2Bytes(ts_block_delta.get(0));
+            byte[] value0_bytes = int2Bytes(min_delta.get(0));
             for (byte b : value0_bytes) cur_byte.add(b);
-            byte[] min_delta_bytes = int2Bytes(min_delta.get(0));
+            byte[] min_delta_bytes = int2Bytes(min_delta.get(1));
             for (byte b : min_delta_bytes) cur_byte.add(b);
 
             byte[] final_k_start_value_bytes = int2Bytes(final_k_start_value);
@@ -576,10 +598,10 @@ public class OutlierCDFVaryBlocksize {
 //            System.out.println("bitmap_outlier size:"+bitmap_outlier.size());
 
             if (final_alpha == 0) {
-                for (int i : bitmap) {
-                    byte[] index_bytes = intByte2Bytes(i);
-                    for (byte b : index_bytes) cur_byte.add(b);
-                }
+//                for (int i : bitmap) {
+//                    byte[] index_bytes = intByte2Bytes(i);
+//                    for (byte b : index_bytes) cur_byte.add(b);
+//                }
                 for (int i : bitmap_outlier) {
                     byte[] index_bytes = intByte2Bytes(i);
                     for (byte b : index_bytes) cur_byte.add(b);

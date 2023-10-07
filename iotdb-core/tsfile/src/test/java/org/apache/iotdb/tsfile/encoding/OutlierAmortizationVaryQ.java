@@ -14,7 +14,6 @@ import java.util.Stack;
 import static java.lang.Math.pow;
 
 public class OutlierAmortizationVaryQ {
-
     public static int getBitWith(int num) {
         if (num == 0) return 1;
         else return 32 - Integer.numberOfLeadingZeros(num);
@@ -349,6 +348,7 @@ public class OutlierAmortizationVaryQ {
             }
             sum += ts_block_delta.get(i);
         }
+//        System.out.println(ts_block_delta);
         double mu = sum / block_size;
         double variance = 0;
         for (int i = 1; i < block_size; i++) {
@@ -370,55 +370,88 @@ public class OutlierAmortizationVaryQ {
         int min_bits = 0;
         min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size - 1));
 
-        for (int q_i = 1; q_i <= q; q_i++) {
-            double half_beta = ((double) q_i / (double) q) * (double) k * sigma;
-            int k_start_value = (int) Math.max(Math.floor(mu - half_beta), 0);
-            for (int k_spread_value : spread_value) {
-                int k_end_value = k_spread_value + k_start_value;
+        int bucket_num = (int) Math.ceil (((double) final_right_max +1) / (double) q);
+        ArrayList<Integer> bucket_count = new ArrayList<>();
+        for(int i=0;i<bucket_num;i++){
+            bucket_count.add(0);
+        }
+        for (int i = 1; i < block_size; i++) {
+            int tmp_i = ts_block_delta.get(i)/q;
+            int tmp_count = bucket_count.get(tmp_i);
+            tmp_count ++;
+            bucket_count.set(tmp_i,tmp_count);
+        }
+        ArrayList<Integer> PDF = new ArrayList<>();
+        int cumulative = 0;
+        ArrayList<Integer> bucket_no_zero = new ArrayList<>();
+        for(int i=0;i<bucket_num;i++){
+            int count = bucket_count.get(i);
+            PDF.add(cumulative);
+            cumulative += count;
+            if(count != 0){
+                bucket_no_zero.add(i);
+            }
+        }
+        PDF.add(cumulative);
+        int PDF_size = PDF.size();
+//        System.out.println(PDF);
 
-                k_end_value = Math.min(k_end_value, final_right_max);
-                int k1 = 0;
-                int k2 = 0;
-                for (int i = 1; i < block_size; i++) {
-                    if (ts_block_delta.get(i) < k_start_value) {
-                        k1++;
-                    } else if (ts_block_delta.get(i) > k_end_value) {
-                        k2++;
-                    }
-                }
+
+        final_right_max = (final_right_max / q + 1) * q;
+        int bucket_no_zero_size = bucket_no_zero.size();
+        for(int i =0;i<bucket_no_zero_size;i++){
+            int k_start_value = bucket_no_zero.get(i) * q;
+            for (int k_spread_value : spread_value) {
+                int k_end_value = Math.min(k_spread_value + k_start_value, final_right_max);
+
                 int cur_bits = 0;
-                cur_bits += Math.min((k1 + k2) * getBitWith(block_size), block_size + k1 + k2);
-                if (k1 != 0)
-                    cur_bits += k1 * getBitWith(k_start_value);
-                if (k1 + k2 != block_size)
-                    cur_bits += (block_size - k1 - k2) * getBitWith(k_end_value - k_start_value);
-                if (k2 != 0)
-                    cur_bits += k2 * getBitWith(final_right_max - k_end_value);
-//if(q_i==q&&k_end_value<=64){
-//    System.out.println("qi: "+q_i);
-//    System.out.println("min_bits: "+min_bits);
-//    System.out.println("cur_bits: "+cur_bits);
-//    System.out.println("k_spread_value: "+k_spread_value);
-//    System.out.println("k_end_value: "+k_end_value);
-//    System.out.println("k1:"+k1);
-//    System.out.println("k2:"+k2);
-//}
+                int cur_k1 = PDF.get(bucket_no_zero.get(i));
+
+                int k_end_value_bucket = k_end_value/q ;
+                k_end_value = k_end_value_bucket *q;
+
+                int cur_k2 = 0;
+                if(k_end_value_bucket != PDF_size -1)
+                    cur_k2 =  block_size - PDF.get(k_end_value_bucket+1);
+                else cur_k2 =  block_size - PDF.get(k_end_value_bucket);
+
+
+                cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
+                if (cur_k1 != 0)
+                    cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
+                if (cur_k1 + cur_k2 != block_size)
+                    cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
+                if (cur_k2 != 0)
+                    cur_bits += cur_k2 * getBitWith(final_right_max - k_end_value);//min_upper_outlier
+
+//                if(k_start_value == 49 && k_end_value == 50 ){
+////                    System.out.println("PDF: "+(PDF));
+//                    System.out.println("i: "+(i));
+//                    System.out.println("k_end_value_bucket: "+(k_end_value_bucket));
+//                    System.out.println("final_right_max: "+(final_right_max));
+//                    System.out.println("index_cost: "+(Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2)));
+//                    System.out.println(" getBitWith(left_max)：" +  getBitWith(k_start_value));
+//                    System.out.println(" getBitWith(k_end_value - k_start_value)：" + getBitWith(k_end_value - k_start_value));
+//                    System.out.println(" getBitWith(max_delta_value - min_upper_outlier)：" + getBitWith(final_right_max - k_end_value));
+//                    System.out.println("k_start_value: "+(k_start_value));
+//                    System.out.println("k_end_value: "+(k_end_value));
+//                    System.out.println("cur_k1: "+(cur_k1));
+//                    System.out.println("cur_k2: "+(cur_k2));
+//                    System.out.println("cur_bits: "+(cur_bits));
+//                    System.out.println("min_bits: "+(min_bits));
+//                }
+
                 if (cur_bits < min_bits) {
-//                    System.out.println("qi: "+q_i);
                     min_bits = cur_bits;
                     final_k_start_value = k_start_value;
                     final_k_end_value = k_end_value;
                 }
-                if(k_end_value == final_right_max) break;
+                if (k_end_value == final_right_max)
+                    break;
             }
         }
-
-
-//        System.out.println("final_k_start_value: "+final_k_start_value);
-//        System.out.println("final_k_end_value: "+final_k_end_value);
-
-//        int final_left_max = 0;
-//        int final_right_max = 0;
+//        System.out.println("final_k_start_value: "+(final_k_start_value));
+//        System.out.println("final_k_end_value: "+(final_k_end_value));
 
 
         // ------------------------- encode data -----------------------------------------
@@ -561,10 +594,8 @@ public class OutlierAmortizationVaryQ {
             ArrayList<Integer> result2 = new ArrayList<>();
 
             splitTimeStamp3(ts_block, result2);
-//            splitTimeStamp3(ts_block_reorder, result2);
 
-            // time-order
-            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k,q,0);
+            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k, q, 0);
             encoded_result.addAll(cur_encoded_result);
 
         }
@@ -593,10 +624,9 @@ public class OutlierAmortizationVaryQ {
                 supple_length = 9 - remaining_length % 8;
             }
 
-            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k,q,supple_length);
+            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, k, q, supple_length);
             encoded_result.addAll(cur_encoded_result);
         }
-
 
 
         return encoded_result;
@@ -789,27 +819,27 @@ public class OutlierAmortizationVaryQ {
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
         dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-        dataset_block_size.add(512);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-        dataset_block_size.add(512);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        dataset_block_size.add(256);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-        dataset_block_size.add(128);
+        dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-        dataset_block_size.add(64);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-        dataset_block_size.add(128);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-        dataset_block_size.add(512);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-        dataset_block_size.add(256);
+        dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-        dataset_block_size.add(512);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-        dataset_block_size.add(512);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
-        dataset_block_size.add(512);
+        dataset_block_size.add(1024);
 
 
         ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
@@ -871,7 +901,8 @@ public class OutlierAmortizationVaryQ {
 //                    System.out.println(data2);
                 inputStream.close();
 
-                for (int q = 1; q < 15; q++) {
+                for (int q_exp = 1; q_exp < 8; q_exp++) {
+                    int q = (int) Math.pow(2, q_exp);
                     long encodeTime = 0;
                     long decodeTime = 0;
                     double ratio = 0;
@@ -884,7 +915,7 @@ public class OutlierAmortizationVaryQ {
                         long buffer_bits = 0;
                         for (int repeat = 0; repeat < repeatTime2; repeat++) {
 //                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), k);
-                            buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), 2,q);
+                            buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), 2, q);
                         }
 //                        System.out.println(k);
 //                        System.out.println((double) buffer1.size() / (double) (data1.size() * Integer.BYTES));
@@ -915,7 +946,7 @@ public class OutlierAmortizationVaryQ {
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
                             String.valueOf(compressed_size),
-                            String.valueOf(q),
+                            String.valueOf(q_exp),
                             String.valueOf(ratio)
                     };
                     writer.writeRecord(record);
