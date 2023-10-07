@@ -50,6 +50,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BinaryOperator;
@@ -69,6 +70,7 @@ public class FileMetrics implements IMetricSet {
   private static final String SEQUENCE = "sequence";
   private static final String UNSEQUENCE = "unsequence";
   private static final String LEVEL = "level";
+  private AtomicBoolean hasRemainData = new AtomicBoolean(false);
   // database -> regionId -> sequence file size
   private final Map<String, Map<String, Long>> seqFileSizeMap = new ConcurrentHashMap<>();
   // database -> regionId -> unsequence file size
@@ -132,6 +134,7 @@ public class FileMetrics implements IMetricSet {
     bindWalFileMetrics(metricService);
     bindCompactionFileMetrics(metricService);
     bindSystemRelatedMetrics(metricService);
+    checkIfThereRemainingData();
   }
 
   private void bindTsFileMetrics(AbstractMetricService metricService) {
@@ -149,6 +152,7 @@ public class FileMetrics implements IMetricSet {
         FileMetrics::getModFileNum,
         Tag.NAME.toString(),
         "mods");
+    checkIfThereRemainingData();
   }
 
   private void bindWalFileMetrics(AbstractMetricService metricService) {
@@ -359,6 +363,10 @@ public class FileMetrics implements IMetricSet {
           (seq ? seqFileNumGaugeMap : unseqFileNumGaugeMap),
           (seq ? SEQUENCE : UNSEQUENCE),
           Metric.FILE_COUNT.toString());
+      checkIfThereRemainingData();
+    } else {
+      // the metric service has not been set yet
+      hasRemainData.set(true);
     }
   }
 
@@ -423,6 +431,10 @@ public class FileMetrics implements IMetricSet {
           seq ? seqLevelSizeGaugeMap : unseqLevelSizeGaugeMap,
           seq ? SEQUENCE : UNSEQUENCE,
           FILE_LEVEL_SIZE);
+      checkIfThereRemainingData();
+    } else {
+      // the metric service has not been set yet
+      hasRemainData.set(true);
     }
   }
 
@@ -459,11 +471,8 @@ public class FileMetrics implements IMetricSet {
             database,
             (k, v) -> {
               v.remove(regionId);
-              return v;
+              return v.isEmpty() ? null : v;
             });
-    if (innerMap == null) {
-      map.remove(database);
-    }
   }
 
   public void deleteFile(boolean seq, List<TsFileResource> tsFileResourceList) {
@@ -479,6 +488,80 @@ public class FileMetrics implements IMetricSet {
       } catch (IOException e) {
         log.warn("Unexpected error occurred when getting tsfile name", e);
       }
+    }
+  }
+
+  private void checkIfThereRemainingData() {
+    if (hasRemainData.get()) {
+      synchronized (this) {
+        if (hasRemainData.get()) {
+          hasRemainData.set(false);
+          updateRemainData();
+        }
+      }
+    }
+  }
+
+  private void updateRemainData() {
+    for (Map.Entry<String, Map<String, Integer>> entry : seqFileNumMap.entrySet()) {
+      for (Map.Entry<String, Integer> innerEntry : entry.getValue().entrySet()) {
+        updateGlobalGauge(
+            entry.getKey(),
+            innerEntry.getKey(),
+            innerEntry.getValue(),
+            seqFileNumGaugeMap,
+            SEQUENCE,
+            Metric.FILE_COUNT.toString());
+      }
+    }
+    for (Map.Entry<String, Map<String, Integer>> entry : unseqFileNumMap.entrySet()) {
+      for (Map.Entry<String, Integer> innerEntry : entry.getValue().entrySet()) {
+        updateGlobalGauge(
+            entry.getKey(),
+            innerEntry.getKey(),
+            innerEntry.getValue(),
+            unseqFileNumGaugeMap,
+            UNSEQUENCE,
+            Metric.FILE_COUNT.toString());
+      }
+    }
+    for (Map.Entry<String, Map<String, Long>> entry : seqFileSizeMap.entrySet()) {
+      for (Map.Entry<String, Long> innerEntry : entry.getValue().entrySet()) {
+        updateGlobalGauge(
+            entry.getKey(),
+            innerEntry.getKey(),
+            innerEntry.getValue(),
+            seqFileSizeGaugeMap,
+            SEQUENCE,
+            Metric.FILE_SIZE.toString());
+      }
+    }
+    for (Map.Entry<String, Map<String, Long>> entry : unseqFileSizeMap.entrySet()) {
+      for (Map.Entry<String, Long> innerEntry : entry.getValue().entrySet()) {
+        updateGlobalGauge(
+            entry.getKey(),
+            innerEntry.getKey(),
+            innerEntry.getValue(),
+            unseqFileSizeGaugeMap,
+            UNSEQUENCE,
+            Metric.FILE_SIZE.toString());
+      }
+    }
+    for (Map.Entry<Integer, Integer> entry : seqLevelTsFileCountMap.entrySet()) {
+      updateLevelGauge(
+          entry.getKey(), entry.getValue(), seqLevelCountGaugeMap, SEQUENCE, FILE_LEVEL_COUNT);
+    }
+    for (Map.Entry<Integer, Long> entry : seqLevelTsFileSizeMap.entrySet()) {
+      updateLevelGauge(
+          entry.getKey(), entry.getValue(), seqLevelSizeGaugeMap, SEQUENCE, FILE_LEVEL_SIZE);
+    }
+    for (Map.Entry<Integer, Integer> entry : unseqLevelTsFileCountMap.entrySet()) {
+      updateLevelGauge(
+          entry.getKey(), entry.getValue(), unseqLevelCountGaugeMap, UNSEQUENCE, FILE_LEVEL_COUNT);
+    }
+    for (Map.Entry<Integer, Long> entry : unseqLevelTsFileSizeMap.entrySet()) {
+      updateLevelGauge(
+          entry.getKey(), entry.getValue(), unseqLevelSizeGaugeMap, UNSEQUENCE, FILE_LEVEL_SIZE);
     }
   }
 
