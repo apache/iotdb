@@ -190,7 +190,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       throws IOException {
     if (timestamp <= lastTime[subTaskId]) {
       throw new RuntimeException(
-          ".getUnseqFiles() of "
+          "Timestamp of the current point of "
               + (deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId[subTaskId])
               + " is "
               + timestamp
