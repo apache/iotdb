@@ -206,10 +206,6 @@ public class CommonDescriptor {
                 "timestamp_precision_check_enabled",
                 String.valueOf(config.isTimestampPrecisionCheckEnabled()))));
 
-    config.setDatanodeTokenTimeoutMS(
-        Integer.parseInt(
-            properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
-
     String endPointUrl =
         properties.getProperty(
             "target_ml_node_endpoint",
