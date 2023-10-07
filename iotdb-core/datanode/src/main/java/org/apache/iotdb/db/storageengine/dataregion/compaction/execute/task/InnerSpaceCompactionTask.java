@@ -257,7 +257,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         // inner space compaction task has only one target file
         if (!targetTsFileResource.isDeleted()) {
           FileMetrics.getInstance()
-              .addFile(
+              .addTsFile(
                   targetTsFileResource.getDatabaseName(),
                   targetTsFileResource.getDataRegionId(),
                   targetTsFileResource.getTsFile().length(),

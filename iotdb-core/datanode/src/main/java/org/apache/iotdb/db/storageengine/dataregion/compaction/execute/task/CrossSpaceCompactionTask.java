@@ -219,7 +219,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (!targetResource.isDeleted()) {
             FileMetrics.getInstance()
-                .addFile(
+                .addTsFile(
                     targetResource.getDatabaseName(),
                     targetResource.getDataRegionId(),
                     targetResource.getTsFileSize(),

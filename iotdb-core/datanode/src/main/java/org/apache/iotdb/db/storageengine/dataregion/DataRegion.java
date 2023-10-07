@@ -443,7 +443,7 @@ public class DataRegion implements IDataRegionForQuery {
         for (TsFileResource resource : value) {
           if (resource.resourceFileExists()) {
             FileMetrics.getInstance()
-                .addFile(
+                .addTsFile(
                     resource.getDatabaseName(),
                     resource.getDataRegionId(),
                     resource.getTsFile().length(),
@@ -474,7 +474,7 @@ public class DataRegion implements IDataRegionForQuery {
         for (TsFileResource resource : value) {
           if (resource.resourceFileExists()) {
             FileMetrics.getInstance()
-                .addFile(
+                .addTsFile(
                     resource.getDatabaseName(),
                     resource.getDataRegionId(),
                     resource.getTsFile().length(),
@@ -712,7 +712,7 @@ public class DataRegion implements IDataRegionForQuery {
         updateLastFlushTime(tsFileResource, isSeq);
         tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
         FileMetrics.getInstance()
-            .addFile(
+            .addTsFile(
                 tsFileResource.getDatabaseName(),
                 tsFileResource.getDataRegionId(),
                 tsFileResource.getTsFile().length(),
@@ -1457,7 +1457,7 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileResourceList.addAll(tsFileManager.getTsFileList(false));
       tsFileResourceList.forEach(
           x -> {
-            FileMetrics.getInstance().deleteFile(x.isSeq(), Collections.singletonList(x));
+            FileMetrics.getInstance().deleteTsFile(x.isSeq(), Collections.singletonList(x));
             if (x.getModFile().exists()) {
               FileMetrics.getInstance().decreaseModFileNum(1);
               FileMetrics.getInstance().decreaseModFileSize(x.getModFile().getSize());
@@ -1532,7 +1532,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       // try to delete physical data file
       resource.remove();
-      FileMetrics.getInstance().deleteFile(isSeq, Collections.singletonList(resource));
+      FileMetrics.getInstance().deleteTsFile(isSeq, Collections.singletonList(resource));
       logger.info(
           "Removed a file {} before {} by ttl ({} {})",
           resource.getTsFilePath(),
@@ -2080,7 +2080,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
     TsFileResource tsFileResource = tsFileProcessor.getTsFileResource();
     FileMetrics.getInstance()
-        .addFile(
+        .addTsFile(
             tsFileResource.getDatabaseName(),
             tsFileResource.getDataRegionId(),
             tsFileResource.getTsFileSize(),
@@ -2209,7 +2209,7 @@ public class DataRegion implements IDataRegionForQuery {
           .listenToTsFile(dataRegionId, newTsFileResource, isGeneratedByPipe);
 
       FileMetrics.getInstance()
-          .addFile(
+          .addTsFile(
               newTsFileResource.getDatabaseName(),
               newTsFileResource.getDataRegionId(),
               newTsFileResource.getTsFile().length(),
@@ -2501,7 +2501,7 @@ public class DataRegion implements IDataRegionForQuery {
           tsFileResourceToBeMoved = sequenceResource;
           tsFileManager.remove(tsFileResourceToBeMoved, true);
           FileMetrics.getInstance()
-              .deleteFile(true, Collections.singletonList(tsFileResourceToBeMoved));
+              .deleteTsFile(true, Collections.singletonList(tsFileResourceToBeMoved));
           break;
         }
       }
@@ -2513,7 +2513,7 @@ public class DataRegion implements IDataRegionForQuery {
             tsFileResourceToBeMoved = unsequenceResource;
             tsFileManager.remove(tsFileResourceToBeMoved, false);
             FileMetrics.getInstance()
-                .deleteFile(false, Collections.singletonList(tsFileResourceToBeMoved));
+                .deleteTsFile(false, Collections.singletonList(tsFileResourceToBeMoved));
             break;
           }
         }

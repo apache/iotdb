@@ -456,6 +456,6 @@ public class CompactionUtils {
         removeResources.add(resource);
       }
     }
-    FileMetrics.getInstance().deleteFile(seq, resources);
+    FileMetrics.getInstance().deleteTsFile(seq, resources);
   }
 }
