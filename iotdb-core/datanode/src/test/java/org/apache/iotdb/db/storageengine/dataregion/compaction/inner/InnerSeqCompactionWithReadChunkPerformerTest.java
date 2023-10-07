@@ -39,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionF
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
@@ -1059,7 +1060,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
 
   @Test
   public void testCompactionWithDeletionsDuringCompactions()
-      throws MetadataException, IOException, DataRegionException {
+      throws MetadataException, IOException, DataRegionException, InterruptedException {
     // create source seq files
     List<TsFileResource> sourceResources = new ArrayList<>();
     List<List<Long>> chunkPagePointsNum = new ArrayList<>();
@@ -1102,7 +1103,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
             new ReadChunkCompactionPerformer(),
             0);
     task.setSourceFilesToCompactionCandidate();
-    task.checkValidAndSetMerging();
+    sourceResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data during compaction
     vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1200, 0);
     vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1800, 0);

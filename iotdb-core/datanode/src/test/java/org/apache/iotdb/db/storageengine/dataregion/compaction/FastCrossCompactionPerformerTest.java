@@ -27,17 +27,20 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -52,6 +55,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -4029,7 +4033,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
   @Test
   public void testReleaseFileNumAndMemoryAfterCrossTask()
-      throws IOException, MetadataException, WriteProcessException {
+      throws IOException, MetadataException, WriteProcessException, InterruptedException {
     int oldMaxCrossCompactionCandidateFileNum =
         SystemInfo.getInstance().getTotalFileLimitForCrossTask();
     SystemInfo.getInstance().setTotalFileLimitForCrossTask(15);
@@ -4050,9 +4054,12 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
               1000,
               0);
       Assert.assertTrue(task.setSourceFilesToCompactionCandidate());
-      boolean success = task.checkValidAndSetMerging();
-      Assert.assertTrue(success);
-      Assert.assertTrue(task.start());
+
+      FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
+          Mockito.mock(FixedPriorityBlockingQueue.class);
+      Mockito.when(mockQueue.take()).thenReturn(task).thenThrow(new InterruptedException());
+      CompactionWorker worker = new CompactionWorker(0, mockQueue);
+      worker.run();
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
     } finally {

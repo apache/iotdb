@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -596,7 +597,8 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             0,
             0);
     task.setSourceFilesToCompactionCandidate();
-    task.checkValidAndSetMerging();
+    seqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
+    unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data in source file during compaction
     vsgp.deleteByDevice(
         new PartialPath(
@@ -714,7 +716,8 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             0,
             0);
     task.setSourceFilesToCompactionCandidate();
-    task.checkValidAndSetMerging();
+    seqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
+    unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data in source file during compaction
     vsgp.deleteByDevice(
         new PartialPath(

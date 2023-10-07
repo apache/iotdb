@@ -39,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionF
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
@@ -1136,7 +1137,8 @@ public class InnerSeqCompactionWithFastPerformerTest {
             0, vsgp.getTsFileResourceManager(), sourceResources, true, performer, 0);
 
     task.setSourceFilesToCompactionCandidate();
-    task.checkValidAndSetMerging();
+    // set the source files to COMPACTING manually to simulate the concurrent scenario
+    sourceResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data during compaction
     vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1200, 0);
     vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1800, 0);

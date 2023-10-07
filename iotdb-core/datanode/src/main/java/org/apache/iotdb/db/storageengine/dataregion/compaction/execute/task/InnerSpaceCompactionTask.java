@@ -24,8 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionExceptionHandler;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -42,7 +40,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 
@@ -116,7 +113,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
       if (this.performer instanceof ReadChunkCompactionPerformer) {
         innerSpaceEstimator = new ReadChunkInnerCompactionEstimator();
-      } else if (!sequence && this.performer instanceof FastCompactionInnerCompactionEstimator) {
+      } else if (!sequence && this.performer instanceof FastCompactionPerformer) {
         innerSpaceEstimator = new FastCompactionInnerCompactionEstimator();
       }
     }
@@ -451,56 +448,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  public boolean checkValidAndSetMerging() {
-    if (!tsFileManager.isAllowCompaction()) {
-      resetCompactionCandidateStatusForAllSourceFiles();
-      return false;
-    }
-    if (!isDiskSpaceCheckPassed()) {
-      LOGGER.debug(
-          "inner compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
-      return false;
-    }
-    try {
-      for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
-        TsFileResource resource = selectedTsFileResourceList.get(i);
-        if (!resource.setStatus(TsFileResourceStatus.COMPACTING)) {
-          releaseAllLocks();
-          return false;
-        }
-      }
-      if (innerSpaceEstimator != null) {
-        memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
-      }
-      SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
-      SystemInfo.getInstance().addCompactionFileNum(selectedTsFileResourceList.size(), 60);
-    } catch (Exception e) {
-      if (e instanceof InterruptedException) {
-        LOGGER.warn("Interrupted when allocating memory for compaction", e);
-        Thread.currentThread().interrupt();
-      } else if (e instanceof CompactionMemoryNotEnoughException) {
-        LOGGER.warn("No enough memory for current compaction task {}", this, e);
-      } else if (e instanceof CompactionFileCountExceededException) {
-        LOGGER.warn("No enough file num for current compaction task {}", this, e);
-        SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
-      }
-      releaseAllLocks();
-      return false;
-    } finally {
-      try {
-        if (innerSpaceEstimator != null) {
-          innerSpaceEstimator.close();
-        }
-      } catch (IOException e) {
-        LOGGER.warn("Failed to close InnerSpaceCompactionMemoryEstimator");
-      }
-    }
-    return true;
-  }
-
-  @Override
   public long getEstimatedMemoryCost() throws IOException {
-    if (memoryCost == 0L) {
+    if (innerSpaceEstimator != null && memoryCost == 0L) {
       memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
     }
     return memoryCost;

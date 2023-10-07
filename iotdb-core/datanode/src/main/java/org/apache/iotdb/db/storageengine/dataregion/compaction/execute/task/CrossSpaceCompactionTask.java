@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionExceptionHandler;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -37,7 +35,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -272,11 +269,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           false,
           true);
     } finally {
-      SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
-      SystemInfo.getInstance()
-          .decreaseCompactionFileNumCost(
-              selectedSequenceFiles.size() + selectedUnsequenceFiles.size());
-      releaseAllLocksAndResetStatus();
+      releaseAllLocks();
     }
     return isSuccess;
   }
@@ -292,7 +285,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         && this.performer.getClass().isInstance(otherCrossCompactionTask.performer);
   }
 
-  private void releaseAllLocksAndResetStatus() {
+  private void releaseAllLocks() {
     for (TsFileResource tsFileResource : holdWriteLockList) {
       tsFileResource.writeUnlock();
     }
@@ -347,37 +340,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       tsFileResource.writeLock();
       holdWriteLockList.add(tsFileResource);
     }
-  }
-
-  @Override
-  public boolean checkValidAndSetMerging() {
-    if (!tsFileManager.isAllowCompaction()) {
-      resetCompactionCandidateStatusForAllSourceFiles();
-      return false;
-    }
-    if (!isDiskSpaceCheckPassed()) {
-      LOGGER.debug(
-          "cross compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
-      return false;
-    }
-    try {
-      SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
-      SystemInfo.getInstance()
-          .addCompactionFileNum(selectedSequenceFiles.size() + selectedUnsequenceFiles.size(), 60);
-    } catch (Exception e) {
-      if (e instanceof InterruptedException) {
-        LOGGER.warn("Interrupted when allocating memory for compaction", e);
-        Thread.currentThread().interrupt();
-      } else if (e instanceof CompactionMemoryNotEnoughException) {
-        LOGGER.info("No enough memory for current compaction task {}", this, e);
-      } else if (e instanceof CompactionFileCountExceededException) {
-        LOGGER.info("No enough file num for current compaction task {}", this, e);
-        SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
-      }
-      resetCompactionCandidateStatusForAllSourceFiles();
-      return false;
-    }
-    return true;
   }
 
   @Override

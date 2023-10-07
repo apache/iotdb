@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
@@ -75,8 +76,10 @@ public class CompactionWorker implements Runnable {
         return;
       }
       task.transitSourceFilesToMerging();
-      estimatedMemoryCost = task.getEstimatedMemoryCost();
-      memoryAcquired = SystemInfo.getInstance().addCompactionMemoryCost(estimatedMemoryCost, 60);
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
+        estimatedMemoryCost = task.getEstimatedMemoryCost();
+        memoryAcquired = SystemInfo.getInstance().addCompactionMemoryCost(estimatedMemoryCost, 60);
+      }
       fileHandleAcquired =
           SystemInfo.getInstance().addCompactionFileNum(task.getProcessedFileNum(), 60);
       CompactionTaskSummary summary = task.getSummary();

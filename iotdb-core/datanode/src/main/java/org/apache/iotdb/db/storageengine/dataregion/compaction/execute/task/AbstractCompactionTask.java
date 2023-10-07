@@ -136,14 +136,6 @@ public abstract class AbstractCompactionTask {
 
   public abstract boolean equalsOtherTask(AbstractCompactionTask otherTask);
 
-  /**
-   * Check if the compaction task is valid (selected files are not merging, closed and exist). If
-   * the task is valid, then set the merging status of selected files to true.
-   *
-   * @return true if the task is valid else false
-   */
-  public abstract boolean checkValidAndSetMerging();
-
   public void transitSourceFilesToMerging() throws FileCannotTransitToCompactingException {
     for (TsFileResource f : getAllSourceTsFiles()) {
       if (!f.setStatus(TsFileResourceStatus.COMPACTING)) {
