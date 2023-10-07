@@ -56,7 +56,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected TsFileResourceList unseqTsFileResourceList;
   private File logFile;
   protected List<TsFileResource> targetTsfileResourceList;
-  protected List<TsFileResource> holdReadLockList = new ArrayList<>();
   protected List<TsFileResource> holdWriteLockList = new ArrayList<>();
   protected double selectedSeqFileSize = 0;
   protected double selectedUnseqFileSize = 0;
@@ -191,8 +190,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           throw new CompactionValidationFailedException("Failed to pass compaction validation");
         }
 
-        releaseReadAndLockWrite(selectedSequenceFiles);
-        releaseReadAndLockWrite(selectedUnsequenceFiles);
+        lockWrite(selectedSequenceFiles);
+        lockWrite(selectedUnsequenceFiles);
 
         for (TsFileResource sequenceResource : selectedSequenceFiles) {
           if (sequenceResource.getModFile().exists()) {
@@ -294,14 +293,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   private void releaseAllLocksAndResetStatus() {
-    resetCompactionCandidateStatusForAllSourceFiles();
-    for (TsFileResource tsFileResource : holdReadLockList) {
-      tsFileResource.readUnlock();
-    }
     for (TsFileResource tsFileResource : holdWriteLockList) {
       tsFileResource.writeUnlock();
     }
-    holdReadLockList.clear();
     holdWriteLockList.clear();
   }
 
@@ -348,10 +342,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     return equalsOtherTask((CrossSpaceCompactionTask) other);
   }
 
-  private void releaseReadAndLockWrite(List<TsFileResource> tsFileResourceList) {
+  private void lockWrite(List<TsFileResource> tsFileResourceList) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      tsFileResource.readUnlock();
-      holdReadLockList.remove(tsFileResource);
       tsFileResource.writeLock();
       holdWriteLockList.add(tsFileResource);
     }
@@ -385,16 +377,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       resetCompactionCandidateStatusForAllSourceFiles();
       return false;
     }
-
-    boolean addReadLockSuccess =
-        addReadLock(selectedSequenceFiles) && addReadLock(selectedUnsequenceFiles);
-    if (!addReadLockSuccess) {
-      SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
-      SystemInfo.getInstance()
-          .decreaseCompactionFileNumCost(
-              selectedSequenceFiles.size() + selectedUnsequenceFiles.size());
-    }
-    return addReadLockSuccess;
+    return true;
   }
 
   @Override
@@ -405,23 +388,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   public int getProcessedFileNum() {
     return selectedSequenceFiles.size() + selectedUnsequenceFiles.size();
-  }
-
-  private boolean addReadLock(List<TsFileResource> tsFileResourceList) {
-    try {
-      for (TsFileResource tsFileResource : tsFileResourceList) {
-        tsFileResource.readLock();
-        holdReadLockList.add(tsFileResource);
-        if (!tsFileResource.setStatus(TsFileResourceStatus.COMPACTING)) {
-          releaseAllLocksAndResetStatus();
-          return false;
-        }
-      }
-    } catch (Exception e) {
-      releaseAllLocksAndResetStatus();
-      throw e;
-    }
-    return true;
   }
 
   @Override

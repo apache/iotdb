@@ -72,7 +72,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   protected TsFileResourceList tsFileResourceList;
   protected List<TsFileResource> targetTsFileList;
-  protected boolean[] isHoldingReadLock;
   protected boolean[] isHoldingWriteLock;
 
   protected long maxModsFileSize;
@@ -121,11 +120,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         innerSpaceEstimator = new FastCompactionInnerCompactionEstimator();
       }
     }
-    isHoldingReadLock = new boolean[selectedTsFileResourceList.size()];
     isHoldingWriteLock = new boolean[selectedTsFileResourceList.size()];
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       isHoldingWriteLock[i] = false;
-      isHoldingReadLock[i] = false;
     }
     if (sequence) {
       tsFileResourceList = tsFileManager.getOrCreateSequenceListByTimePartition(timePartition);
@@ -142,10 +139,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   @SuppressWarnings({"squid:S6541", "squid:S3776", "squid:S2142"})
   protected boolean doCompaction() {
-    if (!tsFileManager.isAllowCompaction()) {
-      return true;
-    }
-
     long startTime = System.currentTimeMillis();
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
@@ -245,8 +238,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
         // release the read lock of all source files, and get the write lock of them to delete them
         for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
-          selectedTsFileResourceList.get(i).readUnlock();
-          isHoldingReadLock[i] = false;
           selectedTsFileResourceList.get(i).writeLock();
           isHoldingWriteLock[i] = true;
         }
@@ -343,7 +334,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             isSequence());
       }
     } finally {
-      releaseAllLocksAndResetStatus();
+      releaseAllLocks();
     }
     return isSuccess;
   }
@@ -450,13 +441,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
    * release the read lock and write lock of files if it is held, and set the merging status of
    * selected files to false.
    */
-  private void releaseAllLocksAndResetStatus() {
-    resetCompactionCandidateStatusForAllSourceFiles();
+  private void releaseAllLocks() {
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       TsFileResource resource = selectedTsFileResourceList.get(i);
-      if (isHoldingReadLock[i]) {
-        resource.readUnlock();
-      }
       if (isHoldingWriteLock[i]) {
         resource.writeUnlock();
       }
@@ -477,10 +464,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     try {
       for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
         TsFileResource resource = selectedTsFileResourceList.get(i);
-        resource.readLock();
-        isHoldingReadLock[i] = true;
         if (!resource.setStatus(TsFileResourceStatus.COMPACTING)) {
-          releaseAllLocksAndResetStatus();
+          releaseAllLocks();
           return false;
         }
       }
@@ -499,7 +484,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         LOGGER.warn("No enough file num for current compaction task {}", this, e);
         SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
       }
-      releaseAllLocksAndResetStatus();
+      releaseAllLocks();
       return false;
     } finally {
       try {

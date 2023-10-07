@@ -111,10 +111,10 @@ public abstract class AbstractCompactionTask {
 
   protected abstract boolean doCompaction();
 
-  public boolean start() {
+  public void start() {
     boolean isSuccess = false;
+    summary.start();
     try {
-      summary.start();
       isSuccess = doCompaction();
     } finally {
       summary.finish(isSuccess);
@@ -122,7 +122,6 @@ public abstract class AbstractCompactionTask {
       CompactionMetrics.getInstance()
           .recordTaskFinishOrAbort(crossTask, innerSeqTask, summary.getTimeCost());
     }
-    return isSuccess;
   }
 
   public String getStorageGroupName() {
