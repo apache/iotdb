@@ -22,7 +22,6 @@ package org.apache.iotdb.db.service.metrics.file;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -43,7 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BinaryOperator;
 
 public class TsFileMetrics implements IMetricSet {
-  private static final Logger LOGGER = LoggerFactory.getLogger(FileMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileMetrics.class);
   private AbstractMetricService metricService = null;
   private AtomicBoolean hasRemainData = new AtomicBoolean(false);
   private static final String SEQUENCE = "sequence";
@@ -282,60 +281,56 @@ public class TsFileMetrics implements IMetricSet {
       synchronized (this) {
         if (hasRemainData.get()) {
           hasRemainData.set(false);
-          updateRemainData();
+          updateRemainData(true);
+          updateRemainData(false);
         }
       }
     }
   }
 
-  private void updateRemainData() {
-    // sequence or not
-    Arrays.asList(true, false)
-        .forEach(
-            seq -> {
-              for (Map.Entry<String, Map<String, Integer>> entry :
-                  (seq ? seqFileCountMap : unseqFileCountMap).entrySet()) {
-                for (Map.Entry<String, Integer> innerEntry : entry.getValue().entrySet()) {
-                  updateGlobalTsFileGaugeMap(
-                      entry.getKey(),
-                      innerEntry.getKey(),
-                      innerEntry.getValue(),
-                      seq ? seqFileCountGaugeMap : unseqFileCountGaugeMap,
-                      seq ? SEQUENCE : UNSEQUENCE,
-                      Metric.FILE_COUNT.toString());
-                }
-              }
-              for (Map.Entry<String, Map<String, Long>> entry :
-                  (seq ? seqFileSizeMap : unseqFileSizeMap).entrySet()) {
-                for (Map.Entry<String, Long> innerEntry : entry.getValue().entrySet()) {
-                  updateGlobalTsFileGaugeMap(
-                      entry.getKey(),
-                      innerEntry.getKey(),
-                      innerEntry.getValue(),
-                      seq ? seqFileSizeGaugeMap : unseqFileSizeGaugeMap,
-                      seq ? SEQUENCE : UNSEQUENCE,
-                      Metric.FILE_SIZE.toString());
-                }
-              }
-              for (Map.Entry<Integer, Integer> entry :
-                  (seq ? seqLevelTsFileCountMap : unseqLevelTsFileCountMap).entrySet()) {
-                updateLevelTsFileGaugeMap(
-                    entry.getKey(),
-                    entry.getValue(),
-                    seq ? seqLevelCountGaugeMap : unseqLevelCountGaugeMap,
-                    seq ? SEQUENCE : UNSEQUENCE,
-                    FILE_LEVEL_COUNT);
-              }
-              for (Map.Entry<Integer, Long> entry :
-                  (seq ? seqLevelTsFileSizeMap : unseqLevelTsFileSizeMap).entrySet()) {
-                updateLevelTsFileGaugeMap(
-                    entry.getKey(),
-                    entry.getValue(),
-                    seq ? seqLevelSizeGaugeMap : unseqLevelSizeGaugeMap,
-                    seq ? SEQUENCE : UNSEQUENCE,
-                    FILE_LEVEL_SIZE);
-              }
-            });
+  private void updateRemainData(boolean seq) {
+    for (Map.Entry<String, Map<String, Integer>> entry :
+        (seq ? seqFileCountMap : unseqFileCountMap).entrySet()) {
+      for (Map.Entry<String, Integer> innerEntry : entry.getValue().entrySet()) {
+        updateGlobalTsFileGaugeMap(
+            entry.getKey(),
+            innerEntry.getKey(),
+            innerEntry.getValue(),
+            seq ? seqFileCountGaugeMap : unseqFileCountGaugeMap,
+            seq ? SEQUENCE : UNSEQUENCE,
+            Metric.FILE_COUNT.toString());
+      }
+    }
+    for (Map.Entry<String, Map<String, Long>> entry :
+        (seq ? seqFileSizeMap : unseqFileSizeMap).entrySet()) {
+      for (Map.Entry<String, Long> innerEntry : entry.getValue().entrySet()) {
+        updateGlobalTsFileGaugeMap(
+            entry.getKey(),
+            innerEntry.getKey(),
+            innerEntry.getValue(),
+            seq ? seqFileSizeGaugeMap : unseqFileSizeGaugeMap,
+            seq ? SEQUENCE : UNSEQUENCE,
+            Metric.FILE_SIZE.toString());
+      }
+    }
+    for (Map.Entry<Integer, Integer> entry :
+        (seq ? seqLevelTsFileCountMap : unseqLevelTsFileCountMap).entrySet()) {
+      updateLevelTsFileGaugeMap(
+          entry.getKey(),
+          entry.getValue(),
+          seq ? seqLevelCountGaugeMap : unseqLevelCountGaugeMap,
+          seq ? SEQUENCE : UNSEQUENCE,
+          FILE_LEVEL_COUNT);
+    }
+    for (Map.Entry<Integer, Long> entry :
+        (seq ? seqLevelTsFileSizeMap : unseqLevelTsFileSizeMap).entrySet()) {
+      updateLevelTsFileGaugeMap(
+          entry.getKey(),
+          entry.getValue(),
+          seq ? seqLevelSizeGaugeMap : unseqLevelSizeGaugeMap,
+          seq ? SEQUENCE : UNSEQUENCE,
+          FILE_LEVEL_SIZE);
+    }
   }
 
   // endregion

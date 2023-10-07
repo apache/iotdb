@@ -36,6 +36,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class CompactionFileMetrics implements IMetricSet {
+  private static final String INNER_SEQ_TEMP = "inner-seq-temp";
+  private static final String INNER_UNSEQ_TEMP = "inner-unseq-temp";
+  private static final String CROSS_TEMP = "cross-temp";
   // compaction temporal files
   private final AtomicLong innerSeqCompactionTempFileSize = new AtomicLong(0);
   private final AtomicLong innerUnseqCompactionTempFileSize = new AtomicLong(0);
@@ -54,64 +57,58 @@ public class CompactionFileMetrics implements IMetricSet {
         this,
         o -> o.getInnerCompactionTempFileSize(true),
         Tag.NAME.toString(),
-        "inner-seq-temp");
+        INNER_SEQ_TEMP);
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.CORE,
         this,
         o -> o.getInnerCompactionTempFileSize(false),
         Tag.NAME.toString(),
-        "inner-unseq-temp");
+        INNER_UNSEQ_TEMP);
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.CORE,
         this,
         CompactionFileMetrics::getCrossCompactionTempFileSize,
         Tag.NAME.toString(),
-        "cross-temp");
+        CROSS_TEMP);
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.CORE,
         this,
         o -> o.getInnerCompactionTempFileNum(true),
         Tag.NAME.toString(),
-        "inner-seq-temp");
+        INNER_SEQ_TEMP);
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.CORE,
         this,
         o -> o.getInnerCompactionTempFileNum(false),
         Tag.NAME.toString(),
-        "inner-unseq-temp");
+        INNER_UNSEQ_TEMP);
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.CORE,
         this,
         CompactionFileMetrics::getCrossCompactionTempFileNum,
         Tag.NAME.toString(),
-        "cross-temp");
+        CROSS_TEMP);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "inner-seq-temp");
+        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), INNER_SEQ_TEMP);
     metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.FILE_COUNT.toString(),
-        Tag.NAME.toString(),
-        "inner-unseq-temp");
+        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), INNER_UNSEQ_TEMP);
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "cross-temp");
+        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), CROSS_TEMP);
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "inner-seq-temp");
+        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), INNER_SEQ_TEMP);
     metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.FILE_SIZE.toString(),
-        Tag.NAME.toString(),
-        "inner-unseq-temp");
+        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), INNER_UNSEQ_TEMP);
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "cross-temp");
+        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), CROSS_TEMP);
   }
 
   public long getInnerCompactionTempFileSize(boolean seq) {
