@@ -237,6 +237,27 @@ public class DataNodeSchemaCache {
         storageGroup, measurementPath, timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
+  public void invalidate(String database) {
+    deviceUsingTemplateSchemaCache.invalidateCache(database);
+    timeSeriesSchemaCache.invalidate(database);
+  }
+
+  public void invalidate(List<PartialPath> partialPathList) {
+    boolean doPrecise = true;
+    for (PartialPath partialPath : partialPathList) {
+      if (partialPath.getDevicePath().hasWildcard()) {
+        doPrecise = false;
+        break;
+      }
+    }
+    if (doPrecise) {
+      deviceUsingTemplateSchemaCache.invalidateCache(partialPathList);
+      timeSeriesSchemaCache.invalidate(partialPathList);
+    } else {
+      invalidateAll();
+    }
+  }
+
   public void invalidateAll() {
     deviceUsingTemplateSchemaCache.invalidateCache();
     timeSeriesSchemaCache.invalidateAll();

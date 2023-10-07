@@ -1813,10 +1813,9 @@ public class DataRegion implements IDataRegionForQuery {
       Set<PartialPath> devicePaths = new HashSet<>(pattern.getDevicePathPattern());
 
       // delete Last cache record if necessary
-      // todo implement more precise process
       DataNodeSchemaCache.getInstance().takeWriteLock();
       try {
-        DataNodeSchemaCache.getInstance().invalidateAll();
+        DataNodeSchemaCache.getInstance().invalidate(Collections.singletonList(pattern));
       } finally {
         DataNodeSchemaCache.getInstance().releaseWriteLock();
       }
