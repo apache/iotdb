@@ -1013,6 +1013,10 @@ public class ConfigManager implements IManager {
     }
   }
 
+  public void checkUserPathPrivilege() {
+    permissionManager.checkUserPathPrivilege();
+  }
+
   public TPermissionInfoResp checkUserPrivilegeGrantOpt(
       String username, List<PartialPath> paths, int permission) {
     TSStatus status = confirmLeader();

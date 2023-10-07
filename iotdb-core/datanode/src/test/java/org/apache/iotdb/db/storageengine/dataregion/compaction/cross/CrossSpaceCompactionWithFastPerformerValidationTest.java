@@ -2307,7 +2307,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
     // target file of first compaction task can be selected to participate in another inner
     // compaction task
-    List<List<TsFileResource>> innerPairs = innerSelector.selectInnerSpaceTask(targetResources);
+    List<InnerSpaceCompactionTask> innerPairs = innerSelector.selectInnerSpaceTask(targetResources);
     Assert.assertEquals(1, innerPairs.size());
   }
 
@@ -2347,20 +2347,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> taskResources =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : taskResources) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2429,20 +2420,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> taskResources =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : taskResources) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2511,20 +2493,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2594,20 +2567,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2684,20 +2648,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2772,20 +2727,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2861,20 +2807,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2951,20 +2888,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction

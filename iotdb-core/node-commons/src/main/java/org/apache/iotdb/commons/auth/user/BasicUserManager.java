@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -49,6 +50,25 @@ public abstract class BasicUserManager implements IUserManager {
   protected Map<String, User> userMap;
   protected IUserAccessor accessor;
   protected HashLock lock;
+
+  /**
+   * This filed only for pre version. When we do a major version upgrade, it can be removed
+   * directly.
+   */
+  // FOR PRE VERSION BEGIN -----
+  private boolean preVersion = false;
+
+  @Override
+  public void setPreVersion(boolean preVersion) {
+    this.preVersion = preVersion;
+  }
+
+  @Override
+  @TestOnly
+  public boolean preVersion() {
+    return this.preVersion;
+  }
+  // FOR PRE VERSION DONE ------
 
   /**
    * BasicUserManager Constructor.
@@ -117,7 +137,7 @@ public abstract class BasicUserManager implements IUserManager {
   @Override
   public boolean createUser(String username, String password, boolean validCheck)
       throws AuthException {
-    if (!validCheck) {
+    if (validCheck) {
       AuthUtils.validateUsername(username);
       AuthUtils.validatePassword(password);
     }
@@ -157,7 +177,18 @@ public abstract class BasicUserManager implements IUserManager {
             TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_ERROR, username));
       }
       if (path != null) {
-        AuthUtils.validatePatternPath(path);
+        if (preVersion) {
+          AuthUtils.validatePath(path);
+          if (user.getServiceReady()) {
+            try {
+              AuthUtils.validatePatternPath(path);
+            } catch (AuthException e) {
+              user.setServiceReady(false);
+            }
+          }
+        } else {
+          AuthUtils.validatePatternPath(path);
+        }
         user.addPathPrivilege(path, privilegeId, grantOpt);
       } else {
         user.addSysPrivilege(privilegeId);
@@ -181,14 +212,30 @@ public abstract class BasicUserManager implements IUserManager {
         throw new AuthException(
             TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_ERROR, username));
       }
-      if (!user.hasPrivilegeToRevoke(path, privilegeId)) {
-        return false;
-      }
-      if (path != null) {
-        AuthUtils.validatePatternPath(path);
-        user.removePathPrivilege(path, privilegeId);
+      if (preVersion) {
+        if (path != null) {
+          if (!AuthUtils.hasPrivilege(path, privilegeId, user.getPathPrivilegeList())) {
+            return false;
+          }
+          AuthUtils.validatePath(path);
+          AuthUtils.removePrivilegePre(path, privilegeId, user.getPathPrivilegeList());
+        } else {
+          if (user.getSysPrivilege().contains(privilegeId)) {
+            return false;
+          }
+          user.getSysPrivilege().remove(privilegeId);
+        }
       } else {
-        user.removeSysPrivilege(privilegeId);
+        if (!user.hasPrivilegeToRevoke(path, privilegeId)) {
+          return false;
+        }
+        if (path != null) {
+          AuthUtils.validatePatternPath(path);
+          user.removePathPrivilege(path, privilegeId);
+        } else {
+          user.getSysPrivilege().remove(privilegeId);
+          user.getSysPriGrantOpt().remove(privilegeId);
+        }
       }
       return true;
     } finally {
@@ -199,7 +246,11 @@ public abstract class BasicUserManager implements IUserManager {
   @Override
   public boolean updateUserPassword(String username, String newPassword) throws AuthException {
     try {
-      AuthUtils.validatePassword(newPassword);
+      if (preVersion) {
+        AuthUtils.validatePasswordPre(newPassword);
+      } else {
+        AuthUtils.validatePassword(newPassword);
+      }
     } catch (AuthException e) {
       LOGGER.debug("An illegal password detected ", e);
       return false;
@@ -318,5 +369,32 @@ public abstract class BasicUserManager implements IUserManager {
         }
       }
     }
+  }
+
+  @Override
+  public void checkAndRefreshPathPri() {
+    userMap.forEach(
+        (rolename, user) -> {
+          if (!user.getServiceReady()) {
+            List<PathPrivilege> priCopy = new ArrayList<>();
+            for (PathPrivilege pathPri : user.getPathPrivilegeList()) {
+              try {
+                AuthUtils.validatePatternPath(pathPri.getPath());
+                priCopy.add(pathPri);
+              } catch (AuthException e) {
+                PartialPath path = pathPri.getPath();
+                try {
+                  for (Integer pri : pathPri.getPrivileges()) {
+                    AuthUtils.addPrivilege(AuthUtils.convertPatternPath(path), pri, priCopy, false);
+                  }
+                } catch (IllegalPathException illegalE) {
+                  //
+                }
+              }
+            }
+            user.setPrivilegeList(priCopy);
+          }
+          user.setServiceReady(true);
+        });
   }
 }

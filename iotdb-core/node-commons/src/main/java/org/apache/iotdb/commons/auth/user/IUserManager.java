@@ -152,4 +152,10 @@ public interface IUserManager extends SnapshotProcessor {
    * @throws AuthException
    */
   void replaceAllUsers(Map<String, User> users) throws AuthException;
+
+  void setPreVersion(boolean perVersion);
+
+  boolean preVersion();
+
+  void checkAndRefreshPathPri();
 }
