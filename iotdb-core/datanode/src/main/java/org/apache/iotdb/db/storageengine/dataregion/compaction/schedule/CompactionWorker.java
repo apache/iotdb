@@ -53,46 +53,53 @@ public class CompactionWorker implements Runnable {
   @Override
   public void run() {
     while (!Thread.currentThread().isInterrupted()) {
-      AbstractCompactionTask task;
-      try {
-        task = compactionTaskQueue.take();
-      } catch (InterruptedException e) {
-        log.warn("CompactionThread-{} terminates because interruption", threadId);
-        return;
-      }
+      processOneCompactionTask();
+    }
+  }
+
+  private void processOneCompactionTask() {
+    AbstractCompactionTask task;
+    try {
+      task = compactionTaskQueue.take();
+    } catch (InterruptedException e) {
+      log.warn("CompactionThread-{} terminates because interruption", threadId);
+      Thread.currentThread().interrupt();
+      return;
+    }
+    long estimatedMemoryCost = 0L;
+    boolean memoryAcquired = false;
+    boolean fileHandleAcquired = false;
+    try {
       if (task == null || !task.isCompactionAllowed()) {
         log.info("Compaction task is not allowed to be executed by TsFileManager. Task {}", task);
         return;
       }
-      long estimatedMemoryCost = 0L;
-      boolean memoryAcquired = false;
-      boolean fileHandleAcquired = false;
-      try {
-        task.transitSourceFilesToMerging();
-        estimatedMemoryCost = task.getEstimatedMemoryCost();
-        memoryAcquired = SystemInfo.getInstance().addCompactionMemoryCost(estimatedMemoryCost, 60);
-        fileHandleAcquired =
-            SystemInfo.getInstance().addCompactionFileNum(task.getProcessedFileNum(), 60);
-        CompactionTaskSummary summary = task.getSummary();
-        CompactionTaskFuture future = new CompactionTaskFuture(summary);
-        CompactionTaskManager.getInstance().recordTask(task, future);
-        task.start();
-      } catch (FileCannotTransitToCompactingException
-          | IOException
-          | CompactionMemoryNotEnoughException
-          | CompactionFileCountExceededException e) {
-        log.info("CompactionTask {} cannot be executed. Reason: {}", task, e);
-      } catch (InterruptedException e) {
-        log.warn("InterruptedException occurred when preparing compaction task. {}", task, e);
-        Thread.currentThread().interrupt();
-      } finally {
+      task.transitSourceFilesToMerging();
+      estimatedMemoryCost = task.getEstimatedMemoryCost();
+      memoryAcquired = SystemInfo.getInstance().addCompactionMemoryCost(estimatedMemoryCost, 60);
+      fileHandleAcquired =
+          SystemInfo.getInstance().addCompactionFileNum(task.getProcessedFileNum(), 60);
+      CompactionTaskSummary summary = task.getSummary();
+      CompactionTaskFuture future = new CompactionTaskFuture(summary);
+      CompactionTaskManager.getInstance().recordTask(task, future);
+      task.start();
+    } catch (FileCannotTransitToCompactingException
+        | IOException
+        | CompactionMemoryNotEnoughException
+        | CompactionFileCountExceededException e) {
+      log.info("CompactionTask {} cannot be executed. Reason: {}", task, e);
+    } catch (InterruptedException e) {
+      log.warn("InterruptedException occurred when preparing compaction task. {}", task, e);
+      Thread.currentThread().interrupt();
+    } finally {
+      if (task != null) {
         task.resetCompactionCandidateStatusForAllSourceFiles();
-        if (memoryAcquired) {
-          SystemInfo.getInstance().resetCompactionMemoryCost(estimatedMemoryCost);
-        }
-        if (fileHandleAcquired) {
-          SystemInfo.getInstance().decreaseCompactionFileNumCost(task.getProcessedFileNum());
-        }
+      }
+      if (memoryAcquired) {
+        SystemInfo.getInstance().resetCompactionMemoryCost(estimatedMemoryCost);
+      }
+      if (fileHandleAcquired) {
+        SystemInfo.getInstance().decreaseCompactionFileNumCost(task.getProcessedFileNum());
       }
     }
   }
