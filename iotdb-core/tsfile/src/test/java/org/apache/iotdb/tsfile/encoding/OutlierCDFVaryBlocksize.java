@@ -336,7 +336,8 @@ public class OutlierCDFVaryBlocksize {
 
         ArrayList<Integer> min_delta = new ArrayList<>();
         ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
-        ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta);
+        ArrayList<Integer> min_delta_r = new ArrayList<>();
+        ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta_r);
         for (int s = 0; s < supple_length; s++) {
             ts_block_delta.add(0);
             ts_block_order_value.add(0);

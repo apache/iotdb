@@ -242,22 +242,19 @@ public class RLEBOS {
 
 //        ts_block_delta.add(ts_block.get(0));
         int value_delta_min = Integer.MAX_VALUE;
-        for (int i = 1; i < ts_block.size(); i++) {
-
-            int epsilon_v = ts_block.get(i) - ts_block.get(i - 1);
-
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
+        for (Integer integer : ts_block) {
+            if (integer < value_delta_min) {
+                value_delta_min = integer;
             }
 
         }
-        min_delta.add(ts_block.get(0));
         min_delta.add(value_delta_min);
 
-        for (int i = 1; i < ts_block.size(); i++) {
-            int epsilon_v = ts_block.get(i) - value_delta_min - ts_block.get(i - 1);
+        for (Integer integer : ts_block) {
+            int epsilon_v = integer - value_delta_min;
             ts_block_delta.add(epsilon_v);
         }
+
         return ts_block_delta;
     }
 
@@ -279,9 +276,9 @@ public class RLEBOS {
         byte[] value0_byte = int2Bytes(min_delta.get(0));
         for (byte b : value0_byte) encoded_result.add(b);
 
-        // encode theta
-        byte[] value_min_byte = int2Bytes(min_delta.get(1));
-        for (byte b : value_min_byte) encoded_result.add(b);
+//        // encode theta
+//        byte[] value_min_byte = int2Bytes(min_delta.get(1));
+//        for (byte b : value_min_byte) encoded_result.add(b);
 
         // encode value
         byte[] max_bit_width_value_byte = int2Bytes(bit_width);
@@ -331,12 +328,13 @@ public class RLEBOS {
 
     private static ArrayList<Byte> learnKDelta(ArrayList<Integer> ts_block, int supple_length) {
 
-        int block_size = ts_block.size()-1;
+        int block_size = ts_block.size();
         ArrayList<Byte> cur_byte = new ArrayList<>();
 
         ArrayList<Integer> min_delta = new ArrayList<>();
         ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
-        ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta);
+        ArrayList<Integer> min_delta_r = new ArrayList<>();
+        ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta_r);
         for (int s = 0; s < supple_length; s++) {
             ts_block_delta.add(0);
             ts_block_order_value.add(0);
@@ -576,8 +574,8 @@ public class RLEBOS {
 
             byte[] value0_bytes = int2Bytes(min_delta.get(0));
             for (byte b : value0_bytes) cur_byte.add(b);
-            byte[] min_delta_bytes = int2Bytes(min_delta.get(1));
-            for (byte b : min_delta_bytes) cur_byte.add(b);
+//            byte[] min_delta_bytes = int2Bytes(min_delta.get(1));
+//            for (byte b : min_delta_bytes) cur_byte.add(b);
 
             byte[] final_k_start_value_bytes = int2Bytes(final_k_start_value);
             for (byte b : final_k_start_value_bytes) cur_byte.add(b);
@@ -640,7 +638,7 @@ public class RLEBOS {
 
     public static ArrayList<Byte> ReorderingRegressionEncoder(
             ArrayList<Integer> data, int block_size, String dataset_name) throws IOException {
-        block_size++;
+//        block_size++;
         ArrayList<Byte> encoded_result = new ArrayList<Byte>();
         int length_all = data.size();
         byte[] length_all_bytes = int2Bytes(length_all);
@@ -865,7 +863,7 @@ public class RLEBOS {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/outlier";
+        String output_parent_dir = parent_dir + "vldb/compression_ratio/rle_bos";
         String input_parent_dir = parent_dir + "iotdb_test_small/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -914,7 +912,7 @@ public class RLEBOS {
         dataset_block_size.add(1024);
 
 //        String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-outlier\\";
-//        String output_parent_dir = parent_dir + "vldb\\compression_ratio\\outlier";
+//        String output_parent_dir = parent_dir + "vldb\\compression_ratio\\rle_bos";
 //        String input_parent_dir = parent_dir + "iotdb_test_small\\";
 //        ArrayList<String> input_path_list = new ArrayList<>();
 //        ArrayList<String> output_path_list = new ArrayList<>();
@@ -1058,7 +1056,7 @@ public class RLEBOS {
 
                     String[] record = {
                             f.toString(),
-                            "Outlier",
+                            "RLE+BOS",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),

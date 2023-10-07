@@ -21,6 +21,13 @@ public class SPRINTZBOS {
         else return 32 - Integer.numberOfLeadingZeros(num);
     }
 
+    public static int zigzag(int num) {
+        if (num < 0) return 2*(-num)-1;
+        else return 2*num;
+    }
+
+
+
     public static byte[] int2Bytes(int integer) {
         byte[] bytes = new byte[4];
         bytes[0] = (byte) (integer >> 24);
@@ -158,40 +165,6 @@ public class SPRINTZBOS {
         return result_list;
     }
 
-    public static int part(ArrayList<Integer> arr, int low, int high) {
-        int tmp = arr.get(low);
-        while (low < high) {
-            while (low < high && (arr.get(high) > tmp)) {
-                high--;
-            }
-            arr.set(low, arr.get(high));
-            while (low < high && (arr.get(low) < tmp)) {
-                low++;
-            }
-            arr.set(high, arr.get(low));
-        }
-        arr.set(low, tmp);
-        return low;
-    }
-
-    public static void quickSort(ArrayList<Integer> arr, int index, int low, int high) {
-        Stack<Integer> stack = new Stack<>();
-        while (!stack.empty()) {
-            high = stack.pop();
-            low = stack.pop();
-            int mid = part(arr, low, high);
-
-            if (mid + 1 < high) {
-                stack.push(mid + 1);
-                stack.push(high);
-            }
-            if (mid - 1 > low) {
-                stack.push(low);
-                stack.push(mid - 1);
-            }
-        }
-    }
-
     public static int getCommon(int m, int n) {
         int z;
         while (m % n != 0) {
@@ -241,23 +214,26 @@ public class SPRINTZBOS {
         ArrayList<Integer> ts_block_delta = new ArrayList<>();
 
 //        ts_block_delta.add(ts_block.get(0));
-        int value_delta_min = Integer.MAX_VALUE;
+//        int value_delta_min = Integer.MAX_VALUE;
+//        min_delta = new ArrayList<>();
         for (int i = 1; i < ts_block.size(); i++) {
 
             int epsilon_v = ts_block.get(i) - ts_block.get(i - 1);
+            epsilon_v = zigzag(epsilon_v);
+            ts_block_delta.add(epsilon_v);
 
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
-            }
+//            if (epsilon_v < value_delta_min) {
+//                value_delta_min = epsilon_v;
+//            }
 
         }
         min_delta.add(ts_block.get(0));
-        min_delta.add(value_delta_min);
+//        min_delta.add(value_delta_min);
 
-        for (int i = 1; i < ts_block.size(); i++) {
-            int epsilon_v = ts_block.get(i) - value_delta_min - ts_block.get(i - 1);
-            ts_block_delta.add(epsilon_v);
-        }
+//        for (int i = 1; i < ts_block.size(); i++) {
+//            int epsilon_v = ts_block.get(i) - value_delta_min - ts_block.get(i - 1);
+//            ts_block_delta.add(epsilon_v);
+//        }
         return ts_block_delta;
     }
 
@@ -335,8 +311,9 @@ public class SPRINTZBOS {
         ArrayList<Byte> cur_byte = new ArrayList<>();
 
         ArrayList<Integer> min_delta = new ArrayList<>();
+        ArrayList<Integer> min_delta_r = new ArrayList<>();
         ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
-        ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta);
+        ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta_r);
         for (int s = 0; s < supple_length; s++) {
             ts_block_delta.add(0);
             ts_block_order_value.add(0);
@@ -576,8 +553,8 @@ public class SPRINTZBOS {
 
             byte[] value0_bytes = int2Bytes(min_delta.get(0));
             for (byte b : value0_bytes) cur_byte.add(b);
-            byte[] min_delta_bytes = int2Bytes(min_delta.get(1));
-            for (byte b : min_delta_bytes) cur_byte.add(b);
+//            byte[] min_delta_bytes = int2Bytes(min_delta.get(1));
+//            for (byte b : min_delta_bytes) cur_byte.add(b);
 
             byte[] final_k_start_value_bytes = int2Bytes(final_k_start_value);
             for (byte b : final_k_start_value_bytes) cur_byte.add(b);
@@ -865,7 +842,7 @@ public class SPRINTZBOS {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/outlier";
+        String output_parent_dir = parent_dir + "vldb/compression_ratio/sprintz_bos";
         String input_parent_dir = parent_dir + "iotdb_test_small/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1058,7 +1035,7 @@ public class SPRINTZBOS {
 
                     String[] record = {
                             f.toString(),
-                            "Outlier",
+                            "SPRINTZ+BOS",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
