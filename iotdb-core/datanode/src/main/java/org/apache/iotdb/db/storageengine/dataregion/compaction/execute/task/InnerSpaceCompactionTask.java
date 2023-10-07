@@ -27,7 +27,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
@@ -57,7 +56,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   private static final Logger LOGGER =
@@ -87,7 +85,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence,
       ICompactionPerformer performer,
-      AtomicInteger currentTaskNum,
       long serialId) {
     this(
         timePartition,
@@ -95,7 +92,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         selectedTsFileResourceList,
         sequence,
         performer,
-        currentTaskNum,
         serialId,
         CompactionTaskType.NORMAL);
   }
@@ -106,7 +102,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence,
       ICompactionPerformer performer,
-      AtomicInteger currentTaskNum,
       long serialId,
       CompactionTaskType compactionTaskType) {
     super(
@@ -114,7 +109,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         tsFileManager.getDataRegionId(),
         timePartition,
         tsFileManager,
-        currentTaskNum,
         serialId,
         compactionTaskType);
     this.selectedTsFileResourceList = selectedTsFileResourceList;
@@ -349,8 +343,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             isSequence());
       }
     } finally {
-      SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
-      SystemInfo.getInstance().decreaseCompactionFileNumCost(selectedTsFileResourceList.size());
       releaseAllLocksAndResetStatus();
     }
     return isSuccess;
@@ -519,15 +511,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
     }
     return true;
-  }
-
-  @Override
-  public void transitSourceFilesToMerging() throws FileCannotTransitToCompactingException {
-    for (TsFileResource f : selectedTsFileResourceList) {
-      if (!f.setStatus(TsFileResourceStatus.COMPACTING)) {
-        throw new FileCannotTransitToCompactingException(f);
-      }
-    }
   }
 
   @Override

@@ -60,7 +60,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
@@ -4048,7 +4047,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
               seqResources,
               unseqResources,
               new FastCompactionPerformer(true),
-              new AtomicInteger(0),
               1000,
               0);
       Assert.assertTrue(task.setSourceFilesToCompactionCandidate());

@@ -37,7 +37,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class MemoryControlTest {
   @Before
@@ -74,7 +73,6 @@ public class MemoryControlTest {
             sequenceFiles,
             unsequenceFiles,
             null,
-            new AtomicInteger(0),
             1024L * 1024L * 1024L * 50L,
             0);
     boolean success = task.checkValidAndSetMerging();
@@ -117,14 +115,8 @@ public class MemoryControlTest {
       tsFileManager.addAll(unsequenceFiles, false);
       CrossSpaceCompactionTask task =
           new CrossSpaceCompactionTask(
-              0L,
-              tsFileManager,
-              sequenceFiles,
-              unsequenceFiles,
-              null,
-              new AtomicInteger(0),
-              1000,
-              0);
+              0L, tsFileManager, sequenceFiles, unsequenceFiles, null, 1000, 0);
+
       boolean success = task.checkValidAndSetMerging();
       Assert.assertFalse(success);
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
@@ -170,7 +162,7 @@ public class MemoryControlTest {
     // fail to check valid when tsfile manager is not allowed to compaction in cross task
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
-            0L, tsFileManager, sequenceFiles, unsequenceFiles, null, new AtomicInteger(0), 1000, 0);
+            0L, tsFileManager, sequenceFiles, unsequenceFiles, null, 1000, 0);
     boolean success = task.checkValidAndSetMerging();
     Assert.assertFalse(success);
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
@@ -205,8 +197,7 @@ public class MemoryControlTest {
 
     // fail to check valid when tsfile manager is not allowed to compaction in inner task
     InnerSpaceCompactionTask innerTask =
-        new InnerSpaceCompactionTask(
-            0L, tsFileManager, sequenceFiles, true, null, new AtomicInteger(0), 0L);
+        new InnerSpaceCompactionTask(0L, tsFileManager, sequenceFiles, true, null, 0L);
     boolean success = innerTask.checkValidAndSetMerging();
     Assert.assertFalse(success);
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());

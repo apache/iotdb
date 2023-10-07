@@ -26,7 +26,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
@@ -47,7 +46,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   private static final Logger LOGGER =
@@ -70,7 +68,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       List<TsFileResource> selectedSequenceFiles,
       List<TsFileResource> selectedUnsequenceFiles,
       ICrossCompactionPerformer performer,
-      AtomicInteger currentTaskNum,
       long memoryCost,
       long serialId) {
     super(
@@ -78,7 +75,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         tsFileManager.getDataRegionId(),
         timePartition,
         tsFileManager,
-        currentTaskNum,
         serialId);
     this.selectedSequenceFiles = selectedSequenceFiles;
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
@@ -399,20 +395,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
               selectedSequenceFiles.size() + selectedUnsequenceFiles.size());
     }
     return addReadLockSuccess;
-  }
-
-  @Override
-  public void transitSourceFilesToMerging() throws FileCannotTransitToCompactingException {
-    for (TsFileResource f : selectedSequenceFiles) {
-      if (!f.setStatus(TsFileResourceStatus.COMPACTING)) {
-        throw new FileCannotTransitToCompactingException(f);
-      }
-    }
-    for (TsFileResource f : selectedUnsequenceFiles) {
-      if (!f.setStatus(TsFileResourceStatus.COMPACTING)) {
-        throw new FileCannotTransitToCompactingException(f);
-      }
-    }
   }
 
   @Override
