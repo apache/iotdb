@@ -200,6 +200,12 @@ public class CommonDescriptor {
     config.setTimestampPrecision(
         properties.getProperty("timestamp_precision", config.getTimestampPrecision()).trim());
 
+    config.setTimestampPrecisionCheckEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "timestamp_precision_check_enabled",
+                String.valueOf(config.isTimestampPrecisionCheckEnabled()))));
+
     String endPointUrl =
         properties.getProperty(
             "target_ml_node_endpoint",

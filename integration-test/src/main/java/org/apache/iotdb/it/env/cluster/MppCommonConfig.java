@@ -218,6 +218,13 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled) {
+    setProperty(
+        "timestamp_precision_check_enabled", String.valueOf(timestampPrecisionCheckEnabled));
+    return this;
+  }
+
+  @Override
   public CommonConfig setEnableMemControl(boolean enableMemControl) {
     setProperty("enable_mem_control", String.valueOf(enableMemControl));
     return this;
