@@ -25,7 +25,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -174,7 +173,6 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          CompactionTaskManager.currentTaskNum,
                           tsFileManager.getNextCompactionTaskId());
                   // set file status to COMPACTION_CANDIDATE
                   if (idx == 0) {
@@ -275,7 +273,6 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          CompactionTaskManager.currentTaskNum,
                           tsFileManager.getNextCompactionTaskId());
 
                   if (!innerSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
@@ -465,7 +462,6 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          CompactionTaskManager.currentTaskNum,
                           tsFileManager.getNextCompactionTaskId());
                   // set file status to COMPACTION_CANDIDATE
                   if (idx == 0) {
@@ -570,7 +566,6 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          CompactionTaskManager.currentTaskNum,
                           tsFileManager.getNextCompactionTaskId());
 
                   if (!innerSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {

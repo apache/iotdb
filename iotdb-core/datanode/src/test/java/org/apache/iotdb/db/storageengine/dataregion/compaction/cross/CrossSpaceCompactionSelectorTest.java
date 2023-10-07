@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
@@ -203,7 +202,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                   .getConfig()
                   .getCrossCompactionPerformer()
                   .createInstance(),
-              CompactionTaskManager.currentTaskNum,
               1000,
               tsFileManager.getNextCompactionTaskId());
       // set file status to COMPACTION_CANDIDATE
@@ -341,7 +339,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getConfig()
                             .getCrossCompactionPerformer()
                             .createInstance(),
-                        CompactionTaskManager.currentTaskNum,
                         crossCompactionTaskResource.getTotalMemoryCost(),
                         tsFileManager.getNextCompactionTaskId());
                 // set file status to COMPACTION_CANDIDATE
@@ -455,7 +452,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getConfig()
                             .getCrossCompactionPerformer()
                             .createInstance(),
-                        CompactionTaskManager.currentTaskNum,
                         crossCompactionTaskResource.getTotalMemoryCost(),
                         tsFileManager.getNextCompactionTaskId());
                 // set file status to COMPACTION_CANDIDATE
@@ -556,7 +552,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getConfig()
                             .getCrossCompactionPerformer()
                             .createInstance(),
-                        CompactionTaskManager.currentTaskNum,
                         crossCompactionTaskResource.getTotalMemoryCost(),
                         tsFileManager.getNextCompactionTaskId());
                 // set file status to COMPACTION_CANDIDATE and add into queue
@@ -675,7 +670,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getConfig()
                             .getCrossCompactionPerformer()
                             .createInstance(),
-                        CompactionTaskManager.currentTaskNum,
                         crossCompactionTaskResource.getTotalMemoryCost(),
                         tsFileManager.getNextCompactionTaskId());
                 // set file status to COMPACTION_CANDIDATE
@@ -793,7 +787,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getConfig()
                             .getCrossCompactionPerformer()
                             .createInstance(),
-                        CompactionTaskManager.currentTaskNum,
                         crossCompactionTaskResource.getTotalMemoryCost(),
                         tsFileManager.getNextCompactionTaskId());
                 // set file status to COMPACTION_CANDIDATE
@@ -901,7 +894,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getConfig()
                             .getCrossCompactionPerformer()
                             .createInstance(),
-                        CompactionTaskManager.currentTaskNum,
                         crossCompactionTaskResource.getTotalMemoryCost(),
                         tsFileManager.getNextCompactionTaskId());
                 // set file status to COMPACTION_CANDIDATE and add into queue
@@ -1161,7 +1153,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getConfig()
                             .getCrossCompactionPerformer()
                             .createInstance(),
-                        CompactionTaskManager.currentTaskNum,
                         crossCompactionTaskResource.getTotalMemoryCost(),
                         tsFileManager.getNextCompactionTaskId());
                 // set file status to COMPACTION_CANDIDATE
@@ -1275,7 +1266,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getConfig()
                             .getCrossCompactionPerformer()
                             .createInstance(),
-                        CompactionTaskManager.currentTaskNum,
                         crossCompactionTaskResource.getTotalMemoryCost(),
                         tsFileManager.getNextCompactionTaskId());
                 // set file status to COMPACTION_CANDIDATE
@@ -1380,7 +1370,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getConfig()
                             .getCrossCompactionPerformer()
                             .createInstance(),
-                        CompactionTaskManager.currentTaskNum,
                         crossCompactionTaskResource.getTotalMemoryCost(),
                         tsFileManager.getNextCompactionTaskId());
                 // set file status to COMPACTION_CANDIDATE and add into queue
@@ -1498,7 +1487,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getConfig()
                             .getCrossCompactionPerformer()
                             .createInstance(),
-                        CompactionTaskManager.currentTaskNum,
                         crossCompactionTaskResource.getTotalMemoryCost(),
                         tsFileManager.getNextCompactionTaskId());
                 // set file status to COMPACTION_CANDIDATE
@@ -1616,7 +1604,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getConfig()
                             .getCrossCompactionPerformer()
                             .createInstance(),
-                        CompactionTaskManager.currentTaskNum,
                         crossCompactionTaskResource.getTotalMemoryCost(),
                         tsFileManager.getNextCompactionTaskId());
                 // set file status to COMPACTION_CANDIDATE
@@ -1724,7 +1711,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getConfig()
                             .getCrossCompactionPerformer()
                             .createInstance(),
-                        CompactionTaskManager.currentTaskNum,
                         crossCompactionTaskResource.getTotalMemoryCost(),
                         tsFileManager.getNextCompactionTaskId());
                 // set file status to COMPACTION_CANDIDATE and add into queue

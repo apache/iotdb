@@ -61,7 +61,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class InnerSeqCompactionWithFastPerformerTest {
   static final String COMPACTION_TEST_SG = "root.compactionTest";
@@ -1134,13 +1133,8 @@ public class InnerSeqCompactionWithFastPerformerTest {
     ICompactionPerformer performer = new FastCompactionPerformer(false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            vsgp.getTsFileResourceManager(),
-            sourceResources,
-            true,
-            performer,
-            new AtomicInteger(0),
-            0);
+            0, vsgp.getTsFileResourceManager(), sourceResources, true, performer, 0);
+
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();
     // delete data during compaction

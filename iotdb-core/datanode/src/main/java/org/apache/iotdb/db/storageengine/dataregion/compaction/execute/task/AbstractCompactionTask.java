@@ -28,9 +28,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.List;
 
@@ -111,7 +108,7 @@ public abstract class AbstractCompactionTask {
 
   protected abstract boolean doCompaction();
 
-  public void start() {
+  public boolean start() {
     boolean isSuccess = false;
     summary.start();
     try {
@@ -122,6 +119,7 @@ public abstract class AbstractCompactionTask {
       CompactionMetrics.getInstance()
           .recordTaskFinishOrAbort(crossTask, innerSeqTask, summary.getTimeCost());
     }
+    return isSuccess;
   }
 
   public String getStorageGroupName() {

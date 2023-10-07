@@ -60,7 +60,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class InnerSeqCompactionWithReadChunkPerformerTest {
   static final String COMPACTION_TEST_SG = "root.compactionTest";
@@ -1101,7 +1100,6 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
             sourceResources,
             true,
             new ReadChunkCompactionPerformer(),
-            new AtomicInteger(0),
             0);
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();
