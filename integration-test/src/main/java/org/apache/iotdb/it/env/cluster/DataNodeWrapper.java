@@ -59,7 +59,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     // Override mqtt properties of super class
     immutableCommonProperties.setProperty("mqtt_host", super.getIp());
     immutableCommonProperties.setProperty("mqtt_port", String.valueOf(this.mqttPort));
-    immutableCommonProperties.setProperty("rest_service_port", String.valueOf(restServicePort));
+    immutableCommonProperties.setProperty(
+        "rest_service_port", String.valueOf(this.restServicePort));
     immutableCommonProperties.setProperty("enable_rest_service", "true");
     immutableCommonProperties.setProperty("enable_swagger", "false");
     immutableCommonProperties.setProperty("rest_query_default_row_size_limit", "10000");

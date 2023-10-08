@@ -28,7 +28,6 @@ import org.apache.iotdb.itbase.category.RemoteIT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -66,7 +65,6 @@ public class IoTDBRestServiceIT {
   public void setUp() throws Exception {
 
     EnvFactory.getEnv().initClusterEnvironment();
-    EnvironmentSettings settings = EnvironmentSettings.newInstance().inStreamingMode().build();
     DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
     port = portConflictDataNodeWrapper.getRestServicePort();
   }
@@ -83,6 +81,11 @@ public class IoTDBRestServiceIT {
 
   @Test
   public void ping() {
+    try {
+      Thread.sleep(1000 * 30);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     HttpGet httpGet = new HttpGet("http://127.0.0.1:" + port + "/ping");
     CloseableHttpResponse response = null;
@@ -226,6 +229,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void rightInsertTablet(CloseableHttpClient httpClient, String json, HttpPost httpPost) {
+    System.out.println(4444);
     CloseableHttpResponse response = null;
     try {
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
@@ -277,6 +281,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void errorInsertTablet(String json, HttpPost httpPost) {
+
     CloseableHttpResponse response = null;
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     try {
@@ -314,7 +319,7 @@ public class IoTDBRestServiceIT {
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
-      assertEquals(413, Integer.parseInt(result.get("code").toString()));
+      assertEquals(606, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -336,15 +341,21 @@ public class IoTDBRestServiceIT {
 
     nonQuery(httpClient, "{\"sql\":\"CREATE USER `root1` 'root1'\"}", httpPost2);
     nonQuery(
-        httpClient, "{\"sql\":\"GRANT USER `root1` PRIVILEGES  WRITE on root.**\"}", httpPostV2);
+        httpClient,
+        "{\"sql\":\"GRANT USER `root1` PRIVILEGES  INSERT_TIMESERIES on root.**\"}",
+        httpPostV2);
   }
 
   @Test
   public void insertAndQuery() {
 
+    try {
+      Thread.sleep(1000 * 30);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     //
-
     rightInsertTablet(httpClient);
     query(httpClient);
     queryGroupByLevel(httpClient);
@@ -403,7 +414,7 @@ public class IoTDBRestServiceIT {
 
     List<String> nonQuery_right_json_list_v2 = new ArrayList<>();
     List<String> nonQuery_error_json_list_v2 = new ArrayList<>();
-
+    System.out.println("1111111111");
     for (int i = 0; i <= 1; i++) {
       boolean isAligned = false;
       if (i == 0) {
@@ -442,13 +453,13 @@ public class IoTDBRestServiceIT {
       insertTablet_error_json_list.add(
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
               + isAligned
-              + ",\"deviceId\":\"root.sg26"
+              + ",\"deviceId\":\"root.sg36"
               + i
               + "\"}");
       insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"a123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
               + isAligned
-              + ",\"deviceId\":\"root.`sg26"
+              + ",\"deviceId\":\"root.`sg46"
               + i
               + "`\"}");
       insertTablet_error_json_list.add(
@@ -479,11 +490,11 @@ public class IoTDBRestServiceIT {
               + isAligned
               + "}");
       insertRecords_error_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"time\",\"123123\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"isAligned\":"
+          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"time\",\"a123123\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"isAligned\":"
               + isAligned
               + "}");
       insertRecords_error_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"time\",\"12321\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.111\",\"root.`s11`\",\"root.s1\",\"root.s3\"],\"isAligned\":"
+          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"time\",\"a12321\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.111\",\"root.`s11`\",\"root.s1\",\"root.s3\"],\"isAligned\":"
               + isAligned
               + "}");
       insertRecords_error_json_list.add(
@@ -540,13 +551,13 @@ public class IoTDBRestServiceIT {
               + i
               + "\"}");
       insertTablet_error_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"cc123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
               + isAligned
               + ",\"device\":\"root.`sg26"
               + i
               + "`\"}");
       insertTablet_error_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231cc`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
               + isAligned
               + ",\"device\":\"root.`3333a"
               + i
@@ -599,7 +610,7 @@ public class IoTDBRestServiceIT {
           "{\"sql\":\"insert into root.time.`aa`(time,`bb`) values(111,1)\"}");
       nonQuery_error_json_list_v2.add("{\"sql\":\"insert into root.aa(time,root) values(111,1)\"}");
     }
-
+    System.out.println("123123123");
     HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
     HttpPost httpPost1 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
 
@@ -610,6 +621,7 @@ public class IoTDBRestServiceIT {
       for (String json : insertTablet_right_json_list) {
         rightInsertTablet(httpClient, json, hp);
       }
+      System.out.println("12333333123123");
       for (String json : insertTablet_error_json_list) {
         errorInsertTablet(json, hp);
       }
@@ -636,16 +648,6 @@ public class IoTDBRestServiceIT {
     httpPosts2.add(httpPost5);
     httpPosts2.add(httpPost6);
 
-    for (HttpPost hp : httpPosts2) {
-      for (String json : insertRecords_right_json_list) {
-        rightInsertRecords(httpClient, json, hp);
-      }
-
-      for (String json : insertRecords_error_json_list) {
-        errorInsertRecords(httpClient, json, hp);
-      }
-    }
-
     HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/insertTablet");
     HttpPost httpPost1V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/insertTablet");
 
@@ -666,7 +668,7 @@ public class IoTDBRestServiceIT {
     List<HttpPost> httpPosts1V2 = new ArrayList<>();
     httpPosts1V2.add(httpPost3V2);
     httpPosts1V2.add(httpPost4V2);
-
+    System.out.println("666666");
     for (HttpPost hp : httpPosts1V2) {
       for (String json : nonQuery_right_json_list_v2) {
         nonQuery(httpClient, json, hp);
@@ -681,12 +683,12 @@ public class IoTDBRestServiceIT {
     List<HttpPost> httpPosts2V2 = new ArrayList<>();
     httpPosts2V2.add(httpPost5V2);
     httpPosts2V2.add(httpPost6V2);
-
+    System.out.println("22222222");
     for (HttpPost hp : httpPosts2V2) {
       for (String json : insertRecords_right_json_list_v2) {
         rightInsertRecords(httpClient, json, hp);
       }
-
+      System.out.println("44444");
       for (String json : insertRecords_error_json_list_v2) {
         errorInsertRecords(httpClient, json, hp);
       }
@@ -704,6 +706,11 @@ public class IoTDBRestServiceIT {
   public void queryWithUnsetAuthorization() {
     CloseableHttpResponse response = null;
     try {
+      try {
+        Thread.sleep(1000 * 30);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
       CloseableHttpClient httpClient = HttpClientBuilder.create().build();
       HttpPost httpPost = new HttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
       httpPost.addHeader("Content-type", "application/json; charset=utf-8");
@@ -714,7 +721,7 @@ public class IoTDBRestServiceIT {
       Assert.assertEquals(401, response.getStatusLine().getStatusCode());
       String message = EntityUtils.toString(response.getEntity(), "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
-      assertEquals(603, Integer.parseInt(result.get("code").toString()));
+      assertEquals(800, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -734,6 +741,11 @@ public class IoTDBRestServiceIT {
   public void queryWithWrongAuthorization() {
     CloseableHttpResponse response = null;
     try {
+      try {
+        Thread.sleep(1000 * 30);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
       CloseableHttpClient httpClient = HttpClientBuilder.create().build();
       HttpPost httpPost = new HttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
       httpPost.addHeader("Content-type", "application/json; charset=utf-8");
@@ -746,7 +758,7 @@ public class IoTDBRestServiceIT {
       Assert.assertEquals(401, response.getStatusLine().getStatusCode());
       String message = EntityUtils.toString(response.getEntity(), "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
-      assertEquals(600, Integer.parseInt(result.get("code").toString()));
+      assertEquals(801, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());

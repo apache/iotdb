@@ -71,7 +71,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
           + (SystemUtils.IS_OS_WINDOWS ? "java.exe" : "java");
   public static final String templateNodePath =
       System.getProperty("user.dir") + File.separator + "target" + File.separator + "template-node";
-  public static final String templateNodeLibPath =
+  public static String templateNodeLibPath =
       System.getProperty("user.dir")
           + File.separator
           + "target"
@@ -259,6 +259,27 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
         startCmd.add("--add-opens=java.base/java.io=ALL-UNNAMED");
         startCmd.add("--add-opens=java.base/java.net=ALL-UNNAMED");
       }
+
+      String libPath =
+          System.getProperty("user.dir")
+              + File.separator
+              + "target"
+              + File.separator
+              + "template-node-share"
+              + File.separator
+              + "lib"
+              + File.separator;
+      File directory = new File(libPath);
+      if (directory.exists() && directory.isDirectory()) {
+        File[] files = directory.listFiles();
+        for (File file : files) {
+          if (file.getName().startsWith("iotdb-server")) {
+            templateNodeLibPath = libPath + file.getName() + ":" + templateNodeLibPath;
+            break;
+          }
+        }
+      }
+
       startCmd.addAll(
           Arrays.asList(
               "-Dcom.sun.management.jmxremote.port=" + jmxPort,
