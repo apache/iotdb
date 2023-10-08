@@ -34,6 +34,7 @@ import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoCompo
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.DEVICE_NUM_MISMATCH_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.DUPLICATE_TARGET_PATH_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.FORBID_PLACEHOLDER_ERROR_MSG;
+import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.ILLEGAL_NODE_NAME_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.PATH_NUM_MISMATCH_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.PLACEHOLDER_MISMATCH_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_CAN_ONLY_EXIST_ALONE;
@@ -154,6 +155,10 @@ public class AnalyzeFailTest {
     assertAnalyzeSemanticException(
         "select s1, s2 into ::(s1_1, s2_2), root.backup_sg.::(s1, s2) from root.sg.* align by device;",
         PLACEHOLDER_MISMATCH_ERROR_MSG);
+    assertAnalyzeSemanticException(
+        "select s1 into root.sg_bk.${2}_$abc(s1) from root.sg.d1;", ILLEGAL_NODE_NAME_ERROR_MSG);
+    assertAnalyzeSemanticException(
+        "select s1 into root.sg_bk.d01(${3}_$abc) from root.sg.d1;", ILLEGAL_NODE_NAME_ERROR_MSG);
   }
 
   @Test
