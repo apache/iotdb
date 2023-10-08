@@ -91,7 +91,8 @@ public class PipeInsertionDataNodeListener {
 
   //////////////////////////// listen to events ////////////////////////////
 
-  public void listenToTsFile(String dataRegionId, TsFileResource tsFileResource) {
+  public void listenToTsFile(
+      String dataRegionId, TsFileResource tsFileResource, boolean isGeneratedByPipe) {
     // We don't judge whether listenToTsFileExtractorCount.get() == 0 here on purpose
     // because extractors may use tsfile events when some exceptions occur in the
     // insert nodes listening process.
@@ -103,7 +104,8 @@ public class PipeInsertionDataNodeListener {
       return;
     }
 
-    assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(tsFileResource));
+    assigner.publishToAssign(
+        PipeRealtimeEventFactory.createRealtimeEvent(tsFileResource, isGeneratedByPipe));
   }
 
   public void listenToInsertNode(
@@ -124,6 +126,17 @@ public class PipeInsertionDataNodeListener {
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(walEntryHandler, insertNode, tsFileResource));
+  }
+
+  public void listenToHeartbeat(boolean shouldPrintMessage) {
+    if (listenToInsertNodeExtractorCount.get() == 0 && listenToTsFileExtractorCount.get() == 0) {
+      return;
+    }
+
+    dataRegionId2Assigner.forEach(
+        (key, value) ->
+            value.publishToAssign(
+                PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
   }
 
   /////////////////////////////// singleton ///////////////////////////////

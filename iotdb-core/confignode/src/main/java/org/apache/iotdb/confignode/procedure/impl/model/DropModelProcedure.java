@@ -21,18 +21,18 @@ package org.apache.iotdb.confignode.procedure.impl.model;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.mlnode.MLNodeClient;
+import org.apache.iotdb.commons.client.mlnode.MLNodeClientManager;
+import org.apache.iotdb.commons.client.mlnode.MLNodeInfo;
 import org.apache.iotdb.commons.model.exception.ModelManagementException;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
-import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.model.DropModelState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.db.protocol.client.MLNodeClient;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -71,81 +71,26 @@ public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
     try {
       switch (state) {
         case INIT:
-          LOGGER.info("Start to drop model [{}]", modelId);
-
-          ModelInfo modelInfo = env.getConfigManager().getModelManager().getModelInfo();
-          modelInfo.acquireModelTableLock();
-          if (!modelInfo.isModelExist(modelId)) {
-            throw new ModelManagementException(
-                String.format(
-                    "Failed to drop model [%s], this model has not been created", modelId));
-          }
-          setNextState(DropModelState.VALIDATED);
-          break;
-
-        case VALIDATED:
-          LOGGER.info("Start to drop model metrics [{}] on Data Nodes", modelId);
-
-          Optional<TDataNodeLocation> targetDataNode =
-              env.getConfigManager().getNodeManager().getLowestLoadDataNode();
-          if (!targetDataNode.isPresent()) {
-            // no usable DataNode
-            throw new ModelManagementException(
-                String.format("Failed to drop model [%s], there is no RUNNING DataNode", modelId));
-          }
-
-          TSStatus status =
-              SyncDataNodeClientPool.getInstance()
-                  .sendSyncRequestToDataNodeWithRetry(
-                      targetDataNode.get().getInternalEndPoint(),
-                      new TDeleteModelMetricsReq(modelId),
-                      DataNodeRequestType.DELETE_MODEL_METRICS);
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            throw new ModelManagementException(
-                String.format(
-                    "Failed to drop model [%s], fail to delete metrics: %s",
-                    modelId, status.getMessage()));
-          }
-
-          setNextState(DropModelState.DATA_NODE_DROPPED);
-          break;
-
-        case DATA_NODE_DROPPED:
-          LOGGER.info("Start to drop model file [{}] on Ml Node", modelId);
-
-          try (MLNodeClient client = new MLNodeClient()) {
-            status = client.deleteModel(modelId);
-            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              throw new TException(status.getMessage());
-            }
-          } catch (TException e) {
-            throw new ModelManagementException(
-                String.format(
-                    "Failed to drop model [%s], fail to delete model on MLNode: %s",
-                    modelId, e.getMessage()));
-          }
-
-          setNextState(DropModelState.ML_NODE_DROPPED);
-          break;
-
-        case ML_NODE_DROPPED:
           LOGGER.info("Start to drop model [{}] on Config Nodes", modelId);
-
-          ConsensusWriteResponse response =
+          TSStatus response =
               env.getConfigManager().getConsensusManager().write(new DropModelPlan(modelId));
-          if (!response.isSuccessful()) {
+          if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             throw new ModelManagementException(
                 String.format(
                     "Failed to drop model [%s], fail to drop model on Config Nodes: %s",
-                    modelId, response.getErrorMessage()));
+                    modelId, response.getMessage()));
           }
-
-          setNextState(DropModelState.CONFIG_NODE_DROPPED);
+          setNextState(DropModelState.DATA_NODE_DROPPED);
           break;
-
-        case CONFIG_NODE_DROPPED:
-          env.getConfigManager().getModelManager().getModelInfo().releaseModelTableLock();
+        case DATA_NODE_DROPPED:
+          deleteMetricsOnDataNode(env);
+          break;
+        case ML_NODE_DROPPED:
+          dropModelOnMLNode();
           return Flow.NO_MORE_STATE;
+        default:
+          throw new UnsupportedOperationException(
+              String.format("Unknown state during executing dropModelProcedure, %s", state));
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
@@ -165,14 +110,57 @@ public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
     return Flow.HAS_MORE_STATE;
   }
 
+  private void dropModelOnMLNode() {
+    LOGGER.info("Start to drop model file [{}] on Ml Node", modelId);
+    try (MLNodeClient client =
+        MLNodeClientManager.getInstance().borrowClient(MLNodeInfo.endPoint)) {
+      TSStatus status = client.deleteModel(modelId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new TException(status.getMessage());
+      }
+    } catch (Exception e) {
+      throw new ModelManagementException(
+          String.format(
+              "Failed to drop model [%s], fail to delete model on MLNode: %s",
+              modelId, e.getMessage()));
+    }
+  }
+
+  private void deleteMetricsOnDataNode(ConfigNodeProcedureEnv env) {
+    LOGGER.info("Start to drop model metrics [{}] on Data Nodes", modelId);
+
+    Optional<TDataNodeLocation> targetDataNode =
+        env.getConfigManager().getNodeManager().getLowestLoadDataNode();
+    if (!targetDataNode.isPresent()) {
+      // no usable DataNode
+      throw new ModelManagementException(
+          String.format("Failed to drop model [%s], there is no RUNNING DataNode", modelId));
+    }
+
+    TSStatus status =
+        SyncDataNodeClientPool.getInstance()
+            .sendSyncRequestToDataNodeWithRetry(
+                targetDataNode.get().getInternalEndPoint(),
+                new TDeleteModelMetricsReq(modelId),
+                DataNodeRequestType.DELETE_MODEL_METRICS);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // It's ok for the next state if the metric path doesn't exit
+      if (status.getCode() != TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
+        throw new ModelManagementException(
+            String.format(
+                "Failed to drop model [%s], fail to delete metrics: %s",
+                modelId, status.getMessage()));
+      }
+      LOGGER.warn("The path of metrics does not exist on model {}", modelId);
+    }
+
+    setNextState(DropModelState.ML_NODE_DROPPED);
+  }
+
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, DropModelState state)
       throws IOException, InterruptedException, ProcedureException {
-    if (state == DropModelState.INIT) {
-      LOGGER.info("Start [INIT] rollback of model [{}]", modelId);
-
-      env.getConfigManager().getModelManager().getModelInfo().releaseModelTableLock();
-    }
+    // no need to rollback
   }
 
   @Override

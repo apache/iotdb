@@ -273,6 +273,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
+  public PipeMeta getPipeMetaByPipeName(String pipeName) {
+    acquireReadLock();
+    try {
+      return pipeMetaKeeper.getPipeMetaByPipeName(pipeName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   public boolean isEmpty() {
     acquireReadLock();
     try {
@@ -322,7 +331,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                               consensusGroupIdToTaskMetaMap.put(
                                   dataRegionGroupId,
                                   new PipeTaskMeta(
-                                      new MinimumProgressIndex(), newDataRegionLeader));
+                                      MinimumProgressIndex.INSTANCE, newDataRegionLeader));
                             }
                             // else:
                             // "The pipe task meta does not contain the data region group {} or

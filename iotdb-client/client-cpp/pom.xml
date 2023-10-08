@@ -42,8 +42,8 @@
         <plugins>
             <!-- Build and do session integration test -->
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>2.6</version>
                 <executions>
                     <execution>
                         <id>copy-test-resources</id>
@@ -66,7 +66,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.6.0</version>
                 <executions>
                     <execution>
                         <id>get-thrift</id>
@@ -77,9 +76,9 @@
                         <configuration>
                             <artifactItems>
                                 <artifactItem>
-                                    <groupId>org.apache.iotdb</groupId>
+                                    <groupId>org.apache.iotdb.tools</groupId>
                                     <artifactId>iotdb-tools-thrift</artifactId>
-                                    <version>${project.version}</version>
+                                    <version>${iotdb-tools-thrift.version}</version>
                                     <classifier>${os.classifier}</classifier>
                                     <type>zip</type>
                                     <overWrite>true</overWrite>
@@ -93,7 +92,6 @@
             <plugin>
                 <groupId>com.googlecode.maven-download-plugin</groupId>
                 <artifactId>download-maven-plugin</artifactId>
-                <version>1.6.8</version>
                 <executions>
                     <!-- Download the Catch2 header file. -->
                     <execution>
@@ -113,7 +111,6 @@
             <plugin>
                 <groupId>com.coderplus.maven.plugins</groupId>
                 <artifactId>copy-rename-maven-plugin</artifactId>
-                <version>1.0.1</version>
                 <executions>
                     <!-- TODO: Do this differently using the artifact downloader -->
                     <execution>
@@ -164,7 +161,6 @@
             <plugin>
                 <groupId>org.apache.thrift.tools</groupId>
                 <artifactId>maven-thrift-plugin</artifactId>
-                <version>0.1.11</version>
                 <executions>
                     <execution>
                         <id>generate-thrift-sources-cpp</id>
@@ -280,7 +276,6 @@
             <plugin>
                 <groupId>com.bazaarvoice.maven.plugins</groupId>
                 <artifactId>process-exec-maven-plugin</artifactId>
-                <version>0.9</version>
                 <executions>
                     <!-- Start a local IoTDB server to run integration test cases -->
                     <execution>

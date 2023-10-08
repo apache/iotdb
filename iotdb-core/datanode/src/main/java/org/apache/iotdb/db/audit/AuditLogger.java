@@ -21,12 +21,14 @@ package org.apache.iotdb.db.audit;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.session.ClientSession;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
@@ -43,6 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 
+import java.time.ZoneId;
 import java.util.List;
 
 import static org.apache.iotdb.db.pipe.receiver.legacy.loader.ILoader.SCHEMA_FETCHER;
@@ -59,6 +62,8 @@ public class AuditLogger {
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<AuditLogStorage> auditLogStorageList = config.getAuditLogStorage();
+  private static final SessionInfo sessionInfo =
+      new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault().getId());
 
   private static final List<AuditLogOperation> auditLogOperationList =
       config.getAuditLogOperation();
@@ -108,7 +113,7 @@ public class AuditLogger {
           COORDINATOR.execute(
               generateInsertStatement(log, address, username),
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
+              sessionInfo,
               "",
               ClusterPartitionFetcher.getInstance(),
               SCHEMA_FETCHER);
@@ -205,6 +210,7 @@ public class AuditLogger {
       case BATCH_INSERT_ROWS:
       case BATCH_INSERT_ONE_DEVICE:
       case MULTI_BATCH_INSERT:
+      case PIPE_ENRICHED_INSERT:
       case DELETE:
       case SELECT_INTO:
       case LOAD_FILES:

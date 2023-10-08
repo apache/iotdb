@@ -21,14 +21,16 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowNodesPlan;
 
 public class ShowNodesPlanImpl extends AbstractShowSchemaPlanImpl implements IShowNodesPlan {
 
   private final int level;
 
-  public ShowNodesPlanImpl(PartialPath pathPattern, int level, boolean isPrefixMatch) {
-    super(pathPattern, 0, 0, isPrefixMatch);
+  public ShowNodesPlanImpl(
+      PartialPath pathPattern, int level, boolean isPrefixMatch, PathPatternTree scope) {
+    super(pathPattern, 0, 0, isPrefixMatch, scope);
     this.level = level;
   }
 

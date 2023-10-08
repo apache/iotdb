@@ -282,7 +282,7 @@ public class WALNode implements IWALNode {
 
         // decide whether to snapshot or flush based on the effective info ration and throttle
         // threshold
-        if (!snapshotOrFlushMemTable()
+        if (trySnapshotOrFlushMemTable()
             && safelyDeletedSearchIndex != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
           return;
         }
@@ -309,10 +309,12 @@ public class WALNode implements IWALNode {
 
     private void summarizeExecuteResult() {
       if (filesShouldDelete.length == 0) {
-        logger.info(
-            "wal node-{}:no wal file was found that should be deleted,current first valid version id is {}",
-            identifier,
-            firstValidVersionId);
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "wal node-{}:no wal file was found that should be deleted, current first valid version id is {}",
+              identifier,
+              firstValidVersionId);
+        }
         return;
       }
 
@@ -322,7 +324,7 @@ public class WALNode implements IWALNode {
           StringBuilder summary =
               new StringBuilder(
                   String.format(
-                      "wal node-%s delete outdated files summary:the range that should be removed is: [%d,%d],delete successful is [%s],end file index is: [%s].The following reasons influenced the result: %s",
+                      "wal node-%s delete outdated files summary:the range that should be removed is: [%d,%d], delete successful is [%s], end file index is: [%s].The following reasons influenced the result: %s",
                       identifier,
                       WALFileUtils.parseVersionId(filesShouldDelete[0].getName()),
                       WALFileUtils.parseVersionId(
@@ -333,7 +335,7 @@ public class WALNode implements IWALNode {
 
           if (!pinnedMemTableIds.isEmpty()) {
             summary
-                .append("- MemTable has been flushed but pinned by PIPE,the MemTableId list is : ")
+                .append("- MemTable has been flushed but pinned by PIPE, the MemTableId list is : ")
                 .append(StringUtils.join(pinnedMemTableIds, ","))
                 .append(".")
                 .append(System.getProperty("line.separator"));
@@ -341,7 +343,7 @@ public class WALNode implements IWALNode {
           if (fileIndexAfterFilterSafelyDeleteIndex < filesShouldDelete.length) {
             summary.append(
                 String.format(
-                    "- The data in the wal file was not consumed by the consensus group,current search index is %d,safely delete index is %d",
+                    "- The data in the wal file was not consumed by the consensus group,current search index is %d, safely delete index is %d",
                     getCurrentSearchIndex(), safelyDeletedSearchIndex));
           }
           String summaryLog = summary.toString();
@@ -425,7 +427,7 @@ public class WALNode implements IWALNode {
      *
      * @return true if snapshot or flush is executed successfully
      */
-    private boolean snapshotOrFlushMemTable() {
+    private boolean trySnapshotOrFlushMemTable() {
       if (!shouldSnapshotOrFlush()) {
         return false;
       }
@@ -445,7 +447,9 @@ public class WALNode implements IWALNode {
         return false;
       }
       IMemTable oldestMemTable = oldestMemTableInfo.getMemTable();
-
+      if (oldestMemTable == null) {
+        return false;
+      }
       // get memTable's virtual database processor
       File oldestTsFile =
           FSFactoryProducer.getFSFactory().getFile(oldestMemTableInfo.getTsFilePath());
@@ -471,8 +475,6 @@ public class WALNode implements IWALNode {
         WRITING_METRICS.recordMemTableRamWhenCauseFlush(identifier, oldestMemTableTVListsRamCost);
       } else {
         snapshotMemTable(dataRegion, oldestTsFile, oldestMemTableInfo);
-        WRITING_METRICS.recordMemTableRamWhenCauseSnapshot(
-            identifier, oldestMemTableTVListsRamCost);
       }
       return true;
     }
@@ -521,8 +523,8 @@ public class WALNode implements IWALNode {
           "CheckpointManager$DeleteOutdatedFileTask.snapshotOrFlushOldestMemTable");
       try {
         // make sure snapshot is made before memTable flush operation
-        synchronized (memTable) {
-          if (memTable.getFlushStatus() != FlushStatus.WORKING) {
+        synchronized (memTableInfo) {
+          if (memTable == null || memTable.getFlushStatus() != FlushStatus.WORKING) {
             return;
           }
 
@@ -549,6 +551,7 @@ public class WALNode implements IWALNode {
           // it's low-risk to block writes awhile because this memTable accumulates slowly
           if (flushListener.waitForResult() == Status.FAILURE) {
             logger.error("Fail to snapshot memTable of {}", tsFile, flushListener.getCause());
+            return;
           }
           logger.info(
               "WAL node-{} snapshots memTable-{} to wal files because Effective information ratio {} is below wal min effective info ratio {}, memTable size is {}.",
@@ -557,6 +560,8 @@ public class WALNode implements IWALNode {
               effectiveInfoRatio,
               config.getWalMinEffectiveInfoRatio(),
               memTable.getTVListsRamCost());
+          WRITING_METRICS.recordMemTableRamWhenCauseSnapshot(
+              identifier, memTable.getTVListsRamCost());
         }
       } finally {
         dataRegion.writeUnlock();

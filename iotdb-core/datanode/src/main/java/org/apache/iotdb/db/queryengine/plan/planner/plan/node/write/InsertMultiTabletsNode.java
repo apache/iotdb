@@ -241,6 +241,12 @@ public class InsertMultiTabletsNode extends InsertNode {
   }
 
   @Override
+  public void markAsGeneratedByPipe() {
+    isGeneratedByPipe = true;
+    insertTabletNodeList.forEach(InsertTabletNode::markAsGeneratedByPipe);
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;

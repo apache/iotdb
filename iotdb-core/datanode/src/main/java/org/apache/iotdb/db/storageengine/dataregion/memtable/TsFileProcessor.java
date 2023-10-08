@@ -84,6 +84,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -161,7 +162,7 @@ public class TsFileProcessor {
       "{}: {} get flushQueryLock write lock released";
 
   /** close file listener. */
-  private final List<CloseFileListener> closeFileListeners = new ArrayList<>();
+  private final List<CloseFileListener> closeFileListeners = new CopyOnWriteArrayList<>();
 
   /** flush file listener. */
   private final List<FlushListener> flushListeners = new ArrayList<>();
@@ -305,7 +306,11 @@ public class TsFileProcessor {
   }
 
   private void createNewWorkingMemTable() throws WriteProcessException {
-    workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
+    workMemTable =
+        MemTableManager.getInstance()
+            .getAvailableMemTable(
+                dataRegionInfo.getDataRegion().getDatabaseName(),
+                dataRegionInfo.getDataRegion().getDataRegionId());
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 
@@ -893,7 +898,8 @@ public class TsFileProcessor {
       try {
         PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource);
         PipeInsertionDataNodeListener.getInstance()
-            .listenToTsFile(dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource);
+            .listenToTsFile(
+                dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource, false);
 
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.

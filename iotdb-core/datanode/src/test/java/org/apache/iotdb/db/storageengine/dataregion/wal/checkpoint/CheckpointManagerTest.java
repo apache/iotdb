@@ -48,6 +48,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class CheckpointManagerTest {
+  private static final String database = "root.test";
+  private static final String dataRegionId = "1";
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String identifier = String.valueOf(Integer.MAX_VALUE);
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
@@ -97,7 +99,8 @@ public class CheckpointManagerTest {
           () -> {
             String tsFilePath = logDirectory + File.separator + versionId + ".tsfile";
             MemTableInfo memTableInfo =
-                new MemTableInfo(new PrimitiveMemTable(), tsFilePath, versionId);
+                new MemTableInfo(
+                    new PrimitiveMemTable(database, dataRegionId), tsFilePath, versionId);
             versionId2memTableId.put(versionId, memTableInfo.getMemTableId());
             checkpointManager.makeCreateMemTableCP(memTableInfo);
             if (versionId < memTablesNum / 2) {
@@ -133,7 +136,8 @@ public class CheckpointManagerTest {
     while (size < config.getCheckpointFileSizeThresholdInByte()) {
       ++versionId;
       String tsFilePath = logDirectory + File.separator + versionId + ".tsfile";
-      MemTableInfo memTableInfo = new MemTableInfo(new PrimitiveMemTable(), tsFilePath, versionId);
+      MemTableInfo memTableInfo =
+          new MemTableInfo(new PrimitiveMemTable(database, dataRegionId), tsFilePath, versionId);
       versionId2memTableId.put(versionId, memTableInfo.getMemTableId());
       Checkpoint checkpoint =
           new Checkpoint(

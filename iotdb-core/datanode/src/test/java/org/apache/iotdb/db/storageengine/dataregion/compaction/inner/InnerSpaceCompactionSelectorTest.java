@@ -85,11 +85,14 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
-                List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
-                if (taskResource.size() != 2) {
+                List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+                    selector.selectInnerSpaceTask(resources);
+                if (innerSpaceCompactionTasks.size() != 2) {
                   throw new RuntimeException("task num is not 2");
                 }
-                if (taskResource.get(0).size() != 2 || taskResource.get(1).size() != 2) {
+                if (innerSpaceCompactionTasks.get(0).getSelectedTsFileResourceList().size() != 2
+                    || innerSpaceCompactionTasks.get(1).getSelectedTsFileResourceList().size()
+                        != 2) {
                   throw new RuntimeException("selected file num is not 2");
                 }
               } catch (Exception e) {
@@ -147,18 +150,20 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
-                List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
+                List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+                    selector.selectInnerSpaceTask(resources);
 
                 // the other thread holds write lock and delete files successfully before setting
                 // status to COMPACTION_CANDIDATE
                 cd1.countDown();
                 cd2.await();
 
-                if (taskResource.size() != 3) {
+                if (innerSpaceCompactionTasks.size() != 3) {
                   throw new RuntimeException("task num is not 3");
                 }
-                for (int idx = 0; idx < taskResource.size(); idx++) {
-                  List<TsFileResource> task = taskResource.get(idx);
+                for (int idx = 0; idx < innerSpaceCompactionTasks.size(); idx++) {
+                  List<TsFileResource> task =
+                      innerSpaceCompactionTasks.get(idx).getSelectedTsFileResourceList();
                   if (task.size() != 2) {
                     throw new RuntimeException("selected file num is not 2");
                   }
@@ -252,13 +257,14 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
-                List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
+                List<InnerSpaceCompactionTask> taskResource =
+                    selector.selectInnerSpaceTask(resources);
 
                 if (taskResource.size() != 3) {
                   throw new RuntimeException("task num is not 3");
                 }
                 for (int idx = 0; idx < taskResource.size(); idx++) {
-                  List<TsFileResource> task = taskResource.get(idx);
+                  List<TsFileResource> task = taskResource.get(idx).getSelectedTsFileResourceList();
                   if (task.size() != 2) {
                     throw new RuntimeException("selected file num is not 2");
                   }
@@ -366,11 +372,14 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
-                List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
-                if (taskResource.size() != 2) {
+                List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+                    selector.selectInnerSpaceTask(resources);
+                if (innerSpaceCompactionTasks.size() != 2) {
                   throw new RuntimeException("task num is not 2");
                 }
-                if (taskResource.get(0).size() != 2 || taskResource.get(1).size() != 2) {
+                if (innerSpaceCompactionTasks.get(0).getSelectedTsFileResourceList().size() != 2
+                    || innerSpaceCompactionTasks.get(1).getSelectedTsFileResourceList().size()
+                        != 2) {
                   throw new RuntimeException("selected file num is not 2");
                 }
               } catch (Exception e) {
@@ -432,18 +441,20 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
-                List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
+                List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+                    selector.selectInnerSpaceTask(resources);
 
                 // the other thread holds write lock and delete files successfully before setting
                 // status to COMPACTION_CANDIDATE
                 cd1.countDown();
                 cd2.await();
 
-                if (taskResource.size() != 3) {
+                if (innerSpaceCompactionTasks.size() != 3) {
                   throw new RuntimeException("task num is not 3");
                 }
-                for (int idx = 0; idx < taskResource.size(); idx++) {
-                  List<TsFileResource> task = taskResource.get(idx);
+                for (int idx = 0; idx < innerSpaceCompactionTasks.size(); idx++) {
+                  List<TsFileResource> task =
+                      innerSpaceCompactionTasks.get(idx).getSelectedTsFileResourceList();
                   if (task.size() != 2) {
                     throw new RuntimeException("selected file num is not 2");
                   }
@@ -540,13 +551,15 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
-                List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
+                List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+                    selector.selectInnerSpaceTask(resources);
 
-                if (taskResource.size() != 3) {
+                if (innerSpaceCompactionTasks.size() != 3) {
                   throw new RuntimeException("task num is not 3");
                 }
-                for (int idx = 0; idx < taskResource.size(); idx++) {
-                  List<TsFileResource> task = taskResource.get(idx);
+                for (int idx = 0; idx < innerSpaceCompactionTasks.size(); idx++) {
+                  List<TsFileResource> task =
+                      innerSpaceCompactionTasks.get(idx).getSelectedTsFileResourceList();
                   if (task.size() != 2) {
                     throw new RuntimeException("selected file num is not 2");
                   }
@@ -652,8 +665,9 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
         new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
     // copy candidate source file list
     List<TsFileResource> resources = tsFileManager.getOrCreateSequenceListByTimePartition(0);
-    List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
-    Assert.assertEquals(1, taskResource.size());
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+        selector.selectInnerSpaceTask(resources);
+    Assert.assertEquals(1, innerSpaceCompactionTasks.size());
     modFile.remove();
   }
 }

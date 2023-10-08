@@ -69,7 +69,7 @@
             <dependency>
                 <groupId>org.apache.avro</groupId>
                 <artifactId>avro</artifactId>
-                <version>1.10.2</version>
+                <version>1.11.3</version>
             </dependency>
             <dependency>
                 <groupId>org.codehaus.jackson</groupId>
@@ -177,8 +177,8 @@
             <build>
                 <plugins>
                     <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${maven.assembly.version}</version>
                         <configuration>
                             <descriptorRefs>
                                 <descriptorRef>jar-with-dependencies</descriptorRef>

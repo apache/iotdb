@@ -21,10 +21,12 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -37,22 +39,18 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
-  // This queue is used to store pending events extracted by the method extract(). The method
-  // supply() will poll events from this queue and send them to the next pipe plugin.
-  private final UnboundedBlockingPendingQueue<Event> pendingQueue;
-
-  public PipeRealtimeDataRegionHybridExtractor() {
-    this.pendingQueue = new UnboundedBlockingPendingQueue<>();
-  }
+  private volatile boolean isStartedToSupply = false;
 
   @Override
-  public void extract(PipeRealtimeEvent event) {
+  protected void doExtract(PipeRealtimeEvent event) {
     final Event eventToExtract = event.getEvent();
 
     if (eventToExtract instanceof TabletInsertionEvent) {
       extractTabletInsertion(event);
     } else if (eventToExtract instanceof TsFileInsertionEvent) {
       extractTsFileInsertion(event);
+    } else if (eventToExtract instanceof PipeHeartbeatEvent) {
+      extractHeartbeat(event);
     } else {
       throw new UnsupportedOperationException(
           String.format(
@@ -72,10 +70,17 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTabletInsertion(PipeRealtimeEvent event) {
-    if (isApproachingCapacity()) {
-      // if the pending queue is approaching capacity, we should not extract any more tablet events.
-      // all the data represented by the tablet events should be carried by the following tsfile
-      // event.
+    if (!isStartedToSupply
+        || mayWalSizeReachThrottleThreshold()
+        || isTsFileEventCountInQueueExceededLimit()) {
+      // In the following 3 cases, we should not extract any more tablet events. all the data
+      // represented by the tablet events should be carried by the following tsfile event:
+      //  1. The historical extractor has not consumed all the data.
+      //  2. HybridExtractor will first try to do extraction in log mode, and then choose log or
+      //  tsfile mode to continue extracting, but if (leader data regions num * Wal size) > (maximum
+      //  size of wal buffer), the write operation will be throttled, so we should not extract any
+      //  more tablet events.
+      //  3. The number of tsfile events in the pending queue has exceeded the limit.
       event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
     }
 
@@ -83,7 +88,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     switch (state) {
       case USING_TSFILE:
         // Ignore the tablet event.
-        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
         break;
       case EMPTY:
       case USING_TABLET:
@@ -100,7 +105,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
           // Ignore the tablet event.
-          event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+          event.decreaseReferenceCount(
+              PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
         }
         break;
       default:
@@ -136,12 +142,16 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
           // Ignore the tsfile event.
-          event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+          event.decreaseReferenceCount(
+              PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
         }
         break;
       case USING_TABLET:
-        // All the tablet events have been extracted, so we can ignore the tsfile event.
-        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+        // All the tablet events have been extracted, so we can ignore the tsFile event.
+        // Report this event for SimpleProgressIndex, which does not have progressIndex for wal.
+        // This report won't affect IoTProgressIndex since the previous wal events have been
+        // successfully transferred here.
+        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName(), true);
         break;
       default:
         throw new UnsupportedOperationException(
@@ -151,13 +161,56 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     }
   }
 
-  private boolean isApproachingCapacity() {
-    return pendingQueue.size()
-        >= PipeConfig.getInstance().getPipeExtractorPendingQueueTabletLimit();
+  private void extractHeartbeat(PipeRealtimeEvent event) {
+    // Record the pending queue size before trying to put heartbeatEvent into queue
+    ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
+
+    Event lastEvent = pendingQueue.peekLast();
+    if (lastEvent instanceof PipeRealtimeEvent
+        && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent
+        && (((PipeHeartbeatEvent) ((PipeRealtimeEvent) lastEvent).getEvent()).isShouldPrintMessage()
+            || !((PipeHeartbeatEvent) event.getEvent()).isShouldPrintMessage())) {
+      // If the last event in the pending queue is a heartbeat event, we should not extract any more
+      // heartbeat events to avoid OOM when the pipe is stopped.
+      // Besides, the printable event has higher priority to stay in queue to enable metrics report.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
+      return;
+    }
+
+    if (!pendingQueue.waitedOffer(event)) {
+      // this would not happen, but just in case.
+      // pendingQueue is unbounded, so it should never reach capacity.
+      LOGGER.error(
+          "extract: pending queue of PipeRealtimeDataRegionHybridExtractor {} "
+              + "has reached capacity, discard heartbeat event {}",
+          this,
+          event);
+
+      // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of
+      // pipe progress.
+
+      // ignore this event.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
+    }
+  }
+
+  private boolean mayWalSizeReachThrottleThreshold() {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    // Assume that the max data replica factor in common config is 3.
+    // This can be changed in the future.
+    return 3L * PipeAgent.task().getLeaderDataRegionCount() * config.getWalBufferSize()
+        > config.getThrottleThreshold();
+  }
+
+  private boolean isTsFileEventCountInQueueExceededLimit() {
+    return pendingQueue.getTsFileInsertionEventCount()
+        >= PipeConfig.getInstance().getPipeExtractorPendingQueueTsFileLimit();
   }
 
   @Override
   public Event supply() {
+    isStartedToSupply = true;
+
     PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
 
     while (realtimeEvent != null) {
@@ -169,6 +222,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         suppliedEvent = supplyTabletInsertion(realtimeEvent);
       } else if (eventToSupply instanceof TsFileInsertionEvent) {
         suppliedEvent = supplyTsFileInsertion(realtimeEvent);
+      } else if (eventToSupply instanceof PipeHeartbeatEvent) {
+        suppliedEvent = supplyHeartbeat(realtimeEvent);
       } else {
         throw new UnsupportedOperationException(
             String.format(
@@ -176,7 +231,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                 eventToSupply.getClass(), this));
       }
 
-      realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+      realtimeEvent.decreaseReferenceCount(
+          PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
 
       if (suppliedEvent != null) {
         return suppliedEvent;
@@ -253,9 +309,20 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     return null;
   }
 
-  @Override
-  public void close() throws Exception {
-    super.close();
-    pendingQueue.clear();
+  private Event supplyHeartbeat(PipeRealtimeEvent event) {
+    if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
+      return event.getEvent();
+    } else {
+      // this would not happen, but just in case.
+      LOGGER.error(
+          "Heartbeat Event {} can not be supplied because "
+              + "the reference count can not be increased",
+          event.getEvent());
+
+      // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of pipe
+      // progress.
+
+      return null;
+    }
   }
 }

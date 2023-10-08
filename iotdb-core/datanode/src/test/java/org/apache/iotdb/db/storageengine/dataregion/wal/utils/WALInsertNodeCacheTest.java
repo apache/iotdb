@@ -46,7 +46,9 @@ public class WALInsertNodeCacheTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String identifier = String.valueOf(Integer.MAX_VALUE);
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
-  private static final String devicePath = "root.test_sg.test_d";
+  private static final String databasePath = "root.test_sg";
+  private static final String devicePath = databasePath + ".test_d";
+  private static final String dataRegionId = "1";
   private static final WALInsertNodeCache cache = WALInsertNodeCache.getInstance();
   private WALMode prevMode;
   private boolean prevIsClusterMode;
@@ -74,7 +76,7 @@ public class WALInsertNodeCacheTest {
 
   @Test
   public void testLoadUnsealedWALFile() throws Exception {
-    IMemTable memTable = new PrimitiveMemTable();
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode.onMemTableCreated(memTable, logDirectory + "/" + "fake.tsfile");
     InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
     node1.setSearchIndex(1);
@@ -85,13 +87,13 @@ public class WALInsertNodeCacheTest {
       Thread.sleep(50);
     }
     // load by cache
-    assertEquals(node1, cache.get(position));
+    assertEquals(node1, cache.getInsertNode(position));
   }
 
   @Test
   public void testBatchLoad() throws Exception {
     // write memTable1
-    IMemTable memTable1 = new PrimitiveMemTable();
+    IMemTable memTable1 = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode.onMemTableCreated(memTable1, logDirectory + "/" + "fake1.tsfile");
     InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
     node1.setSearchIndex(1);
@@ -102,7 +104,7 @@ public class WALInsertNodeCacheTest {
     WALFlushListener flushListener2 = walNode.log(memTable1.getMemTableId(), node2);
     WALEntryPosition position2 = flushListener2.getWalEntryHandler().getWalEntryPosition();
     // write memTable2
-    IMemTable memTable2 = new PrimitiveMemTable();
+    IMemTable memTable2 = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode.onMemTableCreated(memTable2, logDirectory + "/" + "fake2.tsfile");
     InsertRowNode node3 = getInsertRowNode(devicePath, System.currentTimeMillis());
     node1.setSearchIndex(3);
@@ -115,14 +117,14 @@ public class WALInsertNodeCacheTest {
     }
     // check batch load memTable1
     cache.addMemTable(memTable1.getMemTableId());
-    assertEquals(node1, cache.get(position1));
+    assertEquals(node1, cache.getInsertNode(position1));
     assertTrue(cache.contains(position1));
-    assertTrue(cache.contains(position2));
+    assertEquals(WALInsertNodeCache.getInstance().isBatchLoadEnabled(), cache.contains(position2));
     assertFalse(cache.contains(position3));
     // check batch load none
     cache.removeMemTable(memTable1.getMemTableId());
     cache.clear();
-    assertEquals(node1, cache.get(position1));
+    assertEquals(node1, cache.getInsertNode(position1));
     assertTrue(cache.contains(position1));
     assertFalse(cache.contains(position2));
     assertFalse(cache.contains(position3));

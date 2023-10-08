@@ -46,7 +46,8 @@ public class SchemaMetricManager {
   }
 
   public void createSchemaRegionMetric(ISchemaRegion schemaRegion) {
-    ISchemaRegionMetric schemaRegionMetric = schemaRegion.createSchemaRegionMetric();
+    ISchemaRegionMetric schemaRegionMetric =
+        schemaRegion.createSchemaRegionMetric(schemaRegion.getDatabaseFullPath());
     schemaRegionMetricMap.put(schemaRegion.getSchemaRegionId().getId(), schemaRegionMetric);
     MetricService.getInstance().addMetricSet(schemaRegionMetric);
   }

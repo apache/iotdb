@@ -69,7 +69,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.3.0</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -99,7 +98,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>${maven.assembly.version}</version>
                 <executions>
                     <!-- Package binaries-->
                     <execution>

@@ -62,7 +62,19 @@ public class WALEntryPosition {
     if (!canRead()) {
       throw new IOException("This entry isn't ready for read.");
     }
-    return CACHE.get(this);
+    return CACHE.getInsertNode(this);
+  }
+
+  /**
+   * Read the wal entry and get the raw bytebuffer. Use LRU cache to accelerate read.
+   *
+   * @throws IOException failing to read.
+   */
+  public ByteBuffer readByteBufferViaCache() throws IOException {
+    if (!canRead()) {
+      throw new IOException("This entry isn't ready for read.");
+    }
+    return CACHE.getByteBuffer(this);
   }
 
   /**

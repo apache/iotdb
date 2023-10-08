@@ -128,14 +128,18 @@ public interface PipeConnector extends PipePlugin {
    * @throws Exception the user can throw errors if necessary
    */
   default void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    for (final TabletInsertionEvent tabletInsertionEvent :
-        tsFileInsertionEvent.toTabletInsertionEvents()) {
-      transfer(tabletInsertionEvent);
+    try {
+      for (final TabletInsertionEvent tabletInsertionEvent :
+          tsFileInsertionEvent.toTabletInsertionEvents()) {
+        transfer(tabletInsertionEvent);
+      }
+    } finally {
+      tsFileInsertionEvent.close();
     }
   }
 
   /**
-   * This method is used to transfer the Event.
+   * This method is used to transfer the generic events, including HeartbeatEvent.
    *
    * @param event Event to be transferred
    * @throws PipeConnectionException if the connection is broken

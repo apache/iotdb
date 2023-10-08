@@ -34,7 +34,7 @@
         <iotdb.ut.skip>${iotdb.test.skip}</iotdb.ut.skip>
         <jjwt-api.version>0.10.8</jjwt-api.version>
         <oauth2-oidc-sdk.version>8.3</oauth2-oidc-sdk.version>
-        <tomcat-embed-core.version>10.1.0-M1</tomcat-embed-core.version>
+        <tomcat-embed-core.version>10.0.27</tomcat-embed-core.version>
     </properties>
     <build>
         <plugins>
@@ -75,7 +75,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>${maven.assembly.version}</version>
                 <executions>
                     <!-- Package binaries-->
                     <execution>
@@ -112,6 +111,7 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
                 <executions>
                     <execution>
@@ -137,7 +137,6 @@
                 <!-- generate sources from fmpp -->
                 <groupId>org.apache.drill.tools</groupId>
                 <artifactId>drill-fmpp-maven-plugin</artifactId>
-                <version>${drill.freemarker.maven.plugin.version}</version>
                 <executions>
                     <execution>
                         <id>generate-fmpp</id>
@@ -156,7 +155,6 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.2.0</version>
                 <executions>
                     <execution>
                         <id>add-source</id>
@@ -171,6 +169,21 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <!-- Make sure stuff is also cleaned up, which might be left over from the tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>data</directory>
+                            <includes>
+                                <include>**</include>
+                            </includes>
+                        </fileset>
+                    </filesets>
+                </configuration>
             </plugin>
         </plugins>
     </build>
@@ -224,6 +237,20 @@
             <artifactId>stats</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>airline</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.code.findbugs</groupId>
+                    <artifactId>jsr305</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>concurrent</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-server</artifactId>
         </dependency>
@@ -235,6 +262,11 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>openapi</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.milo</groupId>
+            <artifactId>sdk-server</artifactId>
+            <version>${milo.version}</version>
         </dependency>
         <dependency>
             <groupId>commons-cli</groupId>
@@ -338,6 +370,11 @@
         <dependency>
             <groupId>com.lmax</groupId>
             <artifactId>disruptor</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.java-websocket</groupId>
+            <artifactId>Java-WebSocket</artifactId>
+            <version>${websocket.version}</version>
         </dependency>
     </dependencies>
     <profiles>

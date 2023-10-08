@@ -19,13 +19,18 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -54,6 +59,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -68,6 +74,7 @@ import java.util.Set;
 public class CompactionUtils {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private static final String SYSTEM = "system";
 
   private CompactionUtils() {}
 
@@ -439,54 +446,59 @@ public class CompactionUtils {
 
   public static void deleteSourceTsFileAndUpdateFileMetrics(
       List<TsFileResource> sourceSeqResourceList, List<TsFileResource> sourceUnseqResourceList) {
-    // delete seq file
-    deleteSourceTsFileAndUpdateFileMetrics(sourceSeqResourceList);
-
-    // delete unSeq file
-    long[] unSequenceFileSize = new long[sourceUnseqResourceList.size()];
-    List<String> unSequenceFileNames = new ArrayList<>();
-    boolean removeSuccess = true;
-    for (int i = 0; i < sourceUnseqResourceList.size(); i++) {
-      TsFileResource tsFileResource = sourceUnseqResourceList.get(i);
-      if (!tsFileResource.remove()) {
-        removeSuccess = false;
-        logger.warn(
-            "[Compaction] delete unSequence file failed,file path is {}",
-            tsFileResource.getTsFile().getAbsolutePath());
-      } else {
-        logger.info(
-            "[Compaction] delete unSequence file :{}",
-            tsFileResource.getTsFile().getAbsolutePath());
-        unSequenceFileSize[i] = tsFileResource.getTsFileSize();
-        unSequenceFileNames.add(tsFileResource.getTsFile().getName());
-      }
-    }
-    if (removeSuccess) {
-      FileMetrics.getInstance().deleteFile(unSequenceFileSize, false, unSequenceFileNames);
-    }
+    deleteSourceTsFileAndUpdateFileMetrics(sourceSeqResourceList, true);
+    deleteSourceTsFileAndUpdateFileMetrics(sourceUnseqResourceList, false);
   }
 
   public static void deleteSourceTsFileAndUpdateFileMetrics(
-      List<TsFileResource> sourceSeqResourceList) {
-    long[] sequenceFileSize = new long[sourceSeqResourceList.size()];
-    List<String> sequenceFileNames = new ArrayList<>();
-    boolean removeSuccess = true;
-    for (int i = 0; i < sourceSeqResourceList.size(); i++) {
-      TsFileResource tsFileResource = sourceSeqResourceList.get(i);
-      if (!tsFileResource.remove()) {
-        removeSuccess = false;
+      List<TsFileResource> resources, boolean seq) {
+    long[] fileSizes = new long[resources.size()];
+    List<String> fileNames = new ArrayList<>(resources.size());
+    int removeSuccessFileNum = 0;
+    for (TsFileResource resource : resources) {
+      if (!resource.remove()) {
         logger.warn(
-            "[Compaction] delete sequence file failed,file path is {}",
-            tsFileResource.getTsFile().getAbsolutePath());
+            "[Compaction] delete file failed, file path is {}",
+            resource.getTsFile().getAbsolutePath());
       } else {
-        logger.info(
-            "[Compaction] delete sequence file :{}", tsFileResource.getTsFile().getAbsolutePath());
-        sequenceFileSize[i] = tsFileResource.getTsFileSize();
-        sequenceFileNames.add(tsFileResource.getTsFile().getName());
+        logger.info("[Compaction] delete file: {}", resource.getTsFile().getAbsolutePath());
+        fileSizes[removeSuccessFileNum] = resource.getTsFileSize();
+        fileNames.add(resource.getTsFile().getName());
+        removeSuccessFileNum++;
       }
     }
-    if (removeSuccess) {
-      FileMetrics.getInstance().deleteFile(sequenceFileSize, true, sequenceFileNames);
+    if (removeSuccessFileNum != 0) {
+      fileSizes = Arrays.copyOfRange(fileSizes, 0, removeSuccessFileNum);
+      FileMetrics.getInstance().deleteFile(fileSizes, seq, fileNames);
     }
+  }
+
+  public static boolean isDiskHasSpace() {
+    return isDiskHasSpace(0d);
+  }
+
+  public static boolean isDiskHasSpace(double redundancy) {
+    double freeDisk =
+        MetricService.getInstance()
+            .getAutoGauge(
+                SystemMetric.SYS_DISK_FREE_SPACE.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                SYSTEM)
+            .value();
+    double totalDisk =
+        MetricService.getInstance()
+            .getAutoGauge(
+                SystemMetric.SYS_DISK_TOTAL_SPACE.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                SYSTEM)
+            .value();
+
+    if (freeDisk != 0 && totalDisk != 0) {
+      return freeDisk / totalDisk
+          > CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold() + redundancy;
+    }
+    return true;
   }
 }

@@ -25,9 +25,20 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.base.Throwables;
+import io.airlift.airline.Cli;
+import io.airlift.airline.Help;
+import io.airlift.airline.ParseArgumentsMissingException;
+import io.airlift.airline.ParseArgumentsUnexpectedException;
+import io.airlift.airline.ParseCommandMissingException;
+import io.airlift.airline.ParseCommandUnrecognizedException;
+import io.airlift.airline.ParseOptionConversionException;
+import io.airlift.airline.ParseOptionMissingException;
+import io.airlift.airline.ParseOptionMissingValueException;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 
 @SuppressWarnings("java:S106") // for console outputs
 public class CommonUtils {
@@ -100,6 +111,9 @@ public class CommonUtils {
   }
 
   public static boolean checkCanCastType(TSDataType src, TSDataType dest) {
+    if (Objects.isNull(src)) {
+      return true;
+    }
     switch (src) {
       case INT32:
         if (dest == TSDataType.INT64 || dest == TSDataType.FLOAT || dest == TSDataType.DOUBLE) {
@@ -118,6 +132,9 @@ public class CommonUtils {
   }
 
   public static Object castValue(TSDataType srcDataType, TSDataType destDataType, Object value) {
+    if (Objects.isNull(value)) {
+      return null;
+    }
     switch (srcDataType) {
       case INT32:
         if (destDataType == TSDataType.INT64) {
@@ -211,6 +228,39 @@ public class CommonUtils {
       return true;
     }
     throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
+  }
+
+  public static int runCli(
+      List<Class<? extends Runnable>> commands,
+      String[] args,
+      String cliName,
+      String cliDescription) {
+    Cli.CliBuilder<Runnable> builder = Cli.builder(cliName);
+
+    builder.withDescription(cliDescription).withDefaultCommand(Help.class).withCommands(commands);
+
+    Cli<Runnable> parser = builder.build();
+
+    int status = 0;
+    try {
+      Runnable parse = parser.parse(args);
+      parse.run();
+    } catch (IllegalArgumentException
+        | IllegalStateException
+        | ParseArgumentsMissingException
+        | ParseArgumentsUnexpectedException
+        | ParseOptionConversionException
+        | ParseOptionMissingException
+        | ParseOptionMissingValueException
+        | ParseCommandMissingException
+        | ParseCommandUnrecognizedException e) {
+      badUse(e);
+      status = 1;
+    } catch (Exception e) {
+      err(Throwables.getRootCause(e));
+      status = 2;
+    }
+    return status;
   }
 
   private static void badUse(Exception e) {

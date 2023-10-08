@@ -16,12 +16,16 @@
 # under the License.
 #
 from enum import Enum
+from typing import List
 
-MLNODE_CONF_DIRECTORY_NAME = "conf"
+MLNODE_CONF_DIRECTORY_NAME = "resources/conf"
 MLNODE_CONF_FILE_NAME = "iotdb-mlnode.toml"
 MLNODE_LOG_CONF_FILE_NAME = "logging_config.ini"
 
 MLNODE_MODEL_STORAGE_DIRECTORY_NAME = "models"
+
+TRIAL_ID_PREFIX = "__trial_"
+DEFAULT_TRIAL_ID = TRIAL_ID_PREFIX + "0"
 
 
 class TSStatusCode(Enum):
@@ -31,3 +35,65 @@ class TSStatusCode(Enum):
 
     def get_status_code(self) -> int:
         return self.value
+
+
+class TaskType(Enum):
+    FORECAST = "forecast"
+
+
+class OptionsKey(Enum):
+    # common
+    TASK_TYPE = "task_type"
+    MODEL_TYPE = "model_type"
+    AUTO_TUNING = "auto_tuning"
+    INPUT_VARS = "input_vars"
+
+    # forecast
+    INPUT_LENGTH = "input_length"
+    PREDICT_LENGTH = "predict_length"
+    PREDICT_INDEX_LIST = "predict_index_list"
+    INPUT_TYPE_LIST = "input_type_list"
+
+    def name(self) -> str:
+        return self.value
+
+
+class HyperparameterName(Enum):
+    # Training hyperparameter
+    LEARNING_RATE = "learning_rate"
+    EPOCHS = "epochs"
+    BATCH_SIZE = "batch_size"
+    USE_GPU = "use_gpu"
+    NUM_WORKERS = "num_workers"
+
+    # Structure hyperparameter
+    KERNEL_SIZE = "kernel_size"
+    INPUT_VARS = "input_vars"
+    BLOCK_TYPE = "block_type"
+    D_MODEL = "d_model"
+    INNER_LAYERS = "inner_layer"
+    OUTER_LAYERS = "outer_layer"
+
+    def name(self):
+        return self.value
+
+
+class ForecastModelType(Enum):
+    DLINEAR = "dlinear"
+    DLINEAR_INDIVIDUAL = "dlinear_individual"
+    NBEATS = "nbeats"
+
+    @classmethod
+    def values(cls) -> List[str]:
+        values = []
+        for item in list(cls):
+            values.append(item.value)
+        return values
+
+
+class ModelInputName(Enum):
+    DATA_X = "data_x"
+    TIME_STAMP_X = "time_stamp_x"
+    TIME_STAMP_Y = "time_stamp_y"
+    DEC_INP = "dec_inp"
+

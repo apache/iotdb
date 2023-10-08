@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover;
 
+import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -72,7 +73,6 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -88,6 +88,7 @@ public class WALRecoverManagerTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private static final String SG_NAME = "root.recover_sg";
+  private static final String DATA_REGION_ID = "1";
   private static final String DEVICE1_NAME = SG_NAME.concat(".d1");
   private static final String DEVICE2_NAME = SG_NAME.concat(".d2");
   private static final String FILE_WITH_WAL_NAME =
@@ -151,7 +152,7 @@ public class WALRecoverManagerTest {
     List<Future<Void>> futures = new ArrayList<>();
     long firstWALVersionId = walBuffer.getCurrentWALFileVersion();
     for (int i = 0; i < threadsNum; ++i) {
-      IMemTable fakeMemTable = new PrimitiveMemTable();
+      IMemTable fakeMemTable = new PrimitiveMemTable(SG_NAME, DATA_REGION_ID);
       long memTableId = fakeMemTable.getMemTableId();
       Callable<Void> writeTask =
           () -> {
@@ -185,7 +186,7 @@ public class WALRecoverManagerTest {
     Thread.sleep(1_000);
     // write normal .wal files
     long firstValidVersionId = walBuffer.getCurrentWALFileVersion();
-    IMemTable targetMemTable = new PrimitiveMemTable();
+    IMemTable targetMemTable = new PrimitiveMemTable(SG_NAME, DATA_REGION_ID);
     WALEntry walEntry =
         new WALInfoEntry(targetMemTable.getMemTableId(), getInsertRowNode(DEVICE2_NAME, 4L), true);
     walBuffer.write(walEntry);
@@ -210,7 +211,7 @@ public class WALRecoverManagerTest {
     List<Future<Void>> futures = new ArrayList<>();
     long firstWALVersionId = walBuffer.getCurrentWALFileVersion();
     for (int i = 0; i < threadsNum; ++i) {
-      IMemTable fakeMemTable = new PrimitiveMemTable();
+      IMemTable fakeMemTable = new PrimitiveMemTable(SG_NAME, DATA_REGION_ID);
       long memTableId = fakeMemTable.getMemTableId();
       Callable<Void> writeTask =
           () -> {
@@ -244,7 +245,7 @@ public class WALRecoverManagerTest {
     Thread.sleep(1_000);
     // write normal .wal files
     long firstValidVersionId = walBuffer.getCurrentWALFileVersion();
-    IMemTable targetMemTable = new PrimitiveMemTable();
+    IMemTable targetMemTable = new PrimitiveMemTable(SG_NAME, DATA_REGION_ID);
     InsertRowNode insertRowNode = getInsertRowNode(DEVICE2_NAME, 4L);
     targetMemTable.insert(insertRowNode);
 
@@ -264,7 +265,7 @@ public class WALRecoverManagerTest {
     // prepare tsFiles
     List<WALRecoverListener> recoverListeners = prepareCrashedTsFile();
     // recover
-    recoverManager.setAllDataRegionScannedLatch(new CountDownLatch(0));
+    recoverManager.setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(0));
     recoverManager.recover();
     // check recover listeners
     try {

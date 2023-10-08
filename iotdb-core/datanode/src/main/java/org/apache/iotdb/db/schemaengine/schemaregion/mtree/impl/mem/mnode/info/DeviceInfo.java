@@ -27,7 +27,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.NON_TEMPLATE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 public class DeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
 

@@ -109,10 +109,10 @@ public interface ProgressIndex {
   static ProgressIndex blendProgressIndex(
       ProgressIndex progressIndex1, ProgressIndex progressIndex2) {
     if (progressIndex1 == null && progressIndex2 == null) {
-      return new MinimumProgressIndex();
+      return MinimumProgressIndex.INSTANCE;
     }
     if (progressIndex1 == null || progressIndex1 instanceof MinimumProgressIndex) {
-      return progressIndex2 == null ? new MinimumProgressIndex() : progressIndex2;
+      return progressIndex2 == null ? MinimumProgressIndex.INSTANCE : progressIndex2;
     }
     if (progressIndex2 == null || progressIndex2 instanceof MinimumProgressIndex) {
       return progressIndex1; // progressIndex1 is not null

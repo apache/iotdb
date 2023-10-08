@@ -10,7 +10,6 @@ on:
     branches:
       - master
       - "rel/*"
-      - "new_*"
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -18,7 +17,6 @@ on:
     branches:
       - master
       - "rel/*"
-      - "new_*"
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -33,7 +31,7 @@ env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
 
 jobs:
-  build:
+  build-unix:
     strategy:
       fail-fast: false
       max-parallel: 20
@@ -66,10 +64,10 @@ jobs:
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
-        run: ./mvnw clean install -P with-tools,with-cpp -pl distribution -am -DskipTests
+        run: ./mvnw clean install -P with-cpp -pl distribution,example/client-cpp-example -am -DskipTests
       - name: Test with Maven
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-        run: ./mvnw clean verify -P with-tools,with-cpp -pl iotdb-client/client-cpp -am
+        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am
       - name: Show test result
         if: failure()
         run: cat iotdb-client/client-cpp/target/build/test/Testing/Temporary/LastTest_*.log
@@ -86,21 +84,19 @@ jobs:
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Install Win_Flex_Bison
-        run: choco install winflexbison
+        run: choco install winflexbison3
       - name: Download Boost
         run: choco install boost-msvc-14.3 --version=1.78.0
-      - name: Install OpenSSL
-        run:  choco install openssl
       - name: Build IoTDB server
         shell: bash
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
-        run: ./mvnw clean install -P with-tools,with-cpp -pl distribution -am -DskipTests
+        run: ./mvnw clean install -P with-cpp -pl distribution,example/client-cpp-example -am -DskipTests
       - name: Test with Maven
         shell: bash
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-        run: ./mvnw clean verify -P with-tools,with-cpp -pl iotdb-client/client-cpp -am
+        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v3

@@ -63,6 +63,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -74,6 +75,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.TimeUnit;
 
 /** Asynchronously send RPC requests to DataNodes. See queryengine.thrift for more details. */
 public class AsyncDataNodeClientPool {
@@ -97,17 +100,30 @@ public class AsyncDataNodeClientPool {
    * <p>Notice: The DataNodes that failed to receive the requests will be reconnected
    *
    * @param clientHandler <RequestType, ResponseType> which will also contain the result
+   * @param timeoutInMs timeout in milliseconds
+   */
+  public void sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
+      AsyncClientHandler<?, ?> clientHandler, long timeoutInMs) {
+    sendAsyncRequest(clientHandler, MAX_RETRY_NUM, timeoutInMs);
+  }
+
+  /**
+   * Send asynchronous requests to the specified DataNodes with default retry num
+   *
+   * <p>Notice: The DataNodes that failed to receive the requests will be reconnected
+   *
+   * @param clientHandler <RequestType, ResponseType> which will also contain the result
    */
   public void sendAsyncRequestToDataNodeWithRetry(AsyncClientHandler<?, ?> clientHandler) {
-    sendAsyncRequest(clientHandler, MAX_RETRY_NUM);
+    sendAsyncRequest(clientHandler, MAX_RETRY_NUM, null);
   }
 
-  public void sendAsyncRequestToDataNodeWithRetry(
-      AsyncClientHandler<?, ?> clientHandler, int retryNum) {
-    sendAsyncRequest(clientHandler, retryNum);
+  public void sendAsyncRequestToDataNode(AsyncClientHandler<?, ?> clientHandler) {
+    sendAsyncRequest(clientHandler, 1, null);
   }
 
-  private void sendAsyncRequest(AsyncClientHandler<?, ?> clientHandler, int retryNum) {
+  private void sendAsyncRequest(
+      AsyncClientHandler<?, ?> clientHandler, int retryNum, Long timeoutInMs) {
     if (clientHandler.getRequestIndices().isEmpty()) {
       return;
     }
@@ -125,9 +141,17 @@ public class AsyncDataNodeClientPool {
 
       // Wait for this batch of asynchronous RPC requests finish
       try {
-        clientHandler.getCountDownLatch().await();
+        if (timeoutInMs == null) {
+          clientHandler.getCountDownLatch().await();
+        } else {
+          if (!clientHandler.getCountDownLatch().await(timeoutInMs, TimeUnit.MILLISECONDS)) {
+            LOGGER.warn(
+                "Timeout during {} on ConfigNode. Retry: {}/{}", requestType, retry, retryNum);
+          }
+        }
       } catch (InterruptedException e) {
-        LOGGER.error("Interrupted during {} on ConfigNode", requestType);
+        LOGGER.error(
+            "Interrupted during {} on ConfigNode. Retry: {}/{}", requestType, retry, retryNum);
         Thread.currentThread().interrupt();
       }
 
@@ -135,6 +159,14 @@ public class AsyncDataNodeClientPool {
       if (clientHandler.getRequestIndices().isEmpty()) {
         return;
       }
+    }
+
+    if (!clientHandler.getRequestIndices().isEmpty()) {
+      LOGGER.warn(
+          "Failed to {} on ConfigNode after {} retries, requestIndices: {}",
+          requestType,
+          retryNum,
+          clientHandler.getRequestIndices());
     }
   }
 
@@ -227,9 +259,15 @@ public class AsyncDataNodeClientPool {
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
-        case PUSH_PIPE_META:
+        case PIPE_PUSH_ALL_META:
           client.pushPipeMeta(
               (TPushPipeMetaReq) clientHandler.getRequest(requestId),
+              (PipePushMetaRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case PIPE_PUSH_SINGLE_META:
+          client.pushSinglePipeMeta(
+              (TPushSinglePipeMetaReq) clientHandler.getRequest(requestId),
               (PipePushMetaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;

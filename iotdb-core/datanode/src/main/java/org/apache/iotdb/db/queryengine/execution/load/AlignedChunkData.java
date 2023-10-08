@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -388,7 +388,7 @@ public class AlignedChunkData implements ChunkData {
 
   public static AlignedChunkData deserialize(InputStream stream) throws IOException, PageException {
     TTimePartitionSlot timePartitionSlot =
-        TimePartitionUtils.getTimePartition(ReadWriteIOUtils.readLong(stream));
+        TimePartitionUtils.getTimePartitionSlot(ReadWriteIOUtils.readLong(stream));
     String device = ReadWriteIOUtils.readString(stream);
     boolean needDecodeChunk = ReadWriteIOUtils.readBool(stream);
     int chunkHeaderListSize = ReadWriteIOUtils.readInt(stream);

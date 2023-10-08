@@ -163,23 +163,6 @@
             <level>INFO</level>
         </filter>
     </appender>
-    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="SYNC">
-        <file>${IOTDB_HOME}/logs/log_datanode_sync.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-sync-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>168</maxHistory>
-            <totalSizeCap>512MB</totalSizeCap>
-        </rollingPolicy>
-        <append>true</append>
-        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
-            <charset>utf-8</charset>
-        </encoder>
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>INFO</level>
-        </filter>
-    </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="AUDIT">
         <file>${IOTDB_HOME}/logs/log_datanode_audit.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -265,6 +248,23 @@
             <level>INFO</level>
         </filter>
     </appender>
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="PIPE">
+        <file>${IOTDB_HOME}/logs/log_datanode_pipe.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-pipe-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>168</maxHistory>
+            <totalSizeCap>512MB</totalSizeCap>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
     <root level="info">
         <appender-ref ref="FILETRACE"/>
         <appender-ref ref="FILEDEBUG"/>
@@ -279,9 +279,6 @@
     <logger level="info" name="org.apache.iotdb.db.conf"/>
     <logger level="info" name="org.apache.iotdb.db.cost.statistic">
         <appender-ref ref="FILE_COST_MEASURE"/>
-    </logger>
-    <logger level="info" name="org.apache.iotdb.db.sync">
-        <appender-ref ref="SYNC"/>
     </logger>
     <logger level="info" name="IoTDB_AUDIT_LOGGER">
         <appender-ref ref="AUDIT"/>
@@ -298,5 +295,8 @@
     <logger level="info" name="DETAILED_FAILURE_QUERY_TRACE"/>
     <logger level="info" name="COMPACTION">
         <appender-ref ref="COMPACTION"/>
+    </logger>
+    <logger level="info" name="org.apache.iotdb.db.pipe">
+        <appender-ref ref="PIPE"/>
     </logger>
 </configuration>

@@ -45,6 +45,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ml.ForecastNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
@@ -60,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescr
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang3.Validate;
+import org.eclipse.jetty.util.StringUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -384,6 +387,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("LastQueryScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Series: %s", node.getSeriesPath()));
+    if (StringUtil.isNotBlank(node.getOutputViewPath())) {
+      boxValue.add(String.format("ViewPath: %s", node.getOutputViewPath()));
+    }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -397,6 +403,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
         String.format(
             "Series: %s%s",
             node.getSeriesPath().getDevice(), node.getSeriesPath().getMeasurementList()));
+    if (StringUtil.isNotBlank(node.getOutputViewPath())) {
+      boxValue.add(String.format("ViewPath: %s", node.getOutputViewPath()));
+    }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -424,6 +433,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitLastQueryTransform(LastQueryTransformNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("LastQueryTransform-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("ViewPath: %s", node.getViewPath()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitHorizontallyConcat(HorizontallyConcatNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("HorizontallyConcat-%s", node.getPlanNodeId().getId()));
@@ -441,6 +458,17 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitShuffleSink(ShuffleSinkNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("ShuffleSink-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitForecast(ForecastNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Forecast-%s", node.getPlanNodeId().getId()));
+    boxValue.add("Output: ");
+    for (String outputColumnName : node.getOutputColumnNames()) {
+      boxValue.add(String.format("  %s", outputColumnName));
+    }
     return render(node, boxValue, context);
   }
 

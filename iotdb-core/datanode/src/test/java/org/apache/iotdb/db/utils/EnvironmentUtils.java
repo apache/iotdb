@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
-import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -271,13 +269,12 @@ public class EnvironmentUtils {
 
     createAllDir();
 
-    StorageEngine.getInstance().start();
-
-    SchemaEngine.getInstance().init();
-
-    CompactionTaskManager.getInstance().start();
-
     try {
+      StorageEngine.getInstance().start();
+
+      SchemaEngine.getInstance().init();
+
+      CompactionTaskManager.getInstance().start();
       WALManager.getInstance().start();
       FlushManager.getInstance().start();
     } catch (StartupException e) {
@@ -334,13 +331,6 @@ public class EnvironmentUtils {
     // create data
     for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);
-    }
-    // create user and roles folder
-    try {
-      AuthorizerManager.getInstance().reset();
-    } catch (AuthException e) {
-      logger.error("create user and role folders failed", e);
-      fail(e.getMessage());
     }
   }
 

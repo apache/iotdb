@@ -26,23 +26,22 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
 
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.ratis.util.FileUtils;
 import org.apache.ratis.util.JavaUtils;
 import org.apache.ratis.util.TimeDuration;
+import org.apache.ratis.util.Timestamp;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +55,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -353,6 +355,78 @@ public class TestUtils {
           isStopped.get(), "call resetSMProviderBeforeRestart() before restart");
       this.smProvider = smProvider;
     }
+
+    // To success or not to success, that is a question
+    void writeOnce(int serverIndex) {
+      final ByteBufferConsensusRequest increment = TestRequest.incrRequest();
+      final TSStatus response;
+      try {
+        response = servers.get(serverIndex).write(gid, increment);
+        Assert.assertEquals(200, response.getCode());
+      } catch (ConsensusException e) {
+        Assert.fail("Test Env: test write failed due to " + e);
+      }
+    }
+
+    void writeManySerial(int serverIndex, int count) {
+      for (int i = 0; i < count; i++) {
+        writeOnce(serverIndex);
+      }
+    }
+
+    void writeManyParallel(ExecutorService executor, int serverIndex, int count) {
+      final CountDownLatch waitGroup = new CountDownLatch(count);
+      for (int i = 0; i < count; i++) {
+        CompletableFuture.runAsync(() -> writeOnce(serverIndex), executor)
+            .thenRun(waitGroup::countDown);
+      }
+
+      try {
+        // wait at most 120s for write to complete, otherwise fail the test
+        Assert.assertTrue(waitGroup.await(120, TimeUnit.SECONDS));
+      } catch (InterruptedException e) {
+        logger.warn("test being interrupted: ", e);
+        Thread.currentThread().interrupt();
+      }
+    }
+
+    // Verily, the clash of arms doth ne'er resemble a feast for guests,
+    // and the notion of defeat doth hold no place therein.
+    int mustRead(int serverIndex) throws InterruptedException {
+      final ByteBufferConsensusRequest readRequest = TestUtils.TestRequest.getRequest();
+
+      waitUntilActiveLeader();
+
+      final TimeDuration maxTryDuration = TimeDuration.valueOf(3, TimeUnit.MINUTES);
+      final TimeDuration waitDuration = TimeDuration.valueOf(1000, TimeUnit.MILLISECONDS);
+      final Timestamp start = Timestamp.currentTime();
+
+      DataSet readResp = null;
+      while (true) {
+        try {
+          readResp = readThrough(serverIndex);
+          break;
+        } catch (RatisUnderRecoveryException e) {
+          logger.warn("ratis is redoing raft log, shall wait some time: ", e);
+          waitDuration.sleep();
+        } catch (ConsensusException e) {
+          logger.error("unexpected error occurred, may try again: ", e);
+          waitDuration.sleep();
+        }
+
+        if (start.elapsedTime().compareTo(maxTryDuration) > 0) {
+          Assert.fail("max retry duration passed without successful read");
+        }
+      }
+
+      return ((TestUtils.TestDataSet) readResp).getNumber();
+    }
+
+    // To success or not to success, ratis don't care
+    DataSet readThrough(int serverIndex) throws ConsensusException {
+      final ByteBufferConsensusRequest getReq = TestUtils.TestRequest.getRequest();
+      return servers.get(serverIndex).read(gid, getReq);
+    }
   }
 
   static class MiniClusterFactory {
@@ -377,27 +451,5 @@ public class TestUtils {
     MiniCluster create() {
       return new MiniCluster(gid, replicas, peerStorageProvider, smProvider, ratisConfig);
     }
-  }
-
-  static void write(IConsensus consensus, ConsensusGroupId gid, int count) {
-    for (int i = 0; i < count; i++) {
-      final ByteBufferConsensusRequest increment = TestRequest.incrRequest();
-      final ConsensusWriteResponse response = consensus.write(gid, increment);
-      Assert.assertEquals(200, response.getStatus().getCode());
-    }
-  }
-
-  static int read(IConsensus consensus, ConsensusGroupId gid) throws ConsensusException {
-    final ConsensusReadResponse response = doRead(consensus, gid);
-    if (!response.isSuccess()) {
-      throw response.getException();
-    }
-    final TestUtils.TestDataSet result = (TestUtils.TestDataSet) response.getDataset();
-    return result.getNumber();
-  }
-
-  static ConsensusReadResponse doRead(IConsensus consensus, ConsensusGroupId gid) {
-    final ByteBufferConsensusRequest getReq = TestUtils.TestRequest.getRequest();
-    return consensus.read(gid, getReq);
   }
 }

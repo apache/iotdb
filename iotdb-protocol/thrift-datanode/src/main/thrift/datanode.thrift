@@ -313,6 +313,7 @@ struct TTsFilePieceReq{
 struct TLoadCommandReq{
     1: required i32 commandType
     2: required string uuid
+    3: optional bool isGeneratedByPipe
 }
 
 struct TLoadResp{
@@ -406,6 +407,11 @@ struct TPushPipeMetaRespExceptionMessage {
   3: required i64 timeStamp
 }
 
+struct TPushSinglePipeMetaReq {
+  1: optional binary pipeMeta // Should not set both to null.
+  2: optional string pipeNameToDrop // If it is not null, pipe with indicated name on datanode will be dropped.
+}
+
 struct TConstructViewSchemaBlackListReq{
     1: required list<common.TConsensusGroupId> schemaRegionIdList
     2: required binary pathPatternTree
@@ -459,10 +465,9 @@ struct TFetchMoreDataResp{
 }
 
 struct TFetchTimeseriesReq {
-  1: required list<string> queryExpressions
-  2: optional string queryFilter
-  3: optional i32 fetchSize
-  4: optional i64 timeout
+  1: required string queryBody
+  2: optional i32 fetchSize
+  3: optional i64 timeout
 }
 
 struct TFetchTimeseriesResp {
@@ -815,6 +820,11 @@ service IDataNodeRPCService {
   * Send pipeMetas to DataNodes, for synchronization
   */
   TPushPipeMetaResp pushPipeMeta(TPushPipeMetaReq req)
+
+ /**
+  * Send one pipeMeta to DataNodes, for create/start/stop/drop one pipe
+  */
+  TPushPipeMetaResp pushSinglePipeMeta(TPushSinglePipeMetaReq req)
 
   /**
   * ConfigNode will ask DataNode for pipe meta in every few seconds

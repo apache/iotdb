@@ -48,7 +48,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.HorizontallyConcatOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.RowBasedTimeJoinOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.last.AbstractUpdateLastCacheOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryCollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryOperator;
@@ -346,7 +345,7 @@ public class OperatorMemoryTest {
   public void lastQueryOperatorTest() {
     TsBlockBuilder builder = Mockito.mock(TsBlockBuilder.class);
     Mockito.when(builder.getRetainedSizeInBytes()).thenReturn(1024L);
-    List<AbstractUpdateLastCacheOperator> children = new ArrayList<>(4);
+    List<Operator> children = new ArrayList<>(4);
     long expectedMaxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
     for (int i = 0; i < 4; i++) {
       UpdateLastCacheOperator child = Mockito.mock(UpdateLastCacheOperator.class);
@@ -376,7 +375,7 @@ public class OperatorMemoryTest {
     TsBlock tsBlock = Mockito.mock(TsBlock.class);
     Mockito.when(tsBlock.getRetainedSizeInBytes()).thenReturn(16 * 1024L);
     Mockito.when(tsBlock.getPositionCount()).thenReturn(16);
-    List<AbstractUpdateLastCacheOperator> children = new ArrayList<>(4);
+    List<Operator> children = new ArrayList<>(4);
 
     for (int i = 0; i < 4; i++) {
       UpdateLastCacheOperator child = Mockito.mock(UpdateLastCacheOperator.class);
@@ -1496,7 +1495,6 @@ public class OperatorMemoryTest {
         Collections.emptyMap(),
         Collections.emptyMap(),
         Collections.emptyList(),
-        Collections.emptyMap(),
         null,
         statementSizePerLine);
   }

@@ -34,7 +34,6 @@
             <plugin>
                 <groupId>com.coderplus.maven.plugins</groupId>
                 <artifactId>copy-rename-maven-plugin</artifactId>
-                <version>1.0.1</version>
                 <executions>
                     <execution>
                         <id>copy-thrift-source</id>
@@ -97,9 +96,9 @@
                         <configuration>
                             <artifactItems>
                                 <artifactItem>
-                                    <groupId>org.apache.iotdb</groupId>
+                                    <groupId>org.apache.iotdb.tools</groupId>
                                     <artifactId>iotdb-tools-thrift</artifactId>
-                                    <version>${project.version}</version>
+                                    <version>${iotdb-tools-thrift.version}</version>
                                     <classifier>${os.classifier}</classifier>
                                     <type>zip</type>
                                     <overWrite>true</overWrite>

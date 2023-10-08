@@ -200,6 +200,16 @@ public class CommonDescriptor {
     config.setTimestampPrecision(
         properties.getProperty("timestamp_precision", config.getTimestampPrecision()).trim());
 
+    config.setTimestampPrecisionCheckEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "timestamp_precision_check_enabled",
+                String.valueOf(config.isTimestampPrecisionCheckEnabled()))));
+
+    config.setDatanodeTokenTimeoutMS(
+        Integer.parseInt(
+            properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
+
     String endPointUrl =
         properties.getProperty(
             "target_ml_node_endpoint",
@@ -238,6 +248,11 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
+    config.setModelInferenceExecutionThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "model_inference_execution_thread_count",
+                String.valueOf(config.getModelInferenceExecutionThreadCount()))));
   }
 
   private void loadPipeProps(Properties properties) {
@@ -296,16 +311,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_extractor_matcher_cache_size",
                 String.valueOf(config.getPipeExtractorMatcherCacheSize()))));
-    config.setPipeExtractorPendingQueueCapacity(
+    config.setPipeExtractorPendingQueueTsFileLimit(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_extractor_pending_queue_capacity",
-                String.valueOf(config.getPipeExtractorPendingQueueCapacity()))));
-    config.setPipeExtractorPendingQueueTabletLimit(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_extractor_pending_queue_tablet_limit",
-                String.valueOf(config.getPipeExtractorPendingQueueTabletLimit()))));
+                "pipe_extractor_pending_queue_tsfile_limit",
+                String.valueOf(config.getPipeExtractorPendingQueueTsFileLimit()))));
 
     config.setPipeConnectorTimeoutMs(
         Long.parseLong(

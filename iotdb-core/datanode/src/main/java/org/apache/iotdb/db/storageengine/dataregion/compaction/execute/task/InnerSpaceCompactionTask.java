@@ -88,13 +88,34 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       ICompactionPerformer performer,
       AtomicInteger currentTaskNum,
       long serialId) {
+    this(
+        timePartition,
+        tsFileManager,
+        selectedTsFileResourceList,
+        sequence,
+        performer,
+        currentTaskNum,
+        serialId,
+        CompactionTaskType.NORMAL);
+  }
+
+  public InnerSpaceCompactionTask(
+      long timePartition,
+      TsFileManager tsFileManager,
+      List<TsFileResource> selectedTsFileResourceList,
+      boolean sequence,
+      ICompactionPerformer performer,
+      AtomicInteger currentTaskNum,
+      long serialId,
+      CompactionTaskType compactionTaskType) {
     super(
         tsFileManager.getStorageGroupName(),
         tsFileManager.getDataRegionId(),
         timePartition,
         tsFileManager,
         currentTaskNum,
-        serialId);
+        serialId,
+        compactionTaskType);
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     this.performer = performer;
@@ -249,7 +270,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             "{}-{} [Compaction] compaction finish, start to delete old files",
             storageGroupName,
             dataRegionId);
-        CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(selectedTsFileResourceList);
+        CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
+            selectedTsFileResourceList, sequence);
         CompactionUtils.deleteModificationForSourceFile(
             selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
 
@@ -279,8 +301,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             dataRegionId,
             sequence ? "Sequence" : "Unsequence",
             targetTsFileResource.getTsFile().getName(),
-            costTime,
-            selectedFileSize / 1024.0d / 1024.0d / costTime,
+            String.format("%.2f", costTime),
+            String.format("%.2f", selectedFileSize / 1024.0d / 1024.0d / costTime),
             summary);
       }
       if (logFile.exists()) {
@@ -452,6 +474,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   public boolean checkValidAndSetMerging() {
     if (!tsFileManager.isAllowCompaction()) {
       resetCompactionCandidateStatusForAllSourceFiles();
+      return false;
+    }
+    if (!isDiskSpaceCheckPassed()) {
+      LOGGER.debug(
+          "inner compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
       return false;
     }
     try {

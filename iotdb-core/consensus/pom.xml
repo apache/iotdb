@@ -31,7 +31,7 @@
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <ratis.version>2.5.2-8d897ea-SNAPSHOT</ratis.version>
+        <ratis.version>2.5.2-a4398bf-SNAPSHOT</ratis.version>
         <consensus.test.skip>false</consensus.test.skip>
         <consensus.it.skip>${consensus.test.skip}</consensus.it.skip>
         <consensus.ut.skip>${consensus.test.skip}</consensus.ut.skip>
@@ -88,7 +88,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>thrift-iot-consensus</artifactId>
+            <artifactId>iotdb-thrift-consensus</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

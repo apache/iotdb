@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -50,9 +52,11 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionDataContainer.class);
 
-  // used to filter data
-  private final String pattern;
-  private final IExpression timeFilterExpression;
+  private final String pattern; // used to filter data
+  private final IExpression timeFilterExpression; // used to filter data
+
+  private final PipeTaskMeta pipeTaskMeta; // used to report progress
+  private final EnrichedEvent sourceEvent; // used to report progress
 
   private final TsFileSequenceReader tsFileSequenceReader;
   private final TsFileReader tsFileReader;
@@ -63,6 +67,17 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
   public TsFileInsertionDataContainer(File tsFile, String pattern, long startTime, long endTime)
       throws IOException {
+    this(tsFile, pattern, startTime, endTime, null, null);
+  }
+
+  public TsFileInsertionDataContainer(
+      File tsFile,
+      String pattern,
+      long startTime,
+      long endTime,
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent)
+      throws IOException {
     this.pattern = pattern;
     timeFilterExpression =
         (startTime == Long.MIN_VALUE && endTime == Long.MAX_VALUE)
@@ -71,8 +86,11 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                 new GlobalTimeExpression(TimeFilter.gtEq(startTime)),
                 new GlobalTimeExpression(TimeFilter.ltEq(endTime)));
 
+    this.pipeTaskMeta = pipeTaskMeta;
+    this.sourceEvent = sourceEvent;
+
     try {
-      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath());
+      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), true, true);
       tsFileReader = new TsFileReader(tsFileSequenceReader);
 
       deviceMeasurementsMapIterator = filterDeviceMeasurementsMapByPattern().entrySet().iterator();
@@ -145,6 +163,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
           public boolean hasNext() {
             while (tabletIterator == null || !tabletIterator.hasNext()) {
               if (!deviceMeasurementsMapIterator.hasNext()) {
+                close();
                 return false;
               }
 
@@ -176,12 +195,18 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
             final Tablet tablet = tabletIterator.next();
             final boolean isAligned = deviceIsAlignedMap.getOrDefault(tablet.deviceId, false);
-            final TabletInsertionEvent next = new PipeRawTabletInsertionEvent(tablet, isAligned);
 
+            final TabletInsertionEvent next;
             if (!hasNext()) {
+              next =
+                  new PipeRawTabletInsertionEvent(
+                      tablet, isAligned, pipeTaskMeta, sourceEvent, true);
               close();
+            } else {
+              next =
+                  new PipeRawTabletInsertionEvent(
+                      tablet, isAligned, pipeTaskMeta, sourceEvent, false);
             }
-
             return next;
           }
         };

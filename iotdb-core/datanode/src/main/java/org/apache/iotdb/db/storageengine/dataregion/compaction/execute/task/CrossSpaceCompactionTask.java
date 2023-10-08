@@ -232,7 +232,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         CompactionMetrics.getInstance().recordSummaryInfo(summary);
 
-        long costTime = (System.currentTimeMillis() - startTime) / 1000;
+        double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
 
         LOGGER.info(
             "{}-{} [Compaction] CrossSpaceCompaction task finishes successfully, "
@@ -240,8 +240,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
                 + "compaction speed is {} MB/s, {}",
             storageGroupName,
             dataRegionId,
-            costTime,
-            (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024 / costTime,
+            String.format("%.2f", costTime),
+            String.format(
+                "%.2f",
+                (selectedSeqFileSize + selectedUnseqFileSize) / 1024.0d / 1024.0d / costTime),
             summary);
       }
       if (logFile.exists()) {
@@ -362,6 +364,11 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   public boolean checkValidAndSetMerging() {
     if (!tsFileManager.isAllowCompaction()) {
       resetCompactionCandidateStatusForAllSourceFiles();
+      return false;
+    }
+    if (!isDiskSpaceCheckPassed()) {
+      LOGGER.debug(
+          "cross compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
       return false;
     }
     try {

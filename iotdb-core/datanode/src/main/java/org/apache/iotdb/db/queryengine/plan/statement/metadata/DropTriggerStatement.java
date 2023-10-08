@@ -19,22 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.trigger.service.TriggerManagementService;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
 
 public class DropTriggerStatement extends Statement implements IConfigStatement {
   private final String triggerName;
-
-  private PartialPath authPath;
 
   public DropTriggerStatement(String triggerName) {
     super();
@@ -57,23 +57,17 @@ public class DropTriggerStatement extends Statement implements IConfigStatement 
   }
 
   @Override
-  public boolean isAuthenticationRequired() {
-    if (authPath == null) {
-      TriggerInformation information =
-          TriggerManagementService.getInstance().getTriggerInformation(triggerName);
-      if (information == null) {
-        return false;
-      } else {
-        authPath = information.getPathPattern();
-      }
-    }
-    return true;
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 
   @Override
-  public List<PartialPath> getPaths() {
-    return isAuthenticationRequired()
-        ? Collections.singletonList(authPath)
-        : Collections.emptyList();
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_TRIGGER.ordinal()),
+        PrivilegeType.USE_TRIGGER);
   }
 }

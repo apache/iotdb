@@ -30,6 +30,15 @@
     <name>IoTDB: Client: Python-API</name>
     <description>Python API of IoTDB.</description>
     <build>
+        <resources>
+            <resource>
+                <directory>${basedir}/resources</directory>
+                <includes>
+                    <include>setup.py</include>
+                </includes>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -38,11 +47,10 @@
                     <skip>true</skip>
                 </configuration>
             </plugin>
-            <!-- clean thrift folder -->
+            <!-- clean thrift and old build folder -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-clean-plugin</artifactId>
-                <version>2.4.1</version>
                 <configuration>
                     <filesets>
                         <fileset>
@@ -51,6 +59,15 @@
                                 <include>thrift/</include>
                             </includes>
                             <followSymlinks>false</followSymlinks>
+                        </fileset>
+                        <fileset>
+                            <directory>apache_iotdb.egg-info</directory>
+                        </fileset>
+                        <fileset>
+                            <directory>build</directory>
+                        </fileset>
+                        <fileset>
+                            <directory>dist</directory>
                         </fileset>
                         <fileset>
                             <directory>./</directory>
@@ -65,7 +82,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>2.4.3</version>
                 <configuration>
                     <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
@@ -112,6 +128,46 @@
                                     </includes>
                                 </resource>
                             </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-setup-file-resources</id>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <encoding>utf-8</encoding>
+                            <outputDirectory>${basedir}/</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/target/classes</directory>
+                                    <includes>
+                                        <include>setup.py</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>write-python-version</id>
+                        <goals>
+                            <goal>regex-property</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <name>python_version</name>
+                            <regex>-SNAPSHOT</regex>
+                            <value>${project.version}</value>
+                            <replacement>\.dev0</replacement>
+                            <failIfNoMatch>false</failIfNoMatch>
                         </configuration>
                     </execution>
                 </executions>

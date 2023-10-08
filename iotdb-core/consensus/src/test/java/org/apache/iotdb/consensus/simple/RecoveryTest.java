@@ -27,8 +27,8 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.EmptyStateMachine;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 
 import org.apache.ratis.util.FileUtils;
@@ -78,7 +78,7 @@ public class RecoveryTest {
 
   @Test
   public void recoveryTest() throws Exception {
-    consensusImpl.createPeer(
+    consensusImpl.createLocalPeer(
         schemaRegionId,
         Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
 
@@ -86,14 +86,14 @@ public class RecoveryTest {
     consensusImpl = null;
 
     constructConsensus();
-
-    ConsensusGenericResponse response =
-        consensusImpl.createPeer(
-            schemaRegionId,
-            Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
-
-    Assert.assertEquals(
-        response.getException().getMessage(),
-        new ConsensusGroupAlreadyExistException(schemaRegionId).getMessage());
+    try {
+      consensusImpl.createLocalPeer(
+          schemaRegionId,
+          Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
+      Assert.fail();
+    } catch (ConsensusException e) {
+      Assert.assertEquals(
+          e.getMessage(), new ConsensusGroupAlreadyExistException(schemaRegionId).getMessage());
+    }
   }
 }

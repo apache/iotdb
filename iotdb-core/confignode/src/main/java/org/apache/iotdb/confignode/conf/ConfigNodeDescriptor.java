@@ -23,12 +23,12 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.NodeType;
 
@@ -137,7 +137,7 @@ public class ConfigNodeDescriptor {
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
             .updateRpcInstance(
-                conf.getClusterName(), NodeType.CONFIGNODE, IoTDBConfig.SYSTEM_DATABASE);
+                conf.getClusterName(), NodeType.CONFIGNODE, SchemaConstant.SYSTEM_DATABASE);
       }
     } else {
       LOGGER.warn(
@@ -479,14 +479,6 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.isDataRegionRatisLogUnsafeFlushEnable()))
                 .trim()));
 
-    conf.setDataRegionRatisLogForceSyncNum(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "data_region_ratis_log_force_sync_num",
-                    String.valueOf(conf.getDataRegionRatisLogForceSyncNum()))
-                .trim()));
-
     conf.setConfigNodeRatisLogUnsafeFlushEnable(
         Boolean.parseBoolean(
             properties
@@ -565,6 +557,46 @@ public class ConfigNodeDescriptor {
                 .getProperty(
                     "data_region_ratis_grpc_leader_outstanding_appends_max",
                     String.valueOf(conf.getDataRegionRatisGrpcLeaderOutstandingAppendsMax()))
+                .trim()));
+
+    conf.setConfigNodeRatisGrpcLeaderOutstandingAppendsMax(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "config_node_ratis_grpc_leader_outstanding_appends_max",
+                    String.valueOf(conf.getConfigNodeRatisGrpcLeaderOutstandingAppendsMax()))
+                .trim()));
+
+    conf.setSchemaRegionRatisGrpcLeaderOutstandingAppendsMax(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "schema_region_ratis_grpc_leader_outstanding_appends_max",
+                    String.valueOf(conf.getSchemaRegionRatisGrpcLeaderOutstandingAppendsMax()))
+                .trim()));
+
+    conf.setDataRegionRatisLogForceSyncNum(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "data_region_ratis_log_force_sync_num",
+                    String.valueOf(conf.getDataRegionRatisLogForceSyncNum()))
+                .trim()));
+
+    conf.setConfigNodeRatisLogForceSyncNum(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "config_node_ratis_log_force_sync_num",
+                    String.valueOf(conf.getConfigNodeRatisLogForceSyncNum()))
+                .trim()));
+
+    conf.setSchemaRegionRatisLogForceSyncNum(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "schema_region_ratis_log_force_sync_num",
+                    String.valueOf(conf.getSchemaRegionRatisLogForceSyncNum()))
                 .trim()));
 
     conf.setDataRegionRatisRpcLeaderElectionTimeoutMinMs(

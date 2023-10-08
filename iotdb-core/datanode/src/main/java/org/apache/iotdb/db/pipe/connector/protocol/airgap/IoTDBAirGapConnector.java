@@ -21,13 +21,17 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -56,6 +60,8 @@ import java.util.List;
 import java.util.zip.CRC32;
 
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
 
@@ -69,6 +75,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   private final List<Boolean> isSocketAlive = new ArrayList<>();
 
   private int handshakeTimeoutMs;
+  private boolean eLanguageEnable;
 
   private long currentClientIndex = 0;
 
@@ -76,6 +83,14 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
+
+    if (isTabletBatchModeEnabled) {
+      LOGGER.warn(
+          "Batch mode is enabled by the given parameters. "
+              + "IoTDBAirGapConnector does not support batch mode. "
+              + "Disable batch mode.");
+    }
+
     for (int i = 0; i < nodeUrls.size(); i++) {
       isSocketAlive.add(false);
       sockets.add(null);
@@ -87,6 +102,12 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
             CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE);
     LOGGER.info(
         "IoTDBAirGapConnector is customized with handshakeTimeoutMs: {}.", handshakeTimeoutMs);
+
+    eLanguageEnable =
+        parameters.getBooleanOrDefault(
+            CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY,
+            CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_DEFAULT_VALUE);
+    LOGGER.info("IoTDBAirGapConnector is customized with eLanguageEnable: {}.", eLanguageEnable);
   }
 
   @Override
@@ -165,6 +186,25 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
+    if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
+        && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
+      LOGGER.warn(
+          "IoTDBAirGapConnector only support "
+              + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+              + "Ignore {}.",
+          tabletInsertionEvent);
+      return;
+    }
+
+    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePatternOrTime()) {
+      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+        transfer(
+            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
+      } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
+        transfer(((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
+      }
+      return;
+    }
 
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
@@ -172,14 +212,8 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     try {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         doTransfer(socket, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
-      } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        doTransfer(socket, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
       } else {
-        LOGGER.warn(
-            "IoTDBAirGapConnector only support "
-                + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-                + "Ignore {}.",
-            tabletInsertionEvent);
+        doTransfer(socket, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
       }
     } catch (IOException e) {
       isSocketAlive.set(socketIndex, false);
@@ -202,6 +236,17 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       return;
     }
 
+    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
+      try {
+        for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+          transfer(event);
+        }
+      } finally {
+        tsFileInsertionEvent.close();
+      }
+      return;
+    }
+
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
@@ -220,16 +265,22 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
   @Override
   public void transfer(Event event) {
-    LOGGER.warn("IoTDBAirGapConnector does not support transfer generic event: {}.", event);
+    if (!(event instanceof PipeHeartbeatEvent)) {
+      LOGGER.warn("IoTDBAirGapConnector does not support transfer generic event: {}.", event);
+    }
   }
 
   private void doTransfer(
       Socket socket, PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
-    if (!send(
-        socket,
-        PipeTransferInsertNodeReq.toTransferInsertNodeBytes(
-            pipeInsertNodeTabletInsertionEvent.getInsertNode()))) {
+    final byte[] bytes =
+        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
+            ? PipeTransferTabletBinaryReq.toTransferInsertNodeBytes(
+                pipeInsertNodeTabletInsertionEvent.getByteBuffer())
+            : PipeTransferTabletInsertNodeReq.toTransferInsertNodeBytes(
+                pipeInsertNodeTabletInsertionEvent.getInsertNode());
+
+    if (!send(socket, bytes)) {
       throw new PipeException(
           String.format(
               "Transfer PipeInsertNodeTabletInsertionEvent %s error. Socket: %s",
@@ -241,7 +292,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       throws PipeException, IOException {
     if (!send(
         socket,
-        PipeTransferTabletReq.toTPipeTransferTabletBytes(
+        PipeTransferTabletRawReq.toTPipeTransferTabletBytes(
             pipeRawTabletInsertionEvent.convertToTablet(),
             pipeRawTabletInsertionEvent.isAligned()))) {
       throw new PipeException(
@@ -313,7 +364,8 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     }
 
     final BufferedOutputStream outputStream = new BufferedOutputStream(socket.getOutputStream());
-    outputStream.write(enrichWithLengthAndChecksum(bytes));
+    bytes = enrichWithLengthAndChecksum(bytes);
+    outputStream.write(eLanguageEnable ? enrichWithELanguage(bytes) : bytes);
     outputStream.flush();
 
     final byte[] response = new byte[1];
@@ -331,6 +383,14 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     // double length as simple checksum
     return BytesUtils.concatByteArrayList(
         Arrays.asList(length, length, BytesUtils.longToBytes(crc32.getValue()), bytes));
+  }
+
+  private byte[] enrichWithELanguage(byte[] bytes) {
+    return BytesUtils.concatByteArrayList(
+        Arrays.asList(
+            AirGapELanguageConstant.E_LANGUAGE_PREFIX,
+            bytes,
+            AirGapELanguageConstant.E_LANGUAGE_SUFFIX));
   }
 
   @Override

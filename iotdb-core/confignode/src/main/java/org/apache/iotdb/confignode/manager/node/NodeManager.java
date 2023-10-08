@@ -76,8 +76,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -107,6 +106,9 @@ public class NodeManager {
   private final NodeInfo nodeInfo;
 
   private final ReentrantLock removeConfigNodeLock;
+
+  private static final String CONSENSUS_WRITE_ERROR =
+      "Failed in the write API executing the consensus layer due to: ";
 
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
@@ -163,7 +165,6 @@ public class NodeManager {
 
     ratisConfig.setDataLogUnsafeFlushEnable(conf.isDataRegionRatisLogUnsafeFlushEnable());
     ratisConfig.setSchemaLogUnsafeFlushEnable(conf.isSchemaRegionRatisLogUnsafeFlushEnable());
-    ratisConfig.setDataRegionLogForceSyncNum(conf.getDataRegionRatisLogForceSyncNum());
 
     ratisConfig.setDataLogSegmentSizeMax(conf.getDataRegionRatisLogSegmentSizeMax());
     ratisConfig.setSchemaLogSegmentSizeMax(conf.getSchemaRegionRatisLogSegmentSizeMax());
@@ -172,6 +173,11 @@ public class NodeManager {
     ratisConfig.setSchemaGrpcFlowControlWindow(conf.getSchemaRegionRatisGrpcFlowControlWindow());
     ratisConfig.setDataRegionGrpcLeaderOutstandingAppendsMax(
         conf.getDataRegionRatisGrpcLeaderOutstandingAppendsMax());
+    ratisConfig.setSchemaRegionGrpcLeaderOutstandingAppendsMax(
+        conf.getSchemaRegionRatisGrpcLeaderOutstandingAppendsMax());
+
+    ratisConfig.setDataRegionLogForceSyncNum(conf.getDataRegionRatisLogForceSyncNum());
+    ratisConfig.setSchemaRegionLogForceSyncNum(conf.getSchemaRegionRatisLogForceSyncNum());
 
     ratisConfig.setDataLeaderElectionTimeoutMin(
         conf.getDataRegionRatisRpcLeaderElectionTimeoutMinMs());
@@ -250,12 +256,20 @@ public class NodeManager {
         new RegisterDataNodePlan(req.getDataNodeConfiguration());
     // Register new DataNode
     registerDataNodePlan.getDataNodeConfiguration().getLocation().setDataNodeId(dataNodeId);
-    getConsensusManager().write(registerDataNodePlan);
+    try {
+      getConsensusManager().write(registerDataNodePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    }
 
     // update datanode's versionInfo
     UpdateVersionInfoPlan updateVersionInfoPlan =
         new UpdateVersionInfoPlan(req.getVersionInfo(), dataNodeId);
-    getConsensusManager().write(updateVersionInfoPlan);
+    try {
+      getConsensusManager().write(updateVersionInfoPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    }
 
     // Bind DataNode metrics
     PartitionMetrics.bindDataNodePartitionMetrics(
@@ -281,14 +295,22 @@ public class NodeManager {
       // Update DataNodeConfiguration when modified during restart
       UpdateDataNodePlan updateDataNodePlan =
           new UpdateDataNodePlan(req.getDataNodeConfiguration());
-      getConsensusManager().write(updateDataNodePlan);
+      try {
+        getConsensusManager().write(updateDataNodePlan);
+      } catch (ConsensusException e) {
+        LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      }
     }
     TNodeVersionInfo versionInfo = nodeInfo.getVersionInfo(nodeId);
     if (!req.getVersionInfo().equals(versionInfo)) {
       // Update versionInfo when modified during restart
       UpdateVersionInfoPlan updateVersionInfoPlan =
           new UpdateVersionInfoPlan(req.getVersionInfo(), nodeId);
-      getConsensusManager().write(updateVersionInfoPlan);
+      try {
+        getConsensusManager().write(updateVersionInfoPlan);
+      } catch (ConsensusException e) {
+        LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      }
     }
 
     TDataNodeRestartResp resp = new TDataNodeRestartResp();
@@ -363,11 +385,11 @@ public class NodeManager {
       // Update versionInfo when modified during restart
       UpdateVersionInfoPlan updateConfigNodePlan =
           new UpdateVersionInfoPlan(versionInfo, configNodeId);
-      ConsensusWriteResponse result = getConsensusManager().write(updateConfigNodePlan);
-      if (result.getException() != null) {
+      try {
+        return getConsensusManager().write(updateConfigNodePlan);
+      } catch (ConsensusException e) {
         return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
       }
-      return result.getStatus();
     }
     return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
   }
@@ -380,7 +402,16 @@ public class NodeManager {
    *     GetDataNodeConfigurationPlan is -1
    */
   public DataNodeConfigurationResp getDataNodeConfiguration(GetDataNodeConfigurationPlan req) {
-    return (DataNodeConfigurationResp) getConsensusManager().read(req).getDataset();
+    try {
+      return (DataNodeConfigurationResp) getConsensusManager().read(req);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      DataNodeConfigurationResp response = new DataNodeConfigurationResp();
+      response.setStatus(res);
+      return response;
+    }
   }
 
   /**
@@ -526,10 +557,18 @@ public class NodeManager {
   public void applyConfigNode(
       TConfigNodeLocation configNodeLocation, TNodeVersionInfo versionInfo) {
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
-    getConsensusManager().write(applyConfigNodePlan);
+    try {
+      getConsensusManager().write(applyConfigNodePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    }
     UpdateVersionInfoPlan updateVersionInfoPlan =
         new UpdateVersionInfoPlan(versionInfo, configNodeLocation.getConfigNodeId());
-    getConsensusManager().write(updateVersionInfoPlan);
+    try {
+      getConsensusManager().write(updateVersionInfoPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    }
   }
 
   /**
@@ -590,13 +629,13 @@ public class NodeManager {
           .setMessage(
               "Transfer ConfigNode leader failed because can not find any running ConfigNode.");
     }
-    ConsensusGenericResponse resp =
-        getConsensusManager()
-            .getConsensusImpl()
-            .transferLeader(
-                groupId,
-                new Peer(groupId, newLeader.getConfigNodeId(), newLeader.getConsensusEndPoint()));
-    if (!resp.isSuccess()) {
+    try {
+      getConsensusManager()
+          .getConsensusImpl()
+          .transferLeader(
+              groupId,
+              new Peer(groupId, newLeader.getConfigNodeId(), newLeader.getConsensusEndPoint()));
+    } catch (ConsensusException e) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage("Remove ConfigNode failed because transfer ConfigNode leader failed.");
     }

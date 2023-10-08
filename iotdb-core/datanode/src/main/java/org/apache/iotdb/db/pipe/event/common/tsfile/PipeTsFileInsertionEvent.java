@@ -44,31 +44,43 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   // used to filter data
   private final long startTime;
   private final long endTime;
+  private final boolean needParseTime;
 
   private final TsFileResource resource;
   private File tsFile;
+
+  private final boolean isGeneratedByPipe;
 
   private final AtomicBoolean isClosed;
 
   private TsFileInsertionDataContainer dataContainer;
 
-  public PipeTsFileInsertionEvent(TsFileResource resource) {
-    this(resource, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+  public PipeTsFileInsertionEvent(TsFileResource resource, boolean isGeneratedByPipe) {
+    this(resource, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE, false);
   }
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource,
+      boolean isGeneratedByPipe,
       PipeTaskMeta pipeTaskMeta,
       String pattern,
       long startTime,
-      long endTime) {
+      long endTime,
+      boolean needParseTime) {
     super(pipeTaskMeta, pattern);
 
     this.startTime = startTime;
     this.endTime = endTime;
+    this.needParseTime = needParseTime;
+
+    if (needParseTime) {
+      this.isPatternAndTimeParsed = false;
+    }
 
     this.resource = resource;
     tsFile = resource.getTsFile();
+
+    this.isGeneratedByPipe = isGeneratedByPipe;
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // register close listener if TsFile is not closed
@@ -84,6 +96,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
             });
       }
     }
+    // check again after register close listener in case TsFile is closed during the process
+    isClosed.set(resource.isClosed());
   }
 
   public void waitForTsFileClose() throws InterruptedException {
@@ -98,10 +112,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public File getTsFile() {
     return tsFile;
-  }
-
-  public boolean hasTimeFilter() {
-    return startTime != Long.MIN_VALUE || endTime != Long.MAX_VALUE;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -146,14 +156,20 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath()));
       Thread.currentThread().interrupt();
-      return new MinimumProgressIndex();
+      return MinimumProgressIndex.INSTANCE;
     }
   }
 
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
-    return new PipeTsFileInsertionEvent(resource, pipeTaskMeta, pattern, startTime, endTime);
+    return new PipeTsFileInsertionEvent(
+        resource, isGeneratedByPipe, pipeTaskMeta, pattern, startTime, endTime, needParseTime);
+  }
+
+  @Override
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
@@ -163,20 +179,35 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     try {
       if (dataContainer == null) {
         waitForTsFileClose();
-        dataContainer = new TsFileInsertionDataContainer(tsFile, getPattern(), startTime, endTime);
+        dataContainer =
+            new TsFileInsertionDataContainer(
+                tsFile, getPattern(), startTime, endTime, pipeTaskMeta, this);
       }
       return dataContainer.toTabletInsertionEvents();
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      close();
+
       final String errorMsg =
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
-      Thread.currentThread().interrupt();
       throw new PipeException(errorMsg);
     } catch (IOException e) {
+      close();
+
       final String errorMsg = String.format("Read TsFile %s error.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
+    }
+  }
+
+  /** Release the resource of data container. */
+  @Override
+  public void close() {
+    if (dataContainer != null) {
+      dataContainer.close();
+      dataContainer = null;
     }
   }
 
