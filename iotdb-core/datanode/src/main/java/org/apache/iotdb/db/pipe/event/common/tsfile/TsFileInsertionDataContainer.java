@@ -59,6 +59,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
   private final EnrichedEvent sourceEvent; // used to report progress
 
+  private boolean isSelfHoldReader = false;
   private TsFileSequenceReader tsFileSequenceReader;
   private TsFileReader tsFileReader;
 
@@ -92,13 +93,23 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
     try {
       tsFileSequenceReader = PipeResourceManager.tsfile().getTsFileSequenceReaderFromCache(tsFile);
-      tsFileReader = PipeResourceManager.tsfile().getTsFileReaderFromCache(tsFile);
-
+      if (tsFileSequenceReader == null) {
+        // TsFileSequenceReader is not in cache, we need to create it here and close it later.
+        isSelfHoldReader = true;
+        LOGGER.info("TsFileSequenceReader not in cache, creating it.");
+        tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
+        tsFileReader = new TsFileReader(tsFileSequenceReader);
+        deviceIsAlignedMap = readDeviceIsAlignedMap();
+        measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMapIntern();
+      } else {
+        tsFileReader = PipeResourceManager.tsfile().getTsFileReaderFromCache(tsFile);
+        deviceIsAlignedMap = PipeResourceManager.tsfile().getDeviceIsAlignedMapFromCache(tsFile);
+        measurementDataTypeMap =
+            PipeResourceManager.tsfile().getMeasurementDataTypeMapFromCache(tsFile);
+      }
       deviceMeasurementsMapIterator =
           filterDeviceMeasurementsMapByPattern(tsFile).entrySet().iterator();
-      deviceIsAlignedMap = PipeResourceManager.tsfile().getDeviceIsAlignedMapFromCache(tsFile);
-      measurementDataTypeMap =
-          PipeResourceManager.tsfile().getMeasurementDataTypeMapFromCache(tsFile);
+      tsFileSequenceReader.clearCachedDeviceMetadata(); // No longer need this.
     } catch (Exception e) {
       close();
       throw e;
@@ -109,6 +120,9 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       throws IOException {
     Map<String, List<String>> originalDeviceMeasurementsMap =
         PipeResourceManager.tsfile().getDeviceMeasurementsMapFromCache(tsFile);
+    if (originalDeviceMeasurementsMap == null) {
+      originalDeviceMeasurementsMap = tsFileSequenceReader.getDeviceMeasurementsMapIntern();
+    }
 
     final Map<String, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
     for (Map.Entry<String, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
@@ -218,5 +232,26 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   }
 
   @Override
-  public void close() {}
+  public void close() {
+    if (!isSelfHoldReader) {
+      // Only need to close if the TsFileReader is created in this class.
+      return;
+    }
+
+    try {
+      if (tsFileReader != null) {
+        tsFileReader.close();
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Failed to close TsFileReader", e);
+    }
+
+    try {
+      if (tsFileSequenceReader != null) {
+        tsFileSequenceReader.close();
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Failed to close TsFileSequenceReader", e);
+    }
+  }
 }

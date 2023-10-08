@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResource;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -45,7 +46,9 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.fail;
 
 public class PipeTsFileResourceManagerTest {
@@ -218,7 +221,13 @@ public class PipeTsFileResourceManagerTest {
     Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeModFile));
     Assert.assertFalse(Files.exists(originFile.toPath()));
     Assert.assertFalse(Files.exists(originModFile.toPath()));
-    Assert.assertFalse(Files.exists(pipeTsfile.toPath()));
-    Assert.assertFalse(Files.exists(pipeModFile.toPath()));
+    // Pipe TsFile will be cleaned by a timed thread, so we wait some time here.
+    await()
+        .atMost(2 * PipeTsFileResource.TSFILE_MIN_TIME_TO_LIVE_IN_MS, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              Assert.assertFalse(Files.exists(pipeTsfile.toPath()));
+              Assert.assertFalse(Files.exists(pipeModFile.toPath()));
+            });
   }
 }
