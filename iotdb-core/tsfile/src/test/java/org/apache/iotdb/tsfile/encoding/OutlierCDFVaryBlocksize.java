@@ -584,14 +584,14 @@ public class OutlierCDFVaryBlocksize {
             for (byte b : final_k_start_value_bytes) cur_byte.add(b);
 
             int bit_width_final = getBitWith(final_k_end_value - final_k_start_value);
-            byte[] bit_width_bytes = int2Bytes(bit_width_final);
+            byte[] bit_width_bytes = intByte2Bytes(bit_width_final);
             for (byte b : bit_width_bytes) cur_byte.add(b);
 
             int left_bit_width = getBitWith(final_left_max);//final_left_max
             int right_bit_width = getBitWith(max_delta_value - final_right_min);//final_right_min
-            bit_width_bytes = int2Bytes(left_bit_width);
+            bit_width_bytes = intByte2Bytes(left_bit_width);
             for (byte b : bit_width_bytes) cur_byte.add(b);
-            bit_width_bytes = int2Bytes(right_bit_width);
+            bit_width_bytes = intByte2Bytes(right_bit_width);
             for (byte b : bit_width_bytes) cur_byte.add(b);
 
 //            System.out.println(cur_byte.size());

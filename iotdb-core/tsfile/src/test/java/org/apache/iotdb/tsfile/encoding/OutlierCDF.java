@@ -131,7 +131,7 @@ public class OutlierCDF {
         return result;
     }
 
-    public static ArrayList<Integer> decodebitPacking(
+    public static ArrayList<Integer> decodeBitPacking(
             ArrayList<Byte> encoded, int decode_pos, int bit_width, int min_delta, int block_size) {
         ArrayList<Integer> result_list = new ArrayList<>();
         for (int i = 0; i < (block_size - 1) / 8; i++) { // bitpacking  纵向8个，bit width是多少列
@@ -158,40 +158,32 @@ public class OutlierCDF {
         return result_list;
     }
 
-    public static int part(ArrayList<Integer> arr, int low, int high) {
-        int tmp = arr.get(low);
-        while (low < high) {
-            while (low < high && (arr.get(high) > tmp)) {
-                high--;
+    public static ArrayList<Integer> decodeBitPacking(
+            ArrayList<Byte> encoded, int decode_pos, int bit_width,  int block_size) {
+        ArrayList<Integer> result_list = new ArrayList<>();
+        for (int i = 0; i < (block_size - 1) / 8; i++) { // bitpacking  纵向8个，bit width是多少列
+            int[] val8 = new int[8];
+            for (int j = 0; j < 8; j++) {
+                val8[j] = 0;
             }
-            arr.set(low, arr.get(high));
-            while (low < high && (arr.get(low) < tmp)) {
-                low++;
+            for (int j = 0; j < bit_width; j++) {
+                byte tmp_byte = encoded.get(decode_pos + bit_width - 1 - j);
+                byte[] bit8 = new byte[8];
+                for (int k = 0; k < 8; k++) {
+                    bit8[k] = (byte) (tmp_byte & 1);
+                    tmp_byte = (byte) (tmp_byte >> 1);
+                }
+                for (int k = 0; k < 8; k++) {
+                    val8[k] = val8[k] * 2 + bit8[k];
+                }
             }
-            arr.set(high, arr.get(low));
+            for (int j = 0; j < 8; j++) {
+                result_list.add(val8[j]);
+            }
+            decode_pos += bit_width;
         }
-        arr.set(low, tmp);
-        return low;
+        return result_list;
     }
-
-    public static void quickSort(ArrayList<Integer> arr, int index, int low, int high) {
-        Stack<Integer> stack = new Stack<>();
-        while (!stack.empty()) {
-            high = stack.pop();
-            low = stack.pop();
-            int mid = part(arr, low, high);
-
-            if (mid + 1 < high) {
-                stack.push(mid + 1);
-                stack.push(high);
-            }
-            if (mid - 1 > low) {
-                stack.push(low);
-                stack.push(mid - 1);
-            }
-        }
-    }
-
     public static int getCommon(int m, int n) {
         int z;
         while (m % n != 0) {
@@ -271,7 +263,7 @@ public class OutlierCDF {
 
     public static ArrayList<Byte> encode2Bytes(
             ArrayList<Integer> ts_block,
-            ArrayList<Integer>  min_delta,
+            ArrayList<Integer> min_delta,
             int bit_width) {
         ArrayList<Byte> encoded_result = new ArrayList<>();
 
@@ -328,10 +320,52 @@ public class OutlierCDF {
 
         return encoded_result;
     }
+    public static ArrayList<Integer> decodeOutlier2Bytes(
+            ArrayList<Byte> encoded,
+            int decode_pos,
+            int bit_width,
+            int length
+            ) {
 
+        int n_k_b = length / 8;
+        int remaining = length - n_k_b * 8;
+        ArrayList<Integer> result_list = new ArrayList<>(decodeBitPacking(encoded, decode_pos, bit_width, n_k_b * 8 + 1));
+        decode_pos += n_k_b;
+        int cur_remaining_bits = 0;
+        int cur_number_bits = 0;
+        int cur_number = 0;
+        for (int i = n_k_b * 8; i < length; i++) {
+            if(cur_number_bits>cur_remaining_bits){
+                cur_number += (encoded.get(decode_pos) <<(32- cur_remaining_bits));
+            }
+        }
+
+        for (int i = 0; i < (remaining - 1) / 8; i++) { // bitpacking
+            int[] val8 = new int[8];
+            for (int j = 0; j < 8; j++) {
+                val8[j] = 0;
+            }
+            for (int j = 0; j < bit_width; j++) {
+                byte tmp_byte = encoded.get(decode_pos + bit_width - 1 - j);
+                byte[] bit8 = new byte[8];
+                for (int k = 0; k < 8; k++) {
+                    bit8[k] = (byte) (tmp_byte & 1);
+                    tmp_byte = (byte) (tmp_byte >> 1);
+                }
+                for (int k = 0; k < 8; k++) {
+                    val8[k] = val8[k] * 2 + bit8[k];
+                }
+            }
+            for (int j = 0; j < 8; j++) {
+                result_list.add(val8[j] );
+            }
+            decode_pos += bit_width;
+        }
+        return result_list;
+    }
     private static ArrayList<Byte> learnKDelta(ArrayList<Integer> ts_block, int supple_length) {
 
-        int block_size = ts_block.size()-1;
+        int block_size = ts_block.size() - 1;
         ArrayList<Byte> cur_byte = new ArrayList<>();
 
         ArrayList<Integer> min_delta = new ArrayList<>();
@@ -404,7 +438,7 @@ public class OutlierCDF {
         int final_left_max = 0;
         int final_right_min = max_delta_value;
 //        System.out.println(PDF);
-        for (int start_value_i = 0; start_value_i < start_value_size-1; start_value_i++) {
+        for (int start_value_i = 0; start_value_i < start_value_size - 1; start_value_i++) {
             int k_start_value = start_value.get(start_value_i);
 //            for (int end_value_i = start_value_i; end_value_i < start_value_size; end_value_i++) {
 //                int k_end_value = start_value.get(end_value_i);
@@ -426,8 +460,8 @@ public class OutlierCDF {
                 for (int tmp_j = start_value_i; tmp_j < PDF_size; tmp_j++) {
                     max_normal = PDF.get(tmp_j).get(0);
                     if (max_normal >= k_end_value) {
-                        if(max_normal > k_end_value)
-                            cur_k2 = block_size - PDF.get(tmp_j-1).get(1);
+                        if (max_normal > k_end_value)
+                            cur_k2 = block_size - PDF.get(tmp_j - 1).get(1);
                         else if (max_normal == k_end_value) {
                             cur_k2 = block_size - PDF.get(tmp_j).get(1);
                         }
@@ -505,8 +539,7 @@ public class OutlierCDF {
         // ------------------------- encode data -----------------------------------------
         if (final_left_max == 0 && final_k_end_value == max_delta_value) {
             cur_byte = encode2Bytes(ts_block_delta, min_delta, bit_width);
-        }
-        else {
+        } else {
             ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
             ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
             ArrayList<Integer> final_left_outlier = new ArrayList<>();
@@ -523,17 +556,18 @@ public class OutlierCDF {
                 if (ts_block_delta.get(i) < final_k_start_value) {
                     final_left_outlier.add(ts_block_delta.get(i));
                     final_left_outlier_index.add(i);
-                    if(cur_index_bitmap_outlier_bits%8!=7){
-                        index_bitmap_outlier += 3;
+                    if (cur_index_bitmap_outlier_bits % 8 != 7) {
                         index_bitmap_outlier <<= 2;
-                    }else{
+                        index_bitmap_outlier += 3;
+                        cur_index_bitmap_outlier_bits += 2;
+                    } else {
+                        index_bitmap_outlier <<= 1;
                         index_bitmap_outlier += 1;
                         bitmap_outlier.add(index_bitmap_outlier);
                         index_bitmap_outlier = 1;
-                        index_bitmap_outlier <<= 1;
+                        cur_index_bitmap_outlier_bits = 1;
                     }
-                    cur_index_bitmap_outlier_bits += 2;
-//                    index_bitmap += 1;
+
 
                     cur_k1++;
                     cur_k++;
@@ -541,18 +575,19 @@ public class OutlierCDF {
                 } else if (ts_block_delta.get(i) > final_k_end_value) {
                     final_right_outlier.add(ts_block_delta.get(i) - final_k_end_value);
                     final_right_outlier_index.add(i);
-                    if(cur_index_bitmap_outlier_bits%8!=7){
-                        index_bitmap_outlier += 2;
+                    if (cur_index_bitmap_outlier_bits % 8 != 7) {
                         index_bitmap_outlier <<= 2;
-                    }else{
+                        index_bitmap_outlier += 2;
+                        cur_index_bitmap_outlier_bits += 2;
+                    } else {
+                        index_bitmap_outlier <<= 1;
                         index_bitmap_outlier += 1;
                         bitmap_outlier.add(index_bitmap_outlier);
                         index_bitmap_outlier = 0;
-                        index_bitmap_outlier <<= 1;
+                        cur_index_bitmap_outlier_bits = 1;
                     }
-//                    index_bitmap += 1;
                     cur_k++;
-                    cur_index_bitmap_outlier_bits += 2;
+
                 } else {
                     final_normal.add(ts_block_delta.get(i) - final_k_start_value);
                     index_bitmap_outlier <<= 1;
@@ -584,14 +619,14 @@ public class OutlierCDF {
             for (byte b : final_k_start_value_bytes) cur_byte.add(b);
 
             int bit_width_final = getBitWith(final_k_end_value - final_k_start_value);
-            byte[] bit_width_bytes = int2Bytes(bit_width_final);
+            byte[] bit_width_bytes = intByte2Bytes(bit_width_final);
             for (byte b : bit_width_bytes) cur_byte.add(b);
 
             int left_bit_width = getBitWith(final_left_max);//final_left_max
             int right_bit_width = getBitWith(max_delta_value - final_right_min);//final_right_min
-            bit_width_bytes = int2Bytes(left_bit_width);
+            bit_width_bytes = intByte2Bytes(left_bit_width);
             for (byte b : bit_width_bytes) cur_byte.add(b);
-            bit_width_bytes = int2Bytes(right_bit_width);
+            bit_width_bytes = intByte2Bytes(right_bit_width);
             for (byte b : bit_width_bytes) cur_byte.add(b);
 
 //            System.out.println(cur_byte.size());
@@ -611,6 +646,25 @@ public class OutlierCDF {
                 cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size)));
                 cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size)));
             }
+
+            System.out.println("k1:" + k1);
+            System.out.println("k2:" + k2);
+            System.out.println("final_alpha:" + final_alpha);
+            System.out.println("k_byte:" + k_byte);
+            System.out.println("min_delta.get(0):" + min_delta.get(0));
+            System.out.println("min_delta.get(1):" + min_delta.get(1));
+            System.out.println("final_k_start_value:" + final_k_start_value);
+            System.out.println("bit_width_final:" + bit_width_final);
+            System.out.println("left_bit_width:" + left_bit_width);
+            System.out.println("right_bit_width:" + right_bit_width);
+//            if (final_alpha == 1) {
+                System.out.println("final_left_outlier_index:" + final_left_outlier_index);
+                System.out.println("final_right_outlier_index:" + final_right_outlier_index);
+//            } else {
+                System.out.println("bitmap_outlier.size():" + bitmap_outlier.size());
+                System.out.println("bitmap_outlier:" + bitmap_outlier);
+//            }
+
 
 //            System.out.println("n-k1-k2: " + (final_normal.size()));
 //            System.out.println(bit_width_final);
@@ -652,19 +706,15 @@ public class OutlierCDF {
         for (byte b : block_size_byte) encoded_result.add(b);
 
 
-//        for (int i = 0; i < 1; i++) {
-        for (int i = 0; i < block_num; i++) {
-//            System.out.println("i="+i);
+        for (int i = 0; i < 1; i++) {
+//        for (int i = 0; i < block_num; i++) {
             ArrayList<Integer> ts_block = new ArrayList<>();
-//            ArrayList<Integer> ts_block_reorder = new ArrayList<>();
             for (int j = 0; j < block_size; j++) {
                 ts_block.add(data.get(j + i * block_size));
-//                ts_block_reorder.add(data.get(j + i * block_size));
+
             }
             ArrayList<Integer> result2 = new ArrayList<>();
-
             splitTimeStamp3(ts_block, result2);
-//            splitTimeStamp3(ts_block_reorder, result2);
 
             // time-order
             ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, 0);
@@ -672,34 +722,34 @@ public class OutlierCDF {
 
         }
 
-        int remaining_length = length_all - block_num * block_size;
-        if (remaining_length <= 3) {
-            for (int i = remaining_length; i > 0; i--) {
-                byte[] timestamp_end_bytes = int2Bytes(data.get(data.size() - i));
-                for (byte b : timestamp_end_bytes) encoded_result.add(b);
-            }
-
-        } else {
-            ArrayList<Integer> ts_block = new ArrayList<>();
-
-            for (int j = block_num * block_size; j < length_all; j++) {
-                ts_block.add(data.get(j));
-            }
-            ArrayList<Integer> result2 = new ArrayList<>();
-            splitTimeStamp3(ts_block, result2);
-            int supple_length;
-            if (remaining_length % 8 == 0) {
-                supple_length = 1;
-            } else if (remaining_length % 8 == 1) {
-                supple_length = 0;
-            } else {
-                supple_length = 9 - remaining_length % 8;
-            }
-
-
-            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, supple_length);
-            encoded_result.addAll(cur_encoded_result);
-        }
+//        int remaining_length = length_all - block_num * block_size;
+//        if (remaining_length <= 3) {
+//            for (int i = remaining_length; i > 0; i--) {
+//                byte[] timestamp_end_bytes = int2Bytes(data.get(data.size() - i));
+//                for (byte b : timestamp_end_bytes) encoded_result.add(b);
+//            }
+//
+//        } else {
+//            ArrayList<Integer> ts_block = new ArrayList<>();
+//
+//            for (int j = block_num * block_size; j < length_all; j++) {
+//                ts_block.add(data.get(j));
+//            }
+//            ArrayList<Integer> result2 = new ArrayList<>();
+//            splitTimeStamp3(ts_block, result2);
+//            int supple_length;
+//            if (remaining_length % 8 == 0) {
+//                supple_length = 1;
+//            } else if (remaining_length % 8 == 1) {
+//                supple_length = 0;
+//            } else {
+//                supple_length = 9 - remaining_length % 8;
+//            }
+//
+//
+//            ArrayList<Byte> cur_encoded_result = learnKDelta(ts_block, supple_length);
+//            encoded_result.addAll(cur_encoded_result);
+//        }
 
 
         return encoded_result;
@@ -724,143 +774,146 @@ public class OutlierCDF {
         } else {
             zero_number = 9 - remain_length % 8;
         }
-
-        for (int k = 0; k < block_num; k++) {
-            ArrayList<Integer> time_list = new ArrayList<>();
+        for (int k = 0; k < 1; k++) {
+//        for (int k = 0; k < block_num; k++) {
             ArrayList<Integer> value_list = new ArrayList<>();
 
             ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
 
-            int time0 = bytes2Integer(encoded, decode_pos, 4);
+            int k_byte = bytes2Integer(encoded, decode_pos, 4);
             decode_pos += 4;
+            int k1_byte = (int) (k_byte % pow(2, 16));
+            int k1 = k1_byte / 2;
+            int final_alpha = k1_byte % 2;
+
+            int k2 = (int) (k_byte / pow(2, 16));
+
             int value0 = bytes2Integer(encoded, decode_pos, 4);
             decode_pos += 4;
 
-            float theta0_r = bytes2float(encoded, decode_pos);
-            decode_pos += 4;
-            float theta1_r = bytes2float(encoded, decode_pos);
-            decode_pos += 4;
-            float theta0_v = bytes2float(encoded, decode_pos);
-            decode_pos += 4;
-            float theta1_v = bytes2float(encoded, decode_pos);
+            int min_delta = bytes2Integer(encoded, decode_pos, 4);
             decode_pos += 4;
 
-            int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
-            decode_pos += 4;
-            time_list = decodebitPacking(encoded, decode_pos, max_bit_width_time, 0, block_size);
-            decode_pos += max_bit_width_time * (block_size - 1) / 8;
-
-            int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
-            decode_pos += 4;
-            value_list = decodebitPacking(encoded, decode_pos, max_bit_width_value, 0, block_size);
-            decode_pos += max_bit_width_value * (block_size - 1) / 8;
-
-            int td_common = bytes2Integer(encoded, decode_pos, 4);
+            int final_k_start_value = bytes2Integer(encoded, decode_pos, 4);
             decode_pos += 4;
 
-            int ti_pre = time0;
-            int vi_pre = value0;
-            for (int i = 0; i < block_size - 1; i++) {
-                int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
-                time_list.set(i, ti);
-                ti_pre = ti;
+            int bit_width_final = bytes2Integer(encoded, decode_pos, 1);
+            decode_pos += 1;
 
-                int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
-                value_list.set(i, vi);
-                vi_pre = vi;
+            int left_bit_width = bytes2Integer(encoded, decode_pos, 1);
+            decode_pos += 1;
+            int right_bit_width = bytes2Integer(encoded, decode_pos, 1);
+            decode_pos += 1;
+
+            ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
+            ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
+            ArrayList<Integer> final_left_outlier = new ArrayList<>();
+            ArrayList<Integer> final_right_outlier = new ArrayList<>();
+            ArrayList<Integer> final_normal = new ArrayList<>();
+            ArrayList<Integer> bitmap_outlier = new ArrayList<>();
+
+            if (final_alpha == 0) {
+                int bitmap_bytes = (block_size - 1 + k1 + k2) / 8 + 1;
+
+                for (int i = 0; i < bitmap_bytes; i++) {
+                    bitmap_outlier.add(bytes2Integer(encoded, decode_pos, 1));
+                    decode_pos += 1;
+                }
+            }else{
+
             }
-
-            ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
-            ts_block_tmp0.add(time0);
-            ts_block_tmp0.add(value0);
-            ts_block.add(ts_block_tmp0);
-            for (int i = 0; i < block_size - 1; i++) {
-                int ti = (time_list.get(i) - time0) * td_common + time0;
-                ArrayList<Integer> ts_block_tmp = new ArrayList<>();
-                ts_block_tmp.add(ti);
-                ts_block_tmp.add(value_list.get(i));
-                ts_block.add(ts_block_tmp);
+            System.out.println("k1:" + k1);
+            System.out.println("k2:" + k2);
+            System.out.println("final_alpha:" + final_alpha);
+            System.out.println("k_byte:" + k_byte);
+            System.out.println("value0:" + value0);
+            System.out.println("min_delta.get(1):" + min_delta);
+            System.out.println("final_k_start_value:" + final_k_start_value);
+            System.out.println("bit_width_final:" + bit_width_final);
+            System.out.println("left_bit_width:" + left_bit_width);
+            System.out.println("right_bit_width:" + right_bit_width);
+            if (final_alpha == 1) {
+                System.out.println("final_left_outlier_index:" + final_left_outlier_index);
+                System.out.println("final_right_outlier_index:" + final_right_outlier_index);
+            } else {
+                System.out.println("bitmap_outlier.size():" + bitmap_outlier.size());
+                System.out.println("bitmap_outlier:" + bitmap_outlier);
             }
-//            quickSort(ts_block, 0, 0, block_size - 1);
-            data.addAll(ts_block);
+//            value_list = decodebitPacking(encoded, decode_pos, max_bit_width_value, 0, block_size);
+//            decode_pos += max_bit_width_value * (block_size - 1) / 8;
+
+            int td_common = 1;
+
+//            int vi_pre = value0;
+//            for (int i = 0; i < block_size - 1; i++) {
+//
+//                int vi = vi_pre + value_list.get(i);
+//                value_list.set(i, vi);
+//                vi_pre = vi;
+//            }
+//
+//            ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
+//            ts_block_tmp0.add(value0);
+//            ts_block.add(ts_block_tmp0);
+//            for (int i = 0; i < block_size - 1; i++) {
+//                ArrayList<Integer> ts_block_tmp = new ArrayList<>();
+//                ts_block_tmp.add(value_list.get(i));
+//                ts_block.add(ts_block_tmp);
+//            }
+////            quickSort(ts_block, 0, 0, block_size - 1);
+//            data.addAll(ts_block);
         }
 
-        if (remain_length == 1) {
-            int timestamp_end = bytes2Integer(encoded, decode_pos, 4);
-            decode_pos += 4;
-            int value_end = bytes2Integer(encoded, decode_pos, 4);
-            decode_pos += 4;
-            ArrayList<Integer> ts_block_end = new ArrayList<>();
-            ts_block_end.add(timestamp_end);
-            ts_block_end.add(value_end);
-            data.add(ts_block_end);
-        }
-        if (remain_length != 0 && remain_length != 1) {
-            ArrayList<Integer> time_list = new ArrayList<>();
-            ArrayList<Integer> value_list = new ArrayList<>();
-
-            ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
-
-            int time0 = bytes2Integer(encoded, decode_pos, 4);
-            decode_pos += 4;
-            int value0 = bytes2Integer(encoded, decode_pos, 4);
-            decode_pos += 4;
-
-            float theta0_r = bytes2float(encoded, decode_pos);
-            decode_pos += 4;
-            float theta1_r = bytes2float(encoded, decode_pos);
-            decode_pos += 4;
-            float theta0_v = bytes2float(encoded, decode_pos);
-            decode_pos += 4;
-            float theta1_v = bytes2float(encoded, decode_pos);
-            decode_pos += 4;
-
-            int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
-            decode_pos += 4;
-            time_list =
-                    decodebitPacking(encoded, decode_pos, max_bit_width_time, 0, remain_length + zero_number);
-            decode_pos += max_bit_width_time * (remain_length + zero_number - 1) / 8;
-
-            int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
-            decode_pos += 4;
-            value_list =
-                    decodebitPacking(
-                            encoded, decode_pos, max_bit_width_value, 0, remain_length + zero_number);
-            decode_pos += max_bit_width_value * (remain_length + zero_number - 1) / 8;
-
-            int td_common = bytes2Integer(encoded, decode_pos, 4);
-            decode_pos += 4;
-
-            int ti_pre = time0;
-            int vi_pre = value0;
-            for (int i = 0; i < remain_length + zero_number - 1; i++) {
-                int ti = (int) ((double) theta1_r * ti_pre + (double) theta0_r + time_list.get(i));
-                time_list.set(i, ti);
-                ti_pre = ti;
-
-                int vi = (int) ((double) theta1_v * vi_pre + (double) theta0_v + value_list.get(i));
-                value_list.set(i, vi);
-                vi_pre = vi;
-            }
-
-            ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
-            ts_block_tmp0.add(time0);
-            ts_block_tmp0.add(value0);
-            ts_block.add(ts_block_tmp0);
-            for (int i = 0; i < remain_length + zero_number - 1; i++) {
-                int ti = (time_list.get(i) - time0) * td_common + time0;
-                ArrayList<Integer> ts_block_tmp = new ArrayList<>();
-                ts_block_tmp.add(ti);
-                ts_block_tmp.add(value_list.get(i));
-                ts_block.add(ts_block_tmp);
-            }
-
-//            quickSort(ts_block, 0, 0, remain_length + zero_number - 1);
-
-            for (int i = zero_number; i < remain_length + zero_number; i++) {
-                data.add(ts_block.get(i));
-            }
-        }
+//        if (remain_length == 1) {
+//            int value_end = bytes2Integer(encoded, decode_pos, 4);
+//            decode_pos += 4;
+//            ArrayList<Integer> ts_block_end = new ArrayList<>();
+//            ts_block_end.add(value_end);
+//            data.add(ts_block_end);
+//        }
+//        if (remain_length != 0 && remain_length != 1) {
+//            ArrayList<Integer> value_list = new ArrayList<>();
+//
+//            ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
+//
+//            int value0 = bytes2Integer(encoded, decode_pos, 4);
+//            decode_pos += 4;
+//
+//
+//
+//            int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
+//            decode_pos += 4;
+////            value_list =
+////                    decodebitPacking(
+////                            encoded, decode_pos, max_bit_width_value, 0, remain_length + zero_number);
+////            decode_pos += max_bit_width_value * (remain_length + zero_number - 1) / 8;
+////
+////            int td_common = bytes2Integer(encoded, decode_pos, 4);
+////            decode_pos += 4;
+//
+//            int vi_pre = value0;
+//            for (int i = 0; i < remain_length + zero_number - 1; i++) {
+//
+//                int vi = vi_pre +  value_list.get(i);
+//                value_list.set(i, vi);
+//                vi_pre = vi;
+//            }
+//
+//            ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
+//            ts_block_tmp0.add(value0);
+//            ts_block.add(ts_block_tmp0);
+//            for (int i = 0; i < remain_length + zero_number - 1; i++) {
+//                ArrayList<Integer> ts_block_tmp = new ArrayList<>();
+//                ts_block_tmp.add(value_list.get(i));
+//                ts_block.add(ts_block_tmp);
+//            }
+//
+////            quickSort(ts_block, 0, 0, remain_length + zero_number - 1);
+//
+//            for (int i = zero_number; i < remain_length + zero_number; i++) {
+//                data.add(ts_block.get(i));
+//            }
+//        }
         return data;
     }
 
@@ -969,8 +1022,8 @@ public class OutlierCDF {
             columnIndexes.add(i, i);
         }
 
-//        for (int file_i = 11; file_i < 12; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 9; file_i < 10; file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1008,70 +1061,70 @@ public class OutlierCDF {
 
 
 //                for (int index : columnIndexes) {
-                    // add a column to "data"
+                // add a column to "data"
 //                    System.out.println(index);
 
-                    loader.readHeaders();
+                loader.readHeaders();
 //                    data.clear();
-                    while (loader.readRecord()) {
+                while (loader.readRecord()) {
 //                        String value = loader.getValues()[index];
-                        data1.add(Integer.valueOf(loader.getValues()[0]));
-                        data2.add(Integer.valueOf(loader.getValues()[1]));
+                    data1.add(Integer.valueOf(loader.getValues()[0]));
+                    data2.add(Integer.valueOf(loader.getValues()[1]));
 //                        data.add(Integer.valueOf(value));
-                    }
+                }
 //                    System.out.println(data2);
-                    inputStream.close();
+                inputStream.close();
 
-                    long encodeTime = 0;
-                    long decodeTime = 0;
-                    double ratio = 0;
-                    double compressed_size = 0;
-                    int repeatTime2 = 1;
-                    for (int i = 0; i < repeatTime; i++) {
-                        long s = System.nanoTime();
-                        ArrayList<Byte> buffer1 = new ArrayList<>();
-                        ArrayList<Byte> buffer2 = new ArrayList<>();
-                        long buffer_bits = 0;
-                        for (int repeat = 0; repeat < repeatTime2; repeat++){
+                long encodeTime = 0;
+                long decodeTime = 0;
+                double ratio = 0;
+                double compressed_size = 0;
+                int repeatTime2 = 1;
+                for (int i = 0; i < repeatTime; i++) {
+                    long s = System.nanoTime();
+                    ArrayList<Byte> buffer1 = new ArrayList<>();
+                    ArrayList<Byte> buffer2 = new ArrayList<>();
+                    long buffer_bits = 0;
+                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
 //                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
-                            buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i));
-                        }
+                        buffer2 = ReorderingRegressionEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i));
+                    }
 //                        System.out.println(buffer2.size());
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
 
-                        long e = System.nanoTime();
-                        encodeTime += ((e - s) / repeatTime2);
+                    long e = System.nanoTime();
+                    encodeTime += ((e - s) / repeatTime2);
 //                        compressed_size += buffer1.size();
-                        compressed_size += buffer2.size();
-                        double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
-                        ratio += ratioTmp;
-                        s = System.nanoTime();
-                        //          for(int repeat=0;repeat<repeatTime2;repeat++)
-                        //            data_decoded = ReorderingRegressionDecoder(buffer);
-                        e = System.nanoTime();
-                        decodeTime += ((e - s) / repeatTime2);
-                    }
+                    compressed_size += buffer2.size();
+                    double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
+                    ratio += ratioTmp;
+                    s = System.nanoTime();
+                    for(int repeat=0;repeat<repeatTime2;repeat++)
+                                data_decoded = ReorderingRegressionDecoder(buffer2);
+                    e = System.nanoTime();
+                    decodeTime += ((e - s) / repeatTime2);
+                }
 
-                    ratio /= repeatTime;
-                    compressed_size /= repeatTime;
-                    encodeTime /= repeatTime;
-                    decodeTime /= repeatTime;
+                ratio /= repeatTime;
+                compressed_size /= repeatTime;
+                encodeTime /= repeatTime;
+                decodeTime /= repeatTime;
 
-                    String[] record = {
-                            f.toString(),
-                            "Outlier",
-                            String.valueOf(encodeTime),
-                            String.valueOf(decodeTime),
-                            String.valueOf(data1.size()),
-                            String.valueOf(compressed_size),
-                            String.valueOf(ratio)
-                    };
-                    writer.writeRecord(record);
-                    System.out.println(ratio);
+                String[] record = {
+                        f.toString(),
+                        "Outlier",
+                        String.valueOf(encodeTime),
+                        String.valueOf(decodeTime),
+                        String.valueOf(data1.size()),
+                        String.valueOf(compressed_size),
+                        String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+                System.out.println(ratio);
 
 //                }
 
-//
+//   break;
             }
             writer.close();
 
