@@ -64,9 +64,46 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   protected boolean finished = false;
 
+  protected boolean isOutputEndTime = false;
+
   private final long cachedRawDataSize;
 
   @SuppressWarnings("squid:S107")
+  protected AbstractSeriesAggregationScanOperator(
+      PlanNodeId sourceId,
+      OperatorContext context,
+      SeriesScanUtil seriesScanUtil,
+      int subSensorSize,
+      List<Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator,
+      boolean ascending,
+      boolean isOutputEndTime,
+      GroupByTimeParameter groupByTimeParameter,
+      long maxReturnSize) {
+    this.sourceId = sourceId;
+    this.operatorContext = context;
+    this.ascending = ascending;
+    this.isGroupByQuery = groupByTimeParameter != null;
+    this.seriesScanUtil = seriesScanUtil;
+    this.subSensorSize = subSensorSize;
+    this.aggregators = aggregators;
+    this.timeRangeIterator = timeRangeIterator;
+    this.isOutputEndTime = isOutputEndTime;
+
+    List<TSDataType> dataTypes = new ArrayList<>();
+    if (this.isOutputEndTime) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    for (Aggregator aggregator : aggregators) {
+      dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
+    }
+    this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
+
+    this.cachedRawDataSize =
+        (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    this.maxReturnSize = maxReturnSize;
+  }
+
   protected AbstractSeriesAggregationScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
@@ -188,8 +225,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   protected void updateResultTsBlock() {
-    appendAggregationResult(
-        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
+    appendAggregationResult(resultTsBlockBuilder, aggregators, isOutputEndTime, timeRangeIterator);
   }
 
   protected boolean calcFromCachedData() {

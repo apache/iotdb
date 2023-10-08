@@ -81,6 +81,10 @@ public class LocalExecutionPlanContext {
   private boolean needUpdateLastCache;
   private boolean needUpdateNullEntry;
 
+  // used in group by time
+  // output the endTime and make sure the there is only one endTime in the last time window
+  private boolean hasOutputEndTime = false;
+
   public final DataNodeQueryContext dataNodeQueryContext;
 
   // for data region
@@ -288,5 +292,13 @@ public class LocalExecutionPlanContext {
 
   public long getDataRegionTTL() {
     return dataRegionTTL;
+  }
+
+  public void setHasOutputEndTime(boolean hasOutputEndTime) {
+    this.hasOutputEndTime = hasOutputEndTime;
+  }
+
+  public boolean hasOutputEndTime() {
+    return hasOutputEndTime;
   }
 }

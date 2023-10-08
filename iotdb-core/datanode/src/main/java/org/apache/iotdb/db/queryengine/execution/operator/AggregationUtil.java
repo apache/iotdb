@@ -148,12 +148,19 @@ public class AggregationUtil {
 
   /** Append a row of aggregation results to the result tsBlock. */
   public static void appendAggregationResult(
-      TsBlockBuilder tsBlockBuilder, List<? extends Aggregator> aggregators, long outputTime) {
+      TsBlockBuilder tsBlockBuilder,
+      List<? extends Aggregator> aggregators,
+      boolean isOutputEndTime,
+      ITimeRangeIterator timeRangeIterator) {
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     // Use start time of current time range as time column
-    timeColumnBuilder.writeLong(outputTime);
+    timeColumnBuilder.writeLong(timeRangeIterator.currentOutputTime());
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     int columnIndex = 0;
+    if (isOutputEndTime) {
+      columnBuilders[columnIndex].writeLong(timeRangeIterator.currentTimeRange().getMax());
+      columnIndex++;
+    }
     for (Aggregator aggregator : aggregators) {
       ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
       columnBuilder[0] = columnBuilders[columnIndex++];

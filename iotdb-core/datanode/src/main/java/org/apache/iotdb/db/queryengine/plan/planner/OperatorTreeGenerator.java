@@ -368,6 +368,15 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitSeriesAggregationScan(
       SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
+
+    boolean isOutputTime = node.isOutputEndTime();
+    if (isOutputTime) {
+      if (context.hasOutputEndTime()) {
+        isOutputTime = false;
+        node.setOutputEndTime(false);
+      }
+    }
+
     PartialPath seriesPath = node.getSeriesPath();
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
@@ -410,11 +419,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 SeriesAggregationScanOperator.class.getSimpleName());
+
     SeriesAggregationScanOperator aggregateScanOperator =
         new SeriesAggregationScanOperator(
             node.getPlanNodeId(),
             seriesPath,
             node.getScanOrder(),
+            isOutputTime,
             scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
@@ -432,6 +443,15 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
+
+    boolean isOutputTime = node.isOutputEndTime();
+    if (isOutputTime) {
+      if (context.hasOutputEndTime()) {
+        isOutputTime = false;
+        node.setOutputEndTime(false);
+      }
+    }
+
     AlignedPath seriesPath = node.getAlignedPath();
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<Aggregator> aggregators = new ArrayList<>();
@@ -502,11 +522,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 AlignedSeriesAggregationScanOperator.class.getSimpleName());
+
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         new AlignedSeriesAggregationScanOperator(
             node.getPlanNodeId(),
             seriesPath,
             node.getScanOrder(),
+            isOutputTime,
             scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
@@ -1358,6 +1380,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 SlidingWindowAggregationOperator.class.getSimpleName());
+
+    if (node.isOutputEndTime()) {
+      context.setHasOutputEndTime(true);
+    }
+
     Operator child = node.getChild().accept(this, context);
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<Aggregator> aggregators = new ArrayList<>();
@@ -1393,6 +1420,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         timeRangeIterator,
         child,
         ascending,
+        node.isOutputEndTime(),
         groupByTimeParameter,
         maxReturnSize);
   }
@@ -1432,6 +1460,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     checkArgument(
         !node.getAggregationDescriptorList().isEmpty(),
         "Aggregation descriptorList cannot be empty");
+
+    boolean outputEndTime = node.isOutputEndTime();
+    if (outputEndTime) {
+      if (context.hasOutputEndTime()) {
+        outputEndTime = false;
+        node.setOutputEndTime(false);
+      } else {
+        context.setHasOutputEndTime(true);
+      }
+    }
+
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<Aggregator> aggregators = new ArrayList<>();
@@ -1544,7 +1583,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             windowParameter);
       }
 
-      WindowParameter windowParameter = new TimeWindowParameter(node.isOutputEndTime());
+      WindowParameter windowParameter = new TimeWindowParameter(outputEndTime);
       return new RawDataAggregationOperator(
           operatorContext,
           aggregators,
@@ -1570,7 +1609,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
       context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
       return new AggregationOperator(
-          operatorContext, aggregators, timeRangeIterator, children, maxReturnSize);
+          operatorContext, aggregators, timeRangeIterator, children, outputEndTime, maxReturnSize);
     }
   }
 

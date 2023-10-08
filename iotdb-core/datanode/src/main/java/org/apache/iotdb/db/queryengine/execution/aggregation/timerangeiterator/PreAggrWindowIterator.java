@@ -192,4 +192,9 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
       return intervalNum * 2 + 2;
     }
   }
+
+  @Override
+  public TimeRange currentTimeRange() {
+    return curTimeRange;
+  }
 }

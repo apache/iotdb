@@ -152,6 +152,10 @@ public class AggregationNode extends MultiChildProcessNode {
     return outputEndTime;
   }
 
+  public void setOutputEndTime(boolean outputEndTime) {
+    this.outputEndTime = outputEndTime;
+  }
+
   @Nullable
   public Expression getGroupByExpression() {
     return groupByExpression;

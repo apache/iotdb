@@ -164,4 +164,9 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
 
     return tmpInterval;
   }
+
+  @Override
+  public TimeRange currentTimeRange() {
+    return curTimeRange;
+  }
 }

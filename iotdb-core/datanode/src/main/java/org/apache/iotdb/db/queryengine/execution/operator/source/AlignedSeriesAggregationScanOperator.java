@@ -55,4 +55,28 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
         groupByTimeParameter,
         maxReturnSize);
   }
+
+  public AlignedSeriesAggregationScanOperator(
+      PlanNodeId sourceId,
+      AlignedPath seriesPath,
+      Ordering scanOrder,
+      boolean isOutputEndTime,
+      SeriesScanOptions scanOptions,
+      OperatorContext context,
+      List<Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator,
+      GroupByTimeParameter groupByTimeParameter,
+      long maxReturnSize) {
+    this(
+        sourceId,
+        seriesPath,
+        scanOrder,
+        scanOptions,
+        context,
+        aggregators,
+        timeRangeIterator,
+        groupByTimeParameter,
+        maxReturnSize);
+    this.isOutputEndTime = isOutputEndTime;
+  }
 }
