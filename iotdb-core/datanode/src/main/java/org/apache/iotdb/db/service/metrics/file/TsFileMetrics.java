@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.service.metrics.file;
 
-import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -28,18 +27,17 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BinaryOperator;
 
 public class TsFileMetrics implements IMetricSet {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileMetrics.class);
@@ -48,42 +46,34 @@ public class TsFileMetrics implements IMetricSet {
   private static final String SEQUENCE = "sequence";
   private static final String UNSEQUENCE = "unsequence";
   private static final String LEVEL = "level";
+  private static final String FILE_GLOBAL_COUNT = "file_global_count";
+  private static final String FILE_GLOBAL_SIZE = "file_global_size";
   private static final String FILE_LEVEL_COUNT = "file_level_count";
   private static final String FILE_LEVEL_SIZE = "file_level_size";
 
   // database -> regionId -> sequence file size
-  private final Map<String, Map<String, Long>> seqFileSizeMap = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Pair<Long, Gauge>>> seqFileSizeMap =
+      new ConcurrentHashMap<>();
   // database -> regionId -> unsequence file size
-  private final Map<String, Map<String, Long>> unseqFileSizeMap = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Pair<Long, Gauge>>> unseqFileSizeMap =
+      new ConcurrentHashMap<>();
   // database -> regionId -> sequence file count
-  private final Map<String, Map<String, Integer>> seqFileCountMap = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Pair<Integer, Gauge>>> seqFileCountMap =
+      new ConcurrentHashMap<>();
   // database -> regionId -> unsequence file count
-  private final Map<String, Map<String, Integer>> unseqFileCountMap = new ConcurrentHashMap<>();
-  // database -> regionId -> sequence file size gauge
-  private final Map<String, Map<String, Gauge>> seqFileSizeGaugeMap = new ConcurrentHashMap<>();
-  // database -> regionId -> unsequence file size gauge
-  private final Map<String, Map<String, Gauge>> unseqFileSizeGaugeMap = new ConcurrentHashMap<>();
-  // database -> regionId -> sequence file count gauge
-  private final Map<String, Map<String, Gauge>> seqFileCountGaugeMap = new ConcurrentHashMap<>();
-  // database -> regionId -> unsequence file count gauge
-  private final Map<String, Map<String, Gauge>> unseqFileCountGaugeMap = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Pair<Integer, Gauge>>> unseqFileCountMap =
+      new ConcurrentHashMap<>();
 
   // level -> sequence file count
-  private final Map<Integer, Integer> seqLevelTsFileCountMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Pair<Integer, Gauge>> seqLevelTsFileCountMap =
+      new ConcurrentHashMap<>();
   // level -> unsequence file count
-  private final Map<Integer, Integer> unseqLevelTsFileCountMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Pair<Integer, Gauge>> unseqLevelTsFileCountMap =
+      new ConcurrentHashMap<>();
   // level -> sequence file size
-  private final Map<Integer, Long> seqLevelTsFileSizeMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Pair<Long, Gauge>> seqLevelTsFileSizeMap = new ConcurrentHashMap<>();
   // level -> unsequence file size
-  private final Map<Integer, Long> unseqLevelTsFileSizeMap = new ConcurrentHashMap<>();
-  // level -> sequence file count gauge
-  private final Map<Integer, Gauge> seqLevelCountGaugeMap = new ConcurrentHashMap<>();
-  // level -> sequence file size gauge
-  private final Map<Integer, Gauge> seqLevelSizeGaugeMap = new ConcurrentHashMap<>();
-  // level -> unsequence file count gauge
-  private final Map<Integer, Gauge> unseqLevelCountGaugeMap = new ConcurrentHashMap<>();
-  // level -> unsequence file size gauge
-  private final Map<Integer, Gauge> unseqLevelSizeGaugeMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Pair<Long, Gauge>> unseqLevelTsFileSizeMap = new ConcurrentHashMap<>();
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -129,12 +119,6 @@ public class TsFileMetrics implements IMetricSet {
         .forEach(map -> deleteRegionFromMap(map, database, regionId));
     Arrays.asList(seqFileSizeMap, unseqFileSizeMap)
         .forEach(map -> deleteRegionFromMap(map, database, regionId));
-    Arrays.asList(
-            seqFileCountGaugeMap,
-            unseqFileCountGaugeMap,
-            seqFileSizeGaugeMap,
-            unseqFileSizeGaugeMap)
-        .forEach(map -> deleteRegionFromMap(map, database, regionId));
   }
 
   private <T> void deleteRegionFromMap(
@@ -152,77 +136,109 @@ public class TsFileMetrics implements IMetricSet {
   // region update global tsfile value map and gauge map
   private void updateGlobalTsFileCountAndSize(
       String database, String regionId, int countDelta, long sizeDelta, boolean seq) {
-    long fileCount =
-        updateGlobalTsFileValueMapAndGet(
-            (seq ? seqFileCountMap : unseqFileCountMap),
-            database,
-            regionId,
-            countDelta,
-            Integer::sum);
-    long fileSize =
-        updateGlobalTsFileValueMapAndGet(
-            (seq ? seqFileSizeMap : unseqFileSizeMap), database, regionId, sizeDelta, Long::sum);
-    if (metricService != null) {
-      updateGlobalTsFileGaugeMap(
-          database,
-          regionId,
-          fileCount,
-          (seq ? seqFileCountGaugeMap : unseqFileCountGaugeMap),
-          (seq ? SEQUENCE : UNSEQUENCE),
-          Metric.FILE_COUNT.toString());
-      updateGlobalTsFileGaugeMap(
-          database,
-          regionId,
-          fileSize,
-          (seq ? seqFileSizeGaugeMap : unseqFileSizeGaugeMap),
-          (seq ? SEQUENCE : UNSEQUENCE),
-          Metric.FILE_SIZE.toString());
-      checkIfThereRemainingData();
-    } else {
-      // the metric service has not been set yet
-      hasRemainData.set(true);
-    }
-  }
-
-  private <T> T updateGlobalTsFileValueMapAndGet(
-      Map<String, Map<String, T>> map,
-      String database,
-      String regionId,
-      T value,
-      BinaryOperator<T> mergeFunction) {
-    Map<String, T> innerMap = map.computeIfAbsent(database, k -> new ConcurrentHashMap<>());
-    return innerMap.merge(regionId, value, mergeFunction);
-  }
-
-  private void updateGlobalTsFileGaugeMap(
-      String database,
-      String regionId,
-      long value,
-      Map<String, Map<String, Gauge>> gaugeMap,
-      String orderStr,
-      String gaugeName) {
-    gaugeMap.compute(
+    updateGlobalTsFileCountMap(
+        (seq ? seqFileCountMap : unseqFileCountMap),
+        (seq ? SEQUENCE : UNSEQUENCE),
         database,
+        regionId,
+        countDelta);
+    updateGlobalTsFileSizeMap(
+        (seq ? seqFileSizeMap : unseqFileSizeMap),
+        (seq ? SEQUENCE : UNSEQUENCE),
+        database,
+        regionId,
+        sizeDelta);
+  }
+
+  private void updateGlobalTsFileCountMap(
+      Map<String, Map<String, Pair<Integer, Gauge>>> map,
+      String orderStr,
+      String database,
+      String regionId,
+      int value) {
+    Map<String, Pair<Integer, Gauge>> innerMap =
+        map.computeIfAbsent(database, k -> new ConcurrentHashMap<>());
+    innerMap.compute(
+        regionId,
         (k, v) -> {
+          // add pair if regionId not exists, and update value
           if (v == null) {
-            v = new HashMap<>();
+            v = new Pair<>(value, null);
+          } else {
+            v.setLeft(v.getLeft() + value);
           }
-          if (!v.containsKey(regionId)) {
-            v.put(
-                regionId,
-                metricService.getOrCreateGauge(
-                    gaugeName,
-                    MetricLevel.CORE,
-                    Tag.NAME.toString(),
-                    orderStr,
-                    Tag.DATABASE.toString(),
-                    database,
-                    Tag.REGION.toString(),
-                    regionId));
+          // try to add gauge if gauge not exists
+          if (v.getRight() == null) {
+            if (metricService != null) {
+              v.setRight(getOrCreateGlobalTsFileCountGauge(orderStr, database, regionId));
+            } else {
+              hasRemainData.set(true);
+            }
           }
-          v.get(regionId).set(value);
+          // try to update gauge
+          if (v.getRight() != null) {
+            v.getRight().set(v.getLeft());
+          }
           return v;
         });
+  }
+
+  public Gauge getOrCreateGlobalTsFileCountGauge(
+      String orderStr, String database, String regionId) {
+    return metricService.getOrCreateGauge(
+        FILE_GLOBAL_COUNT,
+        MetricLevel.CORE,
+        Tag.NAME.toString(),
+        orderStr,
+        Tag.DATABASE.toString(),
+        database,
+        Tag.REGION.toString(),
+        regionId);
+  }
+
+  private void updateGlobalTsFileSizeMap(
+      Map<String, Map<String, Pair<Long, Gauge>>> map,
+      String orderStr,
+      String database,
+      String regionId,
+      long value) {
+    Map<String, Pair<Long, Gauge>> innerMap =
+        map.computeIfAbsent(database, k -> new ConcurrentHashMap<>());
+    innerMap.compute(
+        regionId,
+        (k, v) -> {
+          // add pair if regionId not exists, and update value
+          if (v == null) {
+            v = new Pair<>(value, null);
+          } else {
+            v.setLeft(v.getLeft() + value);
+          }
+          // try to add gauge if gauge not exists
+          if (v.getRight() == null) {
+            if (metricService != null) {
+              v.setRight(getOrCreateGlobalTsFileSizeGauge(orderStr, database, regionId));
+            } else {
+              hasRemainData.set(true);
+            }
+          }
+          // try to update gauge
+          if (v.getRight() != null) {
+            v.getRight().set(v.getLeft());
+          }
+          return v;
+        });
+  }
+
+  public Gauge getOrCreateGlobalTsFileSizeGauge(String orderStr, String database, String regionId) {
+    return metricService.getOrCreateGauge(
+        FILE_GLOBAL_SIZE,
+        MetricLevel.CORE,
+        Tag.NAME.toString(),
+        orderStr,
+        Tag.DATABASE.toString(),
+        database,
+        Tag.REGION.toString(),
+        regionId);
   }
 
   // endregion
@@ -231,25 +247,17 @@ public class TsFileMetrics implements IMetricSet {
 
   private void updateLevelTsFileCountAndSize(
       long sizeDelta, int countDelta, boolean seq, int level) {
-    int count =
-        (seq ? seqLevelTsFileCountMap : unseqLevelTsFileCountMap)
-            .compute(level, (k, v) -> v == null ? countDelta : v + countDelta);
-    long size =
-        (seq ? seqLevelTsFileSizeMap : unseqLevelTsFileSizeMap)
-            .compute(level, (k, v) -> v == null ? sizeDelta : v + sizeDelta);
     if (metricService != null) {
-      updateLevelTsFileGaugeMap(
-          level,
-          count,
-          seq ? seqLevelCountGaugeMap : unseqLevelCountGaugeMap,
+      updateLevelTsFileCountMap(
+          seq ? seqLevelTsFileCountMap : unseqLevelTsFileCountMap,
           seq ? SEQUENCE : UNSEQUENCE,
-          FILE_LEVEL_COUNT);
-      updateLevelTsFileGaugeMap(
           level,
-          size,
-          seq ? seqLevelSizeGaugeMap : unseqLevelSizeGaugeMap,
+          countDelta);
+      updateLevelTsFileSizeMap(
+          seq ? seqLevelTsFileSizeMap : unseqLevelTsFileSizeMap,
           seq ? SEQUENCE : UNSEQUENCE,
-          FILE_LEVEL_SIZE);
+          level,
+          sizeDelta);
       checkIfThereRemainingData();
     } else {
       // the metric service has not been set yet
@@ -257,20 +265,78 @@ public class TsFileMetrics implements IMetricSet {
     }
   }
 
-  private void updateLevelTsFileGaugeMap(
-      int level, long value, Map<Integer, Gauge> gaugeMap, String orderStr, String gaugeName) {
-    gaugeMap
-        .computeIfAbsent(
-            level,
-            l ->
-                metricService.getOrCreateGauge(
-                    gaugeName,
-                    MetricLevel.CORE,
-                    Tag.NAME.toString(),
-                    orderStr,
-                    LEVEL,
-                    String.valueOf(level)))
-        .set(value);
+  private void updateLevelTsFileCountMap(
+      Map<Integer, Pair<Integer, Gauge>> map, String orderStr, int level, int value) {
+    map.compute(
+        level,
+        (k, v) -> {
+          // add pair if level not exists, and update value
+          if (v == null) {
+            v = new Pair<>(value, null);
+          } else {
+            v.setLeft(v.getLeft() + value);
+          }
+          // try to add gauge if gauge not exists
+          if (v.getRight() == null) {
+            if (metricService != null) {
+              v.setRight(getOrCreateLevelTsFileCountGauge(orderStr, level));
+            } else {
+              hasRemainData.set(true);
+            }
+          }
+          // try to update gauge
+          if (v.getRight() != null) {
+            v.getRight().set(v.getLeft());
+          }
+          return v;
+        });
+  }
+
+  public Gauge getOrCreateLevelTsFileCountGauge(String orderStr, int level) {
+    return metricService.getOrCreateGauge(
+        FILE_LEVEL_COUNT,
+        MetricLevel.CORE,
+        Tag.NAME.toString(),
+        orderStr,
+        LEVEL,
+        String.valueOf(level));
+  }
+
+  private void updateLevelTsFileSizeMap(
+      Map<Integer, Pair<Long, Gauge>> map, String orderStr, int level, long value) {
+    map.compute(
+        level,
+        (k, v) -> {
+          // add pair if level not exists, and update value
+          if (v == null) {
+            v = new Pair<>(value, null);
+          } else {
+            v.setLeft(v.getLeft() + value);
+          }
+          // try to add gauge if gauge not exists
+          if (v.getRight() == null) {
+            if (metricService != null) {
+              v.setRight(getOrCreateLevelTsFileSizeGauge(orderStr, level));
+            } else {
+              hasRemainData.set(true);
+            }
+          }
+          // try to update gauge
+          if (v.getRight() != null) {
+            v.getRight().set(v.getLeft());
+          }
+          return v;
+        });
+  }
+
+  public Gauge getOrCreateLevelTsFileSizeGauge(String orderStr, int level) {
+    return metricService.getOrCreateGauge(
+        FILE_LEVEL_SIZE,
+        MetricLevel.CORE,
+        Tag.NAME.toString(),
+        orderStr,
+        LEVEL,
+        String.valueOf(level));
   }
 
   // endregion
@@ -289,47 +355,45 @@ public class TsFileMetrics implements IMetricSet {
   }
 
   private void updateRemainData(boolean seq) {
-    for (Map.Entry<String, Map<String, Integer>> entry :
+    for (Map.Entry<String, Map<String, Pair<Integer, Gauge>>> entry :
         (seq ? seqFileCountMap : unseqFileCountMap).entrySet()) {
-      for (Map.Entry<String, Integer> innerEntry : entry.getValue().entrySet()) {
-        updateGlobalTsFileGaugeMap(
-            entry.getKey(),
-            innerEntry.getKey(),
-            innerEntry.getValue(),
-            seq ? seqFileCountGaugeMap : unseqFileCountGaugeMap,
-            seq ? SEQUENCE : UNSEQUENCE,
-            Metric.FILE_COUNT.toString());
+      for (Map.Entry<String, Pair<Integer, Gauge>> innerEntry : entry.getValue().entrySet()) {
+        if (innerEntry.getValue().getRight() == null) {
+          Gauge gauge =
+              getOrCreateGlobalTsFileCountGauge(
+                  seq ? SEQUENCE : UNSEQUENCE, entry.getKey(), innerEntry.getKey());
+          gauge.set(innerEntry.getValue().getLeft());
+          innerEntry.getValue().setRight(gauge);
+        }
       }
     }
-    for (Map.Entry<String, Map<String, Long>> entry :
+    for (Map.Entry<String, Map<String, Pair<Long, Gauge>>> entry :
         (seq ? seqFileSizeMap : unseqFileSizeMap).entrySet()) {
-      for (Map.Entry<String, Long> innerEntry : entry.getValue().entrySet()) {
-        updateGlobalTsFileGaugeMap(
-            entry.getKey(),
-            innerEntry.getKey(),
-            innerEntry.getValue(),
-            seq ? seqFileSizeGaugeMap : unseqFileSizeGaugeMap,
-            seq ? SEQUENCE : UNSEQUENCE,
-            Metric.FILE_SIZE.toString());
+      for (Map.Entry<String, Pair<Long, Gauge>> innerEntry : entry.getValue().entrySet()) {
+        if (innerEntry.getValue().getRight() == null) {
+          Gauge gauge =
+              getOrCreateGlobalTsFileSizeGauge(
+                  seq ? SEQUENCE : UNSEQUENCE, entry.getKey(), innerEntry.getKey());
+          gauge.set(innerEntry.getValue().getLeft());
+          innerEntry.getValue().setRight(gauge);
+        }
       }
     }
-    for (Map.Entry<Integer, Integer> entry :
+    for (Map.Entry<Integer, Pair<Integer, Gauge>> entry :
         (seq ? seqLevelTsFileCountMap : unseqLevelTsFileCountMap).entrySet()) {
-      updateLevelTsFileGaugeMap(
-          entry.getKey(),
-          entry.getValue(),
-          seq ? seqLevelCountGaugeMap : unseqLevelCountGaugeMap,
-          seq ? SEQUENCE : UNSEQUENCE,
-          FILE_LEVEL_COUNT);
+      if (entry.getValue().getRight() == null) {
+        Gauge gauge = getOrCreateLevelTsFileCountGauge(seq ? SEQUENCE : UNSEQUENCE, entry.getKey());
+        gauge.set(entry.getValue().getLeft());
+        entry.getValue().setRight(gauge);
+      }
     }
-    for (Map.Entry<Integer, Long> entry :
+    for (Map.Entry<Integer, Pair<Long, Gauge>> entry :
         (seq ? seqLevelTsFileSizeMap : unseqLevelTsFileSizeMap).entrySet()) {
-      updateLevelTsFileGaugeMap(
-          entry.getKey(),
-          entry.getValue(),
-          seq ? seqLevelSizeGaugeMap : unseqLevelSizeGaugeMap,
-          seq ? SEQUENCE : UNSEQUENCE,
-          FILE_LEVEL_SIZE);
+      if (entry.getValue().getRight() == null) {
+        Gauge gauge = getOrCreateLevelTsFileSizeGauge(seq ? SEQUENCE : UNSEQUENCE, entry.getKey());
+        gauge.set(entry.getValue().getLeft());
+        entry.getValue().setRight(gauge);
+      }
     }
   }
 
@@ -338,10 +402,10 @@ public class TsFileMetrics implements IMetricSet {
   @TestOnly
   public long getFileCount(boolean seq) {
     long fileCount = 0;
-    for (Map.Entry<String, Map<String, Integer>> entry :
+    for (Map.Entry<String, Map<String, Pair<Integer, Gauge>>> entry :
         (seq ? seqFileCountMap : unseqFileCountMap).entrySet()) {
-      for (Map.Entry<String, Integer> regionEntry : entry.getValue().entrySet()) {
-        fileCount += regionEntry.getValue();
+      for (Map.Entry<String, Pair<Integer, Gauge>> regionEntry : entry.getValue().entrySet()) {
+        fileCount += regionEntry.getValue().getLeft();
       }
     }
     return fileCount;
