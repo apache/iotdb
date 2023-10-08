@@ -19,6 +19,53 @@
 
 -->
 
+# Apache IoTDB 1.2.2
+
+## Features & Improvements
+
+- [IOTDB-6029] Implementing flink-sql-iotdb-connector
+- [IOTDB-6084] Pipe: support node-urls in connector-v1
+- [IOTDB-6103] Adding count_time aggregation feature
+- [IOTDB-6112] Limit & Offset push down doesn't take effect while there exist time filter
+- [IOTDB-6115] Limit & Offset push down doesn't take effect while there exist null value
+- [IOTDB-6120] push down limit/offset in query with group by time
+- [IOTDB-6129] ConfigNode restarts without relying on Seed-ConfigNode
+- [IOTDB-6131] Iotdb rest service supports insertRecords function
+- [IOTDB-6151] Move DataNode's system.properties to upper dir
+- [IOTDB-6173] Change default encoder of INT32 and INT64 from RLE to TS_2DIFF
+- Adjust the default thrift timeout parameter to 60s
+- Accelerate the deletion execution
+
+## Bugs
+
+- [IOTDB-6064] Pipe: Fix deadlock in rolling back procedures concurrently
+- [IOTDB-6081] Pipe: use HybridExtractor instead of LogExtractor when realtime mode is set to log to avoid OOM under heavy insertion load
+- [IOTDB-6145] Pipe: can not release TsFile or WAL resource after pipe is dropped
+- [IOTDB-6146] Pipe: can not transfer data after 1000+ pipes' creating and dropping
+- [IOTDB-6082] Improve disk space metrics
+- [IOTDB-6104] tmp directory won't be cleaned after udf query end
+- [IOTDB-6119] Add ConfigNode leader service check
+- [IOTDB-6125] Fix DataPartition allocation bug when insert big batch data
+- [IOTDB-6127] Pipe: buffered events in processor stage can not be consumed by connector
+- [IOTDB-6132] CrossSpaceCompaction: The estimated memory size is too large for cross space compaction task
+- [IOTDB-6133] NullPointerException occurs in unsequence InnerSpaceCompactionTask
+- [IOTDB-6148] Pipe: Fixed the bug that some uncommited progresses may be reported
+- [IOTDB-6156] Fixed TConfiguration invalidly in Thrift AsyncServer For IoTConsensus
+- [IOTDB-6164] Can create illegal path through rest api
+- Fix datanode status is ReadOnly because the disk is full
+- Fix DataPartition allocation bug when insert big batch
+- Fix flush point statistics
+- Fix SchemaFileSketchTool is not found
+- Refactoring DeleteOutdatedFileTask in WalNode
+- Add compression and encoding type check for FastCompactionPerformer
+- Add lazy page reader for aligned page reader to avoid huge memory cost when reading rows of aligned timeseries
+- Pipe: use PipeTaskCoordinatorLock instead of ReentrantLock for multi thread sync
+- Pipe: fix pipe procedure stuck because of data node async request forever waiting for response
+- Pipe: fix NPE when HybridProgressIndex.updateToMinimumIsAfterProgressIndex after system reboot (DR: SimpleConsensus)
+- Pipe: fix pipe coordinator deadlock causing CN election timeout
+- Pipe: Improve performance for 10000+ pipes
+- RATIS-1873. Remove RetryCache assertion that doesn't hold
+
 # Apache IoTDB 1.1.0
 
 ## New Features
