@@ -576,12 +576,13 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 cd1.countDown();
                 cd2.await();
 
-                try {
-                  crossSpaceCompactionTask.transitSourceFilesToMerging();
-                  Assert.fail("cross space compaction task should be invalid.");
-                } catch (FileCannotTransitToCompactingException e) {
+                boolean exceptionCaught = false;
 
-                }
+                Assert.assertThrows(
+                    "cross space compaction task should be invalid.",
+                    FileCannotTransitToCompactingException.class,
+                    crossSpaceCompactionTask::transitSourceFilesToMerging);
+
                 FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
                     Mockito.mock(FixedPriorityBlockingQueue.class);
                 Mockito.when(mockQueue.take())
@@ -928,12 +929,11 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 cd1.countDown();
                 cd2.await();
 
-                try {
-                  crossSpaceCompactionTask.transitSourceFilesToMerging();
-                  Assert.fail("cross space compaction task should be invalid.");
-                } catch (FileCannotTransitToCompactingException e) {
+                Assert.assertThrows(
+                    "cross space compaction task should be invalid.",
+                    FileCannotTransitToCompactingException.class,
+                    crossSpaceCompactionTask::transitSourceFilesToMerging);
 
-                }
                 FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
                     Mockito.mock(FixedPriorityBlockingQueue.class);
                 Mockito.when(mockQueue.take())
@@ -1414,12 +1414,11 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 cd1.countDown();
                 cd2.await();
 
-                try {
-                  crossSpaceCompactionTask.transitSourceFilesToMerging();
-                  Assert.fail("cross space compaction task should be invalid.");
-                } catch (FileCannotTransitToCompactingException e) {
+                Assert.assertThrows(
+                    "cross space compaction task should be invalid.",
+                    FileCannotTransitToCompactingException.class,
+                    crossSpaceCompactionTask::transitSourceFilesToMerging);
 
-                }
                 FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
                     Mockito.mock(FixedPriorityBlockingQueue.class);
                 Mockito.when(mockQueue.take())
@@ -1765,12 +1764,11 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 cd1.countDown();
                 cd2.await();
 
-                try {
-                  crossSpaceCompactionTask.transitSourceFilesToMerging();
-                  Assert.fail("cross space compaction task should be invalid.");
-                } catch (FileCannotTransitToCompactingException e) {
+                Assert.assertThrows(
+                    "cross space compaction task should be invalid.",
+                    FileCannotTransitToCompactingException.class,
+                    crossSpaceCompactionTask::transitSourceFilesToMerging);
 
-                }
                 FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
                     Mockito.mock(FixedPriorityBlockingQueue.class);
                 Mockito.when(mockQueue.take())

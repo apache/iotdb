@@ -291,12 +291,11 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     cd1.countDown();
                     cd2.await();
 
-                    try {
-                      innerSpaceCompactionTask.transitSourceFilesToMerging();
-                      Assert.fail("inner space compaction task should be invalid.");
-                    } catch (FileCannotTransitToCompactingException e) {
+                    Assert.assertThrows(
+                        "inner space compaction task should be invalid.",
+                        FileCannotTransitToCompactingException.class,
+                        innerSpaceCompactionTask::transitSourceFilesToMerging);
 
-                    }
                     FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
                         Mockito.mock(FixedPriorityBlockingQueue.class);
                     Mockito.when(mockQueue.take())
@@ -597,12 +596,11 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     cd1.countDown();
                     cd2.await();
 
-                    try {
-                      innerSpaceCompactionTask.transitSourceFilesToMerging();
-                      Assert.fail("inner space compaction task should be invalid.");
-                    } catch (FileCannotTransitToCompactingException e) {
+                    Assert.assertThrows(
+                        "inner space compaction task should be invalid.",
+                        FileCannotTransitToCompactingException.class,
+                        innerSpaceCompactionTask::transitSourceFilesToMerging);
 
-                    }
                     FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
                         Mockito.mock(FixedPriorityBlockingQueue.class);
                     Mockito.when(mockQueue.take())
