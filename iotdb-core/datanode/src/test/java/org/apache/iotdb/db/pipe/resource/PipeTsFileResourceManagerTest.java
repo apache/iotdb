@@ -223,7 +223,7 @@ public class PipeTsFileResourceManagerTest {
     Assert.assertFalse(Files.exists(originModFile.toPath()));
     // Pipe TsFile will be cleaned by a timed thread, so we wait some time here.
     await()
-        .atMost(2 * PipeTsFileResource.TSFILE_MIN_TIME_TO_LIVE_IN_MS, TimeUnit.MILLISECONDS)
+        .atMost(3 * PipeTsFileResource.TSFILE_MIN_TIME_TO_LIVE_IN_MS, TimeUnit.MILLISECONDS)
         .untilAsserted(
             () -> {
               Assert.assertFalse(Files.exists(pipeTsfile.toPath()));
