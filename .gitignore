@@ -127,3 +127,6 @@ iotdb-core/mlnode/LICENSE
 iotdb-core/antlr/gen/
 iotdb-core/antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/gen/
 iotdb-core/antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.tokens
+
+# Develocity
+.mvn/.gradle-enterprise/
