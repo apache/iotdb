@@ -339,22 +339,14 @@ public class PartitionCache {
       StorageGroupCacheResult<?> result,
       List<String> devicePaths,
       boolean tryToFetch,
-<<<<<<< HEAD
-      boolean isAutoCreate) {
+      boolean isAutoCreate,
+      String userName) {
     if (!isAutoCreate) {
       // miss when devicePath contains *
       for (String devicePath : devicePaths) {
         if (devicePath.contains("*")) {
           return;
         }
-=======
-      boolean isAutoCreate,
-      String userName) {
-    // miss when devicePath contains *
-    for (String devicePath : devicePaths) {
-      if (devicePath.contains("*")) {
-        return;
->>>>>>> origin/master
       }
     }
     // first try to hit database in fast-fail way
