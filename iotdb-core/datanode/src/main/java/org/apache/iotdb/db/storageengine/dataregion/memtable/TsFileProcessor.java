@@ -277,6 +277,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
+    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource, false);
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -387,6 +388,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
+    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource, false);
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -896,7 +898,7 @@ public class TsFileProcessor {
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
 
       try {
-        PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource);
+        PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource, true);
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(
                 dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource, false);

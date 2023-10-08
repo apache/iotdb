@@ -98,13 +98,17 @@ public class SimpleConsensusProgressIndexAssigner {
     FileUtils.writeStringToFile(file, String.valueOf(rebootTimes + 1), StandardCharsets.UTF_8);
   }
 
-  public void assignIfNeeded(TsFileResource tsFileResource) {
+  public void assignIfNeeded(TsFileResource tsFileResource, boolean flushMemTable) {
     if (!isSimpleConsensusEnable) {
       return;
     }
 
+    if (flushMemTable) {
+      memtableFlushOrderId.getAndIncrement();
+    }
+
     tsFileResource.updateProgressIndex(
-        new SimpleProgressIndex(rebootTimes, memtableFlushOrderId.getAndIncrement()));
+        new SimpleProgressIndex(rebootTimes, memtableFlushOrderId.get()));
   }
 
   public SimpleProgressIndex getSimpleProgressIndexForTsFileRecovery() {

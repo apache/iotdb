@@ -95,8 +95,9 @@ public class PipeRuntimeAgent implements IService {
 
   ////////////////////// SimpleConsensus ProgressIndex Assigner //////////////////////
 
-  public void assignSimpleProgressIndexIfNeeded(TsFileResource tsFileResource) {
-    simpleConsensusProgressIndexAssigner.assignIfNeeded(tsFileResource);
+  public void assignSimpleProgressIndexIfNeeded(
+      TsFileResource tsFileResource, boolean flushMemTable) {
+    simpleConsensusProgressIndexAssigner.assignIfNeeded(tsFileResource, flushMemTable);
   }
 
   ////////////////////// Recover ProgressIndex Assigner //////////////////////
