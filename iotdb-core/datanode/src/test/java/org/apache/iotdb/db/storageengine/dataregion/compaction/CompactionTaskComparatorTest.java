@@ -410,7 +410,6 @@ public class CompactionTaskComparatorTest {
             "fakeSg",
             1,
             tsFileManager,
-            taskNum,
             true,
             Collections.singletonList(
                 new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 1)), 1)),
@@ -421,7 +420,6 @@ public class CompactionTaskComparatorTest {
             "fakeSg",
             1,
             tsFileManager,
-            taskNum,
             true,
             Collections.singletonList(
                 new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 2)), 1)),
@@ -432,7 +430,6 @@ public class CompactionTaskComparatorTest {
             "fakeSg",
             1,
             tsFileManager,
-            taskNum,
             true,
             Collections.singletonList(
                 new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 3)), 1)),
@@ -469,7 +466,6 @@ public class CompactionTaskComparatorTest {
         String storageGroupName,
         long timePartition,
         TsFileManager tsFileManager,
-        AtomicInteger currentTaskNum,
         boolean sequence,
         List<TsFileResource> selectedTsFileResourceList,
         long serialId,
@@ -480,7 +476,6 @@ public class CompactionTaskComparatorTest {
           selectedTsFileResourceList,
           sequence,
           new FastCompactionPerformer(false),
-          currentTaskNum,
           serialId,
           compactionTaskType);
     }
