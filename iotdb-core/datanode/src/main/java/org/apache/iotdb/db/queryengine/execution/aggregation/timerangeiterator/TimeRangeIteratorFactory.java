@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
-import static org.apache.iotdb.db.utils.DateTimeUtils.MS_TO_MONTH;
+import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.MS_TO_MONTH;
 
 public class TimeRangeIteratorFactory {
 

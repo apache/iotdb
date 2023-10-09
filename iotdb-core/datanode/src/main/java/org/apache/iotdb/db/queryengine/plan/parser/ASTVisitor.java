@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -2098,7 +2099,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return DateTimeUtils.currentTime();
     }
     try {
-      return DateTimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
+      return CommonDateTimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
     } catch (Exception e) {
       throw new SemanticException(
           String.format(
@@ -2117,7 +2118,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return currentTime;
     }
     try {
-      return DateTimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
+      return CommonDateTimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
     } catch (Exception e) {
       throw new SemanticException(
           String.format(

@@ -21,9 +21,9 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -991,7 +991,7 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       timestamp = Long.parseLong(str);
     } catch (NumberFormatException e) {
-      timestamp = DateTimeUtils.convertDatetimeStrToLong(str, zoneId, timestampPrecision);
+      timestamp = CommonDateTimeUtils.convertDatetimeStrToLong(str, zoneId, timestampPrecision);
     }
     return timestamp;
   }

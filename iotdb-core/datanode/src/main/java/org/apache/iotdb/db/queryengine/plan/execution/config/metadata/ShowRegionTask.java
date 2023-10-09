@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -91,7 +91,8 @@ public class ShowRegionTask implements IConfigTask {
         builder.getColumnBuilder(9).writeBinary(Binary.valueOf(regionInfo.getRoleType()));
         builder
             .getColumnBuilder(10)
-            .writeBinary(new Binary(DateTimeUtils.convertLongToDate(regionInfo.getCreateTime())));
+            .writeBinary(
+                new Binary(CommonDateTimeUtils.convertLongToDate(regionInfo.getCreateTime())));
         builder.declarePosition();
       }
     }

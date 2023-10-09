@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalExcep
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -320,7 +321,7 @@ public class PipeRuntimeMeta {
         + ", dataNodeId2PipeMetaExceptionMap="
         + dataNodeId2PipeRuntimeExceptionMap
         + ", exceptionsClearTime="
-        + exceptionsClearTime.get()
+        + CommonDateTimeUtils.convertLongToDate(exceptionsClearTime.get(), "ms")
         + ", isStoppedByRuntimeException="
         + isStoppedByRuntimeException.get()
         + "}";

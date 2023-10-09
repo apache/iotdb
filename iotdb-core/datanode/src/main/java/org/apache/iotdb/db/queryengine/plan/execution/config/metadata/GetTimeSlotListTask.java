@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -66,7 +66,8 @@ public class GetTimeSlotListTask implements IConfigTask {
                 / CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
     builder
         .getColumnBuilder(1)
-        .writeBinary(new Binary(DateTimeUtils.convertLongToDate(timePartitionSlot.getStartTime())));
+        .writeBinary(
+            new Binary(CommonDateTimeUtils.convertLongToDate(timePartitionSlot.getStartTime())));
     builder.declarePosition();
   }
 

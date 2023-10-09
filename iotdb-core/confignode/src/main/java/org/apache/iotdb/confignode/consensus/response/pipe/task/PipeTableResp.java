@@ -25,11 +25,11 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -109,7 +109,7 @@ public class PipeTableResp implements DataSet {
       final StringBuilder exceptionMessageBuilder = new StringBuilder();
       for (PipeRuntimeException e : runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap().values()) {
         exceptionMessageBuilder
-            .append(DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"))
+            .append(CommonDateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"))
             .append(", ")
             .append(e.getMessage())
             .append("\n");
@@ -117,7 +117,7 @@ public class PipeTableResp implements DataSet {
       for (PipeTaskMeta pipeTaskMeta : runtimeMeta.getConsensusGroupId2TaskMetaMap().values()) {
         for (PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
           exceptionMessageBuilder
-              .append(DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"))
+              .append(CommonDateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"))
               .append(", ")
               .append(e.getMessage())
               .append("\n");

@@ -22,11 +22,11 @@ package org.apache.iotdb.db.pipe.event.common.heartbeat;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.connection.EnrichedDeque;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.lmax.disruptor.RingBuffer;
@@ -219,7 +219,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + "', dataRegionId="
         + dataRegionId
         + ", startTime="
-        + DateTimeUtils.convertLongToDate(timePublished, "ms")
+        + CommonDateTimeUtils.convertLongToDate(timePublished, "ms")
         + ", publishedToAssigned="
         + publishedToAssignedMessage
         + ", assignedToProcessed="

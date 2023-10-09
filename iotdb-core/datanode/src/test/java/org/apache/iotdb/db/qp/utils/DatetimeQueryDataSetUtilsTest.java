@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.utils;
 
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.junit.Assert;
@@ -189,11 +190,12 @@ public class DatetimeQueryDataSetUtilsTest {
           "2019.01.02T15:13:27" + zoneOffset,
         };
     for (String str : timeFormatWithoutMs) {
-      Assert.assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0, "ms"));
+      Assert.assertEquals(
+          res, CommonDateTimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0, "ms"));
     }
 
     for (String str : timeFormatWithoutMs) {
-      assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, zoneId));
+      assertEquals(res, CommonDateTimeUtils.convertDatetimeStrToLong(str, zoneId));
     }
   }
 
@@ -214,11 +216,11 @@ public class DatetimeQueryDataSetUtilsTest {
           "2019.01.02T15:13:27.689" + zoneOffset,
         };
     for (String str : timeFormatWithoutMs) {
-      assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0, "ms"));
+      assertEquals(res, CommonDateTimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0, "ms"));
     }
 
     for (String str : timeFormatWithoutMs) {
-      assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, zoneId));
+      assertEquals(res, CommonDateTimeUtils.convertDatetimeStrToLong(str, zoneId));
     }
   }
 
@@ -228,11 +230,11 @@ public class DatetimeQueryDataSetUtilsTest {
           "2019-01-02", "2019/01/02", "2019.01.02",
         };
     for (String str : timeFormatWithoutMs) {
-      assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0, "ms"));
+      assertEquals(res, CommonDateTimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0, "ms"));
     }
 
     for (String str : timeFormatWithoutMs) {
-      assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, zoneId));
+      assertEquals(res, CommonDateTimeUtils.convertDatetimeStrToLong(str, zoneId));
     }
   }
 }

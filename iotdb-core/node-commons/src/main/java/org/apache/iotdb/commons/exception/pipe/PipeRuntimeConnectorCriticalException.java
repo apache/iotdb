@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.exception.pipe;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMetaVersion;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -96,8 +97,8 @@ public class PipeRuntimeConnectorCriticalException extends PipeRuntimeCriticalEx
     return "PipeRuntimeConnectorCriticalException{"
         + "message='"
         + getMessage()
-        + "', timeStamp="
-        + getTimeStamp()
+        + "', time="
+        + CommonDateTimeUtils.convertLongToDate(getTimeStamp())
         + "}";
   }
 }

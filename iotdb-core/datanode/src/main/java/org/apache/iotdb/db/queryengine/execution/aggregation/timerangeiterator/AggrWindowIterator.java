@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
-import static org.apache.iotdb.db.utils.DateTimeUtils.MS_TO_MONTH;
+import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.MS_TO_MONTH;
 
 /**
  * This class iteratively generates aggregated time windows.

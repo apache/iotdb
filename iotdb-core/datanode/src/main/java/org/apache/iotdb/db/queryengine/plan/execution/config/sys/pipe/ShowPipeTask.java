@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -28,7 +29,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -67,7 +67,7 @@ public class ShowPipeTask implements IConfigTask {
       builder
           .getColumnBuilder(1)
           .writeBinary(
-              new Binary(DateTimeUtils.convertLongToDate(tPipeInfo.getCreationTime(), "ms")));
+              new Binary(CommonDateTimeUtils.convertLongToDate(tPipeInfo.getCreationTime(), "ms")));
       builder.getColumnBuilder(2).writeBinary(new Binary(tPipeInfo.getState()));
       builder.getColumnBuilder(3).writeBinary(new Binary(tPipeInfo.getPipeExtractor()));
       builder.getColumnBuilder(4).writeBinary(new Binary(tPipeInfo.getPipeProcessor()));
