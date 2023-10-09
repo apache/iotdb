@@ -272,7 +272,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
             state ->
                 (state.equals(TsFileEpoch.State.EMPTY)) ? TsFileEpoch.State.USING_TABLET : state);
 
-    if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TABLET)) {
+    if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TABLET)
+        || event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TABLET_FORCE)) {
       if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
         return event.getEvent();
       } else {
