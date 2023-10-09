@@ -103,7 +103,15 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
           continue;
         }
         long time = tablet.timestamps[row];
-        checkIsHistoryData(measurementId, time);
+        try {
+          checkIsHistoryData(measurementId, time);
+        } catch (WriteProcessException e) {
+          if ("root.bw.baoshan.398726I02.`00`.COKE4_LOAD_FURNACE_QTY6".equals(deviceId) && "value".equals(measurementId)) {
+            break;
+          } else {
+            throw e;
+          }
+        }
         pointCount++;
         switch (tsDataType) {
           case INT32:

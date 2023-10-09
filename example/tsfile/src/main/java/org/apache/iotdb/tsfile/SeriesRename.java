@@ -83,7 +83,7 @@ public class SeriesRename {
             e.printStackTrace();
           }
         } else if (tsfileDir.isFile() && tsfileDir.getName().endsWith(TSFILE_SUFFIX)) {
-          tsfileList.add(tsfileDir.getName());
+          tsfileList.add(tsfileDir.getPath());
         } else {
           System.out.println("skip invalid tsfileDir: " + tsfileDir);
         }
