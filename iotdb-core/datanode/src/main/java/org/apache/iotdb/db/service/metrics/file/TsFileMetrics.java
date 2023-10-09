@@ -247,22 +247,16 @@ public class TsFileMetrics implements IMetricSet {
 
   private void updateLevelTsFileCountAndSize(
       long sizeDelta, int countDelta, boolean seq, int level) {
-    if (metricService != null) {
-      updateLevelTsFileCountMap(
-          seq ? seqLevelTsFileCountMap : unseqLevelTsFileCountMap,
-          seq ? SEQUENCE : UNSEQUENCE,
-          level,
-          countDelta);
-      updateLevelTsFileSizeMap(
-          seq ? seqLevelTsFileSizeMap : unseqLevelTsFileSizeMap,
-          seq ? SEQUENCE : UNSEQUENCE,
-          level,
-          sizeDelta);
-      checkIfThereRemainingData();
-    } else {
-      // the metric service has not been set yet
-      hasRemainData.set(true);
-    }
+    updateLevelTsFileCountMap(
+        seq ? seqLevelTsFileCountMap : unseqLevelTsFileCountMap,
+        seq ? SEQUENCE : UNSEQUENCE,
+        level,
+        countDelta);
+    updateLevelTsFileSizeMap(
+        seq ? seqLevelTsFileSizeMap : unseqLevelTsFileSizeMap,
+        seq ? SEQUENCE : UNSEQUENCE,
+        level,
+        sizeDelta);
   }
 
   private void updateLevelTsFileCountMap(
