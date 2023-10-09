@@ -34,7 +34,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
@@ -42,7 +42,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
   private volatile boolean isStartedToSupply = false;
-  private final ReentrantLock tsFileStateLock = new ReentrantLock();
+  private final ReentrantReadWriteLock tsFileStateLock = new ReentrantReadWriteLock();
 
   @Override
   protected void doExtract(PipeRealtimeEvent event) {
@@ -73,7 +73,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTabletInsertion(PipeRealtimeEvent event) {
-    tsFileStateLock.lock();
+    tsFileStateLock.readLock().lock();
     try {
       if ((!isStartedToSupply
               || mayWalSizeReachThrottleThreshold()
@@ -91,7 +91,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
       }
     } finally {
-      tsFileStateLock.unlock();
+      tsFileStateLock.readLock().unlock();
     }
 
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
@@ -129,7 +129,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTsFileInsertion(PipeRealtimeEvent event) {
-    tsFileStateLock.lock();
+    tsFileStateLock.writeLock().lock();
     try {
       event
           .getTsFileEpoch()
@@ -140,7 +140,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                       ? TsFileEpoch.State.USING_TABLET_FORCE
                       : TsFileEpoch.State.USING_TSFILE);
     } finally {
-      tsFileStateLock.unlock();
+      tsFileStateLock.writeLock().unlock();
     }
 
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
