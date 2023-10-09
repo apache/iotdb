@@ -52,7 +52,8 @@ public class CompressionRatio {
 
   static final String COMPRESSION_RATIO_DIR = "compression_ratio";
 
-  private static final String FILE_PREFIX = "Ratio-";
+  private static final String FILE_PREFIX_BEFORE_V121 = "Ratio-";
+  private static final String FILE_PREFIX = "Compress-";
 
   private static final String SEPARATOR = "-";
 
@@ -134,6 +135,8 @@ public class CompressionRatio {
       return;
     }
     File[] ratioFiles = directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX));
+    // First try to recover from the new version of the file, parse the file name, and get the file
+    // with the largest disk size value
     if (ratioFiles != null && ratioFiles.length > 0) {
       int maxRatioIndex = 0;
       for (int i = 0; i < ratioFiles.length; i++) {
@@ -152,6 +155,27 @@ public class CompressionRatio {
       for (int i = 0; i < ratioFiles.length; i++) {
         if (i != maxRatioIndex) {
           Files.delete(ratioFiles[i].toPath());
+        }
+      }
+    } else { // If there is no new file, try to restore from the old version file
+      File[] ratioFilesBeforeV121 =
+          directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX_BEFORE_V121));
+      if (ratioFilesBeforeV121 != null && ratioFilesBeforeV121.length > 0) {
+        int maxRatioIndex = 0;
+        totalDiskSize = 1;
+        for (int i = 0; i < ratioFilesBeforeV121.length; i++) {
+          String[] fileNameArray = ratioFilesBeforeV121[i].getName().split("-");
+          double currentCompressRatio =
+              Double.parseDouble(fileNameArray[1]) / Double.parseDouble(fileNameArray[2]);
+          if (getRatio() < currentCompressRatio) {
+            totalMemorySize = new AtomicLong((long) currentCompressRatio);
+            maxRatioIndex = i;
+          }
+        }
+        for (int i = 0; i < ratioFilesBeforeV121.length; i++) {
+          if (i != maxRatioIndex) {
+            Files.delete(ratioFilesBeforeV121[i].toPath());
+          }
         }
       }
     }
