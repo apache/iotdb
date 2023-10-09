@@ -864,9 +864,6 @@ public class LogicalPlanBuilder {
               updateTypeProviderByPartialAggregation(
                   aggregationDescriptor, context.getTypeProvider()));
     }
-    if (outputEndTime) {
-      context.getTypeProvider().setType(ENDTIME, TSDataType.INT64);
-    }
     this.root =
         new AggregationNode(
             context.getQueryId().genPlanNodeId(),

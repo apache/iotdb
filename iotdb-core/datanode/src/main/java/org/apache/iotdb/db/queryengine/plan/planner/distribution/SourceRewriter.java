@@ -818,8 +818,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       sourceGroup =
           splitAggregationSourceByPartition(
               root, context, sources, eachSeriesOneRegion, regionCountPerSeries);
-
-      if (eachSeriesOneRegion[0]) {
+      SeriesAggregationSourceNode seed = (SeriesAggregationSourceNode) root.getChildren().get(0);
+      boolean isOutputEndTime = seed.isOutputEndTime();
+      if (eachSeriesOneRegion[0] && !isOutputEndTime) {
         newRoot = new HorizontallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
       } else {
         List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
@@ -838,13 +839,14 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                               descriptor.getInputExpressions(),
                               descriptor.getInputAttributes())));
         }
-        SeriesAggregationSourceNode seed = (SeriesAggregationSourceNode) root.getChildren().get(0);
         newRoot =
             new AggregationNode(
                 context.queryContext.getQueryId().genPlanNodeId(),
                 rootAggDescriptorList,
                 seed.getGroupByTimeParameter(),
                 seed.getScanOrder());
+
+        ((AggregationNode) newRoot).setOutputEndTime(isOutputEndTime);
       }
     } else {
       // If this node is not the root node of PlanTree,
