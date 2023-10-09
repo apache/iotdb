@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -54,7 +54,7 @@ public class SimpleConsensusProgressIndexAssigner {
   private boolean isSimpleConsensusEnable = false;
 
   private int rebootTimes = 0;
-  private final AtomicLong memtableFlushOrderId = new AtomicLong(0);
+  private final AtomicLong insertionRequestId = new AtomicLong(0);
 
   public void start() throws StartupException {
     isSimpleConsensusEnable =
@@ -98,16 +98,16 @@ public class SimpleConsensusProgressIndexAssigner {
     FileUtils.writeStringToFile(file, String.valueOf(rebootTimes + 1), StandardCharsets.UTF_8);
   }
 
-  public void assignIfNeeded(TsFileResource tsFileResource) {
+  public void assignIfNeeded(InsertNode insertNode) {
     if (!isSimpleConsensusEnable) {
       return;
     }
 
-    tsFileResource.updateProgressIndex(
-        new SimpleProgressIndex(rebootTimes, memtableFlushOrderId.getAndIncrement()));
+    insertNode.setProgressIndex(
+        new SimpleProgressIndex(rebootTimes, insertionRequestId.getAndIncrement()));
   }
 
   public SimpleProgressIndex getSimpleProgressIndexForTsFileRecovery() {
-    return new SimpleProgressIndex(rebootTimes, memtableFlushOrderId.getAndIncrement());
+    return new SimpleProgressIndex(rebootTimes, insertionRequestId.getAndIncrement());
   }
 }
