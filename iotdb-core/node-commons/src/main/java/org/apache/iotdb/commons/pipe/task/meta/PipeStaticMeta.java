@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.task.meta;
 
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -219,7 +220,7 @@ public class PipeStaticMeta {
         + "pipeName='"
         + pipeName
         + "', creationTime="
-        + creationTime
+        + CommonDateTimeUtils.convertLongToDate(creationTime)
         + ", extractorParameters="
         + extractorParameters.getAttribute()
         + ", processorParameters="

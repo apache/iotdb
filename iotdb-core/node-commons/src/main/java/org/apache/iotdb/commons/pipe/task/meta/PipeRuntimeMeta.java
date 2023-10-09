@@ -321,7 +321,9 @@ public class PipeRuntimeMeta {
         + ", dataNodeId2PipeMetaExceptionMap="
         + dataNodeId2PipeRuntimeExceptionMap
         + ", exceptionsClearTime="
-        + CommonDateTimeUtils.convertLongToDate(exceptionsClearTime.get(), "ms")
+        + (exceptionsClearTime.get() != Long.MIN_VALUE
+            ? CommonDateTimeUtils.convertLongToDate(exceptionsClearTime.get(), "ms")
+            : "Never")
         + ", isStoppedByRuntimeException="
         + isStoppedByRuntimeException.get()
         + "}";

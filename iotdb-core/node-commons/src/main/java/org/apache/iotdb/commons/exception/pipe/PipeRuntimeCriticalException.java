@@ -96,7 +96,7 @@ public class PipeRuntimeCriticalException extends PipeRuntimeException {
     return "PipeRuntimeCriticalException{"
         + "message='"
         + getMessage()
-        + "', time="
+        + "', recordTime="
         + CommonDateTimeUtils.convertLongToDate(getTimeStamp())
         + "}";
   }
