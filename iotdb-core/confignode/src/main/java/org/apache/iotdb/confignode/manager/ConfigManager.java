@@ -690,15 +690,12 @@ public class ConfigManager implements IManager {
     // Build GetOrCreateSchemaPartitionPlan
     Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     for (String devicePath : devicePaths) {
-      if (!devicePath.contains("*")) {
-        // Only check devicePaths that without "*"
-        for (String database : databases) {
-          if (PathUtils.isStartWith(devicePath, database)) {
-            partitionSlotsMap
-                .computeIfAbsent(database, key -> new ArrayList<>())
-                .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
-            break;
-          }
+      for (String database : databases) {
+        if (PathUtils.isStartWith(devicePath, database)) {
+          partitionSlotsMap
+              .computeIfAbsent(database, key -> new ArrayList<>())
+              .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
+          break;
         }
       }
     }
