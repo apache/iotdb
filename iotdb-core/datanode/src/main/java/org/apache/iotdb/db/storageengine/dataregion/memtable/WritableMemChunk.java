@@ -333,11 +333,10 @@ public class WritableMemChunk implements IWritableMemChunk {
 
       // skip duplicated data
       if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
-        boolean isTextDataType = tsDataType == TSDataType.TEXT;
         long recordSize =
             MemUtils.getRecordSize(
                 tsDataType,
-                isTextDataType ? list.getBinary(sortedRowIndex) : null,
+                tsDataType == TSDataType.TEXT ? list.getBinary(sortedRowIndex) : null,
                 CONFIG.isEnableMemControl());
         CompressionRatio.decreaseDuplicatedMemorySize(recordSize);
         continue;
