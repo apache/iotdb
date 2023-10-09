@@ -152,11 +152,7 @@ public class CompressionRatio {
           "After restoring from compression ratio file, total memory size = {}, total disk size = {}",
           totalMemorySize,
           totalDiskSize);
-      for (int i = 0; i < ratioFiles.length; i++) {
-        if (i != maxRatioIndex) {
-          Files.delete(ratioFiles[i].toPath());
-        }
-      }
+      deleteRedundantFilesByIndex(ratioFiles, maxRatioIndex);
     } else { // If there is no new file, try to restore from the old version file
       File[] ratioFilesBeforeV121 =
           directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX_BEFORE_V121));
@@ -172,11 +168,15 @@ public class CompressionRatio {
             maxRatioIndex = i;
           }
         }
-        for (int i = 0; i < ratioFilesBeforeV121.length; i++) {
-          if (i != maxRatioIndex) {
-            Files.delete(ratioFilesBeforeV121[i].toPath());
-          }
-        }
+        deleteRedundantFilesByIndex(ratioFilesBeforeV121, maxRatioIndex);
+      }
+    }
+  }
+
+  public static void deleteRedundantFilesByIndex(File[] files, int index) throws IOException {
+    for (int i = 0; i < files.length; i++) {
+      if (i != index) {
+        Files.delete(files[i].toPath());
       }
     }
   }
