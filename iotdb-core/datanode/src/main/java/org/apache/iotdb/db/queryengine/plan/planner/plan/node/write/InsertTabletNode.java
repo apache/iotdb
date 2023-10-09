@@ -277,6 +277,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
                 bitMaps,
                 values,
                 subTimes.length);
+        subNode.setFailedMeasurementNumber(getFailedMeasurementNumber());
         subNode.setRange(locs);
         subNode.setDataRegionReplicaSet(entry.getKey());
         result.add(subNode);
