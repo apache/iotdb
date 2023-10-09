@@ -3862,43 +3862,40 @@ public class Session implements ISession {
         throw new IllegalArgumentException(
             "You should specify either nodeUrls or (host + rpcPort), but not both");
       }
+      Session newSession;
+      if (nodeUrls != null && enableSSL) {
 
-      if (nodeUrls != null) {
-        Session newSession;
-        if (enableSSL) {
-          newSession =
-              new Session(
-                  nodeUrls,
-                  username,
-                  pw,
-                  fetchSize,
-                  zoneId,
-                  thriftDefaultBufferSize,
-                  thriftMaxFrameSize,
-                  enableRedirection,
-                  version,
-                  enableSSL,
-                  trustStore,
-                  trustStorePwd);
-          newSession.setEnableQueryRedirection(true);
-        } else {
-          newSession =
-              new Session(
-                  nodeUrls,
-                  username,
-                  pw,
-                  fetchSize,
-                  zoneId,
-                  thriftDefaultBufferSize,
-                  thriftMaxFrameSize,
-                  enableRedirection,
-                  version);
-          newSession.setEnableQueryRedirection(true);
-        }
+        newSession =
+            new Session(
+                nodeUrls,
+                username,
+                pw,
+                fetchSize,
+                zoneId,
+                thriftDefaultBufferSize,
+                thriftMaxFrameSize,
+                enableRedirection,
+                version,
+                enableSSL,
+                trustStore,
+                trustStorePwd);
+        newSession.setEnableQueryRedirection(true);
         return newSession;
-      }
-
-      if (enableSSL) {
+      } else if (nodeUrls != null && !enableSSL) {
+        newSession =
+            new Session(
+                nodeUrls,
+                username,
+                pw,
+                fetchSize,
+                zoneId,
+                thriftDefaultBufferSize,
+                thriftMaxFrameSize,
+                enableRedirection,
+                version);
+        newSession.setEnableQueryRedirection(true);
+        return newSession;
+      } else if (nodeUrls == null && enableSSL) {
         return new Session(
             host,
             rpcPort,
@@ -3913,19 +3910,19 @@ public class Session implements ISession {
             enableSSL,
             trustStore,
             trustStorePwd);
+      } else {
+        return new Session(
+            host,
+            rpcPort,
+            username,
+            pw,
+            fetchSize,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            enableRedirection,
+            version);
       }
-
-      return new Session(
-          host,
-          rpcPort,
-          username,
-          pw,
-          fetchSize,
-          zoneId,
-          thriftDefaultBufferSize,
-          thriftMaxFrameSize,
-          enableRedirection,
-          version);
     }
   }
 }
