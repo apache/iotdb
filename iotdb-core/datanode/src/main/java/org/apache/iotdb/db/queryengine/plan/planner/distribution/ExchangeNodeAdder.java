@@ -59,6 +59,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 
+<<<<<<< Updated upstream
+=======
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+>>>>>>> Stashed changes
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -315,24 +321,67 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       return newNode;
     }
 
+    // optimize sort + align by device, to ensure that the number of ExchangeNode equals to
+    // DataRegion
+    if (node instanceof MergeSortNode
+        && visitedChildren.stream().allMatch(SingleDeviceViewNode.class::isInstance)) {
+      MergeSortNode rootNode = (MergeSortNode) node;
+      Map<TRegionReplicaSet, MergeSortNode> regionSortNodeMap = new HashMap<>();
+      for (PlanNode child : visitedChildren) {
+        ((SingleDeviceViewNode) child).setCacheOutputColumnNames(true);
+        TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).region;
+        regionSortNodeMap
+            .computeIfAbsent(
+                region,
+                k -> {
+                  MergeSortNode childMergeSortNode =
+                      new MergeSortNode(
+                          context.queryContext.getQueryId().genPlanNodeId(),
+                          rootNode.getMergeOrderParameter(),
+                          rootNode.getOutputColumnNames());
+                  context.putNodeDistribution(
+                      childMergeSortNode.getPlanNodeId(),
+                      new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, region));
+                  return childMergeSortNode;
+                })
+            .addChild(child);
+      }
+
+      for (Map.Entry<TRegionReplicaSet, MergeSortNode> entry : regionSortNodeMap.entrySet()) {
+        TRegionReplicaSet sortNodeDataRegion = entry.getKey();
+        MergeSortNode sortNode = entry.getValue();
+
+        if (!dataRegion.equals(sortNodeDataRegion)) {
+          ExchangeNode exchangeNode =
+              new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+          exchangeNode.setChild(sortNode);
+          exchangeNode.setOutputColumnNames(sortNode.getOutputColumnNames());
+          context.hasExchangeNode = true;
+          newNode.addChild(exchangeNode);
+        } else {
+          newNode.addChild(sortNode);
+        }
+      }
+      return newNode;
+    }
+
     // Otherwise, we need to add ExchangeNode for the child whose DataRegion is different from the
     // parent.
-    visitedChildren.forEach(
-        child -> {
-          if (!dataRegion.equals(context.getNodeDistribution(child.getPlanNodeId()).region)) {
-            if (child instanceof SingleDeviceViewNode) {
-              ((SingleDeviceViewNode) child).setCacheOutputColumnNames(true);
-            }
-            ExchangeNode exchangeNode =
-                new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
-            exchangeNode.setChild(child);
-            exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
-            context.hasExchangeNode = true;
-            newNode.addChild(exchangeNode);
-          } else {
-            newNode.addChild(child);
-          }
-        });
+    for (PlanNode child : visitedChildren) {
+      if (!dataRegion.equals(context.getNodeDistribution(child.getPlanNodeId()).region)) {
+        if (child instanceof SingleDeviceViewNode) {
+          ((SingleDeviceViewNode) child).setCacheOutputColumnNames(true);
+        }
+        ExchangeNode exchangeNode =
+            new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+        exchangeNode.setChild(child);
+        exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
+        context.hasExchangeNode = true;
+        newNode.addChild(exchangeNode);
+      } else {
+        newNode.addChild(child);
+      }
+    }
     return newNode;
   }
 

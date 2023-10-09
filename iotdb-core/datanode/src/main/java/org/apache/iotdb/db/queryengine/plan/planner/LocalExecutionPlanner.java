@@ -72,7 +72,8 @@ public class LocalExecutionPlanner {
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
     // check whether current free memory is enough to execute current query
-    long estimatedMemorySize = checkMemory(root, instanceContext.getStateMachine());
+    long estimatedMemorySize = 0;
+    // checkMemory(root, instanceContext.getStateMachine());
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
 

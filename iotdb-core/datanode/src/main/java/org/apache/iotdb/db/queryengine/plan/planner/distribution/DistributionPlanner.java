@@ -158,6 +158,7 @@ public class DistributionPlanner {
       QueryStatement queryStatement, NodeGroupContext nodeGroupContext) {
     OrderByComponent orderByComponent = queryStatement.getOrderByComponent();
     return nodeGroupContext.isAlignByDevice()
+        && queryStatement.isAggregationQuery()
         && orderByComponent != null
         && (!orderByComponent.getSortItemList().isEmpty()
             && (orderByComponent.isBasedOnTime() && !queryStatement.hasOrderByExpression()));
@@ -179,6 +180,7 @@ public class DistributionPlanner {
 
   public DistributedQueryPlan planFragments() {
     PlanNode rootAfterRewrite = rewriteSource();
+
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
     if (analysis.getStatement() != null && analysis.getStatement().isQuery()) {
       analysis
@@ -196,6 +198,10 @@ public class DistributionPlanner {
     }
     return new DistributedQueryPlan(
         logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
+  }
+
+  private void optimizeOrderByTimeWithAlignByDevice(PlanNode rootAfterRewrite) {
+    // if (analysis.)
   }
 
   // Convert fragment to detailed instance

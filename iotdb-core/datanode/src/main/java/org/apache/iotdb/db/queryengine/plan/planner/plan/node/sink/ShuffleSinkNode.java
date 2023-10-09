@@ -45,13 +45,6 @@ public class ShuffleSinkNode extends MultiChildrenSinkNode {
     super(id, downStreamChannelLocationList);
   }
 
-  public ShuffleSinkNode(
-      PlanNodeId id,
-      List<PlanNode> children,
-      List<DownStreamChannelLocation> downStreamChannelLocationList) {
-    super(id, children, downStreamChannelLocationList);
-  }
-
   @Override
   public PlanNode clone() {
     return new ShuffleSinkNode(getPlanNodeId(), getDownStreamChannelLocationList());
@@ -91,6 +84,11 @@ public class ShuffleSinkNode extends MultiChildrenSinkNode {
     for (DownStreamChannelLocation downStreamChannelLocation : downStreamChannelLocationList) {
       downStreamChannelLocation.serialize(stream);
     }
+  }
+
+  @Override
+  public String toString() {
+    return String.format("ShuffleSinkNode-%s", this.getPlanNodeId());
   }
 
   public static ShuffleSinkNode deserialize(ByteBuffer byteBuffer) {
