@@ -269,7 +269,6 @@ public class LoadTsfileAnalyzer {
   private final class SchemaAutoCreatorAndVerifier {
 
     private final Map<String, Boolean> tsfileDevice2IsAligned = new HashMap<>();
-    private final Set<PartialPath> alreadySetDatabases = new HashSet<>();
 
     private final int maxTimeseriesNumberPerBatch = CONFIG.getMaxLoadingTimeseriesNumber();
     private final Map<String, Set<MeasurementSchema>> currentBatchDevice2TimeseriesSchemas =
@@ -411,6 +410,7 @@ public class LoadTsfileAnalyzer {
         throws VerifyMetadataException, LoadFileException, IllegalPathException {
       final int databasePrefixNodesLength = loadTsFileStatement.getDatabaseLevel() + 1;
       final Set<PartialPath> databaseSet = new HashSet<>();
+      final Set<PartialPath> alreadySetDatabases = new HashSet<>();
 
       for (final String device : currentBatchDevice2TimeseriesSchemas.keySet()) {
         final PartialPath devicePath = new PartialPath(device);
@@ -459,7 +459,6 @@ public class LoadTsfileAnalyzer {
         statement.setEnablePrintExceptionLog(false);
         executeSetDatabaseStatement(statement);
       }
-      alreadySetDatabases.addAll(databaseSet);
     }
 
     private void executeSetDatabaseStatement(Statement statement) throws LoadFileException {
