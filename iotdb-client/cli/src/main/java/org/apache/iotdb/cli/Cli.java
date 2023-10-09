@@ -39,6 +39,7 @@ import org.jline.reader.UserInterruptException;
 import java.io.IOException;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Properties;
 
 import static org.apache.iotdb.cli.utils.IoTPrinter.println;
 import static org.apache.iotdb.jdbc.Config.IOTDB_ERROR_PREFIX;
@@ -129,6 +130,8 @@ public class Cli extends AbstractCli {
 
   private static void serve() {
     try {
+      trustStore = commandLine.getOptionValue(TRUST_STORE_ARGS);
+      trustStorePwd = commandLine.getOptionValue(TRUST_STORE_PWD_ARGS);
       password = commandLine.getOptionValue(PW_ARGS);
       if (hasExecuteSQL && password != null) {
         executeSql();
@@ -137,6 +140,7 @@ public class Cli extends AbstractCli {
         password = lineReader.readLine("please input your password:", '\0');
       }
       receiveCommands(lineReader);
+
     } catch (Exception e) {
       println(IOTDB_ERROR_PREFIX + ": Exit cli with error: " + e.getMessage());
       System.exit(CODE_ERROR);
@@ -144,10 +148,17 @@ public class Cli extends AbstractCli {
   }
 
   private static void executeSql() throws TException {
+    Properties info = new Properties();
+    if (trustStore != null) {
+      info.setProperty("enable_ssl", "true");
+      info.setProperty("trust_store", trustStore);
+      info.setProperty("trust_store_pwd", trustStorePwd);
+    }
+    info.setProperty("user", username);
+    info.setProperty("password", password);
     try (IoTDBConnection connection =
         (IoTDBConnection)
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+            DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       timestampPrecision = properties.getTimestampPrecision();
@@ -161,10 +172,17 @@ public class Cli extends AbstractCli {
   }
 
   private static void receiveCommands(LineReader reader) throws TException {
+    Properties info = new Properties();
+    if (trustStore != null) {
+      info.setProperty("enable_ssl", "true");
+      info.setProperty("trust_store", trustStore);
+      info.setProperty("trust_store_pwd", trustStorePwd);
+    }
+    info.setProperty("user", username);
+    info.setProperty("password", password);
     try (IoTDBConnection connection =
         (IoTDBConnection)
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+            DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
