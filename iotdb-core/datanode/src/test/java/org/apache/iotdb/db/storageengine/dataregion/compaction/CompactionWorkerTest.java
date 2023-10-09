@@ -146,11 +146,7 @@ public class CompactionWorkerTest {
     }
   }
 
-  /**
-   * AllowCompaction is false.
-   *
-   * @throws Exception
-   */
+  /** AllowCompaction is false. */
   @Test
   public void testFailedToCheckValidInCrossTask() throws InterruptedException {
     List<TsFileResource> sequenceFiles = new ArrayList<>();
@@ -190,11 +186,7 @@ public class CompactionWorkerTest {
     }
   }
 
-  /**
-   * AllowCompaction is false.
-   *
-   * @throws Exception
-   */
+  /** AllowCompaction is false. */
   @Test
   public void testFailedToCheckValidInInnerTask() throws InterruptedException {
     List<TsFileResource> sequenceFiles = new ArrayList<>();

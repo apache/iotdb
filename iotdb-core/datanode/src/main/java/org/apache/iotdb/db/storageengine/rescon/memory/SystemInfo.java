@@ -215,9 +215,6 @@ public class SystemInfo {
 
   public boolean addCompactionMemoryCost(long memoryCost, long timeOutInSecond)
       throws InterruptedException, CompactionMemoryNotEnoughException {
-    if (!config.isEnableCompactionMemControl()) {
-      return false;
-    }
     if (memoryCost > memorySizeForCompaction) {
       // required memory cost is greater than the total memory budget for compaction
       throw new CompactionMemoryNotEnoughException(
