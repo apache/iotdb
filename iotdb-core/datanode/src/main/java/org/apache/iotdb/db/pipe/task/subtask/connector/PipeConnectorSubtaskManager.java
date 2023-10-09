@@ -179,7 +179,7 @@ public class PipeConnectorSubtaskManager {
   private PipeConnectorSubtaskManager() {
     CONNECTOR_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
-        IoTDBThriftSyncConnector::new);
+        IoTDBThriftAsyncConnector::new);
     CONNECTOR_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName(),
         IoTDBThriftSyncConnector::new);
