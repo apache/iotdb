@@ -61,7 +61,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.SingleDeviceVi
 import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TagAggregationOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.TopOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TopKOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
@@ -177,7 +177,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDevi
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
@@ -846,14 +846,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   @Override
-  public Operator visitTopN(TopNode node, LocalExecutionPlanContext context) {
+  public Operator visitTopK(TopKNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
-            context
-                    .getDriverContext()
-                    .addOperatorContext(
-                            context.getNextOperatorId(),
-                            node.getPlanNodeId(),
-                            MergeSortOperator.class.getSimpleName());
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MergeSortOperator.class.getSimpleName());
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
     context.setCachedDataTypes(dataTypes);
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
@@ -863,16 +863,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<Integer> sortItemIndexList = new ArrayList<>(sortItemList.size());
     List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemList.size());
     genSortInformation(
-            node.getOutputColumnNames(),
-            dataTypes,
-            sortItemList,
-            sortItemIndexList,
-            sortItemDataTypeList);
-    return new TopOperator(
-            operatorContext,
-            children,
-            dataTypes,
-            MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
+        node.getOutputColumnNames(),
+        dataTypes,
+        sortItemList,
+        sortItemIndexList,
+        sortItemDataTypeList);
+    return new TopKOperator(
+        operatorContext,
+        children,
+        dataTypes,
+        MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList),
+        node.getTopValue());
   }
 
   private void genSortInformation(

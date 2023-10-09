@@ -74,7 +74,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDevi
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
@@ -395,7 +395,7 @@ public enum PlanNodeType {
       case 81:
         return LastQueryTransformNode.deserialize(buffer);
       case 82:
-        return TopNode.deserialize(buffer);
+        return TopKNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

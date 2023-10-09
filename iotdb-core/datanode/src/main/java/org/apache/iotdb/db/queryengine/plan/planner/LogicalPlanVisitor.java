@@ -255,7 +255,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       List<Integer> deviceViewInputIndexes,
       MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-
     if (aggregationExpressions == null) {
       // raw data query
       planBuilder =
@@ -264,6 +263,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   sourceExpressions,
                   queryStatement.getResultTimeOrder(),
                   analysis.getGlobalTimeFilter(),
+                  0,
+                  pushDownLimitToScanNode(queryStatement),
                   analysis.isLastLevelUseWildcard())
               .planWhereAndSourceTransform(
                   whereExpression,
@@ -286,6 +287,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     sourceExpressions,
                     queryStatement.getResultTimeOrder(),
                     analysis.getGlobalTimeFilter(),
+                    0,
+                    -1,
                     analysis.isLastLevelUseWildcard())
                 .planWhereAndSourceTransform(
                     whereExpression,
@@ -362,6 +365,17 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     }
 
     return planBuilder.getRoot();
+  }
+
+  private long pushDownLimitToScanNode(QueryStatement queryStatement) {
+    // `order by time align by device limit N` query can push down `N` to ScanNode
+    if (queryStatement.isAlignByDevice()
+        && queryStatement.isOrderByBasedOnTime()
+        && queryStatement.hasLimit()
+        && !queryStatement.hasOffset()) {
+      return queryStatement.getRowLimit();
+    }
+    return -1;
   }
 
   private boolean needTransform(Set<Expression> expressions) {

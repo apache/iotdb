@@ -40,7 +40,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
-public class MergeSortOperator extends AbstractConsumeAllOperator {
+public class TopKOperator extends AbstractConsumeAllOperator {
 
   private final List<TSDataType> dataTypes;
   private final TsBlockBuilder tsBlockBuilder;
@@ -50,46 +50,92 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
 
   private boolean finished;
 
-  public MergeSortOperator(
+  private final long topValue;
+
+  private int readingValueCount = 0;
+
+  public TopKOperator(
       OperatorContext operatorContext,
       List<Operator> inputOperators,
       List<TSDataType> dataTypes,
-      Comparator<SortKey> comparator) {
+      Comparator<SortKey> comparator,
+      long topValue) {
     super(operatorContext, inputOperators);
     this.dataTypes = dataTypes;
-    this.mergeSortHeap = new MergeSortHeap(inputOperatorsCount, comparator);
+    // use MAX-HEAP
+    this.mergeSortHeap = new MergeSortHeap(inputOperatorsCount, comparator.reversed());
     this.comparator = comparator;
     this.noMoreTsBlocks = new boolean[inputOperatorsCount];
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
+    this.topValue = topValue;
   }
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    boolean hasReadyChild = false;
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (needCallNext(i)) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
         continue;
       }
       ListenableFuture<?> blocked = children.get(i).isBlocked();
-      if (blocked.isDone()) {
-        hasReadyChild = true;
-        canCallNext[i] = true;
-      } else {
+      if (!blocked.isDone()) {
         listenableFutures.add(blocked);
       }
     }
-    return (hasReadyChild || listenableFutures.isEmpty())
+    return listenableFutures.isEmpty()
         ? NOT_BLOCKED
         : successfulAsList(listenableFutures);
   }
 
-  @SuppressWarnings({"squid:S3776", "squid:S135"})
+  @Override
+  public boolean hasNext() throws Exception {
+    if (finished) {
+      return false;
+    }
+    if (readingValueCount > topValue) {
+      return false;
+    }
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (!isEmpty(i)) {
+        return true;
+      } else if (!noMoreTsBlocks[i]) {
+        if (!canCallNext[i] || children.get(i).hasNextWithTimer()) {
+          return true;
+        } else {
+          children.get(i).close();
+          children.set(i, null);
+          noMoreTsBlocks[i] = true;
+          inputTsBlocks[i] = null;
+        }
+      }
+    }
+    return false;
+  }
+
   @Override
   public TsBlock next() throws Exception {
-    // start stopwatch
     long startTime = System.nanoTime();
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
+        continue;
+      }
+
+      ListenableFuture<?> blocked = children.get(i).isBlocked();
+      if (blocked.isDone()) {
+        if (children.get(i).hasNextWithTimer()) {
+          inputTsBlocks[i] = getNextTsBlock(i);
+        } else {
+          children.get(i).close();
+          children.set(i, null);
+          noMoreTsBlocks[i] = true;
+          inputTsBlocks[i] = null;
+        }
+      } else {
+
+      }
+    }
 
     // 1. fill consumed up TsBlock
     if (!prepareInput()) {
@@ -105,6 +151,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
                 mergeSortHeap.peek())
             < 0) {
       inputTsBlocks[minMergeSortKey.inputChannelIndex] = null;
+      readingValueCount += minMergeSortKey.tsBlock.getPositionCount() - minMergeSortKey.rowIndex;
       return minMergeSortKey.rowIndex == 0
           ? minMergeSortKey.tsBlock
           : minMergeSortKey.tsBlock.subTsBlock(minMergeSortKey.rowIndex);
@@ -138,34 +185,16 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
         mergeSortKey.rowIndex++;
         mergeSortHeap.push(mergeSortKey);
       }
+
       // break if time is out or tsBlockBuilder is full
-      if (System.nanoTime() - startTime > maxRuntime || tsBlockBuilder.isFull()) {
+      if (System.nanoTime() - startTime > maxRuntime
+          || tsBlockBuilder.isFull()
+          || tsBlockBuilder.getPositionCount() > topValue) {
         break;
       }
     }
+    readingValueCount += tsBlockBuilder.getPositionCount();
     return tsBlockBuilder.build();
-  }
-
-  @Override
-  public boolean hasNext() throws Exception {
-    if (finished) {
-      return false;
-    }
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!isEmpty(i)) {
-        return true;
-      } else if (!noMoreTsBlocks[i]) {
-        if (!canCallNext[i] || children.get(i).hasNextWithTimer()) {
-          return true;
-        } else {
-          children.get(i).close();
-          children.set(i, null);
-          noMoreTsBlocks[i] = true;
-          inputTsBlocks[i] = null;
-        }
-      }
-    }
-    return false;
   }
 
   @Override
@@ -186,17 +215,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    // MergeToolKit will cache startKey and endKey
-    long maxPeekMemory = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
-    // inputTsBlocks will cache all the tsBlocks returned by inputOperators
-    for (Operator operator : children) {
-      maxPeekMemory += operator.calculateMaxReturnSize();
-      maxPeekMemory += operator.calculateRetainedSizeAfterCallingNext();
-    }
-    for (Operator operator : children) {
-      maxPeekMemory = Math.max(maxPeekMemory, operator.calculateMaxPeekMemory());
-    }
-    return Math.max(maxPeekMemory, calculateMaxReturnSize());
+    return 0;
   }
 
   @Override
@@ -206,27 +225,14 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    long currentRetainedSize = 0;
-    long minChildReturnSize = Long.MAX_VALUE;
-    for (Operator child : children) {
-      long maxReturnSize = child.calculateMaxReturnSize();
-      minChildReturnSize = Math.min(minChildReturnSize, maxReturnSize);
-      currentRetainedSize += (maxReturnSize + child.calculateRetainedSizeAfterCallingNext());
-    }
-    return currentRetainedSize - minChildReturnSize;
+    return 0;
   }
 
-  /**
-   * Try to cache one result of each child.
-   *
-   * @return true if results of all children are ready or have no more TsBlocks. Return false if
-   *     some children is blocked or return null.
-   */
   @Override
   protected boolean prepareInput() throws Exception {
     boolean allReady = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (needCallNext(i)) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
         continue;
       }
       if (canCallNext[i]) {
@@ -247,9 +253,5 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
       }
     }
     return allReady;
-  }
-
-  private boolean needCallNext(int i) {
-    return noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null;
   }
 }

@@ -34,18 +34,19 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * TopNode is optimized for align by device query. The children of TopNode is always DeviceViewNode.
+ * TopNode is optimized for align by device query. The children of TopKNode are always
+ * DeviceViewNode.
  */
-public class TopNode extends MultiChildProcessNode {
-  private final int topValue;
+public class TopKNode extends MultiChildProcessNode {
+  private final long topValue;
 
   private final OrderByParameter mergeOrderParameter;
 
   private final List<String> outputColumns;
 
-  public TopNode(
+  public TopKNode(
       PlanNodeId id,
-      int topValue,
+      long topValue,
       OrderByParameter mergeOrderParameter,
       List<String> outputColumns) {
     super(id);
@@ -54,9 +55,9 @@ public class TopNode extends MultiChildProcessNode {
     this.outputColumns = outputColumns;
   }
 
-  public TopNode(
+  public TopKNode(
       PlanNodeId id,
-      int topValue,
+      long topValue,
       List<PlanNode> children,
       OrderByParameter mergeOrderParameter,
       List<String> outputColumns) {
@@ -72,12 +73,12 @@ public class TopNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new TopNode(getPlanNodeId(), getTopValue(), getMergeOrderParameter(), outputColumns);
+    return new TopKNode(getPlanNodeId(), getTopValue(), getMergeOrderParameter(), outputColumns);
   }
 
   @Override
   public PlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
-    return new TopNode(
+    return new TopKNode(
         new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
         getTopValue(),
         new ArrayList<>(children.subList(startIndex, endIndex)),
@@ -92,7 +93,7 @@ public class TopNode extends MultiChildProcessNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitTopN(this, context);
+    return visitor.visitTopK(this, context);
   }
 
   @Override
@@ -117,7 +118,7 @@ public class TopNode extends MultiChildProcessNode {
     }
   }
 
-  public static TopNode deserialize(ByteBuffer byteBuffer) {
+  public static TopKNode deserialize(ByteBuffer byteBuffer) {
     int topValue = ReadWriteIOUtils.readInt(byteBuffer);
     OrderByParameter orderByParameter = OrderByParameter.deserialize(byteBuffer);
     int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
@@ -127,7 +128,7 @@ public class TopNode extends MultiChildProcessNode {
       columnSize--;
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new TopNode(planNodeId, topValue, orderByParameter, outputColumns);
+    return new TopKNode(planNodeId, topValue, orderByParameter, outputColumns);
   }
 
   @Override
@@ -141,7 +142,7 @@ public class TopNode extends MultiChildProcessNode {
     if (!super.equals(o)) {
       return false;
     }
-    TopNode that = (TopNode) o;
+    TopKNode that = (TopKNode) o;
     return topValue == that.getTopValue()
         && Objects.equals(mergeOrderParameter, that.getMergeOrderParameter());
   }
@@ -153,10 +154,10 @@ public class TopNode extends MultiChildProcessNode {
 
   @Override
   public String toString() {
-    return String.format("TopN-Id:%s-Value:%s", this.getPlanNodeId(), this.topValue);
+    return String.format("TopK-%s-%s", this.getPlanNodeId(), this.topValue);
   }
 
-  public int getTopValue() {
+  public long getTopValue() {
     return this.topValue;
   }
 }

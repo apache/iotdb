@@ -69,6 +69,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDevi
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
@@ -184,6 +185,8 @@ public class LogicalPlanBuilder {
       Set<Expression> sourceExpressions,
       Ordering scanOrder,
       Filter timeFilter,
+      long offset,
+      long limit,
       boolean lastLevelUseWildcard) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     List<PartialPath> selectedPaths =
@@ -192,27 +195,37 @@ public class LogicalPlanBuilder {
             .collect(Collectors.toList());
     List<PartialPath> groupedPaths = MetaUtils.groupAlignedSeries(selectedPaths);
     for (PartialPath path : groupedPaths) {
-      if (path instanceof MeasurementPath) { // non-aligned series
+      if (path instanceof MeasurementPath) {
+        // non-aligned series
+        // TODO: push down value filter
         SeriesScanNode seriesScanNode =
             new SeriesScanNode(
-                context.getQueryId().genPlanNodeId(), (MeasurementPath) path, scanOrder);
-        seriesScanNode.setTimeFilter(timeFilter);
-        // TODO: push down value filter
-        seriesScanNode.setValueFilter(timeFilter);
+                context.getQueryId().genPlanNodeId(),
+                (MeasurementPath) path,
+                scanOrder,
+                timeFilter,
+                timeFilter,
+                limit,
+                offset,
+                null);
         sourceNodeList.add(seriesScanNode);
-      } else if (path instanceof AlignedPath) { // aligned series
+      } else if (path instanceof AlignedPath) {
+        // aligned series
+        // TODO: push down value filter
         AlignedSeriesScanNode alignedSeriesScanNode =
             new AlignedSeriesScanNode(
                 context.getQueryId().genPlanNodeId(),
                 (AlignedPath) path,
                 scanOrder,
+                timeFilter,
+                timeFilter,
+                limit,
+                offset,
+                null,
                 lastLevelUseWildcard);
-        alignedSeriesScanNode.setTimeFilter(timeFilter);
-        // TODO: push down value filter
-        alignedSeriesScanNode.setValueFilter(timeFilter);
         sourceNodeList.add(alignedSeriesScanNode);
       } else {
-        throw new IllegalArgumentException("unexpected path type");
+        throw new IllegalArgumentException("Unexpected path type");
       }
     }
 
@@ -372,6 +385,8 @@ public class LogicalPlanBuilder {
                   sourceExpressions,
                   Ordering.DESC,
                   analysis.getGlobalTimeFilter(),
+                  0,
+                  -1,
                   analysis.isLastLevelUseWildcard())
               .planWhereAndSourceTransform(
                   null, sourceTransformExpressions, false, zoneId, Ordering.DESC)
@@ -759,22 +774,48 @@ public class LogicalPlanBuilder {
 
     // order by time, device can be optimized by SingleDeviceViewNode and MergeSortNode
     if (queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression()) {
-      MergeSortNode mergeSortNode =
-          new MergeSortNode(
-              context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
-      for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
-        String deviceName = entry.getKey();
-        PlanNode subPlan = entry.getValue();
-        SingleDeviceViewNode singleDeviceViewNode =
-            new SingleDeviceViewNode(
+      // order by time, device + limit can be optimized to TopK implementation
+      // in the future, offset can also be pushed down to ScanNode and use TopK process
+      if (queryStatement.hasLimit()
+          && !queryStatement.hasOffset()
+          && queryStatement.getRowLimit() < 10000) {
+        TopKNode topKNode =
+            new TopKNode(
                 context.getQueryId().genPlanNodeId(),
-                outputColumnNames,
-                deviceName,
-                deviceToMeasurementIndexesMap.get(deviceName));
-        singleDeviceViewNode.addChild(subPlan);
-        mergeSortNode.addChild(singleDeviceViewNode);
+                queryStatement.getRowLimit(),
+                orderByParameter,
+                outputColumnNames);
+        for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
+          String deviceName = entry.getKey();
+          PlanNode subPlan = entry.getValue();
+          SingleDeviceViewNode singleDeviceViewNode =
+              new SingleDeviceViewNode(
+                  context.getQueryId().genPlanNodeId(),
+                  outputColumnNames,
+                  deviceName,
+                  deviceToMeasurementIndexesMap.get(deviceName));
+          singleDeviceViewNode.addChild(subPlan);
+          topKNode.addChild(singleDeviceViewNode);
+        }
+        this.root = topKNode;
+      } else {
+        MergeSortNode mergeSortNode =
+            new MergeSortNode(
+                context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
+        for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
+          String deviceName = entry.getKey();
+          PlanNode subPlan = entry.getValue();
+          SingleDeviceViewNode singleDeviceViewNode =
+              new SingleDeviceViewNode(
+                  context.getQueryId().genPlanNodeId(),
+                  outputColumnNames,
+                  deviceName,
+                  deviceToMeasurementIndexesMap.get(deviceName));
+          singleDeviceViewNode.addChild(subPlan);
+          mergeSortNode.addChild(singleDeviceViewNode);
+        }
+        this.root = mergeSortNode;
       }
-      this.root = mergeSortNode;
     } else {
       DeviceViewNode deviceViewNode =
           new DeviceViewNode(
@@ -794,17 +835,16 @@ public class LogicalPlanBuilder {
     context.getTypeProvider().setType(DEVICE, TSDataType.TEXT);
     updateTypeProvider(deviceViewOutputExpressions);
 
-    if (queryStatement.needPushDownSort()) {
-      if (selectExpression.size() != deviceViewOutputExpressions.size()) {
-        this.root =
-            new TransformNode(
-                context.getQueryId().genPlanNodeId(),
-                root,
-                selectExpression.toArray(new Expression[0]),
-                queryStatement.isGroupByTime(),
-                queryStatement.getSelectComponent().getZoneId(),
-                queryStatement.getResultTimeOrder());
-      }
+    if (queryStatement.needPushDownSort()
+        && (selectExpression.size() != deviceViewOutputExpressions.size())) {
+      this.root =
+          new TransformNode(
+              context.getQueryId().genPlanNodeId(),
+              root,
+              selectExpression.toArray(new Expression[0]),
+              queryStatement.isGroupByTime(),
+              queryStatement.getSelectComponent().getZoneId(),
+              queryStatement.getResultTimeOrder());
     }
 
     return this;
