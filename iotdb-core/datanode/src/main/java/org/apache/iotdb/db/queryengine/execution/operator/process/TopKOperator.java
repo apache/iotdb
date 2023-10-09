@@ -66,7 +66,7 @@ public class TopKOperator extends AbstractConsumeAllOperator {
     this.mergeSortHeap = new MergeSortHeap(inputOperatorsCount, comparator.reversed());
     this.comparator = comparator;
     this.noMoreTsBlocks = new boolean[inputOperatorsCount];
-    this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
+    this.tsBlockBuilder = new TsBlockBuilder((int) topValue, dataTypes);
     this.topValue = topValue;
   }
 
@@ -117,46 +117,36 @@ public class TopKOperator extends AbstractConsumeAllOperator {
     long startTime = System.nanoTime();
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
 
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
-        continue;
-      }
-
-      ListenableFuture<?> blocked = children.get(i).isBlocked();
-      if (blocked.isDone()) {
-        if (children.get(i).hasNextWithTimer()) {
-          inputTsBlocks[i] = getNextTsBlock(i);
-        } else {
-          children.get(i).close();
-          children.set(i, null);
-          noMoreTsBlocks[i] = true;
-          inputTsBlocks[i] = null;
-        }
-      } else {
-
-      }
-    }
-
     // 1. fill consumed up TsBlock
     if (!prepareInput()) {
       return null;
     }
 
-    // 2. check if we can directly return the original TsBlock instead of merging way
-    MergeSortKey minMergeSortKey = mergeSortHeap.poll();
-    if (mergeSortHeap.isEmpty()
-        || comparator.compare(
-                new MergeSortKey(
-                    minMergeSortKey.tsBlock, minMergeSortKey.tsBlock.getPositionCount() - 1),
-                mergeSortHeap.peek())
-            < 0) {
-      inputTsBlocks[minMergeSortKey.inputChannelIndex] = null;
-      readingValueCount += minMergeSortKey.tsBlock.getPositionCount() - minMergeSortKey.rowIndex;
-      return minMergeSortKey.rowIndex == 0
-          ? minMergeSortKey.tsBlock
-          : minMergeSortKey.tsBlock.subTsBlock(minMergeSortKey.rowIndex);
+    boolean allBlocksRead = true;
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (noMoreTsBlocks[i] || children.get(i) == null) {
+        continue;
+      }
+
+      allBlocksRead = false;
+      boolean getNewValue = false;
+      for (int idx = 0; idx < inputTsBlocks[i].getPositionCount(); idx++) {
+        if (mergeSortHeap.getHeapSize() < topValue || comparator.compare(new MergeSortKey(inputTsBlocks[i], idx),
+                mergeSortHeap.peek()) < 0) {
+          mergeSortHeap.push(new MergeSortKey(inputTsBlocks[i], idx));
+          getNewValue = true;
+        } else {
+          if (!getNewValue) {
+            inputTsBlocks[i] = null;
+            noMoreTsBlocks[i] = true;
+          }
+        }
+      }
     }
-    mergeSortHeap.push(minMergeSortKey);
+
+    if (!allBlocksRead) {
+      return null;
+    }
 
     // 3. do merge sort until one TsBlock is consumed up
     tsBlockBuilder.reset();
@@ -175,25 +165,13 @@ public class TopKOperator extends AbstractConsumeAllOperator {
         valueColumnBuilders[i].write(targetBlock.getColumn(i), rowIndex);
       }
       tsBlockBuilder.declarePosition();
-      if (mergeSortKey.rowIndex == mergeSortKey.tsBlock.getPositionCount() - 1) {
-        inputTsBlocks[mergeSortKey.inputChannelIndex] = null;
-        if (!mergeSortHeap.isEmpty()
-            && comparator.compare(mergeSortHeap.peek(), mergeSortKey) > 0) {
-          break;
-        }
-      } else {
-        mergeSortKey.rowIndex++;
-        mergeSortHeap.push(mergeSortKey);
-      }
 
       // break if time is out or tsBlockBuilder is full
-      if (System.nanoTime() - startTime > maxRuntime
-          || tsBlockBuilder.isFull()
-          || tsBlockBuilder.getPositionCount() > topValue) {
-        break;
+      if (System.nanoTime() - startTime > maxRuntime) {
+        return null;
       }
     }
-    readingValueCount += tsBlockBuilder.getPositionCount();
+
     return tsBlockBuilder.build();
   }
 
