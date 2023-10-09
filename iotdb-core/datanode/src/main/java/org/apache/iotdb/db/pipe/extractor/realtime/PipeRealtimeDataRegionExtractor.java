@@ -117,10 +117,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   public final void extract(PipeRealtimeEvent event) {
     doExtract(event);
 
-    synchronized (isClosed) {
-      if (isClosed.get()) {
-        clearPendingQueue();
-      }
+    if (isClosed.get()) {
+      clearPendingQueue();
     }
   }
 

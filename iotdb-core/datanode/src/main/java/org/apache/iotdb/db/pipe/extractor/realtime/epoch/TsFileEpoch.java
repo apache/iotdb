@@ -63,6 +63,7 @@ public class TsFileEpoch {
   public enum State {
     EMPTY,
     USING_TABLET,
+    USING_TABLET_FORCE,
     USING_TSFILE
   }
 }

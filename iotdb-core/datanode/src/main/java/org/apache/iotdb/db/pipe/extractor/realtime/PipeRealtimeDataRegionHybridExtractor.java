@@ -34,12 +34,15 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
   private volatile boolean isStartedToSupply = false;
+  private final ReentrantLock tsFileStateLock = new ReentrantLock();
 
   @Override
   protected void doExtract(PipeRealtimeEvent event) {
@@ -70,18 +73,25 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTabletInsertion(PipeRealtimeEvent event) {
-    if (!isStartedToSupply
-        || mayWalSizeReachThrottleThreshold()
-        || isTsFileEventCountInQueueExceededLimit()) {
-      // In the following 3 cases, we should not extract any more tablet events. all the data
-      // represented by the tablet events should be carried by the following tsfile event:
-      //  1. The historical extractor has not consumed all the data.
-      //  2. HybridExtractor will first try to do extraction in log mode, and then choose log or
-      //  tsfile mode to continue extracting, but if (leader data regions num * Wal size) > (maximum
-      //  size of wal buffer), the write operation will be throttled, so we should not extract any
-      //  more tablet events.
-      //  3. The number of tsfile events in the pending queue has exceeded the limit.
-      event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
+    tsFileStateLock.lock();
+    try {
+      if ((!isStartedToSupply
+              || mayWalSizeReachThrottleThreshold()
+              || isTsFileEventCountInQueueExceededLimit())
+          && !event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TABLET_FORCE)) {
+        // In the following 3 cases, we should not extract any more tablet events. all the data
+        // represented by the tablet events should be carried by the following tsfile event:
+        //  1. The historical extractor has not consumed all the data.
+        //  2. HybridExtractor will first try to do extraction in log mode, and then choose log or
+        //  tsfile mode to continue extracting, but if (leader data regions num * Wal size) >
+        // (maximum
+        //  size of wal buffer), the write operation will be throttled, so we should not extract any
+        //  more tablet events.
+        //  3. The number of tsfile events in the pending queue has exceeded the limit.
+        event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
+      }
+    } finally {
+      tsFileStateLock.unlock();
     }
 
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
@@ -92,6 +102,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         break;
       case EMPTY:
       case USING_TABLET:
+      case USING_TABLET_FORCE:
         if (!pendingQueue.waitedOffer(event)) {
           // this would not happen, but just in case.
           // pendingQueue is unbounded, so it should never reach capacity.
@@ -118,12 +129,19 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTsFileInsertion(PipeRealtimeEvent event) {
-    event
-        .getTsFileEpoch()
-        .migrateState(
-            this,
-            state ->
-                state.equals(TsFileEpoch.State.EMPTY) ? TsFileEpoch.State.USING_TSFILE : state);
+    tsFileStateLock.lock();
+    try {
+      event
+          .getTsFileEpoch()
+          .migrateState(
+              this,
+              state ->
+                  state.equals(TsFileEpoch.State.USING_TABLET)
+                      ? TsFileEpoch.State.USING_TABLET_FORCE
+                      : TsFileEpoch.State.USING_TSFILE);
+    } finally {
+      tsFileStateLock.unlock();
+    }
 
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
     switch (state) {
@@ -147,6 +165,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         }
         break;
       case USING_TABLET:
+      case USING_TABLET_FORCE:
         // All the tablet events have been extracted, so we can ignore the tsFile event.
         // Report this event for SimpleProgressIndex, which does not have progressIndex for wal.
         // This report won't affect IoTProgressIndex since the previous wal events have been
