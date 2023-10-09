@@ -773,8 +773,8 @@ public class OutlierKSigmaVaryBlocksize {
             columnIndexes.add(i, i);
         }
 
-        for (int file_i = 9; file_i < 10; file_i++) {
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 9; file_i < 10; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
