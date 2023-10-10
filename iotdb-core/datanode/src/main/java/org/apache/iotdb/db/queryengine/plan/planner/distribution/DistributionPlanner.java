@@ -200,10 +200,6 @@ public class DistributionPlanner {
         logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
   }
 
-  private void optimizeOrderByTimeWithAlignByDevice(PlanNode rootAfterRewrite) {
-    // if (analysis.)
-  }
-
   // Convert fragment to detailed instance
   // And for parallel-able fragment, clone it into several instances with different params.
   public List<FragmentInstance> planFragmentInstances(SubPlan subPlan) {

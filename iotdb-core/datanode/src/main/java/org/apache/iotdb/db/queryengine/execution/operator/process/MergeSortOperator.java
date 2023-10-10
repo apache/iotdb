@@ -133,8 +133,6 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
         if (!mergeSortHeap.isEmpty()
             && comparator.compare(mergeSortHeap.peek(), mergeSortKey) > 0) {
           break;
-        } else {
-          System.out.println("aaa");
         }
       } else {
         mergeSortKey.rowIndex++;
