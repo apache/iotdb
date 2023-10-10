@@ -91,6 +91,9 @@ public class LoadTsfileAnalyzer {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
+  private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
+      ConfigNodeClientManager.getInstance();
+
   private final LoadTsFileStatement loadTsFileStatement;
   private final MPPQueryContext context;
 
@@ -99,9 +102,6 @@ public class LoadTsfileAnalyzer {
 
   private final SchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier =
       new SchemaAutoCreatorAndVerifier();
-
-  private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
-      ConfigNodeClientManager.getInstance();
 
   LoadTsfileAnalyzer(
       LoadTsFileStatement loadTsFileStatement,
@@ -275,6 +275,8 @@ public class LoadTsfileAnalyzer {
         new HashMap<>();
     private int currentBatchTimeseriesCount = 0;
 
+    private final Set<PartialPath> alreadySetDatabases = new HashSet<>();
+
     private SchemaAutoCreatorAndVerifier() {}
 
     public void autoCreateAndVerify(
@@ -409,8 +411,7 @@ public class LoadTsfileAnalyzer {
     private void autoCreateDatabase()
         throws VerifyMetadataException, LoadFileException, IllegalPathException {
       final int databasePrefixNodesLength = loadTsFileStatement.getDatabaseLevel() + 1;
-      final Set<PartialPath> databaseSet = new HashSet<>();
-      final Set<PartialPath> alreadySetDatabases = new HashSet<>();
+      final Set<PartialPath> databasesNeededToBeSet = new HashSet<>();
 
       for (final String device : currentBatchDevice2TimeseriesSchemas.keySet()) {
         final PartialPath devicePath = new PartialPath(device);
@@ -426,38 +427,41 @@ public class LoadTsfileAnalyzer {
         final String[] databasePrefixNodes = new String[databasePrefixNodesLength];
         System.arraycopy(devicePrefixNodes, 0, databasePrefixNodes, 0, databasePrefixNodesLength);
 
-        databaseSet.add(new PartialPath(databasePrefixNodes));
+        databasesNeededToBeSet.add(new PartialPath(databasePrefixNodes));
       }
 
-      // 1.filter out the databases that already exist
-      ShowDatabaseStatement showDatabaseStatement =
-          new ShowDatabaseStatement(new PartialPath(SqlConstant.getSingleRootArray()));
+      // 1. filter out the databases that already exist
+      if (alreadySetDatabases.isEmpty()) {
+        try (final ConfigNodeClient configNodeClient =
+            CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+          final TGetDatabaseReq req =
+              new TGetDatabaseReq(
+                  Arrays.asList(
+                      new ShowDatabaseStatement(new PartialPath(SqlConstant.getSingleRootArray()))
+                          .getPathPattern()
+                          .getNodes()),
+                  SchemaConstant.ALL_MATCH_SCOPE.serialize());
+          final TShowDatabaseResp resp = configNodeClient.showDatabase(req);
 
-      try (ConfigNodeClient configNodeClient =
-          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        List<String> databasePathPattern =
-            Arrays.asList(showDatabaseStatement.getPathPattern().getNodes());
-
-        TGetDatabaseReq req =
-            new TGetDatabaseReq(databasePathPattern, SchemaConstant.ALL_MATCH_SCOPE.serialize());
-        TShowDatabaseResp resp = configNodeClient.showDatabase(req);
-
-        for (String databaseName : resp.getDatabaseInfoMap().keySet()) {
-          alreadySetDatabases.add(new PartialPath(databaseName));
+          for (final String databaseName : resp.getDatabaseInfoMap().keySet()) {
+            alreadySetDatabases.add(new PartialPath(databaseName));
+          }
+        } catch (IOException | TException | ClientManagerException e) {
+          throw new LoadFileException(e);
         }
-        databaseSet.removeAll(alreadySetDatabases);
-      } catch (IOException | TException | ClientManagerException e) {
-        throw new RuntimeException(e);
       }
+      databasesNeededToBeSet.removeAll(alreadySetDatabases);
 
-      // 2.create the databases that do not exist
-      for (final PartialPath databasePath : databaseSet) {
+      // 2. create the databases that do not exist
+      for (final PartialPath databasePath : databasesNeededToBeSet) {
         final DatabaseSchemaStatement statement =
             new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
         statement.setDatabasePath(databasePath);
         // do not print exception log because it is not an error
         statement.setEnablePrintExceptionLog(false);
         executeSetDatabaseStatement(statement);
+
+        alreadySetDatabases.add(databasePath);
       }
     }
 
