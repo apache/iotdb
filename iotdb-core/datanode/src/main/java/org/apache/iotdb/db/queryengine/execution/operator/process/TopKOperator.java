@@ -72,17 +72,23 @@ public class TopKOperator extends AbstractConsumeAllOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
+    boolean hasReadyChild = false;
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
+      if (needCallNext(i)) {
         continue;
       }
       ListenableFuture<?> blocked = children.get(i).isBlocked();
-      if (!blocked.isDone()) {
+      if (blocked.isDone()) {
+        hasReadyChild = true;
+        canCallNext[i] = true;
+      } else {
         listenableFutures.add(blocked);
       }
     }
-    return listenableFutures.isEmpty() ? NOT_BLOCKED : successfulAsList(listenableFutures);
+    return (hasReadyChild || listenableFutures.isEmpty())
+        ? NOT_BLOCKED
+        : successfulAsList(listenableFutures);
   }
 
   @Override
@@ -141,12 +147,6 @@ public class TopKOperator extends AbstractConsumeAllOperator {
     }
 
     if (!allBlocksRead) {
-      return null;
-    }
-
-    // break if time is out
-    // when tsBlockBuilder is full but the mergeSortHeap is still not empty, we also return null
-    if (System.nanoTime() - startTime > maxRuntime) {
       return null;
     }
 
@@ -212,5 +212,9 @@ public class TopKOperator extends AbstractConsumeAllOperator {
     finished = true;
     // TODO make all children null
     return tsBlockBuilder.build();
+  }
+
+  private boolean needCallNext(int i) {
+    return noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null;
   }
 }
