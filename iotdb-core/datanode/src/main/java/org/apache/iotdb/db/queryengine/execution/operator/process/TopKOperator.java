@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -51,7 +50,14 @@ public class TopKOperator extends AbstractConsumeAllOperator {
 
   private final long topValue;
 
-  boolean allBlocksRead;
+  // all data from children have been loaded
+  private boolean allChildrenFinished;
+
+  // query result of final TopKOperator
+  private MergeSortKey[] topKResult;
+
+  // return size of topKResult
+  private int resultReturnSize = 0;
 
   public TopKOperator(
       OperatorContext operatorContext,
@@ -74,7 +80,7 @@ public class TopKOperator extends AbstractConsumeAllOperator {
     boolean hasReadyChild = false;
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (needCallNext(i)) {
+      if (noMoreTsBlocks[i] || children.get(i) == null) {
         continue;
       }
       ListenableFuture<?> blocked = children.get(i).isBlocked();
@@ -88,65 +94,6 @@ public class TopKOperator extends AbstractConsumeAllOperator {
     return (hasReadyChild || listenableFutures.isEmpty())
         ? NOT_BLOCKED
         : successfulAsList(listenableFutures);
-  }
-
-  @Override
-  public boolean hasNext() throws Exception {
-    return !allBlocksRead;
-  }
-
-  @Override
-  public TsBlock next() throws Exception {
-    allBlocksRead = true;
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      if (noMoreTsBlocks[i] || children.get(i) == null) {
-        continue;
-      }
-
-      if (!children.get(i).isBlocked().isDone()) {
-        allBlocksRead = false;
-        continue;
-      }
-
-      if (children.get(i).hasNextWithTimer()) {
-        inputTsBlocks[i] = getNextTsBlock(i);
-        if (inputTsBlocks[i] == null) {
-          allBlocksRead = false;
-          continue;
-        }
-
-        boolean getNewValue = false;
-        for (int idx = 0; idx < inputTsBlocks[i].getPositionCount(); idx++) {
-          if (mergeSortHeap.getHeapSize() < topValue) {
-            mergeSortHeap.push(new MergeSortKey(inputTsBlocks[i], idx));
-            getNewValue = true;
-          } else if (comparator.compare(
-                  new MergeSortKey(inputTsBlocks[i], idx), mergeSortHeap.peek())
-              < 0) {
-            mergeSortHeap.poll();
-            mergeSortHeap.push(new MergeSortKey(inputTsBlocks[i], idx));
-            getNewValue = true;
-          }
-        }
-
-        if (!getNewValue) {
-          inputTsBlocks[i] = null;
-          noMoreTsBlocks[i] = true;
-          children.set(i, null);
-        } else {
-          allBlocksRead = false;
-        }
-      } else {
-        noMoreTsBlocks[i] = true;
-        children.set(i, null);
-      }
-    }
-
-    if (!allBlocksRead) {
-      return null;
-    }
-
-    return getResultFromMaxHeap(mergeSortHeap, tsBlockBuilder);
   }
 
   @Override
@@ -166,6 +113,72 @@ public class TopKOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
+  public boolean hasNext() throws Exception {
+    return !(allChildrenFinished && resultReturnSize == topKResult.length);
+  }
+
+  @Override
+  public TsBlock next() throws Exception {
+    if (allChildrenFinished && resultReturnSize < topKResult.length) {
+      return getResultFromCachedTopKResult();
+    }
+
+    allChildrenFinished = true;
+    for (int childIdx = 0; childIdx < inputOperatorsCount; childIdx++) {
+      if (noMoreTsBlocks[childIdx] || children.get(childIdx) == null) {
+        continue;
+      }
+
+      if (!children.get(childIdx).isBlocked().isDone()) {
+        allChildrenFinished = false;
+        continue;
+      }
+
+      if (!children.get(childIdx).hasNextWithTimer()) {
+        noMoreTsBlocks[childIdx] = true;
+        children.set(childIdx, null);
+        continue;
+      }
+
+      TsBlock currentTsBlock = getNextTsBlock(childIdx);
+      if (currentTsBlock == null || currentTsBlock.isEmpty()) {
+        allChildrenFinished = false;
+        continue;
+      }
+
+      boolean skipCurrentBatch = false;
+      for (int idx = 0; idx < currentTsBlock.getPositionCount(); idx++) {
+        if (mergeSortHeap.getHeapSize() < topValue) {
+          mergeSortHeap.push(new MergeSortKey(buildOneEntryTsBlock(currentTsBlock, idx), 0));
+        } else {
+          if (comparator.compare(new MergeSortKey(currentTsBlock, idx), mergeSortHeap.peek()) < 0) {
+            mergeSortHeap.poll();
+            mergeSortHeap.push(new MergeSortKey(buildOneEntryTsBlock(currentTsBlock, idx), 0));
+          } else {
+            skipCurrentBatch = true;
+          }
+        }
+      }
+
+      // if current childIdx tsblock has no value to put into heap
+      // the remaining data will also have no value to put int heap
+      if (skipCurrentBatch) {
+        noMoreTsBlocks[childIdx] = true;
+        children.set(childIdx, null);
+      } else {
+        allChildrenFinished = false;
+      }
+    }
+
+    if (!allChildrenFinished) {
+      return null;
+    }
+
+    finished = true;
+    return getResultFromMaxHeap(mergeSortHeap, tsBlockBuilder);
+  }
+
+  @Override
   public long calculateMaxPeekMemory() {
     return 0;
   }
@@ -182,35 +195,52 @@ public class TopKOperator extends AbstractConsumeAllOperator {
 
   private TsBlock getResultFromMaxHeap(MergeSortHeap mergeSortHeap, TsBlockBuilder tsBlockBuilder) {
     int cnt = mergeSortHeap.getHeapSize();
-    MergeSortKey[] mergeSortKeys = new MergeSortKey[cnt];
+    topKResult = new MergeSortKey[cnt];
     while (!mergeSortHeap.isEmpty()) {
-      mergeSortKeys[--cnt] = mergeSortHeap.poll();
+      topKResult[--cnt] = mergeSortHeap.poll();
     }
 
+    return getResultFromCachedTopKResult();
+  }
+
+  private TsBlock getResultFromCachedTopKResult() {
     tsBlockBuilder.reset();
-    TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    for (MergeSortKey mergeSortKey : mergeSortKeys) {
+    for (MergeSortKey mergeSortKey : topKResult) {
       TsBlock targetBlock = mergeSortKey.tsBlock;
-      int rowIndex = mergeSortKey.rowIndex;
-      timeBuilder.writeLong(targetBlock.getTimeByIndex(rowIndex));
+      tsBlockBuilder.getTimeColumnBuilder().writeLong(targetBlock.getTimeByIndex(0));
       for (int i = 0; i < valueColumnBuilders.length; i++) {
-        if (targetBlock.getColumn(i).isNull(rowIndex)) {
+        if (targetBlock.getColumn(i).isNull(0)) {
           valueColumnBuilders[i].appendNull();
           continue;
         }
-        valueColumnBuilders[i].write(targetBlock.getColumn(i), rowIndex);
+        valueColumnBuilders[i].write(targetBlock.getColumn(i), 0);
       }
+      resultReturnSize += 1;
       tsBlockBuilder.declarePosition();
+
+      if (tsBlockBuilder.isFull()) {
+        return tsBlockBuilder.build();
+      }
     }
 
-    allBlocksRead = true;
-    finished = true;
-    // TODO make all children null
     return tsBlockBuilder.build();
   }
 
-  private boolean needCallNext(int i) {
-    return noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null;
+  private TsBlock buildOneEntryTsBlock(TsBlock tsBlock, int rowIndex) {
+    TsBlockBuilder resultTsBlockBuilder = new TsBlockBuilder(1, dataTypes);
+    resultTsBlockBuilder.getTimeColumnBuilder().writeLong(tsBlock.getTimeByIndex(rowIndex));
+
+    for (int i = 0; i < tsBlock.getValueColumnCount(); i++) {
+      if (tsBlock.getColumn(i).isNull(rowIndex)) {
+        resultTsBlockBuilder.getValueColumnBuilders()[i].appendNull();
+        continue;
+      }
+      resultTsBlockBuilder.getValueColumnBuilders()[i].write(tsBlock.getColumn(i), rowIndex);
+    }
+
+    resultTsBlockBuilder.declarePosition();
+
+    return resultTsBlockBuilder.build();
   }
 }
