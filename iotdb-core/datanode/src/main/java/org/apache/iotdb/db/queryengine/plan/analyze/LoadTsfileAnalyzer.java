@@ -424,6 +424,9 @@ public class LoadTsfileAnalyzer {
     }
 
     private void executeSetDatabaseStatement(Statement statement) throws LoadFileException {
+      // 1.check Authority
+
+      // 2.execute setDatabase statement
       final long queryId = SessionManager.getInstance().requestQueryId();
       final ExecutionResult result =
           Coordinator.getInstance()
