@@ -874,13 +874,10 @@ public class PartitionInfo implements SnapshotProcessor {
       }
 
       // write to file
-      tioStreamTransport.flush();
-      bufferedOutputStream.flush();
       fileOutputStream.getFD().sync();
 
       // rename file
       return tmpFile.renameTo(snapshotFile);
-
     } finally {
       // with or without success, delete temporary files anyway
       for (int retry = 0; retry < 5; retry++) {
