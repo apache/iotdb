@@ -148,10 +148,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         break;
       case USING_TABLET:
         // All the tablet events have been extracted, so we can ignore the tsFile event.
-        // Report this event for SimpleProgressIndex, which does not have progressIndex for wal.
-        // This report won't affect IoTProgressIndex since the previous wal events have been
-        // successfully transferred here.
-        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName(), true);
+        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
         break;
       default:
         throw new UnsupportedOperationException(
