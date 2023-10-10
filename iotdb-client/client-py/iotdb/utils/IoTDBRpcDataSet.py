@@ -99,19 +99,12 @@ class IoTDBRpcDataSet(object):
                         TSDataType[column_type_list[i]]
                     )
 
-        self.time_bytes = memoryview(b"\x00")
+        self.time_bytes = [b"\x00"]
         self.__current_bitmap = [
             bytes(0) for _ in range(len(self.column_type_deduplicated_list))
         ]
         self.value = [None for _ in range(len(self.column_type_deduplicated_list))]
         self.__query_data_set = query_data_set
-        self.__query_data_set.time = memoryview(self.__query_data_set.time)
-        self.__query_data_set.valueList = [
-            memoryview(value) for value in self.__query_data_set.valueList
-        ]
-        self.__query_data_set.bitmapList = [
-            memoryview(bitmap) for bitmap in self.__query_data_set.bitmapList
-        ]
         self.__is_closed = False
         self.__empty_resultSet = False
         self.has_cached_record = False
@@ -119,6 +112,8 @@ class IoTDBRpcDataSet(object):
         self.is_null_info = [
             False for _ in range(len(self.column_type_deduplicated_list))
         ]
+        self.has_cached_data_frame = False
+        self.data_frame = None
 
     def close(self):
         if self.__is_closed:
@@ -142,30 +137,141 @@ class IoTDBRpcDataSet(object):
 
             self.__is_closed = True
             self.__client = None
-            if isinstance(self.__query_data_set.time, memoryview):
-                self.__query_data_set.time.release()
-            for value in self.__query_data_set.valueList:
-                if isinstance(value, memoryview):
-                    value.release()
-            for bitmap in self.__query_data_set.bitmapList:
-                if isinstance(bitmap, memoryview):
-                    bitmap.release()
 
     def next(self):
-        if self.has_cached_result():
-            self.construct_one_row()
+        if not self.has_cached_data_frame:
+            self.construct_one_data_frame()
+        if self.has_cached_data_frame:
             return True
         if self.__empty_resultSet:
             return False
         if self.fetch_results():
-            self.construct_one_row()
+            self.construct_one_data_frame()
             return True
         return False
 
-    def has_cached_result(self):
-        return (self.__query_data_set is not None) and (
-            len(self.__query_data_set.time) != 0
+    def construct_one_data_frame(self):
+        if self.has_cached_data_frame or self.__query_data_set.time is None:
+            return
+        result = {}
+        for i in range(len(self.__column_name_list)):
+            result[i] = []
+        time_array = np.frombuffer(
+            self.__query_data_set.time, np.dtype(np.longlong).newbyteorder(">")
         )
+        if time_array.dtype.byteorder == ">":
+            time_array = time_array.byteswap().newbyteorder("<")
+        if self.ignore_timestamp is None or self.ignore_timestamp is False:
+            result[0].append(time_array)
+
+        self.__query_data_set.time = None
+        total_length = len(time_array)
+        for i in range(len(self.__query_data_set.bitmapList)):
+            if self.ignore_timestamp is True:
+                column_name = self.get_column_names()[i]
+                column_index_in_result = i
+            else:
+                column_name = self.get_column_names()[i + 1]
+                column_index_in_result = i + 1
+
+            location = (
+                    self.column_ordinal_dict[column_name] - IoTDBRpcDataSet.START_INDEX
+            )
+            if location < 0:
+                continue
+            data_type = self.column_type_deduplicated_list[location]
+            value_buffer = self.__query_data_set.valueList[location]
+            value_buffer_len = len(value_buffer)
+            if data_type == 4:
+                data_array = np.frombuffer(
+                    value_buffer, np.dtype(np.double).newbyteorder(">")
+                )
+            elif data_type == 3:
+                data_array = np.frombuffer(
+                    value_buffer, np.dtype(np.float32).newbyteorder(">")
+                )
+            elif data_type == 0:
+                data_array = np.frombuffer(value_buffer, np.dtype("?"))
+            elif data_type == 1:
+                data_array = np.frombuffer(
+                    value_buffer, np.dtype(np.int32).newbyteorder(">")
+                )
+            elif data_type == 2:
+                data_array = np.frombuffer(
+                    value_buffer, np.dtype(np.int64).newbyteorder(">")
+                )
+            elif data_type == 5:
+                j = 0
+                offset = 0
+                data_array = []
+                while offset < value_buffer_len:
+                    length = int.from_bytes(
+                        value_buffer[offset: offset + 4],
+                        byteorder="big",
+                        signed=False,
+                    )
+                    offset += 4
+                    value_bytes = bytes(value_buffer[offset: offset + length])
+                    value = value_bytes.decode("utf-8")
+                    data_array.append(value)
+                    j += 1
+                    offset += length
+                data_array = np.array(data_array, dtype=object)
+            else:
+                raise RuntimeError("unsupported data type {}.".format(data_type))
+            if data_array.dtype.byteorder == ">":
+                data_array = data_array.byteswap().newbyteorder("<")
+            self.__query_data_set.valueList[location] = None
+            tmp_array = []
+            if len(data_array) < total_length:
+                # INT32 or INT64
+                if data_type == 1 or data_type == 2:
+                    tmp_array = np.full(total_length, np.nan, np.float32)
+                # FLOAT or DOUBLE
+                elif data_type == 3 or data_type == 4:
+                    tmp_array = np.full(total_length, np.nan, data_array.dtype)
+                # BOOLEAN
+                elif data_type == 0:
+                    tmp_array = np.full(total_length, np.nan, np.float32)
+                # TEXT
+                elif data_type == 5:
+                    tmp_array = np.full(total_length, None, dtype=data_array.dtype)
+
+                bitmap_buffer = self.__query_data_set.bitmapList[location]
+                buffer = _to_bitbuffer(bitmap_buffer)
+                bit_mask = (np.frombuffer(buffer, "u1") - ord("0")).astype(bool)
+                if len(bit_mask) != total_length:
+                    bit_mask = bit_mask[:total_length]
+                tmp_array[bit_mask] = data_array
+
+                if data_type == 1:
+                    tmp_array = pd.Series(tmp_array).astype("Int32")
+                elif data_type == 2:
+                    tmp_array = pd.Series(tmp_array).astype("Int64")
+                elif data_type == 0:
+                    tmp_array = pd.Series(tmp_array).astype("boolean")
+
+                data_array = tmp_array
+
+            result[column_index_in_result].append(data_array)
+
+        for k, v in result.items():
+            if v is None or len(v) < 1 or v[0] is None:
+                result[k] = []
+            else:
+                if v[0].dtype == "Int32":
+                    result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int32")
+                elif v[0].dtype == "Int64":
+                    result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int64")
+                elif v[0].dtype == "boolean":
+                    result[k] = pd.Series(np.concatenate(v, axis=0)).astype("boolean")
+                else:
+                    result[k] = np.concatenate(v, axis=0)
+        self.has_cached_data_frame = True
+        self.data_frame = pd.DataFrame(result, dtype=object)
+
+    def has_cached_result(self):
+        return self.has_cached_data_frame
 
     def _has_next_result_set(self):
         if self.has_cached_result():
@@ -246,7 +352,7 @@ class IoTDBRpcDataSet(object):
                 if data_array.dtype.byteorder == ">":
                     data_array = data_array.byteswap().newbyteorder("<")
                 self.__query_data_set.valueList[location] = None
-
+                tmp_array = []
                 if len(data_array) < total_length:
                     if data_type == 1 or data_type == 2:
                         tmp_array = np.full(total_length, np.nan, np.float32)
@@ -290,42 +396,6 @@ class IoTDBRpcDataSet(object):
         df = pd.DataFrame(result)
         return df
 
-    def construct_one_row(self):
-        # simulating buffer, read 8 bytes from data set and discard first 8 bytes which have been read.
-        self.time_bytes = self.__query_data_set.time[:8]
-        self.__query_data_set.time = self.__query_data_set.time[8:]
-        for i, (value_buffer, data_type) in enumerate(
-            zip(self.__query_data_set.valueList, self.column_type_deduplicated_list)
-        ):
-            # another 8 new rows, should move the bitmap buffer position to next byte
-            if self.__rows_index % 8 == 0:
-                bitmap_buffer = self.__query_data_set.bitmapList[i]
-                self.__current_bitmap[i] = bitmap_buffer[0]
-                self.__query_data_set.bitmapList[i] = bitmap_buffer[1:]
-            is_null = shift_table[self.__rows_index % 8] & self.__current_bitmap[i] == 0
-            self.is_null_info[i] = is_null
-            if not is_null:
-                # simulating buffer
-                if data_type == 0:
-                    self.value[i] = value_buffer[:1]
-                    self.__query_data_set.valueList[i] = value_buffer[1:]
-                elif data_type == 1 or data_type == 3:
-                    self.value[i] = value_buffer[:4]
-                    self.__query_data_set.valueList[i] = value_buffer[4:]
-                elif data_type == 2 or data_type == 4:
-                    self.value[i] = value_buffer[:8]
-                    self.__query_data_set.valueList[i] = value_buffer[8:]
-                elif data_type == 5:
-                    length = int.from_bytes(
-                        value_buffer[:4], byteorder="big", signed=False
-                    )
-                    self.value[i] = value_buffer[4 : 4 + length]
-                    self.__query_data_set.valueList[i] = value_buffer[4 + length :]
-                else:
-                    raise RuntimeError("unsupported data type {}.".format(data_type))
-        self.__rows_index += 1
-        self.has_cached_record = True
-
     def fetch_results(self):
         self.__rows_index = 0
         request = TSFetchResultsReq(
@@ -341,22 +411,7 @@ class IoTDBRpcDataSet(object):
             if not resp.hasResultSet:
                 self.__empty_resultSet = True
             else:
-                if isinstance(self.__query_data_set.time, memoryview):
-                    self.__query_data_set.time.release()
-                for value in self.__query_data_set.valueList:
-                    if isinstance(value, memoryview):
-                        value.release()
-                for bitmap in self.__query_data_set.bitmapList:
-                    if isinstance(bitmap, memoryview):
-                        bitmap.release()
                 self.__query_data_set = resp.queryDataSet
-                self.__query_data_set.time = memoryview(self.__query_data_set.time)
-                self.__query_data_set.valueList = [
-                    memoryview(value) for value in self.__query_data_set.valueList
-                ]
-                self.__query_data_set.bitmapList = [
-                    memoryview(bitmap) for bitmap in self.__query_data_set.bitmapList
-                ]
             return resp.hasResultSet
         except TTransport.TException as e:
             raise RuntimeError(
