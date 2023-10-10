@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSc
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
@@ -90,6 +91,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -778,6 +780,30 @@ public class StatementGeneratorTest {
     stmt = createAuthDclStmt("LIST PRIVILEGES OF ROLE `role1`;");
     assertEquals(StatementType.LIST_ROLE_PRIVILEGE, stmt.getType());
     assertEquals("role1", stmt.getRoleName());
+  }
+
+  private CreateLogicalViewStatement createViewStmt(String sql) {
+    Statement stmt = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
+    CreateLogicalViewStatement viewStmt = (CreateLogicalViewStatement) stmt;
+    return viewStmt;
+  }
+
+  @Test
+  public void testCreateView() throws IllegalPathException {
+    // 1. create with select
+    CreateLogicalViewStatement stmt =
+        createViewStmt("create view root.sg.view_dd as select s1 from root.sg.d1;");
+    List<PartialPath> path = new ArrayList<>();
+    path.add(new PartialPath("root.sg.d1"));
+    assertEquals(null, stmt.getSourcePaths().fullPathList);
+    assertEquals(path, stmt.getQueryStatement().getFromComponent().getPrefixPaths());
+
+    // 2. create with path
+    stmt = createViewStmt("create view root.sg as root.sg.d2;");
+    List<PartialPath> path2 = new ArrayList<>();
+    path2.add(new PartialPath("root.sg.d2"));
+    assertEquals(path2, stmt.getSourcePaths().fullPathList);
+    assertEquals(null, stmt.getQueryStatement());
   }
 
   // TODO: add more tests

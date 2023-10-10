@@ -210,6 +210,24 @@ public class DeviceUsingTemplateSchemaCache {
     cache.invalidateAll();
   }
 
+  public void invalidateCache(String database) {
+    for (PartialPath key : cache.asMap().keySet()) {
+      if (key.startsWith(database)) {
+        cache.invalidate(key);
+      }
+    }
+  }
+
+  public void invalidateCache(List<PartialPath> partialPathList) {
+    for (PartialPath path : partialPathList) {
+      for (PartialPath key : cache.asMap().keySet()) {
+        if (key.startsWith(path.getDevice())) {
+          cache.invalidate(key);
+        }
+      }
+    }
+  }
+
   private static class DeviceCacheEntry {
 
     private final String database;

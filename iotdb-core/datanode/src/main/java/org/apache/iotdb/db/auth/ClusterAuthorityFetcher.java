@@ -69,6 +69,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private boolean cacheOutDate = false;
   private long heartBeatTimeStamp = 0;
 
+  // for test only.
+  private boolean acceptCache = true;
+
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
@@ -167,7 +170,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           Role role = iAuthorCache.getRoleCache(roleName);
           if (role == null) {
             return checkUserPrivilegeGrantOptFromConfigNode(
-                username, Collections.singletonList(new PartialPath()), permission);
+                username, Collections.emptyList(), permission);
           }
           if (role.checkSysPriGrantOpt(permission)) {
             return true;
@@ -178,7 +181,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       return true;
     } else {
       return checkUserPrivilegeGrantOptFromConfigNode(
-          username, Collections.singletonList(new PartialPath()), permission);
+          username, Collections.emptyList(), permission);
     }
   }
 
@@ -200,7 +203,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
     }
     if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      if (acceptCache) {
+        iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      }
       return true;
     } else {
       return false;
@@ -252,7 +257,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
     }
     if (authizedPatternTree.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      iAuthorCache.putUserCache(username, cacheUser(authizedPatternTree.getPermissionInfo()));
+      if (acceptCache) {
+        iAuthorCache.putUserCache(username, cacheUser(authizedPatternTree.getPermissionInfo()));
+      }
       return PathPatternTree.deserialize(ByteBuffer.wrap(authizedPatternTree.getPathPatternTree()));
     } else {
       throw new AuthException(
@@ -408,7 +415,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         }
       }
       if (status.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        iAuthorCache.putUserCache(username, cacheUser(status));
+        if (acceptCache) {
+          iAuthorCache.putUserCache(username, cacheUser(status));
+        }
         return status.getStatus();
       } else {
         return status.getStatus();
@@ -443,7 +452,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
     }
     if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      if (acceptCache) {
+        iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      }
     }
     return permissionInfoResp.getStatus();
   }
@@ -465,7 +476,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
     }
     if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      if (acceptCache) {
+        iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      }
     }
     return permissionInfoResp.getFailPos();
   }
@@ -486,11 +499,15 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
     }
     if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      if (acceptCache) {
+        iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      }
       return true;
     } else if (permissionInfoResp.getStatus().getCode()
         == TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode()) {
-      iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      if (acceptCache) {
+        iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+      }
       return false;
     } else {
       return false;

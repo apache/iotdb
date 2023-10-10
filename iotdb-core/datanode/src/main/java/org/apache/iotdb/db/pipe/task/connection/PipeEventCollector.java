@@ -24,18 +24,20 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import java.util.Deque;
 import java.util.LinkedList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
-  private final Deque<Event> bufferQueue;
+  private final EnrichedDeque<Event> bufferQueue;
+
+  private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue) {
     this.pendingQueue = pendingQueue;
-    bufferQueue = new LinkedList<>();
+    bufferQueue = new EnrichedDeque<>(new LinkedList<>());
   }
 
   @Override
@@ -48,7 +50,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
       ((PipeHeartbeatEvent) event).recordConnectorQueueSize(pendingQueue);
     }
 
-    while (!bufferQueue.isEmpty()) {
+    while (!isClosed.get() && !bufferQueue.isEmpty()) {
       final Event bufferedEvent = bufferQueue.peek();
       // Try to put already buffered events into pending queue, if pending queue is full, wait for
       // pending queue to be available with timeout.
@@ -77,7 +79,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
    * @return true if there are still buffered events after this operation, false otherwise.
    */
   public synchronized boolean tryCollectBufferedEvents() {
-    while (!bufferQueue.isEmpty()) {
+    while (!isClosed.get() && !bufferQueue.isEmpty()) {
       final Event bufferedEvent = bufferQueue.peek();
       if (pendingQueue.waitedOffer(bufferedEvent)) {
         bufferQueue.poll();
@@ -88,7 +90,12 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
     return false;
   }
 
-  public synchronized void close() {
+  public void close() {
+    isClosed.set(true);
+    doClose();
+  }
+
+  private synchronized void doClose() {
     bufferQueue.forEach(
         event -> {
           if (event instanceof EnrichedEvent) {

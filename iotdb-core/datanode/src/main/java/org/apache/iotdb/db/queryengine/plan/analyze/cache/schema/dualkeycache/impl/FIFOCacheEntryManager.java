@@ -50,6 +50,14 @@ public class FIFOCacheEntryManager<FK, SK, V>
   }
 
   @Override
+  public void invalid(FIFOCacheEntry<SK, V> cacheEntry) {
+    cacheEntry.next.pre = cacheEntry.pre;
+    cacheEntry.pre.next = cacheEntry.next;
+    cacheEntry.next = null;
+    cacheEntry.pre = null;
+  }
+
+  @Override
   public FIFOCacheEntry<SK, V> evict() {
     int startIndex = getNextIndex(cacheEvictRoundRobinIndex);
     FIFOLinkedList fifoLinkedList;
@@ -105,11 +113,12 @@ public class FIFOCacheEntryManager<FK, SK, V>
   static class FIFOCacheEntry<SK, V> implements ICacheEntry<SK, V> {
 
     private final SK secondKey;
-    private final ICacheEntryGroup cacheEntryGroup;
+    private volatile ICacheEntryGroup cacheEntryGroup;
 
     private V value;
 
-    private FIFOCacheEntry<SK, V> pre;
+    private FIFOCacheEntry<SK, V> pre = null;
+    private FIFOCacheEntry<SK, V> next = null;
 
     private FIFOCacheEntry(SK secondKey, V value, ICacheEntryGroup cacheEntryGroup) {
       this.secondKey = secondKey;
@@ -133,6 +142,11 @@ public class FIFOCacheEntryManager<FK, SK, V>
     }
 
     @Override
+    public void setBelongedGroup(ICacheEntryGroup belongedGroup) {
+      this.cacheEntryGroup = belongedGroup;
+    }
+
+    @Override
     public void replaceValue(V newValue) {
       this.value = newValue;
     }
@@ -152,37 +166,35 @@ public class FIFOCacheEntryManager<FK, SK, V>
     }
   }
 
-  private static class FIFOLinkedList {
+  private static class FIFOLinkedList<SK, V> {
 
-    private FIFOCacheEntry head;
-    private FIFOCacheEntry tail;
+    // head.next is the newest
+    private final FIFOCacheEntry head;
+    private final FIFOCacheEntry tail;
+
+    public FIFOLinkedList() {
+      head = new FIFOCacheEntry(null, null, null);
+      tail = new FIFOCacheEntry(null, null, null);
+      head.next = tail;
+      tail.pre = head;
+    }
 
     synchronized void add(FIFOCacheEntry cacheEntry) {
-      if (head == null) {
-        head = cacheEntry;
-        tail = cacheEntry;
-        return;
-      }
-
-      head.pre = cacheEntry;
-
-      head = cacheEntry;
+      cacheEntry.next = head.next;
+      cacheEntry.pre = head;
+      head.next.pre = cacheEntry;
+      head.next = cacheEntry;
     }
 
     synchronized FIFOCacheEntry evict() {
-      if (tail == null) {
+      if (tail.pre == head) {
         return null;
       }
-
-      FIFOCacheEntry cacheEntry = tail;
-      tail = tail.pre;
-
-      if (tail == null) {
-        head = null;
-      }
-
+      FIFOCacheEntry cacheEntry = tail.pre;
+      cacheEntry.pre.next = cacheEntry.next;
+      cacheEntry.next.pre = cacheEntry.pre;
+      cacheEntry.next = null;
       cacheEntry.pre = null;
-
       return cacheEntry;
     }
   }

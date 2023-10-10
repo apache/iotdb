@@ -95,6 +95,7 @@ public abstract class AbstractEnv implements BaseEnv {
   protected String testMethodName = null;
   protected int index = 0;
   protected long startTime;
+  protected int testWorkingRetryCount = 30;
 
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
@@ -122,6 +123,11 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
+    initEnvironment(configNodesNum, dataNodesNum, 30);
+  }
+
+  protected void initEnvironment(int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
+    this.testWorkingRetryCount = testWorkingRetryCount;
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
 
@@ -275,7 +281,7 @@ public abstract class AbstractEnv implements BaseEnv {
       testDelegate.addRequest(
           () -> {
             Exception lastException = null;
-            for (int i = 0; i < 30; i++) {
+            for (int i = 0; i < testWorkingRetryCount; i++) {
               try (Connection ignored = getConnection(dataNodeEndpoint, PROBE_TIMEOUT_MS)) {
                 logger.info("Successfully connecting to DataNode: {}.", dataNodeEndpoint);
                 return null;
@@ -296,7 +302,7 @@ public abstract class AbstractEnv implements BaseEnv {
       logger.info("Start cluster costs: {}s", (System.currentTimeMillis() - startTime) / 1000.0);
     } catch (Exception e) {
       logger.error("exception in testWorking of ClusterID, message: {}", e.getMessage(), e);
-      fail("After 30 times retry, the cluster can't work!");
+      fail(String.format("After %d times retry, the cluster can't work!", testWorkingRetryCount));
     }
   }
 

@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -28,6 +32,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class IOUtils {
 
@@ -190,6 +196,45 @@ public class IOUtils {
       pathPrivilege.setAllPrivileges(privileges);
       return pathPrivilege;
     }
+  }
+
+  public static void loadRolePrivilege(
+      Role role, DataInputStream inputStream, String encoding, ThreadLocal<byte[]> strBufferLocal)
+      throws IOException, IllegalPathException {
+    role.setSysPrivilegeSet(0);
+    int pathPriNum = inputStream.readInt();
+    List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
+    for (int i = 0; i < pathPriNum; i++) {
+      String path = IOUtils.readString(inputStream, encoding, strBufferLocal);
+      PartialPath ppath = new PartialPath(path);
+      if (role.getServiceReady()) {
+        try {
+          AuthUtils.validatePatternPath(ppath);
+        } catch (AuthException e) {
+          role.setServiceReady(false);
+        }
+      }
+      PathPrivilege pathPriv = new PathPrivilege(ppath);
+      int priNum = inputStream.readInt();
+      boolean isPathRelevant = false;
+      for (int j = 0; j < priNum; j++) {
+        PriPrivilegeType priType = PriPrivilegeType.values()[inputStream.readInt()];
+        if (priType.isAccept()) {
+          for (PrivilegeType item : priType.getSubPri()) {
+            if (item.isPathRelevant()) {
+              pathPriv.grantPrivilege(item.ordinal(), false);
+              isPathRelevant = true;
+            } else {
+              role.getSysPrivilege().add(item.ordinal());
+            }
+          }
+        }
+      }
+      if (isPathRelevant) {
+        pathPrivilegeList.add(pathPriv);
+      }
+    }
+    role.setPrivilegeList(pathPrivilegeList);
   }
 
   /**

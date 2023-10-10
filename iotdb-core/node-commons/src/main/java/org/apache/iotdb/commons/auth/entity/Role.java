@@ -44,6 +44,8 @@ public class Role {
 
   private static final int SYS_PRI_SIZE = PrivilegeType.getSysPriCount();
 
+  private boolean serviceReady = true;
+
   public Role() {
     // empty constructor
   }
@@ -85,6 +87,10 @@ public class Role {
       privs |= 1 << (sysPriTopos(sysGrantOpt) + 16);
     }
     return privs;
+  }
+
+  public boolean getServiceReady() {
+    return serviceReady;
   }
 
   /** -------------- set func ----------------* */
@@ -198,6 +204,10 @@ public class Role {
 
   public void removeSysPrivilege(int privilegeId) {
     sysPrivilegeSet.remove(privilegeId);
+  }
+
+  public void setServiceReady(boolean ready) {
+    serviceReady = ready;
   }
 
   /** ------------ check func ---------------* */
