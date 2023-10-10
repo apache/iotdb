@@ -84,7 +84,7 @@ public class TsFileMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    this.metricService.set(null);
+    // do nothing here
   }
 
   // region external update tsfile related metrics
