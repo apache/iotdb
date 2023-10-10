@@ -458,9 +458,8 @@ public class NodeInfo implements SnapshotProcessor {
 
       serializeVersionInfo(fileOutputStream);
 
-      fileOutputStream.flush();
-
-      fileOutputStream.close();
+      tioStreamTransport.flush();
+      fileOutputStream.getFD().sync();
 
       return tmpFile.renameTo(snapshotFile);
 
