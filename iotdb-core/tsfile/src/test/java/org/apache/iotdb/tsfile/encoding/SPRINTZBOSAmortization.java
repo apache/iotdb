@@ -270,7 +270,7 @@ public class SPRINTZBOSAmortization {
 //        ts_block_delta.add(ts_block.get(0));
         for (int j = i*block_size+1; j < (i+1)*block_size; j++) {
 
-            int epsilon_v = ts_block.get(i) - ts_block.get(i - 1);
+            int epsilon_v = ts_block.get(j) - ts_block.get(j - 1);
             epsilon_v = zigzag(epsilon_v);
             ts_block_delta.add(epsilon_v);
 
@@ -901,16 +901,16 @@ public class SPRINTZBOSAmortization {
 
 //        for (int i = 0; i < 1; i++) {
         for (int i = 0; i < block_num; i++) {
-            ArrayList<Integer> ts_block = new ArrayList<>();
-            for (int j = 0; j < block_size; j++) {
-                ts_block.add(data.get(j + i * block_size));
-
-            }
-            ArrayList<Integer> result2 = new ArrayList<>();
-            splitTimeStamp3(ts_block, result2);
+//            ArrayList<Integer> ts_block = new ArrayList<>();
+//            for (int j = 0; j < block_size; j++) {
+//                ts_block.add(data.get(j + i * block_size));
+//
+//            }
+//            ArrayList<Integer> result2 = new ArrayList<>();
+//            splitTimeStamp3(ts_block, result2);
 
             // time-order
-            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, 0,q);
+            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(data, i, block_size,0,q);
             encoded_result.addAll(cur_encoded_result);
 
         }

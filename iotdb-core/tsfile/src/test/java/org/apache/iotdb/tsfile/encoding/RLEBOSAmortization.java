@@ -13,11 +13,21 @@ import java.util.Collections;
 
 import static java.lang.Math.pow;
 
-public class BOSAmortization {
+public class RLEBOSAmortization {
 
     public static int getBitWith(int num) {
         if (num == 0) return 1;
         else return 32 - Integer.numberOfLeadingZeros(num);
+    }
+
+    public static int zigzag(int num) {
+        if (num < 0) return ((-num)<<1)-1;
+        else return num<<1;
+    }
+
+    public static int deZigzag(int num) {
+        if (num % 2 == 0) return num>>1;
+        else return -((num+1)>>1);
     }
 
     public static byte[] int2Bytes(int integer) {
@@ -42,6 +52,57 @@ public class BOSAmortization {
         byte[] bytes = new byte[1];
         bytes[0] = (byte) integer;
         return bytes;
+    }
+
+    public static byte[] double2Bytes(double dou) {
+        long value = Double.doubleToRawLongBits(dou);
+        byte[] bytes = new byte[8];
+        for (int i = 0; i < 8; i++) {
+            bytes[i] = (byte) ((value >> 8 * i) & 0xff);
+        }
+        return bytes;
+    }
+
+    public static double bytes2Double(ArrayList<Byte> encoded, int start, int num) {
+        if (num > 8) {
+            System.out.println("bytes2Doubleerror");
+            return 0;
+        }
+        long value = 0;
+        for (int i = 0; i < 8; i++) {
+            value |= ((long) (encoded.get(i + start) & 0xff)) << (8 * i);
+        }
+        return Double.longBitsToDouble(value);
+    }
+
+    public static byte[] float2bytes(float f) {
+        int fbit = Float.floatToIntBits(f);
+        byte[] b = new byte[4];
+        for (int i = 0; i < 4; i++) {
+            b[i] = (byte) (fbit >> (24 - i * 8));
+        }
+        int len = b.length;
+        byte[] dest = new byte[len];
+        System.arraycopy(b, 0, dest, 0, len);
+        byte temp;
+        for (int i = 0; i < len / 2; ++i) {
+            temp = dest[i];
+            dest[i] = dest[len - i - 1];
+            dest[len - i - 1] = temp;
+        }
+        return dest;
+    }
+
+    public static float bytes2float(ArrayList<Byte> b, int index) {
+        int l;
+        l = b.get(index);
+        l &= 0xff;
+        l |= ((long) b.get(index + 1) << 8);
+        l &= 0xffff;
+        l |= ((long) b.get(index + 2) << 16);
+        l &= 0xffffff;
+        l |= ((long) b.get(index + 3) << 24);
+        return Float.intBitsToFloat(l);
     }
 
     public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
@@ -206,22 +267,14 @@ public class BOSAmortization {
 
 //        ts_block_delta.add(ts_block.get(0));
         int value_delta_min = Integer.MAX_VALUE;
-        for (int i = 1; i < ts_block.size(); i++) {
-
-            int epsilon_v = ts_block.get(i) - ts_block.get(i - 1);
-
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
-            }
-
+        for (Integer integer : ts_block) {
+            if (integer < value_delta_min) value_delta_min = integer;
         }
-        min_delta.add(ts_block.get(0));
+        for (Integer integer : ts_block) {
+            ts_block_delta.add(integer-value_delta_min);
+        }
         min_delta.add(value_delta_min);
 
-        for (int i = 1; i < ts_block.size(); i++) {
-            int epsilon_v = ts_block.get(i) - value_delta_min - ts_block.get(i - 1);
-            ts_block_delta.add(epsilon_v);
-        }
         return ts_block_delta;
     }
 
@@ -234,24 +287,23 @@ public class BOSAmortization {
 
 //        ts_block_delta.add(ts_block.get(0));
         int value_delta_min = Integer.MAX_VALUE;
-        for (int j = i*block_size+1; j < (i+1)*block_size; j++) {
+        for (int j = i*block_size; j < (i+1)*block_size; j++) {
 
-            int epsilon_v = ts_block.get(j) - ts_block.get(j - 1);
-
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
-            }
+            int integer = ts_block.get(j) ;
+            if (integer < value_delta_min) value_delta_min = integer;
 
         }
-        min_delta.add(ts_block.get(i*block_size));
+        for (int j = i*block_size; j < (i+1)*block_size; j++) {
+
+            int integer = ts_block.get(j) ;
+            ts_block_delta.add(integer-value_delta_min);
+
+        }
         min_delta.add(value_delta_min);
 
-        for (int j = i*block_size+1; j < (i+1)*block_size; j++) {
-            int epsilon_v = ts_block.get(j) - value_delta_min - ts_block.get(j - 1);
-            ts_block_delta.add(epsilon_v);
-        }
         return ts_block_delta;
     }
+
     public static ArrayList<Integer> getBitWith(ArrayList<Integer> ts_block) {
         ArrayList<Integer> ts_block_bit_width = new ArrayList<>();
         for (int integers : ts_block) {
@@ -412,123 +464,123 @@ public class BOSAmortization {
                                       int final_k_start_value,
                                       int final_k_end_value,
                                       int max_delta_value,
+
                                       ArrayList<Integer> min_delta,
-                                      int bit_width,
                                       ArrayList<Byte> cur_byte) {
         int block_size = ts_block_delta.size();
         // ------------------------- encode data -----------------------------------------
-        if (final_left_max == 0 && final_k_end_value == max_delta_value) {
-            cur_byte = encode2Bytes(ts_block_delta, min_delta, bit_width);
-        } else {
-            ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
-            ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
-            ArrayList<Integer> final_left_outlier = new ArrayList<>();
-            ArrayList<Integer> final_right_outlier = new ArrayList<>();
-            ArrayList<Integer> final_normal = new ArrayList<>();
-            int k1 = 0;
-            int k2 = 0;
-
-            ArrayList<Integer> bitmap_outlier = new ArrayList<>();
-            int index_bitmap_outlier = 0;
-            int cur_index_bitmap_outlier_bits = 0;
-            for (int i = 0; i < block_size; i++) {
-                if (ts_block_delta.get(i) < final_k_start_value) {
-                    final_left_outlier.add(ts_block_delta.get(i));
-                    final_left_outlier_index.add(i);
-                    if (cur_index_bitmap_outlier_bits % 8 != 7) {
-                        index_bitmap_outlier <<= 2;
-                        index_bitmap_outlier += 3;
-                        cur_index_bitmap_outlier_bits += 2;
-                    } else {
-                        index_bitmap_outlier <<= 1;
-                        index_bitmap_outlier += 1;
-                        bitmap_outlier.add(index_bitmap_outlier);
-                        index_bitmap_outlier = 1;
-                        cur_index_bitmap_outlier_bits = 1;
-                    }
-
-
-                    k1++;
-
-
-                } else if (ts_block_delta.get(i) > final_k_end_value) {
-                    final_right_outlier.add(ts_block_delta.get(i) - final_k_end_value);
-                    final_right_outlier_index.add(i);
-                    if (cur_index_bitmap_outlier_bits % 8 != 7) {
-                        index_bitmap_outlier <<= 2;
-                        index_bitmap_outlier += 2;
-                        cur_index_bitmap_outlier_bits += 2;
-                    } else {
-                        index_bitmap_outlier <<= 1;
-                        index_bitmap_outlier += 1;
-                        bitmap_outlier.add(index_bitmap_outlier);
-                        index_bitmap_outlier = 0;
-                        cur_index_bitmap_outlier_bits = 1;
-                    }
-                    k2++;
-
+//        if (final_left_max == 0 && final_k_end_value == max_delta_value) {
+//            cur_byte = encode2Bytes(ts_block_delta, min_delta, bit_width);
+//        } else {
+        ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
+        ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
+        ArrayList<Integer> final_left_outlier = new ArrayList<>();
+        ArrayList<Integer> final_right_outlier = new ArrayList<>();
+        ArrayList<Integer> final_normal = new ArrayList<>();
+        int k1 = 0;
+        int k2 = 0;
+        ArrayList<Integer> bitmap_outlier = new ArrayList<>();
+        int index_bitmap_outlier = 0;
+        int cur_index_bitmap_outlier_bits = 0;
+        for (int i = 0; i < block_size; i++) {
+            if (ts_block_delta.get(i) < final_k_start_value) {
+                final_left_outlier.add(ts_block_delta.get(i));
+                final_left_outlier_index.add(i);
+                if (cur_index_bitmap_outlier_bits % 8 != 7) {
+                    index_bitmap_outlier <<= 2;
+                    index_bitmap_outlier += 3;
+                    cur_index_bitmap_outlier_bits += 2;
                 } else {
-                    final_normal.add(ts_block_delta.get(i) - final_k_start_value);
                     index_bitmap_outlier <<= 1;
-                    cur_index_bitmap_outlier_bits += 1;
+                    index_bitmap_outlier += 1;
+                    bitmap_outlier.add(index_bitmap_outlier);
+                    index_bitmap_outlier = 1;
+                    cur_index_bitmap_outlier_bits = 1;
                 }
-                if (cur_index_bitmap_outlier_bits % 8 == 0) {
+
+
+                k1++;
+
+
+            } else if (ts_block_delta.get(i) > final_k_end_value) {
+                final_right_outlier.add(ts_block_delta.get(i) - final_k_end_value);
+                final_right_outlier_index.add(i);
+                if (cur_index_bitmap_outlier_bits % 8 != 7) {
+                    index_bitmap_outlier <<= 2;
+                    index_bitmap_outlier += 2;
+                    cur_index_bitmap_outlier_bits += 2;
+                } else {
+                    index_bitmap_outlier <<= 1;
+                    index_bitmap_outlier += 1;
                     bitmap_outlier.add(index_bitmap_outlier);
                     index_bitmap_outlier = 0;
+                    cur_index_bitmap_outlier_bits = 1;
                 }
-            }
-            if (cur_index_bitmap_outlier_bits % 8 != 0) {
-//                System.out.println("index_bitmap_outlier:"+index_bitmap_outlier);
+                k2++;
 
-                index_bitmap_outlier <<= (8 - cur_index_bitmap_outlier_bits % 8);
-//                System.out.println("index_bitmap_outlier:"+index_bitmap_outlier);
-                index_bitmap_outlier &= 0xFF;
+            } else {
+                final_normal.add(ts_block_delta.get(i) - final_k_start_value);
+                index_bitmap_outlier <<= 1;
+                cur_index_bitmap_outlier_bits += 1;
+            }
+            if (cur_index_bitmap_outlier_bits % 8 == 0) {
                 bitmap_outlier.add(index_bitmap_outlier);
+                index_bitmap_outlier = 0;
             }
+        }
+        if (cur_index_bitmap_outlier_bits % 8 != 0) {
+//                System.out.println("index_bitmap_outlier:"+index_bitmap_outlier);
 
-            int final_alpha = ((k1 + k2) * getBitWith(block_size)) <= (block_size + k1 + k2) ? 1 : 0;
+            index_bitmap_outlier <<= (8 - cur_index_bitmap_outlier_bits % 8);
+//                System.out.println("index_bitmap_outlier:"+index_bitmap_outlier);
+            index_bitmap_outlier &= 0xFF;
+            bitmap_outlier.add(index_bitmap_outlier);
+        }
+        int final_alpha  = ((k1 + k2) * getBitWith(block_size)) <= (block_size + k1 + k2) ? 1 : 0;
+        int k_byte = (k1 << 1);
+        k_byte += final_alpha;
+        k_byte += (k2 << 16);
+
+        byte[] k_bytes = int2Bytes(k_byte);
+        for (byte b : k_bytes) cur_byte.add(b);
 
 
-            int k_byte = (k1 << 1);
-            k_byte += final_alpha;
-            k_byte += (k2 << 16);
-
-            byte[] k_bytes = int2Bytes(k_byte);
-            for (byte b : k_bytes) cur_byte.add(b);
-
-
-            byte[] value0_bytes = int2Bytes(min_delta.get(0));
-            for (byte b : value0_bytes) cur_byte.add(b);
-            byte[] min_delta_bytes = int2Bytes(min_delta.get(1));
+//        byte[] value0_bytes = int2Bytes(min_delta.get(0));
+//        for (byte b : value0_bytes) cur_byte.add(b);
+            byte[] min_delta_bytes = int2Bytes(min_delta.get(0));
             for (byte b : min_delta_bytes) cur_byte.add(b);
 
-            byte[] final_k_start_value_bytes = int2Bytes(final_k_start_value);
-            for (byte b : final_k_start_value_bytes) cur_byte.add(b);
+        byte[] final_k_start_value_bytes = int2Bytes(final_k_start_value);
+        for (byte b : final_k_start_value_bytes) cur_byte.add(b);
 
-            int bit_width_final = getBitWith(final_k_end_value - final_k_start_value);
-            byte[] bit_width_bytes = intByte2Bytes(bit_width_final);
-            for (byte b : bit_width_bytes) cur_byte.add(b);
+        int bit_width_final = getBitWith(final_k_end_value - final_k_start_value);
+        byte[] bit_width_bytes = intByte2Bytes(bit_width_final);
+        for (byte b : bit_width_bytes) cur_byte.add(b);
 
-            int left_bit_width = getBitWith(final_left_max);//final_left_max
-            int right_bit_width = getBitWith(max_delta_value - final_k_end_value);//final_right_min
-            bit_width_bytes = intByte2Bytes(left_bit_width);
-            for (byte b : bit_width_bytes) cur_byte.add(b);
-            bit_width_bytes = intByte2Bytes(right_bit_width);
-            for (byte b : bit_width_bytes) cur_byte.add(b);
+        int left_bit_width = getBitWith(final_left_max);//final_left_max
+        int right_bit_width = getBitWith(max_delta_value - final_k_end_value);//final_right_min
+        bit_width_bytes = intByte2Bytes(left_bit_width);
+        for (byte b : bit_width_bytes) cur_byte.add(b);
+        bit_width_bytes = intByte2Bytes(right_bit_width);
+        for (byte b : bit_width_bytes) cur_byte.add(b);
 
-            if (final_alpha == 0) { // 0
+//            System.out.println(cur_byte.size());
+//            System.out.println("bitmap size:"+bitmap.size());
+//            System.out.println("bitmap_outlier size:"+bitmap_outlier.size());
+
+        if (final_alpha == 0) { // 0
 //                for (int i : bitmap) {
 //                    byte[] index_bytes = intByte2Bytes(i);
 //                    for (byte b : index_bytes) cur_byte.add(b);
 //                }
-                for (int i : bitmap_outlier) {
-                    byte[] index_bytes = intByte2Bytes(i);
-                    for (byte b : index_bytes) cur_byte.add(b);
-                }
-            } else {
-                cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size)));
-                cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size)));
+            for (int i : bitmap_outlier) {
+                byte[] index_bytes = intByte2Bytes(i);
+                for (byte b : index_bytes) cur_byte.add(b);
             }
+        } else {
+            cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size)));
+            cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size)));
+        }
 
 //            System.out.println("k1:" + k1);
 //            System.out.println("k2:" + k2);
@@ -567,21 +619,21 @@ public class BOSAmortization {
 //            System.out.println("cur_bits:     " + cur_bits);
 
 
-            // correct
+        // correct
 //            System.out.println("final_left_outlier.size():"+final_left_outlier.size());
 //            System.out.println("k1:"+k1);
 //            System.out.println("final_right_outlier.size():"+final_right_outlier.size());
 //            System.out.println("k2:"+k2);
-            cur_byte.addAll(encodeOutlier2Bytes(final_normal, bit_width_final));
-            if (k1 != 0)
-                cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier, left_bit_width));
-            if (k2 != 0)
-                cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier, right_bit_width));
+        cur_byte.addAll(encodeOutlier2Bytes(final_normal, bit_width_final));
+        if (k1 != 0)
+            cur_byte.addAll(encodeOutlier2Bytes(final_left_outlier, left_bit_width));
+        if (k2 != 0)
+            cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier, right_bit_width));
 //            System.out.println(final_normal);
 //            System.out.println(final_left_outlier);
 //            System.out.println(final_right_outlier);
-        }
     }
+//    }
 
     private static ArrayList<Byte> BOSBlockEncoder(ArrayList<Integer> ts_block, int block_i, int block_size, int supple_length, int q) {
 
@@ -592,7 +644,7 @@ public class BOSAmortization {
         ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, block_i, block_size, min_delta);
 //        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
 
-        block_size --;
+//        block_size --;
         for (int s = 0; s < supple_length; s++) {
             ts_block_delta.add(0);
         }
@@ -614,13 +666,16 @@ public class BOSAmortization {
         double variance = (sumOfSquares / block_size) - (mu * mu);
         double sigma = Math.sqrt(variance);
 
-
-
-        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
+        if(sigma ==0){
+            BOSEncodeBits(ts_block_delta, 0, 0, 0, final_right_max,
+                    min_delta,  cur_byte);
+            return cur_byte;
+        }
 
 
         int max_delta_value_bit_width = getBitWith(final_right_max);
 
+//        System.out.println("block_i:"+block_i);
         int final_k_start_value = 0;
         int final_k_end_value = final_right_max;
         ArrayList<Integer> spread_value = new ArrayList<>();
@@ -630,7 +685,7 @@ public class BOSAmortization {
         }
 
         int min_bits = 0;
-        min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size - 1));
+        min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size));
 
         // Divided into buckets
         int bucket_num = (int) Math.ceil (((double) final_right_max +1) / (double) q);
@@ -704,14 +759,14 @@ public class BOSAmortization {
 
 
         BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, final_right_max,
-                min_delta, bit_width, cur_byte);
+                min_delta, cur_byte);
 
         return cur_byte;
     }
 
     private static ArrayList<Byte> BOSBlockEncoder(ArrayList<Integer> ts_block, int supple_length, int q) {
 
-        int block_size = ts_block.size() - 1;
+        int block_size = ts_block.size();
         ArrayList<Byte> cur_byte = new ArrayList<>();
 
         ArrayList<Integer> min_delta = new ArrayList<>();
@@ -738,9 +793,12 @@ public class BOSAmortization {
         double variance = (sumOfSquares / block_size) - (mu * mu);
         double sigma = Math.sqrt(variance);
 
+        if(sigma ==0){
+            BOSEncodeBits(ts_block_delta, 0, 0, 0, final_right_max,
+                    min_delta,  cur_byte);
+            return cur_byte;
+        }
 
-
-        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
 
 
         int max_delta_value_bit_width = getBitWith(final_right_max);
@@ -754,7 +812,7 @@ public class BOSAmortization {
         }
 
         int min_bits = 0;
-        min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size - 1));
+        min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size ));
 
         // Divided into buckets
         int bucket_num = (int) Math.ceil (((double) final_right_max +1) / (double) q);
@@ -828,14 +886,14 @@ public class BOSAmortization {
 
 
         BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, final_right_max,
-              min_delta, bit_width, cur_byte);
+                min_delta,  cur_byte);
 
         return cur_byte;
     }
 
     public static ArrayList<Byte> BOSEncoder(
-            ArrayList<Integer> data, int block_size, String dataset_name, int q) {
-        block_size++;
+            ArrayList<Integer> data, int block_size, String dataset_name, int q) throws IOException {
+//        block_size++;
         ArrayList<Byte> encoded_result = new ArrayList<Byte>();
         int length_all = data.size();
         byte[] length_all_bytes = int2Bytes(length_all);
@@ -846,7 +904,6 @@ public class BOSAmortization {
         for (byte b : block_size_byte) encoded_result.add(b);
 
 
-//        for (int i = 0; i < 1; i++) {
         for (int i = 0; i < block_num; i++) {
 //            ArrayList<Integer> ts_block = new ArrayList<>();
 //            for (int j = 0; j < block_size; j++) {
@@ -880,15 +937,13 @@ public class BOSAmortization {
             splitTimeStamp3(ts_block, result2);
             int supple_length;
             if (remaining_length % 8 == 0) {
-                supple_length = 1;
-            } else if (remaining_length % 8 == 1) {
                 supple_length = 0;
             } else {
-                supple_length = 9 - remaining_length % 8;
+                supple_length = 8 - remaining_length % 8;
             }
 
 
-            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, supple_length, q);
+            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, supple_length,q);
             encoded_result.addAll(cur_encoded_result);
         }
 
@@ -905,9 +960,9 @@ public class BOSAmortization {
 
         int k2 = (int) (k_byte / pow(2, 16));
 
-        int value0 = bytes2Integer(encoded, decode_pos, 4);
-        decode_pos += 4;
-        value_list.add(value0);
+//        int value0 = bytes2Integer(encoded, decode_pos, 4);
+//        decode_pos += 4;
+//        value_list.add(value0);
 
         int min_delta = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
@@ -934,7 +989,7 @@ public class BOSAmortization {
 //        System.out.println("k2:" + k2);
 
         if (final_alpha == 0) { // 0
-            int bitmap_bytes = (int) Math.ceil((double) (block_size - 1 + k1 + k2) / (double) 8);
+            int bitmap_bytes = (int) Math.ceil((double) (block_size + k1 + k2) / (double) 8);
 //            System.out.println("bitmap_bytes:" + bitmap_bytes);
             for (int i = 0; i < bitmap_bytes; i++) {
                 bitmap_outlier.add(bytes2Integer(encoded, decode_pos, 1));
@@ -945,7 +1000,7 @@ public class BOSAmortization {
             int tmp = bitmap_outlier.get(bitmap_outlier_i);
             bitmap_outlier_i++;
             int i = 0;
-            while (i < block_size - 1) {
+            while (i < block_size) {
                 if (remaining_bits > 1) {
                     int bit_i = (tmp >> (remaining_bits - 1)) & 0x1;
                     remaining_bits -= 1;
@@ -1013,7 +1068,7 @@ public class BOSAmortization {
 
 
         ArrayList<Integer> decode_pos_normal = new ArrayList<>();
-        final_normal = decodeOutlier2Bytes(encoded, decode_pos, bit_width_final, block_size - k1 - k2 - 1, decode_pos_normal);
+        final_normal = decodeOutlier2Bytes(encoded, decode_pos, bit_width_final, block_size - k1 - k2, decode_pos_normal);
 //            System.out.println(final_normal);
         decode_pos = decode_pos_normal.get(0);
         if (k1 != 0) {
@@ -1037,41 +1092,41 @@ public class BOSAmortization {
         int left_outlier_i = 0;
         int right_outlier_i = 0;
         int normal_i = 0;
-        int pre_v = value0;
+        int pre_v = 0;
         int final_k_end_value = (int) (final_k_start_value + pow(2, bit_width_final));
 
 
-        for (int i = 0; i < block_size - 1; i++) {
+        for (int i = 0; i < block_size; i++) {
             int current_delta;
             if (left_outlier_i >= k1) {
                 if (right_outlier_i >= k2) {
-                    current_delta = min_delta + final_normal.get(normal_i) + final_k_start_value;
+                    current_delta =  final_normal.get(normal_i) + final_k_start_value ;
                     normal_i++;
                 } else if (i == final_right_outlier_index.get(right_outlier_i)) {
-                    current_delta = min_delta + final_right_outlier.get(right_outlier_i) + final_k_end_value;
+                    current_delta =  final_right_outlier.get(right_outlier_i) + final_k_end_value ;
                     right_outlier_i++;
                 } else {
-                    current_delta = min_delta + final_normal.get(normal_i) + final_k_start_value;
+                    current_delta =  final_normal.get(normal_i) + final_k_start_value ;
                     normal_i++;
                 }
             } else if (i == final_left_outlier_index.get(left_outlier_i)) {
-                current_delta = min_delta + final_left_outlier.get(left_outlier_i);
+                current_delta =  final_left_outlier.get(left_outlier_i) ;
                 left_outlier_i++;
             } else {
 
                 if (right_outlier_i >= k2) {
-                    current_delta = min_delta + final_normal.get(normal_i) + final_k_start_value;
+                    current_delta =  final_normal.get(normal_i) + final_k_start_value;
                     normal_i++;
                 } else if (i == final_right_outlier_index.get(right_outlier_i)) {
-                    current_delta = min_delta + final_right_outlier.get(right_outlier_i) + final_k_end_value;
+                    current_delta =  final_right_outlier.get(right_outlier_i) + final_k_end_value;
                     right_outlier_i++;
                 } else {
-                    current_delta = min_delta + final_normal.get(normal_i) + final_k_start_value;
+                    current_delta =  final_normal.get(normal_i) + final_k_start_value;
                     normal_i++;
                 }
             }
 
-            pre_v = current_delta + pre_v;
+            pre_v = current_delta +min_delta;
             value_list.add(pre_v);
         }
         return decode_pos;
@@ -1089,11 +1144,9 @@ public class BOSAmortization {
         int remain_length = length_all - block_num * block_size;
         int zero_number;
         if (remain_length % 8 == 0) {
-            zero_number = 1;
-        } else if (remain_length % 8 == 1) {
             zero_number = 0;
         } else {
-            zero_number = 9 - remain_length % 8;
+            zero_number = 8 - remain_length % 8;
         }
         ArrayList<Integer> value_list = new ArrayList<>();
 //        for (int k = 0; k < 1; k++) {
@@ -1112,10 +1165,9 @@ public class BOSAmortization {
         }
         return value_list;
     }
-
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/bos_amortization";
+        String output_parent_dir = parent_dir + "vldb/compression_ratio/rle_bos_amortization";
         String input_parent_dir = parent_dir + "iotdb_test_small/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1218,7 +1270,7 @@ public class BOSAmortization {
             columnIndexes.add(i, i);
         }
 
-//        for (int file_i = 1; file_i < 2; file_i++) {
+//        for (int file_i = 11; file_i < 12; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -1281,9 +1333,9 @@ public class BOSAmortization {
                     ArrayList<Byte> buffer1 = new ArrayList<>();
                     ArrayList<Byte> buffer2 = new ArrayList<>();
                     long buffer_bits = 0;
-                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    for (int repeat = 0; repeat < repeatTime2; repeat++){
 //                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
-                        buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i), 4);
+                        buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i),4);
                     }
 //                        System.out.println(buffer2.size());
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
@@ -1295,7 +1347,7 @@ public class BOSAmortization {
                     double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
                     ratio += ratioTmp;
                     s = System.nanoTime();
-                    for (int repeat = 0; repeat < repeatTime2; repeat++)
+                    for(int repeat=0;repeat<repeatTime2;repeat++)
                         data_decoded = BOSDecoder(buffer2);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
@@ -1308,7 +1360,7 @@ public class BOSAmortization {
 
                 String[] record = {
                         f.toString(),
-                        "BOS-Amortization",
+                        "RLE+BOS-Amortization",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
@@ -1320,7 +1372,7 @@ public class BOSAmortization {
 
 //                }
 
-//   break;
+//
             }
             writer.close();
 

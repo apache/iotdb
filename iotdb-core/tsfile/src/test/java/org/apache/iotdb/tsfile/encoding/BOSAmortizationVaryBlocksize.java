@@ -858,11 +858,11 @@ public class BOSAmortizationVaryBlocksize {
 
 //        for (int i = 3649; i < 3650; i++) {
         for (int i = 0; i < block_num; i++) {
-            ArrayList<Integer> ts_block = new ArrayList<>();
-            for (int j = 0; j < block_size; j++) {
-                ts_block.add(data.get(j + i * block_size));
-
-            }
+//            ArrayList<Integer> ts_block = new ArrayList<>();
+//            for (int j = 0; j < block_size; j++) {
+//                ts_block.add(data.get(j + i * block_size));
+//
+//            }
 //            ArrayList<Integer> result2 = new ArrayList<>();
 //            splitTimeStamp3(ts_block, result2);
 
