@@ -126,10 +126,12 @@ public class LoadTsfileAnalyzer {
         if (LOGGER.isWarnEnabled()) {
           LOGGER.warn(String.format("TsFile %s is empty.", tsFile.getPath()));
         }
-        throw new SemanticException(
-            String.format(
-                "TsFile %s is empty, please check it be flushed to disk correctly.",
-                tsFile.getPath()));
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+        }
+        continue;
       }
 
       try {
