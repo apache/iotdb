@@ -38,10 +38,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class TsFileMetrics implements IMetricSet {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileMetrics.class);
-  private AbstractMetricService metricService = null;
+  private AtomicReference<AbstractMetricService> metricService = null;
   private AtomicBoolean hasRemainData = new AtomicBoolean(false);
   private static final String SEQUENCE = "sequence";
   private static final String UNSEQUENCE = "unsequence";
@@ -77,7 +78,7 @@ public class TsFileMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    this.metricService = metricService;
+    this.metricService = new AtomicReference<>(metricService);
     checkIfThereRemainingData();
   }
 
@@ -185,15 +186,17 @@ public class TsFileMetrics implements IMetricSet {
 
   public Gauge getOrCreateGlobalTsFileCountGauge(
       String orderStr, String database, String regionId) {
-    return metricService.getOrCreateGauge(
-        FILE_GLOBAL_COUNT,
-        MetricLevel.CORE,
-        Tag.NAME.toString(),
-        orderStr,
-        Tag.DATABASE.toString(),
-        database,
-        Tag.REGION.toString(),
-        regionId);
+    return metricService
+        .get()
+        .getOrCreateGauge(
+            FILE_GLOBAL_COUNT,
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            orderStr,
+            Tag.DATABASE.toString(),
+            database,
+            Tag.REGION.toString(),
+            regionId);
   }
 
   private void updateGlobalTsFileSizeMap(
@@ -230,15 +233,17 @@ public class TsFileMetrics implements IMetricSet {
   }
 
   public Gauge getOrCreateGlobalTsFileSizeGauge(String orderStr, String database, String regionId) {
-    return metricService.getOrCreateGauge(
-        FILE_GLOBAL_SIZE,
-        MetricLevel.CORE,
-        Tag.NAME.toString(),
-        orderStr,
-        Tag.DATABASE.toString(),
-        database,
-        Tag.REGION.toString(),
-        regionId);
+    return metricService
+        .get()
+        .getOrCreateGauge(
+            FILE_GLOBAL_SIZE,
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            orderStr,
+            Tag.DATABASE.toString(),
+            database,
+            Tag.REGION.toString(),
+            regionId);
   }
 
   // endregion
@@ -287,13 +292,15 @@ public class TsFileMetrics implements IMetricSet {
   }
 
   public Gauge getOrCreateLevelTsFileCountGauge(String orderStr, int level) {
-    return metricService.getOrCreateGauge(
-        FILE_LEVEL_COUNT,
-        MetricLevel.CORE,
-        Tag.NAME.toString(),
-        orderStr,
-        LEVEL,
-        String.valueOf(level));
+    return metricService
+        .get()
+        .getOrCreateGauge(
+            FILE_LEVEL_COUNT,
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            orderStr,
+            LEVEL,
+            String.valueOf(level));
   }
 
   private void updateLevelTsFileSizeMap(
@@ -324,13 +331,15 @@ public class TsFileMetrics implements IMetricSet {
   }
 
   public Gauge getOrCreateLevelTsFileSizeGauge(String orderStr, int level) {
-    return metricService.getOrCreateGauge(
-        FILE_LEVEL_SIZE,
-        MetricLevel.CORE,
-        Tag.NAME.toString(),
-        orderStr,
-        LEVEL,
-        String.valueOf(level));
+    return metricService
+        .get()
+        .getOrCreateGauge(
+            FILE_LEVEL_SIZE,
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            orderStr,
+            LEVEL,
+            String.valueOf(level));
   }
 
   // endregion
