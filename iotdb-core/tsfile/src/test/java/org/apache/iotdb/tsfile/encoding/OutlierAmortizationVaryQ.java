@@ -901,7 +901,7 @@ public class OutlierAmortizationVaryQ {
 //                    System.out.println(data2);
                 inputStream.close();
 
-                for (int q_exp = 1; q_exp < 8; q_exp++) {
+                for (int q_exp = 0; q_exp < 8; q_exp++) {
                     int q = (int) Math.pow(2, q_exp);
                     long encodeTime = 0;
                     long decodeTime = 0;
