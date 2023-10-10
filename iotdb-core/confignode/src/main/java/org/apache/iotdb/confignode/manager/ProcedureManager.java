@@ -906,7 +906,9 @@ public class ProcedureManager {
           executor.getResultOrProcedure(procedureId);
       if (!finishedProcedure.isFinished()) {
         // the procedure is still executing
-        statusList.add(RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK));
+        statusList.add(
+            RpcUtils.getStatus(
+                TSStatusCode.OVERLAP_WITH_EXISTING_TASK, "Procedure execution timed out."));
         isSucceed = false;
         continue;
       }
