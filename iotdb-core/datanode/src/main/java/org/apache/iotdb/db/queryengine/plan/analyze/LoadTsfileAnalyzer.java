@@ -19,13 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
@@ -37,10 +44,12 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -51,12 +60,14 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -70,6 +81,9 @@ public class LoadTsfileAnalyzer {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsfileAnalyzer.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
+      ConfigNodeClientManager.getInstance();
 
   private final LoadTsFileStatement loadTsFileStatement;
   private final MPPQueryContext context;
@@ -360,7 +374,7 @@ public class LoadTsfileAnalyzer {
     private void autoCreateDatabase()
         throws VerifyMetadataException, LoadFileException, IllegalPathException {
       final int databasePrefixNodesLength = loadTsFileStatement.getDatabaseLevel() + 1;
-      final Set<PartialPath> databaseSet = new HashSet<>();
+      final Set<PartialPath> databasesNeededToBeSet = new HashSet<>();
 
       for (final String device : currentBatchDevice2TimeseriesSchemas.keySet()) {
         final PartialPath devicePath = new PartialPath(device);
@@ -376,11 +390,31 @@ public class LoadTsfileAnalyzer {
         final String[] databasePrefixNodes = new String[databasePrefixNodesLength];
         System.arraycopy(devicePrefixNodes, 0, databasePrefixNodes, 0, databasePrefixNodesLength);
 
-        databaseSet.add(new PartialPath(databasePrefixNodes));
+        databasesNeededToBeSet.add(new PartialPath(databasePrefixNodes));
       }
 
-      databaseSet.removeAll(alreadySetDatabases);
-      for (final PartialPath databasePath : databaseSet) {
+      // 1. filter out the databases that already exist
+      if (alreadySetDatabases.isEmpty()) {
+        try (final ConfigNodeClient configNodeClient =
+            CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+          final TShowDatabaseResp resp =
+              configNodeClient.showDatabase(
+                  Arrays.asList(
+                      new ShowDatabaseStatement(new PartialPath(SqlConstant.getSingleRootArray()))
+                          .getPathPattern()
+                          .getNodes()));
+
+          for (final String databaseName : resp.getDatabaseInfoMap().keySet()) {
+            alreadySetDatabases.add(new PartialPath(databaseName));
+          }
+        } catch (TException | ClientManagerException e) {
+          throw new LoadFileException(e);
+        }
+      }
+      databasesNeededToBeSet.removeAll(alreadySetDatabases);
+
+      // 2. create the databases that do not exist
+      for (final PartialPath databasePath : databasesNeededToBeSet) {
         final DatabaseSchemaStatement statement =
             new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
         statement.setDatabasePath(databasePath);
@@ -388,10 +422,13 @@ public class LoadTsfileAnalyzer {
         statement.setEnablePrintExceptionLog(false);
         executeSetDatabaseStatement(statement);
       }
-      alreadySetDatabases.addAll(databaseSet);
+      alreadySetDatabases.addAll(databasesNeededToBeSet);
     }
 
     private void executeSetDatabaseStatement(Statement statement) throws LoadFileException {
+      // 1.check Authority
+
+      // 2.execute setDatabase statement
       final long queryId = SessionManager.getInstance().requestQueryId();
       final ExecutionResult result =
           Coordinator.getInstance()
