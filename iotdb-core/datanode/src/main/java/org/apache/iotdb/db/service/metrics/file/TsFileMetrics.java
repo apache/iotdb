@@ -348,46 +348,44 @@ public class TsFileMetrics implements IMetricSet {
     }
   }
 
-  private void updateRemainData(boolean seq) {
+  private synchronized void updateRemainData(boolean seq) {
     for (Map.Entry<String, Map<String, Pair<Integer, Gauge>>> entry :
         (seq ? seqFileCountMap : unseqFileCountMap).entrySet()) {
       for (Map.Entry<String, Pair<Integer, Gauge>> innerEntry : entry.getValue().entrySet()) {
-        if (innerEntry.getValue().getRight() == null) {
-          Gauge gauge =
-              getOrCreateGlobalTsFileCountGauge(
-                  seq ? SEQUENCE : UNSEQUENCE, entry.getKey(), innerEntry.getKey());
-          gauge.set(innerEntry.getValue().getLeft());
-          innerEntry.getValue().setRight(gauge);
-        }
+        updateGlobalTsFileCountMap(
+            (seq ? seqFileCountMap : unseqFileCountMap),
+            (seq ? SEQUENCE : UNSEQUENCE),
+            entry.getKey(),
+            innerEntry.getKey(),
+            innerEntry.getValue().getLeft());
       }
     }
     for (Map.Entry<String, Map<String, Pair<Long, Gauge>>> entry :
         (seq ? seqFileSizeMap : unseqFileSizeMap).entrySet()) {
       for (Map.Entry<String, Pair<Long, Gauge>> innerEntry : entry.getValue().entrySet()) {
-        if (innerEntry.getValue().getRight() == null) {
-          Gauge gauge =
-              getOrCreateGlobalTsFileSizeGauge(
-                  seq ? SEQUENCE : UNSEQUENCE, entry.getKey(), innerEntry.getKey());
-          gauge.set(innerEntry.getValue().getLeft());
-          innerEntry.getValue().setRight(gauge);
-        }
+        updateGlobalTsFileSizeMap(
+            (seq ? seqFileSizeMap : unseqFileSizeMap),
+            (seq ? SEQUENCE : UNSEQUENCE),
+            entry.getKey(),
+            innerEntry.getKey(),
+            innerEntry.getValue().getLeft());
       }
     }
     for (Map.Entry<Integer, Pair<Integer, Gauge>> entry :
         (seq ? seqLevelTsFileCountMap : unseqLevelTsFileCountMap).entrySet()) {
-      if (entry.getValue().getRight() == null) {
-        Gauge gauge = getOrCreateLevelTsFileCountGauge(seq ? SEQUENCE : UNSEQUENCE, entry.getKey());
-        gauge.set(entry.getValue().getLeft());
-        entry.getValue().setRight(gauge);
-      }
+      updateLevelTsFileCountMap(
+          seq ? seqLevelTsFileCountMap : unseqLevelTsFileCountMap,
+          seq ? SEQUENCE : UNSEQUENCE,
+          entry.getKey(),
+          entry.getValue().getLeft());
     }
     for (Map.Entry<Integer, Pair<Long, Gauge>> entry :
         (seq ? seqLevelTsFileSizeMap : unseqLevelTsFileSizeMap).entrySet()) {
-      if (entry.getValue().getRight() == null) {
-        Gauge gauge = getOrCreateLevelTsFileSizeGauge(seq ? SEQUENCE : UNSEQUENCE, entry.getKey());
-        gauge.set(entry.getValue().getLeft());
-        entry.getValue().setRight(gauge);
-      }
+      updateLevelTsFileSizeMap(
+          seq ? seqLevelTsFileSizeMap : unseqLevelTsFileSizeMap,
+          seq ? SEQUENCE : UNSEQUENCE,
+          entry.getKey(),
+          entry.getValue().getLeft());
     }
   }
 
