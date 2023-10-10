@@ -1335,7 +1335,7 @@ public class AlignedByDeviceTest {
     PlanNode f1Root = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     PlanNode f2Root = plan.getInstances().get(1).getFragment().getPlanNodeTree();
     assertTrue(f1Root instanceof IdentitySinkNode);
-    assertTrue(f2Root instanceof ShuffleSinkNode);
+    assertTrue(f2Root instanceof IdentitySinkNode);
     assertTrue(f1Root.getChildren().get(0) instanceof MergeSortNode);
     assertTrue(f2Root.getChildren().get(0) instanceof TimeJoinNode);
     assertTrue(f1Root.getChildren().get(0).getChildren().get(0) instanceof SingleDeviceViewNode);
@@ -1442,8 +1442,8 @@ public class AlignedByDeviceTest {
     PlanNode f2Root = plan.getInstances().get(1).getFragment().getPlanNodeTree();
     PlanNode f3Root = plan.getInstances().get(2).getFragment().getPlanNodeTree();
     assertTrue(f1Root instanceof IdentitySinkNode);
-    assertTrue(f2Root instanceof ShuffleSinkNode);
-    assertTrue(f3Root instanceof ShuffleSinkNode);
+    assertTrue(f2Root instanceof IdentitySinkNode);
+    assertTrue(f3Root instanceof IdentitySinkNode);
     assertTrue(f1Root.getChildren().get(0) instanceof MergeSortNode);
     assertTrue(f2Root.getChildren().get(0) instanceof TimeJoinNode);
     assertTrue(f3Root.getChildren().get(0) instanceof SingleDeviceViewNode);

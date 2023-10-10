@@ -36,7 +36,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
@@ -98,9 +97,6 @@ public class TopKOperator extends AbstractConsumeAllOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    long startTime = System.nanoTime();
-    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
-
     allBlocksRead = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (noMoreTsBlocks[i] || children.get(i) == null) {

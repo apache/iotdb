@@ -288,7 +288,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     queryStatement.getResultTimeOrder(),
                     analysis.getGlobalTimeFilter(),
                     0,
-                    -1,
+                    0,
                     analysis.isLastLevelUseWildcard())
                 .planWhereAndSourceTransform(
                     whereExpression,
@@ -375,7 +375,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         && !queryStatement.hasOffset()) {
       return queryStatement.getRowLimit();
     }
-    return -1;
+    return 0;
   }
 
   private boolean needTransform(Set<Expression> expressions) {
