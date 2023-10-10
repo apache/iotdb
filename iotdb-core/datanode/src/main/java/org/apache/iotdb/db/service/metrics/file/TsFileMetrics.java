@@ -42,8 +42,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class TsFileMetrics implements IMetricSet {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileMetrics.class);
-  private AtomicReference<AbstractMetricService> metricService = null;
-  private AtomicBoolean hasRemainData = new AtomicBoolean(false);
+  private final AtomicReference<AbstractMetricService> metricService = new AtomicReference<>();
+  private final AtomicBoolean hasRemainData = new AtomicBoolean(false);
   private static final String SEQUENCE = "sequence";
   private static final String UNSEQUENCE = "unsequence";
   private static final String LEVEL = "level";
@@ -78,13 +78,13 @@ public class TsFileMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    this.metricService = new AtomicReference<>(metricService);
+    this.metricService.set(metricService);
     checkIfThereRemainingData();
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    this.metricService = null;
+    this.metricService.set(null);
   }
 
   // region external update tsfile related metrics
@@ -170,7 +170,7 @@ public class TsFileMetrics implements IMetricSet {
           }
           // try to add gauge if gauge not exists
           if (v.getRight() == null) {
-            if (metricService != null) {
+            if (metricService.get() != null) {
               v.setRight(getOrCreateGlobalTsFileCountGauge(orderStr, database, regionId));
             } else {
               hasRemainData.set(true);
@@ -218,7 +218,7 @@ public class TsFileMetrics implements IMetricSet {
           }
           // try to add gauge if gauge not exists
           if (v.getRight() == null) {
-            if (metricService != null) {
+            if (metricService.get() != null) {
               v.setRight(getOrCreateGlobalTsFileSizeGauge(orderStr, database, regionId));
             } else {
               hasRemainData.set(true);
@@ -277,7 +277,7 @@ public class TsFileMetrics implements IMetricSet {
           }
           // try to add gauge if gauge not exists
           if (v.getRight() == null) {
-            if (metricService != null) {
+            if (metricService.get() != null) {
               v.setRight(getOrCreateLevelTsFileCountGauge(orderStr, level));
             } else {
               hasRemainData.set(true);
@@ -316,7 +316,7 @@ public class TsFileMetrics implements IMetricSet {
           }
           // try to add gauge if gauge not exists
           if (v.getRight() == null) {
-            if (metricService != null) {
+            if (metricService.get() != null) {
               v.setRight(getOrCreateLevelTsFileSizeGauge(orderStr, level));
             } else {
               hasRemainData.set(true);
