@@ -17,23 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.connection;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
-import org.apache.iotdb.pipe.api.event.Event;
+public enum CompactionTaskType {
+  /** default compaction task type */
+  NORMAL,
 
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.LinkedBlockingDeque;
-
-public class UnboundedBlockingPendingQueue<E extends Event> extends BlockingPendingQueue<E> {
-
-  private final BlockingDeque<E> pendingDeque;
-
-  public UnboundedBlockingPendingQueue() {
-    super(new LinkedBlockingDeque<>());
-    pendingDeque = (BlockingDeque<E>) pendingQueue;
-  }
-
-  public E peekLast() {
-    return pendingDeque.peekLast();
-  }
+  /**
+   * in either of the following situations: 1. the TsFile has .mods file whose size exceeds 50 MB.
+   * 2. the TsFile has .mods file and the disk availability rate is lower than the
+   * disk_space_warning_threshold.
+   */
+  MOD_SETTLE
 }

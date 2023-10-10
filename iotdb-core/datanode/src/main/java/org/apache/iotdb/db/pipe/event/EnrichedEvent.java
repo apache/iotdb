@@ -27,6 +27,9 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -34,6 +37,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * additional information mainly includes the reference count of the event.
  */
 public abstract class EnrichedEvent implements Event {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(EnrichedEvent.class);
 
   private final AtomicInteger referenceCount;
 
@@ -94,7 +99,10 @@ public abstract class EnrichedEvent implements Event {
           reportProgress();
         }
       }
-      referenceCount.decrementAndGet();
+      final int newReferenceCount = referenceCount.decrementAndGet();
+      if (newReferenceCount < 0) {
+        LOGGER.warn("reference count is decreased to {}.", newReferenceCount);
+      }
     }
     return isSuccessful;
   }

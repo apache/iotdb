@@ -188,4 +188,16 @@ public class AuthUtilsTest {
         AuthException.class,
         () -> AuthUtils.validatePatternPath(new PartialPath(new String("*a.data.t1.**.**"))));
   }
+
+  @Test
+  public void authUtilsTest_ConvertPattern() throws IllegalPathException {
+    PartialPath path = AuthUtils.convertPatternPath(new PartialPath("root.*.t1.t2"));
+    Assert.assertTrue(path.equals(new PartialPath("root.**")));
+    path = AuthUtils.convertPatternPath(new PartialPath("root.*t1.t1.t2"));
+    Assert.assertTrue(path.equals(new PartialPath("root.**")));
+    path = AuthUtils.convertPatternPath(new PartialPath("root.*"));
+    Assert.assertTrue(path.equals(new PartialPath("root.**")));
+    path = AuthUtils.convertPatternPath(new PartialPath("root.t2.*.t1.**"));
+    Assert.assertTrue(path.equals(new PartialPath("root.t2.**")));
+  }
 }
