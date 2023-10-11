@@ -361,8 +361,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   private void deleteOldFiles(List<TsFileResource> tsFileResourceList) {
-    for (int i = 0, length = tsFileResourceList.size(); i < length; ++i) {
-      TsFileResource tsFileResource = tsFileResourceList.get(i);
+    for (TsFileResource tsFileResource : tsFileResourceList) {
       tsFileResource.remove();
       LOGGER.info(
           "[CrossSpaceCompaction] Delete TsFile :{}.",
