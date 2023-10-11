@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -121,6 +122,18 @@ public class WALBuffer extends AbstractWALBuffer {
     try {
       workingBuffer = ByteBuffer.allocateDirect(HALF_WAL_BUFFER_SIZE);
       idleBuffer = ByteBuffer.allocateDirect(HALF_WAL_BUFFER_SIZE);
+    } catch (OutOfMemoryError e) {
+      logger.error("Fail to allocate wal node-{}'s buffer because out of memory.", identifier, e);
+      close();
+      throw e;
+    }
+  }
+
+  @TestOnly
+  public void setBufferSize(int size) {
+    try {
+      workingBuffer = ByteBuffer.allocateDirect(size / 2);
+      idleBuffer = ByteBuffer.allocateDirect(size / 2);
     } catch (OutOfMemoryError e) {
       logger.error("Fail to allocate wal node-{}'s buffer because out of memory.", identifier, e);
       close();
