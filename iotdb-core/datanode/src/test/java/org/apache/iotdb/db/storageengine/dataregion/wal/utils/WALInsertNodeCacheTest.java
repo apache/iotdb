@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -75,17 +76,33 @@ public class WALInsertNodeCacheTest {
   }
 
   @Test
-  public void testLoadUnsealedWALFile() throws Exception {
+  public void testParallelGet() throws IllegalPathException {
+    // write memTable
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode.onMemTableCreated(memTable, logDirectory + "/" + "fake.tsfile");
-    InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
+    InsertRowNode node1 = getInsertRowNode(System.currentTimeMillis());
     node1.setSearchIndex(1);
     WALFlushListener flushListener = walNode.log(memTable.getMemTableId(), node1);
     WALEntryPosition position = flushListener.getWalEntryHandler().getWalEntryPosition();
     // wait until wal flushed
-    while (!walNode.isAllWALEntriesConsumed() || !position.canRead()) {
-      Thread.sleep(50);
+    walNode.rollWALFile();
+    Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed() && position.canRead());
+    // Test getInsertNode in parallel to detect buffer concurrent problem
+    for (int i = 0; i < 5; ++i) {
+      new Thread(() -> assertEquals(node1, cache.getInsertNode(position))).start();
     }
+  }
+
+  @Test
+  public void testLoadUnsealedWALFile() throws Exception {
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode.onMemTableCreated(memTable, logDirectory + "/" + "fake.tsfile");
+    InsertRowNode node1 = getInsertRowNode(System.currentTimeMillis());
+    node1.setSearchIndex(1);
+    WALFlushListener flushListener = walNode.log(memTable.getMemTableId(), node1);
+    WALEntryPosition position = flushListener.getWalEntryHandler().getWalEntryPosition();
+    // wait until wal flushed
+    Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed() && position.canRead());
     // load by cache
     assertEquals(node1, cache.getInsertNode(position));
   }
@@ -95,26 +112,24 @@ public class WALInsertNodeCacheTest {
     // write memTable1
     IMemTable memTable1 = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode.onMemTableCreated(memTable1, logDirectory + "/" + "fake1.tsfile");
-    InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
+    InsertRowNode node1 = getInsertRowNode(System.currentTimeMillis());
     node1.setSearchIndex(1);
     WALFlushListener flushListener1 = walNode.log(memTable1.getMemTableId(), node1);
     WALEntryPosition position1 = flushListener1.getWalEntryHandler().getWalEntryPosition();
-    InsertRowNode node2 = getInsertRowNode(devicePath, System.currentTimeMillis());
+    InsertRowNode node2 = getInsertRowNode(System.currentTimeMillis());
     node1.setSearchIndex(2);
     WALFlushListener flushListener2 = walNode.log(memTable1.getMemTableId(), node2);
     WALEntryPosition position2 = flushListener2.getWalEntryHandler().getWalEntryPosition();
     // write memTable2
     IMemTable memTable2 = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode.onMemTableCreated(memTable2, logDirectory + "/" + "fake2.tsfile");
-    InsertRowNode node3 = getInsertRowNode(devicePath, System.currentTimeMillis());
+    InsertRowNode node3 = getInsertRowNode(System.currentTimeMillis());
     node1.setSearchIndex(3);
     WALFlushListener flushListener3 = walNode.log(memTable2.getMemTableId(), node3);
     WALEntryPosition position3 = flushListener3.getWalEntryHandler().getWalEntryPosition();
     // wait until wal flushed
     walNode.rollWALFile();
-    while (!walNode.isAllWALEntriesConsumed() || !position3.canRead()) {
-      Thread.sleep(50);
-    }
+    Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed() && position3.canRead());
     // check batch load memTable1
     cache.addMemTable(memTable1.getMemTableId());
     assertEquals(node1, cache.getInsertNode(position1));
@@ -130,7 +145,7 @@ public class WALInsertNodeCacheTest {
     assertFalse(cache.contains(position3));
   }
 
-  private InsertRowNode getInsertRowNode(String devicePath, long time) throws IllegalPathException {
+  private InsertRowNode getInsertRowNode(long time) throws IllegalPathException {
     TSDataType[] dataTypes =
         new TSDataType[] {
           TSDataType.DOUBLE,
@@ -152,7 +167,7 @@ public class WALInsertNodeCacheTest {
     InsertRowNode node =
         new InsertRowNode(
             new PlanNodeId(""),
-            new PartialPath(devicePath),
+            new PartialPath(WALInsertNodeCacheTest.devicePath),
             false,
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
             dataTypes,
