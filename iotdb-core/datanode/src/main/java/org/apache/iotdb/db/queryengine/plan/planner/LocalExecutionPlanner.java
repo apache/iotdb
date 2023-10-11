@@ -114,11 +114,14 @@ public class LocalExecutionPlanner {
 
     long estimatedMemorySize = root.calculateMaxPeekMemory();
 
+    LOGGER.info("======== Root estimatedMemorySize: " + estimatedMemorySize);
+
     synchronized (this) {
       if (estimatedMemorySize > freeMemoryForOperators) {
         throw new MemoryNotEnoughException(
             String.format(
-                "There is not enough memory to execute current fragment instance, current remaining free memory is %d, estimated memory usage for current fragment instance is %d",
+                "There is not enough memory to execute current fragment instance, current remaining free memory is %d, "
+                    + "estimated memory usage for current fragment instance is %d",
                 freeMemoryForOperators, estimatedMemorySize));
       } else {
         freeMemoryForOperators -= estimatedMemorySize;

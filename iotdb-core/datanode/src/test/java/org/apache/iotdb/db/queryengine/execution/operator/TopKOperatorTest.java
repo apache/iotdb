@@ -87,7 +87,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * The original data and structure of this test is same as {@link
- * org.apache.iotdb.db.queryengine.execution.operator.MergeSortOperatorTest}
+ * org.apache.iotdb.db.queryengine.execution.operator.MergeSortOperatorTest}.
  */
 public class TopKOperatorTest {
   private static final String TOP_K_OPERATOR_TEST_SG = "root.TopKOperatorTest";
@@ -133,9 +133,9 @@ public class TopKOperatorTest {
     }
   }
 
-  // ------------------------------------------------------------------------------------------------
+  // ----------------------------------------------------------------------------------------------
   //                                   order by time - 1
-  // ------------------------------------------------------------------------------------------------
+  // ----------------------------------------------------------------------------------------------
   //                                     TopKOperator
   //                              ____________|_______________
   //                              /           |               \
@@ -144,7 +144,7 @@ public class TopKOperatorTest {
   //        SeriesScanOperator      TimeJoinOperator                TimeJoinOperator
   //                                  /                \              /               \
   //                  SeriesScanOperator SeriesScanOperator SeriesScanOperator   SeriesScanOperator
-  // ------------------------------------------------------------------------------------------------
+  // ----------------------------------------------------------------------------------------------
   public TopKOperator topKOperatorTest(Ordering timeOrdering, Ordering deviceOrdering, int topK) {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
@@ -179,21 +179,11 @@ public class TopKOperatorTest {
           9, new PlanNodeId("9"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           10, new PlanNodeId("10"), SingleDeviceViewOperator.class.getSimpleName());
-
       driverContext.addOperatorContext(
           11, new PlanNodeId("11"), TopKOperator.class.getSimpleName());
 
       MeasurementPath measurementPath1 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      MeasurementPath measurementPath2 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor0", TSDataType.INT32);
-      MeasurementPath measurementPath3 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
-      MeasurementPath measurementPath4 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.INT32);
-      MeasurementPath measurementPath5 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
-
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
@@ -206,6 +196,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath2 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor0", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(1),
@@ -218,6 +210,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath3 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(2),
@@ -230,6 +224,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath4 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(3),
@@ -242,6 +238,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath5 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(4),
@@ -353,7 +351,9 @@ public class TopKOperatorTest {
     int count = 0;
     while (topKOperator.isBlocked().isDone() && topKOperator.hasNext()) {
       TsBlock tsBlock = topKOperator.next();
-      if (tsBlock == null) continue;
+      if (tsBlock == null) {
+        continue;
+      }
       assertEquals(6, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -401,7 +401,9 @@ public class TopKOperatorTest {
     int count = 0;
     while (topKOperator.isBlocked().isDone() && topKOperator.hasNext()) {
       TsBlock tsBlock = topKOperator.next();
-      if (tsBlock == null) continue;
+      if (tsBlock == null) {
+        continue;
+      }
       assertEquals(6, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -494,19 +496,6 @@ public class TopKOperatorTest {
 
       MeasurementPath measurementPath1 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      MeasurementPath measurementPath2 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor0", TSDataType.INT32);
-      MeasurementPath measurementPath3 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
-      MeasurementPath measurementPath4 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.INT32);
-      MeasurementPath measurementPath5 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
-      MeasurementPath measurementPath6 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device3.sensor0", TSDataType.INT32);
-      MeasurementPath measurementPath7 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device3.sensor1", TSDataType.INT32);
-
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
@@ -519,6 +508,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath2 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor0", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(1),
@@ -531,6 +522,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath3 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(2),
@@ -543,6 +536,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath4 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(3),
@@ -555,6 +550,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath5 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(4),
@@ -567,6 +564,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath6 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device3.sensor0", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(5),
@@ -579,6 +578,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath7 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device3.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(6),
@@ -735,7 +736,9 @@ public class TopKOperatorTest {
     int count = 0;
     while (topKOperator.isBlocked().isDone() && topKOperator.hasNext()) {
       TsBlock tsBlock = topKOperator.next();
-      if (tsBlock == null) continue;
+      if (tsBlock == null) {
+        continue;
+      }
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -780,7 +783,9 @@ public class TopKOperatorTest {
 
     while (topKOperator.isBlocked().isDone() && topKOperator.hasNext()) {
       TsBlock tsBlock = topKOperator.next();
-      if (tsBlock == null) continue;
+      if (tsBlock == null) {
+        continue;
+      }
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -816,9 +821,9 @@ public class TopKOperatorTest {
     assertEquals(limitValue, count);
   }
 
-  // ------------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------
   //                                   order by device
-  // ------------------------------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------------
   // [SSO]:SeriesScanOperator
   //                                     TopKOperator
   //                                  ___________|___________
@@ -829,7 +834,7 @@ public class TopKOperatorTest {
   // RowBasedTimeJoinOperator
   //                               /         \      /         \         /         \
   //                             [SSO]      [SSO] [SSO]      [SSO]  [SSO]       [SSO]
-  // ------------------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------
   public TopKOperator topKOperatorTest3(
       Ordering timeOrdering, Ordering deviceOrdering, int limitValue) {
     ExecutorService instanceNotificationExecutor =
@@ -875,19 +880,6 @@ public class TopKOperatorTest {
 
       MeasurementPath measurementPath1 =
           new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      MeasurementPath measurementPath2 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor0", TSDataType.INT32);
-      MeasurementPath measurementPath3 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
-      MeasurementPath measurementPath4 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.INT32);
-      MeasurementPath measurementPath5 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
-      MeasurementPath measurementPath6 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device3.sensor0", TSDataType.INT32);
-      MeasurementPath measurementPath7 =
-          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device3.sensor1", TSDataType.INT32);
-
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(0),
@@ -900,6 +892,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath2 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor0", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(1),
@@ -912,6 +906,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath3 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(2),
@@ -924,6 +920,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath4 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(3),
@@ -936,6 +934,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath5 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(4),
@@ -948,6 +948,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath6 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device3.sensor0", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(5),
@@ -960,6 +962,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      MeasurementPath measurementPath7 =
+          new MeasurementPath(TOP_K_OPERATOR_TEST_SG + ".device3.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(6),
@@ -972,6 +976,16 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
+      List<String> devices = new ArrayList<>(Arrays.asList(DEVICE0, DEVICE1, DEVICE2, DEVICE3));
+      if (deviceOrdering == Ordering.DESC) {
+        Collections.reverse(devices);
+      }
+      List<List<Integer>> deviceColumnIndex = new ArrayList<>();
+      deviceColumnIndex.add(Collections.singletonList(1));
+      deviceColumnIndex.add(Arrays.asList(1, 2));
+      if (deviceOrdering == Ordering.DESC) {
+        Collections.reverse(deviceColumnIndex);
+      }
       List<TSDataType> tsDataTypes =
           new LinkedList<>(Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32));
 
@@ -994,6 +1008,9 @@ public class TopKOperatorTest {
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
 
+      deviceColumnIndex = new ArrayList<>();
+      deviceColumnIndex.add(Arrays.asList(1, 2));
+      deviceColumnIndex.add(Arrays.asList(1, 2));
       RowBasedTimeJoinOperator timeJoinOperator2 =
           new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
@@ -1012,7 +1029,6 @@ public class TopKOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
-
       RowBasedTimeJoinOperator timeJoinOperator3 =
           new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(9),
@@ -1031,13 +1047,6 @@ public class TopKOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
-
-      List<String> devices = new ArrayList<>(Arrays.asList(DEVICE0, DEVICE1, DEVICE2, DEVICE3));
-      if (deviceOrdering == Ordering.DESC) Collections.reverse(devices);
-      List<List<Integer>> deviceColumnIndex = new ArrayList<>();
-      deviceColumnIndex.add(Collections.singletonList(1));
-      deviceColumnIndex.add(Arrays.asList(1, 2));
-      if (deviceOrdering == Ordering.DESC) Collections.reverse(deviceColumnIndex);
       DeviceViewOperator deviceViewOperator1 =
           new DeviceViewOperator(
               driverContext.getOperatorContexts().get(10),
@@ -1049,9 +1058,6 @@ public class TopKOperatorTest {
                   : Arrays.asList(timeJoinOperator1, seriesScanOperator1),
               deviceColumnIndex,
               tsDataTypes);
-      deviceColumnIndex = new ArrayList<>();
-      deviceColumnIndex.add(Arrays.asList(1, 2));
-      deviceColumnIndex.add(Arrays.asList(1, 2));
       DeviceViewOperator deviceViewOperator2 =
           new DeviceViewOperator(
               driverContext.getOperatorContexts().get(11),
@@ -1063,7 +1069,7 @@ public class TopKOperatorTest {
                   : Arrays.asList(timeJoinOperator3, timeJoinOperator2),
               deviceColumnIndex,
               tsDataTypes);
-      TopKOperator TopKOperator =
+      TopKOperator topKOperator =
           new TopKOperator(
               driverContext.getOperatorContexts().get(12),
               Arrays.asList(deviceViewOperator1, deviceViewOperator2),
@@ -1075,8 +1081,8 @@ public class TopKOperatorTest {
                   Arrays.asList(0, -1),
                   Arrays.asList(TSDataType.TEXT, TSDataType.INT64)),
               limitValue);
-      TopKOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
-      return TopKOperator;
+      topKOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      return topKOperator;
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -1092,7 +1098,9 @@ public class TopKOperatorTest {
     int count = 0;
     while (topKOperator.isBlocked().isDone() && topKOperator.hasNext()) {
       TsBlock tsBlock = topKOperator.next();
-      if (tsBlock == null) continue;
+      if (tsBlock == null) {
+        continue;
+      }
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -1145,7 +1153,9 @@ public class TopKOperatorTest {
     int count = 0;
     while (topKOperator.isBlocked().isDone() && topKOperator.hasNext()) {
       TsBlock tsBlock = topKOperator.next();
-      if (tsBlock == null) continue;
+      if (tsBlock == null) {
+        continue;
+      }
       assertEquals(3, tsBlock.getValueColumnCount());
       count += tsBlock.getPositionCount();
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {

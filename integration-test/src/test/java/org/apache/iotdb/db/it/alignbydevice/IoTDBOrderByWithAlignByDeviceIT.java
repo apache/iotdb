@@ -47,7 +47,7 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBOrderByWithAlignByDeviceIT {
-  private static final String[] places =
+  protected static final String[] places =
       new String[] {
         "root.weather.London",
         "root.weather.Edinburgh",
@@ -60,10 +60,10 @@ public class IoTDBOrderByWithAlignByDeviceIT {
         "root.weather.Manchester",
         "root.weather.Oxford"
       };
-  private static final long startPrecipitation = 200;
-  private static final double startTemperature = 20.0;
+  protected static final long startPrecipitation = 200;
+  protected static final double startTemperature = 20.0;
   private static final long startTime = 1668960000000L;
-  private static final int numOfPointsInDevice = 20;
+  protected static final int numOfPointsInDevice = 20;
   private static final long timeGap = 100L;
   private static final Map<String, Long> deviceToStartTimestamp = new HashMap<>();
   public static final Map<String, double[]> deviceToMaxTemperature = new HashMap<>();
@@ -198,7 +198,8 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     }
   }
 
-  private void checkHeader(ResultSetMetaData resultSetMetaData, String title) throws SQLException {
+  protected static void checkHeader(ResultSetMetaData resultSetMetaData, String title)
+      throws SQLException {
     String[] headers = title.split(",");
     for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
       assertEquals(headers[i - 1], resultSetMetaData.getColumnName(i));

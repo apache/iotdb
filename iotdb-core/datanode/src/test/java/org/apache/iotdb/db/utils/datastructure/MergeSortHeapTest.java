@@ -41,7 +41,6 @@ public class MergeSortHeapTest {
   @Test
   public void minHeapTest() {
     String device0 = "device_0";
-    String device1 = "device_1";
     TsBlockBuilder inputBuilder1 =
         new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
     inputBuilder1.getTimeColumnBuilder().writeLong(2);
@@ -61,6 +60,7 @@ public class MergeSortHeapTest {
     inputBuilder1.getColumnBuilder(1).writeInt(60);
     inputBuilder1.declarePosition();
 
+    String device1 = "device_1";
     TsBlockBuilder inputBuilder2 =
         new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
     inputBuilder2.getTimeColumnBuilder().writeLong(1);
@@ -80,8 +80,6 @@ public class MergeSortHeapTest {
     inputBuilder2.getColumnBuilder(1).writeInt(80);
     inputBuilder2.declarePosition();
 
-    TsBlock tsBlock1 = inputBuilder1.build();
-    TsBlock tsBlock2 = inputBuilder2.build();
     Comparator<SortKey> comparator =
         MergeSortComparator.getComparator(
             Arrays.asList(
@@ -101,6 +99,8 @@ public class MergeSortHeapTest {
     assertEquals(device0, k.tsBlock.getColumn(0).getBinary(k.rowIndex).toString());
 
     MergeSortHeap maxHeap = new MergeSortHeap(2, comparator.reversed());
+    TsBlock tsBlock1 = inputBuilder1.build();
+    TsBlock tsBlock2 = inputBuilder2.build();
     maxHeap.push(new MergeSortKey(tsBlock1, 0));
     maxHeap.push(new MergeSortKey(tsBlock2, 0));
 
