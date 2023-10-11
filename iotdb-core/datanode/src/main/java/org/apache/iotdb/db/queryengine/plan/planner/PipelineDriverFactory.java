@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriver;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.Driver;
@@ -43,6 +42,10 @@ public class PipelineDriverFactory {
     this.operation = requireNonNull(operation, "rootOperator is null");
     this.driverContext = driverContext;
     this.estimatedMemorySize = estimatedMemorySize;
+  }
+
+  public long getEstimatedMemorySize() {
+    return estimatedMemorySize;
   }
 
   public DriverContext getDriverContext() {
@@ -83,7 +86,6 @@ public class PipelineDriverFactory {
     this.driverContext.setDownstreamOperator(exchangeOperator);
   }
 
-  @TestOnly
   public Operator getOperation() {
     return operation;
   }
