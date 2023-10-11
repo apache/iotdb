@@ -88,7 +88,16 @@ public class WALInsertNodeCache {
     }
 
     if (pair.getRight() == null) {
-      pair.setRight(parse(pair.getLeft()));
+      try {
+        pair.setRight(parse(ByteBuffer.wrap(pair.getLeft().array())));
+      } catch (Exception e) {
+        logger.error(
+            "Parsing failed when recovering insertNode from wal, walFile:{}, position:{}, size:{}, exception:",
+            position.getWalFile(),
+            position.getPosition(),
+            position.getSize(),
+            e);
+      }
     }
 
     return pair.getRight();
