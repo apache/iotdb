@@ -74,7 +74,7 @@ class IoTDBRpcDataSet(object):
             self.column_type_deduplicated_list = [
                 None for _ in range(len(column_name_index))
             ]
-            for i in range(len(column_name_list)):
+            for i in range(self.column_size):
                 name = column_name_list[i]
                 self.__column_name_list.append(name)
                 self.__column_type_list.append(TSDataType[column_type_list[i]])
@@ -140,7 +140,7 @@ class IoTDBRpcDataSet(object):
         return False
 
     def construct_one_data_frame(self):
-        if self.has_cached_data_frame or self.__query_data_set.time is None:
+        if self.has_cached_data_frame or self.__query_data_set is None:
             return
         result = {}
         time_array = np.frombuffer(
@@ -149,14 +149,12 @@ class IoTDBRpcDataSet(object):
         if time_array.dtype.byteorder == ">":
             time_array = time_array.byteswap().newbyteorder("<")
         result[0] = time_array
-
-        self.__query_data_set.time = None
         total_length = len(time_array)
-        for i in range(len(self.__query_data_set.bitmapList)):
+        for i in range(self.column_size):
             if self.ignore_timestamp is True:
-                column_name = self.get_column_names()[i]
+                column_name = self.__column_name_list[i]
             else:
-                column_name = self.get_column_names()[i + 1]
+                column_name = self.__column_name_list[i + 1]
 
             location = (
                 self.column_ordinal_dict[column_name] - IoTDBRpcDataSet.START_INDEX
@@ -204,7 +202,7 @@ class IoTDBRpcDataSet(object):
                 raise RuntimeError("unsupported data type {}.".format(data_type))
             if data_array.dtype.byteorder == ">":
                 data_array = data_array.byteswap().newbyteorder("<")
-            self.__query_data_set.valueList[location] = None
+            # self.__query_data_set.valueList[location] = None
             if len(data_array) < total_length:
                 # INT32 or INT64 or boolean
                 if data_type == 0 or data_type == 1 or data_type == 2:
@@ -228,6 +226,7 @@ class IoTDBRpcDataSet(object):
                 data_array = tmp_array
 
             result[i + 1] = data_array
+        self.__query_data_set = None
         self.data_frame = pd.DataFrame(result, dtype=object)
         if not self.data_frame.empty:
             self.has_cached_data_frame = True
@@ -264,9 +263,9 @@ class IoTDBRpcDataSet(object):
 
             for i in range(len(self.__query_data_set.bitmapList)):
                 if self.ignore_timestamp is True:
-                    column_name = self.get_column_names()[i]
+                    column_name = self.__column_name_list[i]
                 else:
-                    column_name = self.get_column_names()[i + 1]
+                    column_name = self.__column_name_list[i + 1]
 
                 location = (
                     self.column_ordinal_dict[column_name] - IoTDBRpcDataSet.START_INDEX
