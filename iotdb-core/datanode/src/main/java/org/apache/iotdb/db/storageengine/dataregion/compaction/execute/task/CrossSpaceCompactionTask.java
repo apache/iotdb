@@ -360,17 +360,14 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     return equalsOtherTask((CrossSpaceCompactionTask) other);
   }
 
-  private long[] deleteOldFiles(List<TsFileResource> tsFileResourceList) {
-    long[] size = new long[tsFileResourceList.size()];
+  private void deleteOldFiles(List<TsFileResource> tsFileResourceList) {
     for (int i = 0, length = tsFileResourceList.size(); i < length; ++i) {
       TsFileResource tsFileResource = tsFileResourceList.get(i);
-      size[i] = tsFileResource.getTsFileSize();
       tsFileResource.remove();
       LOGGER.info(
           "[CrossSpaceCompaction] Delete TsFile :{}.",
           tsFileResource.getTsFile().getAbsolutePath());
     }
-    return size;
   }
 
   private void releaseReadAndLockWrite(List<TsFileResource> tsFileResourceList) {
