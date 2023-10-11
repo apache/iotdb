@@ -15,7 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import cmath
 
 # for package
 from .IoTDBConstants import TSDataType

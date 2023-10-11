@@ -23,7 +23,6 @@ from testcontainers.core.container import DockerContainer
 from testcontainers.core.exceptions import ContainerStartException
 from testcontainers.core.utils import setup_logger
 from testcontainers.core.waiting_utils import wait_container_is_ready
-from testcontainers.core import config
 
 from iotdb.Session import Session
 
@@ -39,23 +38,18 @@ class IoTDBContainer(DockerContainer):
 
     @wait_container_is_ready()
     def _connect(self):
-        pass
-        # session = Session(
-        #     self.get_container_host_ip(), self.get_exposed_port(6667), "root", "root"
-        # )
-        # session.open(False)
-        # try:
-        #     with session.execute_statement("SHOW CLUSTER") as session_data_set:
-        #         while session_data_set.has_next():
-        #             if (
-        #                 session_data_set.next().get_fields()[2].get_string_value()
-        #                 != "Running"
-        #             ):
-        #                 raise ContainerStartException("IoTDB is not started")
-        # except Exception as e:
-        #     logger.error(e)
-        #     raise e
-        # session.close()
+        session = Session(
+            self.get_container_host_ip(), self.get_exposed_port(6667), "root", "root"
+        )
+        session.open(False)
+        with session.execute_statement("SHOW CLUSTER") as session_data_set:
+            while session_data_set.has_next():
+                if (
+                    session_data_set.next().get_fields()[2].get_string_value()
+                    != "Running"
+                ):
+                    raise ContainerStartException("IoTDB is not started")
+        session.close()
 
     def __init__(self, image="apache/iotdb:latest", **kwargs):
         super(IoTDBContainer, self).__init__(image)
