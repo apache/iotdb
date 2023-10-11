@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.connection.EnrichedDeque;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
@@ -39,6 +41,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   private final String dataRegionId;
   private String pipeName;
+  private PipeRealtimeDataRegionExtractor extractor = null;
 
   private long timePublished;
   private long timeAssigned;
@@ -165,7 +168,11 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     if (shouldPrintMessage) {
       bufferQueueTabletSize = bufferQueue.getTabletInsertionEventCount();
       bufferQueueTsFileSize = bufferQueue.getTsFileInsertionEventCount();
-      bufferQueueSize = bufferQueue.size();
+    }
+    bufferQueueSize = bufferQueue.size();
+    if (extractor instanceof PipeRealtimeDataRegionHybridExtractor) {
+      ((PipeRealtimeDataRegionHybridExtractor) extractor)
+          .informEventCollectorQueueSize(bufferQueueSize);
     }
   }
 
@@ -175,6 +182,11 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
       connectorQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();
       connectorQueueSize = pendingQueue.size();
     }
+  }
+
+  /////////////////////////////// For Hybrid extractor ///////////////////////////////
+  public void bindExtractor(PipeRealtimeDataRegionExtractor extractor) {
+    this.extractor = extractor;
   }
 
   @Override

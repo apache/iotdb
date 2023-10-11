@@ -85,6 +85,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeExtractorPendingQueueTsFileLimit();
   }
 
+  public int getPipeEventCollectorBufferQueueLimit() {
+    return COMMON_CONFIG.getPipeEventCollectorBufferQueueLimit();
+  }
+
   /////////////////////////////// Connector ///////////////////////////////
 
   public long getPipeConnectorTimeoutMs() {

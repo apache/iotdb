@@ -34,12 +34,15 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
   private volatile boolean isStartedToSupply = false;
+  private final AtomicBoolean isEventCollectorQueueExceededLimit = new AtomicBoolean(false);
 
   @Override
   protected void doExtract(PipeRealtimeEvent event) {
@@ -72,8 +75,9 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private void extractTabletInsertion(PipeRealtimeEvent event) {
     if (!isStartedToSupply
         || mayWalSizeReachThrottleThreshold()
-        || isTsFileEventCountInQueueExceededLimit()) {
-      // In the following 3 cases, we should not extract any more tablet events. all the data
+        || isTsFileEventCountInQueueExceededLimit()
+        || isEventCollectorQueueExceededLimit.get()) {
+      // In the following 4 cases, we should not extract any more tablet events. all the data
       // represented by the tablet events should be carried by the following tsfile event:
       //  1. The historical extractor has not consumed all the data.
       //  2. HybridExtractor will first try to do extraction in log mode, and then choose log or
@@ -81,6 +85,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       //  size of wal buffer), the write operation will be throttled, so we should not extract any
       //  more tablet events.
       //  3. The number of tsfile events in the pending queue has exceeded the limit.
+      //  4. The number of events in the buffer queue of event collector has exceeded the limit.
       event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
     }
 
@@ -162,6 +167,9 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractHeartbeat(PipeRealtimeEvent event) {
+    // Bind extractor so that the heartbeat event can later inform the extractor of queue size
+    ((PipeHeartbeatEvent) event.getEvent()).bindExtractor(this);
+
     // Record the pending queue size before trying to put heartbeatEvent into queue
     ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
 
@@ -205,6 +213,14 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private boolean isTsFileEventCountInQueueExceededLimit() {
     return pendingQueue.getTsFileInsertionEventCount()
         >= PipeConfig.getInstance().getPipeExtractorPendingQueueTsFileLimit();
+  }
+
+  public void informEventCollectorQueueSize(int queueSize) {
+    if (queueSize >= PipeConfig.getInstance().getPipeEventCollectorBufferQueueLimit()) {
+      isEventCollectorQueueExceededLimit.set(true);
+    } else {
+      isEventCollectorQueueExceededLimit.set(false);
+    }
   }
 
   @Override

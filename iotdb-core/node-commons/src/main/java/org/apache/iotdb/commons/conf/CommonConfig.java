@@ -165,6 +165,7 @@ public class CommonConfig {
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private int pipeExtractorMatcherCacheSize = 1024;
   private int pipeExtractorPendingQueueTsFileLimit = 3;
+  private int pipeEventCollectorBufferQueueLimit = 64;
   private int pipeDataStructureTabletRowSize = 2048;
 
   private long pipeConnectorTimeoutMs = 15 * 60 * 1000L; // 15 minutes
@@ -551,6 +552,14 @@ public class CommonConfig {
 
   public void setPipeExtractorPendingQueueTsFileLimit(int pipeExtractorPendingQueueTsfileLimit) {
     this.pipeExtractorPendingQueueTsFileLimit = pipeExtractorPendingQueueTsfileLimit;
+  }
+
+  public int getPipeEventCollectorBufferQueueLimit() {
+    return pipeEventCollectorBufferQueueLimit;
+  }
+
+  public void setPipeEventCollectorBufferQueueLimit(int pipeEventCollectorBufferQueueLimit) {
+    this.pipeEventCollectorBufferQueueLimit = pipeEventCollectorBufferQueueLimit;
   }
 
   public long getPipeConnectorTimeoutMs() {
