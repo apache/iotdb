@@ -439,8 +439,18 @@ public class ConfigManager implements IManager {
               .map(TDataNodeConfiguration::getLocation)
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
-      Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
       Map<Integer, TNodeVersionInfo> nodeVersionInfo = getNodeManager().getNodeVersionInfo();
+      Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
+      for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
+        if (!nodeStatus.containsKey(configNodeLocation.getConfigNodeId())) {
+          nodeStatus.put(configNodeLocation.getConfigNodeId(), NodeStatus.Unknown.toString());
+        }
+      }
+      for (TDataNodeLocation dataNodeLocation : dataNodeInfoLocations) {
+        if (!nodeStatus.containsKey(dataNodeLocation.getDataNodeId())) {
+          nodeStatus.put(dataNodeLocation.getDataNodeId(), NodeStatus.Unknown.toString());
+        }
+      }
       return new TShowClusterResp(
           status, configNodeLocations, dataNodeInfoLocations, nodeStatus, nodeVersionInfo);
     } else {
