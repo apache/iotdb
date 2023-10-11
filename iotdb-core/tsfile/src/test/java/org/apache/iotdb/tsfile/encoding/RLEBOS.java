@@ -721,11 +721,11 @@ public class RLEBOS {
 
                 cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
                 if (cur_k1 != 0)
-                    cur_bits += cur_k1 * getBitWith(left_max);//left_max
+                    cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
                 if (cur_k1 + cur_k2 != block_size)
                     cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
                 if (cur_k2 != 0)
-                    cur_bits += cur_k2 * getBitWith(max_delta_value - min_upper_outlier);//min_upper_outlier
+                    cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
 //
 //                if(left_max <= 1603 && k_start_value>=1603&& k_end_value <= 5083 && min_upper_outlier>=5083 ){
 //                    System.out.println("index_cost: "+(Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2)));
@@ -777,7 +777,7 @@ public class RLEBOS {
         int final_alpha = ((k1 + k2) * getBitWith(block_size)) <= (block_size + k1 + k2) ? 1 : 0;
 
 
-        BOSEncodeBits(ts_block_delta, final_left_max, final_k_start_value, final_k_end_value, max_delta_value,
+        BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
                 final_alpha,  min_delta,  cur_byte);
 
 //        System.out.println(cur_byte.size());
@@ -810,7 +810,7 @@ public class RLEBOS {
             // time-order
             ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, 0);
             encoded_result.addAll(cur_encoded_result);
-
+//            System.out.println("cur_encoded_result.size: "+cur_encoded_result.size());
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -838,6 +838,7 @@ public class RLEBOS {
 
             ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, supple_length);
             encoded_result.addAll(cur_encoded_result);
+//            System.out.println("cur_encoded_result.size: "+cur_encoded_result.size());
         }
 
 
@@ -1163,7 +1164,7 @@ public class RLEBOS {
             columnIndexes.add(i, i);
         }
 
-//        for (int file_i = 11; file_i < 12; file_i++) {
+//        for (int file_i = 3; file_i < 4; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -1220,7 +1221,7 @@ public class RLEBOS {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 1;
+                int repeatTime2 = 10;
                 for (int i = 0; i < repeatTime; i++) {
                     long s = System.nanoTime();
                     ArrayList<Byte> buffer1 = new ArrayList<>();

@@ -1231,7 +1231,7 @@ public class BOSVaryBlocksize {
                     long decodeTime = 0;
                     double ratio = 0;
                     double compressed_size = 0;
-                    int repeatTime2 = 100;
+                    int repeatTime2 = 10;
                     for (int i = 0; i < repeatTime; i++) {
                         long s = System.nanoTime();
                         ArrayList<Byte> buffer1 = new ArrayList<>();

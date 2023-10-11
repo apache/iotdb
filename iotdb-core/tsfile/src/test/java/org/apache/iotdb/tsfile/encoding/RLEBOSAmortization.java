@@ -635,7 +635,7 @@ public class RLEBOSAmortization {
     }
 //    }
 
-    private static ArrayList<Byte> BOSBlockEncoder(ArrayList<Integer> ts_block, int block_i, int block_size, int supple_length, int q) {
+    private static ArrayList<Byte> BOSBlockEncoder(ArrayList<Integer> ts_block, int block_i, int block_size, int supple_length, int q, int k) {
 
 
         ArrayList<Byte> cur_byte = new ArrayList<>();
@@ -701,33 +701,27 @@ public class RLEBOSAmortization {
         }
         ArrayList<Integer> PDF = new ArrayList<>();
         int cumulative = 0;
-        ArrayList<Integer> bucket_no_zero = new ArrayList<>();
-        int bucket_start_i = 0;
-        boolean is_bucket_start_i = false;
+        int bucket_start_i = (int) (Math.max((mu-k*sigma)/q + 1,0));//0;
+        int bucket_end_i = (int) (Math.min((mu+k*sigma)/q - 1,bucket_num));//bucket_num;
         for(int i=0;i<bucket_num;i++){
             int count = bucket_count.get(i);
             PDF.add(cumulative);
             cumulative += count;
-            if(count != 0){
-                bucket_no_zero.add(i);
-                if(i*4>=(mu-3*sigma) && !is_bucket_start_i){
-                    bucket_start_i = bucket_no_zero.size() - 1;
-                    is_bucket_start_i = true;
-                }
-            }
         }
         PDF.add(cumulative);
         int PDF_size = PDF.size();
         final_right_max = (final_right_max / q + 1) * q;
-        int bucket_no_zero_size = bucket_no_zero.size();
-//        bucket_start_i = 0;
-        for(int i =bucket_start_i;i<bucket_no_zero_size;i++){
-            int k_start_value = bucket_no_zero.get(i) * q;
+
+        for(int i =bucket_start_i;i<bucket_end_i;i++){
+            if(bucket_count.get(i) == 0){
+                continue;
+            }
+            int k_start_value = i * q;
             for (int k_spread_value : spread_value) {
                 int k_end_value = Math.min(k_spread_value + k_start_value, final_right_max);
 
                 int cur_bits = 0;
-                int cur_k1 = PDF.get(bucket_no_zero.get(i));
+                int cur_k1 = PDF.get(i);
 
                 int k_end_value_bucket = k_end_value/q ;
                 k_end_value = k_end_value_bucket *q;
@@ -764,7 +758,7 @@ public class RLEBOSAmortization {
         return cur_byte;
     }
 
-    private static ArrayList<Byte> BOSBlockEncoder(ArrayList<Integer> ts_block, int supple_length, int q) {
+    private static ArrayList<Byte> BOSBlockEncoder(ArrayList<Integer> ts_block, int supple_length, int q, int k) {
 
         int block_size = ts_block.size();
         ArrayList<Byte> cur_byte = new ArrayList<>();
@@ -828,33 +822,27 @@ public class RLEBOSAmortization {
         }
         ArrayList<Integer> PDF = new ArrayList<>();
         int cumulative = 0;
-        ArrayList<Integer> bucket_no_zero = new ArrayList<>();
-        int bucket_start_i = 0;
-        boolean is_bucket_start_i = false;
+        int bucket_start_i = (int) (Math.max((mu-k*sigma)/q + 1,0));//0;
+        int bucket_end_i = (int) (Math.min((mu+k*sigma)/q - 1,bucket_num));//bucket_num;
         for(int i=0;i<bucket_num;i++){
             int count = bucket_count.get(i);
             PDF.add(cumulative);
             cumulative += count;
-            if(count != 0){
-                bucket_no_zero.add(i);
-                if(i*4>=(mu-3*sigma) && !is_bucket_start_i){
-                    bucket_start_i = bucket_no_zero.size() - 1;
-                    is_bucket_start_i = true;
-                }
-            }
         }
         PDF.add(cumulative);
         int PDF_size = PDF.size();
         final_right_max = (final_right_max / q + 1) * q;
-        int bucket_no_zero_size = bucket_no_zero.size();
-//        bucket_start_i = 0;
-        for(int i =bucket_start_i;i<bucket_no_zero_size;i++){
-            int k_start_value = bucket_no_zero.get(i) * q;
+
+        for(int i =bucket_start_i;i<bucket_end_i;i++){
+            if(bucket_count.get(i) == 0){
+                continue;
+            }
+            int k_start_value = i * q;
             for (int k_spread_value : spread_value) {
                 int k_end_value = Math.min(k_spread_value + k_start_value, final_right_max);
 
                 int cur_bits = 0;
-                int cur_k1 = PDF.get(bucket_no_zero.get(i));
+                int cur_k1 = PDF.get(i);
 
                 int k_end_value_bucket = k_end_value/q ;
                 k_end_value = k_end_value_bucket *q;
@@ -892,7 +880,7 @@ public class RLEBOSAmortization {
     }
 
     public static ArrayList<Byte> BOSEncoder(
-            ArrayList<Integer> data, int block_size, String dataset_name, int q) throws IOException {
+            ArrayList<Integer> data, int block_size, String dataset_name, int q, int k) throws IOException {
 //        block_size++;
         ArrayList<Byte> encoded_result = new ArrayList<Byte>();
         int length_all = data.size();
@@ -914,7 +902,8 @@ public class RLEBOSAmortization {
 //            splitTimeStamp3(ts_block, result2);
 
             // time-order
-            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(data, i, block_size,0,q);
+            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(data, i, block_size,0,q, k);
+//            System.out.println("cur_encoded_result.size: "+cur_encoded_result.size());
 //            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, 0,q);
             encoded_result.addAll(cur_encoded_result);
 
@@ -943,8 +932,9 @@ public class RLEBOSAmortization {
             }
 
 
-            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, supple_length,q);
+            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, supple_length,q, k);
             encoded_result.addAll(cur_encoded_result);
+//            System.out.println("cur_encoded_result.size: "+cur_encoded_result.size());
         }
 
 
@@ -1270,8 +1260,8 @@ public class RLEBOSAmortization {
             columnIndexes.add(i, i);
         }
 
-//        for (int file_i = 11; file_i < 12; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 3; file_i < 4; file_i++) {
+//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1327,7 +1317,7 @@ public class RLEBOSAmortization {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 1;
+                int repeatTime2 = 10;
                 for (int i = 0; i < repeatTime; i++) {
                     long s = System.nanoTime();
                     ArrayList<Byte> buffer1 = new ArrayList<>();
@@ -1335,7 +1325,7 @@ public class RLEBOSAmortization {
                     long buffer_bits = 0;
                     for (int repeat = 0; repeat < repeatTime2; repeat++){
 //                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
-                        buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i),4);
+                        buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i),4, 3);
                     }
 //                        System.out.println(buffer2.size());
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
@@ -1360,7 +1350,7 @@ public class RLEBOSAmortization {
 
                 String[] record = {
                         f.toString(),
-                        "RLE+BOS-Amortization",
+                        "RLE+Amortization",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),

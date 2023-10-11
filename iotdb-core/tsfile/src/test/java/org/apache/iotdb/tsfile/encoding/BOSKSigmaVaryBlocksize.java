@@ -582,7 +582,7 @@ public class BOSKSigmaVaryBlocksize {
 //        }
     }
 
-    private static ArrayList<Byte> BOSBlockEncoder(ArrayList<Integer> ts_block, int block_i, int block_size, int supple_length, int k) {
+    private static ArrayList<Byte> BOSBlockEncoder(ArrayList<Integer> ts_block, int block_i, int block_size, int k) {
 
 
         ArrayList<Byte> cur_byte = new ArrayList<>();
@@ -592,9 +592,6 @@ public class BOSKSigmaVaryBlocksize {
 //        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
 
         block_size --;
-        for (int s = 0; s < supple_length; s++) {
-            ts_block_delta.add(0);
-        }
 
         int final_right_max = 0;
         double sum = 0;
@@ -699,7 +696,7 @@ public class BOSKSigmaVaryBlocksize {
 //            splitTimeStamp3(ts_block, result2);
 
             // time-order
-            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(data, i, block_size,0,k);
+            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(data, i, block_size, k);
 //            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, 0,q);
             encoded_result.addAll(cur_encoded_result);
 
@@ -1060,7 +1057,7 @@ public class BOSKSigmaVaryBlocksize {
             columnIndexes.add(i, i);
         }
 
-//        for (int file_i = 6; file_i < 7; file_i++) {
+//        for (int file_i = 9; file_i < 10; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -1121,7 +1118,7 @@ public class BOSKSigmaVaryBlocksize {
                     long decodeTime = 0;
                     double ratio = 0;
                     double compressed_size = 0;
-                    int repeatTime2 = 100;
+                    int repeatTime2 = 10;
                     for (int i = 0; i < repeatTime; i++) {
                         long s = System.nanoTime();
                         ArrayList<Byte> buffer1 = new ArrayList<>();
@@ -1154,7 +1151,7 @@ public class BOSKSigmaVaryBlocksize {
 
                     String[] record = {
                             f.toString(),
-                            "BOS-KSigma",
+                            "TS_2DIFF-KSigma",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),

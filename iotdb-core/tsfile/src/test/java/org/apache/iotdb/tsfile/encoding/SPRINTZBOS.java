@@ -439,7 +439,7 @@ public class SPRINTZBOS {
                                       int final_k_start_value,
                                       int final_k_end_value,
                                       int max_delta_value,
-                                      int final_alpha,
+
                                       ArrayList<Integer> min_delta,
                                       ArrayList<Byte> cur_byte) {
         int block_size = ts_block_delta.size();
@@ -511,6 +511,7 @@ public class SPRINTZBOS {
                 index_bitmap_outlier &= 0xFF;
                 bitmap_outlier.add(index_bitmap_outlier);
             }
+        int final_alpha = ((k1 + k2) * getBitWith(block_size)) <= (block_size + k1 + k2) ? 1 : 0;
 
             int k_byte = (k1 << 1);
             k_byte += final_alpha;
@@ -679,10 +680,10 @@ public class SPRINTZBOS {
 
 
         int start_value_size = start_value.size();
-        int k1 = 0;
-        int k2 = 0;
-        int final_left_max = 0;
-        int final_right_min = max_delta_value;
+//        int k1 = 0;
+//        int k2 = 0;
+//        int final_left_max = 0;
+//        int final_right_min = max_delta_value;
 //        System.out.println(PDF);
         for (int start_value_i = 0; start_value_i < start_value_size - 1; start_value_i++) {
             int k_start_value = start_value.get(start_value_i);
@@ -693,15 +694,15 @@ public class SPRINTZBOS {
 
                 int cur_bits = 0;
                 int cur_k1 = 0;
-                int left_max = 0;
+//                int left_max = 0;
                 if (start_value_i != 0) {
-                    left_max = PDF.get(start_value_i - 1).get(0);
+//                    left_max = PDF.get(start_value_i - 1).get(0);
                     cur_k1 = PDF.get(start_value_i - 1).get(1);
                 }
 
                 int cur_k2 = 0;
                 int max_normal = 0;
-                int min_upper_outlier = 0;
+//                int min_upper_outlier = 0;
                 int PDF_size = PDF.size();
                 for (int tmp_j = start_value_i; tmp_j < PDF_size; tmp_j++) {
                     max_normal = PDF.get(tmp_j).get(0);
@@ -711,21 +712,21 @@ public class SPRINTZBOS {
                         else if (max_normal == k_end_value) {
                             cur_k2 = block_size - PDF.get(tmp_j).get(1);
                         }
-                        if (tmp_j != PDF_size - 1)
-                            min_upper_outlier = PDF.get(tmp_j + 1).get(0);
-                        else
-                            min_upper_outlier = PDF.get(tmp_j).get(0);
+//                        if (tmp_j != PDF_size - 1)
+//                            min_upper_outlier = PDF.get(tmp_j + 1).get(0);
+//                        else
+//                            min_upper_outlier = PDF.get(tmp_j).get(0);
                         break;
                     }
                 }
 
                 cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
                 if (cur_k1 != 0)
-                    cur_bits += cur_k1 * getBitWith(left_max);//left_max
+                    cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
                 if (cur_k1 + cur_k2 != block_size)
                     cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
                 if (cur_k2 != 0)
-                    cur_bits += cur_k2 * getBitWith(max_delta_value - min_upper_outlier);//min_upper_outlier
+                    cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
 //
 //                if(left_max <= 1603 && k_start_value>=1603&& k_end_value <= 5083 && min_upper_outlier>=5083 ){
 //                    System.out.println("index_cost: "+(Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2)));
@@ -757,14 +758,14 @@ public class SPRINTZBOS {
 
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
-                    k1 = cur_k1;
-                    k2 = cur_k2;
+//                    k1 = cur_k1;
+//                    k2 = cur_k2;
                     final_k_start_value = k_start_value;
-                    if (start_value_i != 0)
-                        final_left_max = PDF.get(start_value_i - 1).get(0);
-                    else
-                        final_left_max = 0;
-                    final_right_min = min_upper_outlier;
+//                    if (start_value_i != 0)
+//                        final_left_max = PDF.get(start_value_i - 1).get(0);
+//                    else
+//                        final_left_max = 0;
+//                    final_right_min = min_upper_outlier;
                     final_k_end_value = k_end_value;
                 }
                 if (k_end_value == max_delta_value)
@@ -774,11 +775,10 @@ public class SPRINTZBOS {
 
 
 //        int final_left_max = final_k_start_value;
-        int final_alpha = ((k1 + k2) * getBitWith(block_size)) <= (block_size + k1 + k2) ? 1 : 0;
 
 
-        BOSEncodeBits(ts_block_delta, final_left_max, final_k_start_value, final_k_end_value, max_delta_value,
-                final_alpha,  min_delta,  cur_byte);
+        BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
+                  min_delta,  cur_byte);
 
 //        System.out.println(cur_byte.size());
         return cur_byte;
@@ -1224,7 +1224,7 @@ public class SPRINTZBOS {
                     long decodeTime = 0;
                     double ratio = 0;
                     double compressed_size = 0;
-                    int repeatTime2 = 1;
+                    int repeatTime2 = 10;
                     for (int i = 0; i < repeatTime; i++) {
                         long s = System.nanoTime();
                         ArrayList<Byte> buffer1 = new ArrayList<>();

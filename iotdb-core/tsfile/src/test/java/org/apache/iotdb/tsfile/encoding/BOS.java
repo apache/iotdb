@@ -14,7 +14,7 @@ import java.util.Collections;
 import static java.lang.Math.min;
 import static java.lang.Math.pow;
 
-public class OutlierCDF {
+public class BOS {
 
     public static int getBitWith(int num) {
         if (num == 0) return 1;
@@ -437,24 +437,20 @@ public class OutlierCDF {
                                       int final_k_start_value,
                                       int final_k_end_value,
                                       int max_delta_value,
-                                      int final_alpha,
-                                      int k1,
-                                      int k2,
                                       ArrayList<Integer> min_delta,
-                                      int bit_width,
                                       ArrayList<Byte> cur_byte) {
         int block_size = ts_block_delta.size();
         // ------------------------- encode data -----------------------------------------
-        if (final_left_max == 0 && final_k_end_value == max_delta_value) {
-            cur_byte = encode2Bytes(ts_block_delta, min_delta, bit_width);
-        } else {
+//        if (final_left_max == 0 && final_k_end_value == max_delta_value) {
+//            cur_byte = encode2Bytes(ts_block_delta, min_delta, bit_width);
+//        } else {
             ArrayList<Integer> final_left_outlier_index = new ArrayList<>();
             ArrayList<Integer> final_right_outlier_index = new ArrayList<>();
             ArrayList<Integer> final_left_outlier = new ArrayList<>();
             ArrayList<Integer> final_right_outlier = new ArrayList<>();
             ArrayList<Integer> final_normal = new ArrayList<>();
-            k1 = 0;
-            k2 = 0;
+           int k1 = 0;
+           int  k2 = 0;
             ArrayList<Integer> bitmap = new ArrayList<>();
             ArrayList<Integer> bitmap_outlier = new ArrayList<>();
             int index_bitmap = 0;
@@ -514,6 +510,7 @@ public class OutlierCDF {
                 index_bitmap_outlier &= 0xFF;
                 bitmap_outlier.add(index_bitmap_outlier);
             }
+        int final_alpha = ((k1 + k2) * getBitWith(block_size)) <= (block_size + k1 + k2) ? 1 : 0;
 
             int k_byte = (k1 << 1);
             k_byte += final_alpha;
@@ -610,7 +607,7 @@ public class OutlierCDF {
 //            System.out.println(final_normal);
 //            System.out.println(final_left_outlier);
 //            System.out.println(final_right_outlier);
-        }
+//        }
     }
 
     private static ArrayList<Byte> BOSBlockEncoder(ArrayList<Integer> ts_block, int supple_length) {
@@ -631,7 +628,7 @@ public class OutlierCDF {
 //        quickSort(ts_block_order_value, 0, 1, block_size - 1);
 
 //        System.out.println("quickSort");
-        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
+//        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
 
 //        ArrayList<Integer> ts_block_order_value = new ArrayList<>();
 //        for (int i = 1; i < block_size; i++) {
@@ -699,7 +696,7 @@ public class OutlierCDF {
                 int cur_k1 = 0;
                 int left_max = 0;
                 if (start_value_i != 0) {
-                    left_max = PDF.get(start_value_i - 1).get(0);
+//                    left_max = PDF.get(start_value_i - 1).get(0);
                     cur_k1 = PDF.get(start_value_i - 1).get(1);
                 }
 
@@ -725,11 +722,11 @@ public class OutlierCDF {
 
                 cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
                 if (cur_k1 != 0)
-                    cur_bits += cur_k1 * getBitWith(left_max);//left_max
+                    cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
                 if (cur_k1 + cur_k2 != block_size)
                     cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
                 if (cur_k2 != 0)
-                    cur_bits += cur_k2 * getBitWith(max_delta_value - min_upper_outlier);//min_upper_outlier
+                    cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
 //
 //                if(left_max <= 1603 && k_start_value>=1603&& k_end_value <= 5083 && min_upper_outlier>=5083 ){
 //                    System.out.println("index_cost: "+(Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2)));
@@ -778,11 +775,11 @@ public class OutlierCDF {
 
 
 //        int final_left_max = final_k_start_value;
-        int final_alpha = ((k1 + k2) * getBitWith(block_size)) <= (block_size + k1 + k2) ? 1 : 0;
+//        int final_alpha = ((k1 + k2) * getBitWith(block_size)) <= (block_size + k1 + k2) ? 1 : 0;
 
 
-        BOSEncodeBits(ts_block_delta, final_left_max, final_k_start_value, final_k_end_value, max_delta_value,
-                final_alpha, k1, k2, min_delta, bit_width, cur_byte);
+        BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
+             min_delta, cur_byte);
 
 //        System.out.println(cur_byte.size());
         return cur_byte;
@@ -808,13 +805,11 @@ public class OutlierCDF {
                 ts_block.add(data.get(j + i * block_size));
 
             }
-            ArrayList<Integer> result2 = new ArrayList<>();
-            splitTimeStamp3(ts_block, result2);
 
             // time-order
             ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, 0);
             encoded_result.addAll(cur_encoded_result);
-
+//System.out.println("encoded_result.size: "+encoded_result.size());
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -844,6 +839,7 @@ public class OutlierCDF {
 
             ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, supple_length);
             encoded_result.addAll(cur_encoded_result);
+//            System.out.println("encoded_result.size: "+cur_encoded_result.size());
         }
 
 
@@ -1172,7 +1168,7 @@ public class OutlierCDF {
             columnIndexes.add(i, i);
         }
 
-//        for (int file_i = 1; file_i < 2; file_i++) {
+//        for (int file_i = 3; file_i < 4; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -1229,7 +1225,7 @@ public class OutlierCDF {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 1;
+                int repeatTime2 = 10;
                 for (int i = 0; i < repeatTime; i++) {
                     long s = System.nanoTime();
                     ArrayList<Byte> buffer1 = new ArrayList<>();
@@ -1262,7 +1258,7 @@ public class OutlierCDF {
 
                 String[] record = {
                         f.toString(),
-                        "FOR-DELTA+BOS",
+                        "TS_2DIFF+BOS",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
