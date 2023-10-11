@@ -27,7 +27,6 @@ from iotdb.thrift.rpc.IClientRPCService import TSFetchResultsReq, TSCloseOperati
 from iotdb.utils.IoTDBConstants import TSDataType
 
 logger = logging.getLogger("IoTDB")
-shift_table = tuple([0x80 >> i for i in range(8)])
 
 
 def _to_bitbuffer(b):
@@ -98,20 +97,10 @@ class IoTDBRpcDataSet(object):
                     self.column_type_deduplicated_list.append(
                         TSDataType[column_type_list[i]]
                     )
-
-        self.time_bytes = [b"\x00"]
-        self.__current_bitmap = [
-            bytes(0) for _ in range(len(self.column_type_deduplicated_list))
-        ]
-        self.value = [None for _ in range(len(self.column_type_deduplicated_list))]
         self.__query_data_set = query_data_set
         self.__is_closed = False
         self.__empty_resultSet = False
-        self.has_cached_record = False
         self.__rows_index = 0
-        self.is_null_info = [
-            False for _ in range(len(self.column_type_deduplicated_list))
-        ]
         self.has_cached_data_frame = False
         self.data_frame = None
 
@@ -154,15 +143,13 @@ class IoTDBRpcDataSet(object):
         if self.has_cached_data_frame or self.__query_data_set.time is None:
             return
         result = {}
-        for i in range(len(self.__column_name_list)):
-            result[i] = []
         time_array = np.frombuffer(
             self.__query_data_set.time, np.dtype(np.longlong).newbyteorder(">")
         )
         if time_array.dtype.byteorder == ">":
             time_array = time_array.byteswap().newbyteorder("<")
         if self.ignore_timestamp is None or self.ignore_timestamp is False:
-            result[0].append(time_array)
+            result[0] = time_array
 
         self.__query_data_set.time = None
         total_length = len(time_array)
@@ -175,7 +162,7 @@ class IoTDBRpcDataSet(object):
                 column_index_in_result = i + 1
 
             location = (
-                    self.column_ordinal_dict[column_name] - IoTDBRpcDataSet.START_INDEX
+                self.column_ordinal_dict[column_name] - IoTDBRpcDataSet.START_INDEX
             )
             if location < 0:
                 continue
@@ -206,13 +193,12 @@ class IoTDBRpcDataSet(object):
                 data_array = []
                 while offset < value_buffer_len:
                     length = int.from_bytes(
-                        value_buffer[offset: offset + 4],
+                        value_buffer[offset : offset + 4],
                         byteorder="big",
                         signed=False,
                     )
                     offset += 4
-                    value_bytes = bytes(value_buffer[offset: offset + length])
-                    value = value_bytes.decode("utf-8")
+                    value = bytes(value_buffer[offset : offset + length])
                     data_array.append(value)
                     j += 1
                     offset += length
@@ -222,20 +208,12 @@ class IoTDBRpcDataSet(object):
             if data_array.dtype.byteorder == ">":
                 data_array = data_array.byteswap().newbyteorder("<")
             self.__query_data_set.valueList[location] = None
-            tmp_array = []
             if len(data_array) < total_length:
-                # INT32 or INT64
-                if data_type == 1 or data_type == 2:
+                # INT32 or INT64 or boolean
+                if data_type == 0 or data_type == 1 or data_type == 2:
                     tmp_array = np.full(total_length, np.nan, np.float32)
-                # FLOAT or DOUBLE
-                elif data_type == 3 or data_type == 4:
-                    tmp_array = np.full(total_length, np.nan, data_array.dtype)
-                # BOOLEAN
-                elif data_type == 0:
-                    tmp_array = np.full(total_length, np.nan, np.float32)
-                # TEXT
-                elif data_type == 5:
-                    tmp_array = np.full(total_length, None, dtype=data_array.dtype)
+                else:
+                    tmp_array = np.full(total_length, None, dtype=object)
 
                 bitmap_buffer = self.__query_data_set.bitmapList[location]
                 buffer = _to_bitbuffer(bitmap_buffer)
@@ -245,28 +223,14 @@ class IoTDBRpcDataSet(object):
                 tmp_array[bit_mask] = data_array
 
                 if data_type == 1:
-                    tmp_array = pd.Series(tmp_array).astype("Int32")
+                    tmp_array = pd.Series(tmp_array, dtype="Int32")
                 elif data_type == 2:
-                    tmp_array = pd.Series(tmp_array).astype("Int64")
+                    tmp_array = pd.Series(tmp_array, dtype="Int64")
                 elif data_type == 0:
-                    tmp_array = pd.Series(tmp_array).astype("boolean")
-
+                    tmp_array = pd.Series(tmp_array, dtype="boolean")
                 data_array = tmp_array
 
-            result[column_index_in_result].append(data_array)
-
-        for k, v in result.items():
-            if v is None or len(v) < 1 or v[0] is None:
-                result[k] = []
-            else:
-                if v[0].dtype == "Int32":
-                    result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int32")
-                elif v[0].dtype == "Int64":
-                    result[k] = pd.Series(np.concatenate(v, axis=0)).astype("Int64")
-                elif v[0].dtype == "boolean":
-                    result[k] = pd.Series(np.concatenate(v, axis=0)).astype("boolean")
-                else:
-                    result[k] = np.concatenate(v, axis=0)
+            result[column_index_in_result] = data_array
         self.has_cached_data_frame = True
         self.data_frame = pd.DataFrame(result, dtype=object)
 

@@ -15,9 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import cmath
 
 # for package
 from .IoTDBConstants import TSDataType
+import numpy as np
+import pandas as pd
 
 
 class Field(object):
@@ -74,7 +77,7 @@ class Field(object):
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.INT32:
             return None
-        return self.value
+        return np.int32(self.value)
 
     def set_long_value(self, value: int):
         self.value = value
@@ -84,7 +87,7 @@ class Field(object):
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.INT64:
             return None
-        return self.value
+        return np.int64(self.value)
 
     def set_float_value(self, value: float):
         self.value = value
@@ -94,7 +97,7 @@ class Field(object):
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.FLOAT:
             return None
-        return self.value
+        return np.float32(self.value)
 
     def set_double_value(self, value: float):
         self.value = value
@@ -104,7 +107,7 @@ class Field(object):
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.DOUBLE:
             return None
-        return self.value
+        return np.float64(self.value)
 
     def set_binary_value(self, value: bytes):
         self.value = value
@@ -122,7 +125,7 @@ class Field(object):
         elif self.__data_type == TSDataType.TEXT:
             return self.value.decode("utf-8")
         else:
-            return str(self.value)
+            return str(self.get_object_value(self.__data_type))
 
     def __str__(self):
         return self.get_string_value()
@@ -131,12 +134,19 @@ class Field(object):
         """
         :param data_type: TSDataType
         """
-        if self.__data_type is None:
+        if self.__data_type is None or self.value is None or self.value is pd.NA:
             return None
+        if data_type == TSDataType.BOOLEAN:
+            return bool(self.value)
+        elif data_type == TSDataType.INT32:
+            return np.int32(self.value)
+        elif data_type == TSDataType.INT64:
+            return np.int64(self.value)
+        elif data_type == TSDataType.FLOAT:
+            return np.float32(self.value)
+        elif data_type == TSDataType.DOUBLE:
+            return np.float64(self.value)
         return self.value
-
-    def set_value(self, value):
-        self.value = value
 
     @staticmethod
     def get_field(value, data_type):
