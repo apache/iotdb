@@ -460,9 +460,9 @@ public class NodeInfo implements SnapshotProcessor {
 
       tioStreamTransport.flush();
       fileOutputStream.getFD().sync();
+      fileOutputStream.close();
 
       return tmpFile.renameTo(snapshotFile);
-
     } finally {
       versionInfoReadWriteLock.readLock().unlock();
       dataNodeInfoReadWriteLock.readLock().unlock();

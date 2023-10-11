@@ -876,6 +876,7 @@ public class PartitionInfo implements SnapshotProcessor {
       // write to file
       tioStreamTransport.flush();
       fileOutputStream.getFD().sync();
+      bufferedOutputStream.close();
 
       // rename file
       return tmpFile.renameTo(snapshotFile);
