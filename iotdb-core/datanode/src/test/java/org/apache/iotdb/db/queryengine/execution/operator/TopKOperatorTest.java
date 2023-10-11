@@ -842,7 +842,6 @@ public class TopKOperatorTest {
     try {
       // Construct operator tree
       QueryId queryId = new QueryId("stub_query");
-
       FragmentInstanceId instanceId =
           new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
       FragmentInstanceStateMachine stateMachine =
@@ -976,19 +975,8 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      List<String> devices = new ArrayList<>(Arrays.asList(DEVICE0, DEVICE1, DEVICE2, DEVICE3));
-      if (deviceOrdering == Ordering.DESC) {
-        Collections.reverse(devices);
-      }
-      List<List<Integer>> deviceColumnIndex = new ArrayList<>();
-      deviceColumnIndex.add(Collections.singletonList(1));
-      deviceColumnIndex.add(Arrays.asList(1, 2));
-      if (deviceOrdering == Ordering.DESC) {
-        Collections.reverse(deviceColumnIndex);
-      }
       List<TSDataType> tsDataTypes =
           new LinkedList<>(Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32));
-
       RowBasedTimeJoinOperator timeJoinOperator1 =
           new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(7),
@@ -1007,10 +995,6 @@ public class TopKOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
-
-      deviceColumnIndex = new ArrayList<>();
-      deviceColumnIndex.add(Arrays.asList(1, 2));
-      deviceColumnIndex.add(Arrays.asList(1, 2));
       RowBasedTimeJoinOperator timeJoinOperator2 =
           new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(8),
@@ -1047,6 +1031,16 @@ public class TopKOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+
+      List<String> devices = new ArrayList<>(Arrays.asList(DEVICE0, DEVICE1, DEVICE2, DEVICE3));
+      if (deviceOrdering == Ordering.DESC) {
+        Collections.reverse(devices);
+      }
+      List<List<Integer>> deviceColumnIndex =
+          Arrays.asList(Collections.singletonList(1), Arrays.asList(1, 2));
+      if (deviceOrdering == Ordering.DESC) {
+        Collections.reverse(deviceColumnIndex);
+      }
       DeviceViewOperator deviceViewOperator1 =
           new DeviceViewOperator(
               driverContext.getOperatorContexts().get(10),
@@ -1058,6 +1052,7 @@ public class TopKOperatorTest {
                   : Arrays.asList(timeJoinOperator1, seriesScanOperator1),
               deviceColumnIndex,
               tsDataTypes);
+      deviceColumnIndex = Arrays.asList(Arrays.asList(1, 2), Arrays.asList(1, 2));
       DeviceViewOperator deviceViewOperator2 =
           new DeviceViewOperator(
               driverContext.getOperatorContexts().get(11),

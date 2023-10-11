@@ -853,7 +853,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                MergeSortOperator.class.getSimpleName());
+                TopKOperator.class.getSimpleName());
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
     context.setCachedDataTypes(dataTypes);
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);

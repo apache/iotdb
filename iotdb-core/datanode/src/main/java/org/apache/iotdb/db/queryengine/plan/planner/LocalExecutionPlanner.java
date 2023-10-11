@@ -114,8 +114,6 @@ public class LocalExecutionPlanner {
 
     long estimatedMemorySize = root.calculateMaxPeekMemory();
 
-    LOGGER.info("======== Root estimatedMemorySize: " + estimatedMemorySize);
-
     synchronized (this) {
       if (estimatedMemorySize > freeMemoryForOperators) {
         throw new MemoryNotEnoughException(

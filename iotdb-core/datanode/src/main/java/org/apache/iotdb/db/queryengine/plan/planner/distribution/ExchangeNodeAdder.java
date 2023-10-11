@@ -293,6 +293,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
             .map(child -> visit(child, context))
             .collect(Collectors.toList());
 
+    // DataRegion which node locates
     TRegionReplicaSet dataRegion;
     boolean isChildrenDistributionSame = nodeDistributionIsSame(visitedChildren, context);
     NodeDistributionType distributionType =
@@ -321,8 +322,8 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       return newNode;
     }
 
-    // optimize `sort + align by device`, to ensure that the number of ExchangeNode equals to
-    // DataRegion
+    // optimize `order by time limit N align by device` query,
+    // to ensure that the number of ExchangeNode equals to DataRegionNum but not equals to DeviceNum
     if (node instanceof TopKNode
         && visitedChildren.stream().allMatch(SingleDeviceViewNode.class::isInstance)) {
       TopKNode rootNode = (TopKNode) node;
@@ -349,10 +350,10 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       }
 
       for (Map.Entry<TRegionReplicaSet, TopKNode> entry : regionTopKNodeMap.entrySet()) {
-        TRegionReplicaSet sortNodeDataRegion = entry.getKey();
+        TRegionReplicaSet topKNodeLocatedRegion = entry.getKey();
         TopKNode topKNode = entry.getValue();
 
-        if (!dataRegion.equals(sortNodeDataRegion)) {
+        if (!dataRegion.equals(topKNodeLocatedRegion)) {
           ExchangeNode exchangeNode =
               new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
           exchangeNode.setChild(topKNode);
