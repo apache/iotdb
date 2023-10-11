@@ -317,12 +317,6 @@ public class CommonDescriptor {
                 "pipe_extractor_pending_queue_tsfile_limit",
                 String.valueOf(config.getPipeExtractorPendingQueueTsFileLimit()))));
 
-    config.setPipeEventCollectorBufferQueueLimit(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_event_collector_buffer_queue_limit",
-                String.valueOf(config.getPipeEventCollectorBufferQueueLimit()))));
-
     config.setPipeConnectorTimeoutMs(
         Long.parseLong(
             properties.getProperty(

@@ -167,12 +167,12 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public void recordBufferQueueSize(EnrichedDeque<Event> bufferQueue) {
     if (shouldPrintMessage) {
       bufferQueueTabletSize = bufferQueue.getTabletInsertionEventCount();
-      bufferQueueTsFileSize = bufferQueue.getTsFileInsertionEventCount();
+      bufferQueueSize = bufferQueue.size();
     }
-    bufferQueueSize = bufferQueue.size();
+    bufferQueueTsFileSize = bufferQueue.getTsFileInsertionEventCount();
     if (extractor instanceof PipeRealtimeDataRegionHybridExtractor) {
       ((PipeRealtimeDataRegionHybridExtractor) extractor)
-          .informEventCollectorQueueSize(bufferQueueSize);
+          .informEventCollectorQueueTsFileSize(bufferQueueTsFileSize);
     }
   }
 
