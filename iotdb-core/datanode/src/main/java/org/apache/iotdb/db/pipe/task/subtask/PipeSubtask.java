@@ -137,6 +137,16 @@ public abstract class PipeSubtask
           this.getClass().getSimpleName(),
           retryCount.get(),
           MAX_RETRY_TIMES);
+      try {
+        Thread.sleep(1000L * retryCount.get());
+      } catch (InterruptedException e) {
+        LOGGER.warn(
+            "Interrupted when retrying to execute subtask {}({})",
+            taskID,
+            this.getClass().getSimpleName());
+        Thread.currentThread().interrupt();
+      }
+
       submitSelf();
     } else {
       final String errorMessage =
