@@ -176,7 +176,6 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
         child.close();
       }
     }
-    children.clear();
     // friendly for gc
     inputTsBlocks = null;
   }
