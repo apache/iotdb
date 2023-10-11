@@ -97,6 +97,7 @@ public enum Metric {
   // pipe related
   TABLET_INSERTION_EVENT_COUNT("tablet_insertion_event_count"),
   TS_FILE_INSERTION_EVENT_COUNT("ts_file_insertion_event_count"),
+  PIPE_HEARTBEAT_EVENT_COUNT("pipe_heartbeat_event_count"),
   ;
 
   final String value;

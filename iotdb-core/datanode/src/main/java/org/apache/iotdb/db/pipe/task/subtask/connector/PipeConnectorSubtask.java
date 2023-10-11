@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import javax.validation.constraints.NotNull;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeConnectorSubtask extends PipeSubtask {
 
@@ -59,16 +60,16 @@ public class PipeConnectorSubtask extends PipeSubtask {
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
   protected ExecutorService subtaskCallbackListeningExecutor;
 
-  private Long tabletInsertionEventCount = 0L;
+  private final AtomicInteger tabletInsertionEventCount = new AtomicInteger(0);
 
-  private Long tsFileInsertionEventCount = 0L;
+  private final AtomicInteger tsFileInsertionEventCount = new AtomicInteger(0);
 
-  public Long getTabletInsertionEventCount() {
-    return tabletInsertionEventCount;
+  public Integer getTabletInsertionEventCount() {
+    return tabletInsertionEventCount.get();
   }
 
-  public Long getTsFileInsertionEventCount() {
-    return tsFileInsertionEventCount;
+  public Integer getTsFileInsertionEventCount() {
+    return tsFileInsertionEventCount.get();
   }
 
   public PipeConnectorSubtask(
@@ -118,10 +119,10 @@ public class PipeConnectorSubtask extends PipeSubtask {
     try {
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
-        tabletInsertionEventCount++;
+        tabletInsertionEventCount.getAndIncrement();
       } else if (event instanceof TsFileInsertionEvent) {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
-        tsFileInsertionEventCount++;
+        tsFileInsertionEventCount.getAndIncrement();
       } else if (event instanceof PipeHeartbeatEvent) {
         try {
           outputPipeConnector.heartbeat();
@@ -269,7 +270,6 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   @Override
   public void close() {
-    PipeConnectorSubtaskMetrics.getInstance().deregister(taskID);
     isClosed.set(true);
     try {
       outputPipeConnector.close();

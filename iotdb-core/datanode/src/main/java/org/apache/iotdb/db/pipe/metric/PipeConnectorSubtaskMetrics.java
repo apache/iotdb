@@ -25,15 +25,17 @@ import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.MetricType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class PipeConnectorSubtaskMetrics implements IMetricSet {
+
+  private static final String PIPE_CONNECTOR_SUBTASK = "PipeConnectorSubtask";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtaskMetrics.class);
 
@@ -61,13 +63,11 @@ public class PipeConnectorSubtaskMetrics implements IMetricSet {
   public void register(PipeConnectorSubtask pipeConnectorSubtask) {
     String taskID = pipeConnectorSubtask.getTaskID();
     synchronized (this) {
-      if (metricService == null) {
+      if (!taskMap.containsKey(taskID)) {
         taskMap.put(taskID, pipeConnectorSubtask);
-      } else {
-        if (!taskMap.containsKey(taskID)) {
-          taskMap.put(taskID, pipeConnectorSubtask);
-          createMetrics(taskID);
-        }
+      }
+      if (Objects.nonNull(metricService)) {
+        createMetrics(taskID);
       }
     }
   }
@@ -79,14 +79,18 @@ public class PipeConnectorSubtaskMetrics implements IMetricSet {
         taskMap.get(taskID),
         PipeConnectorSubtask::getTabletInsertionEventCount,
         Tag.NAME.toString(),
-        taskID);
+        taskID,
+        Tag.FROM.toString(),
+        PIPE_CONNECTOR_SUBTASK);
     metricService.createAutoGauge(
         Metric.TS_FILE_INSERTION_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         taskMap.get(taskID),
         PipeConnectorSubtask::getTsFileInsertionEventCount,
         Tag.NAME.toString(),
-        taskID);
+        taskID,
+        Tag.FROM.toString(),
+        PIPE_CONNECTOR_SUBTASK);
   }
 
   @Override
@@ -101,42 +105,6 @@ public class PipeConnectorSubtaskMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    synchronized (this) {
-      for (String taskID : taskMap.keySet()) {
-        metricService.remove(
-            MetricType.GAUGE,
-            Metric.TABLET_INSERTION_EVENT_COUNT.toString(),
-            Tag.NAME.toString(),
-            taskID);
-        metricService.remove(
-            MetricType.GAUGE,
-            Metric.TS_FILE_INSERTION_EVENT_COUNT.toString(),
-            Tag.NAME.toString(),
-            taskID);
-      }
-      taskMap.clear();
-    }
-  }
-
-  public void deregister(String taskID) {
-    synchronized (this) {
-      if (!taskMap.containsKey(taskID)) {
-        LOGGER.info(
-            String.format(
-                "Failed to deregister pipe connector subtask metrics, %s does not exist", taskID));
-        return;
-      }
-      metricService.remove(
-          MetricType.GAUGE,
-          Metric.TABLET_INSERTION_EVENT_COUNT.toString(),
-          Tag.NAME.toString(),
-          taskID);
-      metricService.remove(
-          MetricType.GAUGE,
-          Metric.TS_FILE_INSERTION_EVENT_COUNT.toString(),
-          Tag.NAME.toString(),
-          taskID);
-      taskMap.remove(taskID);
-    }
+    // do nothing
   }
 }

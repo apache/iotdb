@@ -21,10 +21,15 @@ package org.apache.iotdb.db.pipe.extractor.realtime.assigner;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.PipeDataRegionMatcher;
+import org.apache.iotdb.db.pipe.metric.PipeDataRegionAssignerMetrics;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeDataRegionAssigner {
 
@@ -34,9 +39,35 @@ public class PipeDataRegionAssigner {
   /** The disruptor is used to assign the event to the extractor. */
   private final DisruptorQueue disruptor;
 
-  public PipeDataRegionAssigner() {
+  private final String dataRegionId;
+
+  private final AtomicInteger tabletInsertionEventCount = new AtomicInteger(0);
+
+  private final AtomicInteger tsFileInsertionEventCount = new AtomicInteger(0);
+
+  private final AtomicInteger pipeHeartbeatEventCount = new AtomicInteger(0);
+
+  public Integer getTsFileInsertionEventCount() {
+    return tsFileInsertionEventCount.get();
+  }
+
+  public Integer getTabletInsertionEventCount() {
+    return tabletInsertionEventCount.get();
+  }
+
+  public Integer getPipeHeartbeatEventCount() {
+    return pipeHeartbeatEventCount.get();
+  }
+
+  public String getDataRegionId() {
+    return dataRegionId;
+  }
+
+  public PipeDataRegionAssigner(String dataRegionId) {
     this.matcher = new CachedSchemaPatternMatcher();
     this.disruptor = new DisruptorQueue(this::assignToExtractor);
+    this.dataRegionId = dataRegionId;
+    PipeDataRegionAssignerMetrics.getInstance().register(this);
   }
 
   public void publishToAssign(PipeRealtimeEvent event) {
@@ -46,6 +77,15 @@ public class PipeDataRegionAssigner {
 
     if (event.getEvent() instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) event.getEvent()).onPublished();
+    }
+
+    EnrichedEvent innerEvent = event.getEvent();
+    if (innerEvent instanceof PipeHeartbeatEvent) {
+      pipeHeartbeatEventCount.getAndIncrement();
+    } else if (innerEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      tabletInsertionEventCount.getAndIncrement();
+    } else if (innerEvent instanceof PipeTsFileInsertionEvent) {
+      tsFileInsertionEventCount.getAndIncrement();
     }
   }
 
@@ -73,6 +113,15 @@ public class PipeDataRegionAssigner {
             });
     event.gcSchemaInfo();
     event.decreaseReferenceCount(PipeDataRegionAssigner.class.getName(), false);
+
+    EnrichedEvent innerEvent = event.getEvent();
+    if (innerEvent instanceof PipeHeartbeatEvent) {
+      pipeHeartbeatEventCount.getAndDecrement();
+    } else if (innerEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      tabletInsertionEventCount.getAndDecrement();
+    } else if (innerEvent instanceof PipeTsFileInsertionEvent) {
+      tsFileInsertionEventCount.getAndDecrement();
+    }
   }
 
   public void startAssignTo(PipeRealtimeDataRegionExtractor extractor) {

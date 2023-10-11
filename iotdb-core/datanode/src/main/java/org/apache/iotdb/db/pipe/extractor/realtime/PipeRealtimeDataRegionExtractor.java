@@ -157,4 +157,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         + '\''
         + '}';
   }
+
+  public int getPendingQueueSize() {
+    return pendingQueue.size();
+  }
 }
