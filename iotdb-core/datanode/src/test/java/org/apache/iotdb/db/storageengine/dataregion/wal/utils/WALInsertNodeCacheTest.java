@@ -39,6 +39,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.FileNotFoundException;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -76,7 +78,32 @@ public class WALInsertNodeCacheTest {
   }
 
   @Test
-  public void testParallelGet() throws IllegalPathException {
+  public void testLoadAfterSyncBuffer() throws IllegalPathException, FileNotFoundException {
+    int oldWalBufferSize = config.getWalBufferSize();
+    try {
+      // Limit the wal buffer size to trigger sync Buffer when writing wal entry
+      config.setWalBufferSize(32);
+      // Init new wal node to apply the new wal buffer size
+      WALNode syncWalNode = new WALNode(identifier, logDirectory);
+      // write memTable
+      IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
+      syncWalNode.onMemTableCreated(memTable, logDirectory + "/" + "fake.tsfile");
+      InsertRowNode node1 = getInsertRowNode(System.currentTimeMillis());
+      node1.setSearchIndex(1);
+      WALFlushListener flushListener = syncWalNode.log(memTable.getMemTableId(), node1);
+      WALEntryPosition position = flushListener.getWalEntryHandler().getWalEntryPosition();
+      // wait until wal flushed
+      syncWalNode.rollWALFile();
+      Awaitility.await().until(() -> syncWalNode.isAllWALEntriesConsumed() && position.canRead());
+      // load by cache
+      assertEquals(node1, cache.getInsertNode(position));
+    } finally {
+      config.setWalBufferSize(oldWalBufferSize);
+    }
+  }
+
+  @Test
+  public void testGetInsertNodeInParallel() throws IllegalPathException {
     // write memTable
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode.onMemTableCreated(memTable, logDirectory + "/" + "fake.tsfile");
