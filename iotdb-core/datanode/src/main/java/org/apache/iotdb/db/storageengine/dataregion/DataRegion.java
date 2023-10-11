@@ -443,7 +443,12 @@ public class DataRegion implements IDataRegionForQuery {
         for (TsFileResource resource : value) {
           if (resource.resourceFileExists()) {
             FileMetrics.getInstance()
-                .addFile(resource.getTsFile().length(), true, resource.getTsFile().getName());
+                .addTsFile(
+                    resource.getDatabaseName(),
+                    resource.getDataRegionId(),
+                    resource.getTsFile().length(),
+                    true,
+                    resource.getTsFile().getName());
             if (resource.getModFile().exists()) {
               FileMetrics.getInstance().increaseModFileNum(1);
               FileMetrics.getInstance().increaseModFileSize(resource.getModFile().getSize());
@@ -469,7 +474,12 @@ public class DataRegion implements IDataRegionForQuery {
         for (TsFileResource resource : value) {
           if (resource.resourceFileExists()) {
             FileMetrics.getInstance()
-                .addFile(resource.getTsFile().length(), false, resource.getTsFile().getName());
+                .addTsFile(
+                    resource.getDatabaseName(),
+                    resource.getDataRegionId(),
+                    resource.getTsFile().length(),
+                    false,
+                    resource.getTsFile().getName());
           }
           if (resource.getModFile().exists()) {
             FileMetrics.getInstance().increaseModFileNum(1);
@@ -698,7 +708,9 @@ public class DataRegion implements IDataRegionForQuery {
         updateLastFlushTime(tsFileResource, isSeq);
         tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
         FileMetrics.getInstance()
-            .addFile(
+            .addTsFile(
+                tsFileResource.getDatabaseName(),
+                tsFileResource.getDataRegionId(),
                 tsFileResource.getTsFile().length(),
                 recoverPerformer.isSequence(),
                 tsFileResource.getTsFile().getName());
@@ -1441,11 +1453,7 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileResourceList.addAll(tsFileManager.getTsFileList(false));
       tsFileResourceList.forEach(
           x -> {
-            FileMetrics.getInstance()
-                .deleteFile(
-                    new long[] {x.getTsFileSize()},
-                    x.isSeq(),
-                    Collections.singletonList(x.getTsFile().getName()));
+            FileMetrics.getInstance().deleteTsFile(x.isSeq(), Collections.singletonList(x));
             if (x.getModFile().exists()) {
               FileMetrics.getInstance().decreaseModFileNum(1);
               FileMetrics.getInstance().decreaseModFileSize(x.getModFile().getSize());
@@ -1520,11 +1528,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       // try to delete physical data file
       resource.remove();
-      FileMetrics.getInstance()
-          .deleteFile(
-              new long[] {resource.getTsFileSize()},
-              isSeq,
-              Collections.singletonList(resource.getTsFile().getName()));
+      FileMetrics.getInstance().deleteTsFile(isSeq, Collections.singletonList(resource));
       logger.info(
           "Removed a file {} before {} by ttl ({} {})",
           resource.getTsFilePath(),
@@ -2069,11 +2073,14 @@ public class DataRegion implements IDataRegionForQuery {
     synchronized (closeStorageGroupCondition) {
       closeStorageGroupCondition.notifyAll();
     }
+    TsFileResource tsFileResource = tsFileProcessor.getTsFileResource();
     FileMetrics.getInstance()
-        .addFile(
-            tsFileProcessor.getTsFileResource().getTsFileSize(),
+        .addTsFile(
+            tsFileResource.getDatabaseName(),
+            tsFileResource.getDataRegionId(),
+            tsFileResource.getTsFileSize(),
             tsFileProcessor.isSequence(),
-            tsFileProcessor.getTsFileResource().getTsFile().getName());
+            tsFileResource.getTsFile().getName());
     logger.info("signal closing database condition in {}", databaseName + "-" + dataRegionId);
   }
 
@@ -2197,7 +2204,9 @@ public class DataRegion implements IDataRegionForQuery {
           .listenToTsFile(dataRegionId, newTsFileResource, isGeneratedByPipe);
 
       FileMetrics.getInstance()
-          .addFile(
+          .addTsFile(
+              newTsFileResource.getDatabaseName(),
+              newTsFileResource.getDataRegionId(),
               newTsFileResource.getTsFile().length(),
               false,
               newTsFileResource.getTsFile().getName());
@@ -2487,10 +2496,7 @@ public class DataRegion implements IDataRegionForQuery {
           tsFileResourceToBeMoved = sequenceResource;
           tsFileManager.remove(tsFileResourceToBeMoved, true);
           FileMetrics.getInstance()
-              .deleteFile(
-                  new long[] {tsFileResourceToBeMoved.getTsFileSize()},
-                  true,
-                  Collections.singletonList(tsFileResourceToBeMoved.getTsFile().getName()));
+              .deleteTsFile(true, Collections.singletonList(tsFileResourceToBeMoved));
           break;
         }
       }
@@ -2502,10 +2508,7 @@ public class DataRegion implements IDataRegionForQuery {
             tsFileResourceToBeMoved = unsequenceResource;
             tsFileManager.remove(tsFileResourceToBeMoved, false);
             FileMetrics.getInstance()
-                .deleteFile(
-                    new long[] {tsFileResourceToBeMoved.getTsFileSize()},
-                    false,
-                    Collections.singletonList(tsFileResourceToBeMoved.getTsFile().getName()));
+                .deleteTsFile(false, Collections.singletonList(tsFileResourceToBeMoved));
             break;
           }
         }
@@ -2924,6 +2927,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (!deleted) {
         deletedCondition.await();
       }
+      FileMetrics.getInstance().deleteRegion(databaseName, dataRegionId);
     } catch (InterruptedException e) {
       logger.error("Interrupted When waiting for data region deleted.");
       Thread.currentThread().interrupt();
