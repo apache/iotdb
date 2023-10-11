@@ -47,7 +47,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
   protected int currentChildIndex = 0;
 
   /** Indicate whether we found an empty child input in one loop */
-  protected boolean hasEmptyChild = false;
+  protected boolean hasEmptyChildInput = false;
 
   protected AbstractConsumeAllOperator(OperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
@@ -91,7 +91,6 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
    * @throws Exception errors happened while getting tsblock from children
    */
   protected boolean prepareInput() throws Exception {
-
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
@@ -113,7 +112,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
           // the data that is not empty, but this will cause the execution time of the while loop
           // to be uncontrollable and may exceed all allocated time slice
           if (isEmpty(currentChildIndex)) {
-            hasEmptyChild = true;
+            hasEmptyChildInput = true;
           } else {
             processCurrentInputTsBlock(currentChildIndex);
           }
@@ -121,7 +120,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
           handleFinishedChild(currentChildIndex);
         }
       } else {
-        hasEmptyChild = true;
+        hasEmptyChildInput = true;
       }
       currentChildIndex++;
     }
@@ -129,10 +128,13 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
     if (currentChildIndex == inputOperatorsCount) {
       // start a new loop
       currentChildIndex = 0;
-      if (!hasEmptyChild) {
+      if (!hasEmptyChildInput) {
+        // all children are ready now
         return true;
       } else {
-        hasEmptyChild = false;
+        // In a new loop, previously empty child input could be non-empty now, and we can skip the
+        // children that have generated input
+        hasEmptyChildInput = false;
       }
     }
     return false;
@@ -176,8 +178,9 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
         child.close();
       }
     }
-    children.clear();
+
     // friendly for gc
+    children.clear();
     inputTsBlocks = null;
   }
 
