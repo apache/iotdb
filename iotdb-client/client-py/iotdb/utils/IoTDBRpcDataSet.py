@@ -236,7 +236,9 @@ class IoTDBRpcDataSet(object):
         return self.has_cached_data_frame
 
     def _has_next_result_set(self):
-        if self.has_cached_result():
+        if (self.__query_data_set is not None) and (
+            len(self.__query_data_set.time) != 0
+        ):
             return True
         if self.__empty_resultSet:
             return False

@@ -16,9 +16,6 @@
 # under the License.
 #
 import logging
-import struct
-
-from numpy import float32
 
 from iotdb.utils.Field import Field
 
