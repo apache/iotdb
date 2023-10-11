@@ -284,6 +284,9 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SingleDeviceViewOperator singleDeviceViewOperator2 =
           new SingleDeviceViewOperator(
               driverContext.getOperatorContexts().get(7),
@@ -310,6 +313,10 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SingleDeviceViewOperator singleDeviceViewOperator3 =
           new SingleDeviceViewOperator(
               driverContext.getOperatorContexts().get(9),
@@ -720,6 +727,9 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       RowBasedTimeJoinOperator timeJoinOperator2 =
           new RowBasedTimeJoinOperator(
@@ -739,6 +749,9 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       RowBasedTimeJoinOperator timeJoinOperator3 =
           new RowBasedTimeJoinOperator(
@@ -758,6 +771,10 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SingleDeviceViewOperator singleDeviceViewOperator1 =
           new SingleDeviceViewOperator(
               driverContext.getOperatorContexts().get(10),
@@ -1190,6 +1207,9 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       RowBasedTimeJoinOperator timeJoinOperator2 =
           new RowBasedTimeJoinOperator(
@@ -1209,6 +1229,9 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       RowBasedTimeJoinOperator timeJoinOperator3 =
           new RowBasedTimeJoinOperator(
@@ -1228,6 +1251,9 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       List<String> devices = new ArrayList<>(Arrays.asList(DEVICE0, DEVICE1, DEVICE2, DEVICE3));
       if (deviceOrdering == Ordering.DESC) Collections.reverse(devices);
