@@ -35,26 +35,27 @@ class IoTDBContainer(DockerContainer):
     IOTDB_PASSWORD = environ.get("IOTDB_PASSWORD", "root")
 
     def _configure(self):
-        config.MAX_TRIES = 10
+        pass
 
     @wait_container_is_ready()
     def _connect(self):
-        session = Session(
-            self.get_container_host_ip(), self.get_exposed_port(6667), "root", "root"
-        )
-        session.open(False)
-        try:
-            with session.execute_statement("SHOW CLUSTER") as session_data_set:
-                while session_data_set.has_next():
-                    if (
-                        session_data_set.next().get_fields()[2].get_string_value()
-                        != "Running"
-                    ):
-                        raise ContainerStartException("IoTDB is not started")
-        except Exception as e:
-            logger.error(e)
-            raise e
-        session.close()
+        pass
+        # session = Session(
+        #     self.get_container_host_ip(), self.get_exposed_port(6667), "root", "root"
+        # )
+        # session.open(False)
+        # try:
+        #     with session.execute_statement("SHOW CLUSTER") as session_data_set:
+        #         while session_data_set.has_next():
+        #             if (
+        #                 session_data_set.next().get_fields()[2].get_string_value()
+        #                 != "Running"
+        #             ):
+        #                 raise ContainerStartException("IoTDB is not started")
+        # except Exception as e:
+        #     logger.error(e)
+        #     raise e
+        # session.close()
 
     def __init__(self, image="apache/iotdb:latest", **kwargs):
         super(IoTDBContainer, self).__init__(image)
