@@ -77,6 +77,7 @@ public class LocalTsFileOutput extends OutputStream implements TsFileOutput {
 
   @Override
   public void close() throws IOException {
+    force();
     bufferedStream.close();
     outputStream.close();
   }
@@ -96,5 +97,11 @@ public class LocalTsFileOutput extends OutputStream implements TsFileOutput {
     bufferedStream.flush();
     outputStream.getChannel().truncate(size);
     position = outputStream.getChannel().position();
+  }
+
+  @Override
+  public void force() throws IOException {
+    bufferedStream.flush();
+    outputStream.getFD().sync();
   }
 }
