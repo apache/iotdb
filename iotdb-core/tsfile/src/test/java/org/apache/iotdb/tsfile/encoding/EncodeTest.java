@@ -25,9 +25,10 @@ import java.util.ArrayList;
 public class EncodeTest {
 
   public static void main(@NotNull String[] args) throws IOException {
-    String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
+    //String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
+    String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
     String output_parent_dir = parent_dir + "vldb/compression_ratio/sota_ratio";
-    String input_parent_dir = parent_dir + "iotdb_test_small/";
+    String input_parent_dir = parent_dir + "origin_data/";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<String> dataset_name = new ArrayList<>();
@@ -196,6 +197,9 @@ public class EncodeTest {
           while (loader.readRecord()) {
             String v = loader.getValues()[index];
             data.add(v);
+            if (!v.matches("-?\\d+")){
+              dataTypeName = "float";
+            }
           }
           //        System.out.println(max_precision);
           inputStream.close();
@@ -498,6 +502,7 @@ public class EncodeTest {
               }
             case "float":
               {
+                System.out.println("get float");
                 TSDataType dataType = TSDataType.FLOAT;
                 ArrayList<Float> tmp = new ArrayList<>();
                 data.removeIf(String::isEmpty);
