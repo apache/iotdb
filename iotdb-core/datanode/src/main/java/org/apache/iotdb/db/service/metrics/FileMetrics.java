@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.service.metrics;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.service.metrics.file.CompactionFileMetrics;
 import org.apache.iotdb.db.service.metrics.file.ModsFileMetrics;
 import org.apache.iotdb.db.service.metrics.file.SystemRelatedFileMetrics;
@@ -103,10 +102,5 @@ public class FileMetrics implements IMetricSet {
 
   public static FileMetrics getInstance() {
     return FileMetricsInstanceHolder.INSTANCE;
-  }
-
-  @TestOnly
-  public long getFileCount(boolean seq) {
-    return TS_FILE_METRICS.getFileCount(seq);
   }
 }
