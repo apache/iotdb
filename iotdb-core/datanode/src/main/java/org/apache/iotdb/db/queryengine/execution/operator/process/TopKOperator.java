@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.commons.exception.runtime.UnSupportedDataTypeException;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
@@ -175,25 +176,31 @@ public class TopKOperator extends AbstractConsumeAllOperator {
     }
 
     finished = true;
-    return getResultFromMaxHeap(mergeSortHeap, tsBlockBuilder);
+    return getResultFromMaxHeap(mergeSortHeap);
   }
 
   @Override
   public long calculateMaxPeekMemory() {
-    return 0;
+    // traverse each child serial,
+    // so no need to accumulate the returnSize and retainedSize of each child
+    long maxPeekMemory = calculateMaxReturnSize();
+    for (Operator operator : children) {
+      maxPeekMemory = Math.max(maxPeekMemory, operator.calculateMaxPeekMemory());
+    }
+    return Math.max(maxPeekMemory, topValue * getMemoryUsageOfOneMergeSortKey());
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return (1L + dataTypes.size()) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    return TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0;
+    return (topValue - resultReturnSize) * getMemoryUsageOfOneMergeSortKey();
   }
 
-  private TsBlock getResultFromMaxHeap(MergeSortHeap mergeSortHeap, TsBlockBuilder tsBlockBuilder) {
+  private TsBlock getResultFromMaxHeap(MergeSortHeap mergeSortHeap) {
     int cnt = mergeSortHeap.getHeapSize();
     topKResult = new MergeSortKey[cnt];
     while (!mergeSortHeap.isEmpty()) {
@@ -206,15 +213,16 @@ public class TopKOperator extends AbstractConsumeAllOperator {
   private TsBlock getResultFromCachedTopKResult() {
     tsBlockBuilder.reset();
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    for (MergeSortKey mergeSortKey : topKResult) {
+    for (int i = resultReturnSize; i < topKResult.length; i++) {
+      MergeSortKey mergeSortKey = topKResult[i];
       TsBlock targetBlock = mergeSortKey.tsBlock;
       tsBlockBuilder.getTimeColumnBuilder().writeLong(targetBlock.getTimeByIndex(0));
-      for (int i = 0; i < valueColumnBuilders.length; i++) {
-        if (targetBlock.getColumn(i).isNull(0)) {
-          valueColumnBuilders[i].appendNull();
+      for (int j = 0; j < valueColumnBuilders.length; j++) {
+        if (targetBlock.getColumn(j).isNull(0)) {
+          valueColumnBuilders[j].appendNull();
           continue;
         }
-        valueColumnBuilders[i].write(targetBlock.getColumn(i), 0);
+        valueColumnBuilders[j].write(targetBlock.getColumn(j), 0);
       }
       resultReturnSize += 1;
       tsBlockBuilder.declarePosition();
@@ -242,5 +250,31 @@ public class TopKOperator extends AbstractConsumeAllOperator {
     resultTsBlockBuilder.declarePosition();
 
     return resultTsBlockBuilder.build();
+  }
+
+  private long getMemoryUsageOfOneMergeSortKey() {
+    long memory = 0;
+    for (TSDataType dataType : dataTypes) {
+      switch (dataType) {
+        case BOOLEAN:
+          memory += 1;
+          break;
+        case INT32:
+        case FLOAT:
+          memory += 4;
+          break;
+        case INT64:
+        case DOUBLE:
+        case VECTOR:
+          memory += 8;
+          break;
+        case TEXT:
+          memory += 16;
+          break;
+        default:
+          throw new UnSupportedDataTypeException("Unknown datatype: " + dataType);
+      }
+    }
+    return memory;
   }
 }
