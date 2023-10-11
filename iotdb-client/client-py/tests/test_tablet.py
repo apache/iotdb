@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
+import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
@@ -55,14 +55,16 @@ def test_tablet_insertion():
         columns = []
         for measurement in measurements_:
             columns.append("root.sg_test_01.d_01." + measurement)
-        df_input = pd.DataFrame(values_, None, columns)
-        df_input.insert(0, "Time", timestamps_)
+        df_input = pd.DataFrame(values_, columns=columns, dtype=object)
+        df_input.insert(0, "Time", np.array(timestamps_))
 
         session_data_set = session.execute_query_statement(
             "select s_01, s_02, s_03, s_04, s_05, s_06 from root.sg_test_01.d_01"
         )
         df_output = session_data_set.todf()
-        df_output = df_output[df_input.columns.tolist()]
+        df_output = df_output[df_input.columns.tolist()].replace(
+            {pd.NA: None, np.nan: None}
+        )
 
         session.close()
     assert_frame_equal(df_input, df_output, False)
@@ -98,8 +100,8 @@ def test_nullable_tablet_insertion():
         columns = []
         for measurement in measurements_:
             columns.append("root.sg_test_01.d_01." + measurement)
-        df_input = pd.DataFrame(values_, None, columns)
-        df_input.insert(0, "Time", timestamps_)
+        df_input = pd.DataFrame(values_, columns=columns)
+        df_input.insert(0, "Time", np.array(timestamps_))
 
         session_data_set = session.execute_query_statement(
             "select s_01, s_02, s_03, s_04, s_05, s_06 from root.sg_test_01.d_01"
