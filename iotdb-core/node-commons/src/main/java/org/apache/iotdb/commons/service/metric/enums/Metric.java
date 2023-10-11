@@ -93,7 +93,11 @@ public enum Metric {
   LOCAL_EXECUTION_PLANNER("local_execution_planner"),
   // file related
   FILE_SIZE("file_size"),
-  FILE_COUNT("file_count");
+  FILE_COUNT("file_count"),
+  // pipe related
+  TABLET_INSERTION_EVENT_COUNT("tablet_insertion_event_count"),
+  TS_FILE_INSERTION_EVENT_COUNT("ts_file_insertion_event_count"),
+  ;
 
   final String value;
 

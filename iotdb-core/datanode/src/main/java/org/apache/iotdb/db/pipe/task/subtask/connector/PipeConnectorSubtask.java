@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
+import org.apache.iotdb.db.pipe.metric.PipeConnectorSubtaskMetrics;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.DecoratingLock;
@@ -58,6 +59,18 @@ public class PipeConnectorSubtask extends PipeSubtask {
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
   protected ExecutorService subtaskCallbackListeningExecutor;
 
+  private Long tabletInsertionEventCount = 0L;
+
+  private Long tsFileInsertionEventCount = 0L;
+
+  public Long getTabletInsertionEventCount() {
+    return tabletInsertionEventCount;
+  }
+
+  public Long getTsFileInsertionEventCount() {
+    return tsFileInsertionEventCount;
+  }
+
   public PipeConnectorSubtask(
       String taskID,
       BoundedBlockingPendingQueue<Event> inputPendingQueue,
@@ -65,6 +78,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
     super(taskID);
     this.inputPendingQueue = inputPendingQueue;
     this.outputPipeConnector = outputPipeConnector;
+    PipeConnectorSubtaskMetrics.getInstance().register(this);
   }
 
   @Override
@@ -104,8 +118,10 @@ public class PipeConnectorSubtask extends PipeSubtask {
     try {
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
+        tabletInsertionEventCount++;
       } else if (event instanceof TsFileInsertionEvent) {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
+        tsFileInsertionEventCount++;
       } else if (event instanceof PipeHeartbeatEvent) {
         try {
           outputPipeConnector.heartbeat();
@@ -253,6 +269,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   @Override
   public void close() {
+    PipeConnectorSubtaskMetrics.getInstance().deregister(taskID);
     isClosed.set(true);
     try {
       outputPipeConnector.close();
