@@ -51,6 +51,13 @@
             <url>scm:git:https://gitbox.apache.org/repos/asf/iotdb-website.git</url>
         </site>
     </distributionManagement>
+    <!-- TODO: Remove this after releasing the artifacts -->
+    <repositories>
+        <repository>
+            <id>iotdb-tools-thrift-staging-repo</id>
+            <url>https://repository.apache.org/content/repositories/orgapacheiotdb-1132/</url>
+        </repository>
+    </repositories>
     <issueManagement>
         <system>Jira</system>
         <url>https://issues.apache.org/jira/browse/iotdb</url>
@@ -112,9 +119,9 @@
             All versions between 0.17.0 and 0.14.1 have know vulnerabilities, so for now
             we'll stay at 0.14.1.
         -->
-        <thrift.version>0.14.1</thrift.version>
+        <thrift.version>0.19.0</thrift.version>
         <!-- This is the version of the thrift binary -->
-        <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
+        <iotdb-tools-thrift.version>0.19.0.0</iotdb-tools-thrift.version>
         <airline.version>0.8</airline.version>
         <jackson.version>2.13.5</jackson.version>
         <disrupter.version>3.4.2</disrupter.version>
