@@ -333,8 +333,11 @@ public class TsFileIOWriter implements AutoCloseable {
     // write magic string
     out.write(MAGIC_STRING_BYTES);
 
+    // flush page cache data to disk
+    out.force();
     // close file
     out.close();
+
     if (resourceLogger.isDebugEnabled() && file != null) {
       resourceLogger.debug("{} writer is closed.", file.getName());
     }
