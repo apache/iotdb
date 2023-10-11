@@ -23,6 +23,7 @@ from testcontainers.core.container import DockerContainer
 from testcontainers.core.exceptions import ContainerStartException
 from testcontainers.core.utils import setup_logger
 from testcontainers.core.waiting_utils import wait_container_is_ready
+from testcontainers.core import config
 
 from iotdb.Session import Session
 
@@ -34,7 +35,7 @@ class IoTDBContainer(DockerContainer):
     IOTDB_PASSWORD = environ.get("IOTDB_PASSWORD", "root")
 
     def _configure(self):
-        pass
+        config.MAX_TRIES = 10
 
     @wait_container_is_ready()
     def _connect(self):
