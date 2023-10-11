@@ -148,18 +148,15 @@ class IoTDBRpcDataSet(object):
         )
         if time_array.dtype.byteorder == ">":
             time_array = time_array.byteswap().newbyteorder("<")
-        if self.ignore_timestamp is None or self.ignore_timestamp is False:
-            result[0] = time_array
+        result[0] = time_array
 
         self.__query_data_set.time = None
         total_length = len(time_array)
         for i in range(len(self.__query_data_set.bitmapList)):
             if self.ignore_timestamp is True:
                 column_name = self.get_column_names()[i]
-                column_index_in_result = i
             else:
                 column_name = self.get_column_names()[i + 1]
-                column_index_in_result = i + 1
 
             location = (
                 self.column_ordinal_dict[column_name] - IoTDBRpcDataSet.START_INDEX
@@ -230,7 +227,7 @@ class IoTDBRpcDataSet(object):
                     tmp_array = pd.Series(tmp_array, dtype="boolean")
                 data_array = tmp_array
 
-            result[column_index_in_result] = data_array
+            result[i + 1] = data_array
         self.has_cached_data_frame = True
         self.data_frame = pd.DataFrame(result, dtype=object)
 
