@@ -54,8 +54,8 @@ public class CompactionUpdateFileCountTest extends AbstractCompactionTest {
   public void testSeqSpaceCompactionFileMetric()
       throws MetadataException, IOException, WriteProcessException {
     registerTimeseriesInMManger(2, 3, false);
-    long initSeqFileNum = FileMetrics.getInstance().getFileNum(true);
-    long initUnSeqFileNum = FileMetrics.getInstance().getFileNum(false);
+    long initSeqFileNum = FileMetrics.getInstance().getFileCount(true);
+    long initUnSeqFileNum = FileMetrics.getInstance().getFileCount(false);
     createFiles(1, 2, 3, 100, 1, 0, 50, 0, false, true);
     createFiles(1, 2, 3, 50, 20, 30000, 50, 50, false, true);
     tsFileManager.addAll(seqResources, true);
@@ -69,16 +69,16 @@ public class CompactionUpdateFileCountTest extends AbstractCompactionTest {
             new AtomicInteger(),
             0);
     Assert.assertTrue(task.start());
-    Assert.assertEquals(initSeqFileNum - 1, FileMetrics.getInstance().getFileNum(true));
-    Assert.assertEquals(initUnSeqFileNum, FileMetrics.getInstance().getFileNum(false));
+    Assert.assertEquals(initSeqFileNum - 1, FileMetrics.getInstance().getFileCount(true));
+    Assert.assertEquals(initUnSeqFileNum, FileMetrics.getInstance().getFileCount(false));
   }
 
   @Test
   public void testUnSeqSpaceCompactionFileMetric()
       throws MetadataException, IOException, WriteProcessException {
     registerTimeseriesInMManger(2, 3, false);
-    long initSeqFileNum = FileMetrics.getInstance().getFileNum(true);
-    long initUnSeqFileNum = FileMetrics.getInstance().getFileNum(false);
+    long initSeqFileNum = FileMetrics.getInstance().getFileCount(true);
+    long initUnSeqFileNum = FileMetrics.getInstance().getFileCount(false);
     createFiles(1, 2, 3, 100, 1, 0, 50, 0, false, false);
     createFiles(1, 2, 3, 50, 20, 10000, 50, 50, false, false);
     tsFileManager.addAll(unseqResources, false);
@@ -92,16 +92,16 @@ public class CompactionUpdateFileCountTest extends AbstractCompactionTest {
             new AtomicInteger(),
             0);
     Assert.assertTrue(task.start());
-    Assert.assertEquals(initSeqFileNum, FileMetrics.getInstance().getFileNum(true));
-    Assert.assertEquals(initUnSeqFileNum - 1, FileMetrics.getInstance().getFileNum(false));
+    Assert.assertEquals(initSeqFileNum, FileMetrics.getInstance().getFileCount(true));
+    Assert.assertEquals(initUnSeqFileNum - 1, FileMetrics.getInstance().getFileCount(false));
   }
 
   @Test
   public void testCrossSpaceCompactionFileMetric()
       throws MetadataException, IOException, WriteProcessException {
     registerTimeseriesInMManger(2, 3, false);
-    long initSeqFileNum = FileMetrics.getInstance().getFileNum(true);
-    long initUnSeqFileNum = FileMetrics.getInstance().getFileNum(false);
+    long initSeqFileNum = FileMetrics.getInstance().getFileCount(true);
+    long initUnSeqFileNum = FileMetrics.getInstance().getFileCount(false);
     createFiles(1, 2, 3, 100, 1, 0, 50, 0, false, true);
     createFiles(3, 2, 3, 50, 20, 10000, 50, 50, false, false);
     tsFileManager.addAll(seqResources, true);
@@ -117,7 +117,7 @@ public class CompactionUpdateFileCountTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
-    Assert.assertEquals(initSeqFileNum, FileMetrics.getInstance().getFileNum(true));
-    Assert.assertEquals(initUnSeqFileNum - 3, FileMetrics.getInstance().getFileNum(false));
+    Assert.assertEquals(initSeqFileNum, FileMetrics.getInstance().getFileCount(true));
+    Assert.assertEquals(initUnSeqFileNum - 3, FileMetrics.getInstance().getFileCount(false));
   }
 }
