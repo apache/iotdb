@@ -24,7 +24,7 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>1.2.2</version>
+        <version>1.2.3-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>integration-test</artifactId>
@@ -36,9 +36,9 @@
         <integrationTest.launchNodeInSameJVM>true</integrationTest.launchNodeInSameJVM>
         <integrationTest.nodeMaxHeapSize>200m</integrationTest.nodeMaxHeapSize>
         <integrationTest.nodeNewHeapSize>200m</integrationTest.nodeNewHeapSize>
-        <integrationTest.testEnv/>
-        <integrationTest.excludedGroups/>
-        <integrationTest.includedGroups/>
+        <integrationTest.testEnv />
+        <integrationTest.excludedGroups />
+        <integrationTest.includedGroups />
         <!-- -DClusterConfigurations values configured here -->
         <lightWeightStandaloneMode.configNodeNumber>1</lightWeightStandaloneMode.configNodeNumber>
         <lightWeightStandaloneMode.dataNodeNumber>1</lightWeightStandaloneMode.dataNodeNumber>
@@ -494,7 +494,7 @@
             <id>SimpleIT</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneIT</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups />
                 <integrationTest.testEnv>Simple</integrationTest.testEnv>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
@@ -509,7 +509,7 @@
             <id>RemoteIT</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.RemoteIT</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups />
                 <integrationTest.testEnv>Remote</integrationTest.testEnv>
             </properties>
             <activation>
@@ -520,7 +520,7 @@
             <id>MultiClusterIT</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1,org.apache.iotdb.itbase.category.MultiClusterIT2,org.apache.iotdb.itbase.category.MultiClusterIT3</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups />
                 <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -534,7 +534,7 @@
             <id>MultiClusterIT1</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups />
                 <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -548,7 +548,7 @@
             <id>MultiClusterIT2</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups />
                 <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -562,7 +562,7 @@
             <id>MultiClusterIT3</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT3</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups />
                 <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -576,7 +576,7 @@
             <id>ClusterIT</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.ClusterIT</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
+                <integrationTest.excludedGroups />
                 <integrationTest.testEnv>Cluster1</integrationTest.testEnv>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
