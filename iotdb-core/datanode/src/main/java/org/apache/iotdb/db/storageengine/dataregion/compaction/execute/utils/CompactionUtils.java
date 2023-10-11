@@ -59,7 +59,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -452,9 +451,7 @@ public class CompactionUtils {
 
   public static void deleteSourceTsFileAndUpdateFileMetrics(
       List<TsFileResource> resources, boolean seq) {
-    long[] fileSizes = new long[resources.size()];
-    List<String> fileNames = new ArrayList<>(resources.size());
-    int removeSuccessFileNum = 0;
+    List<TsFileResource> removeResources = new ArrayList<>();
     for (TsFileResource resource : resources) {
       if (!resource.remove()) {
         logger.warn(
@@ -462,15 +459,10 @@ public class CompactionUtils {
             resource.getTsFile().getAbsolutePath());
       } else {
         logger.info("[Compaction] delete file: {}", resource.getTsFile().getAbsolutePath());
-        fileSizes[removeSuccessFileNum] = resource.getTsFileSize();
-        fileNames.add(resource.getTsFile().getName());
-        removeSuccessFileNum++;
+        removeResources.add(resource);
       }
     }
-    if (removeSuccessFileNum != 0) {
-      fileSizes = Arrays.copyOfRange(fileSizes, 0, removeSuccessFileNum);
-      FileMetrics.getInstance().deleteFile(fileSizes, seq, fileNames);
-    }
+    FileMetrics.getInstance().deleteTsFile(seq, resources);
   }
 
   public static boolean isDiskHasSpace() {

@@ -59,14 +59,21 @@ import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -80,11 +87,14 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
 
 public class MergeSortOperatorTest {
 
@@ -1543,14 +1553,14 @@ public class MergeSortOperatorTest {
               ImmutableList.of(TSDataType.INT64, TSDataType.INT32));
 
       Coordinator coordinator1 = Mockito.mock(Coordinator.class);
-      Mockito.when(coordinator1.getAllQueryExecutions())
+      when(coordinator1.getAllQueryExecutions())
           .thenReturn(
               ImmutableList.of(
                   new FakeQueryExecution(3, "20221229_000000_00003_1", "sql3_node1"),
                   new FakeQueryExecution(1, "20221229_000000_00001_1", "sql1_node1"),
                   new FakeQueryExecution(2, "20221229_000000_00002_1", "sql2_node1")));
       Coordinator coordinator2 = Mockito.mock(Coordinator.class);
-      Mockito.when(coordinator2.getAllQueryExecutions())
+      when(coordinator2.getAllQueryExecutions())
           .thenReturn(
               ImmutableList.of(
                   new FakeQueryExecution(3, "20221229_000000_00003_2", "sql3_node2"),
@@ -1614,6 +1624,139 @@ public class MergeSortOperatorTest {
     } finally {
       instanceNotificationExecutor.shutdown();
     }
+  }
+
+  @Mock Operator childOperator1 = Mockito.mock(Operator.class);
+  @Mock Operator childOperator2 = Mockito.mock(Operator.class);
+  @Mock ListenableFuture<?> listenableFuture = Mockito.mock(ListenableFuture.class);
+
+  private TsBlock[] constructOutput(long[] time) {
+    TsBlockBuilder tsBlockBuilder1 =
+        new TsBlockBuilder(3, Collections.singletonList(TSDataType.INT64));
+    TimeColumnBuilder timeColumnBuilder = tsBlockBuilder1.getTimeColumnBuilder();
+    ColumnBuilder[] columnBuilders = tsBlockBuilder1.getValueColumnBuilders();
+    for (int i = 0; i < time.length / 2; i++) {
+      timeColumnBuilder.writeLong(time[i]);
+      for (int j = 0; j < columnBuilders.length; j++) {
+        columnBuilders[j].writeLong(time[i]);
+      }
+      tsBlockBuilder1.declarePosition();
+    }
+    TsBlock tsBlock1 = tsBlockBuilder1.build();
+    TsBlockBuilder tsBlockBuilder2 =
+        new TsBlockBuilder(3, Collections.singletonList(TSDataType.INT64));
+    timeColumnBuilder = tsBlockBuilder2.getTimeColumnBuilder();
+    ColumnBuilder[] columnBuilders2 = tsBlockBuilder2.getValueColumnBuilders();
+    for (int i = time.length / 2; i < time.length; i++) {
+      timeColumnBuilder.writeLong(time[i]);
+      for (int j = 0; j < columnBuilders2.length; j++) {
+        columnBuilders2[j].writeLong(time[i]);
+      }
+      tsBlockBuilder2.declarePosition();
+    }
+    TsBlock tsBlock2 = tsBlockBuilder2.build();
+    return new TsBlock[] {tsBlock1, tsBlock2};
+  }
+
+  @Test
+  public void mergeSortTest() throws Exception {
+    AtomicInteger count1 = new AtomicInteger(0);
+    AtomicInteger count2 = new AtomicInteger(0);
+    long[] time1 = new long[] {1, 2, 3, 4, 5, 6};
+    long[] time2 = new long[] {3, 3, 6, 7, 8, 9};
+    long[] ans = new long[] {1, 2, 3, 3, 3, 4, 5, 6, 6, 7, 8, 9};
+
+    TsBlock[] tsBlocks1 = constructOutput(time1);
+    TsBlock[] tsBlocks2 = constructOutput(time2);
+
+    ListenableFuture<Boolean> mockFuture = Mockito.mock(ListenableFuture.class);
+    doReturn(mockFuture).when(childOperator1).isBlocked();
+    doReturn(mockFuture).when(childOperator2).isBlocked();
+    when(mockFuture.isDone()).thenReturn(true);
+    when(childOperator1.nextWithTimer())
+        .thenAnswer(
+            new Answer<TsBlock>() {
+              @Override
+              public TsBlock answer(InvocationOnMock invocationOnMock) throws Throwable {
+                int count = count1.getAndIncrement();
+                if (count == 0) {
+                  return tsBlocks1[0];
+                } else if (count == 1) {
+                  return tsBlocks1[1];
+                } else {
+                  return null;
+                }
+              }
+            });
+    when(childOperator2.nextWithTimer())
+        .thenAnswer(
+            new Answer<TsBlock>() {
+              @Override
+              public TsBlock answer(InvocationOnMock invocationOnMock) throws Throwable {
+                int count = count2.getAndIncrement();
+                if (count == 0) {
+                  return tsBlocks2[0];
+                } else if (count == 1) {
+                  return tsBlocks2[1];
+                } else {
+                  return null;
+                }
+              }
+            });
+
+    when(childOperator1.hasNextWithTimer())
+        .thenAnswer(
+            new Answer<Boolean>() {
+              @Override
+              public Boolean answer(InvocationOnMock invocationOnMock) throws Throwable {
+                int count = count1.get();
+                return count < 2;
+              }
+            });
+
+    when(childOperator2.hasNextWithTimer())
+        .thenAnswer(
+            new Answer<Boolean>() {
+              @Override
+              public Boolean answer(InvocationOnMock invocationOnMock) throws Throwable {
+                int count = count2.get();
+                return count < 2;
+              }
+            });
+
+    QueryId queryId = new QueryId("stub_query");
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+    PlanNodeId planNodeId1 = new PlanNodeId("1");
+    driverContext.addOperatorContext(1, planNodeId1, MergeSortOperator.class.getSimpleName());
+
+    MergeSortOperator mergeSortOperator =
+        new MergeSortOperator(
+            driverContext.getOperatorContexts().get(0),
+            Arrays.asList(childOperator1, childOperator2),
+            Collections.singletonList(TSDataType.INT64),
+            MergeSortComparator.getComparator(
+                Collections.singletonList(new SortItem(OrderByKey.TIME, Ordering.ASC)),
+                Collections.singletonList(-1),
+                Collections.singletonList(TSDataType.INT64)));
+    mergeSortOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
+    int index = 0;
+    while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
+      TsBlock result = mergeSortOperator.next();
+      for (int i = 0; i < result.getPositionCount(); i++) {
+        long time = result.getTimeByIndex(i);
+        assertEquals(time, ans[index++]);
+      }
+    }
+    assertEquals(index, ans.length);
   }
 
   static class FakeQueryExecution implements IQueryExecution {
