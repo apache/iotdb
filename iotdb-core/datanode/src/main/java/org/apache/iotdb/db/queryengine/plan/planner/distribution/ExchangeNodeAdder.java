@@ -310,7 +310,6 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       context.putNodeDistribution(
           newNode.getPlanNodeId(), new NodeDistribution(distributionType, dataRegion));
     } else {
-      // TODO For align by time, we keep old logic for now
       dataRegion = calculateDataRegionByChildren(visitedChildren, context);
       context.putNodeDistribution(
           newNode.getPlanNodeId(), new NodeDistribution(distributionType, dataRegion));
@@ -446,22 +445,24 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       return groupByRegion.keySet().iterator().next();
     }
 
-    // Step 2: return the RegionReplicaSet with max count
-    long maxRegionCount = -1;
+    // Step 2: return the RegionReplicaSet with max node count
+    long maxCount = -1;
     TRegionReplicaSet result = null;
     for (Map.Entry<TRegionReplicaSet, Long> entry : groupByRegion.entrySet()) {
-      if (DataPartition.NOT_ASSIGNED.equals(entry.getKey())) {
+      TRegionReplicaSet region = entry.getKey();
+      long planNodeCount = entry.getValue();
+      if (DataPartition.NOT_ASSIGNED.equals(region)) {
         continue;
       }
-      if (entry.getKey().equals(context.getMostlyUsedDataRegion())) {
-        return entry.getKey();
+      if (region.equals(context.getMostlyUsedDataRegion())) {
+        return region;
       }
-      if (entry.getValue() > maxRegionCount) {
-        maxRegionCount = entry.getValue();
-        result = entry.getKey();
+      if (planNodeCount > maxCount) {
+        maxCount = planNodeCount;
+        result = region;
       }
     }
-    return result;
+    return result == null ? context.getMostlyUsedDataRegion() : result;
   }
 
   private TRegionReplicaSet calculateSchemaRegionByChildren(

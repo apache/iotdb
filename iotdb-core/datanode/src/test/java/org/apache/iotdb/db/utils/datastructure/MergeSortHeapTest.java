@@ -40,6 +40,48 @@ public class MergeSortHeapTest {
 
   @Test
   public void minHeapTest() {
+    String device0 = "device_0";
+    String device1 = "device_1";
+    TsBlockBuilder inputBuilder1 =
+        new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
+    inputBuilder1.getTimeColumnBuilder().writeLong(2);
+    inputBuilder1.getColumnBuilder(0).writeBinary(new Binary(device0));
+    inputBuilder1.getColumnBuilder(1).writeInt(20);
+    inputBuilder1.declarePosition();
+    inputBuilder1.getTimeColumnBuilder().writeLong(4);
+    inputBuilder1.getColumnBuilder(0).writeBinary(new Binary(device0));
+    inputBuilder1.getColumnBuilder(1).writeInt(40);
+    inputBuilder1.declarePosition();
+    inputBuilder1.getTimeColumnBuilder().writeLong(5);
+    inputBuilder1.getColumnBuilder(0).writeBinary(new Binary(device0));
+    inputBuilder1.getColumnBuilder(1).appendNull();
+    inputBuilder1.declarePosition();
+    inputBuilder1.getTimeColumnBuilder().writeLong(6);
+    inputBuilder1.getColumnBuilder(0).writeBinary(new Binary(device0));
+    inputBuilder1.getColumnBuilder(1).writeInt(60);
+    inputBuilder1.declarePosition();
+
+    TsBlockBuilder inputBuilder2 =
+        new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
+    inputBuilder2.getTimeColumnBuilder().writeLong(1);
+    inputBuilder2.getColumnBuilder(0).writeBinary(new Binary(device1));
+    inputBuilder2.getColumnBuilder(1).writeInt(10);
+    inputBuilder2.declarePosition();
+    inputBuilder2.getTimeColumnBuilder().writeLong(3);
+    inputBuilder2.getColumnBuilder(0).writeBinary(new Binary(device1));
+    inputBuilder2.getColumnBuilder(1).writeInt(30);
+    inputBuilder2.declarePosition();
+    inputBuilder2.getTimeColumnBuilder().writeLong(7);
+    inputBuilder2.getColumnBuilder(0).writeBinary(new Binary(device1));
+    inputBuilder2.getColumnBuilder(1).appendNull();
+    inputBuilder2.declarePosition();
+    inputBuilder2.getTimeColumnBuilder().writeLong(8);
+    inputBuilder2.getColumnBuilder(0).writeBinary(new Binary(device1));
+    inputBuilder2.getColumnBuilder(1).writeInt(80);
+    inputBuilder2.declarePosition();
+
+    TsBlock tsBlock1 = inputBuilder1.build();
+    TsBlock tsBlock2 = inputBuilder2.build();
     Comparator<SortKey> comparator =
         MergeSortComparator.getComparator(
             Arrays.asList(
@@ -48,57 +90,15 @@ public class MergeSortHeapTest {
             Arrays.asList(-1, 0),
             Arrays.asList(TSDataType.INT64, TSDataType.TEXT));
     MergeSortHeap minHeap = new MergeSortHeap(2, comparator);
-    String DEVICE_0 = "device_0";
-    String DEVICE_1 = "device_1";
-
-    TsBlockBuilder inputBuilder =
-        new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
-    inputBuilder.getTimeColumnBuilder().writeLong(2);
-    inputBuilder.getColumnBuilder(0).writeBinary(new Binary(DEVICE_0));
-    inputBuilder.getColumnBuilder(1).writeInt(20);
-    inputBuilder.declarePosition();
-    inputBuilder.getTimeColumnBuilder().writeLong(4);
-    inputBuilder.getColumnBuilder(0).writeBinary(new Binary(DEVICE_0));
-    inputBuilder.getColumnBuilder(1).writeInt(40);
-    inputBuilder.declarePosition();
-    inputBuilder.getTimeColumnBuilder().writeLong(5);
-    inputBuilder.getColumnBuilder(0).writeBinary(new Binary(DEVICE_0));
-    inputBuilder.getColumnBuilder(1).appendNull();
-    inputBuilder.declarePosition();
-    inputBuilder.getTimeColumnBuilder().writeLong(6);
-    inputBuilder.getColumnBuilder(0).writeBinary(new Binary(DEVICE_0));
-    inputBuilder.getColumnBuilder(1).writeInt(60);
-    inputBuilder.declarePosition();
-    TsBlock tsBlock1 = inputBuilder.build();
-
-    inputBuilder.reset();
-    inputBuilder.getTimeColumnBuilder().writeLong(1);
-    inputBuilder.getColumnBuilder(0).writeBinary(new Binary(DEVICE_1));
-    inputBuilder.getColumnBuilder(1).writeInt(10);
-    inputBuilder.declarePosition();
-    inputBuilder.getTimeColumnBuilder().writeLong(3);
-    inputBuilder.getColumnBuilder(0).writeBinary(new Binary(DEVICE_1));
-    inputBuilder.getColumnBuilder(1).writeInt(30);
-    inputBuilder.declarePosition();
-    inputBuilder.getTimeColumnBuilder().writeLong(7);
-    inputBuilder.getColumnBuilder(0).writeBinary(new Binary(DEVICE_1));
-    inputBuilder.getColumnBuilder(1).appendNull();
-    inputBuilder.declarePosition();
-    inputBuilder.getTimeColumnBuilder().writeLong(8);
-    inputBuilder.getColumnBuilder(0).writeBinary(new Binary(DEVICE_1));
-    inputBuilder.getColumnBuilder(1).writeInt(80);
-    inputBuilder.declarePosition();
-    TsBlock tsBlock2 = inputBuilder.build();
-
-    minHeap.push(new MergeSortKey(tsBlock1, 0));
-    minHeap.push(new MergeSortKey(tsBlock2, 0));
+    minHeap.push(new MergeSortKey(inputBuilder1.build(), 0));
+    minHeap.push(new MergeSortKey(inputBuilder2.build(), 0));
 
     MergeSortKey k = minHeap.poll();
     assertEquals(1, k.tsBlock.getTimeByIndex(k.rowIndex));
-    assertEquals(DEVICE_1, k.tsBlock.getColumn(0).getBinary(k.rowIndex).toString());
+    assertEquals(device1, k.tsBlock.getColumn(0).getBinary(k.rowIndex).toString());
     k = minHeap.poll();
     assertEquals(2, k.tsBlock.getTimeByIndex(k.rowIndex));
-    assertEquals(DEVICE_0, k.tsBlock.getColumn(0).getBinary(k.rowIndex).toString());
+    assertEquals(device0, k.tsBlock.getColumn(0).getBinary(k.rowIndex).toString());
 
     MergeSortHeap maxHeap = new MergeSortHeap(2, comparator.reversed());
     maxHeap.push(new MergeSortKey(tsBlock1, 0));
@@ -108,9 +108,9 @@ public class MergeSortHeapTest {
 
     k = maxHeap.poll();
     assertEquals(2, k.tsBlock.getTimeByIndex(k.rowIndex));
-    assertEquals(DEVICE_0, k.tsBlock.getColumn(0).getBinary(k.rowIndex).toString());
+    assertEquals(device0, k.tsBlock.getColumn(0).getBinary(k.rowIndex).toString());
     k = maxHeap.poll();
     assertEquals(1, k.tsBlock.getTimeByIndex(k.rowIndex));
-    assertEquals(DEVICE_1, k.tsBlock.getColumn(0).getBinary(k.rowIndex).toString());
+    assertEquals(device1, k.tsBlock.getColumn(0).getBinary(k.rowIndex).toString());
   }
 }

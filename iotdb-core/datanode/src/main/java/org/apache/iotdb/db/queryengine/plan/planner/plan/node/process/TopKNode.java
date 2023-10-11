@@ -34,8 +34,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * TopNode is optimized for align by device query. The children of TopKNode are always
- * DeviceViewNode.
+ * TopNode is optimized for `order by time limit N align by device` query. The children of TopKNode
+ * are always DeviceViewNode.
  */
 public class TopKNode extends MultiChildProcessNode {
   private final long topValue;
