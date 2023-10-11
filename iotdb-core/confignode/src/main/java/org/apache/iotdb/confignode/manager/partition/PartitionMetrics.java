@@ -44,6 +44,8 @@ import java.util.Objects;
 public class PartitionMetrics implements IMetricSet {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionMetrics.class);
+  private static final String DATA = "data";
+  private static final String SCHEMA = "schema";
 
   private final IManager configManager;
 
@@ -277,16 +279,27 @@ public class PartitionMetrics implements IMetricSet {
   }
 
   private void bindDatabasePartitionMetrics(AbstractMetricService metricService) {
+    ClusterSchemaManager clusterSchemaManager = getClusterSchemaManager();
     // Count the number of Databases
     metricService.createAutoGauge(
         Metric.DATABASE_NUM.toString(),
         MetricLevel.CORE,
-        getClusterSchemaManager(),
-        clusterSchemaManager -> clusterSchemaManager.getDatabaseNames().size());
+        clusterSchemaManager,
+        c -> c.getDatabaseNames().size());
 
-    List<String> databases = getClusterSchemaManager().getDatabaseNames();
+    List<String> databases = clusterSchemaManager.getDatabaseNames();
     for (String database : databases) {
       bindDatabasePartitionMetrics(metricService, configManager, database);
+      try {
+        int dataReplicationFactor =
+            clusterSchemaManager.getReplicationFactor(database, TConsensusGroupType.DataRegion);
+        int schemaReplicationFactor =
+            clusterSchemaManager.getReplicationFactor(database, TConsensusGroupType.SchemaRegion);
+        bindDatabaseReplicationFactorMetrics(
+            metricService, database, dataReplicationFactor, schemaReplicationFactor);
+      } catch (DatabaseNotExistsException e) {
+        // ignore
+      }
     }
   }
 
@@ -331,6 +344,50 @@ public class PartitionMetrics implements IMetricSet {
     for (String database : databases) {
       unbindDatabasePartitionMetrics(metricService, database);
     }
+  }
+
+  public static void bindDatabaseReplicationFactorMetrics(
+      AbstractMetricService metricService,
+      String database,
+      int dataReplicationFactor,
+      int schemaReplicationFactor) {
+    metricService
+        .getOrCreateGauge(
+            Metric.REPLICATION_FACTOR.toString(),
+            MetricLevel.CORE,
+            Tag.TYPE.toString(),
+            DATA,
+            Tag.DATABASE.toString(),
+            database)
+        .set(dataReplicationFactor);
+    metricService
+        .getOrCreateGauge(
+            Metric.REPLICATION_FACTOR.toString(),
+            MetricLevel.CORE,
+            Tag.TYPE.toString(),
+            SCHEMA,
+            Tag.DATABASE.toString(),
+            database)
+        .set(schemaReplicationFactor);
+  }
+
+  public static void unbindDatabaseReplicationFactorMetrics(
+      AbstractMetricService metricService, String database) {
+    // Remove database replication factor metric
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.REPLICATION_FACTOR.toString(),
+        Tag.TYPE.toString(),
+        DATA,
+        Tag.DATABASE.toString(),
+        database);
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.REPLICATION_FACTOR.toString(),
+        Tag.TYPE.toString(),
+        SCHEMA,
+        Tag.DATABASE.toString(),
+        database);
   }
 
   private NodeManager getNodeManager() {

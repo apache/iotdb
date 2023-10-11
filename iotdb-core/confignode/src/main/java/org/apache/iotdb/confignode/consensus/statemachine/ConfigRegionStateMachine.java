@@ -233,6 +233,8 @@ public class ConfigRegionStateMachine
     configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
     configManager.getPartitionManager().startRegionCleaner();
     configManager.checkUserPathPrivilege();
+    // Add Metric after leader ready
+    configManager.addMetrics();
 
     // we do cq recovery async for two reasons:
     // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
