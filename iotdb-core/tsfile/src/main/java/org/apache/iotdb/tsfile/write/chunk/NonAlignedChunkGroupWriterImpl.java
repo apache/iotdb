@@ -106,7 +106,8 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
         try {
           checkIsHistoryData(measurementId, time);
         } catch (WriteProcessException e) {
-          if ("root.bw.baoshan.398726I02.`00`.COKE4_LOAD_FURNACE_QTY6".equals(deviceId) && "value".equals(measurementId)) {
+          if ("root.bw.baoshan.398726I02.`00`.COKE4_LOAD_FURNACE_QTY6".equals(deviceId)
+              && "value".equals(measurementId)) {
             break;
           } else {
             throw e;
