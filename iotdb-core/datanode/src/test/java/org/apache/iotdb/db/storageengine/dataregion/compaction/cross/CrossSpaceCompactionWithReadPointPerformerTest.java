@@ -59,7 +59,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.fail;
 
@@ -426,7 +425,6 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles(),
                     new ReadPointCompactionPerformer(),
-                    new AtomicInteger(0),
                     0,
                     0);
             compactionTask.start();
@@ -730,7 +728,6 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles(),
                     new ReadPointCompactionPerformer(),
-                    new AtomicInteger(0),
                     0,
                     0);
             compactionTask.start();
@@ -1033,7 +1030,6 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles(),
                     new ReadPointCompactionPerformer(),
-                    new AtomicInteger(0),
                     0,
                     0);
             compactionTask.start();

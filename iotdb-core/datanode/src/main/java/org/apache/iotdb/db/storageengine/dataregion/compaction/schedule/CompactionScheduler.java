@@ -150,7 +150,6 @@ public class CompactionScheduler {
                       .getConfig()
                       .getCrossCompactionPerformer()
                       .createInstance(),
-                  CompactionTaskManager.currentTaskNum,
                   memoryCost.get(i),
                   tsFileManager.getNextCompactionTaskId()))) {
         trySubmitCount++;

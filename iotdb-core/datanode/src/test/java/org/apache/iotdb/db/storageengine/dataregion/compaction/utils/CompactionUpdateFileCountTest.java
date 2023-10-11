@@ -35,7 +35,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class CompactionUpdateFileCountTest extends AbstractCompactionTest {
 
@@ -61,13 +60,7 @@ public class CompactionUpdateFileCountTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new ReadChunkCompactionPerformer(),
-            new AtomicInteger(),
-            0);
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(initSeqFileNum - 1, FileMetrics.getInstance().getFileCount(true));
     Assert.assertEquals(initUnSeqFileNum, FileMetrics.getInstance().getFileCount(false));
@@ -84,13 +77,7 @@ public class CompactionUpdateFileCountTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(initSeqFileNum, FileMetrics.getInstance().getFileCount(true));
     Assert.assertEquals(initUnSeqFileNum - 1, FileMetrics.getInstance().getFileCount(false));
@@ -113,7 +100,6 @@ public class CompactionUpdateFileCountTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
