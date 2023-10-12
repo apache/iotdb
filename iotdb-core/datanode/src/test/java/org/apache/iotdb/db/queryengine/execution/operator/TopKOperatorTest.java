@@ -145,7 +145,8 @@ public class TopKOperatorTest {
   //                                  /                \              /               \
   //                  SeriesScanOperator SeriesScanOperator SeriesScanOperator   SeriesScanOperator
   // ----------------------------------------------------------------------------------------------
-  public TopKOperator topKOperatorTest(Ordering timeOrdering, Ordering deviceOrdering, int topK) {
+  public TopKOperator topKOperatorTest(
+      Ordering timeOrdering, Ordering deviceOrdering, int limitValue) {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -333,7 +334,8 @@ public class TopKOperatorTest {
                       new SortItem(OrderByKey.DEVICE, deviceOrdering)),
                   Arrays.asList(-1, 0),
                   Arrays.asList(TSDataType.INT64, TSDataType.TEXT)),
-              topK);
+              limitValue,
+              true);
       topKOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       return topKOperator;
     } catch (IllegalPathException e) {
@@ -691,7 +693,8 @@ public class TopKOperatorTest {
                       new SortItem(OrderByKey.DEVICE, deviceOrdering)),
                   Arrays.asList(-1, 0),
                   Arrays.asList(TSDataType.INT64, TSDataType.TEXT)),
-              limitValue);
+              limitValue,
+              true);
       topKOperator1.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       TopKOperator topKOperator2 =
           new TopKOperator(
@@ -704,7 +707,8 @@ public class TopKOperatorTest {
                       new SortItem(OrderByKey.DEVICE, deviceOrdering)),
                   Arrays.asList(-1, 0),
                   Arrays.asList(TSDataType.INT64, TSDataType.TEXT)),
-              limitValue);
+              limitValue,
+              true);
       topKOperator2.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       TopKOperator topKOperator =
@@ -718,7 +722,8 @@ public class TopKOperatorTest {
                       new SortItem(OrderByKey.DEVICE, deviceOrdering)),
                   Arrays.asList(-1, 0),
                   Arrays.asList(TSDataType.INT64, TSDataType.TEXT)),
-              limitValue);
+              limitValue,
+              true);
       topKOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       return topKOperator;
     } catch (IllegalPathException e) {
@@ -1075,7 +1080,8 @@ public class TopKOperatorTest {
                       new SortItem(OrderByKey.TIME, timeOrdering)),
                   Arrays.asList(0, -1),
                   Arrays.asList(TSDataType.TEXT, TSDataType.INT64)),
-              limitValue);
+              limitValue,
+              false);
       topKOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       return topKOperator;
     } catch (IllegalPathException e) {
@@ -1306,7 +1312,8 @@ public class TopKOperatorTest {
                 Collections.singletonList(new SortItem(OrderByKey.TIME, Ordering.ASC)),
                 Collections.singletonList(-1),
                 Collections.singletonList(TSDataType.INT64)),
-            20);
+            20,
+            true);
     topKOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
     int index = 0;

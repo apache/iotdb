@@ -60,12 +60,17 @@ public class TopKOperator extends AbstractConsumeAllOperator {
   // return size of topKResult
   private int resultReturnSize = 0;
 
+  // if order by time, timeOrderPriority is highest, and no order by expression
+  // the data of every childOperator is in order
+  private final boolean childrenDataInOrder;
+
   public TopKOperator(
       OperatorContext operatorContext,
       List<Operator> inputOperators,
       List<TSDataType> dataTypes,
       Comparator<SortKey> comparator,
-      long topValue) {
+      long topValue,
+      boolean childrenDataInOrder) {
     super(operatorContext, inputOperators);
     this.dataTypes = dataTypes;
     // use MAX-HEAP
@@ -74,6 +79,7 @@ public class TopKOperator extends AbstractConsumeAllOperator {
     this.noMoreTsBlocks = new boolean[inputOperatorsCount];
     this.tsBlockBuilder = new TsBlockBuilder((int) topValue, dataTypes);
     this.topValue = topValue;
+    this.childrenDataInOrder = childrenDataInOrder;
   }
 
   @Override
@@ -155,9 +161,9 @@ public class TopKOperator extends AbstractConsumeAllOperator {
           if (comparator.compare(new MergeSortKey(currentTsBlock, idx), mergeSortHeap.peek()) < 0) {
             mergeSortHeap.poll();
             mergeSortHeap.push(new MergeSortKey(buildOneEntryTsBlock(currentTsBlock, idx), 0));
-          } else {
-            // TODO change this judgement, because topKOperator may also contains order expression
+          } else if (childrenDataInOrder) {
             skipCurrentBatch = true;
+            break;
           }
         }
       }

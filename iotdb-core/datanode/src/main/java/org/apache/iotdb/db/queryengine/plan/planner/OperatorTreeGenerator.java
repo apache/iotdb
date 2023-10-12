@@ -873,7 +873,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         children,
         dataTypes,
         MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList),
-        node.getTopValue());
+        node.getTopValue(),
+        !sortItemList.isEmpty()
+            && sortItemList.get(0).getSortKey().equalsIgnoreCase(OrderByKey.TIME)
+            && sortItemList.stream()
+                .allMatch(
+                    i ->
+                        (i.getSortKey().equals(OrderByKey.TIME)
+                            || i.getSortKey().equals(OrderByKey.DEVICE))));
   }
 
   private void genSortInformation(
