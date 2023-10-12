@@ -198,7 +198,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitTopK(TopKNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("TopK-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("ChildrenCount: %d", node.getChildren().size()));
+    boxValue.add(String.format("LimitValue: %d", node.getTopValue()));
     boxValue.add(node.getMergeOrderParameter().toString());
     return render(node, boxValue, context);
   }

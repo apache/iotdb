@@ -773,7 +773,9 @@ public class LogicalPlanBuilder {
 
     OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
 
-    if (queryStatement.hasLimit() && !queryStatement.isOrderByBasedOnDevice()) {
+    if (queryStatement.hasLimit()
+        && queryStatement.getOrderByComponent() != null
+        && !queryStatement.isOrderByBasedOnDevice()) {
       long limitValue =
           queryStatement.hasOffset()
               ? queryStatement.getRowOffset() + queryStatement.getRowLimit()

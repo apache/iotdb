@@ -162,7 +162,7 @@ public class TopKOperator extends AbstractConsumeAllOperator {
         }
       }
 
-      // if current childIdx tsblock has no value to put into heap
+      // if current childIdx TsBlock has no value to put into heap
       // the remaining data will also have no value to put int heap
       if (skipCurrentBatch) {
         noMoreTsBlocks[childIdx] = true;
