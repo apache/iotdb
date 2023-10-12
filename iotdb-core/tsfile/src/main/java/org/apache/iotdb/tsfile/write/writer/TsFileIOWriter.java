@@ -736,4 +736,8 @@ public class TsFileIOWriter implements AutoCloseable {
   public void flush() throws IOException {
     out.flush();
   }
+
+  public TsFileOutput getTsFileOutput() {
+    return this.out;
+  }
 }
