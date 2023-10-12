@@ -107,7 +107,7 @@ public class BOSAmortizationVaryBlocksize {
 //        dataset_block_size.add(128);
 //        output_path_list.add(output_parent_dir + "\\Vehicle-Charge_ratio.csv");//7
 //        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\Nifty-Stocks_ratio.csv");//8
+//        output_path_list.add(output_parent_dir +"\\Nifty-Stocks_ratio.csv");//8
 //        dataset_block_size.add(256);
 //        output_path_list.add(output_parent_dir + "\\TH-Climate_ratio.csv");//9
 //        dataset_block_size.add(512);
