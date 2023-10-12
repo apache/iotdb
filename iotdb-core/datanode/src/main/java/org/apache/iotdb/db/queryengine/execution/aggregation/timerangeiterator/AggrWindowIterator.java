@@ -22,8 +22,6 @@ package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
-import static org.apache.iotdb.db.utils.DateTimeUtils.MS_TO_MONTH;
-
 /**
  * This class iteratively generates aggregated time windows.
  *
@@ -36,6 +34,10 @@ public class AggrWindowIterator implements ITimeRangeIterator {
   private final long endTime;
   private final long interval;
   private final long slidingStep;
+  private final long fixedIntervalInMonth;
+  private final long fixedSlidingStepInMonth;
+  private final long fixedIntervalOther;
+  private final long fixedSlidingStepOther;
 
   private final boolean isAscending;
   private final boolean isSlidingStepByMonth;
@@ -54,7 +56,9 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       boolean isAscending,
       boolean isSlidingStepByMonth,
       boolean isIntervalByMonth,
-      boolean leftCRightO) {
+      boolean leftCRightO,
+      long fixedIntervalInMonth,
+      long fixedSlidingStepInMonth) {
     this.startTime = startTime;
     this.endTime = endTime;
     this.interval = interval;
@@ -63,6 +67,10 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     this.isSlidingStepByMonth = isSlidingStepByMonth;
     this.isIntervalByMonth = isIntervalByMonth;
     this.leftCRightO = leftCRightO;
+    this.fixedIntervalInMonth = fixedIntervalInMonth;
+    this.fixedSlidingStepInMonth = fixedSlidingStepInMonth;
+    this.fixedIntervalOther = interval - fixedIntervalInMonth;
+    this.fixedSlidingStepOther = slidingStep - fixedSlidingStepInMonth;
   }
 
   @Override
@@ -79,7 +87,11 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     if (isIntervalByMonth) {
       // calculate interval length by natural month based on startTime
       // ie. startTIme = 1/31, interval = 1mo, curEndTime will be set to 2/29
-      retEndTime = Math.min(DateTimeUtils.calcIntervalByMonth(startTime, interval), endTime);
+      retEndTime =
+          Math.min(
+              DateTimeUtils.calcIntervalByMonthWithFixedOther(
+                  startTime, fixedIntervalInMonth, fixedIntervalOther),
+              endTime);
     } else {
       retEndTime = Math.min(startTime + interval, endTime);
     }
@@ -87,17 +99,36 @@ public class AggrWindowIterator implements ITimeRangeIterator {
   }
 
   private TimeRange getRightmostTimeRange() {
-    long retStartTime;
+    long retStartTime = startTime;
     long retEndTime;
     long queryRange = endTime - startTime;
     long intervalNum;
 
     if (isSlidingStepByMonth) {
-      intervalNum = (long) Math.ceil(queryRange / (double) (slidingStep * MS_TO_MONTH));
-      retStartTime = DateTimeUtils.calcIntervalByMonth(startTime, intervalNum * slidingStep);
-      while (retStartTime >= endTime) {
-        intervalNum -= 1;
-        retStartTime = DateTimeUtils.calcIntervalByMonth(startTime, intervalNum * slidingStep);
+      intervalNum = (long) Math.ceil((double) queryRange / slidingStep);
+      if (fixedSlidingStepOther == 0) {
+        retStartTime =
+            DateTimeUtils.calcIntervalByMonth(startTime, intervalNum * fixedSlidingStepInMonth);
+        while (retStartTime > endTime) {
+          intervalNum -= 1;
+          retStartTime =
+              DateTimeUtils.calcIntervalByMonth(startTime, intervalNum * fixedSlidingStepInMonth);
+        }
+      } else {
+        long iterStartTime = startTime;
+        // couldn't  merge intervalNum and slidingStep directly
+        // ie. startTIme = 1/22, interval = slidingStep = 1mo10d , endTime = 5/24 -> intervalNum = 4
+        // If calculated by '3mo30d' is  5/22 and  the result of three iterations is 1/22 -> 3/4 ->
+        // 4/14 -> 5/24
+        for (int i = 0; i < intervalNum; i++) {
+          iterStartTime =
+              DateTimeUtils.calcIntervalByMonthWithFixedOther(
+                  iterStartTime, fixedSlidingStepInMonth, fixedSlidingStepOther);
+          if (iterStartTime >= endTime) {
+            break;
+          }
+          retStartTime = iterStartTime;
+        }
       }
     } else {
       intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
@@ -107,7 +138,11 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     if (isIntervalByMonth) {
       // calculate interval length by natural month based on curStartTime
       // ie. startTIme = 1/31, interval = 1mo, curEndTime will be set to 2/29
-      retEndTime = Math.min(DateTimeUtils.calcIntervalByMonth(retStartTime, interval), endTime);
+      retEndTime =
+          Math.min(
+              DateTimeUtils.calcIntervalByMonthWithFixedOther(
+                  retStartTime, fixedIntervalInMonth, fixedIntervalOther),
+              endTime);
     } else {
       retEndTime = Math.min(retStartTime + interval, endTime);
     }
@@ -130,7 +165,9 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     long curStartTime = curTimeRange.getMin();
     if (isAscending) {
       if (isSlidingStepByMonth) {
-        retStartTime = DateTimeUtils.calcIntervalByMonth(curStartTime, (int) (slidingStep));
+        retStartTime =
+            DateTimeUtils.calcIntervalByMonthWithFixedOther(
+                curStartTime, fixedSlidingStepInMonth, fixedSlidingStepOther);
       } else {
         retStartTime = curStartTime + slidingStep;
       }
@@ -140,7 +177,9 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       }
     } else {
       if (isSlidingStepByMonth) {
-        retStartTime = DateTimeUtils.calcIntervalByMonth(curStartTime, (int) (-slidingStep));
+        retStartTime =
+            DateTimeUtils.calcIntervalByMonthWithFixedOther(
+                curStartTime, -fixedSlidingStepInMonth, -fixedSlidingStepOther);
       } else {
         retStartTime = curStartTime - slidingStep;
       }
@@ -150,7 +189,9 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     }
 
     if (isIntervalByMonth) {
-      retEndTime = DateTimeUtils.calcIntervalByMonth(retStartTime, (int) (interval));
+      retEndTime =
+          DateTimeUtils.calcIntervalByMonthWithFixedOther(
+              retStartTime, fixedIntervalInMonth, fixedIntervalOther);
     } else {
       retEndTime = retStartTime + interval;
     }
@@ -185,11 +226,26 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     long intervalNum;
 
     if (isSlidingStepByMonth) {
-      intervalNum = (long) Math.ceil(queryRange / (double) (slidingStep * MS_TO_MONTH));
-      long retStartTime = DateTimeUtils.calcIntervalByMonth(startTime, intervalNum * slidingStep);
-      while (retStartTime > endTime) {
-        intervalNum -= 1;
-        retStartTime = DateTimeUtils.calcIntervalByMonth(startTime, intervalNum * slidingStep);
+      intervalNum = (long) Math.ceil((double) queryRange / slidingStep);
+      if (fixedSlidingStepOther == 0) {
+        long retStartTime =
+            DateTimeUtils.calcIntervalByMonth(startTime, intervalNum * fixedSlidingStepInMonth);
+        while (retStartTime > endTime) {
+          intervalNum -= 1;
+          retStartTime =
+              DateTimeUtils.calcIntervalByMonth(startTime, intervalNum * fixedSlidingStepInMonth);
+        }
+      } else {
+        long iterStartTime = startTime;
+        for (int i = 1; i <= intervalNum; i++) {
+          iterStartTime =
+              DateTimeUtils.calcIntervalByMonthWithFixedOther(
+                  iterStartTime, fixedSlidingStepInMonth, fixedSlidingStepOther);
+          if (iterStartTime >= endTime) {
+            intervalNum = i;
+            break;
+          }
+        }
       }
     } else {
       intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);

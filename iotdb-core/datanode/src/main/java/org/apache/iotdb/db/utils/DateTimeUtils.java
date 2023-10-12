@@ -583,7 +583,15 @@ public class DateTimeUtils {
     long res = value;
     switch (durationUnit) {
       case y:
-        res *= 365 * 86_400_000L;
+        if (currentTime == -1) {
+          res *= 365 * 86_400_000L;
+        } else {
+          Calendar calendar = Calendar.getInstance();
+          calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
+          calendar.setTimeInMillis(currentTime);
+          calendar.add(Calendar.YEAR, (int) (value));
+          res = calendar.getTimeInMillis() - currentTime;
+        }
         break;
       case mo:
         if (currentTime == -1) {
@@ -733,6 +741,7 @@ public class DateTimeUtils {
    * @return nextStartTime
    */
   public static long calcIntervalByMonth(long startTime, long numMonths) {
+    numMonths = numMonths / MS_TO_MONTH;
     Calendar calendar = Calendar.getInstance();
     calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
     calendar.setTimeInMillis(startTime);
@@ -743,5 +752,15 @@ public class DateTimeUtils {
       calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
     }
     return calendar.getTimeInMillis();
+  }
+
+  /**
+   * add natural months with fixed interval (like 1mo1d) based on the startTime to avoid edge cases,
+   * ie 2/28
+   */
+  public static long calcIntervalByMonthWithFixedOther(
+      long startTime, long numMonths, long fixedOther) {
+    long nextStartTime = calcIntervalByMonth(startTime, numMonths);
+    return nextStartTime + fixedOther;
   }
 }

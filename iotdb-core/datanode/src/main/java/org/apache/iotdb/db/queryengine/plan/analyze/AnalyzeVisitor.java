@@ -1861,7 +1861,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
     if ((groupByTimeComponent.isIntervalByMonth() || groupByTimeComponent.isSlidingStepByMonth())
         && queryStatement.getResultTimeOrder() == Ordering.DESC) {
-      throw new SemanticException("Group by month doesn't support order by time desc now.");
+      throw new SemanticException("Group by year or month doesn't support order by time desc now.");
     }
     if (!queryStatement.isCqQueryBody()
         && (groupByTimeComponent.getStartTime() == 0 && groupByTimeComponent.getEndTime() == 0)) {
@@ -3090,6 +3090,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           groupByTimeComponent.getSlidingStep(),
           groupByTimeComponent.getStartTime(),
           groupByTimeComponent.getEndTime(),
+          groupByTimeComponent.getFixedIntervalInMonth(),
+          groupByTimeComponent.getFixedSlidingStepInMonth(),
           groupByTimeComponent.isSlidingStepByMonth(),
           groupByTimeComponent.isIntervalByMonth(),
           TimeZone.getTimeZone("+00:00"));

@@ -1547,8 +1547,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       groupByTimeComponent.setSlidingStep(
           parseTimeIntervalOrSlidingStep(ctx.step.getText(), false, groupByTimeComponent));
     } else {
-      groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
-      groupByTimeComponent.setSlidingStepByMonth(groupByTimeComponent.isIntervalByMonth());
+      groupByTimeComponent.setSlidingStep(
+          parseTimeIntervalOrSlidingStep(ctx.interval.getText(), false, groupByTimeComponent));
     }
 
     return groupByTimeComponent;
@@ -1579,14 +1579,63 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
    */
   private long parseTimeIntervalOrSlidingStep(
       String duration, boolean isParsingTimeInterval, GroupByTimeComponent groupByTimeComponent) {
-    if (duration.toLowerCase().contains("mo")) {
+    String convertedDuration =
+        convertDurationStrYearToMonth(duration, isParsingTimeInterval, groupByTimeComponent);
+    if (convertedDuration.contains("mo")) {
       if (isParsingTimeInterval) {
         groupByTimeComponent.setIntervalByMonth(true);
       } else {
         groupByTimeComponent.setSlidingStepByMonth(true);
       }
     }
-    return DateTimeUtils.convertDurationStrToLong(duration);
+    return DateTimeUtils.convertDurationStrToLong(convertedDuration);
+  }
+
+  /** handle the year as fixed 12 months */
+  private static String convertDurationStrYearToMonth(
+      String duration, boolean isParsingTimeInterval, GroupByTimeComponent groupByTimeComponent) {
+    duration = duration.toLowerCase();
+    long tempY = 0;
+    long tempMo = 0;
+    long temp = 0;
+    for (int i = 0; i < duration.length(); i++) {
+      char ch = duration.charAt(i);
+      if (Character.isDigit(ch)) {
+        temp *= 10;
+        temp += (ch - '0');
+      } else {
+        String unit = String.valueOf(duration.charAt(i));
+        // This is to identify units with two letters.
+        if (i + 1 < duration.length() && !Character.isDigit(duration.charAt(i + 1))) {
+          i++;
+          unit += duration.charAt(i);
+        }
+        if ("y".equals(unit)) {
+          tempY = temp;
+        }
+        if ("mo".equals(unit)) {
+          tempMo = temp;
+        }
+        temp = 0;
+      }
+    }
+    if (tempY > 0) {
+      duration = duration.replace(tempY + "y", "");
+      if (!duration.contains("mo")) {
+        duration = duration.concat(tempY * 12 + "mo");
+      }
+    }
+    if (tempMo > 0) {
+      duration = duration.replace(tempMo + "mo", (tempY * 12 + tempMo) + "mo");
+    }
+
+    if (isParsingTimeInterval) {
+      groupByTimeComponent.setFixedIntervalInMonth((tempY * 12 + tempMo) * 30 * 86_400_000L);
+    } else {
+      groupByTimeComponent.setFixedSlidingStepInMonth((tempY * 12 + tempMo) * 30 * 86_400_000L);
+    }
+
+    return duration;
   }
 
   private GroupByComponent parseGroupByClause(

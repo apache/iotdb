@@ -42,6 +42,10 @@ public class GroupByTimeComponent extends StatementNode {
   // if it is left close and right open interval
   private boolean leftCRightO = true;
 
+  // for natural month + fixed other time eg, 1mo55d fixedIntervalMo is 1mo to long
+  private long fixedIntervalInMonth = 0;
+  private long fixedSlidingStepInMonth = 0;
+
   public GroupByTimeComponent() {
     // do nothing
   }
@@ -100,6 +104,22 @@ public class GroupByTimeComponent extends StatementNode {
 
   public void setIntervalByMonth(boolean isIntervalByMonth) {
     this.isIntervalByMonth = isIntervalByMonth;
+  }
+
+  public long getFixedIntervalInMonth() {
+    return fixedIntervalInMonth;
+  }
+
+  public void setFixedIntervalInMonth(long fixedIntervalInMonth) {
+    this.fixedIntervalInMonth = fixedIntervalInMonth;
+  }
+
+  public long getFixedSlidingStepInMonth() {
+    return fixedSlidingStepInMonth;
+  }
+
+  public void setFixedSlidingStepInMonth(long fixedSlidingStepInMonth) {
+    this.fixedSlidingStepInMonth = fixedSlidingStepInMonth;
   }
 
   public String toSQLString() {
