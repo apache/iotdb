@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.extractor;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.extractor.historical.PipeHistoricalDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.historical.PipeHistoricalDataRegionTsFileExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
@@ -28,18 +29,21 @@ import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionFakeExt
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionLogExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionTsFileExtractor;
-import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -60,6 +64,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   private PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
 
+  private String pipeName;
   private int dataRegionId;
 
   public IoTDBDataRegionExtractor() {
@@ -144,12 +149,13 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
+    pipeName = configuration.getRuntimeEnvironment().getPipeName();
     dataRegionId =
         ((PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment()).getRegionId();
 
     historicalExtractor.customize(parameters, configuration);
     realtimeExtractor.customize(parameters, configuration);
-    PipeDataRegionExtractorMetrics.getInstance().register(historicalExtractor, realtimeExtractor);
+    PipeExtractorMetrics.getInstance().register(historicalExtractor, realtimeExtractor);
   }
 
   @Override
@@ -218,9 +224,20 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
   @Override
   public Event supply() throws Exception {
-    return historicalExtractor.hasConsumedAll()
-        ? realtimeExtractor.supply()
-        : historicalExtractor.supply();
+    Event event =
+        historicalExtractor.hasConsumedAll()
+            ? realtimeExtractor.supply()
+            : historicalExtractor.supply();
+    if (Objects.nonNull(event)) {
+      if (event instanceof TabletInsertionEvent) {
+        PipeExtractorMetrics.getInstance().getTabletRate(pipeName).mark();
+      } else if (event instanceof TsFileInsertionEvent) {
+        PipeExtractorMetrics.getInstance().getTsFileRate(pipeName).mark();
+      } else if (event instanceof PipeHeartbeatEvent) {
+        PipeExtractorMetrics.getInstance().getPipeHeartbeatRate(pipeName).mark();
+      }
+    }
+    return event;
   }
 
   @Override

@@ -32,7 +32,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public class PipeDataRegionAssignerMetrics implements IMetricSet {
+public class PipeAssignerMetrics implements IMetricSet {
 
   private AbstractMetricService metricService;
 
@@ -55,19 +55,18 @@ public class PipeDataRegionAssignerMetrics implements IMetricSet {
 
   private static class PipeDataRegionAssignerMetricsHolder {
 
-    private static final PipeDataRegionAssignerMetrics INSTANCE =
-        new PipeDataRegionAssignerMetrics();
+    private static final PipeAssignerMetrics INSTANCE = new PipeAssignerMetrics();
 
     private PipeDataRegionAssignerMetricsHolder() {
       // empty constructor
     }
   }
 
-  public static PipeDataRegionAssignerMetrics getInstance() {
-    return PipeDataRegionAssignerMetrics.PipeDataRegionAssignerMetricsHolder.INSTANCE;
+  public static PipeAssignerMetrics getInstance() {
+    return PipeAssignerMetrics.PipeDataRegionAssignerMetricsHolder.INSTANCE;
   }
 
-  private PipeDataRegionAssignerMetrics() {
+  private PipeAssignerMetrics() {
     // empty constructor
   }
 
@@ -85,7 +84,7 @@ public class PipeDataRegionAssignerMetrics implements IMetricSet {
 
   private void createMetrics(String dataRegionId) {
     metricService.createAutoGauge(
-        Metric.UNASSIGNED_PIPE_HEARTBEAT_COUNT.toString(),
+        Metric.UNASSIGNED_HEARTBEAT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         assignerMap.get(dataRegionId),
         PipeDataRegionAssigner::getPipeHeartbeatEventCount,

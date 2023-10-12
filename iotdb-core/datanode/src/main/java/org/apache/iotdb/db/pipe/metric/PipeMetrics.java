@@ -26,16 +26,18 @@ public class PipeMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    PipeConnectorSubtaskMetrics.getInstance().bindTo(metricService);
-    PipeDataRegionAssignerMetrics.getInstance().bindTo(metricService);
-    PipeDataRegionExtractorMetrics.getInstance().bindTo(metricService);
+    PipeAssignerMetrics.getInstance().bindTo(metricService);
+    PipeExtractorMetrics.getInstance().bindTo(metricService);
+    PipeProcessorMetrics.getInstance().bindTo(metricService);
+    PipeConnectorMetrics.getInstance().bindTo(metricService);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    PipeConnectorSubtaskMetrics.getInstance().unbindFrom(metricService);
-    PipeDataRegionAssignerMetrics.getInstance().unbindFrom(metricService);
-    PipeDataRegionExtractorMetrics.getInstance().unbindFrom(metricService);
+    PipeAssignerMetrics.getInstance().unbindFrom(metricService);
+    PipeExtractorMetrics.getInstance().unbindFrom(metricService);
+    PipeProcessorMetrics.getInstance().unbindFrom(metricService);
+    PipeConnectorMetrics.getInstance().unbindFrom(metricService);
   }
 
   private static class PipeMetricsHolder {

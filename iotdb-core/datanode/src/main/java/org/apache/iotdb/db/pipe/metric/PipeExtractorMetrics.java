@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.extractor.historical.PipeHistoricalDataRegionExt
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -32,13 +33,20 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class PipeDataRegionExtractorMetrics implements IMetricSet {
+public class PipeExtractorMetrics implements IMetricSet {
 
   private final Map<String, PipeHistoricalDataRegionExtractor> historicalExtractorMap =
       new HashMap<>();
 
   private final Map<String, PipeRealtimeDataRegionExtractor> realtimeExtractorMap = new HashMap<>();
+
+  private final Map<String, Rate> tabletRateMap = new ConcurrentHashMap<>();
+
+  private final Map<String, Rate> tsFileRateMap = new ConcurrentHashMap<>();
+
+  private final Map<String, Rate> pipeHeartbeatRateMap = new ConcurrentHashMap<>();
 
   private AbstractMetricService metricService;
 
@@ -59,25 +67,26 @@ public class PipeDataRegionExtractorMetrics implements IMetricSet {
 
   private static class PipeDataRegionExtractorMetricsHolder {
 
-    private static final PipeDataRegionExtractorMetrics INSTANCE =
-        new PipeDataRegionExtractorMetrics();
+    private static final PipeExtractorMetrics INSTANCE = new PipeExtractorMetrics();
 
     private PipeDataRegionExtractorMetricsHolder() {
       // empty constructor
     }
   }
 
-  public static PipeDataRegionExtractorMetrics getInstance() {
-    return PipeDataRegionExtractorMetrics.PipeDataRegionExtractorMetricsHolder.INSTANCE;
+  public static PipeExtractorMetrics getInstance() {
+    return PipeExtractorMetrics.PipeDataRegionExtractorMetricsHolder.INSTANCE;
   }
 
-  private PipeDataRegionExtractorMetrics() {
+  private PipeExtractorMetrics() {
     // empty constructor
   }
 
   public void register(
       @NonNull PipeHistoricalDataRegionExtractor pipeHistoricalDataRegionExtractor,
       @NonNull PipeRealtimeDataRegionExtractor pipeRealtimeDataRegionExtractor) {
+    // We assume that `PipeHistoricalDataRegionExtractor` and `PipeRealtimeDataRegionExtractor`
+    // correspond to the same `pipeName`.
     String pipeName = pipeRealtimeDataRegionExtractor.getPipeName();
     synchronized (this) {
       if (!historicalExtractorMap.containsKey(pipeName)) {
@@ -92,7 +101,7 @@ public class PipeDataRegionExtractorMetrics implements IMetricSet {
     }
   }
 
-  private void createMetrics(String pipeName) {
+  private void createAutoGauge(String pipeName) {
     metricService.createAutoGauge(
         Metric.UNPROCESSED_HISTORICAL_TS_FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
@@ -115,11 +124,52 @@ public class PipeDataRegionExtractorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         pipeName);
     metricService.createAutoGauge(
-        Metric.UNPROCESSED_PIPE_HEARTBEAT_COUNT.toString(),
+        Metric.UNPROCESSED_HEARTBEAT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         realtimeExtractorMap.get(pipeName),
         PipeRealtimeDataRegionExtractor::getPipeHeartbeatEventCount,
         Tag.NAME.toString(),
         pipeName);
+  }
+
+  private void createMetrics(String pipeName) {
+    createAutoGauge(pipeName);
+    createRate(pipeName);
+  }
+
+  private void createRate(String pipeName) {
+    tabletRateMap.put(
+        pipeName,
+        metricService.getOrCreateRate(
+            Metric.PIPE_EXTRACTOR_TABLET_SUPPLY.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            pipeName));
+    tsFileRateMap.put(
+        pipeName,
+        metricService.getOrCreateRate(
+            Metric.PIPE_EXTRACTOR_TS_FILE_SUPPLY.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            pipeName));
+    pipeHeartbeatRateMap.put(
+        pipeName,
+        metricService.getOrCreateRate(
+            Metric.PIPE_EXTRACTOR_HEARTBEAT_SUPPLY.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            pipeName));
+  }
+
+  public Rate getTabletRate(String pipeName) {
+    return tabletRateMap.get(pipeName);
+  }
+
+  public Rate getTsFileRate(String pipeName) {
+    return tsFileRateMap.get(pipeName);
+  }
+
+  public Rate getPipeHeartbeatRate(String pipeName) {
+    return pipeHeartbeatRateMap.get(pipeName);
   }
 }

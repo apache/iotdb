@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -33,29 +34,36 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class PipeConnectorSubtaskMetrics implements IMetricSet {
+public class PipeConnectorMetrics implements IMetricSet {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtaskMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorMetrics.class);
 
   private AbstractMetricService metricService;
 
   private final Map<String, PipeConnectorSubtask> taskMap = new HashMap<>();
 
+  private final Map<String, Rate> tabletRateMap = new ConcurrentHashMap<>();
+
+  private final Map<String, Rate> tsFileRateMap = new ConcurrentHashMap<>();
+
+  private final Map<String, Rate> pipeHeartbeatRateMap = new ConcurrentHashMap<>();
+
   private static class PipeConnectorSubtaskMetricsHolder {
 
-    private static final PipeConnectorSubtaskMetrics INSTANCE = new PipeConnectorSubtaskMetrics();
+    private static final PipeConnectorMetrics INSTANCE = new PipeConnectorMetrics();
 
     private PipeConnectorSubtaskMetricsHolder() {
       // empty constructor
     }
   }
 
-  public static PipeConnectorSubtaskMetrics getInstance() {
-    return PipeConnectorSubtaskMetrics.PipeConnectorSubtaskMetricsHolder.INSTANCE;
+  public static PipeConnectorMetrics getInstance() {
+    return PipeConnectorMetrics.PipeConnectorSubtaskMetricsHolder.INSTANCE;
   }
 
-  private PipeConnectorSubtaskMetrics() {
+  private PipeConnectorMetrics() {
     // empty constructor
   }
 
@@ -71,28 +79,57 @@ public class PipeConnectorSubtaskMetrics implements IMetricSet {
     }
   }
 
-  private void createMetrics(String taskID) {
+  private void createAutoGauge(String taskID) {
     metricService.createAutoGauge(
-        Metric.TRANSFERRED_TABLET_COUNT.toString(),
+        Metric.UNTRANSFERRED_TABLET_COUNT.toString(),
         MetricLevel.IMPORTANT,
         taskMap.get(taskID),
         PipeConnectorSubtask::getTabletInsertionEventCount,
         Tag.NAME.toString(),
         taskID);
     metricService.createAutoGauge(
-        Metric.TRANSFERRED_TS_FILE_COUNT.toString(),
+        Metric.UNTRANSFERRED_TS_FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         taskMap.get(taskID),
         PipeConnectorSubtask::getTsFileInsertionEventCount,
         Tag.NAME.toString(),
         taskID);
     metricService.createAutoGauge(
-        Metric.TRANSFERRED_PIPE_HEARTBEAT_COUNT.toString(),
+        Metric.UNTRANSFERRED_HEARTBEAT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         taskMap.get(taskID),
         PipeConnectorSubtask::getPipeHeartbeatEventCount,
         Tag.NAME.toString(),
         taskID);
+  }
+
+  private void createRate(String taskID) {
+    tabletRateMap.put(
+        taskID,
+        metricService.getOrCreateRate(
+            Metric.PIPE_CONNECTOR_TABLET_TRANSFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            taskID));
+    tsFileRateMap.put(
+        taskID,
+        metricService.getOrCreateRate(
+            Metric.PIPE_CONNECTOR_TS_FILE_TRANSFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            taskID));
+    pipeHeartbeatRateMap.put(
+        taskID,
+        metricService.getOrCreateRate(
+            Metric.PIPE_CONNECTOR_HEARTBEAT_TRANSFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            taskID));
+  }
+
+  private void createMetrics(String taskID) {
+    createAutoGauge(taskID);
+    createRate(taskID);
   }
 
   @Override
@@ -108,5 +145,17 @@ public class PipeConnectorSubtaskMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     // do nothing
+  }
+
+  public Rate getTabletRate(String taskID) {
+    return tabletRateMap.get(taskID);
+  }
+
+  public Rate getTsFileRate(String taskID) {
+    return tsFileRateMap.get(taskID);
+  }
+
+  public Rate getPipeHeartbeatRate(String taskID) {
+    return pipeHeartbeatRateMap.get(taskID);
   }
 }

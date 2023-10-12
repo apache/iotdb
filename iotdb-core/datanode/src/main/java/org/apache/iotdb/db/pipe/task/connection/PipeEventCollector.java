@@ -104,4 +104,8 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
         });
     bufferQueue.clear();
   }
+
+  public EnrichedDeque<Event> getBufferQueue() {
+    return bufferQueue;
+  }
 }

@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
-import org.apache.iotdb.db.pipe.metric.PipeConnectorSubtaskMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.DecoratingLock;
@@ -46,7 +46,6 @@ import org.slf4j.LoggerFactory;
 import javax.validation.constraints.NotNull;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeConnectorSubtask extends PipeSubtask {
 
@@ -60,20 +59,16 @@ public class PipeConnectorSubtask extends PipeSubtask {
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
   protected ExecutorService subtaskCallbackListeningExecutor;
 
-  private final AtomicInteger tabletInsertionEventCount = new AtomicInteger(0);
-  private final AtomicInteger tsFileInsertionEventCount = new AtomicInteger(0);
-  private final AtomicInteger pipeHeartbeatEventCount = new AtomicInteger(0);
-
   public Integer getTsFileInsertionEventCount() {
-    return tsFileInsertionEventCount.get();
+    return inputPendingQueue.getTsFileInsertionEventCount();
   }
 
   public Integer getTabletInsertionEventCount() {
-    return tabletInsertionEventCount.get();
+    return inputPendingQueue.getTabletInsertionEventCount();
   }
 
   public Integer getPipeHeartbeatEventCount() {
-    return pipeHeartbeatEventCount.get();
+    return inputPendingQueue.getPipeHeartbeatEventCount();
   }
 
   public PipeConnectorSubtask(
@@ -83,7 +78,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
     super(taskID);
     this.inputPendingQueue = inputPendingQueue;
     this.outputPipeConnector = outputPipeConnector;
-    PipeConnectorSubtaskMetrics.getInstance().register(this);
+    PipeConnectorMetrics.getInstance().register(this);
   }
 
   @Override
@@ -123,10 +118,10 @@ public class PipeConnectorSubtask extends PipeSubtask {
     try {
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
-        tabletInsertionEventCount.getAndIncrement();
+        PipeConnectorMetrics.getInstance().getTabletRate(taskID).mark();
       } else if (event instanceof TsFileInsertionEvent) {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
-        tsFileInsertionEventCount.getAndIncrement();
+        PipeConnectorMetrics.getInstance().getTsFileRate(taskID).mark();
       } else if (event instanceof PipeHeartbeatEvent) {
         try {
           outputPipeConnector.heartbeat();
@@ -137,7 +132,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
               e);
         }
         ((PipeHeartbeatEvent) event).onTransferred();
-        pipeHeartbeatEventCount.getAndIncrement();
+        PipeConnectorMetrics.getInstance().getPipeHeartbeatRate(taskID).mark();
       } else {
         outputPipeConnector.transfer(event);
       }

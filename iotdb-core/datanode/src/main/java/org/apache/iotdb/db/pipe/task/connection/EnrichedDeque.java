@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.connection;
 
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -31,12 +32,14 @@ public class EnrichedDeque<E extends Event> {
 
   private final AtomicInteger tabletInsertionEventCount;
   private final AtomicInteger tsFileInsertionEventCount;
+  private final AtomicInteger pipeHeartbeatEventCount;
   protected final Deque<E> deque;
 
   protected EnrichedDeque(Deque<E> deque) {
     this.deque = deque;
     tabletInsertionEventCount = new AtomicInteger(0);
     tsFileInsertionEventCount = new AtomicInteger(0);
+    pipeHeartbeatEventCount = new AtomicInteger(0);
   }
 
   public boolean offer(E event) {
@@ -46,6 +49,8 @@ public class EnrichedDeque<E extends Event> {
         tabletInsertionEventCount.incrementAndGet();
       } else if (event instanceof TsFileInsertionEvent) {
         tsFileInsertionEventCount.incrementAndGet();
+      } else if (event instanceof PipeHeartbeatEvent) {
+        pipeHeartbeatEventCount.incrementAndGet();
       }
     }
     return offered;
@@ -59,6 +64,9 @@ public class EnrichedDeque<E extends Event> {
     if (event instanceof TsFileInsertionEvent) {
       tsFileInsertionEventCount.decrementAndGet();
     }
+    if (event instanceof PipeHeartbeatEvent) {
+      pipeHeartbeatEventCount.decrementAndGet();
+    }
     return event;
   }
 
@@ -66,6 +74,7 @@ public class EnrichedDeque<E extends Event> {
     deque.clear();
     tabletInsertionEventCount.set(0);
     tsFileInsertionEventCount.set(0);
+    pipeHeartbeatEventCount.set(0);
   }
 
   public int size() {
@@ -94,5 +103,9 @@ public class EnrichedDeque<E extends Event> {
 
   public int getTsFileInsertionEventCount() {
     return tsFileInsertionEventCount.get();
+  }
+
+  public int getPipeHeartbeatEventCount() {
+    return pipeHeartbeatEventCount.get();
   }
 }

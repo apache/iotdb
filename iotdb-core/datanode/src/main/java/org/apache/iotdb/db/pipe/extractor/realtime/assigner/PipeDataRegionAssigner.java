@@ -25,7 +25,7 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.PipeDataRegionMatcher;
-import org.apache.iotdb.db.pipe.metric.PipeDataRegionAssignerMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
@@ -65,7 +65,7 @@ public class PipeDataRegionAssigner {
     this.matcher = new CachedSchemaPatternMatcher();
     this.disruptor = new DisruptorQueue(this::assignToExtractor);
     this.dataRegionId = dataRegionId;
-    PipeDataRegionAssignerMetrics.getInstance().register(this);
+    PipeAssignerMetrics.getInstance().register(this);
   }
 
   public void publishToAssign(PipeRealtimeEvent event) {
