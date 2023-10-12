@@ -311,11 +311,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_extractor_matcher_cache_size",
                 String.valueOf(config.getPipeExtractorMatcherCacheSize()))));
-    config.setPipeExtractorPendingQueueTsFileLimit(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_extractor_pending_queue_tsfile_limit",
-                String.valueOf(config.getPipeExtractorPendingQueueTsFileLimit()))));
 
     config.setPipeConnectorTimeoutMs(
         Long.parseLong(
@@ -398,6 +393,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_air_gap_receiver_port",
                 Integer.toString(config.getPipeAirGapReceiverPort()))));
+
+    config.setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
+                String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

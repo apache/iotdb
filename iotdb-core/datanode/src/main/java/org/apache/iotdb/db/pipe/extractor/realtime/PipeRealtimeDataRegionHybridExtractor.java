@@ -210,12 +210,12 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private boolean tooManyWALPinned() {
     return PipeResourceManager.wal().getApproximatePinnedWALCount()
         > Math.max(1, PipeAgent.task().getLeaderDataRegionCount())
-            * PipeConfig.getInstance().getPipeExtractorPendingQueueTsFileLimit();
+            * PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
 
   private boolean isTsFileEventCountInQueueExceededLimit() {
     return pendingQueue.getTsFileInsertionEventCount() + eventCollectorQueueTsFileSize.get()
-        >= PipeConfig.getInstance().getPipeExtractorPendingQueueTsFileLimit();
+        >= PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
 
   public void informEventCollectorQueueTsFileSize(int queueSize) {
