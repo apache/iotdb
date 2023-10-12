@@ -54,7 +54,7 @@ public class WALInsertNodeCache {
 
   // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
   private final LoadingCache<WALEntryPosition, Pair<ByteBuffer, InsertNode>> lruCache;
-  private final boolean isBatchLoadEnabled;
+  private boolean isBatchLoadEnabled;
 
   // ids of all pinned memTables
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
@@ -77,6 +77,11 @@ public class WALInsertNodeCache {
     return isBatchLoadEnabled;
   }
 
+  @TestOnly
+  public void setIsBatchLoadEnabled(boolean isBatchLoadEnabled) {
+    this.isBatchLoadEnabled = isBatchLoadEnabled;
+  }
+
   public InsertNode getInsertNode(WALEntryPosition position) {
     final Pair<ByteBuffer, InsertNode> pair =
         isBatchLoadEnabled
@@ -97,6 +102,7 @@ public class WALInsertNodeCache {
             position.getPosition(),
             position.getSize(),
             e);
+        throw e;
       }
     }
 

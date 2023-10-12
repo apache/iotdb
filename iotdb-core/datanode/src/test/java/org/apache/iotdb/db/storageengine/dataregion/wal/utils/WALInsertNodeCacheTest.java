@@ -159,40 +159,48 @@ public class WALInsertNodeCacheTest {
 
   @Test
   public void testBatchLoad() throws Exception {
-    // write memTable1
-    IMemTable memTable1 = new PrimitiveMemTable(databasePath, dataRegionId);
-    walNode.onMemTableCreated(memTable1, logDirectory + "/" + "fake1.tsfile");
-    InsertRowNode node1 = getInsertRowNode(System.currentTimeMillis());
-    node1.setSearchIndex(1);
-    WALFlushListener flushListener1 = walNode.log(memTable1.getMemTableId(), node1);
-    WALEntryPosition position1 = flushListener1.getWalEntryHandler().getWalEntryPosition();
-    InsertRowNode node2 = getInsertRowNode(System.currentTimeMillis());
-    node1.setSearchIndex(2);
-    WALFlushListener flushListener2 = walNode.log(memTable1.getMemTableId(), node2);
-    WALEntryPosition position2 = flushListener2.getWalEntryHandler().getWalEntryPosition();
-    // write memTable2
-    IMemTable memTable2 = new PrimitiveMemTable(databasePath, dataRegionId);
-    walNode.onMemTableCreated(memTable2, logDirectory + "/" + "fake2.tsfile");
-    InsertRowNode node3 = getInsertRowNode(System.currentTimeMillis());
-    node1.setSearchIndex(3);
-    WALFlushListener flushListener3 = walNode.log(memTable2.getMemTableId(), node3);
-    WALEntryPosition position3 = flushListener3.getWalEntryHandler().getWalEntryPosition();
-    // wait until wal flushed
-    walNode.rollWALFile();
-    Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed() && position3.canRead());
-    // check batch load memTable1
-    cache.addMemTable(memTable1.getMemTableId());
-    assertEquals(node1, cache.getInsertNode(position1));
-    assertTrue(cache.contains(position1));
-    assertEquals(WALInsertNodeCache.getInstance().isBatchLoadEnabled(), cache.contains(position2));
-    assertFalse(cache.contains(position3));
-    // check batch load none
-    cache.removeMemTable(memTable1.getMemTableId());
-    cache.clear();
-    assertEquals(node1, cache.getInsertNode(position1));
-    assertTrue(cache.contains(position1));
-    assertFalse(cache.contains(position2));
-    assertFalse(cache.contains(position3));
+    // Enable batch load
+    boolean oldIsBatchLoadEnabled = WALInsertNodeCache.getInstance().isBatchLoadEnabled();
+    WALInsertNodeCache.getInstance().setIsBatchLoadEnabled(true);
+    try {
+      // write memTable1
+      IMemTable memTable1 = new PrimitiveMemTable(databasePath, dataRegionId);
+      walNode.onMemTableCreated(memTable1, logDirectory + "/" + "fake1.tsfile");
+      InsertRowNode node1 = getInsertRowNode(System.currentTimeMillis());
+      node1.setSearchIndex(1);
+      WALFlushListener flushListener1 = walNode.log(memTable1.getMemTableId(), node1);
+      WALEntryPosition position1 = flushListener1.getWalEntryHandler().getWalEntryPosition();
+      InsertRowNode node2 = getInsertRowNode(System.currentTimeMillis());
+      node1.setSearchIndex(2);
+      WALFlushListener flushListener2 = walNode.log(memTable1.getMemTableId(), node2);
+      WALEntryPosition position2 = flushListener2.getWalEntryHandler().getWalEntryPosition();
+      // write memTable2
+      IMemTable memTable2 = new PrimitiveMemTable(databasePath, dataRegionId);
+      walNode.onMemTableCreated(memTable2, logDirectory + "/" + "fake2.tsfile");
+      InsertRowNode node3 = getInsertRowNode(System.currentTimeMillis());
+      node1.setSearchIndex(3);
+      WALFlushListener flushListener3 = walNode.log(memTable2.getMemTableId(), node3);
+      WALEntryPosition position3 = flushListener3.getWalEntryHandler().getWalEntryPosition();
+      // wait until wal flushed
+      walNode.rollWALFile();
+      Awaitility.await().until(() -> walNode.isAllWALEntriesConsumed() && position3.canRead());
+      // check batch load memTable1
+      cache.addMemTable(memTable1.getMemTableId());
+      assertEquals(node1, cache.getInsertNode(position1));
+      assertTrue(cache.contains(position1));
+      assertEquals(
+          WALInsertNodeCache.getInstance().isBatchLoadEnabled(), cache.contains(position2));
+      assertFalse(cache.contains(position3));
+      // check batch load none
+      cache.removeMemTable(memTable1.getMemTableId());
+      cache.clear();
+      assertEquals(node1, cache.getInsertNode(position1));
+      assertTrue(cache.contains(position1));
+      assertFalse(cache.contains(position2));
+      assertFalse(cache.contains(position3));
+    } finally {
+      WALInsertNodeCache.getInstance().setIsBatchLoadEnabled(oldIsBatchLoadEnabled);
+    }
   }
 
   private InsertRowNode getInsertRowNode(long time) throws IllegalPathException {
