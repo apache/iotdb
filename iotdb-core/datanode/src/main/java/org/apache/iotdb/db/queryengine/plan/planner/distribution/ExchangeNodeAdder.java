@@ -324,12 +324,13 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
     // optimize `order by time limit N align by device` query,
     // to ensure that the number of ExchangeNode equals to DataRegionNum but not equals to DeviceNum
-    if (node instanceof TopKNode
-        && visitedChildren.stream().allMatch(SingleDeviceViewNode.class::isInstance)) {
+    if (node instanceof TopKNode) {
       TopKNode rootNode = (TopKNode) node;
       Map<TRegionReplicaSet, TopKNode> regionTopKNodeMap = new HashMap<>();
       for (PlanNode child : visitedChildren) {
-        ((SingleDeviceViewNode) child).setCacheOutputColumnNames(true);
+        if (child instanceof SingleDeviceViewNode) {
+          ((SingleDeviceViewNode) child).setCacheOutputColumnNames(true);
+        }
         TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).region;
         regionTopKNodeMap
             .computeIfAbsent(

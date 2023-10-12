@@ -52,13 +52,11 @@ import java.util.Map;
 import java.util.Set;
 
 public class DistributionPlanner {
-  private Analysis analysis;
-  private MPPQueryContext context;
-  private LogicalQueryPlan logicalPlan;
+  private final Analysis analysis;
+  private final MPPQueryContext context;
+  private final LogicalQueryPlan logicalPlan;
 
   private final List<PlanOptimizer> optimizers;
-
-  private int planFragmentIndex = 0;
 
   public DistributionPlanner(Analysis analysis, LogicalQueryPlan logicalPlan) {
     this.analysis = analysis;
@@ -158,7 +156,6 @@ public class DistributionPlanner {
       QueryStatement queryStatement, NodeGroupContext nodeGroupContext) {
     OrderByComponent orderByComponent = queryStatement.getOrderByComponent();
     return nodeGroupContext.isAlignByDevice()
-        && queryStatement.isAggregationQuery()
         && orderByComponent != null
         && (!orderByComponent.getSortItemList().isEmpty()
             && (orderByComponent.isBasedOnTime() && !queryStatement.hasOrderByExpression()));
@@ -174,7 +171,7 @@ public class DistributionPlanner {
   }
 
   public SubPlan splitFragment(PlanNode root) {
-    FragmentBuilder fragmentBuilder = new FragmentBuilder(context);
+    FragmentBuilder fragmentBuilder = new FragmentBuilder();
     return fragmentBuilder.splitToSubPlan(root);
   }
 
@@ -247,11 +244,6 @@ public class DistributionPlanner {
   }
 
   private class FragmentBuilder {
-    private MPPQueryContext context;
-
-    public FragmentBuilder(MPPQueryContext context) {
-      this.context = context;
-    }
 
     public SubPlan splitToSubPlan(PlanNode root) {
       SubPlan rootSubPlan = createSubPlan(root);

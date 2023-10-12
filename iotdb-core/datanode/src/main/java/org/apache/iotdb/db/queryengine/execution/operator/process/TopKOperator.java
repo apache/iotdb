@@ -156,6 +156,7 @@ public class TopKOperator extends AbstractConsumeAllOperator {
             mergeSortHeap.poll();
             mergeSortHeap.push(new MergeSortKey(buildOneEntryTsBlock(currentTsBlock, idx), 0));
           } else {
+            // TODO change this judgement, because topKOperator may also contains order expression
             skipCurrentBatch = true;
           }
         }

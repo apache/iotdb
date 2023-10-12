@@ -173,6 +173,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         }
         deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
       }
+
       // convert to ALIGN BY DEVICE view
       planBuilder =
           planBuilder.planDeviceView(
