@@ -833,10 +833,11 @@ public class WALNode implements IWALNode {
             targetIndex,
             targetIndex);
       }
-      if (itr != null && itr.hasNext()) {
+      while (itr != null && itr.hasNext()) {
         IndexedConsensusRequest request = itr.next();
-        itr.previous();
         if (targetIndex == request.getSearchIndex()) {
+          itr.previous();
+          nextSearchIndex = targetIndex;
           return;
         }
       }
