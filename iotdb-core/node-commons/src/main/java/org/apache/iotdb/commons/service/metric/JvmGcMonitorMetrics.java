@@ -45,7 +45,7 @@ public class JvmGcMonitorMetrics implements IMetricSet {
   // Interval for data collection
   public static final long SLEEP_INTERVAL_MS = TimeUnit.SECONDS.toMillis(5);
   // Max GC time threshold
-  public static final long MAX_GC_TIME_PERCENTAGE = 20L;
+  public static final long MAX_GC_TIME_PERCENTAGE = 30L;
   // The time when JvmGcMonitorMetrics start running
   private static long monitorStartTime;
   private static final Logger logger = LoggerFactory.getLogger(JvmGcMonitorMetrics.class);
