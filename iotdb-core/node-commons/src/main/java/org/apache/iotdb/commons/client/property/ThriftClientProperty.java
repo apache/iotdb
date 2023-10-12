@@ -108,12 +108,13 @@ public class ThriftClientProperty {
     }
   }
 
-  private static class DefaultProperty {
+  public static class DefaultProperty {
 
     private DefaultProperty() {}
 
     public static final boolean RPC_THRIFT_COMPRESSED_ENABLED = false;
     public static final int CONNECTION_TIMEOUT_MS = (int) TimeUnit.SECONDS.toMillis(20);
+    public static final int CONNECTION_NEVER_TIMEOUT_MS = 0;
     public static final int SELECTOR_NUM_OF_ASYNC_CLIENT_MANAGER = 1;
     public static final boolean PRINT_LOG_WHEN_ENCOUNTER_EXCEPTION = true;
   }

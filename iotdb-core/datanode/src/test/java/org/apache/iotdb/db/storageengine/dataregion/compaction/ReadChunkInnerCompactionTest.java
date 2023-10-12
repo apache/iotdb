@@ -47,7 +47,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createChunkWriter;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createCompressionType;
@@ -183,13 +182,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new ReadChunkCompactionPerformer(),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+
     task.start();
 
     validateSeqFiles(true);
@@ -361,13 +355,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new ReadChunkCompactionPerformer(),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+
     task.start();
 
     validateSeqFiles(true);

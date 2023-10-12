@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionExceptionHandler;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -37,7 +35,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -46,7 +43,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   private static final Logger LOGGER =
@@ -57,7 +53,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected TsFileResourceList unseqTsFileResourceList;
   private File logFile;
   protected List<TsFileResource> targetTsfileResourceList;
-  protected List<TsFileResource> holdReadLockList = new ArrayList<>();
   protected List<TsFileResource> holdWriteLockList = new ArrayList<>();
   protected double selectedSeqFileSize = 0;
   protected double selectedUnseqFileSize = 0;
@@ -69,7 +64,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       List<TsFileResource> selectedSequenceFiles,
       List<TsFileResource> selectedUnsequenceFiles,
       ICrossCompactionPerformer performer,
-      AtomicInteger currentTaskNum,
       long memoryCost,
       long serialId) {
     super(
@@ -77,7 +71,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         tsFileManager.getDataRegionId(),
         timePartition,
         tsFileManager,
-        currentTaskNum,
         serialId);
     this.selectedSequenceFiles = selectedSequenceFiles;
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
@@ -194,8 +187,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           throw new CompactionValidationFailedException("Failed to pass compaction validation");
         }
 
-        releaseReadAndLockWrite(selectedSequenceFiles);
-        releaseReadAndLockWrite(selectedUnsequenceFiles);
+        lockWrite(selectedSequenceFiles);
+        lockWrite(selectedUnsequenceFiles);
 
         for (TsFileResource sequenceResource : selectedSequenceFiles) {
           if (sequenceResource.getModFile().exists()) {
@@ -219,8 +212,12 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (!targetResource.isDeleted()) {
             FileMetrics.getInstance()
-                .addFile(
-                    targetResource.getTsFileSize(), true, targetResource.getTsFile().getName());
+                .addTsFile(
+                    targetResource.getDatabaseName(),
+                    targetResource.getDataRegionId(),
+                    targetResource.getTsFileSize(),
+                    true,
+                    targetResource.getTsFile().getName());
 
             // set target resources to CLOSED, so that they can be selected to compact
             targetResource.setStatus(TsFileResourceStatus.NORMAL);
@@ -276,11 +273,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           false,
           true);
     } finally {
-      SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
-      SystemInfo.getInstance()
-          .decreaseCompactionFileNumCost(
-              selectedSequenceFiles.size() + selectedUnsequenceFiles.size());
-      releaseAllLocksAndResetStatus();
+      releaseAllLocks();
     }
     return isSuccess;
   }
@@ -296,15 +289,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         && this.performer.getClass().isInstance(otherCrossCompactionTask.performer);
   }
 
-  private void releaseAllLocksAndResetStatus() {
-    resetCompactionCandidateStatusForAllSourceFiles();
-    for (TsFileResource tsFileResource : holdReadLockList) {
-      tsFileResource.readUnlock();
-    }
+  private void releaseAllLocks() {
     for (TsFileResource tsFileResource : holdWriteLockList) {
       tsFileResource.writeUnlock();
     }
-    holdReadLockList.clear();
     holdWriteLockList.clear();
   }
 
@@ -351,70 +339,21 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     return equalsOtherTask((CrossSpaceCompactionTask) other);
   }
 
-  private void releaseReadAndLockWrite(List<TsFileResource> tsFileResourceList) {
+  private void lockWrite(List<TsFileResource> tsFileResourceList) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      tsFileResource.readUnlock();
-      holdReadLockList.remove(tsFileResource);
       tsFileResource.writeLock();
       holdWriteLockList.add(tsFileResource);
     }
   }
 
   @Override
-  public boolean checkValidAndSetMerging() {
-    if (!tsFileManager.isAllowCompaction()) {
-      resetCompactionCandidateStatusForAllSourceFiles();
-      return false;
-    }
-    if (!isDiskSpaceCheckPassed()) {
-      LOGGER.debug(
-          "cross compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
-      return false;
-    }
-    try {
-      SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
-      SystemInfo.getInstance()
-          .addCompactionFileNum(selectedSequenceFiles.size() + selectedUnsequenceFiles.size(), 60);
-    } catch (Exception e) {
-      if (e instanceof InterruptedException) {
-        LOGGER.warn("Interrupted when allocating memory for compaction", e);
-        Thread.currentThread().interrupt();
-      } else if (e instanceof CompactionMemoryNotEnoughException) {
-        LOGGER.info("No enough memory for current compaction task {}", this, e);
-      } else if (e instanceof CompactionFileCountExceededException) {
-        LOGGER.info("No enough file num for current compaction task {}", this, e);
-        SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
-      }
-      resetCompactionCandidateStatusForAllSourceFiles();
-      return false;
-    }
-
-    boolean addReadLockSuccess =
-        addReadLock(selectedSequenceFiles) && addReadLock(selectedUnsequenceFiles);
-    if (!addReadLockSuccess) {
-      SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
-      SystemInfo.getInstance()
-          .decreaseCompactionFileNumCost(
-              selectedSequenceFiles.size() + selectedUnsequenceFiles.size());
-    }
-    return addReadLockSuccess;
+  public long getEstimatedMemoryCost() {
+    return memoryCost;
   }
 
-  private boolean addReadLock(List<TsFileResource> tsFileResourceList) {
-    try {
-      for (TsFileResource tsFileResource : tsFileResourceList) {
-        tsFileResource.readLock();
-        holdReadLockList.add(tsFileResource);
-        if (!tsFileResource.setStatus(TsFileResourceStatus.COMPACTING)) {
-          releaseAllLocksAndResetStatus();
-          return false;
-        }
-      }
-    } catch (Exception e) {
-      releaseAllLocksAndResetStatus();
-      throw e;
-    }
-    return true;
+  @Override
+  public int getProcessedFileNum() {
+    return selectedSequenceFiles.size() + selectedUnsequenceFiles.size();
   }
 
   @Override
