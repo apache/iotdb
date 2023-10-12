@@ -154,7 +154,7 @@ public class DeleteDatabaseProcedure
               env.deleteDatabaseConfig(deleteDatabaseSchema.getName());
 
           // Delete Database metrics
-          PartitionMetrics.unbindDatabasePartitionMetrics(
+          PartitionMetrics.unbindDatabasePartitionMetricsWhenUpdate(
               MetricService.getInstance(), deleteDatabaseSchema.getName());
 
           // try sync delete schemaengine region

@@ -215,6 +215,8 @@ public class ConfigRegionStateMachine
       configManager.getPartitionManager().stopRegionCleaner();
       configManager.getCQManager().stopCQScheduler();
       configManager.getClusterSchemaManager().clearSchemaQuotaCache();
+      // Remove Metric after leader change
+      configManager.removeMetrics();
     }
   }
 

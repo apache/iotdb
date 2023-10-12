@@ -164,7 +164,7 @@ public class ClusterSchemaManager {
       // Cache DatabaseSchema
       result = getConsensusManager().write(databaseSchemaPlan);
       // Bind Database metrics
-      PartitionMetrics.bindDatabasePartitionMetrics(
+      PartitionMetrics.bindDatabasePartitionMetricsWhenUpdate(
           MetricService.getInstance(), configManager, databaseSchemaPlan.getSchema().getName());
       // Adjust the maximum RegionGroup number of each Database
       adjustMaxRegionGroupNum();
