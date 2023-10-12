@@ -121,7 +121,7 @@ class Field(object):
     def get_string_value(self):
         if self.__data_type is None or self.value is None:
             return "None"
-        elif self.__data_type == TSDataType.TEXT:
+        elif self.__data_type == 5:
             return self.value.decode("utf-8")
         else:
             return str(self.get_object_value(self.__data_type))
@@ -135,15 +135,15 @@ class Field(object):
         """
         if self.__data_type is None or self.value is None or self.value is pd.NA:
             return None
-        if data_type == TSDataType.BOOLEAN:
+        if data_type == 0:
             return bool(self.value)
-        elif data_type == TSDataType.INT32:
+        elif data_type == 1:
             return np.int32(self.value)
-        elif data_type == TSDataType.INT64:
+        elif data_type == 2:
             return np.int64(self.value)
-        elif data_type == TSDataType.FLOAT:
+        elif data_type == 3:
             return np.float32(self.value)
-        elif data_type == TSDataType.DOUBLE:
+        elif data_type == 4:
             return np.float64(self.value)
         return self.value
 
