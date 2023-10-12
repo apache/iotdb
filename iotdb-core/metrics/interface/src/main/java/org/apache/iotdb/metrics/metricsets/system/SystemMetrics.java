@@ -224,6 +224,11 @@ public class SystemMetrics implements IMetricSet {
         SystemMetric.SYS_DISK_FREE_SPACE.toString(),
         SystemTag.NAME.toString(),
         SYSTEM);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        SystemMetric.SYS_AVAILABLE_SPACE.toString(),
+        SystemTag.NAME.toString(),
+        SYSTEM);
 
     diskDirs.get().clear();
     fileStores.clear();
