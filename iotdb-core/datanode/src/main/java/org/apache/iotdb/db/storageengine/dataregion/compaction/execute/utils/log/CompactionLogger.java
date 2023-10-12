@@ -55,6 +55,8 @@ public class CompactionLogger implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
+    logStream.flush();
+    logStream.getFD().sync();
     logStream.close();
   }
 
