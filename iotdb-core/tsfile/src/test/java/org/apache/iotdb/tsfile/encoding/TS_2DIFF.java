@@ -1050,9 +1050,7 @@ public class TS_2DIFF {
                     data2.add(Integer.valueOf(loader.getValues()[1]));
                 }
                 inputStream.close();
-                for (int q_exp = 0; q_exp < 8; q_exp++) {
-                    int q = (int) Math.pow(2, q_exp);
-                    System.out.println(q);
+
                     long encodeTime = 0;
                     long decodeTime = 0;
                     double ratio = 0;
@@ -1081,7 +1079,9 @@ public class TS_2DIFF {
                     compressed_size /= repeatTime;
                     encodeTime /= repeatTime;
                     decodeTime /= repeatTime;
-
+                for (int q_exp = 0; q_exp < 8; q_exp++) {
+                    int q = (int) Math.pow(2, q_exp);
+                    System.out.println(q);
                     String[] record = {
                             f.toString(),
                             "TS_2DIFF",

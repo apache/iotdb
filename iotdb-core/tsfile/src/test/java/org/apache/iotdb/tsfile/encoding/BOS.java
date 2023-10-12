@@ -1657,7 +1657,7 @@ public class BOS {
             columnIndexes.add(i, i);
         }
 
-//        for (int file_i = 6; file_i < 7; file_i++) {
+
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
@@ -1686,7 +1686,7 @@ public class BOS {
             assert tempList != null;
 
             for (File f : tempList) {
-//                f = tempList[2];
+
                 System.out.println(f);
                 InputStream inputStream = Files.newInputStream(f.toPath());
 
@@ -1696,23 +1696,14 @@ public class BOS {
                 ArrayList<Integer> data_decoded = new ArrayList<>();
 
 
-//                for (int index : columnIndexes) {
-                // add a column to "data"
-//                    System.out.println(index);
 
                 loader.readHeaders();
-//                    data.clear();
                 while (loader.readRecord()) {
-//                        String value = loader.getValues()[index];
                     data1.add(Integer.valueOf(loader.getValues()[0]));
                     data2.add(Integer.valueOf(loader.getValues()[1]));
-//                        data.add(Integer.valueOf(value));
                 }
-//                    System.out.println(data2);
                 inputStream.close();
-                for (int q_exp = 0; q_exp < 8; q_exp++) {
-                    int q = (int) Math.pow(2, q_exp);
-                    System.out.println(q);
+
                     long encodeTime = 0;
                     long decodeTime = 0;
                     double ratio = 0;
@@ -1747,7 +1738,9 @@ public class BOS {
                     compressed_size /= repeatTime;
                     encodeTime /= repeatTime;
                     decodeTime /= repeatTime;
-
+                for (int q_exp = 0; q_exp < 8; q_exp++) {
+                    int q = (int) Math.pow(2, q_exp);
+                    System.out.println(q);
                     String[] record = {
                             f.toString(),
                             "TS_2DIFF+BOS-O",
@@ -1761,9 +1754,7 @@ public class BOS {
                     writer.writeRecord(record);
                     System.out.println(ratio);
                 }
-//                }
 
-//   break;
             }
             writer.close();
 
