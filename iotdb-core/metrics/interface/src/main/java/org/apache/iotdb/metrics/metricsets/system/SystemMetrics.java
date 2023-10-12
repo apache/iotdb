@@ -205,10 +205,10 @@ public class SystemMetrics implements IMetricSet {
         SystemTag.NAME.toString(),
         SYSTEM);
     metricService.createAutoGauge(
-        SystemMetric.SYS_AVAILABLE_SPACE.toString(),
+        SystemMetric.SYS_DISK_AVAILABLE_SPACE.toString(),
         MetricLevel.CORE,
         this,
-        SystemMetrics::getSystemAvailableSpace,
+        SystemMetrics::getSystemDiskAvailableSpace,
         SystemTag.NAME.toString(),
         SYSTEM);
   }
@@ -226,7 +226,7 @@ public class SystemMetrics implements IMetricSet {
         SYSTEM);
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        SystemMetric.SYS_AVAILABLE_SPACE.toString(),
+        SystemMetric.SYS_DISK_AVAILABLE_SPACE.toString(),
         SystemTag.NAME.toString(),
         SYSTEM);
 
@@ -258,7 +258,7 @@ public class SystemMetrics implements IMetricSet {
     return sysFreeSpace;
   }
 
-  public long getSystemAvailableSpace() {
+  public long getSystemDiskAvailableSpace() {
     long sysFreeSpace = 0L;
     for (FileStore fileStore : fileStores) {
       try {
