@@ -1667,7 +1667,7 @@ public class BOSAmortization {
     public void BOSAmortizationVaryQ() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
 //        String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/vary_q";
+        String output_parent_dir = parent_dir + "vldb/compression_ratio/vary_q_amortization";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
