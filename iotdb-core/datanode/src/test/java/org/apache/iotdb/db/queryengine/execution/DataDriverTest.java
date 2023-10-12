@@ -164,6 +164,7 @@ public class DataDriverTest {
                   new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator()),
                   new SingleColumnMerger(new InputLocation(1, 0), new AscTimeComparator())),
               new AscTimeComparator());
+      timeJoinOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       LimitOperator limitOperator =
           new LimitOperator(driverContext.getOperatorContexts().get(3), 250, timeJoinOperator);

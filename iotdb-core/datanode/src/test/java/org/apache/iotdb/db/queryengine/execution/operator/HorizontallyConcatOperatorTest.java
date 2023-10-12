@@ -182,6 +182,9 @@ public class HorizontallyConcatOperatorTest {
                   TSDataType.INT64,
                   TSDataType.DOUBLE,
                   TSDataType.INT32));
+      horizontallyConcatOperator
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       int count = 0;
       while (horizontallyConcatOperator.isBlocked().isDone()
