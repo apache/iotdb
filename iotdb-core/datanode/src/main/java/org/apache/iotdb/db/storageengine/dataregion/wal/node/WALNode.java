@@ -64,9 +64,9 @@ import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -613,7 +613,7 @@ public class WALNode implements IWALNode {
     /** batch store insert nodes */
     private final List<IndexedConsensusRequest> insertNodes = new LinkedList<>();
     /** iterator of insertNodes */
-    private Iterator<IndexedConsensusRequest> itr = null;
+    private ListIterator<IndexedConsensusRequest> itr = null;
 
     public PlanNodeIterator(long startIndex) {
       this.nextSearchIndex = startIndex;
@@ -775,7 +775,7 @@ public class WALNode implements IWALNode {
 
       // update iterator
       if (!insertNodes.isEmpty()) {
-        itr = insertNodes.iterator();
+        itr = insertNodes.listIterator();
         return true;
       }
       return false;
@@ -832,6 +832,13 @@ public class WALNode implements IWALNode {
             nextSearchIndex,
             targetIndex,
             targetIndex);
+      }
+      if (itr != null && itr.hasNext()) {
+        IndexedConsensusRequest request = itr.next();
+        itr.previous();
+        if (targetIndex == request.getSearchIndex()) {
+          return;
+        }
       }
       reset();
       nextSearchIndex = targetIndex;
