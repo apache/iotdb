@@ -260,15 +260,15 @@ public class SystemMetrics implements IMetricSet {
   }
 
   public long getSystemDiskAvailableSpace() {
-    long sysFreeSpace = 0L;
+    long sysAvailableSpace = 0L;
     for (FileStore fileStore : fileStores) {
       try {
-        sysFreeSpace += fileStore.getUsableSpace();
+        sysAvailableSpace += fileStore.getUsableSpace();
       } catch (IOException e) {
         logger.error(FAILED_TO_STATISTIC, fileStore, e);
       }
     }
-    return sysFreeSpace;
+    return sysAvailableSpace;
   }
 
   public static SystemMetrics getInstance() {
