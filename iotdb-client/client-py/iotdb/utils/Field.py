@@ -62,9 +62,13 @@ class Field(object):
         self.value = value
 
     def get_bool_value(self):
-        if self.__data_type is None or self.value is None or self.value is pd.NA:
+        if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        if self.__data_type != TSDataType.BOOLEAN:
+        if (
+            self.__data_type != TSDataType.BOOLEAN
+            or self.value is None
+            or self.value is pd.NA
+        ):
             return None
         return self.value
 
@@ -72,9 +76,13 @@ class Field(object):
         self.value = value
 
     def get_int_value(self):
-        if self.__data_type is None or self.value is None or self.value is pd.NA:
+        if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        if self.__data_type is None or self.value is None or self.value is pd.NA:
+        if (
+            self.__data_type != TSDataType.INT32
+            or self.value is None
+            or self.value is pd.NA
+        ):
             return None
         return np.int32(self.value)
 
@@ -82,9 +90,13 @@ class Field(object):
         self.value = value
 
     def get_long_value(self):
-        if self.__data_type is None or self.value is None or self.value is pd.NA:
+        if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        if self.__data_type != TSDataType.INT64:
+        if (
+            self.__data_type != TSDataType.INT64
+            or self.value is None
+            or self.value is pd.NA
+        ):
             return None
         return np.int64(self.value)
 
@@ -92,9 +104,13 @@ class Field(object):
         self.value = value
 
     def get_float_value(self):
-        if self.__data_type is None or self.value is None or self.value is pd.NA:
+        if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        if self.__data_type != TSDataType.FLOAT:
+        if (
+            self.__data_type != TSDataType.FLOAT
+            or self.value is None
+            or self.value is pd.NA
+        ):
             return None
         return np.float32(self.value)
 
@@ -102,9 +118,13 @@ class Field(object):
         self.value = value
 
     def get_double_value(self):
-        if self.__data_type is None or self.value is None or self.value is pd.NA:
+        if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        if self.__data_type != TSDataType.DOUBLE:
+        if (
+            self.__data_type != TSDataType.DOUBLE
+            or self.value is None
+            or self.value is pd.NA
+        ):
             return None
         return np.float64(self.value)
 
@@ -112,9 +132,13 @@ class Field(object):
         self.value = value
 
     def get_binary_value(self):
-        if self.__data_type is None or self.value is None or self.value is pd.NA:
+        if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        if self.__data_type != TSDataType.TEXT:
+        if (
+            self.__data_type != TSDataType.TEXT
+            or self.value is None
+            or self.value is pd.NA
+        ):
             return None
         return self.value
 
