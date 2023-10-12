@@ -368,13 +368,21 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   private long pushDownLimitToScanNode(QueryStatement queryStatement) {
-    // `order by time align by device limit N` query can push down `N` to ScanNode
+    // `order by time|device LIMIT N align by device` and no can push down limitValue to ScanNode
     if (queryStatement.isAlignByDevice()
-        && queryStatement.isOrderByBasedOnTime()
         && queryStatement.hasLimit()
-        && !queryStatement.hasOffset()) {
+        && !analysis.hasValueFilter()
+        && (queryStatement.isOrderByBasedOnDevice() || queryStatement.isOrderByBasedOnTime())) {
+
+      // both `offset` and `limit` exist, push `limit+offset` down as limitValue
+      if (queryStatement.hasOffset()) {
+        return queryStatement.getRowOffset() + queryStatement.getRowLimit();
+      }
+
+      // only `limit` exist, push `limit` down as limitValue
       return queryStatement.getRowLimit();
     }
+
     return 0;
   }
 

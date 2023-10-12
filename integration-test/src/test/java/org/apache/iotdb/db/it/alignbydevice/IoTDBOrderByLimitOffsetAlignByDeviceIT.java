@@ -34,17 +34,19 @@ import static org.apache.iotdb.db.it.alignbydevice.IoTDBOrderByWithAlignByDevice
 import static org.apache.iotdb.db.it.alignbydevice.IoTDBOrderByWithAlignByDeviceIT.insertData2;
 import static org.apache.iotdb.db.it.alignbydevice.IoTDBOrderByWithAlignByDeviceIT.startPrecipitation;
 import static org.apache.iotdb.db.it.alignbydevice.IoTDBOrderByWithAlignByDeviceIT.startTemperature;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class IoTDBOrderByWithLimitAlignByDeviceIT {
+public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
     insertData2();
+    insertData3();
   }
 
   @AfterClass
@@ -88,6 +90,60 @@ public class IoTDBOrderByWithLimitAlignByDeviceIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void orderByCanNotPushLimitTest() {
+    // 1. value filter, can not push down LIMIT
+    String[] expectedHeader = new String[] {"Time,Device,s1"};
+    String[] retArray = new String[] {"3,root.db.d1,111,"};
+    resultSetEqualTest(
+        "SELECT * FROM root.db.** WHERE s1>40 ORDER BY TIME LIMIT 1 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    // 2. order by expression, can not push down LIMIT
+    retArray = new String[] {"3,root.db.d3,333,"};
+    resultSetEqualTest(
+        "SELECT * FROM root.db.** ORDER BY s1 DESC LIMIT 1 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    // 3. time filter, can push down LIMIT
+    retArray = new String[] {"3,root.db.d3,33,", "2,root.db.d2,22,"};
+    resultSetEqualTest(
+        "SELECT * FROM root.db.** WHERE time>1 and time<3 ORDER BY device DESC LIMIT 2 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    // 4. both exist OFFSET and LIMIT, can push down LIMIT as OFFSET+LIMIT
+    retArray = new String[] {"3,root.db.d2,222,"};
+    resultSetEqualTest(
+        "SELECT * FROM root.db.** ORDER BY time DESC OFFSET 1 LIMIT 1 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+  }
+
+  private static final String[] SQL_LIST =
+      new String[] {
+        "CREATE DATABASE root.db;",
+        "CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE;",
+        "CREATE TIMESERIES root.db.d2.s1 WITH DATATYPE=INT32, ENCODING=RLE;",
+        "CREATE TIMESERIES root.db.d3.s1 WITH DATATYPE=INT32, ENCODING=RLE;",
+        "INSERT INTO root.db.d1(timestamp,s1) VALUES(1, 1), (2, 11), (3, 111);",
+        "INSERT INTO root.db.d2(timestamp,s1) VALUES(1, 2), (2, 22), (3, 222);",
+        "INSERT INTO root.db.d3(timestamp,s1) VALUES(1, 3), (2, 33), (3, 333);",
+      };
+
+  protected static void insertData3() {
+    try (Connection iotDBConnection = EnvFactory.getEnv().getConnection();
+        Statement statement = iotDBConnection.createStatement()) {
+      for (String sql : SQL_LIST) {
+        statement.execute(sql);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 }

@@ -62,10 +62,10 @@ public class IoTDBOrderByWithAlignByDeviceIT {
       };
   protected static final long startPrecipitation = 200;
   protected static final double startTemperature = 20.0;
-  private static final long startTime = 1668960000000L;
+  protected static final long startTime = 1668960000000L;
   protected static final int numOfPointsInDevice = 20;
-  private static final long timeGap = 100L;
-  private static final Map<String, Long> deviceToStartTimestamp = new HashMap<>();
+  protected static final long timeGap = 100L;
+  protected static final Map<String, Long> deviceToStartTimestamp = new HashMap<>();
   public static final Map<String, double[]> deviceToMaxTemperature = new HashMap<>();
   public static final Map<String, double[]> deviceToAvgTemperature = new HashMap<>();
   public static final Map<String, long[]> deviceToMaxPrecipitation = new HashMap<>();
