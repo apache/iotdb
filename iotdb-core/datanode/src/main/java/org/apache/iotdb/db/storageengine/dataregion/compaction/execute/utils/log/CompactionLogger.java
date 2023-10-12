@@ -55,8 +55,6 @@ public class CompactionLogger implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
-    logStream.flush();
-    logStream.getFD().sync();
     logStream.close();
   }
 
@@ -85,5 +83,15 @@ public class CompactionLogger implements AutoCloseable {
     } else {
       return new File[0];
     }
+  }
+
+  /**
+   * call system fsync function, make sure data flush to disk
+   *
+   * @throws IOException
+   */
+  public void force() throws IOException {
+    logStream.flush();
+    logStream.getFD().sync();
   }
 }
