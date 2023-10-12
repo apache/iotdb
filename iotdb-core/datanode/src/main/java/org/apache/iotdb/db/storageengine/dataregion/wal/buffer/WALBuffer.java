@@ -131,6 +131,7 @@ public class WALBuffer extends AbstractWALBuffer {
 
   @TestOnly
   public void setBufferSize(int size) {
+    buffersLock.lock();
     try {
       if (workingBuffer != null) {
         MmapUtil.clean((MappedByteBuffer) workingBuffer);
@@ -147,6 +148,8 @@ public class WALBuffer extends AbstractWALBuffer {
       logger.error("Fail to allocate wal node-{}'s buffer because out of memory.", identifier, e);
       close();
       throw e;
+    } finally {
+      buffersLock.unlock();
     }
   }
 
