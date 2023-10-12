@@ -878,7 +878,7 @@ public class PartitionInfo implements SnapshotProcessor {
       fileOutputStream.getFD().sync();
 
       // The tmpFile can be renamed only after the stream is closed
-      bufferedOutputStream.close();
+      tioStreamTransport.close();
 
       // rename file
       return tmpFile.renameTo(snapshotFile);

@@ -462,7 +462,7 @@ public class NodeInfo implements SnapshotProcessor {
       fileOutputStream.getFD().sync();
 
       // The tmpFile can be renamed only after the stream is closed
-      fileOutputStream.close();
+      tioStreamTransport.close();
 
       return tmpFile.renameTo(snapshotFile);
     } finally {
