@@ -833,17 +833,21 @@ public class WALNode implements IWALNode {
             targetIndex,
             targetIndex);
       }
-      while (itr != null && itr.hasNext()) {
-        if (insertNodes.get(insertNodes.size() - 1).getSearchIndex() < targetIndex) {
-          break;
-        }
-        IndexedConsensusRequest request = itr.next();
-        if (targetIndex == request.getSearchIndex()) {
-          itr.previous();
-          nextSearchIndex = targetIndex;
-          return;
+
+      if (itr != null
+          && itr.hasNext()
+          && insertNodes.get(itr.nextIndex()).getSearchIndex() <= targetIndex
+          && targetIndex <= insertNodes.get(insertNodes.size() - 1).getSearchIndex()) {
+        while (itr.hasNext()) {
+          IndexedConsensusRequest request = itr.next();
+          if (targetIndex == request.getSearchIndex()) {
+            itr.previous();
+            nextSearchIndex = targetIndex;
+            return;
+          }
         }
       }
+
       reset();
       nextSearchIndex = targetIndex;
     }
