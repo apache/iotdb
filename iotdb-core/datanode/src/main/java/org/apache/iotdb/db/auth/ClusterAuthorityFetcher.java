@@ -377,6 +377,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     if (currentTime - heartBeatTimeStamp > CONFIG.getDatanodeTokenTimeoutMS()) {
       cacheOutDate = true;
     }
+    heartBeatTimeStamp = currentTime;
   }
 
   private void checkCacheAvailable() {
@@ -430,7 +431,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     checkCacheAvailable();
     User user = iAuthorCache.getUserCache(userName);
     if (user != null) {
-      return user.isOpenIdUser() || user.getRoleList().contains(userName);
+      return user.isOpenIdUser() || user.getRoleList().contains(roleName);
     } else {
       return checkRoleFromConfigNode(userName, roleName);
     }
@@ -485,6 +486,13 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   private boolean checkRoleFromConfigNode(String username, String rolename) {
     TAuthorizerReq req = new TAuthorizerReq();
+    // just reuse authorizer request. only need username and rolename field.
+    req.setAuthorType(0);
+    req.setPassword("");
+    req.setNewPassword("");
+    req.setNodeNameList(AuthUtils.serializePartialPathList(Collections.emptyList()));
+    req.setPermissions(Collections.emptySet());
+    req.setGrantOpt(false);
     req.setUserName(username);
     req.setRoleName(rolename);
     TPermissionInfoResp permissionInfoResp;
