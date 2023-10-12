@@ -231,8 +231,48 @@ public class PartitionMetrics implements IMetricSet {
 
   // region Database Partition Metrics
 
+  private void bindDatabasePartitionMetrics(AbstractMetricService metricService) {
+    ClusterSchemaManager clusterSchemaManager = getClusterSchemaManager();
+    // Count the number of Databases
+    metricService.createAutoGauge(
+        Metric.DATABASE_NUM.toString(),
+        MetricLevel.CORE,
+        clusterSchemaManager,
+        c -> c.getDatabaseNames().size());
+
+    List<String> databases = clusterSchemaManager.getDatabaseNames();
+    for (String database : databases) {
+      int dataReplicationFactor = 1;
+      int schemaReplicationFactor = 1;
+      try {
+        dataReplicationFactor =
+            clusterSchemaManager.getReplicationFactor(database, TConsensusGroupType.DataRegion);
+        schemaReplicationFactor =
+            clusterSchemaManager.getReplicationFactor(database, TConsensusGroupType.SchemaRegion);
+      } catch (DatabaseNotExistsException e) {
+        // ignore
+      }
+      bindDatabasePartitionMetricsWhenUpdate(
+          metricService, configManager, database, dataReplicationFactor, schemaReplicationFactor);
+    }
+  }
+
+  private void unbindDatabasePartitionMetrics(AbstractMetricService metricService) {
+    // Remove the number of Databases
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.DATABASE_NUM.toString());
+
+    List<String> databases = getClusterSchemaManager().getDatabaseNames();
+    for (String database : databases) {
+      unbindDatabasePartitionMetricsWhenUpdate(metricService, database);
+    }
+  }
+
   public static void bindDatabasePartitionMetricsWhenUpdate(
-      AbstractMetricService metricService, IManager configManager, String database) {
+      AbstractMetricService metricService,
+      IManager configManager,
+      String database,
+      int dataReplicationFactor,
+      int schemaReplicationFactor) {
     PartitionManager partitionManager = configManager.getPartitionManager();
 
     // Count the number of SeriesSlots in the specified Database
@@ -286,31 +326,8 @@ public class PartitionMetrics implements IMetricSet {
         database,
         Tag.TYPE.toString(),
         TConsensusGroupType.DataRegion.toString());
-  }
-
-  private void bindDatabasePartitionMetrics(AbstractMetricService metricService) {
-    ClusterSchemaManager clusterSchemaManager = getClusterSchemaManager();
-    // Count the number of Databases
-    metricService.createAutoGauge(
-        Metric.DATABASE_NUM.toString(),
-        MetricLevel.CORE,
-        clusterSchemaManager,
-        c -> c.getDatabaseNames().size());
-
-    List<String> databases = clusterSchemaManager.getDatabaseNames();
-    for (String database : databases) {
-      bindDatabasePartitionMetricsWhenUpdate(metricService, configManager, database);
-      try {
-        int dataReplicationFactor =
-            clusterSchemaManager.getReplicationFactor(database, TConsensusGroupType.DataRegion);
-        int schemaReplicationFactor =
-            clusterSchemaManager.getReplicationFactor(database, TConsensusGroupType.SchemaRegion);
-        bindDatabaseReplicationFactorMetrics(
-            metricService, database, dataReplicationFactor, schemaReplicationFactor);
-      } catch (DatabaseNotExistsException e) {
-        // ignore
-      }
-    }
+    bindDatabaseReplicationFactorMetrics(
+        metricService, database, dataReplicationFactor, schemaReplicationFactor);
   }
 
   public static void unbindDatabasePartitionMetricsWhenUpdate(
@@ -344,16 +361,22 @@ public class PartitionMetrics implements IMetricSet {
         database,
         Tag.TYPE.toString(),
         TConsensusGroupType.DataRegion.toString());
-  }
 
-  private void unbindDatabasePartitionMetrics(AbstractMetricService metricService) {
-    // Remove the number of Databases
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.DATABASE_NUM.toString());
-
-    List<String> databases = getClusterSchemaManager().getDatabaseNames();
-    for (String database : databases) {
-      unbindDatabasePartitionMetricsWhenUpdate(metricService, database);
-    }
+    // Remove database replication factor metric
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.REPLICATION_FACTOR.toString(),
+        Tag.TYPE.toString(),
+        DATA,
+        Tag.DATABASE.toString(),
+        database);
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.REPLICATION_FACTOR.toString(),
+        Tag.TYPE.toString(),
+        SCHEMA,
+        Tag.DATABASE.toString(),
+        database);
   }
 
   public static void bindDatabaseReplicationFactorMetrics(
@@ -379,25 +402,6 @@ public class PartitionMetrics implements IMetricSet {
             Tag.DATABASE.toString(),
             database)
         .set(schemaReplicationFactor);
-  }
-
-  public static void unbindDatabaseReplicationFactorMetrics(
-      AbstractMetricService metricService, String database) {
-    // Remove database replication factor metric
-    metricService.remove(
-        MetricType.GAUGE,
-        Metric.REPLICATION_FACTOR.toString(),
-        Tag.TYPE.toString(),
-        DATA,
-        Tag.DATABASE.toString(),
-        database);
-    metricService.remove(
-        MetricType.GAUGE,
-        Metric.REPLICATION_FACTOR.toString(),
-        Tag.TYPE.toString(),
-        SCHEMA,
-        Tag.DATABASE.toString(),
-        database);
   }
 
   // endregion

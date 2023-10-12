@@ -165,14 +165,13 @@ public class ClusterSchemaManager {
       result = getConsensusManager().write(databaseSchemaPlan);
       // Bind Database metrics
       PartitionMetrics.bindDatabasePartitionMetricsWhenUpdate(
-          MetricService.getInstance(), configManager, databaseSchemaPlan.getSchema().getName());
-      // Adjust the maximum RegionGroup number of each Database
-      adjustMaxRegionGroupNum();
-      PartitionMetrics.bindDatabaseReplicationFactorMetrics(
           MetricService.getInstance(),
+          configManager,
           databaseSchemaPlan.getSchema().getName(),
           databaseSchemaPlan.getSchema().getDataReplicationFactor(),
           databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
+      // Adjust the maximum RegionGroup number of each Database
+      adjustMaxRegionGroupNum();
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -260,8 +259,6 @@ public class ClusterSchemaManager {
     TSStatus result;
     try {
       result = getConsensusManager().write(deleteDatabasePlan);
-      PartitionMetrics.unbindDatabaseReplicationFactorMetrics(
-          MetricService.getInstance(), deleteDatabasePlan.getName());
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
