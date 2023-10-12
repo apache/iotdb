@@ -81,14 +81,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeExtractorMatcherCacheSize();
   }
 
-  public int getPipeExtractorPendingQueueCapacity() {
-    return COMMON_CONFIG.getPipeExtractorPendingQueueCapacity();
-  }
-
-  public int getPipeExtractorPendingQueueTabletLimit() {
-    return COMMON_CONFIG.getPipeExtractorPendingQueueTabletLimit();
-  }
-
   /////////////////////////////// Connector ///////////////////////////////
 
   public long getPipeConnectorTimeoutMs() {
@@ -159,6 +151,12 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAirGapReceiverPort();
   }
 
+  /////////////////////////////// Hybrid Mode ///////////////////////////////
+
+  public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
+    return COMMON_CONFIG.getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
@@ -186,9 +184,6 @@ public class PipeConfig {
         "PipeExtractorAssignerDisruptorRingBufferSize: {}",
         getPipeExtractorAssignerDisruptorRingBufferSize());
     LOGGER.info("PipeExtractorMatcherCacheSize: {}", getPipeExtractorMatcherCacheSize());
-    LOGGER.info("PipeExtractorPendingQueueCapacity: {}", getPipeExtractorPendingQueueCapacity());
-    LOGGER.info(
-        "PipeExtractorPendingQueueTabletLimit: {}", getPipeExtractorPendingQueueTabletLimit());
 
     LOGGER.info("PipeConnectorTimeoutMs: {}", getPipeConnectorTimeoutMs());
     LOGGER.info("PipeConnectorReadFileBufferSize: {}", getPipeConnectorReadFileBufferSize());
@@ -216,6 +211,10 @@ public class PipeConfig {
 
     LOGGER.info("PipeAirGapReceiverEnabled: {}", getPipeAirGapReceiverEnabled());
     LOGGER.info("PipeAirGapReceiverPort: {}", getPipeAirGapReceiverPort());
+
+    LOGGER.info(
+        "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
+        getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

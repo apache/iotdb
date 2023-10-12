@@ -912,17 +912,6 @@ public class TsFileResource {
     return ramSize;
   }
 
-  public void delete() throws IOException {
-    forceMarkDeleted();
-    if (file.exists()) {
-      Files.delete(file.toPath());
-      Files.delete(
-          FSFactoryProducer.getFSFactory()
-              .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX)
-              .toPath());
-    }
-  }
-
   public long getMaxPlanIndex() {
     return maxPlanIndex;
   }

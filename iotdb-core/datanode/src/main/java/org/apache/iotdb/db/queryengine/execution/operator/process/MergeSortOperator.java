@@ -130,10 +130,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
       tsBlockBuilder.declarePosition();
       if (mergeSortKey.rowIndex == mergeSortKey.tsBlock.getPositionCount() - 1) {
         inputTsBlocks[mergeSortKey.inputChannelIndex] = null;
-        if (!mergeSortHeap.isEmpty()
-            && comparator.compare(mergeSortHeap.peek(), mergeSortKey) > 0) {
-          break;
-        }
+        break;
       } else {
         mergeSortKey.rowIndex++;
         mergeSortHeap.push(mergeSortKey);

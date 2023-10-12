@@ -196,6 +196,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaSt
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
@@ -1870,6 +1871,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         } else {
           timestamp =
               parseTimeValue(insertMultiValues.get(i).timeValue(), DateTimeUtils.currentTime());
+          TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
         }
       } else {
         if (!isTimeDefault) {
@@ -2031,7 +2033,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return parseNodeStringInIntoPath(ctx.getText());
   }
 
-  private String parseNodeString(String nodeName) {
+  public static String parseNodeString(String nodeName) {
     if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
         || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
       return nodeName;
@@ -2044,19 +2046,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return nodeName;
   }
 
-  private String parseNodeStringInIntoPath(String nodeName) {
+  private static String parseNodeStringInIntoPath(String nodeName) {
     if (nodeName.equals(IoTDBConstant.DOUBLE_COLONS)) {
       return nodeName;
     }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
-      return PathUtils.removeBackQuotesIfNecessary(nodeName);
+      // needn't remove back_quotes here, we will remove them after placeholders applied
+      return nodeName;
     }
     checkNodeNameInIntoPath(nodeName);
     return nodeName;
   }
 
-  private void checkNodeName(String src) {
+  private static void checkNodeName(String src) {
     // node name could start with * and end with *
     if (!TsFileConstant.NODE_NAME_PATTERN.matcher(src).matches()) {
       throw new SemanticException(
@@ -2066,7 +2069,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  private void checkNodeNameInIntoPath(String src) {
+  private static void checkNodeNameInIntoPath(String src) {
     // ${} are allowed
     if (!TsFileConstant.NODE_NAME_IN_INTO_PATH_PATTERN.matcher(src).matches()) {
       throw new SemanticException(

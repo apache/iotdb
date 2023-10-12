@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
+import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -61,8 +63,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
@@ -76,7 +76,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
-    WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(1));
+    WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(1));
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
@@ -226,7 +226,6 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -454,7 +453,6 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -587,8 +585,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 + "s0"),
         0,
         1000,
-        0,
-        null);
+        0);
 
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -597,11 +594,11 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0),
             0,
             0);
     task.setSourceFilesToCompactionCandidate();
-    task.checkValidAndSetMerging();
+    seqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
+    unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data in source file during compaction
     vsgp.deleteByDevice(
         new PartialPath(
@@ -613,8 +610,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 + "s0"),
         0,
         1200,
-        0,
-        null);
+        0);
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource resource = seqResources.get(i);
       resource.resetModFile();
@@ -708,8 +704,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 + "s0"),
         0,
         1000,
-        0,
-        null);
+        0);
 
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -718,11 +713,11 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0),
             0,
             0);
     task.setSourceFilesToCompactionCandidate();
-    task.checkValidAndSetMerging();
+    seqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
+    unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data in source file during compaction
     vsgp.deleteByDevice(
         new PartialPath(
@@ -734,8 +729,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 + "s0"),
         0,
         1200,
-        0,
-        null);
+        0);
     vsgp.deleteByDevice(
         new PartialPath(
             COMPACTION_TEST_SG
@@ -746,8 +740,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 + "s0"),
         0,
         1800,
-        0,
-        null);
+        0);
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource resource = seqResources.get(i);
       resource.resetModFile();

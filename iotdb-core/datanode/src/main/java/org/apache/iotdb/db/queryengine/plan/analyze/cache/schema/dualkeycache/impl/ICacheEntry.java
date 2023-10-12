@@ -35,5 +35,7 @@ interface ICacheEntry<SK, V> {
 
   ICacheEntryGroup getBelongedGroup();
 
+  void setBelongedGroup(ICacheEntryGroup belongedGroup);
+
   void replaceValue(V newValue);
 }
