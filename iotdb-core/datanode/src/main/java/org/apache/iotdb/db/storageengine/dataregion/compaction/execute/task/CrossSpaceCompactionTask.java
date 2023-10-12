@@ -211,22 +211,25 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
                 .decreaseModFileSize(unsequenceResource.getModFile().getSize());
           }
         }
-
-        long[] sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
+        deleteOldFiles(selectedSequenceFiles);
         List<String> fileNames = new ArrayList<>(selectedSequenceFiles.size());
         selectedSequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
-        FileMetrics.getInstance().deleteFile(sequenceFileSize, true, fileNames);
+        FileMetrics.getInstance().deleteTsFile(true, selectedSequenceFiles);
         fileNames.clear();
         selectedUnsequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
-        long[] unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
-        FileMetrics.getInstance().deleteFile(unsequenceFileSize, false, fileNames);
+        deleteOldFiles(selectedUnsequenceFiles);
+        FileMetrics.getInstance().deleteTsFile(false, selectedUnsequenceFiles);
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (!targetResource.isDeleted()) {
             FileMetrics.getInstance()
-                .addFile(
-                    targetResource.getTsFileSize(), true, targetResource.getTsFile().getName());
+                .addTsFile(
+                    targetResource.getDatabaseName(),
+                    targetResource.getDataRegionId(),
+                    targetResource.getTsFileSize(),
+                    true,
+                    targetResource.getTsFile().getName());
 
             // set target resources to CLOSED, so that they can be selected to compact
             targetResource.setStatus(TsFileResourceStatus.NORMAL);
@@ -357,17 +360,13 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     return equalsOtherTask((CrossSpaceCompactionTask) other);
   }
 
-  private long[] deleteOldFiles(List<TsFileResource> tsFileResourceList) {
-    long[] size = new long[tsFileResourceList.size()];
-    for (int i = 0, length = tsFileResourceList.size(); i < length; ++i) {
-      TsFileResource tsFileResource = tsFileResourceList.get(i);
-      size[i] = tsFileResource.getTsFileSize();
+  private void deleteOldFiles(List<TsFileResource> tsFileResourceList) {
+    for (TsFileResource tsFileResource : tsFileResourceList) {
       tsFileResource.remove();
       LOGGER.info(
           "[CrossSpaceCompaction] Delete TsFile :{}.",
           tsFileResource.getTsFile().getAbsolutePath());
     }
-    return size;
   }
 
   private void releaseReadAndLockWrite(List<TsFileResource> tsFileResourceList) {
