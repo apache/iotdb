@@ -21,9 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.lo
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
 
@@ -48,10 +47,10 @@ public class CompactionLogger implements AutoCloseable {
   public static final String UNSEQUENCE_NAME_FROM_OLD = "unsequence";
   public static final String STR_MERGE_START_FROM_OLD = "merge start";
 
-  private BufferedWriter logStream;
+  private FileOutputStream logStream;
 
   public CompactionLogger(File logFile) throws IOException {
-    logStream = new BufferedWriter(new FileWriter(logFile, true));
+    logStream = new FileOutputStream(logFile, true);
   }
 
   @Override
@@ -61,24 +60,17 @@ public class CompactionLogger implements AutoCloseable {
 
   public void logFiles(List<TsFileResource> tsFiles, String flag) throws IOException {
     for (TsFileResource tsFileResource : tsFiles) {
-      logStream.write(
-          flag
-              + TsFileIdentifier.INFO_SEPARATOR
-              + TsFileIdentifier.getFileIdentifierFromFilePath(
-                      tsFileResource.getTsFile().getAbsolutePath())
-                  .toString());
-      logStream.newLine();
+      logFile(tsFileResource, flag);
     }
-    logStream.flush();
   }
 
   public void logFile(TsFileResource tsFile, String flag) throws IOException {
-    logStream.write(
+    String log =
         flag
             + TsFileIdentifier.INFO_SEPARATOR
-            + TsFileIdentifier.getFileIdentifierFromFilePath(tsFile.getTsFile().getAbsolutePath())
-                .toString());
-    logStream.newLine();
+            + TsFileIdentifier.getFileIdentifierFromFilePath(tsFile.getTsFile().getAbsolutePath());
+    logStream.write(log.getBytes());
+    logStream.write(System.lineSeparator().getBytes());
     logStream.flush();
   }
 
