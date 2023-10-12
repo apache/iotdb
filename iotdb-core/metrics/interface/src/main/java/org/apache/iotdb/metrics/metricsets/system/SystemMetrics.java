@@ -204,6 +204,13 @@ public class SystemMetrics implements IMetricSet {
         SystemMetrics::getSystemDiskFreeSpace,
         SystemTag.NAME.toString(),
         SYSTEM);
+    metricService.createAutoGauge(
+        SystemMetric.SYS_AVAILABLE_SPACE.toString(),
+        MetricLevel.CORE,
+        this,
+        SystemMetrics::getSystemAvailableSpace,
+        SystemTag.NAME.toString(),
+        SYSTEM);
   }
 
   private void removeSystemDiskInfo(AbstractMetricService metricService) {
@@ -235,6 +242,18 @@ public class SystemMetrics implements IMetricSet {
   }
 
   public long getSystemDiskFreeSpace() {
+    long sysFreeSpace = 0L;
+    for (FileStore fileStore : fileStores) {
+      try {
+        sysFreeSpace += fileStore.getUnallocatedSpace();
+      } catch (IOException e) {
+        logger.error("Failed to statistic the size of {}, because", fileStore, e);
+      }
+    }
+    return sysFreeSpace;
+  }
+
+  public long getSystemAvailableSpace() {
     long sysFreeSpace = 0L;
     for (FileStore fileStore : fileStores) {
       try {

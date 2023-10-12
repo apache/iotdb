@@ -58,6 +58,7 @@ public enum SystemMetric {
   SYS_COMMITTED_VM_SIZE("sys_committed_vm_size"),
   SYS_DISK_TOTAL_SPACE("sys_disk_total_space"),
   SYS_DISK_FREE_SPACE("sys_disk_free_space"),
+  SYS_AVAILABLE_SPACE("sys_available_space"),
   // cpu related
   MODULE_CPU_USAGE("module_cpu_usage"),
   POOL_CPU_USAGE("pool_cpu_usage"),

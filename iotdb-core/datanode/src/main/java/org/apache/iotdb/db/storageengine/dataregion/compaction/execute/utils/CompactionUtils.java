@@ -473,7 +473,7 @@ public class CompactionUtils {
     double freeDisk =
         MetricService.getInstance()
             .getAutoGauge(
-                SystemMetric.SYS_DISK_FREE_SPACE.toString(),
+                SystemMetric.SYS_AVAILABLE_SPACE.toString(),
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
                 SYSTEM)
