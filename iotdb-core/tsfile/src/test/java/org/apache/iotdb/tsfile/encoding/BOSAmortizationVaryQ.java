@@ -1313,7 +1313,7 @@ public class BOSAmortizationVaryQ {
 
                     String[] record = {
                             f.toString(),
-                            "TS_2DIFF-Amortization",
+                            "TS_2DIFF+Amortization",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
