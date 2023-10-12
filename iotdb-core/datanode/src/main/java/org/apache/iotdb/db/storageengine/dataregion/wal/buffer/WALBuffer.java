@@ -132,6 +132,15 @@ public class WALBuffer extends AbstractWALBuffer {
   @TestOnly
   public void setBufferSize(int size) {
     try {
+      if (workingBuffer != null) {
+        MmapUtil.clean((MappedByteBuffer) workingBuffer);
+      }
+      if (idleBuffer != null) {
+        MmapUtil.clean((MappedByteBuffer) workingBuffer);
+      }
+      if (syncingBuffer != null) {
+        MmapUtil.clean((MappedByteBuffer) syncingBuffer);
+      }
       workingBuffer = ByteBuffer.allocateDirect(size / 2);
       idleBuffer = ByteBuffer.allocateDirect(size / 2);
     } catch (OutOfMemoryError e) {
