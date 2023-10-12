@@ -361,7 +361,7 @@ public class TS_2DIFF {
     public void ts2diff() throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
 //        String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/ts2diff_block_size";
+        String output_parent_dir = parent_dir + "vldb/compression_ratio/ts2diff";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -916,8 +916,8 @@ public class TS_2DIFF {
                         double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
                         ratio += ratioTmp;
                         s = System.nanoTime();
-                        for (int repeat = 0; repeat < repeatTime2; repeat++)
-                            data_decoded = BOSDecoder(buffer2);
+//                        for (int repeat = 0; repeat < repeatTime2; repeat++)
+//                            data_decoded = BOSDecoder(buffer2);
                         e = System.nanoTime();
                         decodeTime += ((e - s) / repeatTime2);
                     }
@@ -1071,8 +1071,8 @@ public class TS_2DIFF {
                         double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
                         ratio += ratioTmp;
                         s = System.nanoTime();
-                        for (int repeat = 0; repeat < repeatTime2; repeat++)
-                            data_decoded = BOSDecoder(buffer2);
+//                        for (int repeat = 0; repeat < repeatTime2; repeat++)
+//                            data_decoded = BOSDecoder(buffer2);
                         e = System.nanoTime();
                         decodeTime += ((e - s) / repeatTime2);
                     }
