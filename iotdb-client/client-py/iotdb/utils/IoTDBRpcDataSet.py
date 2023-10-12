@@ -140,7 +140,11 @@ class IoTDBRpcDataSet(object):
         return False
 
     def construct_one_data_frame(self):
-        if self.has_cached_data_frame or self.__query_data_set is None:
+        if (
+            self.has_cached_data_frame
+            or self.__query_data_set is None
+            or len(self.__query_data_set.time) == 0
+        ):
             return
         result = {}
         time_array = np.frombuffer(

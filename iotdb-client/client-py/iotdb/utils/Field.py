@@ -56,13 +56,13 @@ class Field(object):
         return self.__data_type
 
     def is_null(self):
-        return self.__data_type is None
+        return self.__data_type is None or self.value is None or self.value is pd.NA
 
     def set_bool_value(self, value: bool):
         self.value = value
 
     def get_bool_value(self):
-        if self.__data_type is None:
+        if self.__data_type is None or self.value is None or self.value is pd.NA:
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.BOOLEAN:
             return None
@@ -72,9 +72,9 @@ class Field(object):
         self.value = value
 
     def get_int_value(self):
-        if self.__data_type is None:
+        if self.__data_type is None or self.value is None or self.value is pd.NA:
             raise Exception("Null Field Exception!")
-        if self.__data_type != TSDataType.INT32:
+        if self.__data_type is None or self.value is None or self.value is pd.NA:
             return None
         return np.int32(self.value)
 
@@ -82,7 +82,7 @@ class Field(object):
         self.value = value
 
     def get_long_value(self):
-        if self.__data_type is None:
+        if self.__data_type is None or self.value is None or self.value is pd.NA:
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.INT64:
             return None
@@ -92,7 +92,7 @@ class Field(object):
         self.value = value
 
     def get_float_value(self):
-        if self.__data_type is None:
+        if self.__data_type is None or self.value is None or self.value is pd.NA:
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.FLOAT:
             return None
@@ -102,7 +102,7 @@ class Field(object):
         self.value = value
 
     def get_double_value(self):
-        if self.__data_type is None:
+        if self.__data_type is None or self.value is None or self.value is pd.NA:
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.DOUBLE:
             return None
@@ -112,14 +112,14 @@ class Field(object):
         self.value = value
 
     def get_binary_value(self):
-        if self.__data_type is None:
+        if self.__data_type is None or self.value is None or self.value is pd.NA:
             raise Exception("Null Field Exception!")
         if self.__data_type != TSDataType.TEXT:
             return None
         return self.value
 
     def get_string_value(self):
-        if self.__data_type is None or self.value is None:
+        if self.__data_type is None or self.value is None or self.value is pd.NA:
             return "None"
         elif self.__data_type == 5:
             return self.value.decode("utf-8")
@@ -153,7 +153,7 @@ class Field(object):
         :param value: field value corresponding to the data type
         :param data_type: TSDataType
         """
-        if value is None:
+        if value is None or value is pd.NA:
             return None
         field = Field(data_type, value)
         return field
