@@ -1313,7 +1313,7 @@ public class BOSAmortization {
 
                 String[] record = {
                         f.toString(),
-                        "TS_2DIFF+Amortization",
+                        "TS_2DIFF+BOS-A",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
@@ -1473,7 +1473,7 @@ public class BOSAmortization {
 
                     String[] record = {
                             f.toString(),
-                            "TS_2DIFF+Amortization",
+                            "TS_2DIFF+BOS-A",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
@@ -1643,7 +1643,7 @@ public class BOSAmortization {
 
                     String[] record = {
                             f.toString(),
-                            "TS_2DIFF+Amortization",
+                            "TS_2DIFF+BOS-A",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
@@ -1815,7 +1815,7 @@ public class BOSAmortization {
 
                     String[] record = {
                             f.toString(),
-                            "TS_2DIFF+Amortization",
+                            "TS_2DIFF+BOS-A",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),

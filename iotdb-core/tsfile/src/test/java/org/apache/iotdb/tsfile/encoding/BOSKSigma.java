@@ -1149,7 +1149,7 @@ public class BOSKSigma {
 
                     String[] record = {
                             f.toString(),
-                            "TS_2DIFF+KSigma",
+                            "TS_2DIFF+BOS-K",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
@@ -1300,7 +1300,7 @@ public class BOSKSigma {
 
                     String[] record = {
                             f.toString(),
-                            "TS_2DIFF+KSigma",
+                            "TS_2DIFF+BOS-K",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
@@ -1454,7 +1454,7 @@ public class BOSKSigma {
 
                     String[] record = {
                             f.toString(),
-                            "TS_2DIFF+KSigma",
+                            "TS_2DIFF+BOS-K",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
@@ -1608,7 +1608,7 @@ public class BOSKSigma {
 
                     String[] record = {
                             f.toString(),
-                            "TS_2DIFF+KSigma",
+                            "TS_2DIFF+BOS-K",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data1.size()),
