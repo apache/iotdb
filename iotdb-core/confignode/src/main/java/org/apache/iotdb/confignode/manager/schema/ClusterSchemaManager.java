@@ -121,7 +121,6 @@ public class ClusterSchemaManager {
 
   private static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
-  private static final MetricService metricService = MetricService.getInstance();
 
   public ClusterSchemaManager(
       IManager configManager,
@@ -164,7 +163,7 @@ public class ClusterSchemaManager {
       // Cache DatabaseSchema
       result = getConsensusManager().write(databaseSchemaPlan);
       // Bind Database metrics
-      PartitionMetrics.bindDatabasePartitionMetricsWhenUpdate(
+      PartitionMetrics.bindDatabaseRelatedMetricsWhenUpdate(
           MetricService.getInstance(),
           configManager,
           databaseSchemaPlan.getSchema().getName(),
