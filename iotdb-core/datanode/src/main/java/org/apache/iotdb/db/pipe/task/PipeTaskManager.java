@@ -29,16 +29,33 @@ public class PipeTaskManager {
 
   private final Map<PipeStaticMeta, Map<TConsensusGroupId, PipeTask>> pipeMap = new HashMap<>();
 
+  /**
+   * Leader data region count in this data node. We simply update it when adding pipe task but not
+   * remove it when removing pipe task. So it may be larger than the actual leader data region count
+   * in this data node.
+   */
+  private volatile int leaderDataRegionCount = 0;
+
   /** Add pipe task by pipe static meta and consensus group id. */
   public synchronized void addPipeTask(
       PipeStaticMeta pipeStaticMeta, TConsensusGroupId consensusGroupId, PipeTask pipeTask) {
-    pipeMap.computeIfAbsent(pipeStaticMeta, k -> new HashMap<>()).put(consensusGroupId, pipeTask);
+    final Map<TConsensusGroupId, PipeTask> dataRegionId2PipeTask =
+        pipeMap.computeIfAbsent(pipeStaticMeta, k -> new HashMap<>());
+    dataRegionId2PipeTask.put(consensusGroupId, pipeTask);
+
+    // update leader data region count
+    leaderDataRegionCount = Math.max(leaderDataRegionCount, dataRegionId2PipeTask.size());
   }
 
   /** Add pipe tasks by pipe static meta. */
   public synchronized void addPipeTasks(
       PipeStaticMeta pipeStaticMeta, Map<TConsensusGroupId, PipeTask> pipeTasks) {
-    pipeMap.computeIfAbsent(pipeStaticMeta, k -> new HashMap<>()).putAll(pipeTasks);
+    final Map<TConsensusGroupId, PipeTask> dataRegionId2PipeTask =
+        pipeMap.computeIfAbsent(pipeStaticMeta, k -> new HashMap<>());
+    dataRegionId2PipeTask.putAll(pipeTasks);
+
+    // update leader data region count
+    leaderDataRegionCount = Math.max(leaderDataRegionCount, dataRegionId2PipeTask.size());
   }
 
   /**
@@ -92,5 +109,14 @@ public class PipeTaskManager {
    */
   public synchronized Map<TConsensusGroupId, PipeTask> getPipeTasks(PipeStaticMeta pipeStaticMeta) {
     return pipeMap.get(pipeStaticMeta);
+  }
+
+  /**
+   * Get leader data region count in this data node.
+   *
+   * @return leader data region count
+   */
+  public int getLeaderDataRegionCount() {
+    return leaderDataRegionCount;
   }
 }

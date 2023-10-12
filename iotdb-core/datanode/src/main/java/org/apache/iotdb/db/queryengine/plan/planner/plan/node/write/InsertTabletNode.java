@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -258,7 +258,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         BitMap[] bitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
         System.arraycopy(times, start, subTimes, destLoc, end - start);
         for (int k = 0; k < values.length; k++) {
-          System.arraycopy(columns[k], start, values[k], destLoc, end - start);
+          if (dataTypes[k] != null) {
+            System.arraycopy(columns[k], start, values[k], destLoc, end - start);
+          }
           if (bitMaps != null && this.bitMaps[k] != null) {
             BitMap.copyOfRange(this.bitMaps[k], start, bitMaps[k], destLoc, end - start);
           }
@@ -275,6 +277,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
                 bitMaps,
                 values,
                 subTimes.length);
+        subNode.setFailedMeasurementNumber(getFailedMeasurementNumber());
         subNode.setRange(locs);
         subNode.setDataRegionReplicaSet(entry.getKey());
         result.add(subNode);
@@ -303,25 +306,27 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   private Object[] initTabletValues(int columnSize, int rowSize, TSDataType[] dataTypes) {
     Object[] values = new Object[columnSize];
     for (int i = 0; i < values.length; i++) {
-      switch (dataTypes[i]) {
-        case TEXT:
-          values[i] = new Binary[rowSize];
-          break;
-        case FLOAT:
-          values[i] = new float[rowSize];
-          break;
-        case INT32:
-          values[i] = new int[rowSize];
-          break;
-        case INT64:
-          values[i] = new long[rowSize];
-          break;
-        case DOUBLE:
-          values[i] = new double[rowSize];
-          break;
-        case BOOLEAN:
-          values[i] = new boolean[rowSize];
-          break;
+      if (dataTypes[i] != null) {
+        switch (dataTypes[i]) {
+          case TEXT:
+            values[i] = new Binary[rowSize];
+            break;
+          case FLOAT:
+            values[i] = new float[rowSize];
+            break;
+          case INT32:
+            values[i] = new int[rowSize];
+            break;
+          case INT64:
+            values[i] = new long[rowSize];
+            break;
+          case DOUBLE:
+            values[i] = new double[rowSize];
+            break;
+          case BOOLEAN:
+            values[i] = new boolean[rowSize];
+            break;
+        }
       }
     }
     return values;

@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -42,7 +43,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -292,17 +292,17 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
       Map<TRegionReplicaSet, List<PartialPath>> regionToPatternMap) {
     for (DeviceSchemaInfo deviceSchemaInfo : schemaTree.getMatchedDevices(devicePattern)) {
       PartialPath devicePath = deviceSchemaInfo.getDevicePath();
-      // todo implement time slot
-      for (TRegionReplicaSet regionReplicaSet :
-          dataPartition.getDataRegionReplicaSet(
-              devicePath.getFullPath(), Collections.emptyList())) {
-        // regionId is null when data region of devicePath not existed
-        if (regionReplicaSet.getRegionId() != null) {
-          regionToPatternMap
-              .computeIfAbsent(regionReplicaSet, o -> new ArrayList<>())
-              .addAll(pathPattern.alterPrefixPath(devicePath));
-        }
-      }
+      // regionId is null when data region of devicePath not existed
+      dataPartition
+          .getDataRegionReplicaSet(
+              devicePath.getFullPath(), TimeFilter.between(deleteStartTime, deleteEndTime))
+          .stream()
+          .filter(regionReplicaSet -> regionReplicaSet.getRegionId() != null)
+          .forEach(
+              regionReplicaSet ->
+                  regionToPatternMap
+                      .computeIfAbsent(regionReplicaSet, o -> new ArrayList<>())
+                      .addAll(pathPattern.alterPrefixPath(devicePath)));
     }
   }
 }

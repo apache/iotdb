@@ -78,6 +78,8 @@ public interface CommonConfig {
 
   CommonConfig setTimestampPrecision(String timestampPrecision);
 
+  CommonConfig setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled);
+
   CommonConfig setConfigNodeRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold);
 
   CommonConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode);
@@ -121,4 +123,6 @@ public interface CommonConfig {
   CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode);
 
   CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode);
+
+  CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);
 }

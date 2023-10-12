@@ -59,8 +59,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -107,11 +105,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   private PlanNode internalVisitSchemaMerge(
       AbstractSchemaMergeNode node, NodeGroupContext context) {
-    node.getChildren()
-        .forEach(
-            child -> {
-              visit(child, context);
-            });
+    node.getChildren().forEach(child -> visit(child, context));
     NodeDistribution nodeDistribution =
         new NodeDistribution(NodeDistributionType.DIFFERENT_FROM_ALL_CHILDREN);
     PlanNode newNode = node.clone();
@@ -287,42 +281,38 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     }
 
     MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
-    List<PlanNode> visitedChildren = new ArrayList<>();
-    node.getChildren().forEach(child -> visitedChildren.add(visit(child, context)));
+    List<PlanNode> visitedChildren =
+        node.getChildren().stream()
+            .map(child -> visit(child, context))
+            .collect(Collectors.toList());
 
     TRegionReplicaSet dataRegion;
-    NodeDistributionType distributionType;
+    boolean isChildrenDistributionSame = nodeDistributionIsSame(visitedChildren, context);
+    NodeDistributionType distributionType =
+        isChildrenDistributionSame
+            ? NodeDistributionType.SAME_WITH_ALL_CHILDREN
+            : NodeDistributionType.SAME_WITH_SOME_CHILD;
     if (context.isAlignByDevice()) {
       // For align by device,
       // if dataRegions of children are the same, we set child's dataRegion to this node,
       // else we set the selected mostlyUsedDataRegion to this node
-      boolean inSame = nodeDistributionIsSame(visitedChildren, context);
       dataRegion =
-          inSame
+          isChildrenDistributionSame
               ? context.getNodeDistribution(visitedChildren.get(0).getPlanNodeId()).region
               : context.getMostlyUsedDataRegion();
       context.putNodeDistribution(
-          newNode.getPlanNodeId(),
-          new NodeDistribution(
-              inSame
-                  ? NodeDistributionType.SAME_WITH_ALL_CHILDREN
-                  : NodeDistributionType.SAME_WITH_SOME_CHILD,
-              dataRegion));
+          newNode.getPlanNodeId(), new NodeDistribution(distributionType, dataRegion));
     } else {
       // TODO For align by time, we keep old logic for now
       dataRegion = calculateDataRegionByChildren(visitedChildren, context);
-      distributionType =
-          nodeDistributionIsSame(visitedChildren, context)
-              ? NodeDistributionType.SAME_WITH_ALL_CHILDREN
-              : NodeDistributionType.SAME_WITH_SOME_CHILD;
       context.putNodeDistribution(
           newNode.getPlanNodeId(), new NodeDistribution(distributionType, dataRegion));
+    }
 
-      // If the distributionType of all the children are same, no ExchangeNode need to be added.
-      if (distributionType == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
-        newNode.setChildren(visitedChildren);
-        return newNode;
-      }
+    // If the distributionType of all the children are same, no ExchangeNode need to be added.
+    if (distributionType == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
+      newNode.setChildren(visitedChildren);
+      return newNode;
     }
 
     // Otherwise, we need to add ExchangeNode for the child whose DataRegion is different from the
@@ -383,6 +373,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   private TRegionReplicaSet calculateDataRegionByChildren(
       List<PlanNode> children, NodeGroupContext context) {
+
     // Step 1: calculate the count of children group by DataRegion.
     Map<TRegionReplicaSet, Long> groupByRegion =
         children.stream()
@@ -399,16 +390,27 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
                       return region;
                     },
                     Collectors.counting()));
-    if (groupByRegion.entrySet().size() == 1) {
-      return groupByRegion.entrySet().iterator().next().getKey();
+
+    if (groupByRegion.size() == 1) {
+      return groupByRegion.keySet().iterator().next();
     }
+
     // Step 2: return the RegionReplicaSet with max count
-    return Collections.max(
-            groupByRegion.entrySet().stream()
-                .filter(e -> e.getKey() != DataPartition.NOT_ASSIGNED)
-                .collect(Collectors.toList()),
-            Map.Entry.comparingByValue())
-        .getKey();
+    long maxRegionCount = -1;
+    TRegionReplicaSet result = null;
+    for (Map.Entry<TRegionReplicaSet, Long> entry : groupByRegion.entrySet()) {
+      if (DataPartition.NOT_ASSIGNED.equals(entry.getKey())) {
+        continue;
+      }
+      if (entry.getKey().equals(context.getMostlyUsedDataRegion())) {
+        return entry.getKey();
+      }
+      if (entry.getValue() > maxRegionCount) {
+        maxRegionCount = entry.getValue();
+        result = entry.getKey();
+      }
+    }
+    return result;
   }
 
   private TRegionReplicaSet calculateSchemaRegionByChildren(

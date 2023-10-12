@@ -101,7 +101,13 @@ public class PipeHeartbeatParser {
         .submit(
             () -> {
               final AtomicReference<PipeTaskInfo> pipeTaskInfo =
-                  configManager.getPipeManager().getPipeTaskCoordinator().lock();
+                  configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
+              if (pipeTaskInfo == null) {
+                LOGGER.warn(
+                    "Failed to acquire lock when parseHeartbeat from data node (id={}).",
+                    dataNodeId);
+                return;
+              }
 
               try {
                 if (!pipeMetaByteBufferListFromDataNode.isEmpty()) {
@@ -169,10 +175,14 @@ public class PipeHeartbeatParser {
         }
 
         // Update progress index
-        if (!runtimeMetaOnConfigNode
-            .getValue()
-            .getProgressIndex()
-            .isAfter(runtimeMetaFromDataNode.getProgressIndex())) {
+        if (!(runtimeMetaOnConfigNode
+                .getValue()
+                .getProgressIndex()
+                .isAfter(runtimeMetaFromDataNode.getProgressIndex())
+            || runtimeMetaOnConfigNode
+                .getValue()
+                .getProgressIndex()
+                .equals(runtimeMetaFromDataNode.getProgressIndex()))) {
           LOGGER.info(
               "Updating progress index for (pipe name: {}, consensus group id: {}) ... "
                   + "Progress index on config node: {}, progress index from data node: {}",
@@ -197,11 +207,8 @@ public class PipeHeartbeatParser {
         for (final PipeRuntimeException exception :
             runtimeMetaFromDataNode.getExceptionMessages()) {
 
-          if (exception.getTimeStamp()
-              < pipeMetaOnConfigNode.getRuntimeMeta().getExceptionsClearTime()) {
-            // Ignore the exception if it's recorded before clear
-            continue;
-          }
+          // Do not judge the exception's clear time to avoid the restart process
+          // being ended after the failure of some pipe
 
           pipeTaskMetaOnConfigNode.trackExceptionMessage(exception);
 

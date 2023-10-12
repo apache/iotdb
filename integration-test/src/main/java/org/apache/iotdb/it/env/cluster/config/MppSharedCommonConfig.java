@@ -229,6 +229,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled) {
+    cnConfig.setTimestampPrecisionCheckEnabled(timestampPrecisionCheckEnabled);
+    dnConfig.setTimestampPrecisionCheckEnabled(timestampPrecisionCheckEnabled);
+    return this;
+  }
+
+  @Override
   public CommonConfig setConfigNodeRatisSnapshotTriggerThreshold(
       int ratisSnapshotTriggerThreshold) {
     cnConfig.setConfigNodeRatisSnapshotTriggerThreshold(ratisSnapshotTriggerThreshold);
@@ -376,6 +383,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
     dnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
     cnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
+    dnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
+    cnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
     return this;
   }
 }

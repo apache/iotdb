@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -142,7 +143,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -497,7 +497,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, List<Expression> selectExpressions, ISchemaTree schemaTree) {
     Set<Expression> sourceExpressions = new LinkedHashSet<>();
     Set<Expression> lastQueryBaseExpressions = new LinkedHashSet<>();
-    Set<Expression> lastQueryNonWritableViewExpressions = null;
     Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap = null;
 
     for (Expression selectExpression : selectExpressions) {
@@ -507,13 +506,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           lastQueryBaseExpressions.add(lastQuerySourceExpression);
           sourceExpressions.add(lastQuerySourceExpression);
         } else {
-          if (lastQueryNonWritableViewExpressions == null) {
-            lastQueryNonWritableViewExpressions = new LinkedHashSet<>();
+          if (lastQueryNonWritableViewSourceExpressionMap == null) {
             lastQueryNonWritableViewSourceExpressionMap = new HashMap<>();
           }
           List<Expression> sourceExpressionsOfNonWritableView =
               searchSourceExpressions(lastQuerySourceExpression);
-          lastQueryNonWritableViewExpressions.add(lastQuerySourceExpression);
           lastQueryNonWritableViewSourceExpressionMap.put(
               lastQuerySourceExpression, sourceExpressionsOfNonWritableView);
           sourceExpressions.addAll(sourceExpressionsOfNonWritableView);
@@ -523,7 +520,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     analysis.setSourceExpressions(sourceExpressions);
     analysis.setLastQueryBaseExpressions(lastQueryBaseExpressions);
-    analysis.setLastQueryNonWritableViewExpression(lastQueryNonWritableViewExpressions);
     analysis.setLastQueryNonWritableViewSourceExpressionMap(
         lastQueryNonWritableViewSourceExpressionMap);
   }

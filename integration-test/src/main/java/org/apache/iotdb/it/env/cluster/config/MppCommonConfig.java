@@ -226,6 +226,13 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled) {
+    setProperty(
+        "timestamp_precision_check_enabled", String.valueOf(timestampPrecisionCheckEnabled));
+    return this;
+  }
+
+  @Override
   public CommonConfig setEnableMemControl(boolean enableMemControl) {
     setProperty("enable_mem_control", String.valueOf(enableMemControl));
     return this;
@@ -369,6 +376,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
     setProperty("schema_region_per_data_node", String.valueOf(schemaRegionPerDataNode));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
+    setProperty("pipe_air_gap_receiver_enabled", String.valueOf(isPipeAirGapReceiverEnabled));
     return this;
   }
 

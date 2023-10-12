@@ -897,8 +897,7 @@ public class ProcedureManager {
       if (isSucceed) {
         return RpcUtils.SUCCESS_STATUS;
       } else {
-        return new TSStatus(TSStatusCode.AUTH_OPERATE_EXCEPTION.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+        return new TSStatus(statusList.get(0).getCode()).setMessage(statusList.get(0).getMessage());
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.AUTH_OPERATE_EXCEPTION.getStatusCode())
@@ -928,7 +927,9 @@ public class ProcedureManager {
           executor.getResultOrProcedure(procedureId);
       if (!finishedProcedure.isFinished()) {
         // the procedure is still executing
-        statusList.add(RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK));
+        statusList.add(
+            RpcUtils.getStatus(
+                TSStatusCode.OVERLAP_WITH_EXISTING_TASK, "Procedure execution timed out."));
         isSucceed = false;
         continue;
       }

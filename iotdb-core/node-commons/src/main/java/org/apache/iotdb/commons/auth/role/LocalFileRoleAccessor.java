@@ -120,19 +120,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       role.setName(result.getLeft());
       boolean oldVersion = result.getRight();
       if (oldVersion) {
-        // TODO will deal with these authority upgrade soon in the future.
-
-        //        int privilegeNum = dataInputStream.readInt();
-        //        List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
-        //        for (int i = 0; i < privilegeNum; i++) {
-        //          pathPrivilegeList.add(
-        //                  IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING,
-        // strBufferLocal,true));
-        //        }
-        //        role.setPrivilegeList(pathPrivilegeList);
-        role.setPrivilegeList(new ArrayList<>());
-        role.setSysPrivilegeSet(new HashSet<>());
-        role.setSysPriGrantOpt(new HashSet<>());
+        IOUtils.loadRolePrivilege(role, dataInputStream, STRING_ENCODING, strBufferLocal);
         return role;
       } else {
         role.setSysPrivilegeSet(dataInputStream.readInt());
@@ -315,8 +303,15 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
         IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
         for (int i = 0; i < privilegeNum; i++) {
           PathPrivilege pathPrivilege = role.getPathPrivilegeList().get(i);
-          IOUtils.writePathPrivilege(
-              outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
+          IOUtils.writeString(
+              outputStream,
+              pathPrivilege.getPath().getFullPath(),
+              STRING_ENCODING,
+              encodingBufferLocal);
+          IOUtils.writeInt(outputStream, pathPrivilege.getPrivileges().size(), encodingBufferLocal);
+          for (Integer item : pathPrivilege.getPrivileges()) {
+            IOUtils.writeInt(outputStream, item, encodingBufferLocal);
+          }
         }
         outputStream.flush();
       } catch (Exception e) {

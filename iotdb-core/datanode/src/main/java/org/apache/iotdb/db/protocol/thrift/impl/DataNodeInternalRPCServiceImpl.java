@@ -444,7 +444,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) {
     DataNodeSchemaCache.getInstance().takeWriteLock();
     try {
-      DataNodeSchemaCache.getInstance().invalidateAll();
+      // req.getFullPath() is a database path
+      DataNodeSchemaCache.getInstance().invalidate(req.getFullPath());
       ClusterTemplateManager.getInstance().invalid(req.getFullPath());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
@@ -515,8 +516,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaCache cache = DataNodeSchemaCache.getInstance();
     cache.takeWriteLock();
     try {
-      // todo implement precise timeseries clean rather than clean all
-      cache.invalidateAll();
+      cache.invalidate(PathPatternTree.deserialize(req.pathPatternTree).getAllPathPatterns());
     } finally {
       cache.releaseWriteLock();
     }
@@ -1303,8 +1303,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             commonConfig.getDiskSpaceWarningThreshold());
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
         commonConfig.setStatusReason(NodeStatus.DISK_FULL);
-      } else if (commonConfig.getNodeStatus().equals(NodeStatus.ReadOnly)
-          && commonConfig.getStatusReason().equals(NodeStatus.DISK_FULL)) {
+      } else if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
+          && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
         commonConfig.setNodeStatus(NodeStatus.Running);
         commonConfig.setStatusReason(null);
       }

@@ -277,6 +277,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
+    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -309,7 +310,8 @@ public class TsFileProcessor {
     workMemTable =
         MemTableManager.getInstance()
             .getAvailableMemTable(
-                storageGroupName, dataRegionInfo.getDataRegion().getDataRegionId());
+                dataRegionInfo.getDataRegion().getDatabaseName(),
+                dataRegionInfo.getDataRegion().getDataRegionId());
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 
@@ -386,6 +388,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
+    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -895,7 +898,6 @@ public class TsFileProcessor {
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
 
       try {
-        PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource);
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(
                 dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource, false);

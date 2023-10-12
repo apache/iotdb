@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCrossSpaceCompactionEstimator;
@@ -39,7 +40,7 @@ public interface ICompactionSelector {
    * It takes the list of tsfile in a time partition as input, and returns a list of list. Each list in
    * the returned list is the source files of one compaction tasks.
    */
-  default List<List<TsFileResource>> selectInnerSpaceTask(List<TsFileResource> resources) {
+  default List<InnerSpaceCompactionTask> selectInnerSpaceTask(List<TsFileResource> resources) {
     throw new RuntimeException("This kind of selector cannot be used to select inner space task");
   }
 

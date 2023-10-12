@@ -137,6 +137,8 @@ public class CommonConfig {
   /** This variable set timestamp precision as millisecond, microsecond or nanosecond. */
   private String timestampPrecision = "ms";
 
+  private boolean timestampPrecisionCheckEnabled = true;
+
   /** The number of threads in the thread pool that execute model inference tasks. */
   private int modelInferenceExecutionThreadCount = 5;
 
@@ -156,15 +158,14 @@ public class CommonConfig {
   private int pipeSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
 
+  private int pipeDataStructureTabletRowSize = 2048;
+
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 1000;
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private int pipeExtractorMatcherCacheSize = 1024;
-  private int pipeExtractorPendingQueueCapacity = 256;
-  private int pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueCapacity / 2;
-  private int pipeDataStructureTabletRowSize = 2048;
 
   private long pipeConnectorTimeoutMs = 15 * 60 * 1000L; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
@@ -185,6 +186,8 @@ public class CommonConfig {
 
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
+
+  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 3;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -478,6 +481,14 @@ public class CommonConfig {
     return timestampPrecision;
   }
 
+  public void setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled) {
+    this.timestampPrecisionCheckEnabled = timestampPrecisionCheckEnabled;
+  }
+
+  public boolean isTimestampPrecisionCheckEnabled() {
+    return timestampPrecisionCheckEnabled;
+  }
+
   public String getPipeHardlinkBaseDirName() {
     return pipeHardlinkBaseDirName;
   }
@@ -534,22 +545,6 @@ public class CommonConfig {
 
   public void setPipeExtractorMatcherCacheSize(int pipeExtractorMatcherCacheSize) {
     this.pipeExtractorMatcherCacheSize = pipeExtractorMatcherCacheSize;
-  }
-
-  public int getPipeExtractorPendingQueueCapacity() {
-    return pipeExtractorPendingQueueCapacity;
-  }
-
-  public void setPipeExtractorPendingQueueCapacity(int pipeExtractorPendingQueueCapacity) {
-    this.pipeExtractorPendingQueueCapacity = pipeExtractorPendingQueueCapacity;
-  }
-
-  public int getPipeExtractorPendingQueueTabletLimit() {
-    return pipeExtractorPendingQueueTabletLimit;
-  }
-
-  public void setPipeExtractorPendingQueueTabletLimit(int pipeExtractorPendingQueueTabletLimit) {
-    this.pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueTabletLimit;
   }
 
   public long getPipeConnectorTimeoutMs() {
@@ -724,6 +719,15 @@ public class CommonConfig {
 
   public int getPipeAirGapReceiverPort() {
     return pipeAirGapReceiverPort;
+  }
+
+  public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
+    return pipeMaxAllowedPendingTsFileEpochPerDataRegion;
+  }
+
+  public void setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
+      int pipeExtractorPendingQueueTsfileLimit) {
+    this.pipeMaxAllowedPendingTsFileEpochPerDataRegion = pipeExtractorPendingQueueTsfileLimit;
   }
 
   public String getSchemaEngineMode() {
