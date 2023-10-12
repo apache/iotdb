@@ -26,6 +26,7 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -75,6 +76,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private void extractTabletInsertion(PipeRealtimeEvent event) {
     if (!isStartedToSupply
         || mayWalSizeReachThrottleThreshold()
+        || tooManyWALPinned()
         || isTsFileEventCountInQueueExceededLimit()) {
       // In the following 3 cases, we should not extract any more tablet events. all the data
       // represented by the tablet events should be carried by the following tsfile event:
@@ -203,6 +205,12 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private boolean mayWalSizeReachThrottleThreshold() {
     return 3 * WALManager.getInstance().getTotalDiskUsage()
         > IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
+  }
+
+  private boolean tooManyWALPinned() {
+    return PipeResourceManager.wal().getApproximatePinnedWALCount()
+        > Math.max(1, PipeAgent.task().getLeaderDataRegionCount())
+            * PipeConfig.getInstance().getPipeExtractorPendingQueueTsFileLimit();
   }
 
   private boolean isTsFileEventCountInQueueExceededLimit() {
