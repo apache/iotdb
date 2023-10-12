@@ -773,7 +773,8 @@ public class LogicalPlanBuilder {
 
     OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
 
-    if (queryStatement.hasLimit()
+    if (!queryStatement.isAggregationQuery()
+        && queryStatement.hasLimit()
         && queryStatement.getOrderByComponent() != null
         && !queryStatement.isOrderByBasedOnDevice()) {
       long limitValue =
@@ -788,10 +789,20 @@ public class LogicalPlanBuilder {
               limitValue,
               orderByParameter,
               outputColumnNames);
-      // do not use addDeviceViewNode here,
-      // because DeviceViewNode will generate MergeSortNode on the top of DeviceViewNode
-      addSingleDeviceViewNodes(
-          topKNode, deviceNameToSourceNodesMap, outputColumnNames, deviceToMeasurementIndexesMap);
+      if ((queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression())) {
+        // do not use addDeviceViewNode here,
+        // because DeviceViewNode will generate MergeSortNode on the top of DeviceViewNode
+        addSingleDeviceViewNodes(
+            topKNode, deviceNameToSourceNodesMap, outputColumnNames, deviceToMeasurementIndexesMap);
+      } else {
+        topKNode.addChild(
+            addDeviceViewNode(
+                orderByParameter,
+                outputColumnNames,
+                deviceToMeasurementIndexesMap,
+                deviceNameToSourceNodesMap));
+      }
+
       this.root = topKNode;
     }
     // order by time + no limit, device can be optimized by SingleDeviceViewNode and MergeSortNode
