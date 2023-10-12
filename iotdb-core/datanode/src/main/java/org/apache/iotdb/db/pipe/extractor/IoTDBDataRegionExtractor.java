@@ -28,6 +28,7 @@ import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionFakeExt
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionLogExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionTsFileExtractor;
+import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -148,6 +149,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
     historicalExtractor.customize(parameters, configuration);
     realtimeExtractor.customize(parameters, configuration);
+    PipeDataRegionExtractorMetrics.getInstance().register(historicalExtractor, realtimeExtractor);
   }
 
   @Override

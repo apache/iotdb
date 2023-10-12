@@ -26,13 +26,13 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 public class PipeDataRegionAssignerMetrics implements IMetricSet {
-
-  private static final String PIPE_DATA_REGION_ASSIGNER = "PipeDataRegionAssigner";
 
   private AbstractMetricService metricService;
 
@@ -71,7 +71,7 @@ public class PipeDataRegionAssignerMetrics implements IMetricSet {
     // empty constructor
   }
 
-  public void register(PipeDataRegionAssigner pipeDataRegionAssigner) {
+  public void register(@NonNull PipeDataRegionAssigner pipeDataRegionAssigner) {
     String dataRegionId = pipeDataRegionAssigner.getDataRegionId();
     synchronized (this) {
       if (!assignerMap.containsKey(dataRegionId)) {
@@ -85,31 +85,25 @@ public class PipeDataRegionAssignerMetrics implements IMetricSet {
 
   private void createMetrics(String dataRegionId) {
     metricService.createAutoGauge(
-        Metric.PIPE_HEARTBEAT_EVENT_COUNT.toString(),
+        Metric.UNASSIGNED_PIPE_HEARTBEAT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         assignerMap.get(dataRegionId),
         PipeDataRegionAssigner::getPipeHeartbeatEventCount,
-        Tag.NAME.toString(),
-        dataRegionId,
-        Tag.FROM.toString(),
-        PIPE_DATA_REGION_ASSIGNER);
+        Tag.REGION.toString(),
+        dataRegionId);
     metricService.createAutoGauge(
-        Metric.TABLET_INSERTION_EVENT_COUNT.toString(),
+        Metric.UNASSIGNED_TABLET_COUNT.toString(),
         MetricLevel.IMPORTANT,
         assignerMap.get(dataRegionId),
         PipeDataRegionAssigner::getTabletInsertionEventCount,
-        Tag.NAME.toString(),
-        dataRegionId,
-        Tag.FROM.toString(),
-        PIPE_DATA_REGION_ASSIGNER);
+        Tag.REGION.toString(),
+        dataRegionId);
     metricService.createAutoGauge(
-        Metric.TS_FILE_INSERTION_EVENT_COUNT.toString(),
+        Metric.UNASSIGNED_TS_FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         assignerMap.get(dataRegionId),
         PipeDataRegionAssigner::getTsFileInsertionEventCount,
-        Tag.NAME.toString(),
-        dataRegionId,
-        Tag.FROM.toString(),
-        PIPE_DATA_REGION_ASSIGNER);
+        Tag.REGION.toString(),
+        dataRegionId);
   }
 }

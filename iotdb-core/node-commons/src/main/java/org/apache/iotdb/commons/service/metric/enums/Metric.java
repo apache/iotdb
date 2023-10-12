@@ -95,9 +95,16 @@ public enum Metric {
   FILE_SIZE("file_size"),
   FILE_COUNT("file_count"),
   // pipe related
-  TABLET_INSERTION_EVENT_COUNT("tablet_insertion_event_count"),
-  TS_FILE_INSERTION_EVENT_COUNT("ts_file_insertion_event_count"),
-  PIPE_HEARTBEAT_EVENT_COUNT("pipe_heartbeat_event_count"),
+  TRANSFERRED_TABLET_COUNT("transferred_tablet_count"),
+  TRANSFERRED_TS_FILE_COUNT("transferred_ts_file_count"),
+  TRANSFERRED_PIPE_HEARTBEAT_COUNT("transferred_pipe_heartbeat_count"),
+  UNASSIGNED_TABLET_COUNT("unassigned_tablet_count"),
+  UNASSIGNED_TS_FILE_COUNT("unassigned_ts_file_count"),
+  UNASSIGNED_PIPE_HEARTBEAT_COUNT("unassigned_pipe_heartbeat_count"),
+  UNPROCESSED_TABLET_COUNT("unprocessed_tablet_count"),
+  UNPROCESSED_HISTORICAL_TS_FILE_COUNT("unprocessed_historical_ts_file_count"),
+  UNPROCESSED_REALTIME_TS_FILE_COUNT("unprocessed_realtime_ts_file_count"),
+  UNPROCESSED_PIPE_HEARTBEAT_COUNT("unprocessed_pipe_heartbeat_count"),
   ;
 
   final String value;

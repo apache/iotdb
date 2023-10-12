@@ -28,12 +28,14 @@ public class PipeMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     PipeConnectorSubtaskMetrics.getInstance().bindTo(metricService);
     PipeDataRegionAssignerMetrics.getInstance().bindTo(metricService);
+    PipeDataRegionExtractorMetrics.getInstance().bindTo(metricService);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     PipeConnectorSubtaskMetrics.getInstance().unbindFrom(metricService);
     PipeDataRegionAssignerMetrics.getInstance().unbindFrom(metricService);
+    PipeDataRegionExtractorMetrics.getInstance().unbindFrom(metricService);
   }
 
   private static class PipeMetricsHolder {

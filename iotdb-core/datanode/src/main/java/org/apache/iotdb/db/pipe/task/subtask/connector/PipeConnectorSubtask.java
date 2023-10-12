@@ -61,15 +61,19 @@ public class PipeConnectorSubtask extends PipeSubtask {
   protected ExecutorService subtaskCallbackListeningExecutor;
 
   private final AtomicInteger tabletInsertionEventCount = new AtomicInteger(0);
-
   private final AtomicInteger tsFileInsertionEventCount = new AtomicInteger(0);
+  private final AtomicInteger pipeHeartbeatEventCount = new AtomicInteger(0);
+
+  public Integer getTsFileInsertionEventCount() {
+    return tsFileInsertionEventCount.get();
+  }
 
   public Integer getTabletInsertionEventCount() {
     return tabletInsertionEventCount.get();
   }
 
-  public Integer getTsFileInsertionEventCount() {
-    return tsFileInsertionEventCount.get();
+  public Integer getPipeHeartbeatEventCount() {
+    return pipeHeartbeatEventCount.get();
   }
 
   public PipeConnectorSubtask(
@@ -133,6 +137,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
               e);
         }
         ((PipeHeartbeatEvent) event).onTransferred();
+        pipeHeartbeatEventCount.getAndIncrement();
       } else {
         outputPipeConnector.transfer(event);
       }

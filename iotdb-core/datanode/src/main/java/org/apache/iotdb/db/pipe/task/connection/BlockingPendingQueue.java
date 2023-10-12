@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.task.connection;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -41,12 +42,14 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   private final AtomicInteger tabletInsertionEventCount;
   private final AtomicInteger tsFileInsertionEventCount;
+  private final AtomicInteger pipeHeartbeatEventCount;
   protected final BlockingQueue<E> pendingQueue;
 
   protected BlockingPendingQueue(BlockingQueue<E> pendingQueue) {
     this.pendingQueue = pendingQueue;
     tabletInsertionEventCount = new AtomicInteger(0);
     tsFileInsertionEventCount = new AtomicInteger(0);
+    pipeHeartbeatEventCount = new AtomicInteger(0);
   }
 
   public boolean waitedOffer(E event) {
@@ -58,6 +61,8 @@ public abstract class BlockingPendingQueue<E extends Event> {
           tabletInsertionEventCount.incrementAndGet();
         } else if (event instanceof TsFileInsertionEvent) {
           tsFileInsertionEventCount.incrementAndGet();
+        } else if (event instanceof PipeHeartbeatEvent) {
+          pipeHeartbeatEventCount.incrementAndGet();
         }
       }
       return offered;
@@ -75,6 +80,8 @@ public abstract class BlockingPendingQueue<E extends Event> {
         tabletInsertionEventCount.incrementAndGet();
       } else if (event instanceof TsFileInsertionEvent) {
         tsFileInsertionEventCount.incrementAndGet();
+      } else if (event instanceof PipeHeartbeatEvent) {
+        pipeHeartbeatEventCount.incrementAndGet();
       }
     }
     return offered;
@@ -87,6 +94,8 @@ public abstract class BlockingPendingQueue<E extends Event> {
         tabletInsertionEventCount.incrementAndGet();
       } else if (event instanceof TsFileInsertionEvent) {
         tsFileInsertionEventCount.incrementAndGet();
+      } else if (event instanceof PipeHeartbeatEvent) {
+        pipeHeartbeatEventCount.incrementAndGet();
       }
       return true;
     } catch (InterruptedException e) {
@@ -104,6 +113,9 @@ public abstract class BlockingPendingQueue<E extends Event> {
     if (event instanceof TsFileInsertionEvent) {
       tsFileInsertionEventCount.decrementAndGet();
     }
+    if (event instanceof PipeHeartbeatEvent) {
+      pipeHeartbeatEventCount.decrementAndGet();
+    }
     return event;
   }
 
@@ -115,6 +127,8 @@ public abstract class BlockingPendingQueue<E extends Event> {
         tabletInsertionEventCount.decrementAndGet();
       } else if (event instanceof TsFileInsertionEvent) {
         tsFileInsertionEventCount.decrementAndGet();
+      } else if (event instanceof PipeHeartbeatEvent) {
+        pipeHeartbeatEventCount.decrementAndGet();
       }
     } catch (InterruptedException e) {
       LOGGER.info("pending queue poll is interrupted.", e);
@@ -127,6 +141,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     pendingQueue.clear();
     tabletInsertionEventCount.set(0);
     tsFileInsertionEventCount.set(0);
+    pipeHeartbeatEventCount.set(0);
   }
 
   public void forEach(Consumer<? super E> action) {
@@ -143,5 +158,9 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   public int getTsFileInsertionEventCount() {
     return tsFileInsertionEventCount.get();
+  }
+
+  public int getPipeHeartbeatEventCount() {
+    return pipeHeartbeatEventCount.get();
   }
 }

@@ -26,6 +26,7 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,8 +35,6 @@ import java.util.Map;
 import java.util.Objects;
 
 public class PipeConnectorSubtaskMetrics implements IMetricSet {
-
-  private static final String PIPE_CONNECTOR_SUBTASK = "PipeConnectorSubtask";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtaskMetrics.class);
 
@@ -60,7 +59,7 @@ public class PipeConnectorSubtaskMetrics implements IMetricSet {
     // empty constructor
   }
 
-  public void register(PipeConnectorSubtask pipeConnectorSubtask) {
+  public void register(@NonNull PipeConnectorSubtask pipeConnectorSubtask) {
     String taskID = pipeConnectorSubtask.getTaskID();
     synchronized (this) {
       if (!taskMap.containsKey(taskID)) {
@@ -74,23 +73,26 @@ public class PipeConnectorSubtaskMetrics implements IMetricSet {
 
   private void createMetrics(String taskID) {
     metricService.createAutoGauge(
-        Metric.TABLET_INSERTION_EVENT_COUNT.toString(),
+        Metric.TRANSFERRED_TABLET_COUNT.toString(),
         MetricLevel.IMPORTANT,
         taskMap.get(taskID),
         PipeConnectorSubtask::getTabletInsertionEventCount,
         Tag.NAME.toString(),
-        taskID,
-        Tag.FROM.toString(),
-        PIPE_CONNECTOR_SUBTASK);
+        taskID);
     metricService.createAutoGauge(
-        Metric.TS_FILE_INSERTION_EVENT_COUNT.toString(),
+        Metric.TRANSFERRED_TS_FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         taskMap.get(taskID),
         PipeConnectorSubtask::getTsFileInsertionEventCount,
         Tag.NAME.toString(),
-        taskID,
-        Tag.FROM.toString(),
-        PIPE_CONNECTOR_SUBTASK);
+        taskID);
+    metricService.createAutoGauge(
+        Metric.TRANSFERRED_PIPE_HEARTBEAT_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        taskMap.get(taskID),
+        PipeConnectorSubtask::getPipeHeartbeatEventCount,
+        Tag.NAME.toString(),
+        taskID);
   }
 
   @Override

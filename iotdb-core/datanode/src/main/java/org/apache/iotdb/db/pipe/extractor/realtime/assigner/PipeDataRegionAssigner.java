@@ -21,13 +21,13 @@ package org.apache.iotdb.db.pipe.extractor.realtime.assigner;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionAssignerMetrics;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -42,9 +42,7 @@ public class PipeDataRegionAssigner {
   private final String dataRegionId;
 
   private final AtomicInteger tabletInsertionEventCount = new AtomicInteger(0);
-
   private final AtomicInteger tsFileInsertionEventCount = new AtomicInteger(0);
-
   private final AtomicInteger pipeHeartbeatEventCount = new AtomicInteger(0);
 
   public Integer getTsFileInsertionEventCount() {
@@ -82,9 +80,9 @@ public class PipeDataRegionAssigner {
     EnrichedEvent innerEvent = event.getEvent();
     if (innerEvent instanceof PipeHeartbeatEvent) {
       pipeHeartbeatEventCount.getAndIncrement();
-    } else if (innerEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+    } else if (innerEvent instanceof TabletInsertionEvent) {
       tabletInsertionEventCount.getAndIncrement();
-    } else if (innerEvent instanceof PipeTsFileInsertionEvent) {
+    } else if (innerEvent instanceof TsFileInsertionEvent) {
       tsFileInsertionEventCount.getAndIncrement();
     }
   }
@@ -117,9 +115,9 @@ public class PipeDataRegionAssigner {
     EnrichedEvent innerEvent = event.getEvent();
     if (innerEvent instanceof PipeHeartbeatEvent) {
       pipeHeartbeatEventCount.getAndDecrement();
-    } else if (innerEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+    } else if (innerEvent instanceof TabletInsertionEvent) {
       tabletInsertionEventCount.getAndDecrement();
-    } else if (innerEvent instanceof PipeTsFileInsertionEvent) {
+    } else if (innerEvent instanceof TsFileInsertionEvent) {
       tsFileInsertionEventCount.getAndDecrement();
     }
   }
