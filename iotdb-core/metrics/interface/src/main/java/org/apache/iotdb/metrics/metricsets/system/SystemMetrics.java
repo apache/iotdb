@@ -50,6 +50,7 @@ public class SystemMetrics implements IMetricSet {
   private final Set<FileStore> fileStores = new HashSet<>();
   private final AtomicReference<List<String>> diskDirs =
       new AtomicReference<>(Collections.emptyList());
+  private static final String FAILED_TO_STATISTIC = "Failed to statistic the size of {}, because";
 
   public SystemMetrics() {
     this.osMxBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
@@ -240,7 +241,7 @@ public class SystemMetrics implements IMetricSet {
       try {
         sysTotalSpace += fileStore.getTotalSpace();
       } catch (IOException e) {
-        logger.error("Failed to statistic the size of {}, because", fileStore, e);
+        logger.error(FAILED_TO_STATISTIC, fileStore, e);
       }
     }
     return sysTotalSpace;
@@ -252,7 +253,7 @@ public class SystemMetrics implements IMetricSet {
       try {
         sysFreeSpace += fileStore.getUnallocatedSpace();
       } catch (IOException e) {
-        logger.error("Failed to statistic the size of {}, because", fileStore, e);
+        logger.error(FAILED_TO_STATISTIC, fileStore, e);
       }
     }
     return sysFreeSpace;
@@ -264,7 +265,7 @@ public class SystemMetrics implements IMetricSet {
       try {
         sysFreeSpace += fileStore.getUsableSpace();
       } catch (IOException e) {
-        logger.error("Failed to statistic the size of {}, because", fileStore, e);
+        logger.error(FAILED_TO_STATISTIC, fileStore, e);
       }
     }
     return sysFreeSpace;
