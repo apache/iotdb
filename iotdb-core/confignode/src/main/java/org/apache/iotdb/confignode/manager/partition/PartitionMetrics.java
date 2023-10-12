@@ -263,7 +263,7 @@ public class PartitionMetrics implements IMetricSet {
 
     List<String> databases = getClusterSchemaManager().getDatabaseNames();
     for (String database : databases) {
-      unbindDatabasePartitionMetricsWhenUpdate(metricService, database);
+      unbindDatabaseRelatedMetricsWhenUpdate(metricService, database);
     }
   }
 
@@ -335,7 +335,7 @@ public class PartitionMetrics implements IMetricSet {
         TConsensusGroupType.DataRegion.toString());
   }
 
-  public static void unbindDatabasePartitionMetricsWhenUpdate(
+  public static void unbindDatabaseRelatedMetricsWhenUpdate(
       AbstractMetricService metricService, String database) {
     // Remove the number of SeriesSlots in the specified Database
     metricService.remove(
