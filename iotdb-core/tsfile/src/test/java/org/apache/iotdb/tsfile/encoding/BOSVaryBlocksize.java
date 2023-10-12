@@ -807,8 +807,8 @@ public class BOSVaryBlocksize {
                 ts_block.add(data.get(j + i * block_size));
 
             }
-            ArrayList<Integer> result2 = new ArrayList<>();
-            splitTimeStamp3(ts_block, result2);
+//            ArrayList<Integer> result2 = new ArrayList<>();
+//            splitTimeStamp3(ts_block, result2);
 
             // time-order
             ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, 0);

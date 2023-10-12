@@ -2,6 +2,7 @@ package org.apache.iotdb.tsfile.encoding;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
 
 import java.io.File;
 import java.io.IOException;
@@ -263,17 +264,38 @@ public class RLEBOS {
 
     public static ArrayList<Integer> getAbsDeltaTsBlock(
             ArrayList<Integer> ts_block,
-            ArrayList<Integer> min_delta) {
+            ArrayList<Integer> min_delta,
+            ArrayList<Integer> repeat_count) {
         ArrayList<Integer> ts_block_delta = new ArrayList<>();
 
 //        ts_block_delta.add(ts_block.get(0));
         int value_delta_min = Integer.MAX_VALUE;
         for (Integer integer : ts_block) {
-            if (integer < value_delta_min) value_delta_min = integer;
+            if (integer < value_delta_min)
+                value_delta_min = integer;
         }
-        for (Integer integer : ts_block) {
-            ts_block_delta.add(integer-value_delta_min);
+        int pre_delta = ts_block.get(0)-value_delta_min;
+        int pre_count = 1;
+        int block_size = ts_block.size();
+        for (int i=1;i<block_size;i++) {
+            int delta = ts_block.get(i)-value_delta_min;
+            if(delta == pre_delta){
+                pre_count ++;
+            } else if (delta != pre_count) {
+                if(pre_count>7){
+                    repeat_count.add(pre_count);
+                    repeat_count.add(pre_delta);
+                } else{
+                    for(int j=0;j<pre_count;j++)
+                        ts_block_delta.add(pre_delta);
+                }
+                pre_count =1;
+            }
+            pre_delta = delta;
+//            ts_block_delta.add(delta);
         }
+        for(int j=0;j<pre_count;j++)
+            ts_block_delta.add(pre_delta);
         min_delta.add(value_delta_min);
 
         return ts_block_delta;
@@ -441,6 +463,7 @@ public class RLEBOS {
                                       int max_delta_value,
                                       int final_alpha,
                                       ArrayList<Integer> min_delta,
+                                      ArrayList<Integer> repeat_count,
                                       ArrayList<Byte> cur_byte) {
         int block_size = ts_block_delta.size();
         // ------------------------- encode data -----------------------------------------
@@ -524,6 +547,10 @@ public class RLEBOS {
 //        for (byte b : value0_bytes) cur_byte.add(b);
             byte[] min_delta_bytes = int2Bytes(min_delta.get(0));
             for (byte b : min_delta_bytes) cur_byte.add(b);
+        int size=repeat_count.size()-1;
+        byte[] count_size_bytes = int2Bytes(size);
+        for (byte b : count_size_bytes) cur_byte.add(b);
+        cur_byte.addAll(encodeOutlier2Bytes(repeat_count, getBitWith(block_size)));
 
         byte[] final_k_start_value_bytes = int2Bytes(final_k_start_value);
         for (byte b : final_k_start_value_bytes) cur_byte.add(b);
@@ -612,13 +639,14 @@ public class RLEBOS {
 
     private static ArrayList<Byte> BOSBlockEncoder(ArrayList<Integer> ts_block, int supple_length) {
 
-        int block_size = ts_block.size();
+        ArrayList<Integer> repeat_count = new ArrayList<>();
         ArrayList<Byte> cur_byte = new ArrayList<>();
 
         ArrayList<Integer> min_delta = new ArrayList<>();
-        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
+        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta,repeat_count);
+        int block_size = ts_block_delta.size();
         ArrayList<Integer> min_delta_r = new ArrayList<>();
-        ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta_r);
+        ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta_r,repeat_count);
         for (int s = 0; s < supple_length; s++) {
             ts_block_delta.add(0);
             ts_block_order_value.add(0);
@@ -778,7 +806,7 @@ public class RLEBOS {
 
 
         BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
-                final_alpha,  min_delta,  cur_byte);
+                final_alpha,  min_delta,repeat_count,  cur_byte);
 
 //        System.out.println(cur_byte.size());
         return cur_byte;
@@ -804,8 +832,8 @@ public class RLEBOS {
                 ts_block.add(data.get(j + i * block_size));
 
             }
-            ArrayList<Integer> result2 = new ArrayList<>();
-            splitTimeStamp3(ts_block, result2);
+//            ArrayList<Integer> result2 = new ArrayList<>();
+//            splitTimeStamp3(ts_block, result2);
 
             // time-order
             ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, 0);
@@ -1092,7 +1120,7 @@ public class RLEBOS {
         output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
         dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        dataset_block_size.add(2048);
+        dataset_block_size.add(256);
         output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
         dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
@@ -1242,8 +1270,8 @@ public class RLEBOS {
                     double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
                     ratio += ratioTmp;
                     s = System.nanoTime();
-                    for(int repeat=0;repeat<repeatTime2;repeat++)
-                        data_decoded = BOSDecoder(buffer2);
+//                    for(int repeat=0;repeat<repeatTime2;repeat++)
+//                        data_decoded = BOSDecoder(buffer2);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
                 }

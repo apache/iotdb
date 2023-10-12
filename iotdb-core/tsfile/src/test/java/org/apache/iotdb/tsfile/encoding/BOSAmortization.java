@@ -717,6 +717,7 @@ public class BOSAmortization {
         for (int s = 0; s < supple_length; s++) {
             ts_block_delta.add(0);
         }
+        block_size = ts_block_delta.size();
 
         int final_right_max = 0;
         double sum = 0;
@@ -1280,7 +1281,7 @@ public class BOSAmortization {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 1;
+                int repeatTime2 = 10;
                 for (int i = 0; i < repeatTime; i++) {
 
                     ArrayList<Byte> buffer2 = new ArrayList<>();
@@ -1297,8 +1298,8 @@ public class BOSAmortization {
                     double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
                     ratio += ratioTmp;
                     s = System.nanoTime();
-//                    for (int repeat = 0; repeat < repeatTime2; repeat++)
-//                        data_decoded = BOSDecoder(buffer2);
+                    for (int repeat = 0; repeat < repeatTime2; repeat++)
+                        data_decoded = BOSDecoder(buffer2);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
                 }
