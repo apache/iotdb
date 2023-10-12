@@ -939,4 +939,9 @@ public class WALNode implements IWALNode {
   CheckpointManager getCheckpointManager() {
     return checkpointManager;
   }
+
+  @TestOnly
+  public void setBufferSize(int size) {
+    buffer.setBufferSize(size);
+  }
 }

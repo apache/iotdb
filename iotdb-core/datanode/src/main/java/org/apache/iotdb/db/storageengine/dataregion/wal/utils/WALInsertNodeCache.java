@@ -54,7 +54,7 @@ public class WALInsertNodeCache {
 
   // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
   private final LoadingCache<WALEntryPosition, Pair<ByteBuffer, InsertNode>> lruCache;
-  private final boolean isBatchLoadEnabled;
+  private boolean isBatchLoadEnabled;
 
   // ids of all pinned memTables
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
@@ -77,6 +77,11 @@ public class WALInsertNodeCache {
     return isBatchLoadEnabled;
   }
 
+  @TestOnly
+  public void setIsBatchLoadEnabled(boolean isBatchLoadEnabled) {
+    this.isBatchLoadEnabled = isBatchLoadEnabled;
+  }
+
   public InsertNode getInsertNode(WALEntryPosition position) {
     final Pair<ByteBuffer, InsertNode> pair =
         isBatchLoadEnabled
@@ -88,7 +93,17 @@ public class WALInsertNodeCache {
     }
 
     if (pair.getRight() == null) {
-      pair.setRight(parse(pair.getLeft()));
+      try {
+        pair.setRight(parse(ByteBuffer.wrap(pair.getLeft().array())));
+      } catch (Exception e) {
+        logger.error(
+            "Parsing failed when recovering insertNode from wal, walFile:{}, position:{}, size:{}, exception:",
+            position.getWalFile(),
+            position.getPosition(),
+            position.getSize(),
+            e);
+        throw e;
+      }
     }
 
     return pair.getRight();
