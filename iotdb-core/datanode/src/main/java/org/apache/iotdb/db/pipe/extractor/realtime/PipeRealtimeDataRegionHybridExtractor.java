@@ -21,12 +21,12 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -201,11 +201,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {
-    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    // Assume that the max data replica factor in common config is 3.
-    // This can be changed in the future.
-    return 3L * PipeAgent.task().getLeaderDataRegionCount() * config.getWalBufferSize()
-        > config.getThrottleThreshold();
+    return 3 * WALManager.getInstance().getTotalDiskUsage()
+        > IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
   }
 
   private boolean isTsFileEventCountInQueueExceededLimit() {

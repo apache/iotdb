@@ -169,6 +169,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
       bufferQueueTabletSize = bufferQueue.getTabletInsertionEventCount();
       bufferQueueSize = bufferQueue.size();
     }
+
     bufferQueueTsFileSize = bufferQueue.getTsFileInsertionEventCount();
     if (extractor instanceof PipeRealtimeDataRegionHybridExtractor) {
       ((PipeRealtimeDataRegionHybridExtractor) extractor)
@@ -185,9 +186,12 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   }
 
   /////////////////////////////// For Hybrid extractor ///////////////////////////////
+
   public void bindExtractor(PipeRealtimeDataRegionExtractor extractor) {
     this.extractor = extractor;
   }
+
+  /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public String toString() {
