@@ -111,7 +111,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
         retArray);
 
     // 3. time filter, can push down LIMIT
-    retArray = new String[] {"3,root.db.d3,33,", "2,root.db.d2,22,"};
+    retArray = new String[] {"2,root.db.d3,33,", "2,root.db.d2,22,"};
     resultSetEqualTest(
         "SELECT * FROM root.db.** WHERE time>1 and time<3 ORDER BY device DESC LIMIT 2 ALIGN BY DEVICE;",
         expectedHeader,
