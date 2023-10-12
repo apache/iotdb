@@ -76,17 +76,50 @@ public class SessionExample {
     session.open(false);
 
     // set session fetchSize
-    session.setFetchSize(1024);
+    session.setFetchSize(10000);
 
-    long s = System.currentTimeMillis();
-    try(SessionDataSet d = session.executeQueryStatement("select * from root.**")) {
-      d.getColumnNames();
-      d.getColumnTypes();
-      while (d.hasNext()) {
-        d.next().toString();
+    try {
+      session.createDatabase("root.sg1");
+    } catch (StatementExecutionException e) {
+      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+        throw e;
       }
     }
-    System.out.println(System.currentTimeMillis() - s);
+
+    //     createTemplate();
+    createTimeseries();
+    createMultiTimeseries();
+    insertRecord();
+    insertTablet();
+    //    insertTabletWithNullValues();
+    //    insertTablets();
+    //    insertRecords();
+    //    insertText();
+    //    selectInto();
+    //    createAndDropContinuousQueries();
+    //    nonQuery();
+    query();
+    //    queryWithTimeout();
+    rawDataQuery();
+    lastDataQuery();
+    aggregationQuery();
+    groupByQuery();
+    //    queryByIterator();
+    //    deleteData();
+    //    deleteTimeseries();
+    //    setTimeout();
+
+    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+    sessionEnableRedirect.setEnableQueryRedirection(true);
+    sessionEnableRedirect.open(false);
+
+    // set session fetchSize
+    sessionEnableRedirect.setFetchSize(10000);
+
+    fastLastDataQueryForOneDevice();
+    insertRecord4Redirect();
+    query4Redirect();
+    sessionEnableRedirect.close();
     session.close();
   }
 
