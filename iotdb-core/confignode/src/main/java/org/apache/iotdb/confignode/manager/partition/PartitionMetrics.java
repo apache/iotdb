@@ -326,7 +326,7 @@ public class PartitionMetrics implements IMetricSet {
         database,
         Tag.TYPE.toString(),
         TConsensusGroupType.DataRegion.toString());
-    bindDatabaseReplicationFactorMetrics(
+    bindDatabaseReplicationFactorMetricsWhenUpdate(
         metricService, database, dataReplicationFactor, schemaReplicationFactor);
   }
 
@@ -379,7 +379,7 @@ public class PartitionMetrics implements IMetricSet {
         database);
   }
 
-  public static void bindDatabaseReplicationFactorMetrics(
+  public static void bindDatabaseReplicationFactorMetricsWhenUpdate(
       AbstractMetricService metricService,
       String database,
       int dataReplicationFactor,

@@ -240,7 +240,7 @@ public class ClusterSchemaManager {
     // Alter DatabaseSchema
     try {
       result = getConsensusManager().write(databaseSchemaPlan);
-      PartitionMetrics.bindDatabaseReplicationFactorMetrics(
+      PartitionMetrics.bindDatabaseReplicationFactorMetricsWhenUpdate(
           MetricService.getInstance(),
           databaseSchemaPlan.getSchema().getName(),
           databaseSchemaPlan.getSchema().getDataReplicationFactor(),
