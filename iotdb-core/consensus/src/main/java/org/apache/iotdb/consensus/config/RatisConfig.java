@@ -267,7 +267,7 @@ public class RatisConfig {
       private TimeDuration timeoutMax = TimeDuration.valueOf(4, TimeUnit.SECONDS);
       private TimeDuration requestTimeout = TimeDuration.valueOf(20, TimeUnit.SECONDS);
       private TimeDuration sleepTime = TimeDuration.valueOf(1, TimeUnit.SECONDS);
-      private TimeDuration slownessTimeout = TimeDuration.valueOf(10, TimeUnit.MINUTES);
+      private TimeDuration slownessTimeout = TimeDuration.valueOf(3, TimeUnit.DAYS);
 
       private TimeDuration firstElectionTimeoutMin =
           TimeDuration.valueOf(50, TimeUnit.MILLISECONDS);
