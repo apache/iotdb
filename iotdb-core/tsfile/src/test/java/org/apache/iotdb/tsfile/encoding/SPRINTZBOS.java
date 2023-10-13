@@ -55,57 +55,6 @@ public class SPRINTZBOS {
         return bytes;
     }
 
-    public static byte[] double2Bytes(double dou) {
-        long value = Double.doubleToRawLongBits(dou);
-        byte[] bytes = new byte[8];
-        for (int i = 0; i < 8; i++) {
-            bytes[i] = (byte) ((value >> 8 * i) & 0xff);
-        }
-        return bytes;
-    }
-
-    public static double bytes2Double(ArrayList<Byte> encoded, int start, int num) {
-        if (num > 8) {
-            System.out.println("bytes2Doubleerror");
-            return 0;
-        }
-        long value = 0;
-        for (int i = 0; i < 8; i++) {
-            value |= ((long) (encoded.get(i + start) & 0xff)) << (8 * i);
-        }
-        return Double.longBitsToDouble(value);
-    }
-
-    public static byte[] float2bytes(float f) {
-        int fbit = Float.floatToIntBits(f);
-        byte[] b = new byte[4];
-        for (int i = 0; i < 4; i++) {
-            b[i] = (byte) (fbit >> (24 - i * 8));
-        }
-        int len = b.length;
-        byte[] dest = new byte[len];
-        System.arraycopy(b, 0, dest, 0, len);
-        byte temp;
-        for (int i = 0; i < len / 2; ++i) {
-            temp = dest[i];
-            dest[i] = dest[len - i - 1];
-            dest[len - i - 1] = temp;
-        }
-        return dest;
-    }
-
-    public static float bytes2float(ArrayList<Byte> b, int index) {
-        int l;
-        l = b.get(index);
-        l &= 0xff;
-        l |= ((long) b.get(index + 1) << 8);
-        l &= 0xffff;
-        l |= ((long) b.get(index + 2) << 16);
-        l &= 0xffffff;
-        l |= ((long) b.get(index + 3) << 24);
-        return Float.intBitsToFloat(l);
-    }
-
     public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
         int value = 0;
         if (num > 4) {
@@ -278,7 +227,26 @@ public class SPRINTZBOS {
 
         return ts_block_delta;
     }
+    public static ArrayList<Integer> getAbsDeltaTsBlock(
+            ArrayList<Integer> ts_block,
+            int i,
+            int block_size,
+            ArrayList<Integer> min_delta) {
+        ArrayList<Integer> ts_block_delta = new ArrayList<>();
 
+//        ts_block_delta.add(ts_block.get(0));
+        int value_delta_min = Integer.MAX_VALUE;
+        for (int j = i*block_size+1; j < (i+1)*block_size; j++) {
+
+            int epsilon_v = ts_block.get(j) - ts_block.get(j - 1);
+            epsilon_v = zigzag(epsilon_v);
+            ts_block_delta.add(epsilon_v);
+
+        }
+        min_delta.add(ts_block.get(i*block_size));
+
+        return ts_block_delta;
+    }
     public static ArrayList<Integer> getBitWith(ArrayList<Integer> ts_block) {
         ArrayList<Integer> ts_block_bit_width = new ArrayList<>();
         for (int integers : ts_block) {
@@ -784,6 +752,179 @@ public class SPRINTZBOS {
         return cur_byte;
     }
 
+    private static ArrayList<Byte> BOSBlockEncoder(ArrayList<Integer> ts_block, int block_i, int block_size,int supple_length) {
+
+
+        ArrayList<Byte> cur_byte = new ArrayList<>();
+
+        ArrayList<Integer> min_delta = new ArrayList<>();
+        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block,block_i, block_size, min_delta);
+        ArrayList<Integer> min_delta_r = new ArrayList<>();
+        ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, block_i, block_size,min_delta_r);
+        for (int s = 0; s < supple_length; s++) {
+            ts_block_delta.add(0);
+            ts_block_order_value.add(0);
+        }
+//        System.out.println(ts_block_order_value);
+        Collections.sort(ts_block_order_value);
+//        quickSort(ts_block_order_value, 0, 1, block_size - 1);
+
+//        System.out.println("quickSort");
+
+//        ArrayList<Integer> ts_block_order_value = new ArrayList<>();
+//        for (int i = 1; i < block_size; i++) {
+//            ts_block_order_value.add(ts_block_delta.get(i));
+//        }
+       block_size --;
+
+        int max_delta_value = ts_block_order_value.get(block_size - 1);
+        int max_delta_value_bit_width = getBitWith(max_delta_value);
+        ArrayList<Integer> spread_value = new ArrayList<>();
+        for (int i = 1; i < max_delta_value_bit_width; i++) {
+            int spread_v = (int) pow(2, i) - 1;
+            spread_value.add(spread_v);
+        }
+        ArrayList<ArrayList<Integer>> PDF = new ArrayList<>();
+
+
+        ArrayList<Integer> start_value = new ArrayList<>();
+        int min_delta_value = ts_block_order_value.get(0);
+        start_value.add(min_delta_value);
+
+        ArrayList<Integer> tmp_value = new ArrayList<>();
+        tmp_value.add(min_delta_value);
+        int count = 1;
+        int tmp = min_delta_value;
+        for (int i = 1; i < block_size; i++) {
+            if (ts_block_order_value.get(i) != tmp) {
+                int start_v = ts_block_order_value.get(i);
+                tmp_value.add(count);
+                PDF.add(tmp_value);
+                tmp_value = new ArrayList<>();
+                start_value.add(start_v);
+                tmp_value.add(start_v);
+                tmp = start_v;
+//                count = 1;
+            }
+            count++;
+
+        }
+        tmp_value.add(count);
+        PDF.add(tmp_value);
+//        System.out.println(PDF);
+
+        int final_k_start_value = ts_block_order_value.get(0);
+        int final_k_end_value = max_delta_value;
+
+        int min_bits = 0;
+        min_bits += (getBitWith(final_k_end_value - final_k_start_value) * (block_size - 1));
+
+
+        int start_value_size = start_value.size();
+//        int k1 = 0;
+//        int k2 = 0;
+//        int final_left_max = 0;
+//        int final_right_min = max_delta_value;
+//        System.out.println(PDF);
+        for (int start_value_i = 0; start_value_i < start_value_size - 1; start_value_i++) {
+            int k_start_value = start_value.get(start_value_i);
+//            for (int end_value_i = start_value_i; end_value_i < start_value_size; end_value_i++) {
+//                int k_end_value = start_value.get(end_value_i);
+            for (int k_spread_value : spread_value) {
+                int k_end_value = Math.min(k_spread_value + k_start_value, max_delta_value);
+
+                int cur_bits = 0;
+                int cur_k1 = 0;
+//                int left_max = 0;
+                if (start_value_i != 0) {
+//                    left_max = PDF.get(start_value_i - 1).get(0);
+                    cur_k1 = PDF.get(start_value_i - 1).get(1);
+                }
+
+                int cur_k2 = 0;
+                int max_normal = 0;
+//                int min_upper_outlier = 0;
+                int PDF_size = PDF.size();
+                for (int tmp_j = start_value_i; tmp_j < PDF_size; tmp_j++) {
+                    max_normal = PDF.get(tmp_j).get(0);
+                    if (max_normal >= k_end_value) {
+                        if (max_normal > k_end_value)
+                            cur_k2 = block_size - PDF.get(tmp_j - 1).get(1);
+                        else if (max_normal == k_end_value) {
+                            cur_k2 = block_size - PDF.get(tmp_j).get(1);
+                        }
+//                        if (tmp_j != PDF_size - 1)
+//                            min_upper_outlier = PDF.get(tmp_j + 1).get(0);
+//                        else
+//                            min_upper_outlier = PDF.get(tmp_j).get(0);
+                        break;
+                    }
+                }
+
+                cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
+                if (cur_k1 != 0)
+                    cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
+                if (cur_k1 + cur_k2 != block_size)
+                    cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
+                if (cur_k2 != 0)
+                    cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
+//
+//                if(left_max <= 1603 && k_start_value>=1603&& k_end_value <= 5083 && min_upper_outlier>=5083 ){
+//                    System.out.println("index_cost: "+(Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2)));
+//                    System.out.println("k_end_value: "+(k_end_value));
+//                    System.out.println("min_upper_outlier: "+(min_upper_outlier));
+//                    System.out.println("cur_k1: "+(cur_k1));
+//                    System.out.println("cur_k2: "+(cur_k2));
+//                    System.out.println("cur_bits: "+(cur_bits));
+//                    System.out.println("min_bits: "+(min_bits));
+//                    System.out.println("min_bits: "+(getBitWith(k_start_value)));
+//                    System.out.println("min_bits: "+(getBitWith(k_end_value - k_start_value)));
+//                    System.out.println("min_bits: "+(getBitWith(max_delta_value - k_end_value)));
+//                }
+//                if(k_start_value == 49 && k_end_value == 50 ){
+//                    System.out.println("index_cost: "+(Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2)));
+//                    System.out.println("max_delta_value: "+(max_delta_value));
+//                    System.out.println(" getBitWith(left_max)：" +  getBitWith(left_max));
+//                    System.out.println(" getBitWith(k_end_value - k_start_value)：" + getBitWith(k_end_value - k_start_value));
+//                    System.out.println(" getBitWith(max_delta_value - min_upper_outlier)：" + getBitWith(max_delta_value - min_upper_outlier));
+//                    System.out.println("k_start_value: "+(k_start_value));
+//                    System.out.println("k_end_value: "+(k_end_value));
+//                    System.out.println("left_max: "+(left_max));
+//                    System.out.println("min_upper_outlier: "+(min_upper_outlier));
+//                    System.out.println("cur_k1: "+(cur_k1));
+//                    System.out.println("cur_k2: "+(cur_k2));
+//                    System.out.println("cur_bits: "+(cur_bits));
+//                    System.out.println("min_bits: "+(min_bits));
+//                }
+
+                if (cur_bits < min_bits) {
+                    min_bits = cur_bits;
+//                    k1 = cur_k1;
+//                    k2 = cur_k2;
+                    final_k_start_value = k_start_value;
+//                    if (start_value_i != 0)
+//                        final_left_max = PDF.get(start_value_i - 1).get(0);
+//                    else
+//                        final_left_max = 0;
+//                    final_right_min = min_upper_outlier;
+                    final_k_end_value = k_end_value;
+                }
+                if (k_end_value == max_delta_value)
+                    break;
+            }
+        }
+
+
+//        int final_left_max = final_k_start_value;
+
+
+        BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
+                min_delta,  cur_byte);
+
+//        System.out.println(cur_byte.size());
+        return cur_byte;
+    }
+
     public static ArrayList<Byte> BOSEncoder(
             ArrayList<Integer> data, int block_size, String dataset_name) throws IOException {
         block_size++;
@@ -799,16 +940,16 @@ public class SPRINTZBOS {
 
 //        for (int i = 0; i < 1; i++) {
         for (int i = 0; i < block_num; i++) {
-            ArrayList<Integer> ts_block = new ArrayList<>();
-            for (int j = 0; j < block_size; j++) {
-                ts_block.add(data.get(j + i * block_size));
-
-            }
+//            ArrayList<Integer> ts_block = new ArrayList<>();
+//            for (int j = 0; j < block_size; j++) {
+//                ts_block.add(data.get(j + i * block_size));
+//
+//            }
 //            ArrayList<Integer> result2 = new ArrayList<>();
 //            splitTimeStamp3(ts_block, result2);
 
             // time-order
-            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, 0);
+            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(data,i, block_size, 0);
             encoded_result.addAll(cur_encoded_result);
 
         }
@@ -826,8 +967,8 @@ public class SPRINTZBOS {
             for (int j = block_num * block_size; j < length_all; j++) {
                 ts_block.add(data.get(j));
             }
-            ArrayList<Integer> result2 = new ArrayList<>();
-            splitTimeStamp3(ts_block, result2);
+//            ArrayList<Integer> result2 = new ArrayList<>();
+//            splitTimeStamp3(ts_block, result2);
             int supple_length;
             if (remaining_length % 8 == 0) {
                 supple_length = 1;

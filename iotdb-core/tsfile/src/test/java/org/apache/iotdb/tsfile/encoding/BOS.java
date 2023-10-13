@@ -116,48 +116,6 @@ public class BOS {
         return result_list;
     }
 
-    public static int getCommon(int m, int n) {
-        int z;
-        while (m % n != 0) {
-            z = m % n;
-            m = n;
-            n = z;
-        }
-        return n;
-    }
-
-    public static void splitTimeStamp3(
-            ArrayList<Integer> ts_block, ArrayList<Integer> result) {
-        int td_common = 0;
-        for (int i = 1; i < ts_block.size(); i++) {
-            int time_diffi = ts_block.get(i) - ts_block.get(i - 1);
-            if (td_common == 0) {
-                if (time_diffi != 0) {
-                    td_common = time_diffi;
-                    continue;
-                } else {
-                    continue;
-                }
-            }
-            if (time_diffi != 0) {
-                td_common = getCommon(time_diffi, td_common);
-                if (td_common == 1) {
-                    break;
-                }
-            }
-        }
-        if (td_common == 0) {
-            td_common = 1;
-        }
-
-        int t0 = ts_block.get(0);
-        for (int i = 0; i < ts_block.size(); i++) {
-            int interval_i = (ts_block.get(i) - t0) / td_common;
-            ts_block.set(i, t0 + interval_i);
-        }
-        result.add(td_common);
-    }
-
 
     public static ArrayList<Integer> getAbsDeltaTsBlock(
             ArrayList<Integer> ts_block,
@@ -879,11 +837,6 @@ public class BOS {
 
 //        for (int i = 0; i < 1; i++) {
         for (int i = 0; i < block_num; i++) {
-//            ArrayList<Integer> ts_block = new ArrayList<>();
-//            for (int j = 0; j < block_size; j++) {
-//                ts_block.add(data.get(j + i * block_size));
-//
-//            }
 
             // time-order
             ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(data, i, block_size,0);
@@ -904,8 +857,6 @@ public class BOS {
             for (int j = block_num * block_size; j < length_all; j++) {
                 ts_block.add(data.get(j));
             }
-            ArrayList<Integer> result2 = new ArrayList<>();
-            splitTimeStamp3(ts_block, result2);
             int supple_length;
             if (remaining_length % 8 == 0) {
                 supple_length = 1;
