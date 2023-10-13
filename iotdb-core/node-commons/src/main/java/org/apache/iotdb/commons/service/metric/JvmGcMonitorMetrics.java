@@ -45,9 +45,9 @@ public class JvmGcMonitorMetrics implements IMetricSet {
   // Interval for data collection
   public static final long SLEEP_INTERVAL_MS = TimeUnit.SECONDS.toMillis(5);
   // Max GC time threshold
-  public static final long MAX_GC_TIME_PERCENTAGE = 40L;
-  // The time when IoTDB start running
-  private static long startTime;
+  public static final long MAX_GC_TIME_PERCENTAGE = 30L;
+  // The time when JvmGcMonitorMetrics start running
+  private static long monitorStartTime;
   private static final Logger logger = LoggerFactory.getLogger(JvmGcMonitorMetrics.class);
   private final ScheduledExecutorService scheduledGCInfoMonitor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
@@ -87,9 +87,11 @@ public class JvmGcMonitorMetrics implements IMetricSet {
         curData,
         GcData::getGcTimePercentage);
 
-    startTime = System.currentTimeMillis();
+    monitorStartTime = System.currentTimeMillis();
+    // Set start time's accumulated GC Time
+    curData.setAccumulatedGcTime(getTotalGCTime());
     // current collect time: startTime + start delay(50ms)
-    gcDataBuf[startIdx].setValues(startTime + TimeUnit.MILLISECONDS.toMillis(50), 0);
+    gcDataBuf[startIdx].setValues(monitorStartTime + TimeUnit.MILLISECONDS.toMillis(50), 0);
     scheduledGcMonitorFuture =
         ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
             scheduledGCInfoMonitor,
@@ -112,21 +114,26 @@ public class JvmGcMonitorMetrics implements IMetricSet {
 
   private void scheduledMonitoring() {
     calculateGCTimePercentageWithinObservedInterval();
-    if (alertHandler != null && curData.gcTimePercentage.get() > MAX_GC_TIME_PERCENTAGE) {
+    if (alertHandler != null && curData.getGcTimePercentage() > MAX_GC_TIME_PERCENTAGE) {
       alertHandler.alert(curData.clone());
     }
   }
 
-  private void calculateGCTimePercentageWithinObservedInterval() {
-    long prevTotalGcTime = curData.getAccumulatedGcTime();
+  private long getTotalGCTime() {
     long totalGcTime = 0;
     for (GarbageCollectorMXBean gcBean : ManagementFactory.getGarbageCollectorMXBeans()) {
       totalGcTime += gcBean.getCollectionTime();
     }
-    long gcTimeWithinSleepInterval = totalGcTime - prevTotalGcTime;
+    return totalGcTime;
+  }
 
+  private void calculateGCTimePercentageWithinObservedInterval() {
+    long prevTotalGcTime = curData.getAccumulatedGcTime();
+    long totalGcTime = getTotalGCTime();
+
+    long gcTimeWithinSleepInterval = totalGcTime - prevTotalGcTime;
     long curTime = System.currentTimeMillis();
-    long gcMonitorRunTime = curTime - startTime;
+    long gcMonitorRunTime = curTime - monitorStartTime;
 
     endIdx = (endIdx + 1) % bufSize;
     gcDataBuf[endIdx].setValues(curTime, gcTimeWithinSleepInterval);
@@ -182,7 +189,7 @@ public class JvmGcMonitorMetrics implements IMetricSet {
      * @return current observation window time, millisecond.
      */
     public long getCurrentObsWindowTs() {
-      return Math.min(timestamp.get() - startTime, timestamp.get() - startObsWindowTs.get());
+      return Math.min(timestamp.get() - monitorStartTime, timestamp.get() - startObsWindowTs.get());
     }
 
     /**
@@ -200,7 +207,7 @@ public class JvmGcMonitorMetrics implements IMetricSet {
      * @return the actual start timestamp of the obs window.
      */
     public long getStartObsWindowTs() {
-      return Math.max(startObsWindowTs.get(), startTime);
+      return Math.max(startObsWindowTs.get(), monitorStartTime);
     }
 
     /**
@@ -229,6 +236,10 @@ public class JvmGcMonitorMetrics implements IMetricSet {
      */
     public long getGcTimePercentage() {
       return gcTimePercentage.get();
+    }
+
+    private void setAccumulatedGcTime(long accumulatedGcTime) {
+      this.accumulatedGcTime.set(accumulatedGcTime);
     }
 
     private synchronized void update(

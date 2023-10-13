@@ -29,8 +29,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.service.metric.enums.Metric;
-import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -85,8 +83,6 @@ import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -125,9 +121,6 @@ public class ClusterSchemaManager {
 
   private static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
-  private static final MetricService metricService = MetricService.getInstance();
-  private static final String DATA = "data";
-  private static final String SCHEMA = "schema";
 
   public ClusterSchemaManager(
       IManager configManager,
@@ -170,29 +163,14 @@ public class ClusterSchemaManager {
       // Cache DatabaseSchema
       result = getConsensusManager().write(databaseSchemaPlan);
       // Bind Database metrics
-      PartitionMetrics.bindDatabasePartitionMetrics(
-          MetricService.getInstance(), configManager, databaseSchemaPlan.getSchema().getName());
+      PartitionMetrics.bindDatabaseRelatedMetricsWhenUpdate(
+          MetricService.getInstance(),
+          configManager,
+          databaseSchemaPlan.getSchema().getName(),
+          databaseSchemaPlan.getSchema().getDataReplicationFactor(),
+          databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
       // Adjust the maximum RegionGroup number of each Database
       adjustMaxRegionGroupNum();
-      // Add database replication factor metrics
-      metricService
-          .getOrCreateGauge(
-              Metric.REPLICATION_FACTOR.toString(),
-              MetricLevel.CORE,
-              Tag.TYPE.toString(),
-              DATA,
-              Tag.DATABASE.toString(),
-              databaseSchemaPlan.getSchema().getName())
-          .set(databaseSchemaPlan.getSchema().dataReplicationFactor);
-      metricService
-          .getOrCreateGauge(
-              Metric.REPLICATION_FACTOR.toString(),
-              MetricLevel.CORE,
-              Tag.TYPE.toString(),
-              SCHEMA,
-              Tag.DATABASE.toString(),
-              databaseSchemaPlan.getSchema().getName())
-          .set(databaseSchemaPlan.getSchema().schemaReplicationFactor);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -261,25 +239,11 @@ public class ClusterSchemaManager {
     // Alter DatabaseSchema
     try {
       result = getConsensusManager().write(databaseSchemaPlan);
-      // Alter database replication factor metrics
-      metricService
-          .getOrCreateGauge(
-              Metric.REPLICATION_FACTOR.toString(),
-              MetricLevel.CORE,
-              Tag.TYPE.toString(),
-              DATA,
-              Tag.DATABASE.toString(),
-              databaseSchemaPlan.getSchema().getName())
-          .set(databaseSchemaPlan.getSchema().dataReplicationFactor);
-      metricService
-          .getOrCreateGauge(
-              Metric.REPLICATION_FACTOR.toString(),
-              MetricLevel.CORE,
-              Tag.TYPE.toString(),
-              SCHEMA,
-              Tag.DATABASE.toString(),
-              databaseSchemaPlan.getSchema().getName())
-          .set(databaseSchemaPlan.getSchema().schemaReplicationFactor);
+      PartitionMetrics.bindDatabaseReplicationFactorMetricsWhenUpdate(
+          MetricService.getInstance(),
+          databaseSchemaPlan.getSchema().getName(),
+          databaseSchemaPlan.getSchema().getDataReplicationFactor(),
+          databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
       return result;
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
@@ -294,21 +258,6 @@ public class ClusterSchemaManager {
     TSStatus result;
     try {
       result = getConsensusManager().write(deleteDatabasePlan);
-      // Remove database replication factor metric
-      metricService.remove(
-          MetricType.GAUGE,
-          Metric.REPLICATION_FACTOR.toString(),
-          Tag.TYPE.toString(),
-          DATA,
-          Tag.DATABASE.toString(),
-          deleteDatabasePlan.getName());
-      metricService.remove(
-          MetricType.GAUGE,
-          Metric.REPLICATION_FACTOR.toString(),
-          Tag.TYPE.toString(),
-          SCHEMA,
-          Tag.DATABASE.toString(),
-          deleteDatabasePlan.getName());
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());

@@ -145,6 +145,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         compactionLogger.logFiles(selectedSequenceFiles, CompactionLogger.STR_SOURCE_FILES);
         compactionLogger.logFiles(selectedUnsequenceFiles, CompactionLogger.STR_SOURCE_FILES);
         compactionLogger.logFiles(targetTsfileResourceList, CompactionLogger.STR_TARGET_FILES);
+        compactionLogger.force();
 
         performer.setSourceFiles(selectedSequenceFiles, selectedUnsequenceFiles);
         performer.setTargetFiles(targetTsfileResourceList);
@@ -170,6 +171,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (targetResource.isDeleted()) {
             compactionLogger.logFile(targetResource, CompactionLogger.STR_DELETED_TARGET_FILES);
+            compactionLogger.force();
           }
         }
 
