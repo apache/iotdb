@@ -19,13 +19,18 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -68,6 +73,7 @@ import java.util.Set;
 public class CompactionUtils {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private static final String SYSTEM = "system";
 
   private CompactionUtils() {}
 
@@ -433,6 +439,57 @@ public class CompactionUtils {
     } catch (Exception e) {
       logger.error("Meets error when validating TsFile {}, ", resource.getTsFilePath(), e);
       return false;
+    }
+    return true;
+  }
+
+  public static void deleteSourceTsFileAndUpdateFileMetrics(
+      List<TsFileResource> sourceSeqResourceList, List<TsFileResource> sourceUnseqResourceList) {
+    deleteSourceTsFileAndUpdateFileMetrics(sourceSeqResourceList, true);
+    deleteSourceTsFileAndUpdateFileMetrics(sourceUnseqResourceList, false);
+  }
+
+  public static void deleteSourceTsFileAndUpdateFileMetrics(
+      List<TsFileResource> resources, boolean seq) {
+    List<TsFileResource> removeResources = new ArrayList<>();
+    for (TsFileResource resource : resources) {
+      if (!resource.remove()) {
+        logger.warn(
+            "[Compaction] delete file failed, file path is {}",
+            resource.getTsFile().getAbsolutePath());
+      } else {
+        logger.info("[Compaction] delete file: {}", resource.getTsFile().getAbsolutePath());
+        removeResources.add(resource);
+      }
+    }
+    FileMetrics.getInstance().deleteTsFile(seq, resources);
+  }
+
+  public static boolean isDiskHasSpace() {
+    return isDiskHasSpace(0d);
+  }
+
+  public static boolean isDiskHasSpace(double redundancy) {
+    double availableDisk =
+        MetricService.getInstance()
+            .getAutoGauge(
+                SystemMetric.SYS_DISK_AVAILABLE_SPACE.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                SYSTEM)
+            .value();
+    double totalDisk =
+        MetricService.getInstance()
+            .getAutoGauge(
+                SystemMetric.SYS_DISK_TOTAL_SPACE.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                SYSTEM)
+            .value();
+
+    if (availableDisk != 0 && totalDisk != 0) {
+      return availableDisk / totalDisk
+          > CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold() + redundancy;
     }
     return true;
   }
