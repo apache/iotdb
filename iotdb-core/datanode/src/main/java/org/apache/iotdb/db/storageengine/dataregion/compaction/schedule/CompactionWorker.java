@@ -75,6 +75,11 @@ public class CompactionWorker implements Runnable {
         log.info("Compaction task is not allowed to be executed by TsFileManager. Task {}", task);
         return;
       }
+      if (!task.isDiskSpaceCheckPassed()) {
+        log.debug(
+            "Compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
+        return;
+      }
       task.transitSourceFilesToMerging();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
         estimatedMemoryCost = task.getEstimatedMemoryCost();

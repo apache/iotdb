@@ -18,20 +18,17 @@
 
 # for package
 from .IoTDBConstants import TSDataType
+import numpy as np
+import pandas as pd
 
 
 class Field(object):
-    def __init__(self, data_type):
+    def __init__(self, data_type, value=None):
         """
         :param data_type: TSDataType
         """
         self.__data_type = data_type
-        self.__bool_value = None
-        self.__int_value = None
-        self.__long_value = None
-        self.__float_value = None
-        self.__double_value = None
-        self.__binary_value = None
+        self.value = value
 
     @staticmethod
     def copy(field):
@@ -59,73 +56,99 @@ class Field(object):
         return self.__data_type
 
     def is_null(self):
-        return self.__data_type is None
+        return self.__data_type is None or self.value is None or self.value is pd.NA
 
-    def set_bool_value(self, value):
-        self.__bool_value = value
+    def set_bool_value(self, value: bool):
+        self.value = value
 
     def get_bool_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        return self.__bool_value
+        if (
+            self.__data_type != TSDataType.BOOLEAN
+            or self.value is None
+            or self.value is pd.NA
+        ):
+            return None
+        return self.value
 
-    def set_int_value(self, value):
-        self.__int_value = value
+    def set_int_value(self, value: int):
+        self.value = value
 
     def get_int_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        return self.__int_value
+        if (
+            self.__data_type != TSDataType.INT32
+            or self.value is None
+            or self.value is pd.NA
+        ):
+            return None
+        return np.int32(self.value)
 
-    def set_long_value(self, value):
-        self.__long_value = value
+    def set_long_value(self, value: int):
+        self.value = value
 
     def get_long_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        return self.__long_value
+        if (
+            self.__data_type != TSDataType.INT64
+            or self.value is None
+            or self.value is pd.NA
+        ):
+            return None
+        return np.int64(self.value)
 
-    def set_float_value(self, value):
-        self.__float_value = value
+    def set_float_value(self, value: float):
+        self.value = value
 
     def get_float_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        return self.__float_value
+        if (
+            self.__data_type != TSDataType.FLOAT
+            or self.value is None
+            or self.value is pd.NA
+        ):
+            return None
+        return np.float32(self.value)
 
-    def set_double_value(self, value):
-        self.__double_value = value
+    def set_double_value(self, value: float):
+        self.value = value
 
     def get_double_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        return self.__double_value
+        if (
+            self.__data_type != TSDataType.DOUBLE
+            or self.value is None
+            or self.value is pd.NA
+        ):
+            return None
+        return np.float64(self.value)
 
-    def set_binary_value(self, value):
-        self.__binary_value = value
+    def set_binary_value(self, value: bytes):
+        self.value = value
 
     def get_binary_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
-        return self.__binary_value
+        if (
+            self.__data_type != TSDataType.TEXT
+            or self.value is None
+            or self.value is pd.NA
+        ):
+            return None
+        return self.value
 
     def get_string_value(self):
-        if self.__data_type is None:
+        if self.__data_type is None or self.value is None or self.value is pd.NA:
             return "None"
-        elif self.__data_type == TSDataType.BOOLEAN:
-            return str(self.__bool_value)
-        elif self.__data_type == TSDataType.INT64:
-            return str(self.__long_value)
-        elif self.__data_type == TSDataType.INT32:
-            return str(self.__int_value)
-        elif self.__data_type == TSDataType.FLOAT:
-            return str(self.__float_value)
-        elif self.__data_type == TSDataType.DOUBLE:
-            return str(self.__double_value)
-        elif self.__data_type == TSDataType.TEXT:
-            return self.__binary_value.decode("utf-8")
+        elif self.__data_type == 5:
+            return self.value.decode("utf-8")
         else:
-            raise Exception("unsupported data type {}".format(self.__data_type))
+            return str(self.get_object_value(self.__data_type))
 
     def __str__(self):
         return self.get_string_value()
@@ -134,22 +157,19 @@ class Field(object):
         """
         :param data_type: TSDataType
         """
-        if self.__data_type is None:
+        if self.__data_type is None or self.value is None or self.value is pd.NA:
             return None
-        elif data_type == TSDataType.BOOLEAN:
-            return self.get_bool_value()
-        elif data_type == TSDataType.INT32:
-            return self.get_int_value()
-        elif data_type == TSDataType.INT64:
-            return self.get_long_value()
-        elif data_type == TSDataType.FLOAT:
-            return self.get_float_value()
-        elif data_type == TSDataType.DOUBLE:
-            return self.get_double_value()
-        elif data_type == TSDataType.TEXT:
-            return self.get_binary_value()
-        else:
-            raise Exception("unsupported data type {}".format(data_type))
+        if data_type == 0:
+            return bool(self.value)
+        elif data_type == 1:
+            return np.int32(self.value)
+        elif data_type == 2:
+            return np.int64(self.value)
+        elif data_type == 3:
+            return np.float32(self.value)
+        elif data_type == 4:
+            return np.float64(self.value)
+        return self.value
 
     @staticmethod
     def get_field(value, data_type):
@@ -157,21 +177,7 @@ class Field(object):
         :param value: field value corresponding to the data type
         :param data_type: TSDataType
         """
-        if value is None:
+        if value is None or value is pd.NA:
             return None
-        field = Field(data_type)
-        if data_type == TSDataType.BOOLEAN:
-            field.set_bool_value(value)
-        elif data_type == TSDataType.INT32:
-            field.set_int_value(value)
-        elif data_type == TSDataType.INT64:
-            field.set_long_value(value)
-        elif data_type == TSDataType.FLOAT:
-            field.set_float_value(value)
-        elif data_type == TSDataType.DOUBLE:
-            field.set_double_value(value)
-        elif data_type == TSDataType.TEXT:
-            field.set_binary_value(value)
-        else:
-            raise Exception("unsupported data type {}".format(data_type))
+        field = Field(data_type, value)
         return field
