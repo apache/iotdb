@@ -98,7 +98,7 @@ public class TopKNode extends MultiChildProcessNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.TOP_N.serialize(byteBuffer);
+    PlanNodeType.TOP_K.serialize(byteBuffer);
     ReadWriteIOUtils.write(topValue, byteBuffer);
     mergeOrderParameter.serializeAttributes(byteBuffer);
     ReadWriteIOUtils.write(outputColumns.size(), byteBuffer);
@@ -109,7 +109,7 @@ public class TopKNode extends MultiChildProcessNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.TOP_N.serialize(stream);
+    PlanNodeType.TOP_K.serialize(stream);
     ReadWriteIOUtils.write(topValue, stream);
     mergeOrderParameter.serializeAttributes(stream);
     ReadWriteIOUtils.write(outputColumns.size(), stream);
@@ -119,7 +119,7 @@ public class TopKNode extends MultiChildProcessNode {
   }
 
   public static TopKNode deserialize(ByteBuffer byteBuffer) {
-    int topValue = ReadWriteIOUtils.readInt(byteBuffer);
+    long topValue = ReadWriteIOUtils.readLong(byteBuffer);
     OrderByParameter orderByParameter = OrderByParameter.deserialize(byteBuffer);
     int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> outputColumns = new ArrayList<>();

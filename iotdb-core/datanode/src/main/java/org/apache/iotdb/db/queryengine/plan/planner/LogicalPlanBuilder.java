@@ -789,11 +789,17 @@ public class LogicalPlanBuilder {
               limitValue,
               orderByParameter,
               outputColumnNames);
+
+      // if value filter exists, need add a LIMIT-NODE as the child node of TopKNode
+      long valueFilterLimit = queryStatement.hasWhere() ? limitValue : -1;
+
       if ((queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression())) {
-        // do not use addDeviceViewNode here,
-        // because DeviceViewNode will generate MergeSortNode on the top of DeviceViewNode
         addSingleDeviceViewNodes(
-            topKNode, deviceNameToSourceNodesMap, outputColumnNames, deviceToMeasurementIndexesMap);
+            topKNode,
+            deviceNameToSourceNodesMap,
+            outputColumnNames,
+            deviceToMeasurementIndexesMap,
+            valueFilterLimit);
       } else {
         topKNode.addChild(
             addDeviceViewNode(
@@ -814,7 +820,8 @@ public class LogicalPlanBuilder {
           mergeSortNode,
           deviceNameToSourceNodesMap,
           outputColumnNames,
-          deviceToMeasurementIndexesMap);
+          deviceToMeasurementIndexesMap,
+          -1);
       this.root = mergeSortNode;
     } else {
       this.root =
@@ -847,7 +854,8 @@ public class LogicalPlanBuilder {
       MultiChildProcessNode parent,
       Map<String, PlanNode> deviceNameToSourceNodesMap,
       List<String> outputColumnNames,
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
+      Map<String, List<Integer>> deviceToMeasurementIndexesMap,
+      long valueFilterLimit) {
     for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
       String deviceName = entry.getKey();
       PlanNode subPlan = entry.getValue();
@@ -858,7 +866,13 @@ public class LogicalPlanBuilder {
               deviceName,
               deviceToMeasurementIndexesMap.get(deviceName));
       singleDeviceViewNode.addChild(subPlan);
-      parent.addChild(singleDeviceViewNode);
+      if (valueFilterLimit > 0) {
+        parent.addChild(
+            new LimitNode(
+                context.getQueryId().genPlanNodeId(), singleDeviceViewNode, valueFilterLimit));
+      } else {
+        parent.addChild(singleDeviceViewNode);
+      }
     }
   }
 
@@ -1167,6 +1181,10 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planLimit(long rowLimit) {
     if (rowLimit == 0) {
+      return this;
+    }
+
+    if (this.getRoot() instanceof TopKNode) {
       return this;
     }
 

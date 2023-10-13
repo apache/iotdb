@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
@@ -279,6 +280,11 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   @Override
   public PlanNode visitSort(SortNode node, NodeGroupContext context) {
+    return processOneChildNode(node, context);
+  }
+
+  @Override
+  public PlanNode visitLimit(LimitNode node, NodeGroupContext context) {
     return processOneChildNode(node, context);
   }
 

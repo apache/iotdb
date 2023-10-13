@@ -185,7 +185,7 @@ public enum PlanNodeType {
   PIPE_ENRICHED_INSERT((short) 79),
   FORECAST((short) 80),
   LAST_QUERY_TRANSFORM((short) 81),
-  TOP_N((short) 82);
+  TOP_K((short) 82);
 
   public static final int BYTES = Short.BYTES;
 

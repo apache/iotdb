@@ -54,10 +54,14 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  private static final long LIMIT_VALUE = 100;
+
   // ORDER BY TIME
   @Test
   public void orderByTimeTest1() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY TIME LIMIT 20 ALIGN BY DEVICE";
+    String sql =
+        String.format(
+            "SELECT * FROM root.weather.** ORDER BY TIME LIMIT %s ALIGN BY DEVICE", LIMIT_VALUE);
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -85,7 +89,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(20, total);
+        assertEquals(LIMIT_VALUE, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
