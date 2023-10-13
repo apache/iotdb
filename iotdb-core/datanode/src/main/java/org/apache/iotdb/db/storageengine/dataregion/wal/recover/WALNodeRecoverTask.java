@@ -82,7 +82,6 @@ public class WALNodeRecoverTask implements Runnable {
         recoverPerformer.getRecoverListener().fail(e);
       }
     } finally {
-      allNodesRecoveredLatch.countDown();
       for (UnsealedTsFileRecoverPerformer recoverPerformer : memTableId2RecoverPerformer.values()) {
         try {
           if (!recoverPerformer.canWrite()) {
@@ -94,36 +93,40 @@ public class WALNodeRecoverTask implements Runnable {
       }
     }
 
-    if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
-      // delete this wal node folder
-      FileUtils.deleteDirectory(logDirectory);
-      logger.info(
-          "Successfully recover WAL node in the directory {}, so delete these wal files.",
-          logDirectory);
-    } else {
-      // delete checkpoint info to avoid repeated recover
-      File[] checkpointFiles = CheckpointFileUtils.listAllCheckpointFiles(logDirectory);
-      for (File checkpointFile : checkpointFiles) {
-        try {
-          Files.delete(checkpointFile.toPath());
-        } catch (IOException e) {
-          logger.error("error when delete checkpoint file. {}", checkpointFile, e);
+    try {
+      if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+        // delete this wal node folder
+        FileUtils.deleteDirectory(logDirectory);
+        logger.info(
+            "Successfully recover WAL node in the directory {}, so delete these wal files.",
+            logDirectory);
+      } else {
+        // delete checkpoint info to avoid repeated recover
+        File[] checkpointFiles = CheckpointFileUtils.listAllCheckpointFiles(logDirectory);
+        for (File checkpointFile : checkpointFiles) {
+          try {
+            Files.delete(checkpointFile.toPath());
+          } catch (IOException e) {
+            logger.error("error when delete checkpoint file. {}", checkpointFile, e);
+          }
         }
+        // recover version id and search index
+        long[] indexInfo = recoverLastFile();
+        long lastVersionId = indexInfo[0];
+        long lastSearchIndex = indexInfo[1];
+        // register wal node
+        WALManager.getInstance()
+            .registerWALNode(
+                logDirectory.getName(),
+                logDirectory.getAbsolutePath(),
+                lastVersionId + 1,
+                lastSearchIndex);
+        logger.info(
+            "Successfully recover WAL node in the directory {}, add this node to WALManger.",
+            logDirectory);
       }
-      // recover version id and search index
-      long[] indexInfo = recoverLastFile();
-      long lastVersionId = indexInfo[0];
-      long lastSearchIndex = indexInfo[1];
-      // register wal node
-      WALManager.getInstance()
-          .registerWALNode(
-              logDirectory.getName(),
-              logDirectory.getAbsolutePath(),
-              lastVersionId + 1,
-              lastSearchIndex);
-      logger.info(
-          "Successfully recover WAL node in the directory {}, add this node to WALManger.",
-          logDirectory);
+    } finally {
+      allNodesRecoveredLatch.countDown();
     }
   }
 
