@@ -88,4 +88,7 @@ public interface TsFileOutput {
    * @param size size The new size, a non-negative byte count
    */
   void truncate(long size) throws IOException;
+
+  /** Make sure that the data in the buffer is flushed to disk */
+  void force() throws IOException;
 }

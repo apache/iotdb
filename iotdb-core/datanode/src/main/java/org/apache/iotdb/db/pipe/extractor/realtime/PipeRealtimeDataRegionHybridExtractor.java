@@ -21,12 +21,13 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -34,12 +35,15 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
   private volatile boolean isStartedToSupply = false;
+  private final AtomicInteger eventCollectorQueueTsFileSize = new AtomicInteger(0);
 
   @Override
   protected void doExtract(PipeRealtimeEvent event) {
@@ -72,6 +76,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private void extractTabletInsertion(PipeRealtimeEvent event) {
     if (!isStartedToSupply
         || mayWalSizeReachThrottleThreshold()
+        || tooManyWALPinned()
         || isTsFileEventCountInQueueExceededLimit()) {
       // In the following 3 cases, we should not extract any more tablet events. all the data
       // represented by the tablet events should be carried by the following tsfile event:
@@ -148,10 +153,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         break;
       case USING_TABLET:
         // All the tablet events have been extracted, so we can ignore the tsFile event.
-        // Report this event for SimpleProgressIndex, which does not have progressIndex for wal.
-        // This report won't affect IoTProgressIndex since the previous wal events have been
-        // successfully transferred here.
-        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName(), true);
+        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
         break;
       default:
         throw new UnsupportedOperationException(
@@ -162,6 +164,9 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractHeartbeat(PipeRealtimeEvent event) {
+    // Bind extractor so that the heartbeat event can later inform the extractor of queue size
+    ((PipeHeartbeatEvent) event.getEvent()).bindExtractor(this);
+
     // Record the pending queue size before trying to put heartbeatEvent into queue
     ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
 
@@ -195,16 +200,23 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {
-    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    // Assume that the max data replica factor in common config is 3.
-    // This can be changed in the future.
-    return 3L * PipeAgent.task().getLeaderDataRegionCount() * config.getWalBufferSize()
-        > config.getThrottleThreshold();
+    return 3 * WALManager.getInstance().getTotalDiskUsage()
+        > IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
+  }
+
+  private boolean tooManyWALPinned() {
+    return PipeResourceManager.wal().getApproximatePinnedWALCount()
+        > Math.max(1, PipeAgent.task().getLeaderDataRegionCount())
+            * PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
 
   private boolean isTsFileEventCountInQueueExceededLimit() {
-    return pendingQueue.getTsFileInsertionEventCount()
-        >= PipeConfig.getInstance().getPipeExtractorPendingQueueTsFileLimit();
+    return pendingQueue.getTsFileInsertionEventCount() + eventCollectorQueueTsFileSize.get()
+        >= PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
+  }
+
+  public void informEventCollectorQueueTsFileSize(int queueSize) {
+    eventCollectorQueueTsFileSize.set(queueSize);
   }
 
   @Override

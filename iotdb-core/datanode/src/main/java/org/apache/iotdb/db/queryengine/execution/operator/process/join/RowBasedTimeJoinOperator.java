@@ -276,45 +276,38 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
     timeSelector.add(inputTsBlocks[index].getTimeByIndex(inputIndex[index]));
   }
 
+  // region helper function used in prepareInput
+
   /**
-   * Try to cache one result of each child.
-   *
-   * @return true if results of all children are ready or have no more TsBlocks. Return false if
-   *     some children is blocked or return null.
+   * @param currentChildIndex the index of the child
+   * @return true if we can skip the currentChild in prepareInput
    */
   @Override
-  protected boolean prepareInput() throws Exception {
-    boolean allReady = true;
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      if (needCallNext(i)) {
-        continue;
-      }
-      if (canCallNext[i]) {
-        if (children.get(i).hasNextWithTimer()) {
-          inputTsBlocks[i] = getNextTsBlock(i);
-          canCallNext[i] = false;
-          if (isEmpty(i)) {
-            allReady = false;
-          } else {
-            updateTimeSelector(i);
-          }
-        } else {
-          noMoreTsBlocks[i] = true;
-          inputTsBlocks[i] = null;
-          children.get(i).close();
-          children.set(i, null);
-        }
-
-      } else {
-        allReady = false;
-      }
-    }
-    return allReady;
+  protected boolean canSkipCurrentChild(int currentChildIndex) {
+    return noMoreTsBlocks[currentChildIndex]
+        || !isEmpty(currentChildIndex)
+        || children.get(currentChildIndex) == null;
   }
 
-  private boolean needCallNext(int i) {
-    return noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null;
+  /** @param currentInputIndex index of the input TsBlock */
+  @Override
+  protected void processCurrentInputTsBlock(int currentInputIndex) {
+    updateTimeSelector(currentInputIndex);
   }
+
+  /**
+   * @param currentChildIndex the index of the child
+   * @throws Exception Potential Exception thrown by Operator.close()
+   */
+  @Override
+  protected void handleFinishedChild(int currentChildIndex) throws Exception {
+    noMoreTsBlocks[currentChildIndex] = true;
+    inputTsBlocks[currentChildIndex] = null;
+    children.get(currentChildIndex).close();
+    children.set(currentChildIndex, null);
+  }
+
+  // endregion
 
   @TestOnly
   public List<Operator> getChildren() {

@@ -155,6 +155,8 @@ public class SingleDeviceViewOperatorTest {
                   new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator()),
                   new SingleColumnMerger(new InputLocation(1, 0), new AscTimeComparator())),
               new AscTimeComparator());
+      timeJoinOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SingleDeviceViewOperator singleDeviceViewOperator =
           new SingleDeviceViewOperator(
               driverContext.getOperatorContexts().get(3),

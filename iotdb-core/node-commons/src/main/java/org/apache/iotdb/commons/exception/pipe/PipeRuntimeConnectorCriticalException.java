@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeRuntimeConnectorCriticalException extends PipeRuntimeCriticalException {
+
   public PipeRuntimeConnectorCriticalException(String message) {
     super(message);
   }
@@ -43,11 +44,6 @@ public class PipeRuntimeConnectorCriticalException extends PipeRuntimeCriticalEx
     return obj instanceof PipeRuntimeConnectorCriticalException
         && Objects.equals(getMessage(), ((PipeRuntimeConnectorCriticalException) obj).getMessage())
         && Objects.equals(getTimeStamp(), ((PipeRuntimeException) obj).getTimeStamp());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(getMessage(), getTimeStamp());
   }
 
   @Override

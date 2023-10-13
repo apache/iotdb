@@ -54,7 +54,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTest
     extends AbstractCompactionTest {
@@ -113,7 +112,6 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
 
@@ -192,7 +190,6 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
 
@@ -267,7 +264,6 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
 
@@ -319,7 +315,6 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
 
@@ -398,7 +393,6 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
 
@@ -473,7 +467,6 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
 
