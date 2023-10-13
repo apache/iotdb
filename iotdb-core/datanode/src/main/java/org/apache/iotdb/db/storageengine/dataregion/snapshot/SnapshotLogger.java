@@ -35,6 +35,7 @@ public class SnapshotLogger implements AutoCloseable {
 
   private File logFile;
   private BufferedOutputStream os;
+  private FileOutputStream fos;
 
   public SnapshotLogger(File logFile) throws IOException {
     this.logFile = logFile;
@@ -44,11 +45,14 @@ public class SnapshotLogger implements AutoCloseable {
     if (!this.logFile.createNewFile()) {
       throw new IOException("Cannot create file " + logFile.getAbsolutePath());
     }
-    os = new BufferedOutputStream(new FileOutputStream(logFile));
+    fos = new FileOutputStream(logFile);
+    os = new BufferedOutputStream(fos);
   }
 
   @Override
   public void close() throws Exception {
+    fos.flush();
+    fos.getFD().sync();
     os.close();
   }
 

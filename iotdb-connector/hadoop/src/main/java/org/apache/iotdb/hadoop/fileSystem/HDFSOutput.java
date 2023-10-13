@@ -101,4 +101,9 @@ public class HDFSOutput implements TsFileOutput {
       fsDataOutputStream = fs.append(path);
     }
   }
+
+  @Override
+  public void force() throws IOException {
+    // do nothing
+  }
 }
