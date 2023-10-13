@@ -50,17 +50,17 @@ public class PipeConnectorMetrics implements IMetricSet {
 
   private final Map<String, Rate> pipeHeartbeatRateMap = new ConcurrentHashMap<>();
 
-  private static class PipeConnectorSubtaskMetricsHolder {
+  private static class PipeConnectorMetricsHolder {
 
     private static final PipeConnectorMetrics INSTANCE = new PipeConnectorMetrics();
 
-    private PipeConnectorSubtaskMetricsHolder() {
+    private PipeConnectorMetricsHolder() {
       // empty constructor
     }
   }
 
   public static PipeConnectorMetrics getInstance() {
-    return PipeConnectorMetrics.PipeConnectorSubtaskMetricsHolder.INSTANCE;
+    return PipeConnectorMetrics.PipeConnectorMetricsHolder.INSTANCE;
   }
 
   private PipeConnectorMetrics() {

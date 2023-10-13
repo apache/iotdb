@@ -61,17 +61,17 @@ public class PipeExtractorMetrics implements IMetricSet {
     // do nothing
   }
 
-  private static class PipeDataRegionExtractorMetricsHolder {
+  private static class PipeExtractorMetricsHolder {
 
     private static final PipeExtractorMetrics INSTANCE = new PipeExtractorMetrics();
 
-    private PipeDataRegionExtractorMetricsHolder() {
+    private PipeExtractorMetricsHolder() {
       // empty constructor
     }
   }
 
   public static PipeExtractorMetrics getInstance() {
-    return PipeExtractorMetrics.PipeDataRegionExtractorMetricsHolder.INSTANCE;
+    return PipeExtractorMetrics.PipeExtractorMetricsHolder.INSTANCE;
   }
 
   private PipeExtractorMetrics() {

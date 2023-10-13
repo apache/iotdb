@@ -53,17 +53,17 @@ public class PipeAssignerMetrics implements IMetricSet {
     // do nothing
   }
 
-  private static class PipeDataRegionAssignerMetricsHolder {
+  private static class PipeAssignerMetricsHolder {
 
     private static final PipeAssignerMetrics INSTANCE = new PipeAssignerMetrics();
 
-    private PipeDataRegionAssignerMetricsHolder() {
+    private PipeAssignerMetricsHolder() {
       // empty constructor
     }
   }
 
   public static PipeAssignerMetrics getInstance() {
-    return PipeAssignerMetrics.PipeDataRegionAssignerMetricsHolder.INSTANCE;
+    return PipeAssignerMetrics.PipeAssignerMetricsHolder.INSTANCE;
   }
 
   private PipeAssignerMetrics() {
