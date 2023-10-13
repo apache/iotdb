@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -60,6 +61,48 @@ public class AuthUtils {
   private AuthUtils() {
     // Empty constructor
   }
+  /**
+   * This filed only for pre version. When we do a major version upgrade, it can be removed
+   * directly.
+   */
+  // FOR PRE VERSION BEGIN -----
+  private static final int MAX_LENGTH_PRE = 64;
+
+  private static final String REX_PATTERN_PRE = "^[-\\w]*$";
+
+  public static void validatePasswordPre(String password) throws AuthException {
+    validateNameOrPasswordPre(password);
+  }
+
+  public static void validateUsernamePre(String username) throws AuthException {
+    validateNameOrPasswordPre(username);
+  }
+
+  public static void validateRolenamePre(String rolename) throws AuthException {
+    validateNameOrPasswordPre(rolename);
+  }
+
+  public static void validateNameOrPasswordPre(String str) throws AuthException {
+    int length = str.length();
+    if (length < MIN_LENGTH) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
+          "The length of name or password must be greater than or equal to " + MIN_LENGTH);
+    } else if (length > MAX_LENGTH_PRE) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
+          "The length of name or password must be less than or equal to " + MAX_LENGTH);
+    } else if (str.contains(" ")) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER, "The name or password cannot contain spaces");
+    } else if (!str.matches(REX_PATTERN_PRE)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
+          "The name or password can only contain letters, numbers, and underscores");
+    }
+  }
+
+  // FOR PRE VERSION DONE ---
 
   /**
    * Validate password
@@ -161,6 +204,20 @@ public class AuthUtils {
     }
   }
 
+  public static PartialPath convertPatternPath(PartialPath path) throws IllegalPathException {
+    String pathStr = new String();
+    int i = 0;
+    for (; i < path.getNodeLength(); i++) {
+      if (!PathPatternUtil.hasWildcard(path.getNodes()[i])) {
+        pathStr = pathStr.concat(path.getNodes()[i] + ".");
+      } else {
+        break;
+      }
+    }
+    pathStr = pathStr.concat("**");
+    return new PartialPath(pathStr);
+  }
+
   /**
    * Encrypt password
    *
@@ -251,6 +308,16 @@ public class AuthUtils {
     return false;
   }
 
+  public static boolean hasPrivilege(
+      PartialPath path, int privilegeId, List<PathPrivilege> privilegeList) {
+    for (PathPrivilege pathPrivilege : privilegeList) {
+      if (pathPrivilege.getPath().equals(path)
+          && pathPrivilege.getPrivileges().contains(privilegeId)) {
+        return true;
+      }
+    }
+    return false;
+  }
   /**
    * Add privilege
    *
@@ -290,6 +357,20 @@ public class AuthUtils {
     while (it.hasNext()) {
       PathPrivilege pathPri = it.next();
       if (path.matchFullPath(pathPri.getPath())) {
+        pathPri.revokePrivilege(privilegeId);
+        if (pathPri.getPrivileges().isEmpty()) {
+          it.remove();
+        }
+      }
+    }
+  }
+
+  public static void removePrivilegePre(
+      PartialPath path, int privilegeId, List<PathPrivilege> privilegeList) {
+    Iterator<PathPrivilege> it = privilegeList.iterator();
+    while (it.hasNext()) {
+      PathPrivilege pathPri = it.next();
+      if (pathPri.getPath().equals(path)) {
         pathPri.revokePrivilege(privilegeId);
         if (pathPri.getPrivileges().isEmpty()) {
           it.remove();

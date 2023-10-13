@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -131,40 +132,19 @@ public class LocalFileUserAccessor implements IUserAccessor {
       user.setName(result.getLeft());
       user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
       if (oldVersion) {
-        // TODO will deal with these authority upgrade soon in the future.
-
-        //        int privilegeNum = dataInputStream.readInt();
-        //        List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
-        //        for (int i = 0; i < privilegeNum; i++) {
-        //          pathPrivilegeList.add(
-        //                  IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING,
-        // strBufferLocal, versionNow));
-        //        }
-        //        user.setPrivilegeList(pathPrivilegeList);
-        //        int roleNum = dataInputStream.readInt();
-        //        List<String> roleList = new ArrayList<>();
-        //        for (int i = 0; i < roleNum; i++) {
-        //          String userName = IOUtils.readString(dataInputStream, STRING_ENCODING,
-        // strBufferLocal);
-        //          roleList.add(userName);
-        //        }
-        //        user.setRoleList(roleList);
-        //        // for online upgrading, profile for v0.9.x/v1 does not contain waterMark
-        //        long userProfileLength = userProfile.length();
-        //        try {
-        //          user.setUseWaterMark(dataInputStream.readInt() != 0);
-        //        } catch (EOFException e1) {
-        //          user.setUseWaterMark(false);
-        //          try (RandomAccessFile file = new RandomAccessFile(userProfile, "rw")) {
-        //            file.seek(userProfileLength);
-        //            file.writeInt(0);
-        //          }
-        //        }
-        user.setRoleList(new ArrayList<>());
-        user.setSysPrivilegeSet(new HashSet<>());
-        user.setPrivilegeList(new ArrayList<>());
-        user.setSysPriGrantOpt(new HashSet<>());
-        user.setUseWaterMark(false);
+        IOUtils.loadRolePrivilege(user, dataInputStream, STRING_ENCODING, strBufferLocal);
+        int roleNum = dataInputStream.readInt();
+        List<String> roleList = new ArrayList<>();
+        for (int i = 0; i < roleNum; i++) {
+          String roleName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+          roleList.add(roleName);
+        }
+        user.setRoleList(roleList);
+        try {
+          user.setUseWaterMark(dataInputStream.readInt() != 0);
+        } catch (EOFException e1) {
+          user.setUseWaterMark(false);
+        }
         return user;
       } else {
         user.setSysPrivilegeSet(dataInputStream.readInt());
@@ -455,10 +435,16 @@ public class LocalFileUserAccessor implements IUserAccessor {
         IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
         for (int i = 0; i < privilegeNum; i++) {
           PathPrivilege pathPrivilege = user.getPathPrivilegeList().get(i);
-          IOUtils.writePathPrivilege(
-              outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
+          IOUtils.writeString(
+              outputStream,
+              pathPrivilege.getPath().getFullPath(),
+              STRING_ENCODING,
+              encodingBufferLocal);
+          IOUtils.writeInt(outputStream, pathPrivilege.getPrivileges().size(), encodingBufferLocal);
+          for (Integer item : pathPrivilege.getPrivileges()) {
+            IOUtils.writeInt(outputStream, item, encodingBufferLocal);
+          }
         }
-
         int userNum = user.getRoleList().size();
         IOUtils.writeInt(outputStream, userNum, encodingBufferLocal);
         for (int i = 0; i < userNum; i++) {

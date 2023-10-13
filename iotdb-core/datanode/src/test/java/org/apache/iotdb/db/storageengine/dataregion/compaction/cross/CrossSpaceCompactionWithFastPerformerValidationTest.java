@@ -65,7 +65,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils.alignDeviceOffset;
@@ -129,7 +128,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -174,7 +172,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -219,7 +216,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -272,7 +268,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -322,7 +317,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -370,7 +364,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -421,7 +414,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -471,7 +463,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -521,7 +512,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -572,7 +562,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -623,7 +612,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -674,7 +662,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -726,7 +713,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -779,7 +765,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -832,7 +817,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -886,7 +870,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -941,7 +924,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -996,7 +978,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1051,7 +1032,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1106,7 +1086,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1160,7 +1139,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1210,7 +1188,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1261,7 +1238,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1312,7 +1288,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1363,7 +1338,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1415,7 +1389,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1468,7 +1441,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1521,7 +1493,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1575,7 +1546,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1630,7 +1600,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1685,7 +1654,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1740,7 +1708,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1795,7 +1762,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1849,7 +1815,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1901,7 +1866,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -1949,7 +1913,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -2002,7 +1965,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -2056,7 +2018,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -2110,7 +2071,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             selected.get(0).getSeqFiles(),
             selected.get(0).getUnseqFiles(),
             performer,
-            new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
         .doCompaction();
@@ -2211,8 +2171,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     FastCompactionPerformer performer = new FastCompactionPerformer(false);
     performer.setSourceFiles(sourceFiles);
     InnerSpaceCompactionTask innerSpaceCompactionTask =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, sourceFiles, true, performer, new AtomicInteger(0), 0);
+        new InnerSpaceCompactionTask(0, tsFileManager, sourceFiles, true, performer, 0);
     Assert.assertTrue(
         CompactionUtils.validateTsFileResources(tsFileManager, COMPACTION_TEST_SG, 0));
     innerSpaceCompactionTask.start();
@@ -2307,7 +2266,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
     // target file of first compaction task can be selected to participate in another inner
     // compaction task
-    List<List<TsFileResource>> innerPairs = innerSelector.selectInnerSpaceTask(targetResources);
+    List<InnerSpaceCompactionTask> innerPairs = innerSelector.selectInnerSpaceTask(targetResources);
     Assert.assertEquals(1, innerPairs.size());
   }
 
@@ -2347,20 +2306,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> taskResources =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : taskResources) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2385,7 +2335,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
                 sourceFiles.getSeqFiles(),
                 sourceFiles.getUnseqFiles(),
                 new FastCompactionPerformer(true),
-                new AtomicInteger(0),
                 sourceFiles.getTotalMemoryCost(),
                 0)
             .start());
@@ -2429,20 +2378,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> taskResources =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : taskResources) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2466,7 +2406,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             sourceFiles.getSeqFiles(),
             sourceFiles.getUnseqFiles(),
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             sourceFiles.getTotalMemoryCost(),
             0)
         .start();
@@ -2511,20 +2450,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2548,7 +2478,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             sourceFiles.getSeqFiles(),
             sourceFiles.getUnseqFiles(),
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             sourceFiles.getTotalMemoryCost(),
             0)
         .start();
@@ -2594,20 +2523,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2632,7 +2552,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
                 sourceFiles.getSeqFiles(),
                 sourceFiles.getUnseqFiles(),
                 new FastCompactionPerformer(true),
-                new AtomicInteger(0),
                 sourceFiles.getTotalMemoryCost(),
                 0)
             .start());
@@ -2684,20 +2603,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2721,7 +2631,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             sourceFiles.getSeqFiles(),
             sourceFiles.getUnseqFiles(),
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             sourceFiles.getTotalMemoryCost(),
             0)
         .start();
@@ -2772,20 +2681,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2809,7 +2709,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             sourceFiles.getSeqFiles(),
             sourceFiles.getUnseqFiles(),
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             sourceFiles.getTotalMemoryCost(),
             0)
         .start();
@@ -2861,20 +2760,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2898,7 +2788,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             sourceFiles.getSeqFiles(),
             sourceFiles.getUnseqFiles(),
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             sourceFiles.getTotalMemoryCost(),
             0)
         .start();
@@ -2951,20 +2840,11 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
-    List<List<TsFileResource>> taskResources =
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
-    for (List<TsFileResource> taskResource : taskResources) {
-      Assert.assertTrue(
-          new InnerSpaceCompactionTask(
-                  0,
-                  tsFileManager,
-                  taskResource,
-                  true,
-                  new FastCompactionPerformer(false),
-                  new AtomicInteger(0),
-                  0L)
-              .start());
+    for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
+      Assert.assertTrue(task.start());
     }
 
     // select cross compaction
@@ -2988,7 +2868,6 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             sourceFiles.getSeqFiles(),
             sourceFiles.getUnseqFiles(),
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             sourceFiles.getTotalMemoryCost(),
             0)
         .start();

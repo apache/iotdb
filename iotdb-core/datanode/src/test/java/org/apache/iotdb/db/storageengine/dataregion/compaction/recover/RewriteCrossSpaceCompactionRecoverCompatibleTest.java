@@ -180,7 +180,7 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
     logWriter.close();
 
     // First seq files lost
-    seqResources.get(0).delete();
+    seqResources.get(0).remove();
 
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -352,7 +352,7 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
     logWriter.close();
 
     // First seq files lost
-    seqResources.get(0).delete();
+    seqResources.get(0).remove();
 
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();

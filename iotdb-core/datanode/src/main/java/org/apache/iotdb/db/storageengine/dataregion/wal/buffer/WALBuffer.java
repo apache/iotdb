@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -73,6 +74,8 @@ public class WALBuffer extends AbstractWALBuffer {
   private final Lock buffersLock = new ReentrantLock();
   // condition to guarantee correctness of switching buffers
   private final Condition idleBufferReadyCondition = buffersLock.newCondition();
+  // last writer position when fsync is called, help record each entry's position
+  private long lastFsyncPosition;
   // region these variables should be protected by buffersLock
   /** two buffers switch between three statuses (there is always 1 buffer working). */
   // buffer in working status, only updated by serializeThread
@@ -123,6 +126,30 @@ public class WALBuffer extends AbstractWALBuffer {
       logger.error("Fail to allocate wal node-{}'s buffer because out of memory.", identifier, e);
       close();
       throw e;
+    }
+  }
+
+  @TestOnly
+  public void setBufferSize(int size) {
+    buffersLock.lock();
+    try {
+      if (workingBuffer != null) {
+        MmapUtil.clean((MappedByteBuffer) workingBuffer);
+      }
+      if (idleBuffer != null) {
+        MmapUtil.clean((MappedByteBuffer) workingBuffer);
+      }
+      if (syncingBuffer != null) {
+        MmapUtil.clean((MappedByteBuffer) syncingBuffer);
+      }
+      workingBuffer = ByteBuffer.allocateDirect(size / 2);
+      idleBuffer = ByteBuffer.allocateDirect(size / 2);
+    } catch (OutOfMemoryError e) {
+      logger.error("Fail to allocate wal node-{}'s buffer because out of memory.", identifier, e);
+      close();
+      throw e;
+    } finally {
+      buffersLock.unlock();
     }
   }
 
@@ -446,7 +473,6 @@ public class WALBuffer extends AbstractWALBuffer {
     public void run() {
       final long startTime = System.nanoTime();
       long walFileVersionId = currentWALFileVersion;
-      long position = currentWALFileWriter.size();
       currentWALFileWriter.updateFileStatus(fileStatus);
 
       // calculate buffer used ratio
@@ -504,6 +530,7 @@ public class WALBuffer extends AbstractWALBuffer {
 
       // notify all waiting listeners
       if (forceSuccess) {
+        long position = lastFsyncPosition;
         for (WALFlushListener fsyncListener : info.fsyncListeners) {
           fsyncListener.succeed();
           if (fsyncListener.getWalEntryHandler() != null) {
@@ -511,6 +538,7 @@ public class WALBuffer extends AbstractWALBuffer {
             position += fsyncListener.getWalEntryHandler().getSize();
           }
         }
+        lastFsyncPosition = currentWALFileWriter.size();
       }
       WRITING_METRICS.recordWALBufferEntriesCount(info.fsyncListeners.size());
       WRITING_METRICS.recordSyncWALBufferCost(System.nanoTime() - startTime, forceFlag);

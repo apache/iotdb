@@ -79,23 +79,22 @@ public class CreateLogicalViewStatement extends Statement {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    if (getSourcePaths().fullPathList != null) {
+    List<PartialPath> sourcePathList = sourcePaths.fullPathList;
+    if (sourcePathList != null) {
       status =
           AuthorityChecker.getTSStatus(
               AuthorityChecker.checkFullPathListPermission(
-                  userName, getSourcePaths().fullPathList, PrivilegeType.READ_SCHEMA.ordinal()),
-              getSourcePaths().fullPathList,
+                  userName, sourcePathList, PrivilegeType.READ_SCHEMA.ordinal()),
+              sourcePathList,
               PrivilegeType.READ_SCHEMA);
     }
-    if (getQueryStatement() != null
-        && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (queryStatement != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      sourcePathList = queryStatement.getPaths();
       status =
           AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkFullPathListPermission(
-                  userName,
-                  getQueryStatement().getFromComponent().getPrefixPaths(),
-                  PrivilegeType.READ_SCHEMA.ordinal()),
-              getQueryStatement().getFromComponent().getPrefixPaths(),
+              AuthorityChecker.checkPatternPermission(
+                  userName, sourcePathList, PrivilegeType.READ_SCHEMA.ordinal()),
+              sourcePathList,
               PrivilegeType.READ_SCHEMA);
     }
 

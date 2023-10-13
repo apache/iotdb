@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -58,6 +60,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -179,87 +182,131 @@ public class AuthorInfo implements SnapshotProcessor {
     String password = authorPlan.getPassword();
     String newPassword = authorPlan.getNewPassword();
     Set<Integer> permissions = authorPlan.getPermissions();
+    if (authorType.ordinal() >= ConfigPhysicalPlanType.GrantRoleDep.ordinal()
+        && authorType.ordinal() <= ConfigPhysicalPlanType.RevokeRoleFromUserDep.ordinal()) {
+      HashSet<Integer> pricopy = new HashSet<>();
+      for (int permission : permissions) {
+        PriPrivilegeType type = PriPrivilegeType.values()[permission];
+        if (type.isAccept()) {
+          for (PrivilegeType item : type.getSubPri()) {
+            pricopy.add(item.ordinal());
+          }
+        }
+      }
+      permissions = pricopy;
+    }
     boolean grantOpt = authorPlan.getGrantOpt();
     List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
     try {
       switch (authorType) {
-        case CreateUserDep:
-        case CreateRoleDep:
-        case DropUserDep:
-        case DropRoleDep:
-        case GrantUserDep:
-        case GrantRoleDep:
-        case GrantRoleToUserDep:
-        case RevokeUserDep:
-        case RevokeRoleDep:
-        case RevokeRoleFromUserDep:
-          // TODO will deal with these authority upgrade soon in the future.
-          throw new AuthException(
-              TSStatusCode.UNSUPPORTED_OPERATION,
-              "unsupport operation: " + authorPlan.getAuthorType());
-        case UpdateUser:
         case UpdateUserDep:
-          authorizer.updateUserPassword(userName, newPassword);
+          authorizer.setUserForPreVersion(true);
+        case UpdateUser:
+          try {
+            authorizer.updateUserPassword(userName, newPassword);
+          } finally {
+            authorizer.setUserForPreVersion(false);
+          }
+          break;
+        case CreateUserDep:
+          AuthUtils.validatePasswordPre(password);
+          AuthUtils.validateUsernamePre(userName);
+          authorizer.createUserWithoutCheck(userName, password);
           break;
         case CreateUser:
           authorizer.createUser(userName, password);
           break;
-        case CreateRole:
+        case CreateRoleDep:
+          AuthUtils.validateRolenamePre(roleName);
           authorizer.createRole(roleName);
           break;
+        case CreateRole:
+          AuthUtils.validateRolename(roleName);
+          authorizer.createRole(roleName);
+          break;
+        case DropUserDep:
         case DropUser:
           authorizer.deleteUser(userName);
           break;
+        case DropRoleDep:
         case DropRole:
           authorizer.deleteRole(roleName);
           break;
+        case GrantRoleDep:
+          authorizer.setRoleForPreVersion(true);
         case GrantRole:
-          for (int permission : permissions) {
-            if (!isPathRelevant(permission)) {
-              authorizer.grantPrivilegeToRole(roleName, null, permission, grantOpt);
-              continue;
+          try {
+            for (int permission : permissions) {
+              if (!isPathRelevant(permission)) {
+                authorizer.grantPrivilegeToRole(roleName, null, permission, grantOpt);
+                continue;
+              }
+              for (PartialPath path : nodeNameList) {
+                authorizer.grantPrivilegeToRole(roleName, path, permission, grantOpt);
+              }
             }
-            for (PartialPath path : nodeNameList) {
-              authorizer.grantPrivilegeToRole(roleName, path, permission, grantOpt);
-            }
+          } finally {
+            authorizer.setRoleForPreVersion(false);
           }
           break;
+        case GrantUserDep:
+          authorizer.setUserForPreVersion(true);
         case GrantUser:
-          for (int permission : permissions) {
-            if (!isPathRelevant(permission)) {
-              authorizer.grantPrivilegeToUser(userName, null, permission, grantOpt);
-              continue;
+          try {
+            for (int permission : permissions) {
+              if (!isPathRelevant(permission)) {
+                authorizer.grantPrivilegeToUser(userName, null, permission, grantOpt);
+                continue;
+              }
+              for (PartialPath path : nodeNameList) {
+                authorizer.grantPrivilegeToUser(userName, path, permission, grantOpt);
+              }
             }
-            for (PartialPath path : nodeNameList) {
-              authorizer.grantPrivilegeToUser(userName, path, permission, grantOpt);
-            }
+          } finally {
+            authorizer.setUserForPreVersion(false);
           }
           break;
+        case GrantRoleToUserDep:
         case GrantRoleToUser:
           authorizer.grantRoleToUser(roleName, userName);
           break;
+        case RevokeUserDep:
+          authorizer.setUserForPreVersion(true);
         case RevokeUser:
-          for (int permission : permissions) {
-            if (!isPathRelevant(permission)) {
-              authorizer.revokePrivilegeFromUser(userName, null, permission);
-              continue;
+          try {
+            for (int permission : permissions) {
+              if (!isPathRelevant(permission)) {
+                authorizer.revokePrivilegeFromUser(userName, null, permission);
+                continue;
+              }
+              for (PartialPath path : nodeNameList) {
+                authorizer.revokePrivilegeFromUser(userName, path, permission);
+              }
             }
-            for (PartialPath path : nodeNameList) {
-              authorizer.revokePrivilegeFromUser(userName, path, permission);
-            }
+          } finally {
+            authorizer.setUserForPreVersion(false);
           }
+
           break;
+        case RevokeRoleDep:
+          authorizer.setRoleForPreVersion(false);
         case RevokeRole:
-          for (int permission : permissions) {
-            if (!isPathRelevant(permission)) {
-              authorizer.revokePrivilegeFromRole(roleName, null, permission);
-              continue;
+          try {
+            for (int permission : permissions) {
+              if (!isPathRelevant(permission)) {
+                authorizer.revokePrivilegeFromRole(roleName, null, permission);
+                continue;
+              }
+              for (PartialPath path : nodeNameList) {
+                authorizer.revokePrivilegeFromRole(roleName, path, permission);
+              }
             }
-            for (PartialPath path : nodeNameList) {
-              authorizer.revokePrivilegeFromRole(roleName, path, permission);
-            }
+          } finally {
+            authorizer.setRoleForPreVersion(false);
           }
+
           break;
+        case RevokeRoleFromUserDep:
         case RevokeRoleFromUser:
           authorizer.revokeRoleFromUser(roleName, userName);
           break;
@@ -575,5 +622,9 @@ public class AuthorInfo implements SnapshotProcessor {
     result.setRoleInfo(tRoleRespMap);
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     return result;
+  }
+
+  public void checkUserPathPrivilege() {
+    authorizer.checkUserPathPrivilege();
   }
 }

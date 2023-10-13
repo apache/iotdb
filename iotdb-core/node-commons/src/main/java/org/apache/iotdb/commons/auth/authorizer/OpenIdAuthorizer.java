@@ -175,7 +175,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     if (!super.listAllUsers().contains(iotdbUsername)) {
       logger.info("User {} logs in for first time, storing it locally!", iotdbUsername);
       // We give the user a random password so that no one could hijack them via local login
-      super.createOpenIdUser(iotdbUsername, UUID.randomUUID().toString());
+      super.createUserWithoutCheck(iotdbUsername, UUID.randomUUID().toString());
     }
     // Always store claims and user
     this.loggedClaims.put(getUsername(claims), claims);
