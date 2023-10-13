@@ -90,10 +90,14 @@ public class PipeProcessorSubtask extends PipeSubtask {
     final Event event = lastEvent != null ? lastEvent : inputEventSupplier.supply();
     // Record the last event for retry when exception occurs
     setLastEvent(event);
-    if (event == null) {
-      // Though there is no event to process, there may still be some buffered events
-      // in the outputEventCollector. Return true if there are still buffered events,
-      // false otherwise.
+    if (
+    // Though there is no event to process, there may still be some buffered events
+    // in the outputEventCollector. Return true if there are still buffered events,
+    // false otherwise.
+    event == null
+        // If there are still buffered events, process them first, the newly supplied
+        // event will be processed in the next round.
+        || !outputEventCollector.isBufferQueueEmpty()) {
       return outputEventCollector.tryCollectBufferedEvents();
     }
 

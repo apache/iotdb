@@ -73,6 +73,10 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
     }
   }
 
+  public boolean isBufferQueueEmpty() {
+    return bufferQueue.isEmpty();
+  }
+
   /**
    * Try to collect buffered events into pending queue.
    *

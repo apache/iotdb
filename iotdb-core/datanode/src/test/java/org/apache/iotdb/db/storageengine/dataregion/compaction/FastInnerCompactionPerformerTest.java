@@ -55,7 +55,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
@@ -121,13 +120,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -219,13 +212,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -360,13 +347,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -474,13 +455,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -589,13 +564,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -735,13 +704,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -870,13 +833,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -991,13 +948,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -1082,13 +1033,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -1202,13 +1147,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -1331,13 +1270,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -1465,13 +1398,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -1649,13 +1576,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -1813,13 +1734,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -1929,13 +1844,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());

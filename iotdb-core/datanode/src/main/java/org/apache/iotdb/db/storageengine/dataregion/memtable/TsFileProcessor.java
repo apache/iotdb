@@ -1245,6 +1245,11 @@ public class TsFileProcessor {
 
     // for sync flush
     syncReleaseFlushedMemTable(memTableToFlush);
+    try {
+      writer.getTsFileOutput().force();
+    } catch (IOException e) {
+      logger.error("fsync memTable data to disk error,", e);
+    }
 
     // call flushed listener after memtable is released safely
     for (FlushListener flushListener : flushListeners) {

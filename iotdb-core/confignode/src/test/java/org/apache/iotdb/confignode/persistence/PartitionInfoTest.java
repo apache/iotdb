@@ -144,7 +144,7 @@ public class PartitionInfoTest {
 
     partitionInfo.offerRegionMaintainTasks(generateOfferRegionMaintainTasksPlan());
 
-    partitionInfo.processTakeSnapshot(snapshotDir);
+    Assert.assertTrue(partitionInfo.processTakeSnapshot(snapshotDir));
 
     PartitionInfo partitionInfo1 = new PartitionInfo();
     partitionInfo1.processLoadSnapshot(snapshotDir);
