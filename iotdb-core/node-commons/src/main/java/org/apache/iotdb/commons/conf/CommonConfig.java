@@ -170,7 +170,9 @@ public class CommonConfig {
   private long pipeConnectorTimeoutMs = 15 * 60 * 1000L; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
-  private int pipeConnectorPendingQueueSize = 16;
+  // recommend to set this value to 3 * pipeSubtaskExecutorMaxThreadNum *
+  // pipeAsyncConnectorCoreClientNumber
+  private int pipeConnectorPendingQueueSize = 256;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
   private int pipeAsyncConnectorSelectorNumber = 1;
