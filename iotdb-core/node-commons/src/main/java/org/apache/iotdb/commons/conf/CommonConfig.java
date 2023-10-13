@@ -189,7 +189,7 @@ public class CommonConfig {
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
 
-  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 3;
+  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 1;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
