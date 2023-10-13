@@ -38,7 +38,6 @@ import org.apache.iotdb.db.pipe.task.PipeBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTask;
 import org.apache.iotdb.db.pipe.task.PipeTaskBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTaskManager;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
@@ -466,8 +465,9 @@ public class PipeTaskAgent {
                               "Pipe {} (creation time = {}) will be stopped because of critical exception "
                                   + "(occurred time {}) in connector {}.",
                               staticMeta.getPipeName(),
-                              DateTimeUtils.convertLongToDate(staticMeta.getCreationTime(), "ms"),
-                              DateTimeUtils.convertLongToDate(exception.getTimeStamp(), "ms"),
+                              CommonDateTimeUtils.convertLongToDate(
+                                  staticMeta.getCreationTime(), "ms"),
+                              CommonDateTimeUtils.convertLongToDate(exception.getTimeStamp(), "ms"),
                               staticMeta.getConnectorParameters());
                         }
                       });
@@ -494,9 +494,9 @@ public class PipeTaskAgent {
                                   "Pipe {} (creation time = {}) was stopped because of critical exception "
                                       + "(occurred time {}).",
                                   staticMeta.getPipeName(),
-                                  DateTimeUtils.convertLongToDate(
+                                  CommonDateTimeUtils.convertLongToDate(
                                       staticMeta.getCreationTime(), "ms"),
-                                  DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"));
+                                  CommonDateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"));
                               return;
                             }
                           }
