@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
@@ -388,7 +389,7 @@ public class PipeTaskAgent {
         LOGGER.warn(
             "Failed to drop pipe {} with creation time {}",
             pipeMeta.getStaticMeta().getPipeName(),
-            pipeMeta.getStaticMeta().getCreationTime(),
+            CommonDateTimeUtils.convertLongToDate(pipeMeta.getStaticMeta().getCreationTime(), "ms"),
             e);
       }
     }
@@ -455,7 +456,7 @@ public class PipeTaskAgent {
                   "Pipe {} (creation time = {}) has already been created. "
                       + "Current status = {}. Skip creating.",
                   pipeName,
-                  creationTime,
+                  CommonDateTimeUtils.convertLongToDate(creationTime, "ms"),
                   status.name());
             }
             return false;
@@ -466,7 +467,7 @@ public class PipeTaskAgent {
                       + "but the pipe task meta has not been cleaned up. "
                       + "Current status = {}. Try dropping the pipe and recreating it.",
                   pipeName,
-                  creationTime,
+                  CommonDateTimeUtils.convertLongToDate(creationTime, "ms"),
                   status.name());
             }
             // Break to drop the pipe and recreate it
@@ -515,7 +516,7 @@ public class PipeTaskAgent {
           "Pipe {} (creation time = {}) has already been dropped or has not been created. "
               + "Skip dropping.",
           pipeName,
-          creationTime);
+          CommonDateTimeUtils.convertLongToDate(creationTime, "ms"));
       return;
     }
     if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
@@ -523,8 +524,9 @@ public class PipeTaskAgent {
           "Pipe {} (creation time = {}) has been created but does not match "
               + "the creation time ({}) in dropPipe request. Skip dropping.",
           pipeName,
-          existedPipeMeta.getStaticMeta().getCreationTime(),
-          creationTime);
+          CommonDateTimeUtils.convertLongToDate(
+              existedPipeMeta.getStaticMeta().getCreationTime(), "ms"),
+          CommonDateTimeUtils.convertLongToDate(creationTime, "ms"));
       return;
     }
 
@@ -541,7 +543,7 @@ public class PipeTaskAgent {
           "Pipe {} (creation time = {}) has already been dropped or has not been created. "
               + "Skip dropping.",
           pipeName,
-          creationTime);
+          CommonDateTimeUtils.convertLongToDate(creationTime));
       return;
     }
     for (PipeTask pipeTask : pipeTasks.values()) {
@@ -590,7 +592,7 @@ public class PipeTaskAgent {
           "Pipe {} (creation time = {}) has already been dropped or has not been created. "
               + "Skip starting.",
           pipeName,
-          creationTime);
+          CommonDateTimeUtils.convertLongToDate(creationTime));
       return;
     }
     if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
@@ -598,8 +600,9 @@ public class PipeTaskAgent {
           "Pipe {} (creation time = {}) has been created but does not match "
               + "the creation time ({}) in startPipe request. Skip starting.",
           pipeName,
-          existedPipeMeta.getStaticMeta().getCreationTime(),
-          creationTime);
+          CommonDateTimeUtils.convertLongToDate(
+              existedPipeMeta.getStaticMeta().getCreationTime(), "ms"),
+          CommonDateTimeUtils.convertLongToDate(creationTime, "ms"));
       return;
     }
 
@@ -610,7 +613,7 @@ public class PipeTaskAgent {
           LOGGER.info(
               "Pipe {} (creation time = {}) has been created. Current status = {}. Starting.",
               pipeName,
-              creationTime,
+              CommonDateTimeUtils.convertLongToDate(creationTime, "ms"),
               status.name());
         }
         break;
@@ -620,7 +623,7 @@ public class PipeTaskAgent {
               "Pipe {} (creation time = {}) has already been started. Current status = {}. "
                   + "Skip starting.",
               pipeName,
-              creationTime,
+              CommonDateTimeUtils.convertLongToDate(creationTime),
               status.name());
         }
         return;
@@ -630,7 +633,7 @@ public class PipeTaskAgent {
               "Pipe {} (creation time = {}) has already been dropped. Current status = {}. "
                   + "Skip starting.",
               pipeName,
-              creationTime,
+              CommonDateTimeUtils.convertLongToDate(creationTime, "ms"),
               status.name());
         }
         return;
@@ -648,7 +651,7 @@ public class PipeTaskAgent {
           "Pipe {} (creation time = {}) has already been dropped or has not been created. "
               + "Skip starting.",
           pipeName,
-          creationTime);
+          CommonDateTimeUtils.convertLongToDate(creationTime, "ms"));
       return;
     }
     for (PipeTask pipeTask : pipeTasks.values()) {
@@ -673,7 +676,7 @@ public class PipeTaskAgent {
           "Pipe {} (creation time = {}) has already been dropped or has not been created. "
               + "Skip stopping.",
           pipeName,
-          creationTime);
+          CommonDateTimeUtils.convertLongToDate(creationTime, "ms"));
       return;
     }
     if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
@@ -681,8 +684,9 @@ public class PipeTaskAgent {
           "Pipe {} (creation time = {}) has been created but does not match "
               + "the creation time ({}) in stopPipe request. Skip stopping.",
           pipeName,
-          existedPipeMeta.getStaticMeta().getCreationTime(),
-          creationTime);
+          CommonDateTimeUtils.convertLongToDate(
+              existedPipeMeta.getStaticMeta().getCreationTime(), "ms"),
+          CommonDateTimeUtils.convertLongToDate(creationTime, "ms"));
       return;
     }
 
@@ -694,7 +698,7 @@ public class PipeTaskAgent {
               "Pipe {} (creation time = {}) has already been stopped. Current status = {}. "
                   + "Skip stopping.",
               pipeName,
-              creationTime,
+              CommonDateTimeUtils.convertLongToDate(creationTime, "ms"),
               status.name());
         }
         return;
@@ -703,7 +707,7 @@ public class PipeTaskAgent {
           LOGGER.info(
               "Pipe {} (creation time = {}) has been started. Current status = {}. Stopping.",
               pipeName,
-              creationTime,
+              CommonDateTimeUtils.convertLongToDate(creationTime, "ms"),
               status.name());
         }
         break;
@@ -713,7 +717,7 @@ public class PipeTaskAgent {
               "Pipe {} (creation time = {}) has already been dropped. Current status = {}. "
                   + "Skip stopping.",
               pipeName,
-              creationTime,
+              CommonDateTimeUtils.convertLongToDate(creationTime, "ms"),
               status.name());
         }
         return;
@@ -729,7 +733,7 @@ public class PipeTaskAgent {
           "Pipe {} (creation time = {}) has already been dropped or has not been created. "
               + "Skip stopping.",
           pipeName,
-          creationTime);
+          CommonDateTimeUtils.convertLongToDate(creationTime, "ms"));
       return;
     }
     for (PipeTask pipeTask : pipeTasks.values()) {
