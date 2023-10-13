@@ -88,48 +88,6 @@ public class BOSAmortization {
         return result;
     }
 
-    public static byte[] bitPacking(ArrayList<ArrayList<Integer>> numbers, int start, int index, int bit_width) {
-        int block_num = numbers.size() / 8;
-        byte[] result = new byte[bit_width * block_num];
-        for (int i = 0; i < block_num; i++) {
-            for (int j = 0; j < bit_width; j++) {
-                int tmp_int = 0;
-                for (int k = 0; k < 8; k++) {
-                    tmp_int += (((numbers.get(i * 8 + k + start).get(index) >> j) % 2) << k);
-                }
-                result[i * bit_width + j] = (byte) tmp_int;
-            }
-        }
-        return result;
-    }
-
-    public static ArrayList<Integer> decodeBitPacking(
-            ArrayList<Byte> encoded, int decode_pos, int bit_width, int min_delta, int block_size) {
-        ArrayList<Integer> result_list = new ArrayList<>();
-        for (int i = 0; i < (block_size - 1) / 8; i++) { // bitpacking  纵向8个，bit width是多少列
-            int[] val8 = new int[8];
-            for (int j = 0; j < 8; j++) {
-                val8[j] = 0;
-            }
-            for (int j = 0; j < bit_width; j++) {
-                byte tmp_byte = encoded.get(decode_pos + bit_width - 1 - j);
-                byte[] bit8 = new byte[8];
-                for (int k = 0; k < 8; k++) {
-                    bit8[k] = (byte) (tmp_byte & 1);
-                    tmp_byte = (byte) (tmp_byte >> 1);
-                }
-                for (int k = 0; k < 8; k++) {
-                    val8[k] = val8[k] * 2 + bit8[k];
-                }
-            }
-            for (int j = 0; j < 8; j++) {
-                result_list.add(val8[j] + min_delta);
-            }
-            decode_pos += bit_width;
-        }
-        return result_list;
-    }
-
     public static ArrayList<Integer> decodeBitPacking(
             ArrayList<Byte> encoded, int decode_pos, int bit_width, int block_size) {
         ArrayList<Integer> result_list = new ArrayList<>();
@@ -155,48 +113,6 @@ public class BOSAmortization {
             decode_pos += bit_width;
         }
         return result_list;
-    }
-
-    public static int getCommon(int m, int n) {
-        int z;
-        while (m % n != 0) {
-            z = m % n;
-            m = n;
-            n = z;
-        }
-        return n;
-    }
-
-    public static void splitTimeStamp3(
-            ArrayList<Integer> ts_block, ArrayList<Integer> result) {
-        int td_common = 0;
-        for (int i = 1; i < ts_block.size(); i++) {
-            int time_diffi = ts_block.get(i) - ts_block.get(i - 1);
-            if (td_common == 0) {
-                if (time_diffi != 0) {
-                    td_common = time_diffi;
-                    continue;
-                } else {
-                    continue;
-                }
-            }
-            if (time_diffi != 0) {
-                td_common = getCommon(time_diffi, td_common);
-                if (td_common == 1) {
-                    break;
-                }
-            }
-        }
-        if (td_common == 0) {
-            td_common = 1;
-        }
-
-        int t0 = ts_block.get(0);
-        for (int i = 0; i < ts_block.size(); i++) {
-            int interval_i = (ts_block.get(i) - t0) / td_common;
-            ts_block.set(i, t0 + interval_i);
-        }
-        result.add(td_common);
     }
 
 
@@ -252,37 +168,6 @@ public class BOSAmortization {
             ts_block_delta.add(epsilon_v);
         }
         return ts_block_delta;
-    }
-    public static ArrayList<Integer> getBitWith(ArrayList<Integer> ts_block) {
-        ArrayList<Integer> ts_block_bit_width = new ArrayList<>();
-        for (int integers : ts_block) {
-            ts_block_bit_width.add(getBitWith(integers));
-        }
-        return ts_block_bit_width;
-    }
-
-    public static ArrayList<Byte> encode2Bytes(
-            ArrayList<Integer> ts_block,
-            ArrayList<Integer> min_delta,
-            int bit_width) {
-        ArrayList<Byte> encoded_result = new ArrayList<>();
-
-        // encode value0
-        byte[] value0_byte = int2Bytes(min_delta.get(0));
-        for (byte b : value0_byte) encoded_result.add(b);
-
-        // encode theta
-        byte[] value_min_byte = int2Bytes(min_delta.get(1));
-        for (byte b : value_min_byte) encoded_result.add(b);
-
-        // encode value
-        byte[] max_bit_width_value_byte = int2Bytes(bit_width);
-        for (byte b : max_bit_width_value_byte) encoded_result.add(b);
-        byte[] value_bytes = bitPacking(ts_block, 0, bit_width);
-        for (byte b : value_bytes) encoded_result.add(b);
-
-
-        return encoded_result;
     }
 
     public static ArrayList<Byte> encodeOutlier2Bytes(
@@ -881,8 +766,7 @@ public class BOSAmortization {
             for (int j = block_num * block_size; j < length_all; j++) {
                 ts_block.add(data.get(j));
             }
-            ArrayList<Integer> result2 = new ArrayList<>();
-            splitTimeStamp3(ts_block, result2);
+
             int supple_length;
             if (remaining_length % 8 == 0) {
                 supple_length = 1;
