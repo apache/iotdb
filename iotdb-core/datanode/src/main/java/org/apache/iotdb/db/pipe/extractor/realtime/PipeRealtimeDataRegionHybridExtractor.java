@@ -35,9 +35,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
@@ -87,6 +86,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                   (state.equals(TsFileEpoch.State.EMPTY)) ? TsFileEpoch.State.USING_TABLET : state);
       if ((!isStartedToSupply
               || mayWalSizeReachThrottleThreshold()
+              || tooManyWALPinned()
               || isTsFileEventCountInQueueExceededLimit())
           && !event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TABLET_FORCE)) {
         // In the following 3 cases, we should not extract any more tablet events. all the data
@@ -102,19 +102,6 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       }
     } finally {
       tsFileStateLock.readLock().unlock();
-    if (!isStartedToSupply
-        || mayWalSizeReachThrottleThreshold()
-        || tooManyWALPinned()
-        || isTsFileEventCountInQueueExceededLimit()) {
-      // In the following 3 cases, we should not extract any more tablet events. all the data
-      // represented by the tablet events should be carried by the following tsfile event:
-      //  1. The historical extractor has not consumed all the data.
-      //  2. HybridExtractor will first try to do extraction in log mode, and then choose log or
-      //  tsfile mode to continue extracting, but if (leader data regions num * Wal size) > (maximum
-      //  size of wal buffer), the write operation will be throttled, so we should not extract any
-      //  more tablet events.
-      //  3. The number of tsfile events in the pending queue has exceeded the limit.
-      event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
     }
 
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
