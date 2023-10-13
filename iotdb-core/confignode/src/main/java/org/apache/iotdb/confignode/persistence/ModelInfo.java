@@ -251,6 +251,7 @@ public class ModelInfo implements SnapshotProcessor {
     acquireModelTableReadLock();
     try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
       modelTable.serialize(fileOutputStream);
+      fileOutputStream.getFD().sync();
       return true;
     } finally {
       releaseModelTableReadLock();
