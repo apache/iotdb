@@ -382,6 +382,12 @@ public class IoTDBAuthIT {
         adminStmt.execute("CREATE ROLE admin");
         adminStmt.execute("GRANT MANAGE_DATABASE,WRITE_SCHEMA,WRITE_DATA on root.** TO ROLE admin");
         adminStmt.execute("GRANT ROLE admin TO tempuser");
+        adminStmt.execute("CREATE ROLE admin_temp");
+
+        // tempuser can get privileges of his role
+        userStmt.execute("LIST PRIVILEGES OF ROLE admin");
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("LIST PRIVILEGS OF ROLE admin_temp"));
 
         userStmt.execute("CREATE DATABASE root.a");
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
