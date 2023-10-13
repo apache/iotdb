@@ -139,6 +139,7 @@
     <oauth2-oidc-sdk.version>10.15</oauth2-oidc-sdk.version>
     <!-- This was the last version to support Java 8 -->
     <openapi.generator.version>6.6.0</openapi.generator.version>
+    <orc-core.version>1.9.1</orc-core.version>
     <osgi.version>7.0.0</osgi.version>
     <pax-jdbc-common.version>1.5.6</pax-jdbc-common.version>
     <powermock.version>2.0.9</powermock.version>
@@ -431,6 +432,11 @@
       </dependency>
       <dependency>
         <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-client-api</artifactId>
+        <version>${hadoop.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
         <artifactId>hadoop-common</artifactId>
         <version>${hadoop.version}</version>
         <exclusions>
@@ -465,6 +471,28 @@
       </dependency>
       <dependency>
         <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-client-runtime</artifactId>
+        <version>${hadoop.version}</version>
+        <exclusions>
+          <!-- This is a fork of log4j 1, and it duplicates all sorts of classes -->
+          <exclusion>
+            <groupId>ch.qos.reload4j</groupId>
+            <artifactId>reload4j</artifactId>
+          </exclusion>
+          <!-- This is a fork of log4j 1, and it duplicates all sorts of classes -->
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-reload4j</artifactId>
+          </exclusion>
+          <!-- Multiple CVEs reported for this, however we are not using Log4j -->
+          <exclusion>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
         <artifactId>hadoop-mapreduce-client-core</artifactId>
         <version>${hadoop.version}</version>
         <exclusions>
@@ -492,6 +520,11 @@
             <artifactId>netty</artifactId>
           </exclusion>
         </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-yarn-registry</artifactId>
+        <version>${hadoop.version}</version>
       </dependency>
       <dependency>
         <groupId>com.google.code.gson</groupId>
@@ -1670,6 +1703,33 @@
         <artifactId>commons-configuration2</artifactId>
         <version>2.9.0</version>
       </dependency>
+      <dependency>
+        <groupId>org.apache.orc</groupId>
+        <artifactId>orc-core</artifactId>
+        <version>${orc-core.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.orc</groupId>
+        <artifactId>orc-core</artifactId>
+        <version>${orc-core.version}</version>
+        <classifier>nohive</classifier>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.orc</groupId>
+        <artifactId>orc-mapreduce</artifactId>
+        <version>${orc-core.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.orc</groupId>
+        <artifactId>orc-mapreduce</artifactId>
+        <version>${orc-core.version}</version>
+        <classifier>nohive</classifier>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.orc</groupId>
+        <artifactId>orc-shims</artifactId>
+        <version>${orc-core.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
   <build>
@@ -2527,12 +2587,25 @@
       (https://openjdk.java.net/jeps/396)
     -->
     <profile>
-      <id>.java-16-and-above</id>
+      <id>.java-16</id>
       <activation>
-        <jdk>[16,)</jdk>
+        <jdk>16</jdk>
       </activation>
       <properties>
         <argLine>--illegal-access=permit --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
+      </properties>
+    </profile>
+    <!--
+      Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default]
+      (https://openjdk.java.net/jeps/396)
+    -->
+    <profile>
+      <id>.java-17-and-above</id>
+      <activation>
+        <jdk>[17,)</jdk>
+      </activation>
+      <properties>
+        <argLine>--add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
       </properties>
     </profile>
     <!-- Little helper profile that will disable running the cmake tests when the maven tests are being skipped -->

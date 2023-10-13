@@ -29,8 +29,8 @@
   <artifactId>iotdb-server</artifactId>
   <name>IoTDB: Core: Data-Node (Server)</name>
   <properties>
-    <iotdb.test.skip>false</iotdb.test.skip>
     <iotdb.it.skip>${iotdb.test.skip}</iotdb.it.skip>
+    <iotdb.test.skip>false</iotdb.test.skip>
     <iotdb.ut.skip>${iotdb.test.skip}</iotdb.ut.skip>
   </properties>
   <dependencies>

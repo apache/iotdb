@@ -78,6 +78,11 @@
       <artifactId>junit</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-client-runtime</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
@@ -89,6 +94,9 @@
             <!-- For some reason the plugin complains if this artifact is included and when it's not -->
             <ignoredDependency>org.apache.hive:hive-common</ignoredDependency>
           </ignoredDependencies>
+          <usedDependencies>
+            <dependency>org.apache.hadoop:hadoop-client-runtime</dependency>
+          </usedDependencies>
         </configuration>
       </plugin>
     </plugins>

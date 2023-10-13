@@ -101,10 +101,17 @@ public class IoTDBSelectIntoIT {
     }
     for (int time = 0; time < 12; time++) {
       SELECT_INTO_SQL_LIST.add(
-          String.format(Locale.ENGLISH,
+          String.format(
+              Locale.ENGLISH,
               "INSERT INTO root.sg_type.d_0(time, s_int32, s_int64, s_float, s_double, s_boolean, s_text) "
                   + "VALUES (%d, %d, %d, %f, %f, %s, 'text%d')",
-              time, time, time, (float) time, (double) time, time % 2 == 0, time));
+              time,
+              time,
+              time,
+              (float) time,
+              (double) time,
+              time % 2 == 0,
+              time));
     }
   }
 
