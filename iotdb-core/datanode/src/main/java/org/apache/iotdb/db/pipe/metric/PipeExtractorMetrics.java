@@ -21,8 +21,7 @@ package org.apache.iotdb.db.pipe.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.pipe.extractor.historical.PipeHistoricalDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Rate;
@@ -37,10 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeExtractorMetrics implements IMetricSet {
 
-  private final Map<String, PipeHistoricalDataRegionExtractor> historicalExtractorMap =
-      new HashMap<>();
-
-  private final Map<String, PipeRealtimeDataRegionExtractor> realtimeExtractorMap = new HashMap<>();
+  private final Map<String, IoTDBDataRegionExtractor> extractorMap = new HashMap<>();
 
   private final Map<String, Rate> tabletRateMap = new ConcurrentHashMap<>();
 
@@ -54,8 +50,8 @@ public class PipeExtractorMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     this.metricService = metricService;
     synchronized (this) {
-      for (String pipeName : realtimeExtractorMap.keySet()) {
-        createMetrics(pipeName);
+      for (String taskID : extractorMap.keySet()) {
+        createMetrics(taskID);
       }
     }
   }
@@ -82,94 +78,87 @@ public class PipeExtractorMetrics implements IMetricSet {
     // empty constructor
   }
 
-  public void register(
-      @NonNull PipeHistoricalDataRegionExtractor pipeHistoricalDataRegionExtractor,
-      @NonNull PipeRealtimeDataRegionExtractor pipeRealtimeDataRegionExtractor) {
-    // We assume that `PipeHistoricalDataRegionExtractor` and `PipeRealtimeDataRegionExtractor`
-    // correspond to the same `pipeName`.
-    String pipeName = pipeRealtimeDataRegionExtractor.getPipeName();
+  public void register(@NonNull IoTDBDataRegionExtractor extractor) {
+    String taskID = extractor.getTaskID();
     synchronized (this) {
-      if (!historicalExtractorMap.containsKey(pipeName)) {
-        historicalExtractorMap.put(pipeName, pipeHistoricalDataRegionExtractor);
-      }
-      if (!realtimeExtractorMap.containsKey(pipeName)) {
-        realtimeExtractorMap.put(pipeName, pipeRealtimeDataRegionExtractor);
+      if (!extractorMap.containsKey(taskID)) {
+        extractorMap.put(taskID, extractor);
       }
       if (Objects.nonNull(metricService)) {
-        createMetrics(pipeName);
+        createMetrics(taskID);
       }
     }
   }
 
-  private void createAutoGauge(String pipeName) {
+  private void createAutoGauge(String taskID) {
     metricService.createAutoGauge(
         Metric.UNPROCESSED_HISTORICAL_TS_FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        historicalExtractorMap.get(pipeName),
-        PipeHistoricalDataRegionExtractor::getPendingQueueSize,
+        extractorMap.get(taskID),
+        IoTDBDataRegionExtractor::getHistoricalTsFileInsertionEventCount,
         Tag.NAME.toString(),
-        pipeName);
+        taskID);
     metricService.createAutoGauge(
         Metric.UNPROCESSED_REALTIME_TS_FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        realtimeExtractorMap.get(pipeName),
-        PipeRealtimeDataRegionExtractor::getTsFileInsertionEventCount,
+        extractorMap.get(taskID),
+        IoTDBDataRegionExtractor::getRealtimeTsFileInsertionEventCount,
         Tag.NAME.toString(),
-        pipeName);
+        taskID);
     metricService.createAutoGauge(
         Metric.UNPROCESSED_TABLET_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        realtimeExtractorMap.get(pipeName),
-        PipeRealtimeDataRegionExtractor::getTabletInsertionEventCount,
+        extractorMap.get(taskID),
+        IoTDBDataRegionExtractor::getTabletInsertionEventCount,
         Tag.NAME.toString(),
-        pipeName);
+        taskID);
     metricService.createAutoGauge(
         Metric.UNPROCESSED_HEARTBEAT_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        realtimeExtractorMap.get(pipeName),
-        PipeRealtimeDataRegionExtractor::getPipeHeartbeatEventCount,
+        extractorMap.get(taskID),
+        IoTDBDataRegionExtractor::getPipeHeartbeatEventCount,
         Tag.NAME.toString(),
-        pipeName);
+        taskID);
   }
 
-  private void createMetrics(String pipeName) {
-    createAutoGauge(pipeName);
-    createRate(pipeName);
+  private void createMetrics(String taskID) {
+    createAutoGauge(taskID);
+    createRate(taskID);
   }
 
-  private void createRate(String pipeName) {
+  private void createRate(String taskID) {
     tabletRateMap.put(
-        pipeName,
+        taskID,
         metricService.getOrCreateRate(
             Metric.PIPE_EXTRACTOR_TABLET_SUPPLY.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            pipeName));
+            taskID));
     tsFileRateMap.put(
-        pipeName,
+        taskID,
         metricService.getOrCreateRate(
             Metric.PIPE_EXTRACTOR_TS_FILE_SUPPLY.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            pipeName));
+            taskID));
     pipeHeartbeatRateMap.put(
-        pipeName,
+        taskID,
         metricService.getOrCreateRate(
             Metric.PIPE_EXTRACTOR_HEARTBEAT_SUPPLY.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            pipeName));
+            taskID));
   }
 
-  public Rate getTabletRate(String pipeName) {
-    return tabletRateMap.get(pipeName);
+  public Rate getTabletRate(String taskID) {
+    return tabletRateMap.get(taskID);
   }
 
-  public Rate getTsFileRate(String pipeName) {
-    return tsFileRateMap.get(pipeName);
+  public Rate getTsFileRate(String taskID) {
+    return tsFileRateMap.get(taskID);
   }
 
-  public Rate getPipeHeartbeatRate(String pipeName) {
-    return pipeHeartbeatRateMap.get(pipeName);
+  public Rate getPipeHeartbeatRate(String taskID) {
+    return pipeHeartbeatRateMap.get(taskID);
   }
 }

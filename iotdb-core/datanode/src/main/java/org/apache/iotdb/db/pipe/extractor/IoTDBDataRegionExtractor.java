@@ -64,7 +64,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   private PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
 
-  private String pipeName;
+  private String taskID;
   private int dataRegionId;
 
   public IoTDBDataRegionExtractor() {
@@ -149,13 +149,15 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    pipeName = configuration.getRuntimeEnvironment().getPipeName();
     dataRegionId =
         ((PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment()).getRegionId();
+    String pipeName = configuration.getRuntimeEnvironment().getPipeName();
+    long creationTime = configuration.getRuntimeEnvironment().getCreationTime();
+    taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
 
     historicalExtractor.customize(parameters, configuration);
     realtimeExtractor.customize(parameters, configuration);
-    PipeExtractorMetrics.getInstance().register(historicalExtractor, realtimeExtractor);
+    PipeExtractorMetrics.getInstance().register(this);
   }
 
   @Override
@@ -230,11 +232,11 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
             : historicalExtractor.supply();
     if (Objects.nonNull(event)) {
       if (event instanceof TabletInsertionEvent) {
-        PipeExtractorMetrics.getInstance().getTabletRate(pipeName).mark();
+        PipeExtractorMetrics.getInstance().getTabletRate(taskID).mark();
       } else if (event instanceof TsFileInsertionEvent) {
-        PipeExtractorMetrics.getInstance().getTsFileRate(pipeName).mark();
+        PipeExtractorMetrics.getInstance().getTsFileRate(taskID).mark();
       } else if (event instanceof PipeHeartbeatEvent) {
-        PipeExtractorMetrics.getInstance().getPipeHeartbeatRate(pipeName).mark();
+        PipeExtractorMetrics.getInstance().getPipeHeartbeatRate(taskID).mark();
       }
     }
     return event;
@@ -244,5 +246,25 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   public void close() throws Exception {
     historicalExtractor.close();
     realtimeExtractor.close();
+  }
+
+  public String getTaskID() {
+    return taskID;
+  }
+
+  public int getHistoricalTsFileInsertionEventCount() {
+    return historicalExtractor.getPendingQueueSize();
+  }
+
+  public int getTabletInsertionEventCount() {
+    return realtimeExtractor.getTabletInsertionEventCount();
+  }
+
+  public int getRealtimeTsFileInsertionEventCount() {
+    return realtimeExtractor.getTsFileInsertionEventCount();
+  }
+
+  public int getPipeHeartbeatEventCount() {
+    return realtimeExtractor.getPipeHeartbeatEventCount();
   }
 }
