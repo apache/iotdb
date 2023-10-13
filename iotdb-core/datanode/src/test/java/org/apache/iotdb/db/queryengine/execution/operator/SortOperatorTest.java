@@ -180,6 +180,9 @@ public class SortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       if (!getSortOperator) return timeJoinOperator1;
 

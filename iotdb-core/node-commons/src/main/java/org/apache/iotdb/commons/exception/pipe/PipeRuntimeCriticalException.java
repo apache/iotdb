@@ -46,11 +46,6 @@ public class PipeRuntimeCriticalException extends PipeRuntimeException {
   }
 
   @Override
-  public int hashCode() {
-    return Objects.hash(getMessage(), getTimeStamp());
-  }
-
-  @Override
   public void serialize(ByteBuffer byteBuffer) {
     PipeRuntimeExceptionType.CRITICAL_EXCEPTION.serialize(byteBuffer);
     ReadWriteIOUtils.write(getMessage(), byteBuffer);

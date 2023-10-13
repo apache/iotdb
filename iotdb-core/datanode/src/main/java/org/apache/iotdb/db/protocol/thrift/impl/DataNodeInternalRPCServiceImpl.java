@@ -1274,10 +1274,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private void sampleDiskLoad(TLoadSample loadSample) {
     final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-    double freeDisk =
+    double availableDisk =
         MetricService.getInstance()
             .getAutoGauge(
-                SystemMetric.SYS_DISK_FREE_SPACE.toString(),
+                SystemMetric.SYS_DISK_AVAILABLE_SPACE.toString(),
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
                 SYSTEM)
@@ -1291,9 +1291,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 SYSTEM)
             .value();
 
-    if (freeDisk != 0 && totalDisk != 0) {
-      double freeDiskRatio = freeDisk / totalDisk;
-      loadSample.setFreeDiskSpace(freeDisk);
+    if (availableDisk != 0 && totalDisk != 0) {
+      double freeDiskRatio = availableDisk / totalDisk;
+      loadSample.setFreeDiskSpace(availableDisk);
       loadSample.setDiskUsageRate(1d - freeDiskRatio);
       // Reset NodeStatus if necessary
       if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {

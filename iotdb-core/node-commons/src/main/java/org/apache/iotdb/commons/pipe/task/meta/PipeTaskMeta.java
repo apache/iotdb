@@ -34,10 +34,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -55,7 +54,8 @@ public class PipeTaskMeta {
    * <p>The failure of them, respectively, will lead to the stop of the pipe, the stop of the pipes
    * sharing the same connector, and nothing.
    */
-  private final Queue<PipeRuntimeException> exceptionMessages = new ConcurrentLinkedQueue<>();
+  private final Map<PipeRuntimeException, PipeRuntimeException> exceptionMessages =
+      new ConcurrentHashMap<>();
 
   public PipeTaskMeta(/* @NotNull */ ProgressIndex progressIndex, int leaderDataNodeId) {
     this.progressIndex.set(progressIndex);
@@ -80,11 +80,15 @@ public class PipeTaskMeta {
   }
 
   public synchronized Iterable<PipeRuntimeException> getExceptionMessages() {
-    return new ArrayList<>(exceptionMessages);
+    return new ArrayList<>(exceptionMessages.values());
   }
 
   public synchronized void trackExceptionMessage(PipeRuntimeException exceptionMessage) {
-    exceptionMessages.add(exceptionMessage);
+    exceptionMessages.put(exceptionMessage, exceptionMessage);
+  }
+
+  public synchronized boolean containsExceptionMessage(PipeRuntimeException exceptionMessage) {
+    return exceptionMessages.containsKey(exceptionMessage);
   }
 
   public synchronized void clearExceptionMessages() {
@@ -97,7 +101,7 @@ public class PipeTaskMeta {
     ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
 
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
-    for (final PipeRuntimeException pipeRuntimeException : exceptionMessages) {
+    for (final PipeRuntimeException pipeRuntimeException : exceptionMessages.values()) {
       pipeRuntimeException.serialize(outputStream);
     }
   }
@@ -108,7 +112,7 @@ public class PipeTaskMeta {
     ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
 
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
-    for (final PipeRuntimeException pipeRuntimeException : exceptionMessages) {
+    for (final PipeRuntimeException pipeRuntimeException : exceptionMessages.values()) {
       pipeRuntimeException.serialize(outputStream);
     }
   }
@@ -123,7 +127,7 @@ public class PipeTaskMeta {
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
           PipeRuntimeExceptionType.deserializeFrom(version, byteBuffer);
-      pipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
+      pipeTaskMeta.exceptionMessages.put(pipeRuntimeException, pipeRuntimeException);
     }
     return pipeTaskMeta;
   }
@@ -139,7 +143,7 @@ public class PipeTaskMeta {
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
           PipeRuntimeExceptionType.deserializeFrom(version, inputStream);
-      pipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
+      pipeTaskMeta.exceptionMessages.put(pipeRuntimeException, pipeRuntimeException);
     }
     return pipeTaskMeta;
   }
@@ -155,7 +159,7 @@ public class PipeTaskMeta {
     PipeTaskMeta that = (PipeTaskMeta) obj;
     return progressIndex.get().equals(that.progressIndex.get())
         && leaderDataNodeId.get() == that.leaderDataNodeId.get()
-        && Arrays.equals(exceptionMessages.toArray(), that.exceptionMessages.toArray());
+        && exceptionMessages.equals(that.exceptionMessages);
   }
 
   @Override

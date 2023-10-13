@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -62,7 +63,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
@@ -226,7 +226,6 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -454,7 +453,6 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -596,11 +594,11 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.setSourceFilesToCompactionCandidate();
-    task.checkValidAndSetMerging();
+    seqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
+    unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data in source file during compaction
     vsgp.deleteByDevice(
         new PartialPath(
@@ -715,11 +713,11 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.setSourceFilesToCompactionCandidate();
-    task.checkValidAndSetMerging();
+    seqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
+    unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data in source file during compaction
     vsgp.deleteByDevice(
         new PartialPath(

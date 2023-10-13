@@ -373,8 +373,8 @@ public class IoTDBStartCheck {
     }
 
     reloadProperties();
-
-    try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
+    FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString());
+    try {
       properties.setProperty(IoTDBConstant.CLUSTER_NAME, clusterName);
       properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
@@ -382,6 +382,10 @@ public class IoTDBStartCheck {
       if (propertiesFile.exists()) {
         Files.delete(propertiesFile.toPath());
       }
+    } finally {
+      tmpFOS.flush();
+      tmpFOS.getFD().sync();
+      tmpFOS.close();
     }
     // rename system.properties.tmp to system.properties
     FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
