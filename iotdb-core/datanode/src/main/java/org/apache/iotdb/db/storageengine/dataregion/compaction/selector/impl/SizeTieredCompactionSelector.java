@@ -249,7 +249,6 @@ public class SizeTieredCompactionSelector
         fileResources,
         sequence,
         createCompactionPerformer(),
-        CompactionTaskManager.currentTaskNum,
         tsFileManager.getNextCompactionTaskId(),
         compactionTaskType);
   }

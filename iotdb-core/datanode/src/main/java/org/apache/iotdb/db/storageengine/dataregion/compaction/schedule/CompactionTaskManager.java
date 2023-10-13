@@ -71,8 +71,6 @@ public class CompactionTaskManager implements IService {
   // The thread pool that executes the sub compaction task.
   private WrappedThreadPoolExecutor subCompactionTaskExecutionPool;
 
-  public static final AtomicInteger currentTaskNum = new AtomicInteger(0);
-
   private final FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       new FixedPriorityBlockingQueue<>(
           config.getCandidateCompactionTaskQueueSize(), new DefaultCompactionTaskComparatorImpl());
@@ -98,7 +96,6 @@ public class CompactionTaskManager implements IService {
             || config.isEnableUnseqSpaceCompaction()
             || config.isEnableCrossSpaceCompaction())) {
       initThreadPool();
-      currentTaskNum.set(0);
       candidateCompactionTaskQueue.regsitPollLastHook(
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
       init = true;
@@ -424,7 +421,6 @@ public class CompactionTaskManager implements IService {
       candidateCompactionTaskQueue.clear();
       init = true;
     }
-    currentTaskNum.set(0);
     init = true;
     logger.info("Compaction task manager started.");
   }

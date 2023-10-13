@@ -28,6 +28,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
@@ -37,10 +38,16 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
   protected final List<Operator> children;
   protected final int inputOperatorsCount;
   /** TsBlock from child operator. Only one cache now. */
-  protected final TsBlock[] inputTsBlocks;
+  protected TsBlock[] inputTsBlocks;
 
   protected final boolean[] canCallNext;
   protected int readyChildIndex;
+
+  /** Index of the child that is currently fetching input */
+  protected int currentChildIndex = 0;
+
+  /** Indicate whether we found an empty child input in one loop */
+  protected boolean hasEmptyChildInput = false;
 
   protected AbstractConsumeAllOperator(OperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
@@ -84,41 +91,85 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
    * @throws Exception errors happened while getting tsblock from children
    */
   protected boolean prepareInput() throws Exception {
-    boolean allReady = true;
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!isEmpty(i) || children.get(i) == null) {
+    // start stopwatch
+    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+    long start = System.nanoTime();
+
+    while (System.nanoTime() - start < maxRuntime && currentChildIndex < inputOperatorsCount) {
+      if (canSkipCurrentChild(currentChildIndex)) {
+        currentChildIndex++;
         continue;
       }
-      if (canCallNext[i] && children.get(i).hasNextWithTimer()) {
-        inputTsBlocks[i] = getNextTsBlock(i);
-        canCallNext[i] = false;
-        // child operator has next but return an empty TsBlock which means that it may not
-        // finish calculation in given time slice.
-        // In such case, TimeJoinOperator can't go on calculating, so we just return null.
-        // We can also use the while loop here to continuously call the hasNext() and next()
-        // methods of the child operator until its hasNext() returns false or the next() gets
-        // the data that is not empty, but this will cause the execution time of the while loop
-        // to be uncontrollable and may exceed all allocated time slice
-        if (isEmpty(i)) {
-          allReady = false;
+      if (canCallNext[currentChildIndex]) {
+        if (children.get(currentChildIndex).hasNextWithTimer()) {
+          inputTsBlocks[currentChildIndex] = getNextTsBlock(currentChildIndex);
+          canCallNext[currentChildIndex] = false;
+          // child operator has next but return an empty TsBlock which means that it may not
+          // finish calculation in given time slice.
+          // In such case, TimeJoinOperator can't go on calculating, so we just return null.
+          // We can also use the while loop here to continuously call the hasNext() and next()
+          // methods of the child operator until its hasNext() returns false or the next() gets
+          // the data that is not empty, but this will cause the execution time of the while loop
+          // to be uncontrollable and may exceed all allocated time slice
+          if (isEmpty(currentChildIndex)) {
+            hasEmptyChildInput = true;
+          } else {
+            processCurrentInputTsBlock(currentChildIndex);
+          }
+        } else {
+          handleFinishedChild(currentChildIndex);
         }
       } else {
-        allReady = false;
-        if (canCallNext[i]) {
-          // canCallNext[i] == true means children.get(i).hasNext == false
-          // we can close the finished children
-          children.get(i).close();
-          children.set(i, null);
-        }
+        hasEmptyChildInput = true;
+      }
+      currentChildIndex++;
+    }
+
+    if (currentChildIndex == inputOperatorsCount) {
+      // start a new loop
+      currentChildIndex = 0;
+      if (!hasEmptyChildInput) {
+        // all children are ready now
+        return true;
+      } else {
+        // In a new loop, previously empty child input could be non-empty now, and we can skip the
+        // children that have generated input
+        hasEmptyChildInput = false;
       }
     }
-    return allReady;
+    return false;
   }
 
   /** If the tsBlock is null or has no more data in the tsBlock, return true; else return false. */
   protected boolean isEmpty(int index) {
     return inputTsBlocks[index] == null || inputTsBlocks[index].isEmpty();
   }
+
+  // region helper function used in prepareInput, the subclass can have its own implementation
+
+  /**
+   * @param currentChildIndex the index of the child
+   * @return true if we can skip the currentChild in prepareInput
+   */
+  protected boolean canSkipCurrentChild(int currentChildIndex) {
+    return !isEmpty(currentChildIndex) || children.get(currentChildIndex) == null;
+  }
+
+  /** @param currentInputIndex index of the input TsBlock */
+  protected void processCurrentInputTsBlock(int currentInputIndex) {
+    // do nothing here, the subclass have its own implementation
+  }
+
+  /**
+   * @param currentChildIndex the index of the child
+   * @throws Exception Potential Exception thrown by Operator.close()
+   */
+  protected void handleFinishedChild(int currentChildIndex) throws Exception {
+    children.get(currentChildIndex).close();
+    children.set(currentChildIndex, null);
+  }
+
+  // endregion
 
   @Override
   public void close() throws Exception {
@@ -127,6 +178,8 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
         child.close();
       }
     }
+    // friendly for gc
+    inputTsBlocks = null;
   }
 
   protected TsBlock getNextTsBlock(int childIndex) throws Exception {

@@ -398,6 +398,7 @@ public class AlignedSeriesScanOperatorTest {
                   new SingleColumnMerger(new InputLocation(6, 0), new AscTimeComparator()),
                   new SingleColumnMerger(new InputLocation(7, 0), new AscTimeComparator())),
               new AscTimeComparator());
+      timeJoinOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       int count = 0;
       while (timeJoinOperator.isBlocked().isDone() && timeJoinOperator.hasNext()) {
         TsBlock tsBlock = timeJoinOperator.next();
@@ -688,6 +689,7 @@ public class AlignedSeriesScanOperatorTest {
                   new SingleColumnMerger(new InputLocation(6, 0), new DescTimeComparator()),
                   new SingleColumnMerger(new InputLocation(7, 0), new DescTimeComparator())),
               new DescTimeComparator());
+      timeJoinOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       int count = 499;
       while (timeJoinOperator.isBlocked().isDone() && timeJoinOperator.hasNext()) {
