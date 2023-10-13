@@ -477,6 +477,8 @@ public interface IManager {
 
   void addMetrics();
 
+  void removeMetrics();
+
   /** Show (data/schemaengine) regions. */
   DataSet showRegion(GetRegionInfoListPlan getRegionInfoListPlan);
 

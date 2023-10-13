@@ -295,8 +295,6 @@ public class ConfigNode implements ConfigNodeMBean {
       LOGGER.error("Can't start ConfigNode consensus group!", e);
       stop();
     }
-    // Add some Metrics for configManager
-    configManager.addMetrics();
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 
@@ -410,6 +408,11 @@ public class ConfigNode implements ConfigNodeMBean {
 
   public ConfigManager getConfigManager() {
     return configManager;
+  }
+
+  public void addMetrics() {
+    // Add some Metrics for configManager
+    configManager.addMetrics();
   }
 
   @TestOnly

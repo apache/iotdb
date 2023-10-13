@@ -272,7 +272,7 @@ public class NodeManager {
     }
 
     // Bind DataNode metrics
-    PartitionMetrics.bindDataNodePartitionMetrics(
+    PartitionMetrics.bindDataNodePartitionMetricsWhenUpdate(
         MetricService.getInstance(), configManager, dataNodeId);
 
     // Adjust the maximum RegionGroup number of each StorageGroup
