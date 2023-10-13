@@ -50,6 +50,8 @@ public class DriverTask implements IDIndexedAccessible {
   private final long ddl;
   private final Lock lock;
 
+  private final boolean isHighestPriority = true;
+
   private String abortCause;
 
   private final AtomicReference<Priority> priority;
@@ -129,6 +131,10 @@ public class DriverTask implements IDIndexedAccessible {
 
   public long getDDL() {
     return ddl;
+  }
+
+  public boolean isHighestPriority() {
+    return isHighestPriority;
   }
 
   @Override

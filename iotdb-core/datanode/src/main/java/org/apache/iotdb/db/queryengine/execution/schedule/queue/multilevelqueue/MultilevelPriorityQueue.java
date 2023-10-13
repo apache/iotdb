@@ -44,6 +44,10 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
   private final PriorityQueue<DriverTask>[] levelWaitingSplits;
 
   /**
+   This queue is independent of the other priority queues and has the highest priority. It is used to assign the highest execution priority to tasks like "ShowQuery," without considering cumulative execution time. */
+  private final PriorityQueue<DriverTask> highestPriorityLevelQueue;
+
+  /**
    * Total amount of time each LEVEL has occupied, which decides which level we will take task from.
    */
   private final AtomicLong[] levelScheduledTime;
@@ -65,6 +69,7 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     this.levelScheduledTime = new AtomicLong[LEVEL_THRESHOLD_SECONDS.length];
     this.levelMinScheduledTime = new AtomicLong[LEVEL_THRESHOLD_SECONDS.length];
     this.levelWaitingSplits = new PriorityQueue[LEVEL_THRESHOLD_SECONDS.length];
+    this.highestPriorityLevelQueue = new PriorityQueue<>();
     for (int level = 0; level < LEVEL_THRESHOLD_SECONDS.length; level++) {
       levelScheduledTime[level] = new AtomicLong();
       levelMinScheduledTime[level] = new AtomicLong(-1);
@@ -86,6 +91,11 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
   @Override
   public void pushToQueue(DriverTask task) {
     checkArgument(task != null, "DriverTask to be pushed is null");
+    // Push tasks with the highest priority(Currently, only ShowQuery related tasks) into highestPriorityLevelQueue directly.
+    if(task.isHighestPriority()){
+      highestPriorityLevelQueue.offer(task);
+      return;
+    }
 
     int level = task.getPriority().getLevel();
     if (levelWaitingSplits[level].isEmpty()) {
@@ -102,6 +112,11 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
   }
 
   protected DriverTask pollFirst() {
+    // Always choose tasks in the highestPriorityLevelQueue first.
+    if(!highestPriorityLevelQueue.isEmpty()){
+      return highestPriorityLevelQueue.poll();
+    }
+
     DriverTask result;
     while (true) {
       result = chooseLevelAndTask();
