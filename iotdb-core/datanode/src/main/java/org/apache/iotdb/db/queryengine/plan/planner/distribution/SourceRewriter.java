@@ -194,11 +194,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       deviceViewNodeList.add(regionDeviceViewNode);
     }
 
-    if (deviceViewNodeList.size() == 1) {
-      return deviceViewNodeList;
-    }
-
-    if (analysis.isHasSort()) {
+    if (deviceViewNodeList.size() == 1 || analysis.isHasSort() || analysis.isUseTopKNode()) {
       return deviceViewNodeList;
     }
 
