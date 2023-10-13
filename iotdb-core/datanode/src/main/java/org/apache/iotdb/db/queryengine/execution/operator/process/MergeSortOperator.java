@@ -68,7 +68,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
     boolean hasReadyChild = false;
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (needCallNext(i)) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
         continue;
       }
       ListenableFuture<?> blocked = children.get(i).isBlocked();
