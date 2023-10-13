@@ -30,10 +30,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.convertLongToDate;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
-import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.convertLongToDate;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CLUSTER_CONFIGURATIONS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_NUM;
