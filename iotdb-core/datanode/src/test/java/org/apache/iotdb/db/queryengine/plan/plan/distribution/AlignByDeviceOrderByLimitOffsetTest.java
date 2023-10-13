@@ -60,8 +60,8 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     analysis = Util.analyze(sql, context);
     logicalPlanNode = Util.genLogicalPlan(analysis, context);
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
-    plan = planner.planFragments();
-    assertEquals(4, plan.getInstances().size());
+    DistributedQueryPlan plan2 = planner.planFragments();
+    assertEquals(4, plan2.getInstances().size());
 
     // 3. order by time, expression
 
