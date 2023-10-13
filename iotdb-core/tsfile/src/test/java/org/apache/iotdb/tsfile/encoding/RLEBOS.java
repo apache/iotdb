@@ -23,13 +23,13 @@ public class RLEBOS {
     }
 
     public static int zigzag(int num) {
-        if (num < 0) return ((-num)<<1)-1;
-        else return num<<1;
+        if (num < 0) return ((-num) << 1) - 1;
+        else return num << 1;
     }
 
     public static int deZigzag(int num) {
-        if (num % 2 == 0) return num>>1;
-        else return -((num+1)>>1);
+        if (num % 2 == 0) return num >> 1;
+        else return -((num + 1) >> 1);
     }
 
     public static byte[] int2Bytes(int integer) {
@@ -229,39 +229,6 @@ public class RLEBOS {
         return n;
     }
 
-    public static void splitTimeStamp3(
-            ArrayList<Integer> ts_block, ArrayList<Integer> result) {
-        int td_common = 0;
-        for (int i = 1; i < ts_block.size(); i++) {
-            int time_diffi = ts_block.get(i) - ts_block.get(i - 1);
-            if (td_common == 0) {
-                if (time_diffi != 0) {
-                    td_common = time_diffi;
-                    continue;
-                } else {
-                    continue;
-                }
-            }
-            if (time_diffi != 0) {
-                td_common = getCommon(time_diffi, td_common);
-                if (td_common == 1) {
-                    break;
-                }
-            }
-        }
-        if (td_common == 0) {
-            td_common = 1;
-        }
-
-        int t0 = ts_block.get(0);
-        for (int i = 0; i < ts_block.size(); i++) {
-            int interval_i = (ts_block.get(i) - t0) / td_common;
-            ts_block.set(i, t0 + interval_i);
-        }
-        result.add(td_common);
-    }
-
-
     public static ArrayList<Integer> getAbsDeltaTsBlock(
             ArrayList<Integer> ts_block,
             ArrayList<Integer> min_delta,
@@ -269,35 +236,42 @@ public class RLEBOS {
         ArrayList<Integer> ts_block_delta = new ArrayList<>();
 
 //        ts_block_delta.add(ts_block.get(0));
+//        System.out.println("init_size:"+ts_block.size());
+
         int value_delta_min = Integer.MAX_VALUE;
         for (Integer integer : ts_block) {
-            if (integer < value_delta_min)
-                value_delta_min = integer;
+            if (integer < value_delta_min) value_delta_min = integer;
         }
-        int pre_delta = ts_block.get(0)-value_delta_min;
+        int repeat_i = 0;
+        int pre_delta = ts_block.get(0) - value_delta_min;
         int pre_count = 1;
+        min_delta.add(value_delta_min);
         int block_size = ts_block.size();
-        for (int i=1;i<block_size;i++) {
-            int delta = ts_block.get(i)-value_delta_min;
-            if(delta == pre_delta){
-                pre_count ++;
-            } else if (delta != pre_count) {
-                if(pre_count>7){
-                    repeat_count.add(pre_count);
-                    repeat_count.add(pre_delta);
-                } else{
-                    for(int j=0;j<pre_count;j++)
+
+        for (int i = 1; i < block_size; i++) {
+            int delta = ts_block.get(i) - value_delta_min;
+            if (delta == pre_delta) {
+                pre_count++;
+            } else {
+                if (pre_count > 7) {
+                    repeat_count.add(repeat_i); // index_repeat
+                    repeat_count.add(pre_count); // repeat_count
+                    ts_block_delta.add(pre_delta);
+                } else {
+                    for (int j = 0; j < pre_count; j++)
                         ts_block_delta.add(pre_delta);
                 }
-                pre_count =1;
+                pre_count = 1;
+                repeat_i = i;
             }
             pre_delta = delta;
 //            ts_block_delta.add(delta);
         }
-        for(int j=0;j<pre_count;j++)
+        for (int j = 0; j < pre_count; j++)
             ts_block_delta.add(pre_delta);
-        min_delta.add(value_delta_min);
 
+//        System.out.println("size:"+ts_block_delta.size());
+//        System.out.println(repeat_count);
         return ts_block_delta;
     }
 
@@ -415,7 +389,9 @@ public class RLEBOS {
 
         int n_k_b = length / 8;
         int remaining = length - n_k_b * 8;
-        ArrayList<Integer> result_list = new ArrayList<>(decodeBitPacking(encoded, decode_pos, bit_width, n_k_b * 8 + 1));
+        ArrayList<Integer> result_list = new ArrayList<>();
+        if (n_k_b > 0)
+            result_list = decodeBitPacking(encoded, decode_pos, bit_width, n_k_b * 8 + 1);
         decode_pos += n_k_b * bit_width;
 
         ArrayList<Long> int_remaining = new ArrayList<>();
@@ -457,6 +433,7 @@ public class RLEBOS {
     }
 
     private static void BOSEncodeBits(ArrayList<Integer> ts_block_delta,
+                                      int init_block_size,
                                       int final_left_max,
                                       int final_k_start_value,
                                       int final_k_end_value,
@@ -545,12 +522,20 @@ public class RLEBOS {
 
 //        byte[] value0_bytes = int2Bytes(min_delta.get(0));
 //        for (byte b : value0_bytes) cur_byte.add(b);
-            byte[] min_delta_bytes = int2Bytes(min_delta.get(0));
-            for (byte b : min_delta_bytes) cur_byte.add(b);
-        int size=repeat_count.size()-1;
-        byte[] count_size_bytes = int2Bytes(size);
+        byte[] min_delta_bytes = int2Bytes(min_delta.get(0));
+        for (byte b : min_delta_bytes) cur_byte.add(b);
+
+        int size = repeat_count.size();
+        byte[] count_size_bytes = intByte2Bytes(size);
         for (byte b : count_size_bytes) cur_byte.add(b);
-        cur_byte.addAll(encodeOutlier2Bytes(repeat_count, getBitWith(block_size)));
+//        System.out.println(block_size);
+        if (size != 0)
+            cur_byte.addAll(encodeOutlier2Bytes(repeat_count, getBitWith(init_block_size)));
+
+//        System.out.println(size);
+//        if(size != 0)
+//            System.out.println(repeat_count);
+
 
         byte[] final_k_start_value_bytes = int2Bytes(final_k_start_value);
         for (byte b : final_k_start_value_bytes) cur_byte.add(b);
@@ -584,18 +569,19 @@ public class RLEBOS {
             cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size)));
         }
 
+//        System.out.println("block_size:" + block_size);
 //            System.out.println("k1:" + k1);
 //            System.out.println("k2:" + k2);
 //            System.out.println("final_alpha:" + final_alpha);
 //            System.out.println("k_byte:" + k_byte);
 //            System.out.println("min_delta.get(0):" + min_delta.get(0));
-//            System.out.println("min_delta.get(1):" + min_delta.get(1));
+////            System.out.println("min_delta.get(1):" + min_delta.get(1));
 //            System.out.println("final_k_start_value:" + final_k_start_value);
 //            System.out.println("bit_width_final:" + bit_width_final);
 //            System.out.println("left_bit_width:" + left_bit_width);
 //            System.out.println("right_bit_width:" + right_bit_width);
 //            System.out.println("bitmap_outlier.size:" + bitmap_outlier.size());
-//            if (final_alpha == 0) { //
+//            if (final_alpha == 1) { //
 //                System.out.println("final_left_outlier_index:" + final_left_outlier_index);
 //                System.out.println("final_right_outlier_index:" + final_right_outlier_index);
 //            } else {
@@ -632,7 +618,9 @@ public class RLEBOS {
         if (k2 != 0)
             cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier, right_bit_width));
 //            System.out.println(final_normal);
-//            System.out.println(final_left_outlier);
+//        System.out.println("final_left_outlier_index:" + final_left_outlier_index);
+//        System.out.println(final_left_outlier);
+//        System.out.println("final_right_outlier_index:" + final_right_outlier_index);
 //            System.out.println(final_right_outlier);
     }
 //    }
@@ -641,12 +629,14 @@ public class RLEBOS {
 
         ArrayList<Integer> repeat_count = new ArrayList<>();
         ArrayList<Byte> cur_byte = new ArrayList<>();
+        int init_block_size = ts_block.size();
 
         ArrayList<Integer> min_delta = new ArrayList<>();
-        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta,repeat_count);
+        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta, repeat_count);
         int block_size = ts_block_delta.size();
         ArrayList<Integer> min_delta_r = new ArrayList<>();
-        ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta_r,repeat_count);
+        ArrayList<Integer> repeat_count_reorder = new ArrayList<>();
+        ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta_r, repeat_count_reorder);
         for (int s = 0; s < supple_length; s++) {
             ts_block_delta.add(0);
             ts_block_order_value.add(0);
@@ -655,12 +645,7 @@ public class RLEBOS {
         Collections.sort(ts_block_order_value);
 //        quickSort(ts_block_order_value, 0, 1, block_size - 1);
 
-//        System.out.println("quickSort");
-
-//        ArrayList<Integer> ts_block_order_value = new ArrayList<>();
-//        for (int i = 1; i < block_size; i++) {
-//            ts_block_order_value.add(ts_block_delta.get(i));
-//        }
+//        System.out.println("cur_block_size:"+block_size);
 
 
         int max_delta_value = ts_block_order_value.get(block_size - 1);
@@ -754,34 +739,6 @@ public class RLEBOS {
                     cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
                 if (cur_k2 != 0)
                     cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
-//
-//                if(left_max <= 1603 && k_start_value>=1603&& k_end_value <= 5083 && min_upper_outlier>=5083 ){
-//                    System.out.println("index_cost: "+(Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2)));
-//                    System.out.println("k_end_value: "+(k_end_value));
-//                    System.out.println("min_upper_outlier: "+(min_upper_outlier));
-//                    System.out.println("cur_k1: "+(cur_k1));
-//                    System.out.println("cur_k2: "+(cur_k2));
-//                    System.out.println("cur_bits: "+(cur_bits));
-//                    System.out.println("min_bits: "+(min_bits));
-//                    System.out.println("min_bits: "+(getBitWith(k_start_value)));
-//                    System.out.println("min_bits: "+(getBitWith(k_end_value - k_start_value)));
-//                    System.out.println("min_bits: "+(getBitWith(max_delta_value - k_end_value)));
-//                }
-//                if(k_start_value == 49 && k_end_value == 50 ){
-//                    System.out.println("index_cost: "+(Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2)));
-//                    System.out.println("max_delta_value: "+(max_delta_value));
-//                    System.out.println(" getBitWith(left_max)：" +  getBitWith(left_max));
-//                    System.out.println(" getBitWith(k_end_value - k_start_value)：" + getBitWith(k_end_value - k_start_value));
-//                    System.out.println(" getBitWith(max_delta_value - min_upper_outlier)：" + getBitWith(max_delta_value - min_upper_outlier));
-//                    System.out.println("k_start_value: "+(k_start_value));
-//                    System.out.println("k_end_value: "+(k_end_value));
-//                    System.out.println("left_max: "+(left_max));
-//                    System.out.println("min_upper_outlier: "+(min_upper_outlier));
-//                    System.out.println("cur_k1: "+(cur_k1));
-//                    System.out.println("cur_k2: "+(cur_k2));
-//                    System.out.println("cur_bits: "+(cur_bits));
-//                    System.out.println("min_bits: "+(min_bits));
-//                }
 
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
@@ -805,8 +762,8 @@ public class RLEBOS {
         int final_alpha = ((k1 + k2) * getBitWith(block_size)) <= (block_size + k1 + k2) ? 1 : 0;
 
 
-        BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
-                final_alpha,  min_delta,repeat_count,  cur_byte);
+        BOSEncodeBits(ts_block_delta, init_block_size, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
+                final_alpha, min_delta, repeat_count, cur_byte);
 
 //        System.out.println(cur_byte.size());
         return cur_byte;
@@ -825,17 +782,15 @@ public class RLEBOS {
         for (byte b : block_size_byte) encoded_result.add(b);
 
 
-//        for (int i = 0; i < 1; i++) {
+//        for (int i = 33; i < 34; i++) {
         for (int i = 0; i < block_num; i++) {
+//            System.out.println(i);
             ArrayList<Integer> ts_block = new ArrayList<>();
             for (int j = 0; j < block_size; j++) {
                 ts_block.add(data.get(j + i * block_size));
 
             }
-//            ArrayList<Integer> result2 = new ArrayList<>();
-//            splitTimeStamp3(ts_block, result2);
 
-            // time-order
             ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, 0);
             encoded_result.addAll(cur_encoded_result);
 //            System.out.println("cur_encoded_result.size: "+cur_encoded_result.size());
@@ -848,14 +803,15 @@ public class RLEBOS {
                 for (byte b : timestamp_end_bytes) encoded_result.add(b);
             }
 
-        } else {
+        }
+        else {
             ArrayList<Integer> ts_block = new ArrayList<>();
 
             for (int j = block_num * block_size; j < length_all; j++) {
                 ts_block.add(data.get(j));
             }
-            ArrayList<Integer> result2 = new ArrayList<>();
-            splitTimeStamp3(ts_block, result2);
+//            ArrayList<Integer> result2 = new ArrayList<>();
+//            splitTimeStamp3(ts_block, result2);
             int supple_length;
             if (remaining_length % 8 == 0) {
                 supple_length = 0;
@@ -882,12 +838,26 @@ public class RLEBOS {
 
         int k2 = (int) (k_byte / pow(2, 16));
 
-//        int value0 = bytes2Integer(encoded, decode_pos, 4);
-//        decode_pos += 4;
-//        value_list.add(value0);
 
         int min_delta = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
+
+        int count_size = bytes2Integer(encoded, decode_pos, 1);
+        decode_pos += 1;
+//        System.out.println(count_size);
+        ArrayList<Integer> repeat_count = new ArrayList<>();
+        if (count_size != 0) {
+            ArrayList<Integer> repeat_count_result = new ArrayList<>();
+            repeat_count = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(block_size), count_size, repeat_count_result);
+            decode_pos = repeat_count_result.get(0);
+//            System.out.println(repeat_count);
+        }
+//        decode_pos
+
+        int cur_block_size = block_size;
+        for (int i = 1; i < count_size; i += 2) {
+            cur_block_size -= (repeat_count.get(i) - 1);
+        }
 
         int final_k_start_value = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
@@ -909,9 +879,10 @@ public class RLEBOS {
 
 //        System.out.println("k1:" + k1);
 //        System.out.println("k2:" + k2);
+//        System.out.println("cur_block_size:" + cur_block_size);
 
         if (final_alpha == 0) { // 0
-            int bitmap_bytes = (int) Math.ceil((double) (block_size + k1 + k2) / (double) 8);
+            int bitmap_bytes = (int) Math.ceil((double) (cur_block_size + k1 + k2) / (double) 8);
 //            System.out.println("bitmap_bytes:" + bitmap_bytes);
             for (int i = 0; i < bitmap_bytes; i++) {
                 bitmap_outlier.add(bytes2Integer(encoded, decode_pos, 1));
@@ -922,7 +893,7 @@ public class RLEBOS {
             int tmp = bitmap_outlier.get(bitmap_outlier_i);
             bitmap_outlier_i++;
             int i = 0;
-            while (i < block_size) {
+            while (i < cur_block_size) {
                 if (remaining_bits > 1) {
                     int bit_i = (tmp >> (remaining_bits - 1)) & 0x1;
                     remaining_bits -= 1;
@@ -962,25 +933,30 @@ public class RLEBOS {
                 i++;
             }
         } else {
-            ArrayList<Integer> decode_pos_result_left = new ArrayList<>();
-            final_left_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(block_size), k1, decode_pos_result_left);
-            decode_pos = (decode_pos_result_left.get(0));
-            ArrayList<Integer> decode_pos_result_right = new ArrayList<>();
-            final_right_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(block_size), k2, decode_pos_result_right);
-            decode_pos = (decode_pos_result_right.get(0));
+
+//            if(k1 != 0){
+                ArrayList<Integer> decode_pos_result_left = new ArrayList<>();
+                final_left_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(cur_block_size), k1, decode_pos_result_left);
+                decode_pos = (decode_pos_result_left.get(0));
+//            }
+//            if(k2 != 0){
+                ArrayList<Integer> decode_pos_result_right = new ArrayList<>();
+                final_right_outlier_index = decodeOutlier2Bytes(encoded, decode_pos, getBitWith(cur_block_size), k2, decode_pos_result_right);
+                decode_pos = (decode_pos_result_right.get(0));
+//            }
         }
-//        System.out.println("blocksize:" + block_size);
+//        System.out.println("cur_block_size:" + cur_block_size);
 //            System.out.println("k1:" + k1);
 //            System.out.println("k2:" + k2);
 //            System.out.println("final_alpha:" + final_alpha);
 //            System.out.println("k_byte:" + k_byte);
-//            System.out.println("value0:" + value0);
+////            System.out.println("value0:" + value0);
 //            System.out.println("min_delta.get(1):" + min_delta);
 //            System.out.println("final_k_start_value:" + final_k_start_value);
 //            System.out.println("bit_width_final:" + bit_width_final);
 //            System.out.println("left_bit_width:" + left_bit_width);
 //            System.out.println("right_bit_width:" + right_bit_width);
-//            if (final_alpha == 0) { //1
+//            if (final_alpha == 1) { //1
 //                System.out.println("final_left_outlier_index:" + final_left_outlier_index);
 //                System.out.println("final_right_outlier_index:" + final_right_outlier_index);
 //            } else {
@@ -990,13 +966,14 @@ public class RLEBOS {
 
 
         ArrayList<Integer> decode_pos_normal = new ArrayList<>();
-        final_normal = decodeOutlier2Bytes(encoded, decode_pos, bit_width_final, block_size - k1 - k2, decode_pos_normal);
-//            System.out.println(final_normal);
+        final_normal = decodeOutlier2Bytes(encoded, decode_pos, bit_width_final, cur_block_size - k1 - k2, decode_pos_normal);
+//            System.out.println(final_normal.size());
         decode_pos = decode_pos_normal.get(0);
         if (k1 != 0) {
             ArrayList<Integer> decode_pos_result_left = new ArrayList<>();
             final_left_outlier = decodeOutlier2Bytes(encoded, decode_pos, left_bit_width, k1, decode_pos_result_left);
-//                System.out.println(final_left_outlier);
+//            System.out.println("final_left_outlier_index:"+final_left_outlier_index);
+//            System.out.println(final_left_outlier);
 //            System.out.println("final_left_outlier_index:"+final_left_outlier_index.size());
 //            System.out.println("k1:"+k1);
 //            System.out.println("final_left_outlier:"+final_left_outlier.size());
@@ -1005,7 +982,8 @@ public class RLEBOS {
         if (k2 != 0) {
             ArrayList<Integer> decode_pos_result_right = new ArrayList<>();
             final_right_outlier = decodeOutlier2Bytes(encoded, decode_pos, right_bit_width, k2, decode_pos_result_right);
-//                System.out.println(final_right_outlier_index);
+//            System.out.println("final_right_outlier_index:"+final_right_outlier_index);
+//                System.out.println(final_right_outlier);
 //            System.out.println("final_right_outlier_size:"+final_right_outlier_index.size());
 //            System.out.println("k2:"+k2);
 //            System.out.println("final_right_outlier:"+final_right_outlier.size());
@@ -1017,40 +995,58 @@ public class RLEBOS {
         int pre_v = 0;
         int final_k_end_value = (int) (final_k_start_value + pow(2, bit_width_final));
 
+        int cur_i = 0;
+        int repeat_i = 0;
+        for (int i = 0; i < cur_block_size; i++) {
 
-        for (int i = 0; i < block_size; i++) {
             int current_delta;
             if (left_outlier_i >= k1) {
                 if (right_outlier_i >= k2) {
-                    current_delta =  final_normal.get(normal_i) + final_k_start_value ;
+                    current_delta = final_normal.get(normal_i) + final_k_start_value;
                     normal_i++;
                 } else if (i == final_right_outlier_index.get(right_outlier_i)) {
-                    current_delta =  final_right_outlier.get(right_outlier_i) + final_k_end_value ;
+                    current_delta = final_right_outlier.get(right_outlier_i) + final_k_end_value;
                     right_outlier_i++;
                 } else {
-                    current_delta =  final_normal.get(normal_i) + final_k_start_value ;
+                    current_delta = final_normal.get(normal_i) + final_k_start_value;
                     normal_i++;
                 }
             } else if (i == final_left_outlier_index.get(left_outlier_i)) {
-                current_delta =  final_left_outlier.get(left_outlier_i) ;
+                current_delta = final_left_outlier.get(left_outlier_i);
                 left_outlier_i++;
             } else {
 
                 if (right_outlier_i >= k2) {
-                    current_delta =  final_normal.get(normal_i) + final_k_start_value;
+                    current_delta = final_normal.get(normal_i) + final_k_start_value;
                     normal_i++;
                 } else if (i == final_right_outlier_index.get(right_outlier_i)) {
-                    current_delta =  final_right_outlier.get(right_outlier_i) + final_k_end_value;
+                    current_delta = final_right_outlier.get(right_outlier_i) + final_k_end_value;
                     right_outlier_i++;
                 } else {
-                    current_delta =  final_normal.get(normal_i) + final_k_start_value;
+                    current_delta = final_normal.get(normal_i) + final_k_start_value;
                     normal_i++;
                 }
             }
+            pre_v = current_delta + min_delta;
+            if (repeat_i < count_size) {
+                if (cur_i == repeat_count.get(repeat_i)) {
+                    cur_i += (repeat_count.get(repeat_i+1));
 
-            pre_v = current_delta +min_delta;
-            value_list.add(pre_v);
+                    for (int j = 0; j < repeat_count.get(repeat_i + 1); j++) {
+                        value_list.add(pre_v);
+                    }
+                    repeat_i += 2;
+                }else {
+                    cur_i++;
+                    value_list.add(pre_v);
+                }
+            } else {
+                cur_i++;
+                value_list.add(pre_v);
+            }
         }
+//        System.out.println(cur_i);
+//        System.out.println(value_list.size());
         return decode_pos;
     }
 
@@ -1071,8 +1067,9 @@ public class RLEBOS {
             zero_number = 8 - remain_length % 8;
         }
         ArrayList<Integer> value_list = new ArrayList<>();
-//        for (int k = 0; k < 1; k++) {
+//        for (int k = 33; k < 34; k++) {
         for (int k = 0; k < block_num; k++) {
+//            System.out.println(k);
             decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, block_size);
         }
 
@@ -1087,6 +1084,7 @@ public class RLEBOS {
         }
         return value_list;
     }
+
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
         String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
 //        String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
@@ -1138,55 +1136,6 @@ public class RLEBOS {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-//        String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-outlier\\";
-//        String output_parent_dir = parent_dir + "vldb\\compression_ratio\\outlier";
-//        String input_parent_dir = parent_dir + "iotdb_test_small\\";
-//        ArrayList<String> input_path_list = new ArrayList<>();
-//        ArrayList<String> output_path_list = new ArrayList<>();
-//        ArrayList<String> dataset_name = new ArrayList<>();
-//        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-//        dataset_name.add("CS-Sensors");
-//        dataset_name.add("Metro-Traffic");
-//        dataset_name.add("USGS-Earthquakes");
-//        dataset_name.add("YZ-Electricity");
-//        dataset_name.add("GW-Magnetic");
-//        dataset_name.add("TY-Fuel");
-//        dataset_name.add("Cyber-Vehicle");
-//        dataset_name.add("Vehicle-Charge");
-//        dataset_name.add("Nifty-Stocks");
-//        dataset_name.add("TH-Climate");
-//        dataset_name.add("TY-Transport");
-//        dataset_name.add("EPM-Education");
-//
-//        for (int i = 0; i < dataset_name.size(); i++) {
-//            input_path_list.add(input_parent_dir + dataset_name.get(i));
-//        }
-//
-//        output_path_list.add(output_parent_dir + "\\CS-Sensors_ratio.csv"); // 0
-//        dataset_block_size.add(1024);
-//        output_path_list.add(output_parent_dir + "\\Metro-Traffic_ratio.csv");// 1
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
-//        dataset_block_size.add(256);
-//        output_path_list.add(output_parent_dir + "\\GW-Magnetic_ratio.csv"); //4
-//        dataset_block_size.add(128);
-//        output_path_list.add(output_parent_dir + "\\TY-Fuel_ratio.csv");//5
-//        dataset_block_size.add(64);
-//        output_path_list.add(output_parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
-//        dataset_block_size.add(128);
-//        output_path_list.add(output_parent_dir + "\\Vehicle-Charge_ratio.csv");//7
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\Nifty-Stocks_ratio.csv");//8
-//        dataset_block_size.add(256);
-//        output_path_list.add(output_parent_dir + "\\TH-Climate_ratio.csv");//9
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\TY-Transport_ratio.csv");//10
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\EPM-Education_ratio.csv");//11
-//        dataset_block_size.add(512);
-
 
         ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
         for (int i = 0; i < 2; i++) {
@@ -1230,48 +1179,35 @@ public class RLEBOS {
                 ArrayList<Integer> data2 = new ArrayList<>();
                 ArrayList<Integer> data_decoded = new ArrayList<>();
 
-
-//                for (int index : columnIndexes) {
-                // add a column to "data"
-//                    System.out.println(index);
-
                 loader.readHeaders();
-//                    data.clear();
                 while (loader.readRecord()) {
-//                        String value = loader.getValues()[index];
                     data1.add(Integer.valueOf(loader.getValues()[0]));
                     data2.add(Integer.valueOf(loader.getValues()[1]));
-//                        data.add(Integer.valueOf(value));
                 }
-//                    System.out.println(data2);
                 inputStream.close();
 
                 long encodeTime = 0;
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 10;
+                int repeatTime2 = 1;
                 for (int i = 0; i < repeatTime; i++) {
                     long s = System.nanoTime();
                     ArrayList<Byte> buffer1 = new ArrayList<>();
                     ArrayList<Byte> buffer2 = new ArrayList<>();
-                    long buffer_bits = 0;
-                    for (int repeat = 0; repeat < repeatTime2; repeat++){
-//                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
+                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
                         buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i));
                     }
-//                        System.out.println(buffer2.size());
-//                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
 
                     long e = System.nanoTime();
                     encodeTime += ((e - s) / repeatTime2);
-//                        compressed_size += buffer1.size();
+
                     compressed_size += buffer2.size();
                     double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
                     ratio += ratioTmp;
                     s = System.nanoTime();
-//                    for(int repeat=0;repeat<repeatTime2;repeat++)
-//                        data_decoded = BOSDecoder(buffer2);
+                    for (int repeat = 0; repeat < repeatTime2; repeat++)
+                        data_decoded = BOSDecoder(buffer2);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
                 }
@@ -1283,7 +1219,7 @@ public class RLEBOS {
 
                 String[] record = {
                         f.toString(),
-                        "RLE+BOS",
+                        "RLE+BOS-O",
                         String.valueOf(encodeTime),
                         String.valueOf(decodeTime),
                         String.valueOf(data1.size()),
@@ -1292,12 +1228,10 @@ public class RLEBOS {
                 };
                 writer.writeRecord(record);
                 System.out.println(ratio);
-
-//                }
-
-//
+//                break;
             }
             writer.close();
+
 
         }
     }
