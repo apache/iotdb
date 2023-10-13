@@ -182,4 +182,16 @@ public class PipeProcessorSubtask extends PipeSubtask {
   public PipeEventCollector getOutputEventCollector() {
     return outputEventCollector;
   }
+
+  public int getTabletInsertionEventCount() {
+    return outputEventCollector.getTabletInsertionEventCount();
+  }
+
+  public int getTsFileInsertionEventCount() {
+    return outputEventCollector.getTsFileInsertionEventCount();
+  }
+
+  public int getPipeHeartbeatEventCount() {
+    return outputEventCollector.getPipeHeartbeatEventCount();
+  }
 }

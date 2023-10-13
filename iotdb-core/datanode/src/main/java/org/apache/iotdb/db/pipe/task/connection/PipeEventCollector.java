@@ -109,7 +109,15 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
     bufferQueue.clear();
   }
 
-  public EnrichedDeque<Event> getBufferQueue() {
-    return bufferQueue;
+  public int getTabletInsertionEventCount() {
+    return bufferQueue.getTabletInsertionEventCount();
+  }
+
+  public int getTsFileInsertionEventCount() {
+    return bufferQueue.getTsFileInsertionEventCount();
+  }
+
+  public int getPipeHeartbeatEventCount() {
+    return bufferQueue.getPipeHeartbeatEventCount();
   }
 }

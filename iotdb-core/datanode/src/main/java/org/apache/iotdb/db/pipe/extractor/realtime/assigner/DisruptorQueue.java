@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
+import org.apache.iotdb.db.pipe.metric.PipeEventCounter;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.EventHandler;
@@ -41,6 +42,8 @@ public class DisruptorQueue {
   private final Disruptor<EventContainer> disruptor;
   private final RingBuffer<EventContainer> ringBuffer;
 
+  private final PipeEventCounter eventCounter = new PipeEventCounter();
+
   public DisruptorQueue(EventHandler<PipeRealtimeEvent> eventHandler) {
     disruptor =
         new Disruptor<>(
@@ -50,8 +53,11 @@ public class DisruptorQueue {
             ProducerType.MULTI,
             new BlockingWaitStrategy());
     disruptor.handleEventsWith(
-        (container, sequence, endOfBatch) ->
-            eventHandler.onEvent(container.getEvent(), sequence, endOfBatch));
+        (container, sequence, endOfBatch) -> {
+          eventHandler.onEvent(container.getEvent(), sequence, endOfBatch);
+          EnrichedEvent innerEvent = container.getEvent().getEvent();
+          eventCounter.increaseEventCount(innerEvent);
+        });
     disruptor.setDefaultExceptionHandler(new DisruptorQueueExceptionHandler());
 
     ringBuffer = disruptor.start();
@@ -63,6 +69,7 @@ public class DisruptorQueue {
       ((PipeHeartbeatEvent) internalEvent).recordDisruptorSize(ringBuffer);
     }
     ringBuffer.publishEvent((container, sequence, o) -> container.setEvent(event), event);
+    eventCounter.decreaseEventCount(internalEvent);
   }
 
   public void clear() {
@@ -82,5 +89,17 @@ public class DisruptorQueue {
     public void setEvent(PipeRealtimeEvent event) {
       this.event = event;
     }
+  }
+
+  public int getTabletInsertionEventCount() {
+    return eventCounter.getTabletInsertionEventCount();
+  }
+
+  public int getTsFileInsertionEventCount() {
+    return eventCounter.getTsFileInsertionEventCount();
+  }
+
+  public int getPipeHeartbeatEventCount() {
+    return eventCounter.getPipeHeartbeatEventCount();
   }
 }

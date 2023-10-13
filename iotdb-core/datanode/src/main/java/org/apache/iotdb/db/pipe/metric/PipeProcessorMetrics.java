@@ -84,21 +84,21 @@ public class PipeProcessorMetrics implements IMetricSet {
         Metric.BUFFERED_TABLET_COUNT.toString(),
         MetricLevel.IMPORTANT,
         taskMap.get(taskID),
-        o -> o.getOutputEventCollector().getBufferQueue().getTabletInsertionEventCount(),
+        PipeProcessorSubtask::getTabletInsertionEventCount,
         Tag.NAME.toString(),
         taskID);
     metricService.createAutoGauge(
         Metric.BUFFERED_TS_FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         taskMap.get(taskID),
-        o -> o.getOutputEventCollector().getBufferQueue().getTsFileInsertionEventCount(),
+        PipeProcessorSubtask::getTsFileInsertionEventCount,
         Tag.NAME.toString(),
         taskID);
     metricService.createAutoGauge(
         Metric.BUFFERED_HEARTBEAT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         taskMap.get(taskID),
-        o -> o.getOutputEventCollector().getBufferQueue().getPipeHeartbeatEventCount(),
+        PipeProcessorSubtask::getPipeHeartbeatEventCount,
         Tag.NAME.toString(),
         taskID);
   }
