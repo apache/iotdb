@@ -56,7 +56,7 @@ public class DisruptorQueue {
         (container, sequence, endOfBatch) -> {
           eventHandler.onEvent(container.getEvent(), sequence, endOfBatch);
           EnrichedEvent innerEvent = container.getEvent().getEvent();
-          eventCounter.increaseEventCount(innerEvent);
+          eventCounter.decreaseEventCount(innerEvent);
         });
     disruptor.setDefaultExceptionHandler(new DisruptorQueueExceptionHandler());
 
@@ -69,7 +69,7 @@ public class DisruptorQueue {
       ((PipeHeartbeatEvent) internalEvent).recordDisruptorSize(ringBuffer);
     }
     ringBuffer.publishEvent((container, sequence, o) -> container.setEvent(event), event);
-    eventCounter.decreaseEventCount(internalEvent);
+    eventCounter.increaseEventCount(internalEvent);
   }
 
   public void clear() {

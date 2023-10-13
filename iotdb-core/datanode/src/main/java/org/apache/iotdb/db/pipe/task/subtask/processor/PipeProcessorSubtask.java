@@ -179,10 +179,6 @@ public class PipeProcessorSubtask extends PipeSubtask {
     return taskID.hashCode();
   }
 
-  public PipeEventCollector getOutputEventCollector() {
-    return outputEventCollector;
-  }
-
   public int getTabletInsertionEventCount() {
     return outputEventCollector.getTabletInsertionEventCount();
   }
