@@ -30,6 +30,7 @@ public class PipeMetrics implements IMetricSet {
     PipeExtractorMetrics.getInstance().bindTo(metricService);
     PipeProcessorMetrics.getInstance().bindTo(metricService);
     PipeConnectorMetrics.getInstance().bindTo(metricService);
+    PipeHeartbeatEventMetrics.getInstance().bindTo(metricService);
   }
 
   @Override
@@ -38,6 +39,7 @@ public class PipeMetrics implements IMetricSet {
     PipeExtractorMetrics.getInstance().unbindFrom(metricService);
     PipeProcessorMetrics.getInstance().unbindFrom(metricService);
     PipeConnectorMetrics.getInstance().unbindFrom(metricService);
+    PipeHeartbeatEventMetrics.getInstance().unbindFrom(metricService);
   }
 
   private static class PipeMetricsHolder {

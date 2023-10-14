@@ -117,6 +117,7 @@ public enum Metric {
   PIPE_CONNECTOR_TABLET_TRANSFER("pipe_connector_tablet_transfer"),
   PIPE_CONNECTOR_TS_FILE_TRANSFER("pipe_connector_ts_file_transfer"),
   PIPE_CONNECTOR_HEARTBEAT_TRANSFER("pipe_connector_heartbeat_transfer"),
+  PIPE_HEARTBEAT_EVENT("pipe_heartbeat_event"),
   ;
 
   final String value;
