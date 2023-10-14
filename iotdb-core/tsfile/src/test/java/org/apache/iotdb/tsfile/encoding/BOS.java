@@ -798,7 +798,7 @@ public class BOS {
 //        int final_alpha = ((k1 + k2) * getBitWith(block_size)) <= (block_size + k1 + k2) ? 1 : 0;
 
 
-        BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
+        encode_pos=  BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
              min_delta,encode_pos, cur_byte);
 
 //        System.out.println(cur_byte.size());
@@ -1395,7 +1395,6 @@ public class BOS {
                 double ratio = 0;
                 double compressed_size = 0;
                 int repeatTime2 = 500;
-                for (int i = 0; i < repeatTime; i++) {
 
 //                    ArrayList<Byte> buffer2 = new ArrayList<>();
                     int length = 0;
@@ -1417,12 +1416,6 @@ public class BOS {
                         data_decoded = BOSDecoder(encoded_result);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
-                }
-
-                ratio /= repeatTime;
-                compressed_size /= repeatTime;
-                encodeTime /= repeatTime;
-                decodeTime /= repeatTime;
 
 
                 String[] record = {
@@ -1620,8 +1613,6 @@ public class BOS {
                     double compressed_size = 0;
                     int repeatTime2 = 500;
 
-
-                    for (int i = 0; i < repeatTime; i++) {
                         long s = System.nanoTime();
                         ArrayList<Byte> buffer2 = new ArrayList<>();
                         for (int repeat = 0; repeat < repeatTime2; repeat++) {
@@ -1638,12 +1629,6 @@ public class BOS {
                             data_decoded = BOSDecoder(encoded_result);
                         e = System.nanoTime();
                         decodeTime += ((e - s) / repeatTime2);
-                    }
-
-                    ratio /= repeatTime;
-                    compressed_size /= repeatTime;
-                    encodeTime /= repeatTime;
-                    decodeTime /= repeatTime;
 
                     String[] record = {
                             f.toString(),
@@ -1958,7 +1943,6 @@ public class BOS {
                     double ratio = 0;
                     double compressed_size = 0;
                     int repeatTime2 = 500;
-                    for (int i = 0; i < repeatTime; i++) {
                         long s = System.nanoTime();
                         ArrayList<Byte> buffer1 = new ArrayList<>();
                         ArrayList<Byte> buffer2 = new ArrayList<>();
@@ -1981,12 +1965,7 @@ public class BOS {
                             data_decoded = BOSDecoder(encoded_result);
                         e = System.nanoTime();
                         decodeTime += ((e - s) / repeatTime2);
-                    }
 
-                    ratio /= repeatTime;
-                    compressed_size /= repeatTime;
-                    encodeTime /= repeatTime;
-                    decodeTime /= repeatTime;
                 for (int q_exp = 0; q_exp < 8; q_exp++) {
                     int q = (int) Math.pow(2, q_exp);
                     System.out.println(q);
