@@ -806,7 +806,8 @@ public class LogicalPlanBuilder {
                 orderByParameter,
                 outputColumnNames,
                 deviceToMeasurementIndexesMap,
-                deviceNameToSourceNodesMap));
+                deviceNameToSourceNodesMap,
+                valueFilterLimit));
       }
 
       this.root = topKNode;
@@ -829,7 +830,8 @@ public class LogicalPlanBuilder {
               orderByParameter,
               outputColumnNames,
               deviceToMeasurementIndexesMap,
-              deviceNameToSourceNodesMap);
+              deviceNameToSourceNodesMap,
+              -1);
     }
 
     context.getTypeProvider().setType(DEVICE, TSDataType.TEXT);
@@ -865,14 +867,17 @@ public class LogicalPlanBuilder {
               outputColumnNames,
               deviceName,
               deviceToMeasurementIndexesMap.get(deviceName));
-      singleDeviceViewNode.addChild(subPlan);
+
+      // put LIMIT-NODE below of SingleDeviceViewNode if exists value filter
       if (valueFilterLimit > 0) {
-        parent.addChild(
-            new LimitNode(
-                context.getQueryId().genPlanNodeId(), singleDeviceViewNode, valueFilterLimit));
+        LimitNode limitNode =
+            new LimitNode(context.getQueryId().genPlanNodeId(), subPlan, valueFilterLimit);
+        singleDeviceViewNode.addChild(limitNode);
       } else {
-        parent.addChild(singleDeviceViewNode);
+        singleDeviceViewNode.addChild(subPlan);
       }
+
+      parent.addChild(singleDeviceViewNode);
     }
   }
 
@@ -880,7 +885,8 @@ public class LogicalPlanBuilder {
       OrderByParameter orderByParameter,
       List<String> outputColumnNames,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
-      Map<String, PlanNode> deviceNameToSourceNodesMap) {
+      Map<String, PlanNode> deviceNameToSourceNodesMap,
+      long valueFilterLimit) {
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             context.getQueryId().genPlanNodeId(),
@@ -891,7 +897,13 @@ public class LogicalPlanBuilder {
     for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
       String deviceName = entry.getKey();
       PlanNode subPlan = entry.getValue();
-      deviceViewNode.addChildDeviceNode(deviceName, subPlan);
+      if (valueFilterLimit > 0) {
+        LimitNode limitNode =
+            new LimitNode(context.getQueryId().genPlanNodeId(), subPlan, valueFilterLimit);
+        deviceViewNode.addChildDeviceNode(deviceName, limitNode);
+      } else {
+        deviceViewNode.addChildDeviceNode(deviceName, subPlan);
+      }
     }
     return deviceViewNode;
   }

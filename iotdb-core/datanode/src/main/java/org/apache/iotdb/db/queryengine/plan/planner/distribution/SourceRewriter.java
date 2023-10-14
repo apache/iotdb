@@ -955,8 +955,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   public List<PlanNode> visitLimit(LimitNode node, DistributionPlanContext context) {
     List<PlanNode> result = new ArrayList<>();
     for (PlanNode planNode : rewrite(node.getChild(), context)) {
-      PlanNode newNode = node.clone();
-      newNode.addChild(planNode);
+      LimitNode newNode =
+          new LimitNode(
+              context.queryContext.getQueryId().genPlanNodeId(), planNode, node.getLimit());
       result.add(newNode);
     }
     return result;
