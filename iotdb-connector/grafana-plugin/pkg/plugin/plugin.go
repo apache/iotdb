@@ -52,12 +52,12 @@ var (
 )
 
 // ApacheIoTDBDatasource creates a new datasource instance.
-func ApacheIoTDBDatasource(ctx context.Context,d backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+func ApacheIoTDBDatasource(ctx context.Context, d backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 	var dm dataSourceModel
 	if err := json.Unmarshal(d.JSONData, &dm); err != nil {
 		return nil, err
 	}
-	ops, err := d.HTTPClientOptions()
+	ops, err := d.HTTPClientOptions(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("http client options: %w", err)
 	}
