@@ -20,134 +20,134 @@
 
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <parent>
-    <groupId>org.apache.iotdb</groupId>
-    <artifactId>iotdb-connector</artifactId>
-    <version>1.3.0-SNAPSHOT</version>
-  </parent>
-  <artifactId>flink-tsfile-connector</artifactId>
-  <name>IoTDB: Connector: Apache Flink TSFile</name>
-  <dependencies>
-    <dependency>
-      <groupId>org.apache.iotdb</groupId>
-      <artifactId>tsfile</artifactId>
-      <version>1.3.0-SNAPSHOT</version>
-      <exclusions>
-        <!--
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.apache.iotdb</groupId>
+        <artifactId>iotdb-connector</artifactId>
+        <version>1.3.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>flink-tsfile-connector</artifactId>
+    <name>IoTDB: Connector: Apache Flink TSFile</name>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>tsfile</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+            <exclusions>
+                <!--
                     We need the flink-shaded-zookeeper-3 dependency for some shaded classes.
                     Unfortunately, this package also contains commons-io classes. In order
                     to have only one implementation, we're excluding the official commons-io
                     package here.
                 -->
-        <exclusion>
-          <groupId>commons-io</groupId>
-          <artifactId>commons-io</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.iotdb</groupId>
-      <artifactId>hadoop-tsfile</artifactId>
-      <version>1.3.0-SNAPSHOT</version>
-      <exclusions>
-        <!--
+                <exclusion>
+                    <groupId>commons-io</groupId>
+                    <artifactId>commons-io</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>hadoop-tsfile</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+            <exclusions>
+                <!--
                    We need the flink-shaded-zookeeper-3 dependency for some shaded classes.
                    Unfortunately, this package also contains commons-io classes. In order
                    to have only one implementation, we're excluding the official commons-io
                    package here.
                -->
-        <exclusion>
-          <groupId>commons-io</groupId>
-          <artifactId>commons-io</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-common</artifactId>
-      <exclusions>
-        <!--
+                <exclusion>
+                    <groupId>commons-io</groupId>
+                    <artifactId>commons-io</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <exclusions>
+                <!--
                     We need the flink-shaded-zookeeper-3 dependency for some shaded classes.
                     Unfortunately, this package also contains commons-io classes. In order
                     to have only one implementation, we're excluding the official commons-io
                     package here.
                 -->
-        <exclusion>
-          <groupId>commons-io</groupId>
-          <artifactId>commons-io</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.flink</groupId>
-      <artifactId>flink-hadoop-fs</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.flink</groupId>
-      <artifactId>flink-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.google.code.findbugs</groupId>
-      <artifactId>jsr305</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.flink</groupId>
-      <artifactId>flink-java</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.flink</groupId>
-      <artifactId>flink-streaming-java</artifactId>
-      <scope>test</scope>
-      <exclusions>
-        <!--
+                <exclusion>
+                    <groupId>commons-io</groupId>
+                    <artifactId>commons-io</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-hadoop-fs</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-java</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-streaming-java</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <!--
                    We need the flink-shaded-zookeeper-3 dependency for some shaded classes.
                    Unfortunately, this package also contains commons-io classes. In order
                    to have only one implementation, we're excluding the official commons-io
                    package here.
                -->
-        <exclusion>
-          <groupId>commons-io</groupId>
-          <artifactId>commons-io</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.flink</groupId>
-      <artifactId>flink-clients</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.flink</groupId>
-      <artifactId>flink-shaded-zookeeper-3</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-client</artifactId>
-      <scope>test</scope>
-    </dependency>
-  </dependencies>
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-dependency-plugin</artifactId>
-        <configuration>
-          <usedDependencies combine.children="append">
-            <!-- We need these dependencies as they provide runtime dependencies for tests -->
-            <usedDependency>org.apache.flink:flink-clients</usedDependency>
-            <usedDependency>org.apache.hadoop:hadoop-client</usedDependency>
-            <usedDependency>org.apache.flink:flink-shaded-zookeeper-3</usedDependency>
-          </usedDependencies>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
+                <exclusion>
+                    <groupId>commons-io</groupId>
+                    <artifactId>commons-io</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-clients</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-shaded-zookeeper-3</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <usedDependencies combine.children="append">
+                        <!-- We need these dependencies as they provide runtime dependencies for tests -->
+                        <usedDependency>org.apache.flink:flink-clients</usedDependency>
+                        <usedDependency>org.apache.hadoop:hadoop-client</usedDependency>
+                        <usedDependency>org.apache.flink:flink-shaded-zookeeper-3</usedDependency>
+                    </usedDependencies>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

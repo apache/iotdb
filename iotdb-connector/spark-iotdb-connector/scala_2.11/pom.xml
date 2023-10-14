@@ -20,31 +20,31 @@
 
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <parent>
-    <groupId>org.apache.iotdb</groupId>
-    <artifactId>spark-iotdb-connector</artifactId>
-    <version>1.3.0-SNAPSHOT</version>
-  </parent>
-  <artifactId>spark-iotdb-connector_2.11</artifactId>
-  <name>IoTDB: Connector: Apache Spark (Scala 2.11)</name>
-  <properties>
-    <scala.library.version>2.11.12</scala.library.version>
-    <scala.version>2.11</scala.version>
-    <!-- It seems spark catalyst is only available till this version -->
-    <spark.version>2.4.8</spark.version>
-  </properties>
-  <build>
-    <sourceDirectory>../src/main/scala</sourceDirectory>
-    <plugins>
-      <plugin>
-        <groupId>org.scala-tools</groupId>
-        <artifactId>maven-scala-plugin</artifactId>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-      </plugin>
-    </plugins>
-  </build>
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.apache.iotdb</groupId>
+        <artifactId>spark-iotdb-connector</artifactId>
+        <version>1.3.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>spark-iotdb-connector_2.11</artifactId>
+    <name>IoTDB: Connector: Apache Spark (Scala 2.11)</name>
+    <properties>
+        <scala.library.version>2.11.12</scala.library.version>
+        <scala.version>2.11</scala.version>
+        <!-- It seems spark catalyst is only available till this version -->
+        <spark.version>2.4.8</spark.version>
+    </properties>
+    <build>
+        <sourceDirectory>../src/main/scala</sourceDirectory>
+        <plugins>
+            <plugin>
+                <groupId>org.scala-tools</groupId>
+                <artifactId>maven-scala-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 </project>
