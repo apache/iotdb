@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
@@ -730,11 +729,6 @@ public class QueryExecution implements IQueryExecution {
 
   public DistributedQueryPlan getDistributedPlan() {
     return distributedPlan;
-  }
-
-  @TestOnly
-  public void setLogicalPlan(LogicalQueryPlan logicalPlan) {
-    this.logicalPlan = logicalPlan;
   }
 
   public LogicalQueryPlan getLogicalPlan() {
