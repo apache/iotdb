@@ -7,14 +7,15 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Collections;
 
 import static java.lang.Math.pow;
 
-public class BOSAmortization {
+public class BOSAmortizationTest {
 
     public static int getBitWith(int num) {
         if (num == 0) return 1;
@@ -41,15 +42,27 @@ public class BOSAmortization {
 //        bytes[3] = (byte) integer;
 //        return bytes;
     }
-    public static void intByte2Bytes(int integer, ArrayList<Byte> cur_byte) {
-        cur_byte.add((byte) (integer));
+    public static void int2Bytes(int integer, ByteBuffer cur_byte) {
+        cur_byte.put((byte) (integer >> 24));
+        cur_byte.put((byte) (integer >> 16));
+        cur_byte.put((byte) (integer >> 8));
+        cur_byte.put((byte) (integer));
+//        byte[] bytes = new byte[4];
+//        bytes[0] = (byte) (integer >> 24);
+//        bytes[1] = (byte) (integer >> 16);
+//        bytes[2] = (byte) (integer >> 8);
+//        bytes[3] = (byte) integer;
+//        return bytes;
+    }
+    public static void intByte2Bytes(int integer, ByteBuffer cur_byte) {
+        cur_byte.put((byte) (integer));
     }
 
-    private static void long2intBytes(long integer, ArrayList<Byte> cur_byte) {
-        cur_byte.add((byte) (integer >> 24));
-        cur_byte.add((byte) (integer >> 16));
-        cur_byte.add((byte) (integer >> 8));
-        cur_byte.add((byte) (integer));
+    private static void long2intBytes(long integer, ByteBuffer cur_byte) {
+        cur_byte.put((byte) (integer >> 24));
+        cur_byte.put((byte) (integer >> 16));
+        cur_byte.put((byte) (integer >> 8));
+        cur_byte.put((byte) (integer));
     }
 
 
@@ -110,115 +123,48 @@ public class BOSAmortization {
         }
         return result;
     }
-    public static void pack8Values(ArrayList<Integer> values, int offset, int width, ArrayList<Byte> encoded_result) {
-        int bufIdx = 0;
-        int valueIdx = offset;
-        // remaining bits for the current unfinished Integer
-        int leftBit = 0;
 
-        while (valueIdx < 8 + offset) {
-            // buffer is used for saving 32 bits as a part of result
-            int buffer = 0;
-            // remaining size of bits in the 'buffer'
-            int leftSize = 32;
+    public static void bitPacking(ArrayList<Integer> numbers, int start, int bit_width,  ByteBuffer encoded_result) {
+        int block_num = numbers.size() / 8;
+//        byte[] result = new byte[bit_width * block_num];
+        for (int i = 0; i < block_num; i++) {
+            for (int j = 0; j < bit_width; j++) {
+                int tmp_int = 0;
+                
+                for (int k = 0; k < 8; k++) {
 
-            // encode the left bits of current Integer to 'buffer'
-            if (leftBit > 0) {
-                buffer |= (values.get(valueIdx) << (32 - leftBit));
-                leftSize -= leftBit;
-                leftBit = 0;
-                valueIdx++;
-            }
-
-            while (leftSize >= width && valueIdx < 8 + offset) {
-                // encode one Integer to the 'buffer'
-                buffer |= (values.get(valueIdx)<< (leftSize - width));
-                leftSize -= width;
-                valueIdx++;
-            }
-            // If the remaining space of the buffer can not save the bits for one Integer,
-            if (leftSize > 0 && valueIdx < 8 + offset) {
-                // put the first 'leftSize' bits of the Integer into remaining space of the
-                // buffer
-                buffer |= (values.get(valueIdx) >>> (width - leftSize));
-                leftBit = width - leftSize;
-            }
-
-            // put the buffer into the final result
-            for (int j = 0; j < 4; j++) {
-                encoded_result.add ((byte) ((buffer >>> ((3 - j) * 8)) & 0xFF));
-                bufIdx++;
-                if (bufIdx >= width) {
-                    return;
+                    tmp_int += (((numbers.get(i * 8 + k + start) >> j) % 2) << k);
                 }
+                encoded_result.put((byte) tmp_int);
+//                result[i * bit_width + j] = (byte) tmp_int;
             }
         }
-    }
-
-    public static void unpack8Values(ArrayList<Byte> encoded, int offset,int width,  ArrayList<Integer> result_list) {
-        int byteIdx = offset;
-        long buffer = 0;
-        // total bits which have read from 'buf' to 'buffer'. i.e.,
-        // number of available bits to be decoded.
-        int totalBits = 0;
-        int valueIdx = 0;
-
-        while (valueIdx < 8) {
-            // If current available bits are not enough to decode one Integer,
-            // then add next byte from buf to 'buffer' until totalBits >= width
-            while (totalBits < width) {
-                buffer = (buffer << 8) | (encoded.get(byteIdx) & 0xFF);
-                byteIdx++;
-                totalBits += 8;
-            }
-
-            // If current available bits are enough to decode one Integer,
-            // then decode one Integer one by one until left bits in 'buffer' is
-            // not enough to decode one Integer.
-            while (totalBits >= width && valueIdx < 8) {
-                result_list.add ((int) (buffer >>> (totalBits - width)));
-                valueIdx++;
-                totalBits -= width;
-                buffer = buffer & ((1 << totalBits) - 1);
-            }
-        }
-    }
-
-    public static void bitPacking(ArrayList<Integer> numbers, int start, int bit_width,  ArrayList<Byte> encoded_result) {
-        int block_num = (numbers.size()-start) / 8;
-        for(int i=0;i<block_num;i++){
-            pack8Values( numbers, start+i*8, bit_width, encoded_result);
-        }
-
+//        return result;
     }
 
     public static ArrayList<Integer> decodeBitPacking(
             ArrayList<Byte> encoded, int decode_pos, int bit_width, int block_size) {
         ArrayList<Integer> result_list = new ArrayList<>();
-        int block_num = (block_size - 1) / 8;
-
-        for (int i = 0; i < block_num; i++) { // bitpacking  纵向8个，bit width是多少列
-            unpack8Values( encoded, decode_pos, bit_width,  result_list);
+        for (int i = 0; i < (block_size - 1) / 8; i++) { // bitpacking  纵向8个，bit width是多少列
+            int[] val8 = new int[8];
+            for (int j = 0; j < 8; j++) {
+                val8[j] = 0;
+            }
+            for (int j = 0; j < bit_width; j++) {
+                byte tmp_byte = encoded.get(decode_pos + bit_width - 1 - j);
+                byte[] bit8 = new byte[8];
+                for (int k = 0; k < 8; k++) {
+                    bit8[k] = (byte) (tmp_byte & 1);
+                    tmp_byte = (byte) (tmp_byte >> 1);
+                }
+                for (int k = 0; k < 8; k++) {
+                    val8[k] = val8[k] * 2 + bit8[k];
+                }
+            }
+            for (int j = 0; j < 8; j++) {
+                result_list.add(val8[j]);
+            }
             decode_pos += bit_width;
-//            int[] val8 = new int[8];
-//            for (int j = 0; j < 8; j++) {
-//                val8[j] = 0;
-//            }
-//            for (int j = 0; j < bit_width; j++) {
-//                byte tmp_byte = encoded.get(decode_pos + bit_width - 1 - j);
-//                byte[] bit8 = new byte[8];
-//                for (int k = 0; k < 8; k++) {
-//                    bit8[k] = (byte) (tmp_byte & 1);
-//                    tmp_byte = (byte) (tmp_byte >> 1);
-//                }
-//                for (int k = 0; k < 8; k++) {
-//                    val8[k] = val8[k] * 2 + bit8[k];
-//                }
-//            }
-//            for (int j = 0; j < 8; j++) {
-//                result_list.add(val8[j]);
-//            }
-//            decode_pos += bit_width;
         }
         return result_list;
     }
@@ -320,7 +266,7 @@ public class BOSAmortization {
     public static void encodeOutlier2Bytes(
             ArrayList<Integer> ts_block_delta,
             int bit_width,
-                    ArrayList<Byte> encoded_result) {
+                    ByteBuffer encoded_result) {
 //        ArrayList<Byte> encoded_result = new ArrayList<>();
 //         encode value
         bitPacking(ts_block_delta, 0, bit_width, encoded_result);
@@ -340,8 +286,6 @@ public class BOSAmortization {
                 cur_bit_width = bit_width - 32 + cur_number_bits;
                 cur_remaining += ((cur_value >> cur_bit_width));
                 long2intBytes(cur_remaining,encoded_result);
-//                byte[] cur_remaining_byte = long2intBytes(cur_remaining);
-//                for (byte b : cur_remaining_byte) encoded_result.add(b);
                 cur_remaining = 0;
                 cur_number_bits = 0;
             }
@@ -418,7 +362,7 @@ public class BOSAmortization {
                                       int max_delta_value,
                                       ArrayList<Integer> min_delta,
 //                                      int bit_width,
-                                      ArrayList<Byte> cur_byte) {
+                                      ByteBuffer cur_byte) {
         int block_size = ts_block_delta.size();
         // ------------------------- encode data -----------------------------------------
 //        if (final_left_max == 0 && final_k_end_value == max_delta_value) {
@@ -617,8 +561,7 @@ public class BOSAmortization {
 //            System.out.println(final_right_outlier);
 //        }
     }
-
-    private static void BOSBlockEncoder(ArrayList<Integer> ts_block, int block_i, int block_size, int supple_length, int q, int k, ArrayList<Byte> cur_byte) {
+    private static void BOSBlockEncoder(ArrayList<Integer> ts_block, int block_i, int block_size, int supple_length, int q, int k, ByteBuffer cur_byte) {
 
 
 //        ArrayList<Byte> cur_byte = new ArrayList<>();
@@ -741,10 +684,10 @@ public class BOSAmortization {
 //        return cur_byte;
     }
 
-    private static ArrayList<Byte> BOSBlockEncoder(ArrayList<Integer> ts_block, int supple_length, int q, int k) {
+    private static void BOSBlockEncoder(ArrayList<Integer> ts_block, int supple_length, int q, int k, ByteBuffer cur_byte) {
 
         int block_size = ts_block.size() - 1;
-        ArrayList<Byte> cur_byte = new ArrayList<>();
+//        ArrayList<Byte> cur_byte = new ArrayList<>();
 
         ArrayList<Integer> min_delta = new ArrayList<>();
         ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
@@ -774,7 +717,7 @@ public class BOSAmortization {
         if(sigma ==0){
             BOSEncodeBits(ts_block_delta, 0, 0, 0, final_right_max,
                     min_delta,  cur_byte);
-            return cur_byte;
+//            return cur_byte;
         }
 
 //        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
@@ -868,10 +811,10 @@ public class BOSAmortization {
         BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, final_right_max,
               min_delta,  cur_byte);
 
-        return cur_byte;
+//        return cur_byte;
     }
 
-    public static ArrayList<Byte> BOSEncoder(
+    public static ByteBuffer BOSEncoder(
             ArrayList<Integer> data, int block_size, String dataset_name, int q,int k) {
         block_size++;
 //        int length_all = data.size();
@@ -883,14 +826,22 @@ public class BOSAmortization {
 //        byte[] block_size_byte = int2Bytes(block_size);
 //        System.arraycopy(block_size_byte, 0, encoded_result1, encode_pos, block_size_byte.length);
 
-        ArrayList<Byte> encoded_result = new ArrayList<Byte>();
+        ByteBuffer encoded_result = ByteBuffer.allocate(data.size()*4);
+//        System.out.println(encoded_result.remaining());
         int length_all = data.size();
-        byte[] length_all_bytes = int2Bytes(length_all);
-        for (byte b : length_all_bytes) encoded_result.add(b);
+        int2Bytes(length_all,encoded_result);
         int block_num = length_all / block_size;
+        int2Bytes(block_size,encoded_result);
 
-        byte[] block_size_byte = int2Bytes(block_size);
-        for (byte b : block_size_byte) encoded_result.add(b);
+//        System.out.println(encoded_result.remaining());
+//        ArrayList<Byte> encoded_result = new ArrayList<Byte>();
+//        int length_all = data.size();
+//        byte[] length_all_bytes = int2Bytes(length_all);
+//        for (byte b : length_all_bytes) encoded_result.add(b);
+//        int block_num = length_all / block_size;
+//
+//        byte[] block_size_byte = int2Bytes(block_size);
+//        for (byte b : block_size_byte) encoded_result.add(b);
 
 
 //        for (int i = 0; i < 1; i++) {
@@ -906,8 +857,7 @@ public class BOSAmortization {
         int remaining_length = length_all - block_num * block_size;
         if (remaining_length <= 3) {
             for (int i = remaining_length; i > 0; i--) {
-                byte[] timestamp_end_bytes = int2Bytes(data.get(data.size() - i));
-                for (byte b : timestamp_end_bytes) encoded_result.add(b);
+                int2Bytes(data.get(data.size() - i),encoded_result);
             }
 
         } else {
@@ -927,8 +877,7 @@ public class BOSAmortization {
             }
 
 
-            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, supple_length, q,k);
-            encoded_result.addAll(cur_encoded_result);
+            BOSBlockEncoder(ts_block, supple_length, q,k,encoded_result);
 //            System.out.println("encoded_result.size: "+cur_encoded_result.size());
         }
 
@@ -1320,22 +1269,23 @@ public class BOSAmortization {
                 int repeatTime2 = 100;
                 for (int i = 0; i < repeatTime; i++) {
 
+                    ByteBuffer buffer1 = null;
                     ArrayList<Byte> buffer2 = new ArrayList<>();
                     long s = System.nanoTime();
                     for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                        buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i), 1, 1);
+                        buffer1 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i), 1, 1);
                     }
 //                        System.out.println(buffer2.size());
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
 
                     long e = System.nanoTime();
                     encodeTime += ((e - s) / repeatTime2);
-                    compressed_size += buffer2.size();
+                    compressed_size += (data1.size()*4-buffer1.remaining());
                     double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
                     ratio += ratioTmp;
                     s = System.nanoTime();
-                    for (int repeat = 0; repeat < repeatTime2; repeat++)
-                        data_decoded = BOSDecoder(buffer2);
+//                    for (int repeat = 0; repeat < repeatTime2; repeat++)
+//                        data_decoded = BOSDecoder(buffer2);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
                 }
@@ -1357,509 +1307,6 @@ public class BOSAmortization {
                 writer.writeRecord(record);
                 System.out.println(ratio);
 
-//                }
-
-//   break;
-            }
-            writer.close();
-
-        }
-    }
-
-    @Test
-    public void BOSAmortizationVaryBlockSize() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
-//        String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/block_size_amortization";
-        String input_parent_dir = parent_dir + "trans_data/";
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> output_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-        dataset_name.add("CS-Sensors");
-        dataset_name.add("Metro-Traffic");
-        dataset_name.add("USGS-Earthquakes");
-        dataset_name.add("YZ-Electricity");
-        dataset_name.add("GW-Magnetic");
-        dataset_name.add("TY-Fuel");
-        dataset_name.add("Cyber-Vehicle");
-        dataset_name.add("Vehicle-Charge");
-        dataset_name.add("Nifty-Stocks");
-        dataset_name.add("TH-Climate");
-        dataset_name.add("TY-Transport");
-        dataset_name.add("EPM-Education");
-        int repeatTime2 = 10;
-
-        for (int i = 0; i < dataset_name.size(); i++) {
-            input_path_list.add(input_parent_dir + dataset_name.get(i));
-        }
-
-        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-        dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-        dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-        dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
-        dataset_block_size.add(1024);
-
-
-
-        ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
-        for (int i = 0; i < 2; i++) {
-            columnIndexes.add(i, i);
-        }
-
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-
-            String inputPath = input_path_list.get(file_i);
-            System.out.println(inputPath);
-            String Output = output_path_list.get(file_i);
-
-            int repeatTime = 1; // set repeat time
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Block Size",
-                    "Compression Ratio"
-            };
-            writer.writeRecord(head); // write header to output file
-
-            assert tempList != null;
-
-            for (File f : tempList) {
-                System.out.println(f);
-                InputStream inputStream = Files.newInputStream(f.toPath());
-
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Integer> data1 = new ArrayList<>();
-                ArrayList<Integer> data2 = new ArrayList<>();
-                ArrayList<Integer> data_decoded = new ArrayList<>();
-
-
-                loader.readHeaders();
-
-                while (loader.readRecord()) {
-
-                    data1.add(Integer.valueOf(loader.getValues()[0]));
-                    data2.add(Integer.valueOf(loader.getValues()[1]));
-                }
-
-                inputStream.close();
-
-                for (int block_size_i = 13; block_size_i > 3; block_size_i--) {
-                    int block_size = (int) Math.pow(2, block_size_i);
-                    System.out.println(block_size);
-                    long encodeTime = 0;
-                    long decodeTime = 0;
-                    double ratio = 0;
-                    double compressed_size = 0;
-
-                    for (int i = 0; i < repeatTime; i++) {
-                        long s = System.nanoTime();
-                        ArrayList<Byte> buffer2 = new ArrayList<>();
-                        for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                            buffer2 = BOSEncoder(data2, block_size, dataset_name.get(file_i), 4, 1);
-                        }
-
-                        long e = System.nanoTime();
-                        encodeTime += ((e - s) / repeatTime2);
-                        compressed_size += buffer2.size();
-                        double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
-                        ratio += ratioTmp;
-                        s = System.nanoTime();
-                        for (int repeat = 0; repeat < repeatTime2; repeat++)
-                            data_decoded = BOSDecoder(buffer2);
-                        e = System.nanoTime();
-                        decodeTime += ((e - s) / repeatTime2);
-                    }
-
-                    ratio /= repeatTime;
-                    compressed_size /= repeatTime;
-                    encodeTime /= repeatTime;
-                    decodeTime /= repeatTime;
-
-                    String[] record = {
-                            f.toString(),
-                            "TS_2DIFF+BOS-A",
-                            String.valueOf(encodeTime),
-                            String.valueOf(decodeTime),
-                            String.valueOf(data1.size()),
-                            String.valueOf(compressed_size),
-                            String.valueOf(block_size_i),
-                            String.valueOf(ratio)
-                    };
-                    writer.writeRecord(record);
-                    System.out.println(ratio);
-                }
-
-            }
-            writer.close();
-
-        }
-    }
-
-    @Test
-    public void BOSAmortizationVaryK() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
-//        String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/vary_k_amortization";
-        String input_parent_dir = parent_dir + "trans_data/";
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> output_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-        dataset_name.add("CS-Sensors");
-        dataset_name.add("Metro-Traffic");
-        dataset_name.add("USGS-Earthquakes");
-        dataset_name.add("YZ-Electricity");
-        dataset_name.add("GW-Magnetic");
-        dataset_name.add("TY-Fuel");
-        dataset_name.add("Cyber-Vehicle");
-        dataset_name.add("Vehicle-Charge");
-        dataset_name.add("Nifty-Stocks");
-        dataset_name.add("TH-Climate");
-        dataset_name.add("TY-Transport");
-        dataset_name.add("EPM-Education");
-
-        for (int i = 0; i < dataset_name.size(); i++) {
-            input_path_list.add(input_parent_dir + dataset_name.get(i));
-        }
-
-        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-        dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-        dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-        dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
-        dataset_block_size.add(1024);
-
-
-
-        ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
-        for (int i = 0; i < 2; i++) {
-            columnIndexes.add(i, i);
-        }
-
-//        for (int file_i = 6; file_i < 7; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-
-            String inputPath = input_path_list.get(file_i);
-            System.out.println(inputPath);
-            String Output = output_path_list.get(file_i);
-
-            int repeatTime = 1; // set repeat time
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "k",
-                    "Compression Ratio"
-            };
-            writer.writeRecord(head); // write header to output file
-
-            assert tempList != null;
-
-            for (File f : tempList) {
-//                f = tempList[2];
-                System.out.println(f);
-                InputStream inputStream = Files.newInputStream(f.toPath());
-
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Integer> data1 = new ArrayList<>();
-                ArrayList<Integer> data2 = new ArrayList<>();
-                ArrayList<Integer> data_decoded = new ArrayList<>();
-
-
-//                for (int index : columnIndexes) {
-                // add a column to "data"
-//                    System.out.println(index);
-
-                loader.readHeaders();
-//                    data.clear();
-                while (loader.readRecord()) {
-//                        String value = loader.getValues()[index];
-                    data1.add(Integer.valueOf(loader.getValues()[0]));
-                    data2.add(Integer.valueOf(loader.getValues()[1]));
-//                        data.add(Integer.valueOf(value));
-                }
-//                    System.out.println(data2);
-                inputStream.close();
-                for (int k = 1; k < 8; k++) {
-//                    int q = (int) Math.pow(2, q_exp);
-                    System.out.println(k);
-                    long encodeTime = 0;
-                    long decodeTime = 0;
-                    double ratio = 0;
-                    double compressed_size = 0;
-                    int repeatTime2 = 10;
-                    for (int i = 0; i < repeatTime; i++) {
-                        long s = System.nanoTime();
-                        ArrayList<Byte> buffer1 = new ArrayList<>();
-                        ArrayList<Byte> buffer2 = new ArrayList<>();
-                        long buffer_bits = 0;
-                        for (int repeat = 0; repeat < repeatTime2; repeat++) {
-//                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
-                            buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i), 4, k);
-                        }
-//                        System.out.println(buffer2.size());
-//                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
-
-                        long e = System.nanoTime();
-                        encodeTime += ((e - s) / repeatTime2);
-//                        compressed_size += buffer1.size();
-                        compressed_size += buffer2.size();
-                        double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
-                        ratio += ratioTmp;
-                        s = System.nanoTime();
-                        for (int repeat = 0; repeat < repeatTime2; repeat++)
-                            data_decoded = BOSDecoder(buffer2);
-                        e = System.nanoTime();
-                        decodeTime += ((e - s) / repeatTime2);
-                    }
-
-                    ratio /= repeatTime;
-                    compressed_size /= repeatTime;
-                    encodeTime /= repeatTime;
-                    decodeTime /= repeatTime;
-
-                    String[] record = {
-                            f.toString(),
-                            "TS_2DIFF+BOS-A",
-                            String.valueOf(encodeTime),
-                            String.valueOf(decodeTime),
-                            String.valueOf(data1.size()),
-                            String.valueOf(compressed_size),
-                            String.valueOf(k),
-                            String.valueOf(ratio)
-                    };
-                    writer.writeRecord(record);
-                    System.out.println(ratio);
-                }
-//                }
-
-//   break;
-            }
-            writer.close();
-
-        }
-    }
-
-    @Test
-    public void BOSAmortizationVaryQ() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
-//        String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/vary_q_amortization";
-        String input_parent_dir = parent_dir + "trans_data/";
-        ArrayList<String> input_path_list = new ArrayList<>();
-        ArrayList<String> output_path_list = new ArrayList<>();
-        ArrayList<String> dataset_name = new ArrayList<>();
-        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-        dataset_name.add("CS-Sensors");
-        dataset_name.add("Metro-Traffic");
-        dataset_name.add("USGS-Earthquakes");
-        dataset_name.add("YZ-Electricity");
-        dataset_name.add("GW-Magnetic");
-        dataset_name.add("TY-Fuel");
-        dataset_name.add("Cyber-Vehicle");
-        dataset_name.add("Vehicle-Charge");
-        dataset_name.add("Nifty-Stocks");
-        dataset_name.add("TH-Climate");
-        dataset_name.add("TY-Transport");
-        dataset_name.add("EPM-Education");
-
-        for (int i = 0; i < dataset_name.size(); i++) {
-            input_path_list.add(input_parent_dir + dataset_name.get(i));
-        }
-
-        output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-        dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-        dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-        dataset_block_size.add(1024);
-        output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-        dataset_block_size.add(2048);
-        output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
-        dataset_block_size.add(1024);
-
-
-
-        ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
-        for (int i = 0; i < 2; i++) {
-            columnIndexes.add(i, i);
-        }
-
-//        for (int file_i = 6; file_i < 7; file_i++) {
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-
-            String inputPath = input_path_list.get(file_i);
-            System.out.println(inputPath);
-            String Output = output_path_list.get(file_i);
-
-            int repeatTime = 1; // set repeat time
-
-            File file = new File(inputPath);
-            File[] tempList = file.listFiles();
-
-            CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
-
-            String[] head = {
-                    "Input Direction",
-                    "Encoding Algorithm",
-                    "Encoding Time",
-                    "Decoding Time",
-                    "Points",
-                    "Compressed Size",
-                    "Q",
-                    "Compression Ratio"
-            };
-            writer.writeRecord(head); // write header to output file
-
-            assert tempList != null;
-
-            for (File f : tempList) {
-//                f = tempList[2];
-                System.out.println(f);
-                InputStream inputStream = Files.newInputStream(f.toPath());
-
-                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-                ArrayList<Integer> data1 = new ArrayList<>();
-                ArrayList<Integer> data2 = new ArrayList<>();
-                ArrayList<Integer> data_decoded = new ArrayList<>();
-
-
-//                for (int index : columnIndexes) {
-                // add a column to "data"
-//                    System.out.println(index);
-
-                loader.readHeaders();
-//                    data.clear();
-                while (loader.readRecord()) {
-//                        String value = loader.getValues()[index];
-                    data1.add(Integer.valueOf(loader.getValues()[0]));
-                    data2.add(Integer.valueOf(loader.getValues()[1]));
-//                        data.add(Integer.valueOf(value));
-                }
-//                    System.out.println(data2);
-                inputStream.close();
-                for (int q_exp = 0; q_exp < 8; q_exp++) {
-                    int q = (int) Math.pow(2, q_exp);
-                    System.out.println(q);
-                    long encodeTime = 0;
-                    long decodeTime = 0;
-                    double ratio = 0;
-                    double compressed_size = 0;
-                    int repeatTime2 = 10;
-                    for (int i = 0; i < repeatTime; i++) {
-                        long s = System.nanoTime();
-                        ArrayList<Byte> buffer1 = new ArrayList<>();
-                        ArrayList<Byte> buffer2 = new ArrayList<>();
-                        long buffer_bits = 0;
-                        for (int repeat = 0; repeat < repeatTime2; repeat++) {
-//                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
-                            buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i), q, 1);
-                        }
-//                        System.out.println(buffer2.size());
-//                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
-
-                        long e = System.nanoTime();
-                        encodeTime += ((e - s) / repeatTime2);
-//                        compressed_size += buffer1.size();
-                        compressed_size += buffer2.size();
-                        double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
-                        ratio += ratioTmp;
-                        s = System.nanoTime();
-                        for (int repeat = 0; repeat < repeatTime2; repeat++)
-                            data_decoded = BOSDecoder(buffer2);
-                        e = System.nanoTime();
-                        decodeTime += ((e - s) / repeatTime2);
-                    }
-
-                    ratio /= repeatTime;
-                    compressed_size /= repeatTime;
-                    encodeTime /= repeatTime;
-                    decodeTime /= repeatTime;
-
-                    String[] record = {
-                            f.toString(),
-                            "TS_2DIFF+BOS-A",
-                            String.valueOf(encodeTime),
-                            String.valueOf(decodeTime),
-                            String.valueOf(data1.size()),
-                            String.valueOf(compressed_size),
-                            String.valueOf(q_exp),
-                            String.valueOf(ratio)
-                    };
-                    writer.writeRecord(record);
-                    System.out.println(ratio);
-                }
 //                }
 
 //   break;

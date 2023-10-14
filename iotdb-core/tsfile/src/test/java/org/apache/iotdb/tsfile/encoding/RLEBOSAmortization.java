@@ -543,6 +543,7 @@ public class RLEBOSAmortization {
             cur_byte.addAll(encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size)));
         }
 
+//        System.out.println("block_size:" + block_size);
 //            System.out.println("k1:" + k1);
 //            System.out.println("k2:" + k2);
 //            System.out.println("final_alpha:" + final_alpha);
@@ -550,6 +551,7 @@ public class RLEBOSAmortization {
 //            System.out.println("min_delta.get(0):" + min_delta.get(0));
 //            System.out.println("min_delta.get(1):" + min_delta.get(1));
 //            System.out.println("final_k_start_value:" + final_k_start_value);
+//        System.out.println("final_k_end_value:" + final_k_end_value);
 //            System.out.println("bit_width_final:" + bit_width_final);
 //            System.out.println("left_bit_width:" + left_bit_width);
 //            System.out.println("right_bit_width:" + right_bit_width);
@@ -578,8 +580,10 @@ public class RLEBOSAmortization {
 //            cur_bits += (block_size - cur_k ) * bit_width_final;
 //            cur_bits += (cur_k- cur_k1) * right_bit_width;//left_max
 //            System.out.println("cur_bits:     " + cur_bits);
-
-
+//        System.out.println("max_delta_value:     " + max_delta_value);
+//        int cur_bits = 0;
+//        cur_bits +=  (Math.min((k1+k2) * getBitWith(block_size), block_size + k1+k2));
+//        System.out.println("cur_bits:     " + cur_bits);
         // correct
 //            System.out.println("final_left_outlier.size():"+final_left_outlier.size());
 //            System.out.println("k1:"+k1);
@@ -700,7 +704,10 @@ public class RLEBOSAmortization {
                     cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
                 if (cur_k2 != 0)
                     cur_bits += cur_k2 * getBitWith(final_right_max - k_end_value);//min_upper_outlier
-
+//                if(k_start_value == 4 && k_end_value == 2048){
+//                    System.out.println("cur_bits:" + cur_bits);
+//                    System.out.println("min_bits:" + min_bits);
+//                }
 
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
@@ -712,6 +719,9 @@ public class RLEBOSAmortization {
             }
         }
 
+//        System.out.println("final_k_start_value:"+final_k_start_value);
+//        System.out.println("final_k_end_value:"+final_k_end_value);
+//        System.out.println("size:"+ts_block_delta.size());
 
         BOSEncodeBits(ts_block_delta, init_block_size,final_k_start_value, final_k_start_value, final_k_end_value, final_right_max,
                 min_delta,repeat_count, cur_byte);
@@ -854,18 +864,20 @@ public class RLEBOSAmortization {
         byte[] block_size_byte = int2Bytes(block_size);
         for (byte b : block_size_byte) encoded_result.add(b);
 
-
+//        for (int i = 1; i < 2; i++) {
         for (int i = 0; i < block_num; i++) {
 //            ArrayList<Integer> ts_block = new ArrayList<>();
 //            for (int j = 0; j < block_size; j++) {
 //                ts_block.add(data.get(j + i * block_size));
 //
 //            }
+//            System.out.println(ts_block);
 //            ArrayList<Integer> result2 = new ArrayList<>();
 //            splitTimeStamp3(ts_block, result2);
 
             // time-order
             ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(data, i, block_size, q, k);
+//            System.out.println("size:"+cur_encoded_result.size());
 //            System.out.println("cur_encoded_result.size: "+cur_encoded_result.size());
 //            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, 0,q);
             encoded_result.addAll(cur_encoded_result);
@@ -1145,6 +1157,7 @@ public class RLEBOSAmortization {
 //        for (int k = 0; k < 1; k++) {
         for (int k = 0; k < block_num; k++) {
             decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, block_size);
+//            System.out.println(value_list);
         }
 
         if (remain_length <= 3) {
@@ -1265,7 +1278,7 @@ public class RLEBOSAmortization {
         }
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-//        for (int file_i = 3; file_i < 4; file_i++) {
+//        for (int file_i = 0; file_i < 1; file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1321,7 +1334,7 @@ public class RLEBOSAmortization {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 10;
+                int repeatTime2 = 1;
                 for (int i = 0; i < repeatTime; i++) {
                     long s = System.nanoTime();
                     ArrayList<Byte> buffer1 = new ArrayList<>();
@@ -1329,7 +1342,7 @@ public class RLEBOSAmortization {
                     long buffer_bits = 0;
                     for (int repeat = 0; repeat < repeatTime2; repeat++){
 //                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
-                        buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i),4, 3);
+                        buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i),4, 1);
                     }
 //                        System.out.println(buffer2.size());
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
@@ -1341,8 +1354,8 @@ public class RLEBOSAmortization {
                     double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
                     ratio += ratioTmp;
                     s = System.nanoTime();
-                    for(int repeat=0;repeat<repeatTime2;repeat++)
-                        data_decoded = BOSDecoder(buffer2);
+//                    for(int repeat=0;repeat<repeatTime2;repeat++)
+//                        data_decoded = BOSDecoder(buffer2);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
                 }
@@ -1364,7 +1377,7 @@ public class RLEBOSAmortization {
                 writer.writeRecord(record);
                 System.out.println(ratio);
 
-//                }
+//              break;
 
 //
             }

@@ -219,16 +219,6 @@ public class RLEBOS {
         return result_list;
     }
 
-    public static int getCommon(int m, int n) {
-        int z;
-        while (m % n != 0) {
-            z = m % n;
-            m = n;
-            n = z;
-        }
-        return n;
-    }
-
     public static ArrayList<Integer> getAbsDeltaTsBlock(
             ArrayList<Integer> ts_block,
             ArrayList<Integer> min_delta,
@@ -623,6 +613,7 @@ public class RLEBOS {
 //            System.out.println("min_delta.get(0):" + min_delta.get(0));
 ////            System.out.println("min_delta.get(1):" + min_delta.get(1));
 //            System.out.println("final_k_start_value:" + final_k_start_value);
+//        System.out.println("final_k_end_value:" + final_k_end_value);
 //            System.out.println("bit_width_final:" + bit_width_final);
 //            System.out.println("left_bit_width:" + left_bit_width);
 //            System.out.println("right_bit_width:" + right_bit_width);
@@ -644,8 +635,9 @@ public class RLEBOS {
 //            System.out.println(right_bit_width);
 //            System.out.println(cur_byte.size());
 //
-//            int cur_bits = 0;
-//            cur_bits +=  (Math.min((cur_k) * getBitWith(block_size), block_size + cur_k));
+//        System.out.println("max_delta_value:     " + max_delta_value);
+//        int cur_bits = 0;
+//            cur_bits +=  (Math.min((k1+k2) * getBitWith(block_size), block_size + k1+k2));
 //            System.out.println("cur_bits:     " + cur_bits);
 //            cur_bits += cur_k1 * left_bit_width;//left_max
 //            cur_bits += (block_size - cur_k ) * bit_width_final;
@@ -896,9 +888,7 @@ public class RLEBOS {
 
                 int cur_bits = 0;
                 int cur_k1 = 0;
-                int left_max = 0;
                 if (start_value_i != 0) {
-                    left_max = PDF.get(start_value_i - 1).get(0);
                     cur_k1 = PDF.get(start_value_i - 1).get(1);
                 }
 
@@ -930,6 +920,10 @@ public class RLEBOS {
                 if (cur_k2 != 0)
                     cur_bits += cur_k2 * getBitWith(max_delta_value - k_end_value);//min_upper_outlier
 
+//                if(k_start_value == 3 && k_end_value == 2050){
+//                    System.out.println("cur_bits:" + cur_bits);
+//                    System.out.println("min_bits:" + min_bits);
+//                }
                 if (cur_bits < min_bits) {
                     min_bits = cur_bits;
                     k1 = cur_k1;
@@ -950,7 +944,10 @@ public class RLEBOS {
 
 //        int final_left_max = final_k_start_value;
         int final_alpha = ((k1 + k2) * getBitWith(block_size)) <= (block_size + k1 + k2) ? 1 : 0;
-
+//        System.out.println("final_k_start_value:"+final_k_start_value);
+//        System.out.println("final_k_end_value:"+final_k_end_value);
+//        System.out.println("size:"+ts_block_delta.size());
+//
 
         BOSEncodeBits(ts_block_delta, init_block_size, final_k_start_value, final_k_start_value, final_k_end_value, max_delta_value,
                 final_alpha, min_delta, repeat_count, cur_byte);
@@ -972,7 +969,7 @@ public class RLEBOS {
         for (byte b : block_size_byte) encoded_result.add(b);
 
 
-//        for (int i = 33; i < 34; i++) {
+//        for (int i = 1; i < 2; i++) {
         for (int i = 0; i < block_num; i++) {
 //            System.out.println(i);
 //            ArrayList<Integer> ts_block = new ArrayList<>();
@@ -980,10 +977,11 @@ public class RLEBOS {
 //                ts_block.add(data.get(j + i * block_size));
 //
 //            }
+//            System.out.println(ts_block);
 
             ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(data, i, block_size,0);
             encoded_result.addAll(cur_encoded_result);
-//            System.out.println("cur_encoded_result.size: "+cur_encoded_result.size());
+//            System.out.println("size: "+cur_encoded_result.size());
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -1257,10 +1255,11 @@ public class RLEBOS {
             zero_number = 8 - remain_length % 8;
         }
         ArrayList<Integer> value_list = new ArrayList<>();
-//        for (int k = 33; k < 34; k++) {
+//        for (int k = 0; k < 1; k++) {
         for (int k = 0; k < block_num; k++) {
 //            System.out.println(k);
             decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, block_size);
+//            System.out.println(value_list);
         }
 
         if (remain_length <= 3) {
@@ -1332,7 +1331,7 @@ public class RLEBOS {
             columnIndexes.add(i, i);
         }
 
-//        for (int file_i = 3; file_i < 4; file_i++) {
+//        for (int file_i = 0; file_i < 1; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
