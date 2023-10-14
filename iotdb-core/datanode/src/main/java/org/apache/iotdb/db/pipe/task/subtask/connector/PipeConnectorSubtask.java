@@ -270,6 +270,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   @Override
   public void close() {
+    PipeConnectorMetrics.getInstance().deregister(taskID);
     isClosed.set(true);
     try {
       outputPipeConnector.close();
@@ -286,7 +287,6 @@ public class PipeConnectorSubtask extends PipeSubtask {
             }
           });
       inputPendingQueue.clear();
-      PipeConnectorMetrics.getInstance().deregister(taskID);
 
       // Should be called after outputPipeConnector.close()
       super.close();

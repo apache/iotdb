@@ -101,9 +101,9 @@ public class PipeDataRegionAssigner {
    * method.
    */
   public void gc() {
+    PipeAssignerMetrics.getInstance().deregister(dataRegionId);
     matcher.clear();
     disruptor.clear();
-    PipeAssignerMetrics.getInstance().deregister(dataRegionId);
   }
 
   public int getTabletInsertionEventCount() {

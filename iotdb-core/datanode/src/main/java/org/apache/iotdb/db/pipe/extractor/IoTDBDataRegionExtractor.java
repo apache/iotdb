@@ -157,6 +157,8 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
     historicalExtractor.customize(parameters, configuration);
     realtimeExtractor.customize(parameters, configuration);
+
+    // register metric after generating taskID
     PipeExtractorMetrics.getInstance().register(this);
   }
 
@@ -254,18 +256,30 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   }
 
   public int getHistoricalTsFileInsertionEventCount() {
+    if (!hasBeenStarted.get()) {
+      return 0;
+    }
     return historicalExtractor.getPendingQueueSize();
   }
 
   public int getTabletInsertionEventCount() {
+    if (!hasBeenStarted.get()) {
+      return 0;
+    }
     return realtimeExtractor.getTabletInsertionEventCount();
   }
 
   public int getRealtimeTsFileInsertionEventCount() {
+    if (!hasBeenStarted.get()) {
+      return 0;
+    }
     return realtimeExtractor.getTsFileInsertionEventCount();
   }
 
   public int getPipeHeartbeatEventCount() {
+    if (!hasBeenStarted.get()) {
+      return 0;
+    }
     return realtimeExtractor.getPipeHeartbeatEventCount();
   }
 }

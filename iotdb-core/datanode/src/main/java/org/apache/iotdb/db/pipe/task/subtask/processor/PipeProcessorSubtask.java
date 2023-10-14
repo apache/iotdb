@@ -145,6 +145,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
 
   @Override
   public void close() {
+    PipeProcessorMetrics.getInstance().deregister(taskID);
     try {
       isClosed.set(true);
 
@@ -158,7 +159,6 @@ public class PipeProcessorSubtask extends PipeSubtask {
           e);
     } finally {
       outputEventCollector.close();
-      PipeProcessorMetrics.getInstance().deregister(taskID);
 
       // should be called after pipeProcessor.close()
       super.close();
