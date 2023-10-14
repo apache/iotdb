@@ -1401,7 +1401,7 @@ public class BOSAmortization {
 
                     long s = System.nanoTime();
                     for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                        length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), dataset_name.get(file_i), 1, 1,encoded_result);
+                        length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), dataset_name.get(file_i), 4, 1,encoded_result);
                     }
 //                        System.out.println(buffer2.size());
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
