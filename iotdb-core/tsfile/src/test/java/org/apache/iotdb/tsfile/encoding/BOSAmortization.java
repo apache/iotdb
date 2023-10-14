@@ -32,9 +32,7 @@ public class BOSAmortization {
         cur_byte[encode_pos+2] = (byte) (integer >> 8);
         cur_byte[encode_pos+3] = (byte) (integer);
     }
-//    public static void intByte2Bytes(int integer, ArrayList<Byte> cur_byte) {
-//        cur_byte.add((byte) (integer));
-//    }
+
 
     public static void intByte2Bytes(int integer, int encode_pos , byte[] cur_byte) {
         cur_byte[encode_pos] = (byte) (integer);
