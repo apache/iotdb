@@ -226,6 +226,7 @@ public class CQInfo implements SnapshotProcessor {
     try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
 
       serialize(fileOutputStream);
+      fileOutputStream.getFD().sync();
       return true;
     } finally {
       lock.readLock().unlock();
