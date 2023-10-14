@@ -246,6 +246,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   public void close() throws Exception {
     historicalExtractor.close();
     realtimeExtractor.close();
+    PipeExtractorMetrics.getInstance().deregister(taskID);
   }
 
   public String getTaskID() {

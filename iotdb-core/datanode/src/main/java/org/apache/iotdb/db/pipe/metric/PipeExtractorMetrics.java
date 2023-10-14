@@ -26,8 +26,12 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
+import com.google.common.collect.ImmutableSet;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,6 +39,8 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeExtractorMetrics implements IMetricSet {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeExtractorMetrics.class);
 
   private final Map<String, IoTDBDataRegionExtractor> extractorMap = new HashMap<>();
 
@@ -45,21 +51,6 @@ public class PipeExtractorMetrics implements IMetricSet {
   private final Map<String, Rate> pipeHeartbeatRateMap = new ConcurrentHashMap<>();
 
   private AbstractMetricService metricService;
-
-  @Override
-  public void bindTo(AbstractMetricService metricService) {
-    this.metricService = metricService;
-    synchronized (this) {
-      for (String taskID : extractorMap.keySet()) {
-        createMetrics(taskID);
-      }
-    }
-  }
-
-  @Override
-  public void unbindFrom(AbstractMetricService metricService) {
-    // do nothing
-  }
 
   private static class PipeExtractorMetricsHolder {
 
@@ -87,6 +78,21 @@ public class PipeExtractorMetrics implements IMetricSet {
       if (Objects.nonNull(metricService)) {
         createMetrics(taskID);
       }
+    }
+  }
+
+  public void deregister(String taskID) {
+    synchronized (this) {
+      if (!extractorMap.containsKey(taskID)) {
+        LOGGER.info(
+            String.format(
+                "Failed to deregister pipe extractor metrics, "
+                    + "IoTDBDataRegionExtractor(%s) does not exist",
+                taskID));
+        return;
+      }
+      removeMetrics(taskID);
+      extractorMap.remove(taskID);
     }
   }
 
@@ -121,11 +127,6 @@ public class PipeExtractorMetrics implements IMetricSet {
         taskID);
   }
 
-  private void createMetrics(String taskID) {
-    createAutoGauge(taskID);
-    createRate(taskID);
-  }
-
   private void createRate(String taskID) {
     tabletRateMap.put(
         taskID,
@@ -148,6 +149,79 @@ public class PipeExtractorMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             taskID));
+  }
+
+  private void createMetrics(String taskID) {
+    createAutoGauge(taskID);
+    createRate(taskID);
+  }
+
+  private void removeAutoGauge(String taskID) {
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.UNPROCESSED_HISTORICAL_TS_FILE_COUNT.toString(),
+        Tag.NAME.toString(),
+        taskID);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.UNPROCESSED_REALTIME_TS_FILE_COUNT.toString(),
+        Tag.NAME.toString(),
+        taskID);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.UNPROCESSED_TABLET_COUNT.toString(),
+        Tag.NAME.toString(),
+        taskID);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.UNPROCESSED_HEARTBEAT_COUNT.toString(),
+        Tag.NAME.toString(),
+        taskID);
+  }
+
+  private void removeRate(String taskID) {
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_EXTRACTOR_TABLET_SUPPLY.toString(),
+        Tag.NAME.toString(),
+        taskID);
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_EXTRACTOR_TS_FILE_SUPPLY.toString(),
+        Tag.NAME.toString(),
+        taskID);
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_EXTRACTOR_HEARTBEAT_SUPPLY.toString(),
+        Tag.NAME.toString(),
+        taskID);
+    tabletRateMap.remove(taskID);
+    tsFileRateMap.remove(taskID);
+    pipeHeartbeatRateMap.remove(taskID);
+  }
+
+  private void removeMetrics(String taskID) {
+    removeAutoGauge(taskID);
+    removeRate(taskID);
+  }
+
+  @Override
+  public void bindTo(AbstractMetricService metricService) {
+    this.metricService = metricService;
+    synchronized (this) {
+      for (String taskID : extractorMap.keySet()) {
+        createMetrics(taskID);
+      }
+    }
+  }
+
+  @Override
+  public void unbindFrom(AbstractMetricService metricService) {
+    ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
+    for (String taskID : taskIDs) {
+      deregister(taskID);
+    }
+    assert extractorMap.isEmpty();
   }
 
   public Rate getTabletRate(String taskID) {

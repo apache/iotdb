@@ -25,14 +25,20 @@ import org.apache.iotdb.db.pipe.extractor.realtime.assigner.PipeDataRegionAssign
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
+import com.google.common.collect.ImmutableSet;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 public class PipeAssignerMetrics implements IMetricSet {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeAssignerMetrics.class);
 
   private AbstractMetricService metricService;
 
@@ -50,7 +56,11 @@ public class PipeAssignerMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    // do nothing
+    ImmutableSet<String> dataRegionIds = ImmutableSet.copyOf(assignerMap.keySet());
+    for (String dataRegionId : dataRegionIds) {
+      deregister(dataRegionId);
+    }
+    assert assignerMap.isEmpty();
   }
 
   private static class PipeAssignerMetricsHolder {
@@ -82,7 +92,40 @@ public class PipeAssignerMetrics implements IMetricSet {
     }
   }
 
-  private void createMetrics(String dataRegionId) {
+  public void deregister(String dataRegionId) {
+    synchronized (this) {
+      if (!assignerMap.containsKey(dataRegionId)) {
+        LOGGER.info(
+            String.format(
+                "Failed to deregister pipe assigner metrics, "
+                    + "PipeDataRegionAssigner(%s) does not exist",
+                dataRegionId));
+        return;
+      }
+      removeMetrics(dataRegionId);
+      assignerMap.remove(dataRegionId);
+    }
+  }
+
+  private void removeAutoGauge(String dataRegionId) {
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.UNASSIGNED_HEARTBEAT_COUNT.toString(),
+        Tag.REGION.toString(),
+        dataRegionId);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.UNASSIGNED_TABLET_COUNT.toString(),
+        Tag.REGION.toString(),
+        dataRegionId);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.UNASSIGNED_TS_FILE_COUNT.toString(),
+        Tag.REGION.toString(),
+        dataRegionId);
+  }
+
+  private void createAutoGauge(String dataRegionId) {
     metricService.createAutoGauge(
         Metric.UNASSIGNED_HEARTBEAT_COUNT.toString(),
         MetricLevel.IMPORTANT,
@@ -104,5 +147,13 @@ public class PipeAssignerMetrics implements IMetricSet {
         PipeDataRegionAssigner::getTsFileInsertionEventCount,
         Tag.REGION.toString(),
         dataRegionId);
+  }
+
+  private void createMetrics(String dataRegionId) {
+    createAutoGauge(dataRegionId);
+  }
+
+  private void removeMetrics(String dataRegionId) {
+    removeAutoGauge(dataRegionId);
   }
 }

@@ -158,6 +158,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
           e);
     } finally {
       outputEventCollector.close();
+      PipeProcessorMetrics.getInstance().deregister(taskID);
 
       // should be called after pipeProcessor.close()
       super.close();

@@ -103,6 +103,7 @@ public class PipeDataRegionAssigner {
   public void gc() {
     matcher.clear();
     disruptor.clear();
+    PipeAssignerMetrics.getInstance().deregister(dataRegionId);
   }
 
   public int getTabletInsertionEventCount() {

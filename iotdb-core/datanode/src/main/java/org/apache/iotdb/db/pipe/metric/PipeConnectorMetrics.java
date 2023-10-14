@@ -26,7 +26,9 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
+import com.google.common.collect.ImmutableSet;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +44,7 @@ public class PipeConnectorMetrics implements IMetricSet {
 
   private AbstractMetricService metricService;
 
-  private final Map<String, PipeConnectorSubtask> taskMap = new HashMap<>();
+  private final Map<String, PipeConnectorSubtask> connectorMap = new HashMap<>();
 
   private final Map<String, Rate> tabletRateMap = new ConcurrentHashMap<>();
 
@@ -70,8 +72,8 @@ public class PipeConnectorMetrics implements IMetricSet {
   public void register(@NonNull PipeConnectorSubtask pipeConnectorSubtask) {
     String taskID = pipeConnectorSubtask.getTaskID();
     synchronized (this) {
-      if (!taskMap.containsKey(taskID)) {
-        taskMap.put(taskID, pipeConnectorSubtask);
+      if (!connectorMap.containsKey(taskID)) {
+        connectorMap.put(taskID, pipeConnectorSubtask);
       }
       if (Objects.nonNull(metricService)) {
         createMetrics(taskID);
@@ -79,25 +81,40 @@ public class PipeConnectorMetrics implements IMetricSet {
     }
   }
 
+  public void deregister(String taskID) {
+    synchronized (this) {
+      if (!connectorMap.containsKey(taskID)) {
+        LOGGER.info(
+            String.format(
+                "Failed to deregister pipe connector metrics, "
+                    + "PipeConnectorSubtask(%s) does not exist",
+                taskID));
+        return;
+      }
+      removeMetrics(taskID);
+      connectorMap.remove(taskID);
+    }
+  }
+
   private void createAutoGauge(String taskID) {
     metricService.createAutoGauge(
         Metric.UNTRANSFERRED_TABLET_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        taskMap.get(taskID),
+        connectorMap.get(taskID),
         PipeConnectorSubtask::getTabletInsertionEventCount,
         Tag.NAME.toString(),
         taskID);
     metricService.createAutoGauge(
         Metric.UNTRANSFERRED_TS_FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        taskMap.get(taskID),
+        connectorMap.get(taskID),
         PipeConnectorSubtask::getTsFileInsertionEventCount,
         Tag.NAME.toString(),
         taskID);
     metricService.createAutoGauge(
         Metric.UNTRANSFERRED_HEARTBEAT_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        taskMap.get(taskID),
+        connectorMap.get(taskID),
         PipeConnectorSubtask::getPipeHeartbeatEventCount,
         Tag.NAME.toString(),
         taskID);
@@ -132,11 +149,55 @@ public class PipeConnectorMetrics implements IMetricSet {
     createRate(taskID);
   }
 
+  private void removeAutoGauge(String taskID) {
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.UNTRANSFERRED_TABLET_COUNT.toString(),
+        Tag.NAME.toString(),
+        taskID);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.UNTRANSFERRED_TS_FILE_COUNT.toString(),
+        Tag.NAME.toString(),
+        taskID);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.UNTRANSFERRED_HEARTBEAT_COUNT.toString(),
+        Tag.NAME.toString(),
+        taskID);
+  }
+
+  private void removeRate(String taskID) {
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_CONNECTOR_TABLET_TRANSFER.toString(),
+        Tag.NAME.toString(),
+        taskID);
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_CONNECTOR_TS_FILE_TRANSFER.toString(),
+        Tag.NAME.toString(),
+        taskID);
+    metricService.remove(
+        MetricType.RATE,
+        Metric.PIPE_CONNECTOR_HEARTBEAT_TRANSFER.toString(),
+        Tag.NAME.toString(),
+        taskID);
+    tabletRateMap.remove(taskID);
+    tsFileRateMap.remove(taskID);
+    pipeHeartbeatRateMap.remove(taskID);
+  }
+
+  private void removeMetrics(String taskID) {
+    removeAutoGauge(taskID);
+    removeRate(taskID);
+  }
+
   @Override
   public void bindTo(AbstractMetricService metricService) {
     this.metricService = metricService;
     synchronized (this) {
-      for (String taskID : taskMap.keySet()) {
+      for (String taskID : connectorMap.keySet()) {
         createMetrics(taskID);
       }
     }
@@ -144,7 +205,11 @@ public class PipeConnectorMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    // do nothing
+    ImmutableSet<String> taskIDs = ImmutableSet.copyOf(connectorMap.keySet());
+    for (String taskID : taskIDs) {
+      deregister(taskID);
+    }
+    assert connectorMap.isEmpty();
   }
 
   public Rate getTabletRate(String taskID) {

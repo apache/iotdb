@@ -286,6 +286,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
             }
           });
       inputPendingQueue.clear();
+      PipeConnectorMetrics.getInstance().deregister(taskID);
 
       // Should be called after outputPipeConnector.close()
       super.close();
