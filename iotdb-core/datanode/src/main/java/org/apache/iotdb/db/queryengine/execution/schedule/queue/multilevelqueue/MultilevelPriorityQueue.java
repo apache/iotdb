@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 
@@ -44,7 +45,10 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
   private final PriorityQueue<DriverTask>[] levelWaitingSplits;
 
   /**
-   This queue is independent of the other priority queues and has the highest priority. It is used to assign the highest execution priority to tasks like "ShowQuery," without considering cumulative execution time. */
+   * This queue is independent of the other priority queues and has the highest priority. It is used
+   * to assign the highest execution priority to tasks like "ShowQuery," without considering
+   * cumulative execution time.
+   */
   private final PriorityQueue<DriverTask> highestPriorityLevelQueue;
 
   /**
@@ -69,7 +73,8 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     this.levelScheduledTime = new AtomicLong[LEVEL_THRESHOLD_SECONDS.length];
     this.levelMinScheduledTime = new AtomicLong[LEVEL_THRESHOLD_SECONDS.length];
     this.levelWaitingSplits = new PriorityQueue[LEVEL_THRESHOLD_SECONDS.length];
-    this.highestPriorityLevelQueue = new PriorityQueue<>();
+    this.highestPriorityLevelQueue =
+        new PriorityQueue<>(new DriverTask.SchedulePriorityComparator());
     for (int level = 0; level < LEVEL_THRESHOLD_SECONDS.length; level++) {
       levelScheduledTime[level] = new AtomicLong();
       levelMinScheduledTime[level] = new AtomicLong(-1);
@@ -91,8 +96,9 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
   @Override
   public void pushToQueue(DriverTask task) {
     checkArgument(task != null, "DriverTask to be pushed is null");
-    // Push tasks with the highest priority(Currently, only ShowQuery related tasks) into highestPriorityLevelQueue directly.
-    if(task.isHighestPriority()){
+    // Push tasks with the highest priority(Currently, only ShowQuery related tasks) into
+    // highestPriorityLevelQueue directly.
+    if (task.isHighestPriority()) {
       highestPriorityLevelQueue.offer(task);
       return;
     }
@@ -113,7 +119,7 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
 
   protected DriverTask pollFirst() {
     // Always choose tasks in the highestPriorityLevelQueue first.
-    if(!highestPriorityLevelQueue.isEmpty()){
+    if (!highestPriorityLevelQueue.isEmpty()) {
       return highestPriorityLevelQueue.poll();
     }
 
@@ -301,5 +307,10 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     }
 
     return LEVEL_THRESHOLD_SECONDS.length - 1;
+  }
+
+  @TestOnly
+  public PriorityQueue<DriverTask> getHighestPriorityLevelQueue() {
+    return highestPriorityLevelQueue;
   }
 }

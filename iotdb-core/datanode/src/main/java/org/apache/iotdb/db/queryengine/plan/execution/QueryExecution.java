@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
@@ -60,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -367,6 +369,13 @@ public class QueryExecution implements IQueryExecution {
       QUERY_PLAN_COST_METRIC_SET.recordPlanCost(
           DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
     }
+
+    // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
+    // that the sub-tasks of the ShowQueries instances could be executed first.
+    if (StatementType.SHOW_QUERIES.equals(rawStatement.getType())) {
+      distributedPlan.getInstances().forEach(instance -> instance.setHighestPriority(true));
+    }
+
     if (isQuery() && logger.isDebugEnabled()) {
       logger.debug(
           "distribution plan done. Fragment instance count is {}, details is: \n {}",
@@ -721,6 +730,11 @@ public class QueryExecution implements IQueryExecution {
 
   public DistributedQueryPlan getDistributedPlan() {
     return distributedPlan;
+  }
+
+  @TestOnly
+  public void setLogicalPlan(LogicalQueryPlan logicalPlan) {
+    this.logicalPlan = logicalPlan;
   }
 
   public LogicalQueryPlan getLogicalPlan() {
