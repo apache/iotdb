@@ -1260,8 +1260,8 @@ public class BOSAmortization {
             columnIndexes.add(i, i);
         }
 
-        for (int file_i = 0; file_i < 1; file_i++) {
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 0; file_i < 1; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1317,7 +1317,7 @@ public class BOSAmortization {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 100;
+                int repeatTime2 = 500;
                 for (int i = 0; i < repeatTime; i++) {
 
                     ArrayList<Byte> buffer2 = new ArrayList<>();
