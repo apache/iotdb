@@ -30,15 +30,16 @@ public class PrimitiveMemTable extends AbstractMemTable {
     this.disableMemControl = !enableMemControl;
   }
 
-  public PrimitiveMemTable(Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
-    super(memTableMap);
+  public PrimitiveMemTable(
+      Map<IDeviceID, IWritableMemChunkGroup> memTableMap, AbstractMemTable lastMemtable) {
+    super(memTableMap, lastMemtable);
   }
 
   @Override
   public IMemTable copy() {
     Map<IDeviceID, IWritableMemChunkGroup> newMap = new HashMap<>(getMemTableMap());
 
-    return new PrimitiveMemTable(newMap);
+    return new PrimitiveMemTable(newMap, this);
   }
 
   @Override

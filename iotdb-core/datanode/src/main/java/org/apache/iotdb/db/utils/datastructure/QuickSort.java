@@ -58,7 +58,7 @@ public interface QuickSort {
   //        }
   //    }
 
-  default void qsort(int lo, int hi) {
+  default void qSort(int lo, int hi) {
     if (lo < hi) {
       // TODO: use insertion sort in smaller array
       // if(hi - lo <= 32) {
@@ -66,8 +66,8 @@ public interface QuickSort {
       // }
       // partition
       int pivotIndex = partition(lo, hi);
-      qsort(lo, pivotIndex - 1);
-      qsort(pivotIndex + 1, hi);
+      qSort(lo, pivotIndex - 1);
+      qSort(pivotIndex + 1, hi);
     }
   }
 }

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
+import org.apache.iotdb.db.utils.datastructure.TopkDivideMemoryNotEnoughException;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -63,6 +64,10 @@ public interface IMemTable extends WALEntryValue {
 
   /** @return memory usage */
   long memSize();
+
+  void setMemSize(long m);
+
+  void setTotalPointsNum(long m);
 
   /** only used when mem control enabled */
   void addTVListRamCost(long cost);
@@ -128,6 +133,8 @@ public interface IMemTable extends WALEntryValue {
    */
   void delete(PartialPath path, PartialPath devicePath, long startTimestamp, long endTimestamp);
 
+  /** divide the memtable into the topk and regular ones @ return the topk memtable. */
+  IMemTable divide() throws TopkDivideMemoryNotEnoughException;
   /**
    * Make a copy of this MemTable.
    *
@@ -169,4 +176,6 @@ public interface IMemTable extends WALEntryValue {
   void setFlushStatus(FlushStatus flushStatus);
 
   Map<String, Long> getMaxTime();
+
+  Map<String, Long> getTopKTime();
 }

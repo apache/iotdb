@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.utils.datastructure.TopkDivideMemoryNotEnoughException;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -141,6 +142,18 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   @Override
   public long getMaxTime() {
     return memChunk.getMaxTime();
+  }
+
+  @Override
+  public long getTopKTime() {
+    return memChunk.getTopKTime();
+  }
+
+  @Override
+  public IWritableMemChunkGroup divide() throws TopkDivideMemoryNotEnoughException {
+    AlignedWritableMemChunkGroup topkMemChunkGroup = new AlignedWritableMemChunkGroup();
+    topkMemChunkGroup.memChunk = (AlignedWritableMemChunk) memChunk.divide();
+    return topkMemChunkGroup;
   }
 
   public AlignedWritableMemChunk getAlignedMemChunk() {

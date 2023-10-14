@@ -23,6 +23,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.datastructure.TopkDivideMemoryNotEnoughException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -252,8 +253,16 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
+  public void setSchema(IMeasurementSchema s) {}
+
+  @Override
   public long getMaxTime() {
     return list.getMaxTime();
+  }
+
+  @Override
+  public long getTopKTime() {
+    return list.getTopKTime();
   }
 
   @Override
@@ -462,6 +471,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     return getSortedTvListForQuery()
         .getTimeValuePair(getSortedTvListForQuery().rowCount() - 1)
         .getTimestamp();
+  }
+
+  @Override
+  public IWritableMemChunk divide() throws TopkDivideMemoryNotEnoughException {
+    return new AlignedWritableMemChunk(schemaList, (AlignedTVList) list.divide());
   }
 
   @Override

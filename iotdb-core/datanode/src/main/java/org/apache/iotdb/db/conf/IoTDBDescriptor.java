@@ -419,6 +419,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "tvlist_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
 
+    conf.setSeqMemtableTopKSize(
+        (Integer.parseInt(
+            properties.getProperty(
+                "seq_memtable_topk_size", Integer.toString(conf.getSeqMemtableTopKSize())))));
+
     conf.setAvgSeriesPointNumberThreshold(
         Integer.parseInt(
             properties.getProperty(
@@ -1704,7 +1709,7 @@ public class IoTDBDescriptor {
     logger.info("initial allocateMemoryForWrite = {}", conf.getAllocateMemoryForStorageEngine());
     logger.info("initial allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
     logger.info("initial allocateMemoryForConsensus = {}", conf.getAllocateMemoryForConsensus());
-
+    logger.info("initial seqMemtableTopKSize = {}", conf.getSeqMemtableTopKSize());
     initSchemaMemoryAllocate(properties);
     initStorageEngineAllocate(properties);
 

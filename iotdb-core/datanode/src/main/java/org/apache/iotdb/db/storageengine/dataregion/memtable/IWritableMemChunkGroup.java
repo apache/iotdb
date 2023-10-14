@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
+import org.apache.iotdb.db.utils.datastructure.TopkDivideMemoryNotEnoughException;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -53,5 +54,9 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
 
   long getCurrentTVListSize(String measurement);
 
+  IWritableMemChunkGroup divide() throws TopkDivideMemoryNotEnoughException;
+
   long getMaxTime();
+
+  long getTopKTime();
 }

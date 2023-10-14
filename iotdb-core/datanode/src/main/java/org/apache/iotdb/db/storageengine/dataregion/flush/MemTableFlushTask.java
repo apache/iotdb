@@ -111,7 +111,8 @@ public class MemTableFlushTask {
             ? 0
             : memTable.getTotalPointsNum() / memTable.getSeriesNumber();
     LOGGER.info(
-        "The memTable size of SG {} is {}, the avg series points num in chunk is {}, total timeseries number is {}",
+        "The memTable {} size of SG {} is {}, the avg series points num in chunk is {}, total timeseries number is {}",
+        memTable.getMemTableId(),
         storageGroup,
         memTable.memSize(),
         avgSeriesPointsNum,
@@ -215,8 +216,9 @@ public class MemTableFlushTask {
             "flush");
 
     LOGGER.info(
-        "Database {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
+        "Database {} flushing memtable {} with {} has finished! Time consumption: {}ms",
         storageGroup,
+        memTable.getMemTableId(),
         memTable,
         System.currentTimeMillis() - start);
   }
@@ -286,8 +288,13 @@ public class MemTableFlushTask {
           recordFlushPointsMetric();
 
           LOGGER.info(
-              "Database {}, flushing memtable {} into disk: Encoding data cost " + "{} ms.",
+              "Database {}, flushing memtable {} with size {} and points {} in file "
+                  + "{} into disk: Encoding data cost "
+                  + "{} ms.",
               storageGroup,
+              memTable.getMemTableId(),
+              memTable.memSize(),
+              memTable.getTotalPointsNum(),
               writer.getFile().getName(),
               memSerializeTime);
           WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_ENCODING, memSerializeTime);

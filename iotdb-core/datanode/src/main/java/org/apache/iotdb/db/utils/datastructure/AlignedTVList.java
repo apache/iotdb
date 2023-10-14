@@ -43,8 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
-import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
+import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.*;
 import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
@@ -643,6 +642,37 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
+  @Override
+  public TVList divide() throws TopkDivideMemoryNotEnoughException {
+    if (MEMTABLE_TOPK_SIZE > rowCount || MEMTABLE_TOPK_SIZE < ARRAY_SIZE) {
+      throw new TopkDivideMemoryNotEnoughException(
+          String.format(
+              "WARNING: MEMTABLE_TOPK_SIZE is bigger than%d "
+                  + "the TVList's row count  %d"
+                  + "or is smaller than ARRAY_SIZE %d",
+              rowCount, MEMTABLE_TOPK_SIZE, ARRAY_SIZE));
+    }
+    AlignedTVList topkTVList = AlignedTVList.newAlignedList(dataTypes);
+    int truncatedIndex = (rowCount - MEMTABLE_TOPK_SIZE + ARRAY_SIZE - 1) / ARRAY_SIZE;
+
+    for (int i = truncatedIndex + 1; i <= rowCount / ARRAY_SIZE; i++) {
+      topkTVList.timestamps.add(timestamps.get(i));
+      for (int colIndex = 0; colIndex < values.size(); colIndex++) {
+        topkTVList.values.get(colIndex).add(values.get(colIndex).get(i));
+        topkTVList.bitMaps.get(colIndex).add(bitMaps.get(colIndex).get(i));
+      }
+    }
+    for (int i = rowCount / ARRAY_SIZE; i >= truncatedIndex + 1; i--) {
+      timestamps.remove(timestamps.size() - 1);
+      for (int colIndex = 0; colIndex < values.size(); colIndex++) {
+        topkTVList.values.get(colIndex).remove(values.get(colIndex).size() - 1);
+        topkTVList.bitMaps.get(colIndex).remove(bitMaps.get(colIndex).size() - 1);
+      }
+    }
+    rowCount = truncatedIndex * ARRAY_SIZE;
+    topKTime = timestamps.get(truncatedIndex - 1)[ARRAY_SIZE - 1];
+    return topkTVList;
+  }
   /**
    * Get the row index value in index column.
    *
@@ -745,6 +775,8 @@ public abstract class AlignedTVList extends TVList {
         checkExpansion();
       }
     }
+    sort(Math.max(0, start - MEMTABLE_TOPK_SIZE), end);
+    topKTime = Math.max(topKTime, getTime(Math.max(0, end - MEMTABLE_TOPK_SIZE)));
   }
 
   private void arrayCopy(Object[] value, int idx, int arrayIndex, int elementIndex, int remaining) {

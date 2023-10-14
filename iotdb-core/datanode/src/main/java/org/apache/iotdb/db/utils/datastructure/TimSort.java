@@ -27,7 +27,7 @@ public interface TimSort {
   int SMALL_ARRAY_LENGTH = 32;
 
   /** the same as the 'set' function in TVList, the reason is to avoid two equal functions. */
-  void tim_set(int src, int dest);
+  void timSet(int src, int dest);
 
   void setFromSorted(int src, int dest);
 
@@ -55,7 +55,7 @@ public interface TimSort {
    * the entrance of tim_sort; 1. array_size <= 32, use binary sort. 2. recursively invoke merge
    * sort.
    */
-  default void sort(int lo, int hi) {
+  default void timSort(int lo, int hi) {
     if (lo == hi) {
       return;
     }
@@ -65,8 +65,8 @@ public interface TimSort {
       return;
     }
     int mid = (lo + hi) >>> 1;
-    sort(lo, mid);
-    sort(mid, hi);
+    timSort(lo, mid);
+    timSort(mid, hi);
     merge(lo, mid, hi);
   }
 
@@ -127,7 +127,7 @@ public interface TimSort {
        */
       int n = start - left; // The number of elements to move
       for (int i = n; i >= 1; i--) {
-        tim_set(left + i - 1, left + i);
+        timSet(left + i - 1, left + i);
       }
       setPivotTo(left);
     }

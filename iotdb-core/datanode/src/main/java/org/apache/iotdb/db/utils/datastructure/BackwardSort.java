@@ -53,7 +53,7 @@ public interface BackwardSort extends QuickSort {
 
   /**
    * check block-inversions to find the proper block_size, which is a multiple of array_size. For
-   * totally ordered, the block_size will equals to array_size For totally reverse ordered, the
+   * totally ordered, the block_size will equal to array_size For totally reverse ordered, the
    * block_size will equals to the rowCount. INVERSION_RATIOS_THRESHOLD=0.005 is a empiric value.
    *
    * @param timestamps
@@ -132,6 +132,6 @@ public interface BackwardSort extends QuickSort {
    * @param hi
    */
   default void sortBlock(int lo, int hi) {
-    qsort(lo, hi);
+    qSort(lo, hi);
   }
 }

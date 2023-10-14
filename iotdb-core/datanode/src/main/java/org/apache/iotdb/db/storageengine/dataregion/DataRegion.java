@@ -1267,7 +1267,6 @@ public class DataRegion implements IDataRegionForQuery {
             version,
             0,
             0);
-
     return getTsFileProcessor(sequence, filePath, timePartitionId);
   }
 
@@ -1393,6 +1392,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (!workSequenceTsFileProcessors.containsKey(tsFileProcessor.getTimeRangeId())) {
         timePartitionIdVersionControllerMap.remove(tsFileProcessor.getTimeRangeId());
       }
+      logger.info("close an unsequence tsfile processor {}", databaseName + "-" + dataRegionId);
     }
   }
 
@@ -1557,7 +1557,8 @@ public class DataRegion implements IDataRegionForQuery {
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
         if (tsFileProcessor.getWorkMemTableCreatedTime() < timeLowerBound) {
           logger.info(
-              "Exceed sequence memtable flush interval, so flush working memtable of time partition {} in database {}[{}]",
+              "Exceed sequence memtable {} flush interval, so flush working memtable of time partition {} in database {}[{}]",
+              tsFileProcessor.getWorkMemTable().getMemTableId(),
               tsFileProcessor.getTimeRangeId(),
               databaseName,
               dataRegionId);
@@ -1580,7 +1581,8 @@ public class DataRegion implements IDataRegionForQuery {
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
         if (tsFileProcessor.getWorkMemTableCreatedTime() < timeLowerBound) {
           logger.info(
-              "Exceed unsequence memtable flush interval, so flush working memtable of time partition {} in database {}[{}]",
+              "Exceed unsequence memtable {} flush interval, so flush working memtable of time partition {} in database {}[{}]",
+              tsFileProcessor.getWorkMemTable().getMemTableId(),
               tsFileProcessor.getTimeRangeId(),
               databaseName,
               dataRegionId);

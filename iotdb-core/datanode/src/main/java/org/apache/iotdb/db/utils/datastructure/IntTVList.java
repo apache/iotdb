@@ -34,8 +34,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
-import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
+import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.*;
 
 public abstract class IntTVList extends TVList {
   // list of primitive array, add 1 when expanded -> int primitive array
@@ -77,14 +76,59 @@ public abstract class IntTVList extends TVList {
   @Override
   public void putInt(long timestamp, int value) {
     checkExpansion();
-    int arrayIndex = rowCount / ARRAY_SIZE;
-    int elementIndex = rowCount % ARRAY_SIZE;
-    maxTime = Math.max(maxTime, timestamp);
-    timestamps.get(arrayIndex)[elementIndex] = timestamp;
-    values.get(arrayIndex)[elementIndex] = value;
-    rowCount++;
-    if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
-      sorted = false;
+    if (MEMTABLE_TOPK_SIZE == 0) {
+      int arrayIndex = rowCount / ARRAY_SIZE;
+      int elementIndex = rowCount % ARRAY_SIZE;
+      maxTime = Math.max(maxTime, timestamp);
+      topKTime = Math.max(topKTime, timestamp);
+      timestamps.get(arrayIndex)[elementIndex] = timestamp;
+      values.get(arrayIndex)[elementIndex] = value;
+      rowCount++;
+      if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
+        sorted = false;
+      }
+    } else {
+      int arrayIndex;
+      int elementIndex;
+      int waitlen = Math.min(rowCount, MEMTABLE_TOPK_SIZE);
+      int tempRowCount = rowCount - 1; // 记录向前比较的截止位置
+      while (waitlen > 0) {
+        waitlen--;
+        arrayIndex = tempRowCount / ARRAY_SIZE;
+        elementIndex = tempRowCount % ARRAY_SIZE;
+        if (timestamps.get(arrayIndex)[elementIndex] > timestamp) {
+          tempRowCount--;
+          continue;
+        }
+        break;
+      }
+      arrayIndex = rowCount / ARRAY_SIZE;
+      elementIndex = rowCount % ARRAY_SIZE;
+      int arrayIndexLeft = (rowCount - 1) / ARRAY_SIZE;
+      int elementIndexLeft = (rowCount - 1) % ARRAY_SIZE;
+      for (int i = rowCount - 1; i > tempRowCount; i--) {
+        timestamps.get(arrayIndex)[elementIndex] = timestamps.get(arrayIndexLeft)[elementIndexLeft];
+        values.get(arrayIndex)[elementIndex] = values.get(arrayIndexLeft)[elementIndexLeft];
+        arrayIndex = arrayIndexLeft;
+        elementIndex = elementIndexLeft;
+        arrayIndexLeft = (i - 1) / ARRAY_SIZE;
+        elementIndexLeft = (i - 1) % ARRAY_SIZE;
+        sortCount++;
+      }
+      arrayIndex = (tempRowCount + 1) / ARRAY_SIZE;
+      elementIndex = (tempRowCount + 1) % ARRAY_SIZE;
+      maxTime = Math.max(maxTime, timestamp);
+      timestamps.get(arrayIndex)[elementIndex] = timestamp;
+      values.get(arrayIndex)[elementIndex] = value;
+      if (rowCount > MEMTABLE_TOPK_SIZE) {
+        arrayIndex = (rowCount - MEMTABLE_TOPK_SIZE - 1) / ARRAY_SIZE;
+        elementIndex = (rowCount - MEMTABLE_TOPK_SIZE - 1) % ARRAY_SIZE;
+        topKTime = Math.max(topKTime, timestamps.get(arrayIndex)[elementIndex]);
+      }
+      rowCount++;
+      if (sorted && rowCount > 1 && waitlen == 0) {
+        sorted = false;
+      }
     }
   }
 
@@ -121,6 +165,37 @@ public abstract class IntTVList extends TVList {
   @Override
   protected void expandValues() {
     values.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+  }
+
+  @Override
+  public TVList divide() throws TopkDivideMemoryNotEnoughException {
+    if (MEMTABLE_TOPK_SIZE > rowCount || MEMTABLE_TOPK_SIZE < ARRAY_SIZE) {
+      throw new TopkDivideMemoryNotEnoughException(
+          String.format(
+              "WARNING: MEMTABLE_TOPK_SIZE %d is bigger than "
+                  + "the TVList's row count %d, "
+                  + "or is smaller than ARRAY_SIZE %d",
+              MEMTABLE_TOPK_SIZE, rowCount, ARRAY_SIZE));
+    }
+    IntTVList topkTVList = IntTVList.newList();
+    int truncatedIndex = rowCount - MEMTABLE_TOPK_SIZE;
+    int truncatedArrayIndex =
+        truncatedIndex / ARRAY_SIZE; // no matter truncatedIndex in or not in the block
+    truncatedIndex = truncatedArrayIndex * ARRAY_SIZE;
+    for (int i = truncatedArrayIndex; i < timestamps.size(); i++) {
+      topkTVList.timestamps.add(timestamps.get(i));
+      topkTVList.values.add(values.get(i));
+    }
+    for (int i = timestamps.size() - 1; i >= truncatedArrayIndex; i--) {
+      timestamps.remove(timestamps.size() - 1);
+      values.remove(values.size() - 1);
+    }
+    topkTVList.rowCount = rowCount - truncatedIndex;
+    topkTVList.sorted = true;
+    topkTVList.topKTime = topkTVList.getTime(0);
+    rowCount = truncatedIndex;
+    topKTime = topkTVList.getTopKTime();
+    return topkTVList;
   }
 
   @Override
@@ -200,6 +275,11 @@ public abstract class IntTVList extends TVList {
         rowCount += internalRemaining;
         checkExpansion();
       }
+    }
+    if (MEMTABLE_TOPK_SIZE != 0) {
+      sort(Math.max(0, start - MEMTABLE_TOPK_SIZE), rowCount);
+      int index = Math.max(0, rowCount - MEMTABLE_TOPK_SIZE - 1);
+      topKTime = Math.max(topKTime, getTime(index));
     }
   }
 
