@@ -10,7 +10,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Collections;
 
 import static java.lang.Math.pow;
 
@@ -21,28 +20,24 @@ public class BOSAmortization {
         else return 32 - Integer.numberOfLeadingZeros(num);
     }
 
-    public static byte[] int2Bytes(int integer) {
-        byte[] bytes = new byte[4];
-        bytes[0] = (byte) (integer >> 24);
-        bytes[1] = (byte) (integer >> 16);
-        bytes[2] = (byte) (integer >> 8);
-        bytes[3] = (byte) integer;
-        return bytes;
-    }
     public static void int2Bytes(int integer, ArrayList<Byte> cur_byte) {
         cur_byte.add((byte) (integer >> 24));
         cur_byte.add((byte) (integer >> 16));
         cur_byte.add((byte) (integer >> 8));
         cur_byte.add((byte) (integer));
-//        byte[] bytes = new byte[4];
-//        bytes[0] = (byte) (integer >> 24);
-//        bytes[1] = (byte) (integer >> 16);
-//        bytes[2] = (byte) (integer >> 8);
-//        bytes[3] = (byte) integer;
-//        return bytes;
     }
-    public static void intByte2Bytes(int integer, ArrayList<Byte> cur_byte) {
-        cur_byte.add((byte) (integer));
+    public static void int2Bytes(int integer,int encode_pos , byte[] cur_byte) {
+        cur_byte[encode_pos] = (byte) (integer >> 24);
+        cur_byte[encode_pos+1] = (byte) (integer >> 16);
+        cur_byte[encode_pos+2] = (byte) (integer >> 8);
+        cur_byte[encode_pos+3] = (byte) (integer);
+    }
+//    public static void intByte2Bytes(int integer, ArrayList<Byte> cur_byte) {
+//        cur_byte.add((byte) (integer));
+//    }
+
+    public static void intByte2Bytes(int integer, int encode_pos , byte[] cur_byte) {
+        cur_byte[encode_pos] = (byte) (integer);
     }
 
     private static void long2intBytes(long integer, ArrayList<Byte> cur_byte) {
@@ -51,24 +46,14 @@ public class BOSAmortization {
         cur_byte.add((byte) (integer >> 8));
         cur_byte.add((byte) (integer));
     }
-
-
-    private static byte[] long2intBytes(long integer) {
-        byte[] bytes = new byte[4];
-        bytes[0] = (byte) (integer >> 24);
-        bytes[1] = (byte) (integer >> 16);
-        bytes[2] = (byte) (integer >> 8);
-        bytes[3] = (byte) integer;
-        return bytes;
+    private static void long2intBytes(long integer, int encode_pos , byte[] cur_byte) {
+        cur_byte[encode_pos] = (byte) (integer >> 24);
+        cur_byte[encode_pos+1] = (byte) (integer >> 16);
+        cur_byte[encode_pos+2] = (byte) (integer >> 8);
+        cur_byte[encode_pos+3] = (byte) (integer);
     }
 
-    public static byte[] intByte2Bytes(int integer) {
-        byte[] bytes = new byte[1];
-        bytes[0] = (byte) integer;
-        return bytes;
-    }
-
-    public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
+    public static int bytes2Integer(byte[] encoded, int start, int num) {
         int value = 0;
         if (num > 4) {
             System.out.println("bytes2Integer error");
@@ -76,13 +61,13 @@ public class BOSAmortization {
         }
         for (int i = 0; i < num; i++) {
             value <<= 8;
-            int b = encoded.get(i + start) & 0xFF;
+            int b = encoded[i + start] & 0xFF;
             value |= b;
         }
         return value;
     }
 
-    private static long bytesLong2Integer(ArrayList<Byte> encoded, int decode_pos, int num) {
+    private static long bytesLong2Integer(byte[] encoded, int decode_pos, int num) {
         long value = 0;
         if (num > 4) {
             System.out.println("bytes2Integer error");
@@ -90,7 +75,7 @@ public class BOSAmortization {
         }
         for (int i = 0; i < num; i++) {
             value <<= 8;
-            int b = encoded.get(i + decode_pos) & 0xFF;
+            int b = encoded[i + decode_pos] & 0xFF;
             value |= b;
         }
         return value;
@@ -110,7 +95,7 @@ public class BOSAmortization {
         }
         return result;
     }
-    public static void pack8Values(ArrayList<Integer> values, int offset, int width, ArrayList<Byte> encoded_result) {
+    public static void pack8Values(ArrayList<Integer> values, int offset, int width, int encode_pos,  byte[] encoded_result) {
         int bufIdx = 0;
         int valueIdx = offset;
         // remaining bits for the current unfinished Integer
@@ -146,16 +131,18 @@ public class BOSAmortization {
 
             // put the buffer into the final result
             for (int j = 0; j < 4; j++) {
-                encoded_result.add ((byte) ((buffer >>> ((3 - j) * 8)) & 0xFF));
+                encoded_result[encode_pos] = (byte) ((buffer >>> ((3 - j) * 8)) & 0xFF);
+                encode_pos ++;
                 bufIdx++;
                 if (bufIdx >= width) {
-                    return;
+                    return ;
                 }
             }
         }
+//        return encode_pos;
     }
 
-    public static void unpack8Values(ArrayList<Byte> encoded, int offset,int width,  ArrayList<Integer> result_list) {
+    public static void unpack8Values(byte[] encoded, int offset,int width,  ArrayList<Integer> result_list) {
         int byteIdx = offset;
         long buffer = 0;
         // total bits which have read from 'buf' to 'buffer'. i.e.,
@@ -167,7 +154,7 @@ public class BOSAmortization {
             // If current available bits are not enough to decode one Integer,
             // then add next byte from buf to 'buffer' until totalBits >= width
             while (totalBits < width) {
-                buffer = (buffer << 8) | (encoded.get(byteIdx) & 0xFF);
+                buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
                 byteIdx++;
                 totalBits += 8;
             }
@@ -184,16 +171,19 @@ public class BOSAmortization {
         }
     }
 
-    public static void bitPacking(ArrayList<Integer> numbers, int start, int bit_width,  ArrayList<Byte> encoded_result) {
+    public static int bitPacking(ArrayList<Integer> numbers, int start, int bit_width,int encode_pos,  byte[] encoded_result) {
         int block_num = (numbers.size()-start) / 8;
         for(int i=0;i<block_num;i++){
-            pack8Values( numbers, start+i*8, bit_width, encoded_result);
+             pack8Values( numbers, start+i*8, bit_width,encode_pos, encoded_result);
+            encode_pos +=bit_width;
         }
+
+        return encode_pos;
 
     }
 
     public static ArrayList<Integer> decodeBitPacking(
-            ArrayList<Byte> encoded, int decode_pos, int bit_width, int block_size) {
+            byte[] encoded, int decode_pos, int bit_width, int block_size) {
         ArrayList<Integer> result_list = new ArrayList<>();
         int block_num = (block_size - 1) / 8;
 
@@ -224,106 +214,115 @@ public class BOSAmortization {
     }
 
 
-    public static ArrayList<Integer> getAbsDeltaTsBlock(
-            ArrayList<Integer> ts_block,
-            ArrayList<Integer> min_delta) {
-        ArrayList<Integer> ts_block_delta = new ArrayList<>();
+    public static int[] getAbsDeltaTsBlock(
+            int[] ts_block,
+            ArrayList<Integer> min_delta,int supple_length) {
+        int block_size = ts_block.length-1;
+        int[] ts_block_delta = new int[ts_block.length+supple_length-1];
 
 //        ts_block_delta.add(ts_block.get(0));
         int value_delta_min = Integer.MAX_VALUE;
-        for (int i = 1; i < ts_block.size(); i++) {
+        for (int i = 0; i < block_size; i++) {
 
-            int epsilon_v = ts_block.get(i) - ts_block.get(i - 1);
+            int epsilon_v = ts_block[i+1] - ts_block[i];
 
             if (epsilon_v < value_delta_min) {
                 value_delta_min = epsilon_v;
             }
 
         }
-        min_delta.add(ts_block.get(0));
+        min_delta.add(ts_block[0]);
         min_delta.add(value_delta_min);
 
-        for (int i = 1; i < ts_block.size(); i++) {
-            int epsilon_v = ts_block.get(i) - value_delta_min - ts_block.get(i - 1);
-            ts_block_delta.add(epsilon_v);
+        for (int i = 0; i  < block_size; i++) {
+            int epsilon_v = ts_block[i+1] - value_delta_min - ts_block[i];
+            ts_block_delta[i] = epsilon_v;
+        }
+        for(int i = block_size;i<block_size+supple_length;i++){
+            ts_block_delta[i] = 0;
         }
         return ts_block_delta;
     }
 
-    public static ArrayList<Integer> getAbsDeltaTsBlock(
-            ArrayList<Integer> ts_block,
+    public static int[] getAbsDeltaTsBlock(
+            int[] ts_block,
             int i,
             int block_size,
             ArrayList<Integer> min_delta) {
-        ArrayList<Integer> ts_block_delta = new ArrayList<>();
+        int[] ts_block_delta = new int[block_size-1];
 
 //        ts_block_delta.add(ts_block.get(0));
         int value_delta_min = Integer.MAX_VALUE;
         for (int j = i*block_size+1; j < (i+1)*block_size; j++) {
 
-            int epsilon_v = ts_block.get(j) - ts_block.get(j - 1);
+            int epsilon_v = ts_block[j] - ts_block[j - 1];
 
             if (epsilon_v < value_delta_min) {
                 value_delta_min = epsilon_v;
             }
 
         }
-        min_delta.add(ts_block.get(i*block_size));
+        min_delta.add(ts_block[i*block_size]);
         min_delta.add(value_delta_min);
 
-        for (int j = i*block_size+1; j < (i+1)*block_size; j++) {
-            int epsilon_v = ts_block.get(j) - value_delta_min - ts_block.get(j - 1);
-            ts_block_delta.add(epsilon_v);
+        int base = i*block_size+1;
+        int end = (i+1)*block_size;
+        for (int j = base; j < end; j++) {
+            int epsilon_v = ts_block[j] - value_delta_min - ts_block[j - 1];
+            ts_block_delta[j-base] =epsilon_v;
         }
         return ts_block_delta;
     }
 
-    public static ArrayList<Byte> encodeOutlier2Bytes(
-            ArrayList<Integer> ts_block_delta,
-            int bit_width) {
-        ArrayList<Byte> encoded_result = new ArrayList<>();
-//         encode value
-        byte[] value_bytes = bitPacking(ts_block_delta, 0, bit_width);
-        for (byte b : value_bytes) encoded_result.add(b);
+//    public static int encodeOutlier2Bytes(
+//            ArrayList<Integer> ts_block_delta,
+//            int bit_width,
+//            int encode_pos,  byte[] encoded_result) {
+////        ArrayList<Byte> encoded_result = new ArrayList<>();
+////         encode value
+//        encode_pos = bitPacking(ts_block_delta, 0, bit_width, encode_pos,encoded_result);
+////        for (byte b : value_bytes) encoded_result.add(b);
+//
+//        int n_k = ts_block_delta.size();
+//        int n_k_b = n_k / 8;
+//        long cur_remaining = 0; // encoded int
+//        int cur_number_bits = 0; // the bit width used of encoded int
+//        for (int i = n_k_b * 8; i < n_k; i++) {
+//            long cur_value = ts_block_delta.get(i);
+//            int cur_bit_width = bit_width; // remaining bit width of current value
+//
+//            if (cur_number_bits + bit_width >= 32) {
+//                cur_remaining <<= (32 - cur_number_bits);
+//                cur_bit_width = bit_width - 32 + cur_number_bits;
+//                cur_remaining += ((cur_value >> cur_bit_width));
+//                long2intBytes(cur_remaining,encode_pos,encoded_result);
+//                encode_pos += 4;
+////                for (byte b : cur_remaining_byte) encoded_result.add(b);
+//                cur_remaining = 0;
+//                cur_number_bits = 0;
+//            }
+//
+//            cur_remaining <<= cur_bit_width;
+//            cur_number_bits += cur_bit_width;
+//            cur_remaining += (((cur_value << (32 - cur_bit_width)) & 0xFFFFFFFFL) >> (32 - cur_bit_width)); //
+//        }
+//        cur_remaining <<= (32 - cur_number_bits);
+//        long2intBytes(cur_remaining,encode_pos,encoded_result);
+//        encode_pos += 4;
+////        byte[] cur_remaining_byte = long2intBytes(cur_remaining);
+////        for (byte b : cur_remaining_byte) encoded_result.add(b);
+//
+//
+//        return encode_pos;
+//    }
 
-        int n_k = ts_block_delta.size();
-        int n_k_b = n_k / 8;
-        long cur_remaining = 0; // encoded int
-        int cur_number_bits = 0; // the bit width used of encoded int
-        for (int i = n_k_b * 8; i < n_k; i++) {
-            long cur_value = ts_block_delta.get(i);
-            int cur_bit_width = bit_width; // remaining bit width of current value
-
-            if (cur_number_bits + bit_width >= 32) {
-                cur_remaining <<= (32 - cur_number_bits);
-                cur_bit_width = bit_width - 32 + cur_number_bits;
-                cur_remaining += ((cur_value >> cur_bit_width));
-                byte[] cur_remaining_byte = long2intBytes(cur_remaining);
-                for (byte b : cur_remaining_byte) encoded_result.add(b);
-                cur_remaining = 0;
-                cur_number_bits = 0;
-            }
-
-            cur_remaining <<= cur_bit_width;
-            cur_number_bits += cur_bit_width;
-            cur_remaining += (((cur_value << (32 - cur_bit_width)) & 0xFFFFFFFFL) >> (32 - cur_bit_width)); //
-        }
-        cur_remaining <<= (32 - cur_number_bits);
-
-        byte[] cur_remaining_byte = long2intBytes(cur_remaining);
-        for (byte b : cur_remaining_byte) encoded_result.add(b);
-
-
-        return encoded_result;
-    }
-
-    public static void encodeOutlier2Bytes(
+    public static int encodeOutlier2Bytes(
             ArrayList<Integer> ts_block_delta,
             int bit_width,
-                    ArrayList<Byte> encoded_result) {
+            int encode_pos,  byte[] encoded_result) {
 //        ArrayList<Byte> encoded_result = new ArrayList<>();
 //         encode value
-        bitPacking(ts_block_delta, 0, bit_width, encoded_result);
+        encode_pos = bitPacking(ts_block_delta, 0, bit_width, encode_pos, encoded_result);
 //        byte[] value_bytes = bitPacking(ts_block_delta, 0, bit_width);
 //        for (byte b : value_bytes) encoded_result.add(b);
 
@@ -339,7 +338,8 @@ public class BOSAmortization {
                 cur_remaining <<= (32 - cur_number_bits);
                 cur_bit_width = bit_width - 32 + cur_number_bits;
                 cur_remaining += ((cur_value >> cur_bit_width));
-                long2intBytes(cur_remaining,encoded_result);
+                long2intBytes(cur_remaining,encode_pos,encoded_result);
+                encode_pos += 4;
 //                byte[] cur_remaining_byte = long2intBytes(cur_remaining);
 //                for (byte b : cur_remaining_byte) encoded_result.add(b);
                 cur_remaining = 0;
@@ -351,7 +351,9 @@ public class BOSAmortization {
             cur_remaining += (((cur_value << (32 - cur_bit_width)) & 0xFFFFFFFFL) >> (32 - cur_bit_width)); //
         }
         cur_remaining <<= (32 - cur_number_bits);
-        long2intBytes(cur_remaining,encoded_result);
+        long2intBytes(cur_remaining,encode_pos,encoded_result);
+        encode_pos += 4;
+        return encode_pos;
 //        byte[] cur_remaining_byte = long2intBytes(cur_remaining);
 //        for (byte b : cur_remaining_byte) encoded_result.add(b);
 
@@ -361,7 +363,7 @@ public class BOSAmortization {
 
 
     public static ArrayList<Integer> decodeOutlier2Bytes(
-            ArrayList<Byte> encoded,
+            byte[] encoded,
             int decode_pos,
             int bit_width,
             int length,
@@ -411,15 +413,15 @@ public class BOSAmortization {
         return result_list;
     }
 
-    private static void BOSEncodeBits(ArrayList<Integer> ts_block_delta,
+    private static int BOSEncodeBits(int[] ts_block_delta,
                                       int final_left_max,
                                       int final_k_start_value,
                                       int final_k_end_value,
                                       int max_delta_value,
                                       ArrayList<Integer> min_delta,
-//                                      int bit_width,
-                                      ArrayList<Byte> cur_byte) {
-        int block_size = ts_block_delta.size();
+                                      int encode_pos,
+                                      byte[] cur_byte) {
+        int block_size = ts_block_delta.length;
         // ------------------------- encode data -----------------------------------------
 //        if (final_left_max == 0 && final_k_end_value == max_delta_value) {
 //            cur_byte = encode2Bytes(ts_block_delta, min_delta, bit_width);
@@ -436,8 +438,9 @@ public class BOSAmortization {
             int index_bitmap_outlier = 0;
             int cur_index_bitmap_outlier_bits = 0;
             for (int i = 0; i < block_size; i++) {
-                if (ts_block_delta.get(i) < final_k_start_value) {
-                    final_left_outlier.add(ts_block_delta.get(i));
+                int cur_value = ts_block_delta[i];
+                if ( cur_value< final_k_start_value) {
+                    final_left_outlier.add(cur_value);
                     final_left_outlier_index.add(i);
                     if (cur_index_bitmap_outlier_bits % 8 != 7) {
                         index_bitmap_outlier <<= 2;
@@ -450,13 +453,11 @@ public class BOSAmortization {
                         index_bitmap_outlier = 1;
                         cur_index_bitmap_outlier_bits = 1;
                     }
-
-
                     k1++;
 
 
-                } else if (ts_block_delta.get(i) > final_k_end_value) {
-                    final_right_outlier.add(ts_block_delta.get(i) - final_k_end_value);
+                } else if (cur_value > final_k_end_value) {
+                    final_right_outlier.add(cur_value - final_k_end_value);
                     final_right_outlier_index.add(i);
                     if (cur_index_bitmap_outlier_bits % 8 != 7) {
                         index_bitmap_outlier <<= 2;
@@ -472,7 +473,7 @@ public class BOSAmortization {
                     k2++;
 
                 } else {
-                    final_normal.add(ts_block_delta.get(i) - final_k_start_value);
+                    final_normal.add(cur_value - final_k_start_value);
                     index_bitmap_outlier <<= 1;
                     cur_index_bitmap_outlier_bits += 1;
                 }
@@ -498,16 +499,24 @@ public class BOSAmortization {
             k_byte += (k2 << 16);
 
 
-        int2Bytes(k_byte,cur_byte);
-        int2Bytes(min_delta.get(0),cur_byte);
-        int2Bytes(min_delta.get(1),cur_byte);
-        int2Bytes(final_k_start_value,cur_byte);
+        int2Bytes(k_byte,encode_pos,cur_byte);
+        encode_pos += 4;
+
+        int2Bytes(min_delta.get(0),encode_pos,cur_byte);
+        encode_pos += 4;
+        int2Bytes(min_delta.get(1),encode_pos,cur_byte);
+        encode_pos += 4;
+        int2Bytes(final_k_start_value,encode_pos,cur_byte);
+        encode_pos += 4;
         int bit_width_final = getBitWith(final_k_end_value - final_k_start_value);
-        intByte2Bytes(bit_width_final,cur_byte);
+        intByte2Bytes(bit_width_final,encode_pos,cur_byte);
+        encode_pos += 1;
         int left_bit_width = getBitWith(final_left_max);//final_left_max
         int right_bit_width = getBitWith(max_delta_value - final_k_end_value);//final_right_min
-        intByte2Bytes(left_bit_width,cur_byte);
-        intByte2Bytes(right_bit_width,cur_byte);
+        intByte2Bytes(left_bit_width,encode_pos,cur_byte);
+        encode_pos += 1;
+        intByte2Bytes(right_bit_width,encode_pos,cur_byte);
+        encode_pos += 1;
         if (final_alpha == 0) { // 0
 //                for (int i : bitmap) {
 //                    byte[] index_bytes = intByte2Bytes(i);
@@ -515,18 +524,20 @@ public class BOSAmortization {
 //                }
             for (int i : bitmap_outlier) {
 
-                intByte2Bytes(i,cur_byte);
+                intByte2Bytes(i,encode_pos,cur_byte);
+                encode_pos += 1;
 //                for (byte b : index_bytes) cur_byte.add(b);
             }
         } else {
-            encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size),cur_byte);
-            encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size),cur_byte);
+            encode_pos = encodeOutlier2Bytes(final_left_outlier_index, getBitWith(block_size),encode_pos,cur_byte);
+            encode_pos = encodeOutlier2Bytes(final_right_outlier_index, getBitWith(block_size),encode_pos,cur_byte);
         }
-        encodeOutlier2Bytes(final_normal, bit_width_final,cur_byte);
+        encode_pos =encodeOutlier2Bytes(final_normal, bit_width_final,encode_pos,cur_byte);
         if (k1 != 0)
-            encodeOutlier2Bytes(final_left_outlier, left_bit_width,cur_byte);
+            encode_pos = encodeOutlier2Bytes(final_left_outlier, left_bit_width,encode_pos,cur_byte);
         if (k2 != 0)
-            encodeOutlier2Bytes(final_right_outlier, right_bit_width,cur_byte);
+            encode_pos = encodeOutlier2Bytes(final_right_outlier, right_bit_width,encode_pos,cur_byte);
+        return encode_pos;
 //            byte[] k_bytes = int2Bytes(k_byte);
 //            for (byte b : k_bytes) cur_byte.add(b);
 
@@ -618,26 +629,20 @@ public class BOSAmortization {
 //        }
     }
 
-    private static void BOSBlockEncoder(ArrayList<Integer> ts_block, int block_i, int block_size, int supple_length, int q, int k, ArrayList<Byte> cur_byte) {
+    private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size, int q, int k, int encode_pos , byte[] cur_byte) {
 
-
-//        ArrayList<Byte> cur_byte = new ArrayList<>();
 
         ArrayList<Integer> min_delta = new ArrayList<>();
-        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, block_i, block_size, min_delta);
-//        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
+        int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, block_i, block_size, min_delta);
 
         block_size --;
-        for (int s = 0; s < supple_length; s++) {
-            ts_block_delta.add(0);
-        }
 
         int final_right_max = 0;
         double sum = 0;
         double sumOfSquares = 0;
 
         for (int i = 0; i < block_size; i++) {
-            int delta = ts_block_delta.get(i);
+            int delta = ts_block_delta[i];
             if (delta > final_right_max) {
                 final_right_max = delta;
             }
@@ -650,13 +655,15 @@ public class BOSAmortization {
         double sigma = Math.sqrt(variance);
 
         if(sigma ==0){
-            BOSEncodeBits(ts_block_delta, 0, 0, 0, final_right_max,
-                    min_delta,  cur_byte);
-//            return cur_byte;
+            encode_pos =  BOSEncodeBits(ts_block_delta, 0, 0, 0, final_right_max,
+                    min_delta, encode_pos , cur_byte);
+            return encode_pos;
         }
-
+        final_right_max = ((final_right_max + 1)/q +1)*q;
 //        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
-        int max_delta_value_bit_width = getBitWith(final_right_max);
+        int final_up_bound = ((int) ((mu + k * sigma) / q + 1) * q);
+
+        int max_delta_value_bit_width = getBitWith(final_up_bound);
 
         int final_k_start_value = 0;
         int final_k_end_value = final_right_max;
@@ -672,31 +679,27 @@ public class BOSAmortization {
 
         // Divided into buckets
         int bucket_num = (int) Math.ceil (((double) final_right_max +1) / (double) q);
-        ArrayList<Integer> bucket_count = new ArrayList<>();
+        int[] bucket_count = new int[bucket_num];
         for(int i=0;i<bucket_num;i++){
-            bucket_count.add(0);
+            bucket_count[i]=0;
         }
         for (int i = 0; i < block_size; i++) {
-            int tmp_i = ts_block_delta.get(i)/q;
-            int tmp_count = bucket_count.get(tmp_i);
-            tmp_count ++;
-            bucket_count.set(tmp_i,tmp_count);
+            int tmp_i = ts_block_delta[i]/q;
+            bucket_count[tmp_i]  ++;
         }
-        ArrayList<Integer> PDF = new ArrayList<>();
+        int[] PDF = new int[bucket_num];
         int cumulative = 0;
         int bucket_start_i = (int) (Math.max((mu-k*sigma)/q + 1,0));//0;
         int bucket_end_i = (int) (Math.min((mu+k*sigma)/q - 1,bucket_num));//bucket_num;
         for(int i=0;i<bucket_num;i++){
-            int count = bucket_count.get(i);
-            PDF.add(cumulative);
+            int count = bucket_count[i];
+            PDF[i] = cumulative;
             cumulative += count;
         }
-        PDF.add(cumulative);
-        int PDF_size = PDF.size();
-        final_right_max = (final_right_max / q + 1) * q;
-
+        PDF[bucket_num-1] = cumulative;
+        int PDF_size = bucket_num;
         for(int i =bucket_start_i;i<bucket_end_i;i++){
-            if(bucket_count.get(i) == 0){
+            if(bucket_count[i] == 0){
                 continue;
             }
             int k_start_value = i * q;
@@ -704,15 +707,15 @@ public class BOSAmortization {
                 int k_end_value = Math.min(k_spread_value + k_start_value, final_right_max);
 
                 int cur_bits = 0;
-                int cur_k1 = PDF.get(i);
+                int cur_k1 = PDF[i];
 
                 int k_end_value_bucket = k_end_value/q ;
                 k_end_value = k_end_value_bucket *q;
 
                 int cur_k2 = 0;
                 if(k_end_value_bucket != PDF_size -1)
-                    cur_k2 =  block_size - PDF.get(k_end_value_bucket+1);
-                else cur_k2 =  block_size - PDF.get(k_end_value_bucket);
+                    cur_k2 =  block_size - PDF[k_end_value_bucket+1];
+                else cur_k2 =  block_size - PDF[k_end_value_bucket];
 
 
                 cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
@@ -729,37 +732,98 @@ public class BOSAmortization {
                     final_k_start_value = k_start_value;
                     final_k_end_value = k_end_value;
                 }
-                if (k_end_value == final_right_max)
+                if (k_end_value == final_up_bound)
                     break;
             }
         }
 
+//        ArrayList<Integer> bucket_count = new ArrayList<>();
+//        for(int i=0;i<bucket_num;i++){
+//            bucket_count.add(0);
+//        }
+//        for (int i = 0; i < block_size; i++) {
+//            int tmp_i = ts_block_delta.get(i)/q;
+//            int tmp_count = bucket_count.get(tmp_i);
+//            tmp_count ++;
+//            bucket_count.set(tmp_i,tmp_count);
+//        }
+//        ArrayList<Integer> PDF = new ArrayList<>();
+//        int cumulative = 0;
+//        int bucket_start_i = (int) (Math.max((mu-k*sigma)/q + 1,0));//0;
+//        int bucket_end_i = (int) (Math.min((mu+k*sigma)/q - 1,bucket_num));//bucket_num;
+//        for(int i=0;i<bucket_num;i++){
+//            int count = bucket_count.get(i);
+//            PDF.add(cumulative);
+//            cumulative += count;
+//        }
+//        PDF.add(cumulative);
+//        int PDF_size = PDF.size();
 
-        BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, final_right_max,
-                min_delta,  cur_byte);
+//        for(int i =bucket_start_i;i<bucket_end_i;i++){
+//            if(bucket_count.get(i) == 0){
+//                continue;
+//            }
+//            int k_start_value = i * q;
+//            for (int k_spread_value : spread_value) {
+//                int k_end_value = Math.min(k_spread_value + k_start_value, final_right_max);
+//
+//                int cur_bits = 0;
+//                int cur_k1 = PDF.get(i);
+//
+//                int k_end_value_bucket = k_end_value/q ;
+//                k_end_value = k_end_value_bucket *q;
+//
+//                int cur_k2 = 0;
+//                if(k_end_value_bucket != PDF_size -1)
+//                    cur_k2 =  block_size - PDF.get(k_end_value_bucket+1);
+//                else cur_k2 =  block_size - PDF.get(k_end_value_bucket);
+//
+//
+//                cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
+//                if (cur_k1 != 0)
+//                    cur_bits += cur_k1 * getBitWith(k_start_value);//left_max
+//                if (cur_k1 + cur_k2 != block_size)
+//                    cur_bits += (block_size - cur_k1 - cur_k2) * getBitWith(k_end_value - k_start_value);
+//                if (cur_k2 != 0)
+//                    cur_bits += cur_k2 * getBitWith(final_right_max - k_end_value);//min_upper_outlier
+//
+//
+//                if (cur_bits < min_bits) {
+//                    min_bits = cur_bits;
+//                    final_k_start_value = k_start_value;
+//                    final_k_end_value = k_end_value;
+//                }
+//                if (k_end_value == final_up_bound)
+//                    break;
+//            }
+//        }
 
-//        return cur_byte;
+
+        encode_pos = BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, final_right_max,
+                min_delta, encode_pos , cur_byte);
+
+        return encode_pos;
+//
+
     }
 
-    private static ArrayList<Byte> BOSBlockEncoder(ArrayList<Integer> ts_block, int supple_length, int q, int k) {
+    private static int BOSBlockEncoder(int[] ts_block, int supple_length, int q, int k, int encode_pos, byte[] cur_byte) {
 
-        int block_size = ts_block.size() - 1;
-        ArrayList<Byte> cur_byte = new ArrayList<>();
+        int block_size = ts_block.length - 1;
+//        ArrayList<Byte> cur_byte = new ArrayList<>();
 
         ArrayList<Integer> min_delta = new ArrayList<>();
-        ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
+        int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta,supple_length);
 
-        for (int s = 0; s < supple_length; s++) {
-            ts_block_delta.add(0);
-        }
-        block_size = ts_block_delta.size();
+
+        block_size = block_size + supple_length;
 
         int final_right_max = 0;
         double sum = 0;
         double sumOfSquares = 0;
 
         for (int i = 0; i < block_size; i++) {
-            int delta = ts_block_delta.get(i);
+            int delta = ts_block_delta[i];
             if (delta > final_right_max) {
                 final_right_max = delta;
             }
@@ -772,15 +836,19 @@ public class BOSAmortization {
         double sigma = Math.sqrt(variance);
 
         if(sigma ==0){
-            BOSEncodeBits(ts_block_delta, 0, 0, 0, final_right_max,
-                    min_delta,  cur_byte);
-            return cur_byte;
+            encode_pos = BOSEncodeBits(ts_block_delta, 0, 0, 0, final_right_max,
+                    min_delta, encode_pos , cur_byte);
+            return encode_pos;
         }
 
 //        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
 
+        final_right_max = ((final_right_max + 1)/q +1)*q;
+//        int bit_width = getBitWith(ts_block_delta.get(block_size - 1));
+        int final_up_bound = ((int) ((mu + k * sigma) / q + 1) * q);
 
-        int max_delta_value_bit_width = getBitWith(final_right_max);
+        int max_delta_value_bit_width = getBitWith(final_up_bound);
+
 
         int final_k_start_value = 0;
         int final_k_end_value = final_right_max;
@@ -795,54 +863,43 @@ public class BOSAmortization {
 
         // Divided into buckets
         int bucket_num = (int) Math.ceil (((double) final_right_max +1) / (double) q);
-        ArrayList<Integer> bucket_count = new ArrayList<>();
+        int[] bucket_count = new int[bucket_num];
         for(int i=0;i<bucket_num;i++){
-            bucket_count.add(0);
+            bucket_count[i]=0;
         }
         for (int i = 0; i < block_size; i++) {
-            int tmp_i = ts_block_delta.get(i)/q;
-            int tmp_count = bucket_count.get(tmp_i);
-            tmp_count ++;
-            bucket_count.set(tmp_i,tmp_count);
+            int tmp_i = ts_block_delta[i]/q;
+            bucket_count[tmp_i]  ++;
         }
-        ArrayList<Integer> PDF = new ArrayList<>();
+        int[] PDF = new int[bucket_num];
         int cumulative = 0;
-//        ArrayList<Integer> bucket_no_zero = new ArrayList<>();
-//        int bucket_start_i = 0;
-//        boolean is_bucket_start_i = false;
         int bucket_start_i = (int) (Math.max((mu-k*sigma)/q + 1,0));//0;
-        int bucket_end_i = (int) (Math.min((mu+k*sigma)/q - 1,bucket_num));// bucket_num;
+        int bucket_end_i = (int) (Math.min((mu+k*sigma)/q - 1,bucket_num));//bucket_num;
         for(int i=0;i<bucket_num;i++){
-            int count = bucket_count.get(i);
-            PDF.add(cumulative);
+            int count = bucket_count[i];
+            PDF[i] = cumulative;
             cumulative += count;
-//            if(count != 0){
-//                bucket_no_zero.add(i);
-//                if(i*4>=(mu-3*sigma) && !is_bucket_start_i){
-//                    bucket_start_i = bucket_no_zero.size() - 1;
-//                    is_bucket_start_i = true;
-//                }
-//            }
         }
-        PDF.add(cumulative);
-        int PDF_size = PDF.size();
-        final_right_max = (final_right_max / q + 1) * q;
-//        int bucket_no_zero_size = bucket_no_zero.size();
+        PDF[bucket_num-1] = cumulative;
+        int PDF_size = bucket_num;
         for(int i =bucket_start_i;i<bucket_end_i;i++){
+            if(bucket_count[i] == 0){
+                continue;
+            }
             int k_start_value = i * q;
             for (int k_spread_value : spread_value) {
                 int k_end_value = Math.min(k_spread_value + k_start_value, final_right_max);
 
                 int cur_bits = 0;
-                int cur_k1 = PDF.get(i);
+                int cur_k1 = PDF[i];
 
                 int k_end_value_bucket = k_end_value/q ;
                 k_end_value = k_end_value_bucket *q;
 
                 int cur_k2 = 0;
                 if(k_end_value_bucket != PDF_size -1)
-                    cur_k2 =  block_size - PDF.get(k_end_value_bucket+1);
-                else cur_k2 =  block_size - PDF.get(k_end_value_bucket);
+                    cur_k2 =  block_size - PDF[k_end_value_bucket+1];
+                else cur_k2 =  block_size - PDF[k_end_value_bucket];
 
 
                 cur_bits += Math.min((cur_k1 + cur_k2) * getBitWith(block_size), block_size + cur_k1 + cur_k2);
@@ -859,20 +916,20 @@ public class BOSAmortization {
                     final_k_start_value = k_start_value;
                     final_k_end_value = k_end_value;
                 }
-                if (k_end_value == final_right_max)
+                if (k_end_value == final_up_bound)
                     break;
             }
         }
 
 
-        BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, final_right_max,
-              min_delta,  cur_byte);
+        encode_pos = BOSEncodeBits(ts_block_delta, final_k_start_value, final_k_start_value, final_k_end_value, final_right_max,
+              min_delta, encode_pos , cur_byte);
 
-        return cur_byte;
+        return encode_pos;
     }
 
-    public static ArrayList<Byte> BOSEncoder(
-            ArrayList<Integer> data, int block_size, String dataset_name, int q,int k) {
+    public static int BOSEncoder(
+            int[] data, int block_size, String dataset_name, int q,int k,byte[] encoded_result) {
         block_size++;
 //        int length_all = data.size();
 //        byte[] length_all_bytes1 = int2Bytes(length_all);
@@ -883,20 +940,25 @@ public class BOSAmortization {
 //        byte[] block_size_byte = int2Bytes(block_size);
 //        System.arraycopy(block_size_byte, 0, encoded_result1, encode_pos, block_size_byte.length);
 
-        ArrayList<Byte> encoded_result = new ArrayList<Byte>();
-        int length_all = data.size();
-        byte[] length_all_bytes = int2Bytes(length_all);
-        for (byte b : length_all_bytes) encoded_result.add(b);
-        int block_num = length_all / block_size;
 
-        byte[] block_size_byte = int2Bytes(block_size);
-        for (byte b : block_size_byte) encoded_result.add(b);
+        int length_all = data.length;
+
+        int encode_pos = 0;
+        int2Bytes(length_all,encode_pos,encoded_result);
+        encode_pos += 4;
+//        byte[] length_all_bytes = int2Bytes(length_all);
+//        for (byte b : length_all_bytes) encoded_result.add(b);
+        int block_num = length_all / block_size;
+        int2Bytes(block_size,encode_pos,encoded_result);
+        encode_pos+= 4;
+//        byte[] block_size_byte = int2Bytes(block_size);
+//        for (byte b : block_size_byte) encoded_result.add(b);
 
 
 //        for (int i = 0; i < 1; i++) {
         for (int i = 0; i < block_num; i++) {
 
-           BOSBlockEncoder(data, i, block_size,0,q,k,encoded_result);
+            encode_pos =  BOSBlockEncoder(data, i, block_size, q,k,encode_pos,encoded_result);
 
 //            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(data, i, block_size,0,q,k);
 //            encoded_result.addAll(cur_encoded_result);
@@ -906,16 +968,15 @@ public class BOSAmortization {
         int remaining_length = length_all - block_num * block_size;
         if (remaining_length <= 3) {
             for (int i = remaining_length; i > 0; i--) {
-                byte[] timestamp_end_bytes = int2Bytes(data.get(data.size() - i));
-                for (byte b : timestamp_end_bytes) encoded_result.add(b);
+                int2Bytes(data[data.length - i], encode_pos, encoded_result);
+                encode_pos += 4;
             }
 
         } else {
-            ArrayList<Integer> ts_block = new ArrayList<>();
 
-            for (int j = block_num * block_size; j < length_all; j++) {
-                ts_block.add(data.get(j));
-            }
+            int start = block_num * block_size;
+            int[] ts_block = new int[length_all-start];
+            if (length_all - start >= 0) System.arraycopy(data, start, ts_block, start - start, length_all - start);
 
             int supple_length;
             if (remaining_length % 8 == 0) {
@@ -927,16 +988,18 @@ public class BOSAmortization {
             }
 
 
-            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(ts_block, supple_length, q,k);
-            encoded_result.addAll(cur_encoded_result);
+            encode_pos = BOSBlockEncoder(ts_block, supple_length, q,k,encode_pos,encoded_result);
+//            encoded_result.addAll(cur_encoded_result);
 //            System.out.println("encoded_result.size: "+cur_encoded_result.size());
         }
 
 
-        return encoded_result;
+        return encode_pos;
     }
 
-    public static int BOSBlockDecoder(ArrayList<Byte> encoded, int decode_pos, ArrayList<Integer> value_list, int block_size) {
+    public static int BOSBlockDecoder(byte[] encoded, int decode_pos, int[] value_list, int block_size, int[] value_pos_arr) {
+
+
         int k_byte = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
         int k1_byte = (int) (k_byte % pow(2, 16));
@@ -947,7 +1010,8 @@ public class BOSAmortization {
 
         int value0 = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
-        value_list.add(value0);
+        value_list[value_pos_arr[0]] =value0;
+        value_pos_arr[0] ++;
 
         int min_delta = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
@@ -1112,12 +1176,13 @@ public class BOSAmortization {
             }
 
             pre_v = current_delta + pre_v;
-            value_list.add(pre_v);
+            value_list[value_pos_arr[0]] = pre_v;
+            value_pos_arr[0]++;
         }
         return decode_pos;
     }
 
-    public static ArrayList<Integer> BOSDecoder(ArrayList<Byte> encoded) {
+    public static int[] BOSDecoder(byte[] encoded) {
 
         int decode_pos = 0;
         int length_all = bytes2Integer(encoded, decode_pos, 4);
@@ -1135,20 +1200,28 @@ public class BOSAmortization {
         } else {
             zero_number = 9 - remain_length % 8;
         }
-        ArrayList<Integer> value_list = new ArrayList<>();
+
+        int[] value_list = new int[length_all+8];
+
+        int[] value_pos_arr = new int[1];
+        value_pos_arr[0]= 0;
 //        for (int k = 0; k < 1; k++) {
         for (int k = 0; k < block_num; k++) {
-            decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, block_size);
+
+
+            decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, block_size,value_pos_arr);
+
         }
 
         if (remain_length <= 3) {
             for (int i = 0; i < remain_length; i++) {
                 int value_end = bytes2Integer(encoded, decode_pos, 4);
                 decode_pos += 4;
-                value_list.add(value_end);
+                value_list[value_pos_arr[0]] = value_end;
+                value_pos_arr[0]++;
             }
         } else {
-            decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, remain_length + zero_number);
+            decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, remain_length + zero_number,value_pos_arr);
         }
         return value_list;
     }
@@ -1295,7 +1368,8 @@ public class BOSAmortization {
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                 ArrayList<Integer> data1 = new ArrayList<>();
                 ArrayList<Integer> data2 = new ArrayList<>();
-                ArrayList<Integer> data_decoded = new ArrayList<>();
+
+                int[] data_decoded ;
 
 
 //                for (int index : columnIndexes) {
@@ -1312,7 +1386,11 @@ public class BOSAmortization {
                 }
 //                    System.out.println(data2);
                 inputStream.close();
-
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
                 long encodeTime = 0;
                 long decodeTime = 0;
                 double ratio = 0;
@@ -1320,22 +1398,24 @@ public class BOSAmortization {
                 int repeatTime2 = 500;
                 for (int i = 0; i < repeatTime; i++) {
 
-                    ArrayList<Byte> buffer2 = new ArrayList<>();
+//                    ArrayList<Byte> buffer2 = new ArrayList<>();
+                    int length = 0;
+
                     long s = System.nanoTime();
                     for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                        buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i), 1, 1);
+                        length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), dataset_name.get(file_i), 1, 1,encoded_result);
                     }
 //                        System.out.println(buffer2.size());
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
 
                     long e = System.nanoTime();
                     encodeTime += ((e - s) / repeatTime2);
-                    compressed_size += buffer2.size();
+                    compressed_size += length;
                     double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
                     ratio += ratioTmp;
                     s = System.nanoTime();
                     for (int repeat = 0; repeat < repeatTime2; repeat++)
-                        data_decoded = BOSDecoder(buffer2);
+                        data_decoded = BOSDecoder(encoded_result);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
                 }
@@ -1388,7 +1468,7 @@ public class BOSAmortization {
         dataset_name.add("TH-Climate");
         dataset_name.add("TY-Transport");
         dataset_name.add("EPM-Education");
-        int repeatTime2 = 10;
+        int repeatTime2 = 500;
 
         for (int i = 0; i < dataset_name.size(); i++) {
             input_path_list.add(input_parent_dir + dataset_name.get(i));
@@ -1460,18 +1540,28 @@ public class BOSAmortization {
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                 ArrayList<Integer> data1 = new ArrayList<>();
                 ArrayList<Integer> data2 = new ArrayList<>();
-                ArrayList<Integer> data_decoded = new ArrayList<>();
+                int[] data_decoded ;
 
+
+//                for (int index : columnIndexes) {
+                // add a column to "data"
+//                    System.out.println(index);
 
                 loader.readHeaders();
-
+//                    data.clear();
                 while (loader.readRecord()) {
-
+//                        String value = loader.getValues()[index];
                     data1.add(Integer.valueOf(loader.getValues()[0]));
                     data2.add(Integer.valueOf(loader.getValues()[1]));
+//                        data.add(Integer.valueOf(value));
                 }
-
+//                    System.out.println(data2);
                 inputStream.close();
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
 
                 for (int block_size_i = 13; block_size_i > 3; block_size_i--) {
                     int block_size = (int) Math.pow(2, block_size_i);
@@ -1481,21 +1571,22 @@ public class BOSAmortization {
                     double ratio = 0;
                     double compressed_size = 0;
 
+
                     for (int i = 0; i < repeatTime; i++) {
                         long s = System.nanoTime();
                         ArrayList<Byte> buffer2 = new ArrayList<>();
                         for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                            buffer2 = BOSEncoder(data2, block_size, dataset_name.get(file_i), 4, 1);
+                            compressed_size = BOSEncoder(data2_arr, block_size, dataset_name.get(file_i), 4, 1,encoded_result);
                         }
 
                         long e = System.nanoTime();
                         encodeTime += ((e - s) / repeatTime2);
-                        compressed_size += buffer2.size();
+//                        compressed_size += buffer2.size();
                         double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
                         ratio += ratioTmp;
                         s = System.nanoTime();
                         for (int repeat = 0; repeat < repeatTime2; repeat++)
-                            data_decoded = BOSDecoder(buffer2);
+                            data_decoded = BOSDecoder(encoded_result);
                         e = System.nanoTime();
                         decodeTime += ((e - s) / repeatTime2);
                     }
@@ -1620,7 +1711,7 @@ public class BOSAmortization {
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                 ArrayList<Integer> data1 = new ArrayList<>();
                 ArrayList<Integer> data2 = new ArrayList<>();
-                ArrayList<Integer> data_decoded = new ArrayList<>();
+                int[] data_decoded ;
 
 
 //                for (int index : columnIndexes) {
@@ -1637,6 +1728,11 @@ public class BOSAmortization {
                 }
 //                    System.out.println(data2);
                 inputStream.close();
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
                 for (int k = 1; k < 8; k++) {
 //                    int q = (int) Math.pow(2, q_exp);
                     System.out.println(k);
@@ -1652,7 +1748,7 @@ public class BOSAmortization {
                         long buffer_bits = 0;
                         for (int repeat = 0; repeat < repeatTime2; repeat++) {
 //                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
-                            buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i), 4, k);
+                            compressed_size = BOSEncoder(data2_arr, dataset_block_size.get(file_i), dataset_name.get(file_i), 4, k,encoded_result);
                         }
 //                        System.out.println(buffer2.size());
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
@@ -1660,12 +1756,12 @@ public class BOSAmortization {
                         long e = System.nanoTime();
                         encodeTime += ((e - s) / repeatTime2);
 //                        compressed_size += buffer1.size();
-                        compressed_size += buffer2.size();
+//                        compressed_size += buffer2.size();
                         double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
                         ratio += ratioTmp;
                         s = System.nanoTime();
                         for (int repeat = 0; repeat < repeatTime2; repeat++)
-                            data_decoded = BOSDecoder(buffer2);
+                            data_decoded = BOSDecoder(encoded_result);
                         e = System.nanoTime();
                         decodeTime += ((e - s) / repeatTime2);
                     }
@@ -1792,7 +1888,7 @@ public class BOSAmortization {
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                 ArrayList<Integer> data1 = new ArrayList<>();
                 ArrayList<Integer> data2 = new ArrayList<>();
-                ArrayList<Integer> data_decoded = new ArrayList<>();
+                int[] data_decoded ;
 
 
 //                for (int index : columnIndexes) {
@@ -1809,6 +1905,11 @@ public class BOSAmortization {
                 }
 //                    System.out.println(data2);
                 inputStream.close();
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
                 for (int q_exp = 0; q_exp < 8; q_exp++) {
                     int q = (int) Math.pow(2, q_exp);
                     System.out.println(q);
@@ -1816,7 +1917,7 @@ public class BOSAmortization {
                     long decodeTime = 0;
                     double ratio = 0;
                     double compressed_size = 0;
-                    int repeatTime2 = 10;
+                    int repeatTime2 = 500;
                     for (int i = 0; i < repeatTime; i++) {
                         long s = System.nanoTime();
                         ArrayList<Byte> buffer1 = new ArrayList<>();
@@ -1824,7 +1925,7 @@ public class BOSAmortization {
                         long buffer_bits = 0;
                         for (int repeat = 0; repeat < repeatTime2; repeat++) {
 //                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
-                            buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i), q, 1);
+                            compressed_size = BOSEncoder(data2_arr, dataset_block_size.get(file_i), dataset_name.get(file_i), q, 1,encoded_result);
                         }
 //                        System.out.println(buffer2.size());
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
@@ -1837,7 +1938,7 @@ public class BOSAmortization {
                         ratio += ratioTmp;
                         s = System.nanoTime();
                         for (int repeat = 0; repeat < repeatTime2; repeat++)
-                            data_decoded = BOSDecoder(buffer2);
+                            data_decoded = BOSDecoder(encoded_result);
                         e = System.nanoTime();
                         decodeTime += ((e - s) / repeatTime2);
                     }
