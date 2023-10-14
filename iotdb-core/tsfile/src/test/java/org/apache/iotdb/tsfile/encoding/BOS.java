@@ -23,12 +23,6 @@ public class BOS {
         else return 32 - Integer.numberOfLeadingZeros(num);
     }
 
-    public static void int2Bytes(int integer, ArrayList<Byte> cur_byte) {
-        cur_byte.add((byte) (integer >> 24));
-        cur_byte.add((byte) (integer >> 16));
-        cur_byte.add((byte) (integer >> 8));
-        cur_byte.add((byte) (integer));
-    }
     public static void int2Bytes(int integer,int encode_pos , byte[] cur_byte) {
         cur_byte[encode_pos] = (byte) (integer >> 24);
         cur_byte[encode_pos+1] = (byte) (integer >> 16);
@@ -41,12 +35,6 @@ public class BOS {
         cur_byte[encode_pos] = (byte) (integer);
     }
 
-    private static void long2intBytes(long integer, ArrayList<Byte> cur_byte) {
-        cur_byte.add((byte) (integer >> 24));
-        cur_byte.add((byte) (integer >> 16));
-        cur_byte.add((byte) (integer >> 8));
-        cur_byte.add((byte) (integer));
-    }
     private static void long2intBytes(long integer, int encode_pos , byte[] cur_byte) {
         cur_byte[encode_pos] = (byte) (integer >> 24);
         cur_byte[encode_pos+1] = (byte) (integer >> 16);
@@ -82,20 +70,6 @@ public class BOS {
         return value;
     }
 
-    public static byte[] bitPacking(ArrayList<Integer> numbers, int start, int bit_width) {
-        int block_num = numbers.size() / 8;
-        byte[] result = new byte[bit_width * block_num];
-        for (int i = 0; i < block_num; i++) {
-            for (int j = 0; j < bit_width; j++) {
-                int tmp_int = 0;
-                for (int k = 0; k < 8; k++) {
-                    tmp_int += (((numbers.get(i * 8 + k + start) >> j) % 2) << k);
-                }
-                result[i * bit_width + j] = (byte) tmp_int;
-            }
-        }
-        return result;
-    }
     public static void pack8Values(ArrayList<Integer> values, int offset, int width, int encode_pos,  byte[] encoded_result) {
         int bufIdx = 0;
         int valueIdx = offset;
@@ -217,7 +191,8 @@ public class BOS {
 
     public static int[] getAbsDeltaTsBlock(
             int[] ts_block,
-            ArrayList<Integer> min_delta,int supple_length) {
+            ArrayList<Integer> min_delta,
+            int supple_length) {
         int block_size = ts_block.length-1;
         int[] ts_block_delta = new int[ts_block.length+supple_length-1];
 
