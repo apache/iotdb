@@ -858,7 +858,7 @@ public class BOSTest {
         return decode_pos;
     }
 
-    public static int[] BOSDecoder(byte[] encoded) {
+    public static void BOSDecoder(byte[] encoded) {
 
         int decode_pos = 0;
         int length_all = bytes2Integer(encoded, decode_pos, 4);
@@ -897,7 +897,6 @@ public class BOSTest {
         } else {
             BOSBlockDecoder(encoded, decode_pos, value_list, remain_length + zero_number, value_pos_arr);
         }
-        return value_list;
     }
 
     @Test
@@ -1301,7 +1300,6 @@ public class BOSTest {
                         long s = System.nanoTime();
 
                         for (int repeat = 0; repeat < repeatTime2; repeat++) {
-//                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
                             compressed_size = BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
                         }
 
