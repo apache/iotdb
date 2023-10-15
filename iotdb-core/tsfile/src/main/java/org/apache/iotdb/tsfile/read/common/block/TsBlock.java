@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.common.block;
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -506,5 +507,35 @@ public class TsBlock {
     }
 
     return columns[0].getPositionCount();
+  }
+
+  public void update(int updateIdx, TsBlock tsBlock, int index) {
+    timeColumn.getTimes()[updateIdx] = tsBlock.getTimeByIndex(index);
+    for (int i = 0; i < getValueColumnCount(); i++) {
+      switch (valueColumns[i].getDataType()) {
+        case BOOLEAN:
+          valueColumns[i].getBooleans()[updateIdx] = tsBlock.getValueColumns()[i].getBoolean(index);
+          break;
+        case INT32:
+          valueColumns[i].getInts()[updateIdx] = tsBlock.getValueColumns()[i].getInt(index);
+          break;
+        case INT64:
+        case VECTOR:
+          valueColumns[i].getLongs()[updateIdx] = tsBlock.getValueColumns()[i].getLong(index);
+          break;
+        case FLOAT:
+          valueColumns[i].getFloats()[updateIdx] = tsBlock.getValueColumns()[i].getFloat(index);
+          break;
+        case DOUBLE:
+          valueColumns[i].getDoubles()[updateIdx] = tsBlock.getValueColumns()[i].getDouble(index);
+          break;
+        case TEXT:
+          valueColumns[i].getBinaries()[updateIdx] = tsBlock.getValueColumns()[i].getBinary(index);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              "Unknown datatype: " + valueColumns[i].getDataType());
+      }
+    }
   }
 }

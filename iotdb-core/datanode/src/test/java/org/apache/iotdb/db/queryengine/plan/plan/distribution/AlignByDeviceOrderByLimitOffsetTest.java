@@ -48,7 +48,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
   private static final long LIMIT_VALUE = 10;
 
   @Test
-  public void orderByTimeTest() {
+  public void orderByTimeNoValueFilterTest() {
     QueryId queryId = new QueryId("test");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -82,20 +82,28 @@ public class AlignByDeviceOrderByLimitOffsetTest {
         plan.getInstances().get(2).getFragment().getPlanNodeTree(), LIMIT_VALUE);
     assertScanNodeLimitValue(
         plan.getInstances().get(3).getFragment().getPlanNodeTree(), LIMIT_VALUE);
+  }
+
+  @Test
+  public void orderByTimeWithValueFilterTest() {
+    QueryId queryId = new QueryId("test");
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
     // 2. order by time, has value filter
     // put LIMIT-NODE above of SingleDeviceViewNode
-    sql =
+    String sql =
         String.format(
             "select * from root.sg.** where s1>1 ORDER BY TIME DESC LIMIT %s align by device",
             LIMIT_VALUE);
-    analysis = Util.analyze(sql, context);
-    logicalPlanNode = Util.genLogicalPlan(analysis, context);
-    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
-    DistributedQueryPlan plan2 = planner.planFragments();
-    assertEquals(4, plan2.getInstances().size());
-    firstFIRoot = plan2.getInstances().get(0).getFragment().getPlanNodeTree();
-    firstFITopKNode = firstFIRoot.getChildren().get(0);
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    DistributedQueryPlan plan = planner.planFragments();
+    assertEquals(4, plan.getInstances().size());
+    PlanNode firstFIRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    PlanNode firstFITopKNode = firstFIRoot.getChildren().get(0);
     assertTrue(firstFITopKNode instanceof TopKNode);
     for (PlanNode node : firstFITopKNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof SingleDeviceViewNode);
@@ -105,26 +113,34 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFITopKNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(firstFITopKNode.getChildren().get(2) instanceof ExchangeNode);
     assertTrue(firstFITopKNode.getChildren().get(3) instanceof ExchangeNode);
-    assertScanNodeLimitValue(plan2.getInstances().get(0).getFragment().getPlanNodeTree(), 0);
-    assertScanNodeLimitValue(plan2.getInstances().get(1).getFragment().getPlanNodeTree(), 0);
-    assertScanNodeLimitValue(plan2.getInstances().get(2).getFragment().getPlanNodeTree(), 0);
-    assertScanNodeLimitValue(plan2.getInstances().get(3).getFragment().getPlanNodeTree(), 0);
+    assertScanNodeLimitValue(plan.getInstances().get(0).getFragment().getPlanNodeTree(), 0);
+    assertScanNodeLimitValue(plan.getInstances().get(1).getFragment().getPlanNodeTree(), 0);
+    assertScanNodeLimitValue(plan.getInstances().get(2).getFragment().getPlanNodeTree(), 0);
+    assertScanNodeLimitValue(plan.getInstances().get(3).getFragment().getPlanNodeTree(), 0);
+  }
+
+  @Test
+  public void orderByTimeAndExpressionNoValueFilterTest() {
+    QueryId queryId = new QueryId("test");
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
     // 3. order by time, expression
     // need read all data, use DeviceViewNode instead of SingleDeviceViewNode
     // no LIMIT-NODE above of DeviceViewNode
     // can push down LIMIT value to ScanNode
-    sql =
+    String sql =
         String.format(
             "select * from root.sg.** ORDER BY TIME DESC, s1 DESC LIMIT %s align by device",
             LIMIT_VALUE);
-    analysis = Util.analyze(sql, context);
-    logicalPlanNode = Util.genLogicalPlan(analysis, context);
-    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
-    DistributedQueryPlan plan3 = planner.planFragments();
-    assertEquals(4, plan3.getInstances().size());
-    firstFIRoot = plan3.getInstances().get(0).getFragment().getPlanNodeTree();
-    firstFITopKNode = firstFIRoot.getChildren().get(0);
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    DistributedQueryPlan plan = planner.planFragments();
+    assertEquals(4, plan.getInstances().size());
+    PlanNode firstFIRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    PlanNode firstFITopKNode = firstFIRoot.getChildren().get(0);
     assertTrue(firstFITopKNode instanceof TopKNode);
     for (PlanNode node : firstFITopKNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof DeviceViewNode);
@@ -133,28 +149,36 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFITopKNode.getChildren().get(2) instanceof ExchangeNode);
     assertTrue(firstFITopKNode.getChildren().get(3) instanceof ExchangeNode);
     assertScanNodeLimitValue(
-        plan3.getInstances().get(0).getFragment().getPlanNodeTree(), LIMIT_VALUE);
+        plan.getInstances().get(0).getFragment().getPlanNodeTree(), LIMIT_VALUE);
     assertScanNodeLimitValue(
-        plan3.getInstances().get(1).getFragment().getPlanNodeTree(), LIMIT_VALUE);
+        plan.getInstances().get(1).getFragment().getPlanNodeTree(), LIMIT_VALUE);
     assertScanNodeLimitValue(
-        plan3.getInstances().get(2).getFragment().getPlanNodeTree(), LIMIT_VALUE);
+        plan.getInstances().get(2).getFragment().getPlanNodeTree(), LIMIT_VALUE);
     assertScanNodeLimitValue(
-        plan3.getInstances().get(3).getFragment().getPlanNodeTree(), LIMIT_VALUE);
+        plan.getInstances().get(3).getFragment().getPlanNodeTree(), LIMIT_VALUE);
+  }
+
+  @Test
+  public void orderByTimeAndExpressionWithValueFilterTest() {
+    QueryId queryId = new QueryId("test");
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
     // 4. order by time, expression, has value filter
     // need read all data, use DeviceViewNode instead of SingleDeviceViewNode
     // no LIMIT-NODE above of DeviceViewNode
-    sql =
+    String sql =
         String.format(
             "select * from root.sg.** where s1>1 ORDER BY TIME DESC, s1 DESC LIMIT %s align by device",
             LIMIT_VALUE);
-    analysis = Util.analyze(sql, context);
-    logicalPlanNode = Util.genLogicalPlan(analysis, context);
-    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
     DistributedQueryPlan plan4 = planner.planFragments();
     assertEquals(4, plan4.getInstances().size());
-    firstFIRoot = plan4.getInstances().get(0).getFragment().getPlanNodeTree();
-    firstFITopKNode = firstFIRoot.getChildren().get(0);
+    PlanNode firstFIRoot = plan4.getInstances().get(0).getFragment().getPlanNodeTree();
+    PlanNode firstFITopKNode = firstFIRoot.getChildren().get(0);
     assertTrue(firstFITopKNode instanceof TopKNode);
     for (PlanNode node : firstFITopKNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof DeviceViewNode);
@@ -168,18 +192,26 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertScanNodeLimitValue(plan4.getInstances().get(1).getFragment().getPlanNodeTree(), 0);
     assertScanNodeLimitValue(plan4.getInstances().get(2).getFragment().getPlanNodeTree(), 0);
     assertScanNodeLimitValue(plan4.getInstances().get(3).getFragment().getPlanNodeTree(), 0);
+  }
+
+  @Test
+  public void orderByExpressionTest() {
+    QueryId queryId = new QueryId("test");
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
     // 5. only order by expression
-    sql =
+    String sql =
         String.format(
             "select * from root.sg.** ORDER BY s1 DESC LIMIT %s align by device", LIMIT_VALUE);
-    analysis = Util.analyze(sql, context);
-    logicalPlanNode = Util.genLogicalPlan(analysis, context);
-    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
     DistributedQueryPlan plan5 = planner.planFragments();
     assertEquals(4, plan5.getInstances().size());
-    firstFIRoot = plan5.getInstances().get(0).getFragment().getPlanNodeTree();
-    firstFITopKNode = firstFIRoot.getChildren().get(0);
+    PlanNode firstFIRoot = plan5.getInstances().get(0).getFragment().getPlanNodeTree();
+    PlanNode firstFITopKNode = firstFIRoot.getChildren().get(0);
     assertTrue(firstFITopKNode instanceof TopKNode);
     for (PlanNode node : firstFITopKNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof DeviceViewNode);
@@ -192,22 +224,30 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertScanNodeLimitValue(plan5.getInstances().get(1).getFragment().getPlanNodeTree(), 0);
     assertScanNodeLimitValue(plan5.getInstances().get(2).getFragment().getPlanNodeTree(), 0);
     assertScanNodeLimitValue(plan5.getInstances().get(3).getFragment().getPlanNodeTree(), 0);
+  }
+
+  @Test
+  public void orderByTimeWithOffsetTest() {
+    QueryId queryId = new QueryId("test");
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
     // 6. order by time, offset + limit
     // on top of TOP-K NODE, LIMIT-NODE is necessary
-    sql =
+    String sql =
         String.format(
             "select * from root.sg.** ORDER BY time DESC OFFSET %s LIMIT %s align by device",
             LIMIT_VALUE, LIMIT_VALUE);
-    analysis = Util.analyze(sql, context);
-    logicalPlanNode = Util.genLogicalPlan(analysis, context);
-    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
     DistributedQueryPlan plan6 = planner.planFragments();
     assertEquals(4, plan6.getInstances().size());
-    firstFIRoot = plan6.getInstances().get(0).getFragment().getPlanNodeTree();
+    PlanNode firstFIRoot = plan6.getInstances().get(0).getFragment().getPlanNodeTree();
     PlanNode firstFIFirstNode = firstFIRoot.getChildren().get(0);
     assertTrue(firstFIFirstNode instanceof LimitNode);
-    firstFITopKNode = ((LimitNode) firstFIFirstNode).getChild().getChildren().get(0);
+    PlanNode firstFITopKNode = ((LimitNode) firstFIFirstNode).getChild().getChildren().get(0);
     for (PlanNode node : firstFITopKNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof SingleDeviceViewNode);
     }

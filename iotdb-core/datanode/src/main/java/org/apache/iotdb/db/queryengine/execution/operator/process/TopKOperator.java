@@ -29,13 +29,23 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.FloatColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
@@ -56,6 +66,10 @@ public class TopKOperator extends AbstractConsumeAllOperator {
 
   // query result of final TopKOperator
   private MergeSortKey[] topKResult;
+
+  // store all result only in this TsBlock
+  private TsBlock resultTsBlock;
+  private int resultTsBlockIdx;
 
   // return size of topKResult
   private int resultReturnSize = 0;
@@ -80,6 +94,7 @@ public class TopKOperator extends AbstractConsumeAllOperator {
     this.tsBlockBuilder = new TsBlockBuilder((int) topValue, dataTypes);
     this.topValue = topValue;
     this.childrenDataInOrder = childrenDataInOrder;
+    initResultTsBlock();
   }
 
   @Override
@@ -156,11 +171,11 @@ public class TopKOperator extends AbstractConsumeAllOperator {
       boolean skipCurrentBatch = false;
       for (int idx = 0; idx < currentTsBlock.getPositionCount(); idx++) {
         if (mergeSortHeap.getHeapSize() < topValue) {
-          mergeSortHeap.push(new MergeSortKey(buildOneEntryTsBlock(currentTsBlock, idx), 0));
+          updateTsBlockValue(currentTsBlock, idx, -1);
         } else {
           if (comparator.compare(new MergeSortKey(currentTsBlock, idx), mergeSortHeap.peek()) < 0) {
-            mergeSortHeap.poll();
-            mergeSortHeap.push(new MergeSortKey(buildOneEntryTsBlock(currentTsBlock, idx), 0));
+            MergeSortKey peek = mergeSortHeap.poll();
+            updateTsBlockValue(currentTsBlock, idx, peek.rowIndex);
           } else if (childrenDataInOrder) {
             skipCurrentBatch = true;
             break;
@@ -283,5 +298,49 @@ public class TopKOperator extends AbstractConsumeAllOperator {
       }
     }
     return memory;
+  }
+
+  private void initResultTsBlock() {
+    int positionCount = (int) topValue;
+    Column[] columns = new Column[dataTypes.size()];
+    for (int i = 0; i < dataTypes.size(); i++) {
+      switch (dataTypes.get(i)) {
+        case BOOLEAN:
+          columns[i] =
+              new BooleanColumn(positionCount, Optional.empty(), new boolean[positionCount]);
+          break;
+        case INT32:
+          columns[i] = new IntColumn(positionCount, Optional.empty(), new int[positionCount]);
+          break;
+        case INT64:
+        case VECTOR:
+          columns[i] = new LongColumn(positionCount, Optional.empty(), new long[positionCount]);
+          break;
+        case FLOAT:
+          columns[i] = new FloatColumn(positionCount, Optional.empty(), new float[positionCount]);
+          break;
+        case DOUBLE:
+          columns[i] = new DoubleColumn(positionCount, Optional.empty(), new double[positionCount]);
+          break;
+        case TEXT:
+          columns[i] = new BinaryColumn(positionCount, Optional.empty(), new Binary[positionCount]);
+          break;
+        default:
+          throw new UnSupportedDataTypeException("Unknown datatype: " + dataTypes.get(i));
+      }
+    }
+    this.resultTsBlock =
+        new TsBlock(positionCount, new TimeColumn(positionCount, new long[positionCount]), columns);
+  }
+
+  private void updateTsBlockValue(TsBlock tsBlock, int index, int peekIndex) {
+    if (peekIndex <= 0) {
+      resultTsBlock.update(resultTsBlockIdx, tsBlock, index);
+      mergeSortHeap.push(new MergeSortKey(resultTsBlock, resultTsBlockIdx++));
+      return;
+    }
+
+    resultTsBlock.update(peekIndex, tsBlock, index);
+    mergeSortHeap.push(new MergeSortKey(resultTsBlock, peekIndex));
   }
 }
