@@ -10,7 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Stack;
 
 public class Outlier3DTest {
 
@@ -104,38 +103,26 @@ public class Outlier3DTest {
         return ts_block_delta;
     }
 
-    private static int bosEncode(ArrayList<Integer> ts_block, double x_c, int beta, int supple_length) {
+    private static int bosEncode(ArrayList<Integer> ts_block, double x_c, int beta) {
 
         int final_right_max = Integer.MIN_VALUE;
-        ArrayList<Byte> cur_byte = new ArrayList<>();
 
         ArrayList<Integer> min_delta = new ArrayList<>();
         ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
-        for (int s = 0; s < supple_length; s++) {
-            ts_block_delta.add(0);
-        }
+
 
         int block_size = ts_block_delta.size();
         ArrayList<Integer> ts_block_order_value = getAbsDeltaTsBlock(ts_block, min_delta);
         Collections.sort(ts_block_order_value);
 
-        double sum = 0;
         for (int i = 1; i < block_size; i++) {
             if (ts_block_delta.get(i) > final_right_max) {
                 final_right_max = ts_block_delta.get(i);
             }
-            sum += ts_block_delta.get(i);
         }
-        double mu = sum / block_size;
-        double variance = 0;
-        for (int i = 1; i < block_size; i++) {
-            variance += (ts_block_delta.get(i) - mu) * (ts_block_delta.get(i) - mu);
-        }
-        double sigma = Math.sqrt(variance / block_size);
 
         ArrayList<Integer> PDF = new ArrayList<>();
-        int min_delta_value = ts_block_order_value.get(0);
-        int tmp = min_delta_value;
+        int tmp = ts_block_order_value.get(0);
         int final_i = 0;
 
 
@@ -184,26 +171,16 @@ public class Outlier3DTest {
     public static int ReorderingRegressionEncoder(
             ArrayList<Integer> data, int block_size, double x_c, int beta) throws IOException {
         block_size++;
-        ArrayList<Byte> encoded_result = new ArrayList<Byte>();
-        int length_all = data.size();
-        byte[] length_all_bytes = int2Bytes(length_all);
-        for (byte b : length_all_bytes) encoded_result.add(b);
-        int block_num = length_all / block_size;
-        int bits_number = 0;
 
-        byte[] block_size_byte = int2Bytes(block_size);
-        for (byte b : block_size_byte) encoded_result.add(b);
+        int bits_number = 0;
 
 
         for (int i = 0; i < 1; i++) {
-//        for (int i = 0; i < block_num; i++) {
-
             ArrayList<Integer> ts_block = new ArrayList<>();
             for (int j = 0; j < block_size; j++) {
-                ts_block.add(data.get(j + i * block_size));
+                ts_block.add(data.get(j));
             }
-            // time-order
-            bits_number += bosEncode(ts_block, x_c, beta, 0);
+            bits_number += bosEncode(ts_block, x_c, beta);
 
         }
 
@@ -214,10 +191,9 @@ public class Outlier3DTest {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
-//        String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/test2d";
-        String input_parent_dir = parent_dir + "trans_data/";//手动改过的数据
+        String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
+        String output_parent_dir = parent_dir + "test3d/";
+        String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
@@ -235,8 +211,8 @@ public class Outlier3DTest {
         dataset_name.add("TY-Transport");
         dataset_name.add("EPM-Education");
 
-        for (int i = 0; i < dataset_name.size(); i++) {
-            input_path_list.add(input_parent_dir + dataset_name.get(i));
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
@@ -264,19 +240,12 @@ public class Outlier3DTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-        ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
-        for (int i = 0; i < 2; i++) {
-            columnIndexes.add(i, i);
-        }
-
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
             String Output = output_path_list.get(file_i);
-
-            int repeatTime = 1; // set repeat time
 
             File file = new File(inputPath);
             File[] tempList = file.listFiles();
@@ -304,8 +273,6 @@ public class Outlier3DTest {
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                 ArrayList<Integer> data1 = new ArrayList<>();
                 ArrayList<Integer> data2 = new ArrayList<>();
-                ArrayList<ArrayList<Integer>> data_decoded = new ArrayList<>();
-
 
                 loader.readHeaders();
                 while (loader.readRecord()) {
@@ -319,8 +286,6 @@ public class Outlier3DTest {
                         long decodeTime = 0;
                         double compressed_size = 0;
                         int repeatTime2 = 1;
-                        for (int i = 0; i < repeatTime; i++) {
-                            long s = System.nanoTime();
 
                             long buffer_bits = 0;
                             for (int repeat = 0; repeat < repeatTime2; repeat++) {
@@ -328,11 +293,6 @@ public class Outlier3DTest {
                             }
 
                             compressed_size += buffer_bits;
-                        }
-
-                        compressed_size /= repeatTime;
-                        encodeTime /= repeatTime;
-                        decodeTime /= repeatTime;
 
                         String[] record = {
                                 f.toString(),
