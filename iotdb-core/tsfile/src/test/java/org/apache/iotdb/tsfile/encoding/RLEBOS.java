@@ -248,10 +248,10 @@ public class RLEBOS {
             ts_block_delta_i++;
         }
         min_delta.add(ts_block_delta_i);
+        int[] new_ts_block_delta = new int[ts_block_delta_i];
+        System.arraycopy(ts_block_delta, 0, new_ts_block_delta, 0, ts_block_delta_i);
 
-//        System.out.println("size:"+ts_block_delta.size());
-//        System.out.println(repeat_count);
-        return ts_block_delta;
+        return new_ts_block_delta;
     }
 
     public static int[]  getAbsDeltaTsBlock(
@@ -303,9 +303,10 @@ public class RLEBOS {
             ts_block_delta_i++;
         }
         min_delta.add(ts_block_delta_i);
+        int[] new_ts_block_delta = new int[ts_block_delta_i];
+        System.arraycopy(ts_block_delta, 0, new_ts_block_delta, 0, ts_block_delta_i);
 
-
-        return ts_block_delta;
+        return new_ts_block_delta;
     }
     public static ArrayList<Integer> getBitWith(int[] ts_block) {
         ArrayList<Integer> ts_block_bit_width = new ArrayList<>();
@@ -527,7 +528,7 @@ public class RLEBOS {
         int2Bytes(min_delta.get(0),encode_pos,cur_byte);
         encode_pos += 4;
         int size = repeat_count.size();
-        int2Bytes(size,encode_pos,cur_byte);
+        intByte2Bytes(size,encode_pos,cur_byte);
         encode_pos += 1;
 
 //        System.out.println(block_size);
@@ -630,7 +631,7 @@ public class RLEBOS {
     }
 //    }
 
-    private static int BOSBlockEncoder(int[] ts_block, int supple_length,  int k, int encode_pos, byte[] cur_byte) {
+    private static int BOSBlockEncoder(int[] ts_block, int supple_length,  int encode_pos, byte[] cur_byte) {
 
         ArrayList<Integer> repeat_count = new ArrayList<>();
         int init_block_size = ts_block.length;
@@ -774,7 +775,7 @@ public class RLEBOS {
         return encode_pos;
     }
 
-    private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size, int k, int encode_pos , byte[] cur_byte) {
+    private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size, int encode_pos , byte[] cur_byte) {
 
         ArrayList<Integer> repeat_count = new ArrayList<>();
         int init_block_size = block_size;
@@ -938,8 +939,9 @@ public class RLEBOS {
 
 //        for (int i = 0; i < 1; i++) {
         for (int i = 0; i < block_num; i++) {
+//            System.out.println(i);
 
-            encode_pos =  BOSBlockEncoder(data, i, block_size, k,encode_pos,encoded_result);
+            encode_pos =  BOSBlockEncoder(data, i, block_size, encode_pos,encoded_result);
 
 //            ArrayList<Byte> cur_encoded_result = BOSBlockEncoder(data, i, block_size,0,q,k);
 //            encoded_result.addAll(cur_encoded_result);
@@ -969,7 +971,7 @@ public class RLEBOS {
             }
 
 
-            encode_pos = BOSBlockEncoder(ts_block, supple_length, k,encode_pos,encoded_result);
+            encode_pos = BOSBlockEncoder(ts_block, supple_length, encode_pos,encoded_result);
 //            encoded_result.addAll(cur_encoded_result);
 //            System.out.println("encoded_result.size: "+cur_encoded_result.size());
         }

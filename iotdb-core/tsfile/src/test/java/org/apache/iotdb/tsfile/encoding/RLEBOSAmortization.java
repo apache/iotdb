@@ -243,10 +243,12 @@ public class RLEBOSAmortization {
             ts_block_delta_i++;
         }
         min_delta.add(ts_block_delta_i);
+        int[] new_ts_block_delta = new int[ts_block_delta_i];
+        System.arraycopy(ts_block_delta, 0, new_ts_block_delta, 0, ts_block_delta_i);
 
 //        System.out.println("size:"+ts_block_delta.size());
 //        System.out.println(repeat_count);
-        return ts_block_delta;
+        return new_ts_block_delta;
     }
 
     public static int[]  getAbsDeltaTsBlock(
@@ -298,9 +300,11 @@ public class RLEBOSAmortization {
             ts_block_delta_i++;
         }
         min_delta.add(ts_block_delta_i);
+        int[] new_ts_block_delta = new int[ts_block_delta_i];
+        System.arraycopy(ts_block_delta, 0, new_ts_block_delta, 0, ts_block_delta_i);
 
 
-        return ts_block_delta;
+        return new_ts_block_delta;
     }
     public static ArrayList<Integer> getBitWith(int[] ts_block) {
         ArrayList<Integer> ts_block_bit_width = new ArrayList<>();
@@ -522,7 +526,7 @@ public class RLEBOSAmortization {
         int2Bytes(min_delta.get(0),encode_pos,cur_byte);
         encode_pos += 4;
         int size = repeat_count.size();
-        int2Bytes(size,encode_pos,cur_byte);
+        intByte2Bytes(size,encode_pos,cur_byte);
         encode_pos += 1;
 
 //        System.out.println(block_size);

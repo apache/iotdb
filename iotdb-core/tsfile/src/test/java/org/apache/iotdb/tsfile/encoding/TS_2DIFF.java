@@ -20,31 +20,19 @@ public class TS_2DIFF {
         else return 32 - Integer.numberOfLeadingZeros(num);
     }
 
-    public static byte[] int2Bytes(int integer) {
-        byte[] bytes = new byte[4];
-        bytes[0] = (byte) (integer >> 24);
-        bytes[1] = (byte) (integer >> 16);
-        bytes[2] = (byte) (integer >> 8);
-        bytes[3] = (byte) integer;
-        return bytes;
+    public static void int2Bytes(int integer,int encode_pos , byte[] cur_byte) {
+        cur_byte[encode_pos] = (byte) (integer >> 24);
+        cur_byte[encode_pos+1] = (byte) (integer >> 16);
+        cur_byte[encode_pos+2] = (byte) (integer >> 8);
+        cur_byte[encode_pos+3] = (byte) (integer);
     }
 
-    private static byte[] long2intBytes(long integer) {
-        byte[] bytes = new byte[4];
-        bytes[0] = (byte) (integer >> 24);
-        bytes[1] = (byte) (integer >> 16);
-        bytes[2] = (byte) (integer >> 8);
-        bytes[3] = (byte) integer;
-        return bytes;
+    public static void intByte2Bytes(int integer, int encode_pos , byte[] cur_byte) {
+        cur_byte[encode_pos] = (byte) (integer);
     }
 
-    public static byte[] intByte2Bytes(int integer) {
-        byte[] bytes = new byte[1];
-        bytes[0] = (byte) integer;
-        return bytes;
-    }
 
-    public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
+    public static int bytes2Integer(byte[] encoded, int start, int num) {
         int value = 0;
         if (num > 4) {
             System.out.println("bytes2Integer error");
@@ -52,147 +40,186 @@ public class TS_2DIFF {
         }
         for (int i = 0; i < num; i++) {
             value <<= 8;
-            int b = encoded.get(i + start) & 0xFF;
+            int b = encoded[i + start] & 0xFF;
             value |= b;
         }
         return value;
     }
 
-    private static long bytesLong2Integer(ArrayList<Byte> encoded, int decode_pos, int num) {
-        long value = 0;
-        if (num > 4) {
-            System.out.println("bytes2Integer error");
-            return 0;
-        }
-        for (int i = 0; i < num; i++) {
-            value <<= 8;
-            int b = encoded.get(i + decode_pos) & 0xFF;
-            value |= b;
-        }
-        return value;
-    }
+    public static void pack8Values(int[] values, int offset, int width, int encode_pos,  byte[] encoded_result) {
+        int bufIdx = 0;
+        int valueIdx = offset;
+        // remaining bits for the current unfinished Integer
+        int leftBit = 0;
 
-    public static byte[] bitPacking(ArrayList<Integer> numbers, int start, int bit_width) {
-        int block_num = numbers.size() / 8;
-        byte[] result = new byte[bit_width * block_num];
-        for (int i = 0; i < block_num; i++) {
-            for (int j = 0; j < bit_width; j++) {
-                int tmp_int = 0;
-                for (int k = 0; k < 8; k++) {
-                    tmp_int += (((numbers.get(i * 8 + k + start) >> j) % 2) << k);
+        while (valueIdx < 8 + offset) {
+            // buffer is used for saving 32 bits as a part of result
+            int buffer = 0;
+            // remaining size of bits in the 'buffer'
+            int leftSize = 32;
+
+            // encode the left bits of current Integer to 'buffer'
+            if (leftBit > 0) {
+                buffer |= (values[valueIdx] << (32 - leftBit));
+                leftSize -= leftBit;
+                leftBit = 0;
+                valueIdx++;
+            }
+
+            while (leftSize >= width && valueIdx < 8 + offset) {
+                // encode one Integer to the 'buffer'
+                buffer |= (values[valueIdx]<< (leftSize - width));
+                leftSize -= width;
+                valueIdx++;
+            }
+            // If the remaining space of the buffer can not save the bits for one Integer,
+            if (leftSize > 0 && valueIdx < 8 + offset) {
+                // put the first 'leftSize' bits of the Integer into remaining space of the
+                // buffer
+                buffer |= (values[valueIdx] >>> (width - leftSize));
+                leftBit = width - leftSize;
+            }
+
+            // put the buffer into the final result
+            for (int j = 0; j < 4; j++) {
+                encoded_result[encode_pos] = (byte) ((buffer >>> ((3 - j) * 8)) & 0xFF);
+                encode_pos ++;
+                bufIdx++;
+                if (bufIdx >= width) {
+                    return ;
                 }
-                result[i * bit_width + j] = (byte) tmp_int;
             }
         }
-        return result;
+//        return encode_pos;
     }
 
-    public static byte[] bitPacking(ArrayList<ArrayList<Integer>> numbers, int start, int index, int bit_width) {
-        int block_num = numbers.size() / 8;
-        byte[] result = new byte[bit_width * block_num];
-        for (int i = 0; i < block_num; i++) {
-            for (int j = 0; j < bit_width; j++) {
-                int tmp_int = 0;
-                for (int k = 0; k < 8; k++) {
-                    tmp_int += (((numbers.get(i * 8 + k + start).get(index) >> j) % 2) << k);
-                }
-                result[i * bit_width + j] = (byte) tmp_int;
+    public static void unpack8Values(byte[] encoded, int offset,int width,  ArrayList<Integer> result_list) {
+        int byteIdx = offset;
+        long buffer = 0;
+        // total bits which have read from 'buf' to 'buffer'. i.e.,
+        // number of available bits to be decoded.
+        int totalBits = 0;
+        int valueIdx = 0;
+
+        while (valueIdx < 8) {
+            // If current available bits are not enough to decode one Integer,
+            // then add next byte from buf to 'buffer' until totalBits >= width
+            while (totalBits < width) {
+                buffer = (buffer << 8) | (encoded[byteIdx] & 0xFF);
+                byteIdx++;
+                offset ++;
+                totalBits += 8;
+            }
+
+            // If current available bits are enough to decode one Integer,
+            // then decode one Integer one by one until left bits in 'buffer' is
+            // not enough to decode one Integer.
+            while (totalBits >= width && valueIdx < 8) {
+                result_list.add ((int) (buffer >>> (totalBits - width)));
+                valueIdx++;
+                totalBits -= width;
+                buffer = buffer & ((1 << totalBits) - 1);
             }
         }
-        return result;
+//        return offset;
     }
 
+    public static int bitPacking(int[] numbers, int start, int bit_width,int encode_pos,  byte[] encoded_result) {
+        int block_num = (numbers.length-start) / 8;
+        for(int i=0;i<block_num;i++){
+            pack8Values( numbers, start+i*8, bit_width,encode_pos, encoded_result);
+            encode_pos +=bit_width;
+        }
+
+        return encode_pos;
+
+    }
 
     public static ArrayList<Integer> decodeBitPacking(
-            ArrayList<Byte> encoded, int decode_pos, int bit_width, int block_size) {
+            byte[] encoded, int decode_pos, int bit_width, int block_size,ArrayList<Integer> decode_pos_result) {
         ArrayList<Integer> result_list = new ArrayList<>();
-        for (int i = 0; i < (block_size - 1) / 8; i++) { // bitpacking  纵向8个，bit width是多少列
-            int[] val8 = new int[8];
-            for (int j = 0; j < 8; j++) {
-                val8[j] = 0;
-            }
-            for (int j = 0; j < bit_width; j++) {
-                byte tmp_byte = encoded.get(decode_pos + bit_width - 1 - j);
-                byte[] bit8 = new byte[8];
-                for (int k = 0; k < 8; k++) {
-                    bit8[k] = (byte) (tmp_byte & 1);
-                    tmp_byte = (byte) (tmp_byte >> 1);
-                }
-                for (int k = 0; k < 8; k++) {
-                    val8[k] = val8[k] * 2 + bit8[k];
-                }
-            }
-            for (int j = 0; j < 8; j++) {
-                result_list.add(val8[j]);
-            }
+        int block_num = (block_size-1) / 8;
+
+        for (int i = 0; i < block_num; i++) { // bitpacking  纵向8个，bit width是多少列
+            unpack8Values( encoded, decode_pos, bit_width,  result_list);
             decode_pos += bit_width;
         }
+        decode_pos_result.add(decode_pos);
         return result_list;
     }
 
 
 
-    public static ArrayList<Integer> getAbsDeltaTsBlock(
-            ArrayList<Integer> ts_block,
-            ArrayList<Integer> min_delta) {
-        ArrayList<Integer> ts_block_delta = new ArrayList<>();
 
-//        ts_block_delta.add(ts_block.get(0));
+    public static int[] getAbsDeltaTsBlock(
+            int[] ts_block,
+            ArrayList<Integer> min_delta,
+            int supple_length) {
+        int block_size = ts_block.length-1;
+        int[] ts_block_delta = new int[ts_block.length+supple_length-1];
+
+
         int value_delta_min = Integer.MAX_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
-        for (int i = 1; i < ts_block.size(); i++) {
+        for (int i = 0; i < block_size; i++) {
 
-            int epsilon_v = ts_block.get(i) - ts_block.get(i - 1);
+            int epsilon_v = ts_block[i+1] - ts_block[i];
 
             if (epsilon_v < value_delta_min) {
                 value_delta_min = epsilon_v;
             }
-
             if (epsilon_v > value_delta_max) {
                 value_delta_max = epsilon_v;
             }
         }
-        min_delta.add(ts_block.get(0));
+        min_delta.add(ts_block[0]);
         min_delta.add(value_delta_min);
         min_delta.add(getBitWith(value_delta_max-value_delta_min));
-        for (int i = 1; i < ts_block.size(); i++) {
-            int epsilon_v = ts_block.get(i) - value_delta_min - ts_block.get(i - 1);
-            ts_block_delta.add(epsilon_v);
+        for (int i = 0; i  < block_size; i++) {
+            int epsilon_v = ts_block[i+1] - value_delta_min - ts_block[i];
+            ts_block_delta[i] = epsilon_v;
+        }
+        for(int i = block_size;i<block_size+supple_length;i++){
+            ts_block_delta[i] = 0;
         }
         return ts_block_delta;
     }
 
-    public static ArrayList<Integer> getAbsDeltaTsBlock(
-            ArrayList<Integer> ts_block,
+    public static int[] getAbsDeltaTsBlock(
+            int[] ts_block,
             int i,
             int block_size,
             ArrayList<Integer> min_delta) {
-        ArrayList<Integer> ts_block_delta = new ArrayList<>();
+        int[] ts_block_delta = new int[block_size-1];
+
 
         int value_delta_min = Integer.MAX_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
         for (int j = i*block_size+1; j < (i+1)*block_size; j++) {
 
-            int epsilon_v = ts_block.get(j) - ts_block.get(j - 1);
+            int epsilon_v = ts_block[j] - ts_block[j - 1];
 
             if (epsilon_v < value_delta_min) {
                 value_delta_min = epsilon_v;
             }
-
             if (epsilon_v > value_delta_max) {
                 value_delta_max = epsilon_v;
             }
+
         }
-        min_delta.add(ts_block.get(i*block_size));
+        min_delta.add(ts_block[i*block_size]);
         min_delta.add(value_delta_min);
         min_delta.add(getBitWith(value_delta_max-value_delta_min));
 
-        for (int j = i*block_size+1; j < (i+1)*block_size; j++) {
-            int epsilon_v = ts_block.get(j) - value_delta_min - ts_block.get(j - 1);
-            ts_block_delta.add(epsilon_v);
+        int base = i*block_size+1;
+        int end = (i+1)*block_size;
+        for (int j = base; j < end; j++) {
+            int epsilon_v = ts_block[j] - value_delta_min - ts_block[j - 1];
+            ts_block_delta[j-base] =epsilon_v;
         }
         return ts_block_delta;
     }
+
     public static ArrayList<Integer> getBitWith(ArrayList<Integer> ts_block) {
         ArrayList<Integer> ts_block_bit_width = new ArrayList<>();
         for (int integers : ts_block) {
@@ -201,31 +228,29 @@ public class TS_2DIFF {
         return ts_block_bit_width;
     }
 
-    public static ArrayList<Byte> encode2Bytes(
-            ArrayList<Integer> ts_block,
-            ArrayList<Integer> min_delta) {
-        ArrayList<Byte> encoded_result = new ArrayList<>();
+    public static int encode2Bytes(
+            int[] ts_block,
+            ArrayList<Integer> min_delta,int encode_pos,  byte[] encoded_result) {
 
         // encode value0
-        byte[] value0_byte = int2Bytes(min_delta.get(0));
-        for (byte b : value0_byte) encoded_result.add(b);
+        int2Bytes(min_delta.get(0),encode_pos,encoded_result);
+        encode_pos += 4;
 
         // encode theta
-        byte[] value_min_byte = int2Bytes(min_delta.get(1));
-        for (byte b : value_min_byte) encoded_result.add(b);
+        int2Bytes(min_delta.get(1),encode_pos,encoded_result);
+        encode_pos += 4;
 
         // encode value
-        byte[] max_bit_width_value_byte = intByte2Bytes(min_delta.get(2));
-        for (byte b : max_bit_width_value_byte) encoded_result.add(b);
-        byte[] value_bytes = bitPacking(ts_block, 0,min_delta.get(2));
-        for (byte b : value_bytes) encoded_result.add(b);
+        intByte2Bytes(min_delta.get(2),encode_pos,encoded_result);
+        encode_pos += 1;
+        encode_pos = bitPacking(ts_block, 0, min_delta.get(2),encode_pos,encoded_result);
 
 
-        return encoded_result;
+        return encode_pos;
     }
 
-    public static ArrayList<Byte> BOSEncoder(
-            ArrayList<Integer> data, int block_size, String dataset_name, int q,int k) {
+    public static int BOSEncoder(
+            int[] data, int block_size, String dataset_name, byte[] encoded_result) {
         block_size++;
 //        int length_all = data.size();
 //        byte[] length_all_bytes1 = int2Bytes(length_all);
@@ -236,39 +261,41 @@ public class TS_2DIFF {
 //        byte[] block_size_byte = int2Bytes(block_size);
 //        System.arraycopy(block_size_byte, 0, encoded_result1, encode_pos, block_size_byte.length);
 
-        ArrayList<Byte> encoded_result = new ArrayList<Byte>();
-        int length_all = data.size();
-        byte[] length_all_bytes = int2Bytes(length_all);
-        for (byte b : length_all_bytes) encoded_result.add(b);
+        int length_all = data.length;
+
+        int encode_pos = 0;
+        int2Bytes(length_all,encode_pos,encoded_result);
+        encode_pos += 4;
+//        byte[] length_all_bytes = int2Bytes(length_all);
+//        for (byte b : length_all_bytes) encoded_result.add(b);
         int block_num = length_all / block_size;
-
-        byte[] block_size_byte = int2Bytes(block_size);
-        for (byte b : block_size_byte) encoded_result.add(b);
-
+        int2Bytes(block_size,encode_pos,encoded_result);
+        encode_pos+= 4;
 
 //        for (int i = 0; i < 1; i++) {
         for (int i = 0; i < block_num; i++) {
 
+
+//            encode_pos =  BOSBlockEncoder(data, i, block_size, k,encode_pos,encoded_result);
+
             ArrayList<Integer> min_delta = new ArrayList<>();
-            ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(data, i, block_size, min_delta);
-            ArrayList<Byte> cur_encoded_result =  encode2Bytes(ts_block_delta, min_delta);
-            encoded_result.addAll(cur_encoded_result);
+            int[] ts_block_delta = getAbsDeltaTsBlock(data, i, block_size, min_delta);
+            encode_pos =  encode2Bytes(ts_block_delta, min_delta,encode_pos, encoded_result);
+//            encoded_result.addAll(cur_encoded_result);
 
         }
 
         int remaining_length = length_all - block_num * block_size;
         if (remaining_length <= 3) {
             for (int i = remaining_length; i > 0; i--) {
-                byte[] timestamp_end_bytes = int2Bytes(data.get(data.size() - i));
-                for (byte b : timestamp_end_bytes) encoded_result.add(b);
+                int2Bytes(data[data.length - i], encode_pos, encoded_result);
+                encode_pos += 4;
             }
 
         } else {
-            ArrayList<Integer> ts_block = new ArrayList<>();
-
-            for (int j = block_num * block_size; j < length_all; j++) {
-                ts_block.add(data.get(j));
-            }
+            int start = block_num * block_size;
+            int[] ts_block = new int[length_all-start];
+            if (length_all - start >= 0) System.arraycopy(data, start, ts_block, start - start, length_all - start);
 
             int supple_length;
             if (remaining_length % 8 == 0) {
@@ -280,25 +307,23 @@ public class TS_2DIFF {
             }
 
             ArrayList<Integer> min_delta = new ArrayList<>();
-            ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
+//            ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
+            int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta,supple_length);
 
-            for (int s = 0; s < supple_length; s++) {
-                ts_block_delta.add(0);
-            }
-
-            ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, min_delta);
-            encoded_result.addAll(cur_encoded_result);
+            encode_pos =  encode2Bytes(ts_block_delta, min_delta,encode_pos, encoded_result);
+//            encode_pos = BOSBlockEncoder(ts_block, supple_length, k,encode_pos,encoded_result);
         }
 
 
-        return encoded_result;
+        return encode_pos;
     }
 
-    public static int BOSBlockDecoder(ArrayList<Byte> encoded, int decode_pos, ArrayList<Integer> value_list, int block_size) {
+    public static int BOSBlockDecoder(byte[] encoded, int decode_pos, int[] value_list, int block_size, int[] value_pos_arr) {
 
         int value0 = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
-        value_list.add(value0);
+        value_list[value_pos_arr[0]] =value0;
+        value_pos_arr[0] ++;
 
         int min_delta = bytes2Integer(encoded, decode_pos, 4);
         decode_pos += 4;
@@ -307,21 +332,22 @@ public class TS_2DIFF {
         int bit_width_final = bytes2Integer(encoded, decode_pos, 1);
         decode_pos += 1;
 
-
-        ArrayList<Integer> final_normal =  decodeBitPacking(encoded, decode_pos, bit_width_final, block_size);
-
+        ArrayList<Integer> decode_pos_normal = new ArrayList<>();
+        ArrayList<Integer> final_normal =  decodeBitPacking(encoded, decode_pos, bit_width_final, block_size,decode_pos_normal);
+        decode_pos = decode_pos_normal.get(0);
         int pre_v = value0;
 
-        value_list.add(pre_v);
+//        value_list.add(pre_v);
         for (int i = 0; i < block_size - 1; i++) {
             int current_delta = final_normal.get(i) + min_delta;
             pre_v = current_delta + pre_v;
-            value_list.add(pre_v);
+            value_list[value_pos_arr[0]] =pre_v;
+            value_pos_arr[0] ++;
         }
         return decode_pos;
     }
 
-    public static ArrayList<Integer> BOSDecoder(ArrayList<Byte> encoded) {
+    public static int[] BOSDecoder(byte[] encoded) {
 
         int decode_pos = 0;
         int length_all = bytes2Integer(encoded, decode_pos, 4);
@@ -339,20 +365,24 @@ public class TS_2DIFF {
         } else {
             zero_number = 9 - remain_length % 8;
         }
-        ArrayList<Integer> value_list = new ArrayList<>();
+        int[] value_list = new int[length_all+8];
+
+        int[] value_pos_arr = new int[1];
+        value_pos_arr[0]= 0;
 //        for (int k = 0; k < 1; k++) {
         for (int k = 0; k < block_num; k++) {
-            decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, block_size);
+            decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, block_size,value_pos_arr);
         }
 
         if (remain_length <= 3) {
             for (int i = 0; i < remain_length; i++) {
                 int value_end = bytes2Integer(encoded, decode_pos, 4);
                 decode_pos += 4;
-                value_list.add(value_end);
+                value_list[value_pos_arr[0]] =value_end;
+                value_pos_arr[0] ++;
             }
         } else {
-            decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, remain_length + zero_number);
+            decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, remain_length + zero_number,value_pos_arr);
         }
         return value_list;
     }
@@ -492,14 +522,14 @@ public class TS_2DIFF {
             assert tempList != null;
 
             for (File f : tempList) {
-//                f = tempList[2];
+//                f = tempList[1];
                 System.out.println(f);
                 InputStream inputStream = Files.newInputStream(f.toPath());
 
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                 ArrayList<Integer> data1 = new ArrayList<>();
                 ArrayList<Integer> data2 = new ArrayList<>();
-                ArrayList<Integer> data_decoded = new ArrayList<>();
+                int[] data_decoded ;
 
 
 //                for (int index : columnIndexes) {
@@ -516,38 +546,37 @@ public class TS_2DIFF {
                 }
 //                    System.out.println(data2);
                 inputStream.close();
-
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
                 long encodeTime = 0;
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 10;
-                for (int i = 0; i < repeatTime; i++) {
+                int repeatTime2 = 500;
 
-                    ArrayList<Byte> buffer2 = new ArrayList<>();
-                    long s = System.nanoTime();
-                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                        buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i), 1, 1);
-                    }
+//                    ArrayList<Byte> buffer2 = new ArrayList<>();
+                int length = 0;
+
+                long s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), dataset_name.get(file_i),  encoded_result);
+                }
 //                        System.out.println(buffer2.size());
 //                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
 
-                    long e = System.nanoTime();
-                    encodeTime += ((e - s) / repeatTime2);
-                    compressed_size += buffer2.size();
-                    double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
-                    ratio += ratioTmp;
-                    s = System.nanoTime();
-//                    for (int repeat = 0; repeat < repeatTime2; repeat++)
-//                        data_decoded = BOSDecoder(buffer2);
-                    e = System.nanoTime();
-                    decodeTime += ((e - s) / repeatTime2);
-                }
-
-                ratio /= repeatTime;
-                compressed_size /= repeatTime;
-                encodeTime /= repeatTime;
-                decodeTime /= repeatTime;
+                long e = System.nanoTime();
+                encodeTime += ((e - s) / repeatTime2);
+                compressed_size += length;
+                double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
+                ratio += ratioTmp;
+                s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++)
+                    data_decoded = BOSDecoder(encoded_result);
+                e = System.nanoTime();
+                decodeTime += ((e - s) / repeatTime2);
 
                 String[] record = {
                         f.toString(),
@@ -561,7 +590,6 @@ public class TS_2DIFF {
                 writer.writeRecord(record);
                 System.out.println(ratio);
 
-//                }
 
 //   break;
             }
@@ -714,7 +742,7 @@ public class TS_2DIFF {
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                 ArrayList<Integer> data1 = new ArrayList<>();
                 ArrayList<Integer> data2 = new ArrayList<>();
-                ArrayList<Integer> data_decoded = new ArrayList<>();
+                int[] data_decoded ;
 
 
 //                for (int index : columnIndexes) {
@@ -731,7 +759,12 @@ public class TS_2DIFF {
                 }
 //                    System.out.println(data2);
                 inputStream.close();
-//                for (int block_size_i = 8; block_size_i < 9; block_size_i++) {
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
+
                 for (int block_size_i = 13; block_size_i > 3; block_size_i--) {
                     int block_size = (int) Math.pow(2, block_size_i);
                     System.out.println(block_size);
@@ -739,33 +772,25 @@ public class TS_2DIFF {
                     long decodeTime = 0;
                     double ratio = 0;
                     double compressed_size = 0;
-                    int repeatTime2 = 10;
-                    for (int i = 0; i < repeatTime; i++) {
+                    int repeatTime2 = 500;
 
-                        ArrayList<Byte> buffer2 = new ArrayList<>();
-                        long s = System.nanoTime();
-                        for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                            buffer2 = BOSEncoder(data2, block_size, dataset_name.get(file_i), 1, 1);
-                        }
-//                        System.out.println(buffer2.size());
-//                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
-
-                        long e = System.nanoTime();
-                        encodeTime += ((e - s) / repeatTime2);
-                        compressed_size += buffer2.size();
-                        double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
-                        ratio += ratioTmp;
-                        s = System.nanoTime();
-//                    for (int repeat = 0; repeat < repeatTime2; repeat++)
-//                        data_decoded = BOSDecoder(buffer2);
-                        e = System.nanoTime();
-                        decodeTime += ((e - s) / repeatTime2);
+                    long s = System.nanoTime();
+                    ArrayList<Byte> buffer2 = new ArrayList<>();
+                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                        compressed_size = BOSEncoder(data2_arr, block_size, dataset_name.get(file_i),  encoded_result);
                     }
 
-                    ratio /= repeatTime;
-                    compressed_size /= repeatTime;
-                    encodeTime /= repeatTime;
-                    decodeTime /= repeatTime;
+                    long e = System.nanoTime();
+                    encodeTime += ((e - s) / repeatTime2);
+//                        compressed_size += buffer2.size();
+                    double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
+                    ratio += ratioTmp;
+                    s = System.nanoTime();
+                    for (int repeat = 0; repeat < repeatTime2; repeat++)
+                        data_decoded = BOSDecoder(encoded_result);
+                    e = System.nanoTime();
+                    decodeTime += ((e - s) / repeatTime2);
+
 
                     String[] record = {
                             f.toString(),
@@ -884,48 +909,59 @@ public class TS_2DIFF {
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                 ArrayList<Integer> data1 = new ArrayList<>();
                 ArrayList<Integer> data2 = new ArrayList<>();
-                ArrayList<Integer> data_decoded = new ArrayList<>();
+                int[] data_decoded ;
 
+
+//                for (int index : columnIndexes) {
+                // add a column to "data"
+//                    System.out.println(index);
 
                 loader.readHeaders();
+//                    data.clear();
                 while (loader.readRecord()) {
-
+//                        String value = loader.getValues()[index];
                     data1.add(Integer.valueOf(loader.getValues()[0]));
                     data2.add(Integer.valueOf(loader.getValues()[1]));
-
+//                        data.add(Integer.valueOf(value));
                 }
-
+//                    System.out.println(data2);
                 inputStream.close();
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
                 for (int k = 1; k < 8; k++) {
+//                    int q = (int) Math.pow(2, q_exp);
                     System.out.println(k);
                     long encodeTime = 0;
                     long decodeTime = 0;
                     double ratio = 0;
                     double compressed_size = 0;
                     int repeatTime2 = 10;
-                    for (int i = 0; i < repeatTime; i++) {
-                        long s = System.nanoTime();
-                        ArrayList<Byte> buffer2 = new ArrayList<>();
-                        for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                            buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i),1,1);
-                        }
 
-                        long e = System.nanoTime();
-                        encodeTime += ((e - s) / repeatTime2);
-                        compressed_size += buffer2.size();
-                        double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
-                        ratio += ratioTmp;
-                        s = System.nanoTime();
-//                        for (int repeat = 0; repeat < repeatTime2; repeat++)
-//                            data_decoded = BOSDecoder(buffer2);
-                        e = System.nanoTime();
-                        decodeTime += ((e - s) / repeatTime2);
+                    long s = System.nanoTime();
+                    ArrayList<Byte> buffer1 = new ArrayList<>();
+                    ArrayList<Byte> buffer2 = new ArrayList<>();
+                    long buffer_bits = 0;
+                    for (int repeat = 0; repeat < repeatTime2; repeat++) {
+//                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
+                        compressed_size = BOSEncoder(data2_arr, dataset_block_size.get(file_i), dataset_name.get(file_i), encoded_result);
                     }
+//                        System.out.println(buffer2.size());
+//                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
 
-                    ratio /= repeatTime;
-                    compressed_size /= repeatTime;
-                    encodeTime /= repeatTime;
-                    decodeTime /= repeatTime;
+                    long e = System.nanoTime();
+                    encodeTime += ((e - s) / repeatTime2);
+//                        compressed_size += buffer1.size();
+//                        compressed_size += buffer2.size();
+                    double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
+                    ratio += ratioTmp;
+                    s = System.nanoTime();
+                    for (int repeat = 0; repeat < repeatTime2; repeat++)
+                        data_decoded = BOSDecoder(encoded_result);
+                    e = System.nanoTime();
+                    decodeTime += ((e - s) / repeatTime2);
 
                     String[] record = {
                             f.toString(),
@@ -1012,7 +1048,6 @@ public class TS_2DIFF {
             System.out.println(inputPath);
             String Output = output_path_list.get(file_i);
 
-            int repeatTime = 1; // set repeat time
 
             File file = new File(inputPath);
             File[] tempList = file.listFiles();
@@ -1041,44 +1076,45 @@ public class TS_2DIFF {
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                 ArrayList<Integer> data1 = new ArrayList<>();
                 ArrayList<Integer> data2 = new ArrayList<>();
-                ArrayList<Integer> data_decoded = new ArrayList<>();
+                int[] data_decoded ;
+
 
 
                 loader.readHeaders();
+
                 while (loader.readRecord()) {
+//                        String value = loader.getValues()[index];
                     data1.add(Integer.valueOf(loader.getValues()[0]));
                     data2.add(Integer.valueOf(loader.getValues()[1]));
+//                        data.add(Integer.valueOf(value));
                 }
                 inputStream.close();
+                int[] data2_arr = new int[data1.size()];
+                for(int i = 0;i<data2.size();i++){
+                    data2_arr[i] = data2.get(i);
+                }
+                byte[] encoded_result = new byte[data2_arr.length*4];
+                long encodeTime = 0;
+                long decodeTime = 0;
+                double ratio = 0;
+                double compressed_size = 0;
+                int repeatTime2 = 500;
+                long s = System.nanoTime();
 
-                    long encodeTime = 0;
-                    long decodeTime = 0;
-                    double ratio = 0;
-                    double compressed_size = 0;
-                    int repeatTime2 = 10;
-                    for (int i = 0; i < repeatTime; i++) {
-                        long s = System.nanoTime();
-                        ArrayList<Byte> buffer2 = new ArrayList<>();
-                        for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                            buffer2 = BOSEncoder(data2, dataset_block_size.get(file_i), dataset_name.get(file_i),1,1);
-                        }
+                for (int repeat = 0; repeat < repeatTime2; repeat++) {
+                    compressed_size = BOSEncoder(data2_arr, dataset_block_size.get(file_i), dataset_name.get(file_i),  encoded_result);
+                }
 
-                        long e = System.nanoTime();
-                        encodeTime += ((e - s) / repeatTime2);
-                        compressed_size += buffer2.size();
-                        double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
-                        ratio += ratioTmp;
-                        s = System.nanoTime();
-//                        for (int repeat = 0; repeat < repeatTime2; repeat++)
-//                            data_decoded = BOSDecoder(buffer2);
-                        e = System.nanoTime();
-                        decodeTime += ((e - s) / repeatTime2);
-                    }
+                long e = System.nanoTime();
+                encodeTime += ((e - s) / repeatTime2);
 
-                    ratio /= repeatTime;
-                    compressed_size /= repeatTime;
-                    encodeTime /= repeatTime;
-                    decodeTime /= repeatTime;
+                double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
+                ratio += ratioTmp;
+                s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime2; repeat++)
+                    data_decoded = BOSDecoder(encoded_result);
+                e = System.nanoTime();
+                decodeTime += ((e - s) / repeatTime2);
                 for (int q_exp = 0; q_exp < 8; q_exp++) {
                     int q = (int) Math.pow(2, q_exp);
                     System.out.println(q);
