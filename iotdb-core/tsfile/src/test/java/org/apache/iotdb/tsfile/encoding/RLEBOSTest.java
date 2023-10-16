@@ -15,7 +15,7 @@ import java.util.Arrays;
 
 import static java.lang.Math.pow;
 
-public class RLEBOS {
+public class RLEBOSTest {
 
     public static int getBitWith(int num) {
         if (num == 0) return 1;
