@@ -118,7 +118,8 @@ public class LocalExecutionPlanner {
       if (estimatedMemorySize > freeMemoryForOperators) {
         throw new MemoryNotEnoughException(
             String.format(
-                "There is not enough memory to execute current fragment instance, current remaining free memory is %d, "
+                "There is not enough memory to execute current fragment instance, "
+                    + "current remaining free memory is %d, "
                     + "estimated memory usage for current fragment instance is %d",
                 freeMemoryForOperators, estimatedMemorySize));
       } else {

@@ -602,9 +602,6 @@ public class TopKOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      List<TSDataType> tsDataTypes =
-          new LinkedList<>(Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32));
-
       RowBasedTimeJoinOperator timeJoinOperator1 =
           new RowBasedTimeJoinOperator(
               driverContext.getOperatorContexts().get(7),
@@ -670,6 +667,9 @@ public class TopKOperatorTest {
       timeJoinOperator3
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
+      List<TSDataType> tsDataTypes =
+          new LinkedList<>(Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32));
       SingleDeviceViewOperator singleDeviceViewOperator1 =
           new SingleDeviceViewOperator(
               driverContext.getOperatorContexts().get(10),

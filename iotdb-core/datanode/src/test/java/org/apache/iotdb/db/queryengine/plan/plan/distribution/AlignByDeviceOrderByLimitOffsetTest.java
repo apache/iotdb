@@ -63,17 +63,17 @@ public class AlignByDeviceOrderByLimitOffsetTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
     DistributedQueryPlan plan = planner.planFragments();
     assertEquals(4, plan.getInstances().size());
-    PlanNode firstFIRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
-    assertTrue(firstFIRoot instanceof IdentitySinkNode);
-    assertEquals(4, firstFIRoot.getChildren().get(0).getChildren().size());
-    PlanNode firstFITopKNode = firstFIRoot.getChildren().get(0);
-    assertTrue(firstFITopKNode instanceof TopKNode);
-    for (PlanNode node : firstFITopKNode.getChildren().get(0).getChildren()) {
+    PlanNode firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    assertTrue(firstFiRoot instanceof IdentitySinkNode);
+    assertEquals(4, firstFiRoot.getChildren().get(0).getChildren().size());
+    PlanNode firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof TopKNode);
+    for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof SingleDeviceViewNode);
     }
-    assertTrue(firstFITopKNode.getChildren().get(1) instanceof ExchangeNode);
-    assertTrue(firstFITopKNode.getChildren().get(2) instanceof ExchangeNode);
-    assertTrue(firstFITopKNode.getChildren().get(3) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(2) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(3) instanceof ExchangeNode);
     assertScanNodeLimitValue(
         plan.getInstances().get(0).getFragment().getPlanNodeTree(), LIMIT_VALUE);
     assertScanNodeLimitValue(
@@ -102,17 +102,17 @@ public class AlignByDeviceOrderByLimitOffsetTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
     DistributedQueryPlan plan = planner.planFragments();
     assertEquals(4, plan.getInstances().size());
-    PlanNode firstFIRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
-    PlanNode firstFITopKNode = firstFIRoot.getChildren().get(0);
-    assertTrue(firstFITopKNode instanceof TopKNode);
-    for (PlanNode node : firstFITopKNode.getChildren().get(0).getChildren()) {
+    PlanNode firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    PlanNode firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof TopKNode);
+    for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof SingleDeviceViewNode);
       assertTrue(node.getChildren().get(0) instanceof LimitNode);
       assertTrue(node.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
     }
-    assertTrue(firstFITopKNode.getChildren().get(1) instanceof ExchangeNode);
-    assertTrue(firstFITopKNode.getChildren().get(2) instanceof ExchangeNode);
-    assertTrue(firstFITopKNode.getChildren().get(3) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(2) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(3) instanceof ExchangeNode);
     assertScanNodeLimitValue(plan.getInstances().get(0).getFragment().getPlanNodeTree(), 0);
     assertScanNodeLimitValue(plan.getInstances().get(1).getFragment().getPlanNodeTree(), 0);
     assertScanNodeLimitValue(plan.getInstances().get(2).getFragment().getPlanNodeTree(), 0);
@@ -139,15 +139,15 @@ public class AlignByDeviceOrderByLimitOffsetTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
     DistributedQueryPlan plan = planner.planFragments();
     assertEquals(4, plan.getInstances().size());
-    PlanNode firstFIRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
-    PlanNode firstFITopKNode = firstFIRoot.getChildren().get(0);
-    assertTrue(firstFITopKNode instanceof TopKNode);
-    for (PlanNode node : firstFITopKNode.getChildren().get(0).getChildren()) {
+    PlanNode firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
+    PlanNode firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof TopKNode);
+    for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof DeviceViewNode);
     }
-    assertTrue(firstFITopKNode.getChildren().get(1) instanceof ExchangeNode);
-    assertTrue(firstFITopKNode.getChildren().get(2) instanceof ExchangeNode);
-    assertTrue(firstFITopKNode.getChildren().get(3) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(2) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(3) instanceof ExchangeNode);
     assertScanNodeLimitValue(
         plan.getInstances().get(0).getFragment().getPlanNodeTree(), LIMIT_VALUE);
     assertScanNodeLimitValue(
@@ -177,17 +177,17 @@ public class AlignByDeviceOrderByLimitOffsetTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
     DistributedQueryPlan plan4 = planner.planFragments();
     assertEquals(4, plan4.getInstances().size());
-    PlanNode firstFIRoot = plan4.getInstances().get(0).getFragment().getPlanNodeTree();
-    PlanNode firstFITopKNode = firstFIRoot.getChildren().get(0);
-    assertTrue(firstFITopKNode instanceof TopKNode);
-    for (PlanNode node : firstFITopKNode.getChildren().get(0).getChildren()) {
+    PlanNode firstFiRoot = plan4.getInstances().get(0).getFragment().getPlanNodeTree();
+    PlanNode firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof TopKNode);
+    for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof DeviceViewNode);
       assertTrue(node.getChildren().get(0) instanceof LimitNode);
       assertTrue(node.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
     }
-    assertTrue(firstFITopKNode.getChildren().get(1) instanceof ExchangeNode);
-    assertTrue(firstFITopKNode.getChildren().get(2) instanceof ExchangeNode);
-    assertTrue(firstFITopKNode.getChildren().get(3) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(2) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(3) instanceof ExchangeNode);
     assertScanNodeLimitValue(plan4.getInstances().get(0).getFragment().getPlanNodeTree(), 0);
     assertScanNodeLimitValue(plan4.getInstances().get(1).getFragment().getPlanNodeTree(), 0);
     assertScanNodeLimitValue(plan4.getInstances().get(2).getFragment().getPlanNodeTree(), 0);
@@ -210,16 +210,16 @@ public class AlignByDeviceOrderByLimitOffsetTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
     DistributedQueryPlan plan5 = planner.planFragments();
     assertEquals(4, plan5.getInstances().size());
-    PlanNode firstFIRoot = plan5.getInstances().get(0).getFragment().getPlanNodeTree();
-    PlanNode firstFITopKNode = firstFIRoot.getChildren().get(0);
-    assertTrue(firstFITopKNode instanceof TopKNode);
-    for (PlanNode node : firstFITopKNode.getChildren().get(0).getChildren()) {
+    PlanNode firstFiRoot = plan5.getInstances().get(0).getFragment().getPlanNodeTree();
+    PlanNode firstFiTopNode = firstFiRoot.getChildren().get(0);
+    assertTrue(firstFiTopNode instanceof TopKNode);
+    for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof DeviceViewNode);
       assertTrue(node.getChildren().get(0) instanceof TimeJoinNode);
     }
-    assertTrue(firstFITopKNode.getChildren().get(1) instanceof ExchangeNode);
-    assertTrue(firstFITopKNode.getChildren().get(2) instanceof ExchangeNode);
-    assertTrue(firstFITopKNode.getChildren().get(3) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(2) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(3) instanceof ExchangeNode);
     assertScanNodeLimitValue(plan5.getInstances().get(0).getFragment().getPlanNodeTree(), 0);
     assertScanNodeLimitValue(plan5.getInstances().get(1).getFragment().getPlanNodeTree(), 0);
     assertScanNodeLimitValue(plan5.getInstances().get(2).getFragment().getPlanNodeTree(), 0);
@@ -244,16 +244,16 @@ public class AlignByDeviceOrderByLimitOffsetTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
     DistributedQueryPlan plan6 = planner.planFragments();
     assertEquals(4, plan6.getInstances().size());
-    PlanNode firstFIRoot = plan6.getInstances().get(0).getFragment().getPlanNodeTree();
-    PlanNode firstFIFirstNode = firstFIRoot.getChildren().get(0);
+    PlanNode firstFiRoot = plan6.getInstances().get(0).getFragment().getPlanNodeTree();
+    PlanNode firstFIFirstNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFIFirstNode instanceof LimitNode);
-    PlanNode firstFITopKNode = ((LimitNode) firstFIFirstNode).getChild().getChildren().get(0);
-    for (PlanNode node : firstFITopKNode.getChildren().get(0).getChildren()) {
+    PlanNode firstFiTopNode = ((LimitNode) firstFIFirstNode).getChild().getChildren().get(0);
+    for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof SingleDeviceViewNode);
     }
-    assertTrue(firstFITopKNode.getChildren().get(1) instanceof ExchangeNode);
-    assertTrue(firstFITopKNode.getChildren().get(2) instanceof ExchangeNode);
-    assertTrue(firstFITopKNode.getChildren().get(3) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(2) instanceof ExchangeNode);
+    assertTrue(firstFiTopNode.getChildren().get(3) instanceof ExchangeNode);
     assertScanNodeLimitValue(
         plan6.getInstances().get(0).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
     assertScanNodeLimitValue(

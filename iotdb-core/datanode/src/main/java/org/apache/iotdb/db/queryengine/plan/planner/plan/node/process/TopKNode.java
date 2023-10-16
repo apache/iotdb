@@ -33,10 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * TopNode is optimized for `order by time limit N align by device` query. The children of TopKNode
- * are always DeviceViewNode.
- */
+/** TopNode is optimized for `order by time|expression limit N align by device` query. */
 public class TopKNode extends MultiChildProcessNode {
   private final int topValue;
 
@@ -154,7 +151,7 @@ public class TopKNode extends MultiChildProcessNode {
 
   @Override
   public String toString() {
-    return String.format("TopK-%s-%s", this.getPlanNodeId(), this.topValue);
+    return String.format("TopK-%s", this.getPlanNodeId());
   }
 
   public int getTopValue() {
