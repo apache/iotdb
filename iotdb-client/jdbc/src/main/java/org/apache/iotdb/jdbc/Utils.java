@@ -86,8 +86,8 @@ public class Utils {
       params.setTimeZone(info.getProperty(Config.TIME_ZONE));
     }
 
-    if (info.containsKey(Config.ENABLE_SSL)) {
-      params.setEnableSSL(Boolean.parseBoolean(info.getProperty(Config.ENABLE_SSL)));
+    if (info.containsKey(Config.USE_SSL)) {
+      params.setUseSSL(Boolean.parseBoolean(info.getProperty(Config.USE_SSL)));
     }
 
     if (info.containsKey(Config.TRUST_STORE)) {
@@ -130,7 +130,7 @@ public class Utils {
             return false;
           }
           break;
-        case Config.ENABLE_SSL:
+        case Config.USE_SSL:
         case Config.TRUST_STORE:
         case Config.TRUST_STORE_PWD:
         case Config.VERSION:

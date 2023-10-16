@@ -98,7 +98,7 @@ public class SessionPool implements ISessionPool {
   private final String password;
   private int fetchSize;
 
-  private boolean enableSSL;
+  private boolean useSSL;
 
   private String trustStore;
 
@@ -188,7 +188,7 @@ public class SessionPool implements ISessionPool {
       String user,
       String password,
       int maxSize,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -206,7 +206,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -233,7 +233,7 @@ public class SessionPool implements ISessionPool {
       String user,
       String password,
       int maxSize,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -250,7 +250,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -281,7 +281,7 @@ public class SessionPool implements ISessionPool {
       String password,
       int maxSize,
       boolean enableCompression,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -299,7 +299,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -328,7 +328,7 @@ public class SessionPool implements ISessionPool {
       String password,
       int maxSize,
       boolean enableCompression,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -345,7 +345,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -383,7 +383,7 @@ public class SessionPool implements ISessionPool {
       int maxSize,
       boolean enableCompression,
       boolean enableRedirection,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -401,7 +401,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -436,7 +436,7 @@ public class SessionPool implements ISessionPool {
       int maxSize,
       boolean enableCompression,
       boolean enableRedirection,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -453,7 +453,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -484,7 +484,7 @@ public class SessionPool implements ISessionPool {
       String password,
       int maxSize,
       ZoneId zoneId,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -502,7 +502,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -531,7 +531,7 @@ public class SessionPool implements ISessionPool {
       String password,
       int maxSize,
       ZoneId zoneId,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -548,7 +548,7 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -605,7 +605,7 @@ public class SessionPool implements ISessionPool {
       Version version,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this.maxSize = maxSize;
@@ -627,7 +627,7 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = String.format("%s:%s", host, port);
-    this.enableSSL = enableSSL;
+    this.useSSL = useSSL;
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
   }
@@ -682,7 +682,7 @@ public class SessionPool implements ISessionPool {
       Version version,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this.maxSize = maxSize;
@@ -704,14 +704,14 @@ public class SessionPool implements ISessionPool {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = nodeUrls.toString();
-    this.enableSSL = enableSSL;
+    this.useSSL = useSSL;
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
   }
 
   private Session constructNewSession() {
     Session session;
-    if (nodeUrls == null && enableSSL) {
+    if (nodeUrls == null && useSSL) {
       // Construct custom Session
       session =
           new Session.Builder()
@@ -725,11 +725,11 @@ public class SessionPool implements ISessionPool {
               .thriftMaxFrameSize(thriftMaxFrameSize)
               .enableRedirection(enableRedirection)
               .version(version)
-              .enableSSL(enableSSL)
+              .useSSL(useSSL)
               .trustStore(trustStore)
               .trustStorePwd(trustStorePwd)
               .build();
-    } else if (nodeUrls == null && !enableSSL) {
+    } else if (nodeUrls == null && !useSSL) {
       session =
           new Session.Builder()
               .host(host)
@@ -744,7 +744,7 @@ public class SessionPool implements ISessionPool {
               .version(version)
               .build();
 
-    } else if (nodeUrls != null && enableSSL) {
+    } else if (nodeUrls != null && useSSL) {
       session =
           new Session.Builder()
               .nodeUrls(nodeUrls)
@@ -756,7 +756,7 @@ public class SessionPool implements ISessionPool {
               .thriftMaxFrameSize(thriftMaxFrameSize)
               .enableRedirection(enableRedirection)
               .version(version)
-              .enableSSL(enableSSL)
+              .useSSL(useSSL)
               .trustStore(trustStore)
               .trustStorePwd(trustStorePwd)
               .build();
@@ -3796,12 +3796,12 @@ public class SessionPool implements ISessionPool {
     private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
     private Version version = SessionConfig.DEFAULT_VERSION;
 
-    private boolean enableSSL = false;
+    private boolean useSSL = false;
     private String trustStore;
     private String trustStorePwd;
 
-    public Builder enableSSL(boolean enableSSL) {
-      this.enableSSL = enableSSL;
+    public Builder useSSL(boolean useSSL) {
+      this.useSSL = useSSL;
       return this;
     }
 
@@ -3891,7 +3891,7 @@ public class SessionPool implements ISessionPool {
     }
 
     public SessionPool build() {
-      if (nodeUrls == null && !enableSSL) {
+      if (nodeUrls == null && !useSSL) {
         return new SessionPool(
             host,
             port,
@@ -3907,7 +3907,7 @@ public class SessionPool implements ISessionPool {
             version,
             thriftDefaultBufferSize,
             thriftMaxFrameSize);
-      } else if (nodeUrls == null && enableSSL) {
+      } else if (nodeUrls == null && useSSL) {
         return new SessionPool(
             host,
             port,
@@ -3923,10 +3923,10 @@ public class SessionPool implements ISessionPool {
             version,
             thriftDefaultBufferSize,
             thriftMaxFrameSize,
-            enableSSL,
+            useSSL,
             trustStore,
             trustStorePwd);
-      } else if (nodeUrls != null && enableSSL) {
+      } else if (nodeUrls != null && useSSL) {
         return new SessionPool(
             nodeUrls,
             user,
@@ -3941,7 +3941,7 @@ public class SessionPool implements ISessionPool {
             version,
             thriftDefaultBufferSize,
             thriftMaxFrameSize,
-            enableSSL,
+            useSSL,
             trustStore,
             trustStorePwd);
       } else {

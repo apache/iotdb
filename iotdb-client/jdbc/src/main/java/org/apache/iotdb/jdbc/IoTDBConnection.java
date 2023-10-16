@@ -470,7 +470,7 @@ public class IoTDBConnection implements Connection {
     RpcTransportFactory.setDefaultBufferCapacity(params.getThriftDefaultBufferSize());
     RpcTransportFactory.setThriftMaxFrameSize(params.getThriftMaxFrameSize());
 
-    if (params.isEnableSSL()) {
+    if (params.isUseSSL()) {
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
               params.getHost(),

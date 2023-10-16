@@ -130,6 +130,7 @@ public class Cli extends AbstractCli {
 
   private static void serve() {
     try {
+      useSsl = commandLine.getOptionValue(USE_SSL_ARGS);
       trustStore = commandLine.getOptionValue(TRUST_STORE_ARGS);
       trustStorePwd = commandLine.getOptionValue(TRUST_STORE_PWD_ARGS);
       password = commandLine.getOptionValue(PW_ARGS);
@@ -149,8 +150,8 @@ public class Cli extends AbstractCli {
 
   private static void executeSql() throws TException {
     Properties info = new Properties();
-    if (trustStore != null) {
-      info.setProperty("enable_ssl", "true");
+    if (useSsl != null && Boolean.parseBoolean(useSsl)) {
+      info.setProperty("use_ssl", useSsl);
       info.setProperty("trust_store", trustStore);
       info.setProperty("trust_store_pwd", trustStorePwd);
     }
@@ -173,8 +174,8 @@ public class Cli extends AbstractCli {
 
   private static void receiveCommands(LineReader reader) throws TException {
     Properties info = new Properties();
-    if (trustStore != null) {
-      info.setProperty("enable_ssl", "true");
+    if (useSsl != null && Boolean.parseBoolean(useSsl)) {
+      info.setProperty("use_ssl", useSsl);
       info.setProperty("trust_store", trustStore);
       info.setProperty("trust_store_pwd", trustStorePwd);
     }

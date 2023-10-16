@@ -117,7 +117,7 @@ public class Session implements ISession {
   protected String username;
   protected String password;
   protected int fetchSize;
-  protected boolean enableSSL;
+  protected boolean useSSL;
   protected String trustStore;
   protected String trustStorePwd;
   /**
@@ -320,7 +320,7 @@ public class Session implements ISession {
   }
 
   public Session(
-      String host, int rpcPort, boolean enableSSL, String trustStore, String trustStorePwd) {
+      String host, int rpcPort, boolean useSSL, String trustStore, String trustStorePwd) {
     this(
         host,
         rpcPort,
@@ -332,7 +332,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -342,7 +342,7 @@ public class Session implements ISession {
       String rpcPort,
       String username,
       String password,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -356,7 +356,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -366,7 +366,7 @@ public class Session implements ISession {
       int rpcPort,
       String username,
       String password,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -380,7 +380,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -391,7 +391,7 @@ public class Session implements ISession {
       String username,
       String password,
       int fetchSize,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -405,7 +405,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -417,7 +417,7 @@ public class Session implements ISession {
       String password,
       int fetchSize,
       long queryTimeoutInMs,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -431,7 +431,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
     this.queryTimeoutInMs = queryTimeoutInMs;
@@ -443,7 +443,7 @@ public class Session implements ISession {
       String username,
       String password,
       ZoneId zoneId,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -457,7 +457,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -468,7 +468,7 @@ public class Session implements ISession {
       String username,
       String password,
       boolean enableRedirection,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -482,7 +482,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         enableRedirection,
         SessionConfig.DEFAULT_VERSION,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -495,7 +495,7 @@ public class Session implements ISession {
       int fetchSize,
       ZoneId zoneId,
       boolean enableRedirection,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -509,7 +509,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         enableRedirection,
         SessionConfig.DEFAULT_VERSION,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -526,7 +526,7 @@ public class Session implements ISession {
       int thriftMaxFrameSize,
       boolean enableRedirection,
       Version version,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
@@ -538,7 +538,7 @@ public class Session implements ISession {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
     this.version = version;
-    this.enableSSL = enableSSL;
+    this.useSSL = useSSL;
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
   }
@@ -560,7 +560,7 @@ public class Session implements ISession {
       List<String> nodeUrls,
       String username,
       String password,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -573,7 +573,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -614,7 +614,7 @@ public class Session implements ISession {
       String username,
       String password,
       int fetchSize,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -627,7 +627,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -637,7 +637,7 @@ public class Session implements ISession {
       String username,
       String password,
       ZoneId zoneId,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this(
@@ -650,7 +650,7 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION,
-        enableSSL,
+        useSSL,
         trustStore,
         trustStorePwd);
   }
@@ -686,7 +686,7 @@ public class Session implements ISession {
       int thriftMaxFrameSize,
       boolean enableRedirection,
       Version version,
-      boolean enableSSL,
+      boolean useSSL,
       String trustStore,
       String trustStorePwd) {
     this.nodeUrls = nodeUrls;
@@ -698,7 +698,7 @@ public class Session implements ISession {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
     this.version = version;
-    this.enableSSL = enableSSL;
+    this.useSSL = useSSL;
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
   }
@@ -3775,12 +3775,12 @@ public class Session implements ISession {
     private Version version = SessionConfig.DEFAULT_VERSION;
     private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
-    private boolean enableSSL = false;
+    private boolean useSSL = false;
     private String trustStore;
     private String trustStorePwd;
 
-    public Builder enableSSL(boolean enableSSL) {
-      this.enableSSL = enableSSL;
+    public Builder useSSL(boolean useSSL) {
+      this.useSSL = useSSL;
       return this;
     }
 
@@ -3863,7 +3863,7 @@ public class Session implements ISession {
             "You should specify either nodeUrls or (host + rpcPort), but not both");
       }
       Session newSession;
-      if (nodeUrls != null && enableSSL) {
+      if (nodeUrls != null && useSSL) {
 
         newSession =
             new Session(
@@ -3876,12 +3876,12 @@ public class Session implements ISession {
                 thriftMaxFrameSize,
                 enableRedirection,
                 version,
-                enableSSL,
+                useSSL,
                 trustStore,
                 trustStorePwd);
         newSession.setEnableQueryRedirection(true);
         return newSession;
-      } else if (nodeUrls != null && !enableSSL) {
+      } else if (nodeUrls != null && !useSSL) {
         newSession =
             new Session(
                 nodeUrls,
@@ -3895,7 +3895,7 @@ public class Session implements ISession {
                 version);
         newSession.setEnableQueryRedirection(true);
         return newSession;
-      } else if (nodeUrls == null && enableSSL) {
+      } else if (nodeUrls == null && useSSL) {
         return new Session(
             host,
             rpcPort,
@@ -3907,7 +3907,7 @@ public class Session implements ISession {
             thriftMaxFrameSize,
             enableRedirection,
             version,
-            enableSSL,
+            useSSL,
             trustStore,
             trustStorePwd);
       } else {
