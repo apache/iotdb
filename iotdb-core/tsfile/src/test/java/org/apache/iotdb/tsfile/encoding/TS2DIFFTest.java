@@ -89,7 +89,7 @@ public class TS2DIFFTest {
                 }
             }
         }
-//        return encode_pos;
+
     }
 
     public static void unpack8Values(byte[] encoded, int offset,int width,  ArrayList<Integer> result_list) {
@@ -120,7 +120,7 @@ public class TS2DIFFTest {
                 buffer = buffer & ((1L << totalBits) - 1);
             }
         }
-//        return offset;
+
     }
 
     public static int bitPacking(int[] numbers, int start, int bit_width,int encode_pos,  byte[] encoded_result) {
@@ -139,7 +139,7 @@ public class TS2DIFFTest {
         ArrayList<Integer> result_list = new ArrayList<>();
         int block_num = (block_size-1) / 8;
 
-        for (int i = 0; i < block_num; i++) { // bitpacking  纵向8个，bit width是多少列
+        for (int i = 0; i < block_num; i++) { // bitpacking
             unpack8Values( encoded, decode_pos, bit_width,  result_list);
             decode_pos += bit_width;
         }
@@ -228,7 +228,6 @@ public class TS2DIFFTest {
         int2Bytes(min_delta.get(0),encode_pos,encoded_result);
         encode_pos += 4;
 
-        // encode theta
         int2Bytes(min_delta.get(1),encode_pos,encoded_result);
         encode_pos += 4;
 
@@ -438,7 +437,6 @@ public class TS2DIFFTest {
             assert tempList != null;
 
             for (File f : tempList) {
-//                f = tempList[1];
                 System.out.println(f);
                 InputStream inputStream = Files.newInputStream(f.toPath());
 
@@ -449,14 +447,11 @@ public class TS2DIFFTest {
 
 
                 loader.readHeaders();
-//                    data.clear();
                 while (loader.readRecord()) {
-//                        String value = loader.getValues()[index];
                     data1.add(Integer.valueOf(loader.getValues()[0]));
                     data2.add(Integer.valueOf(loader.getValues()[1]));
-//                        data.add(Integer.valueOf(value));
                 }
-//                    System.out.println(data2);
+
                 inputStream.close();
                 int[] data2_arr = new int[data1.size()];
                 for(int i = 0;i<data2.size();i++){
@@ -469,7 +464,7 @@ public class TS2DIFFTest {
                 double compressed_size = 0;
                 int repeatTime2 = 500;
 
-//                    ArrayList<Byte> buffer2 = new ArrayList<>();
+
                 int length = 0;
 
                 long s = System.nanoTime();
@@ -500,8 +495,6 @@ public class TS2DIFFTest {
                 writer.writeRecord(record);
                 System.out.println(ratio);
 
-
-//   break;
             }
             writer.close();
 
@@ -576,7 +569,6 @@ public class TS2DIFFTest {
             assert tempList != null;
 
             for (File f : tempList) {
-//                f = tempList[2];
                 System.out.println(f);
                 InputStream inputStream = Files.newInputStream(f.toPath());
 
@@ -647,7 +639,7 @@ public class TS2DIFFTest {
     @Test
     public void ts2diffVaryK() throws IOException {
         String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/vary_k_ts2diff";
+        String output_parent_dir = parent_dir + "vary_k_ts2diff";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
