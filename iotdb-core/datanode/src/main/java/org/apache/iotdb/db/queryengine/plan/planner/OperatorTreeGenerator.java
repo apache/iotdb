@@ -856,7 +856,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 TopKOperator.class.getSimpleName());
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
     context.setCachedDataTypes(dataTypes);
-    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 

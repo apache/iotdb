@@ -360,13 +360,11 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     }
   }
 
-  private static final int LIMIT_VALUE = 100;
-
   // ORDER BY TIME
 
   @Test
   public void orderByTimeTest1() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY TIME LIMIT 100 ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY TIME ALIGN BY DEVICE";
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -394,7 +392,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(LIMIT_VALUE, total);
+        assertEquals(numOfPointsInDevice * places.length, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -404,7 +402,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByTimeTest2() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY TIME ASC LIMIT 100 ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY TIME ASC ALIGN BY DEVICE";
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -432,7 +430,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(LIMIT_VALUE, total);
+        assertEquals(numOfPointsInDevice * places.length, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -442,7 +440,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByTimeTest3() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY TIME DESC LIMIT 100 ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY TIME DESC ALIGN BY DEVICE";
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -470,7 +468,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(LIMIT_VALUE, total);
+        assertEquals(numOfPointsInDevice * places.length, total);
       }
     } catch (Exception e) {
       e.printStackTrace();

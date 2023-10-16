@@ -387,7 +387,7 @@ public class LogicalPlanBuilder {
                   Ordering.DESC,
                   analysis.getGlobalTimeFilter(),
                   0,
-                  -1,
+                  0,
                   analysis.isLastLevelUseWildcard())
               .planWhereAndSourceTransform(
                   null, sourceTransformExpressions, false, zoneId, Ordering.DESC)

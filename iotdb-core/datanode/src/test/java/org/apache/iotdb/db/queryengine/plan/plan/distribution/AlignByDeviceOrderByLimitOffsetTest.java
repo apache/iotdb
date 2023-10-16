@@ -91,7 +91,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
     // 2. order by time, has value filter
-    // put LIMIT-NODE above of SingleDeviceViewNode
+    // put LIMIT-NODE below of SingleDeviceViewNode
     String sql =
         String.format(
             "select * from root.sg.** where s1>1 ORDER BY TIME DESC LIMIT %s align by device",
@@ -127,7 +127,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
 
     // 3. order by time, expression
     // need read all data, use DeviceViewNode instead of SingleDeviceViewNode
-    // no LIMIT-NODE above of DeviceViewNode
+    // no LIMIT-NODE below DeviceViewNode
     // can push down LIMIT value to ScanNode
     String sql =
         String.format(
@@ -166,7 +166,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
 
     // 4. order by time, expression, has value filter
     // need read all data, use DeviceViewNode instead of SingleDeviceViewNode
-    // no LIMIT-NODE above of DeviceViewNode
+    // no LIMIT-NODE below DeviceViewNode
     String sql =
         String.format(
             "select * from root.sg.** where s1>1 ORDER BY TIME DESC, s1 DESC LIMIT %s align by device",

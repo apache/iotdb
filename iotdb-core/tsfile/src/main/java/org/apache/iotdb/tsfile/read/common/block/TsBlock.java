@@ -528,7 +528,6 @@ public class TsBlock {
               sourceTsBlock.getValueColumns()[i].getInt(sourceIndex);
           break;
         case INT64:
-        case VECTOR:
           valueColumns[i].isNull()[updateIdx] = false;
           valueColumns[i].getLongs()[updateIdx] =
               sourceTsBlock.getValueColumns()[i].getLong(sourceIndex);
