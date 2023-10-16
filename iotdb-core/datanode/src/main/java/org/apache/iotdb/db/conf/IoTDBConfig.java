@@ -522,7 +522,8 @@ public class IoTDBConfig {
    */
   private int subCompactionTaskNum = 4;
 
-  private CompactionValidationLevel compactionValidationLevel = CompactionValidationLevel.NONE;
+  private CompactionValidationLevel compactionValidationLevel =
+      CompactionValidationLevel.RESOURCE_ONLY;
 
   /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
