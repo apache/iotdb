@@ -18,67 +18,6 @@ public class Outlier3DTest {
         else return 32 - Integer.numberOfLeadingZeros(num);
     }
 
-    public static byte[] int2Bytes(int integer) {
-        byte[] bytes = new byte[4];
-        bytes[0] = (byte) (integer >> 24);
-        bytes[1] = (byte) (integer >> 16);
-        bytes[2] = (byte) (integer >> 8);
-        bytes[3] = (byte) integer;
-        return bytes;
-    }
-
-    public static byte[] intByte2Bytes(int integer) {
-        byte[] bytes = new byte[1];
-        bytes[0] = (byte) integer;
-        return bytes;
-    }
-
-    public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
-        int value = 0;
-        if (num > 4) {
-            System.out.println("bytes2Integer error");
-            return 0;
-        }
-        for (int i = 0; i < num; i++) {
-            value <<= 8;
-            int b = encoded.get(i + start) & 0xFF;
-            value |= b;
-        }
-        return value;
-    }
-
-    public static byte[] bitPacking(ArrayList<Integer> numbers, int start, int bit_width) {
-        int block_num = numbers.size() / 8;
-        byte[] result = new byte[bit_width * block_num];
-        for (int i = 0; i < block_num; i++) {
-            for (int j = 0; j < bit_width; j++) {
-                int tmp_int = 0;
-                for (int k = 0; k < 8; k++) {
-                    tmp_int += (((numbers.get(i * 8 + k + start) >> j) % 2) << k);
-                }
-                result[i * bit_width + j] = (byte) tmp_int;
-            }
-        }
-        return result;
-    }
-
-    public static byte[] bitPacking(ArrayList<ArrayList<Integer>> numbers, int start, int index, int bit_width) {
-        int block_num = numbers.size() / 8;
-        byte[] result = new byte[bit_width * block_num];
-        for (int i = 0; i < block_num; i++) {
-            for (int j = 0; j < bit_width; j++) {
-                int tmp_int = 0;
-                for (int k = 0; k < 8; k++) {
-                    tmp_int += (((numbers.get(i * 8 + k + start).get(index) >> j) % 2) << k);
-                }
-                result[i * bit_width + j] = (byte) tmp_int;
-            }
-        }
-        return result;
-    }
-
-
-
     public static ArrayList<Integer> getAbsDeltaTsBlock(
             ArrayList<Integer> ts_block,
             ArrayList<Integer> min_delta) {
@@ -169,7 +108,7 @@ public class Outlier3DTest {
     }
 
     public static int ReorderingRegressionEncoder(
-            ArrayList<Integer> data, int block_size, double x_c, int beta) throws IOException {
+            ArrayList<Integer> data, int block_size, double x_c, int beta) {
         block_size++;
 
         int bits_number = 0;
