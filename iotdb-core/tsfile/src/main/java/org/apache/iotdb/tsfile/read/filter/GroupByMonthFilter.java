@@ -41,6 +41,8 @@ public class GroupByMonthFilter extends GroupByFilter {
 
   private long fixedIntervalOther;
   private long fixedSlidingStepOther;
+  private long[] timeArray;
+  private int arraySize;
 
   private Calendar calendar = Calendar.getInstance();
   private static final long MS_TO_MONTH = 30 * 86400_000L;
@@ -254,8 +256,43 @@ public class GroupByMonthFilter extends GroupByFilter {
     }
     if (isSlidingStepByMonth) {
       slidingStepsInMo = (int) (fixedSlidingStepInMonth / MS_TO_MONTH);
+      if (fixedSlidingStepOther != 0) {
+        initTimeArray();
+      }
     }
     getNthTimeInterval(0);
+  }
+
+  private void initTimeArray() {
+    long iterStartTime = originalStartTime;
+    long count =
+        (originalEndTime - originalStartTime)
+                / (slidingStepsInMo * 28 * 86400_000L + fixedSlidingStepOther)
+            + 1;
+    timeArray = new long[(int) count];
+    arraySize = 0;
+    for (int i = 0; i < count; i++) {
+      timeArray[arraySize++] = iterStartTime;
+      iterStartTime =
+          calcIntervalByMonthWithFixedOther(iterStartTime, slidingStepsInMo, fixedSlidingStepOther);
+      if (iterStartTime >= originalEndTime) {
+        break;
+      }
+    }
+  }
+
+  public int getTimePointPositionFromArray(long time) {
+    int left = 0;
+    int right = arraySize - 1;
+    while (left < right) {
+      int mid = (left + right + 1) / 2;
+      if (timeArray[mid] <= time) {
+        left = mid;
+      } else {
+        right = mid - 1;
+      }
+    }
+    return left;
   }
 
   /** Get the interval that @param time belongs to. */
@@ -275,21 +312,8 @@ public class GroupByMonthFilter extends GroupByFilter {
             count++;
           }
         }
-      } else { //  Must processing by iteration
-        // ie. startTIme = 1/22, interval = slidingStep = 1mo10d , endTime = 5/24 -> count = 4
-        // If calculated by '3mo30d' is  5/22 and  the result of three iterations is 1/22 -> 3/4 ->
-        // 4/14 -> 5/24
-        count = timeRange / (slidingStepsInMo * 28 * 86400_000L + fixedSlidingStepOther) + 1;
-        long iterStartTime = initialStartTime;
-        for (int i = 0; i <= count; i++) {
-          iterStartTime =
-              calcIntervalByMonthWithFixedOther(
-                  iterStartTime, slidingStepsInMo, fixedSlidingStepOther);
-          if (iterStartTime > time) {
-            count = i;
-            break;
-          }
-        }
+      } else {
+        count = getTimePointPositionFromArray(time);
       }
     } else {
       count = timeRange / slidingStep;
@@ -304,13 +328,7 @@ public class GroupByMonthFilter extends GroupByFilter {
       if (fixedSlidingStepOther == 0) {
         this.startTime = calcIntervalByMonth(initialStartTime, slidingStepsInMo * n);
       } else {
-        long iterStartTime = initialStartTime;
-        for (long i = 0; i < n; i++) {
-          iterStartTime =
-              calcIntervalByMonthWithFixedOther(
-                  iterStartTime, slidingStepsInMo, fixedSlidingStepOther);
-        }
-        this.startTime = iterStartTime;
+        this.startTime = timeArray[(int) n];
       }
     } else {
       this.startTime = initialStartTime + slidingStep * n;
