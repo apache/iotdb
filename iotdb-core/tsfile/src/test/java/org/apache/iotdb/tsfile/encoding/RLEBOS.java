@@ -1245,9 +1245,8 @@ public class RLEBOS {
     }
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
-//        String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/rle_bos";
+        String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
+        String output_parent_dir = parent_dir + "rle_bos";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
