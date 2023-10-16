@@ -187,27 +187,45 @@ public class TsFilePlanRedoerTest {
     generateCompleteFile(file);
     tsFileResource = new TsFileResource(file);
     tsFileResource.updateStartTime(DEVICE3_NAME, 5);
-    tsFileResource.updateStartTime(DEVICE3_NAME, 5);
+    tsFileResource.updateEndTime(DEVICE3_NAME, 5);
 
     // generate InsertRowPlan
-    long time = 6;
     TSDataType[] dataTypes =
         new TSDataType[] {
           TSDataType.INT32, TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.FLOAT, TSDataType.TEXT
         };
     Object[] columns = new Object[] {1, 1L, true, 1.0f, new Binary("1")};
 
-    InsertRowNode insertRowNode =
+    InsertRowNode insertRowNode1 =
         new InsertRowNode(
             new PlanNodeId("0"),
             new PartialPath(DEVICE3_NAME),
             true,
             new String[] {"s1", "s2", "s3", "s4", "s5"},
             dataTypes,
-            time,
+            5,
             columns,
             false);
-    insertRowNode.setMeasurementSchemas(
+    insertRowNode1.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+          new MeasurementSchema("s2", TSDataType.INT64),
+          new MeasurementSchema("s3", TSDataType.BOOLEAN),
+          new MeasurementSchema("s4", TSDataType.FLOAT),
+          new MeasurementSchema("s5", TSDataType.TEXT),
+        });
+
+    InsertRowNode insertRowNode2 =
+        new InsertRowNode(
+            new PlanNodeId("0"),
+            new PartialPath(DEVICE3_NAME),
+            true,
+            new String[] {"s1", "s2", "s3", "s4", "s5"},
+            dataTypes,
+            6,
+            columns,
+            false);
+    insertRowNode2.setMeasurementSchemas(
         new MeasurementSchema[] {
           new MeasurementSchema("s1", TSDataType.INT32),
           new MeasurementSchema("s2", TSDataType.INT64),
@@ -218,7 +236,8 @@ public class TsFilePlanRedoerTest {
 
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true);
-    planRedoer.redoInsert(insertRowNode);
+    planRedoer.redoInsert(insertRowNode1);
+    planRedoer.redoInsert(insertRowNode2);
 
     // check data in memTable
     IMemTable recoveryMemTable = planRedoer.getRecoveryMemTable();
@@ -235,13 +254,13 @@ public class TsFilePlanRedoerTest {
                 new MeasurementSchema("s5", TSDataType.TEXT, TSEncoding.PLAIN)));
     ReadOnlyMemChunk memChunk = recoveryMemTable.query(fullPath, Long.MIN_VALUE, null);
     IPointReader iterator = memChunk.getPointReader();
-    time = 6;
+    int time = 6;
     while (iterator.hasNextTimeValuePair()) {
       TimeValuePair timeValuePair = iterator.nextTimeValuePair();
       assertEquals(time, timeValuePair.getTimestamp());
       assertEquals(1, timeValuePair.getValue().getVector()[0].getInt());
       assertEquals(1L, timeValuePair.getValue().getVector()[1].getLong());
-      assertEquals(true, timeValuePair.getValue().getVector()[2].getBoolean());
+      assertTrue(timeValuePair.getValue().getVector()[2].getBoolean());
       assertEquals(1, timeValuePair.getValue().getVector()[3].getFloat(), 0.00001);
       assertEquals(Binary.valueOf("1"), timeValuePair.getValue().getVector()[4].getBinary());
       ++time;
