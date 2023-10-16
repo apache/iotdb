@@ -11,9 +11,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 
-import static java.lang.Math.pow;
 
-public class TS_2DIFF {
+public class TS2DIFFTest {
 
     public static int getBitWith(int num) {
         if (num == 0) return 1;
@@ -118,7 +117,7 @@ public class TS_2DIFF {
                 result_list.add ((int) (buffer >>> (totalBits - width)));
                 valueIdx++;
                 totalBits -= width;
-                buffer = buffer & ((1 << totalBits) - 1);
+                buffer = buffer & ((1L << totalBits) - 1);
             }
         }
 //        return offset;
@@ -220,13 +219,6 @@ public class TS_2DIFF {
         return ts_block_delta;
     }
 
-    public static ArrayList<Integer> getBitWith(ArrayList<Integer> ts_block) {
-        ArrayList<Integer> ts_block_bit_width = new ArrayList<>();
-        for (int integers : ts_block) {
-            ts_block_bit_width.add(getBitWith(integers));
-        }
-        return ts_block_bit_width;
-    }
 
     public static int encode2Bytes(
             int[] ts_block,
@@ -250,38 +242,24 @@ public class TS_2DIFF {
     }
 
     public static int BOSEncoder(
-            int[] data, int block_size, String dataset_name, byte[] encoded_result) {
+            int[] data, int block_size, byte[] encoded_result) {
         block_size++;
-//        int length_all = data.size();
-//        byte[] length_all_bytes1 = int2Bytes(length_all);
-//        byte[] encoded_result1 = new byte[length_all*4];
-//        System.arraycopy(length_all_bytes1, 0, encoded_result1, 0, length_all_bytes1.length);
-//        int encode_pos = length_all_bytes1.length;
-//        int block_num = length_all / block_size;
-//        byte[] block_size_byte = int2Bytes(block_size);
-//        System.arraycopy(block_size_byte, 0, encoded_result1, encode_pos, block_size_byte.length);
 
         int length_all = data.length;
 
         int encode_pos = 0;
         int2Bytes(length_all,encode_pos,encoded_result);
         encode_pos += 4;
-//        byte[] length_all_bytes = int2Bytes(length_all);
-//        for (byte b : length_all_bytes) encoded_result.add(b);
+
         int block_num = length_all / block_size;
         int2Bytes(block_size,encode_pos,encoded_result);
         encode_pos+= 4;
 
-//        for (int i = 0; i < 1; i++) {
+
         for (int i = 0; i < block_num; i++) {
-
-
-//            encode_pos =  BOSBlockEncoder(data, i, block_size, k,encode_pos,encoded_result);
-
             ArrayList<Integer> min_delta = new ArrayList<>();
             int[] ts_block_delta = getAbsDeltaTsBlock(data, i, block_size, min_delta);
             encode_pos =  encode2Bytes(ts_block_delta, min_delta,encode_pos, encoded_result);
-//            encoded_result.addAll(cur_encoded_result);
 
         }
 
@@ -295,7 +273,7 @@ public class TS_2DIFF {
         } else {
             int start = block_num * block_size;
             int[] ts_block = new int[length_all-start];
-            if (length_all - start >= 0) System.arraycopy(data, start, ts_block, start - start, length_all - start);
+            if (length_all - start >= 0) System.arraycopy(data, start, ts_block, 0, length_all - start);
 
             int supple_length;
             if (remaining_length % 8 == 0) {
@@ -307,11 +285,9 @@ public class TS_2DIFF {
             }
 
             ArrayList<Integer> min_delta = new ArrayList<>();
-//            ArrayList<Integer> ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta);
             int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, min_delta,supple_length);
 
             encode_pos =  encode2Bytes(ts_block_delta, min_delta,encode_pos, encoded_result);
-//            encode_pos = BOSBlockEncoder(ts_block, supple_length, k,encode_pos,encoded_result);
         }
 
 
@@ -337,7 +313,6 @@ public class TS_2DIFF {
         decode_pos = decode_pos_normal.get(0);
         int pre_v = value0;
 
-//        value_list.add(pre_v);
         for (int i = 0; i < block_size - 1; i++) {
             int current_delta = final_normal.get(i) + min_delta;
             pre_v = current_delta + pre_v;
@@ -347,7 +322,7 @@ public class TS_2DIFF {
         return decode_pos;
     }
 
-    public static int[] BOSDecoder(byte[] encoded) {
+    public static void BOSDecoder(byte[] encoded) {
 
         int decode_pos = 0;
         int length_all = bytes2Integer(encoded, decode_pos, 4);
@@ -368,8 +343,7 @@ public class TS_2DIFF {
         int[] value_list = new int[length_all+8];
 
         int[] value_pos_arr = new int[1];
-        value_pos_arr[0]= 0;
-//        for (int k = 0; k < 1; k++) {
+
         for (int k = 0; k < block_num; k++) {
             decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, block_size,value_pos_arr);
         }
@@ -382,9 +356,8 @@ public class TS_2DIFF {
                 value_pos_arr[0] ++;
             }
         } else {
-            decode_pos = BOSBlockDecoder(encoded, decode_pos, value_list, remain_length + zero_number,value_pos_arr);
+            BOSBlockDecoder(encoded, decode_pos, value_list, remain_length + zero_number, value_pos_arr);
         }
-        return value_list;
     }
 
     @Test
@@ -409,8 +382,8 @@ public class TS_2DIFF {
         dataset_name.add("TY-Transport");
         dataset_name.add("EPM-Education");
 
-        for (int i = 0; i < dataset_name.size(); i++) {
-            input_path_list.add(input_parent_dir + dataset_name.get(i));
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
@@ -438,69 +411,13 @@ public class TS_2DIFF {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
         dataset_block_size.add(1024);
 
-//        String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-outlier\\";
-//        String output_parent_dir = parent_dir + "vldb\\compression_ratio\\outlier";
-//        String input_parent_dir = parent_dir + "iotdb_test_small\\";
-//        ArrayList<String> input_path_list = new ArrayList<>();
-//        ArrayList<String> output_path_list = new ArrayList<>();
-//        ArrayList<String> dataset_name = new ArrayList<>();
-//        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-//        dataset_name.add("CS-Sensors");
-//        dataset_name.add("Metro-Traffic");
-//        dataset_name.add("USGS-Earthquakes");
-//        dataset_name.add("YZ-Electricity");
-//        dataset_name.add("GW-Magnetic");
-//        dataset_name.add("TY-Fuel");
-//        dataset_name.add("Cyber-Vehicle");
-//        dataset_name.add("Vehicle-Charge");
-//        dataset_name.add("Nifty-Stocks");
-//        dataset_name.add("TH-Climate");
-//        dataset_name.add("TY-Transport");
-//        dataset_name.add("EPM-Education");
-//
-//        for (int i = 0; i < dataset_name.size(); i++) {
-//            input_path_list.add(input_parent_dir + dataset_name.get(i));
-//        }
-//
-//        output_path_list.add(output_parent_dir + "\\CS-Sensors_ratio.csv"); // 0
-//        dataset_block_size.add(1024);
-//        output_path_list.add(output_parent_dir + "\\Metro-Traffic_ratio.csv");// 1
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
-//        dataset_block_size.add(256);
-//        output_path_list.add(output_parent_dir + "\\GW-Magnetic_ratio.csv"); //4
-//        dataset_block_size.add(128);
-//        output_path_list.add(output_parent_dir + "\\TY-Fuel_ratio.csv");//5
-//        dataset_block_size.add(64);
-//        output_path_list.add(output_parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
-//        dataset_block_size.add(128);
-//        output_path_list.add(output_parent_dir + "\\Vehicle-Charge_ratio.csv");//7
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\Nifty-Stocks_ratio.csv");//8
-//        dataset_block_size.add(256);
-//        output_path_list.add(output_parent_dir + "\\TH-Climate_ratio.csv");//9
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\TY-Transport_ratio.csv");//10
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\EPM-Education_ratio.csv");//11
-//        dataset_block_size.add(512);
 
-
-        ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
-        for (int i = 0; i < 2; i++) {
-            columnIndexes.add(i, i);
-        }
-
-//        for (int file_i = 3; file_i < 4; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
             String Output = output_path_list.get(file_i);
 
-            int repeatTime = 1; // set repeat time
 
             File file = new File(inputPath);
             File[] tempList = file.listFiles();
@@ -528,12 +445,8 @@ public class TS_2DIFF {
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                 ArrayList<Integer> data1 = new ArrayList<>();
                 ArrayList<Integer> data2 = new ArrayList<>();
-                int[] data_decoded ;
 
 
-//                for (int index : columnIndexes) {
-                // add a column to "data"
-//                    System.out.println(index);
 
                 loader.readHeaders();
 //                    data.clear();
@@ -561,19 +474,17 @@ public class TS_2DIFF {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), dataset_name.get(file_i),  encoded_result);
+                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
                 }
-//                        System.out.println(buffer2.size());
-//                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
 
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime2);
                 compressed_size += length;
-                double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
+                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                 ratio += ratioTmp;
                 s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    data_decoded = BOSDecoder(encoded_result);
+                    BOSDecoder(encoded_result);
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime2);
 
@@ -600,14 +511,12 @@ public class TS_2DIFF {
 
     @Test
     public void ts2diffVaryBlockSize() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
-//        String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/block_size_ts2diff";
+        String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
+        String output_parent_dir = parent_dir + "block_size_ts2diff";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
-        ArrayList<Integer> dataset_block_size = new ArrayList<>();
         dataset_name.add("CS-Sensors");
         dataset_name.add("Metro-Traffic");
         dataset_name.add("USGS-Earthquakes");
@@ -621,98 +530,31 @@ public class TS_2DIFF {
         dataset_name.add("TY-Transport");
         dataset_name.add("EPM-Education");
 
-        for (int i = 0; i < dataset_name.size(); i++) {
-            input_path_list.add(input_parent_dir + dataset_name.get(i));
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-        dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-        dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-        dataset_block_size.add(1024);
         output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
-        dataset_block_size.add(1024);
-
-//        String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-outlier\\";
-//        String output_parent_dir = parent_dir + "vldb\\compression_ratio\\outlier";
-//        String input_parent_dir = parent_dir + "iotdb_test_small\\";
-//        ArrayList<String> input_path_list = new ArrayList<>();
-//        ArrayList<String> output_path_list = new ArrayList<>();
-//        ArrayList<String> dataset_name = new ArrayList<>();
-//        ArrayList<Integer> dataset_block_size = new ArrayList<>();
-//        dataset_name.add("CS-Sensors");
-//        dataset_name.add("Metro-Traffic");
-//        dataset_name.add("USGS-Earthquakes");
-//        dataset_name.add("YZ-Electricity");
-//        dataset_name.add("GW-Magnetic");
-//        dataset_name.add("TY-Fuel");
-//        dataset_name.add("Cyber-Vehicle");
-//        dataset_name.add("Vehicle-Charge");
-//        dataset_name.add("Nifty-Stocks");
-//        dataset_name.add("TH-Climate");
-//        dataset_name.add("TY-Transport");
-//        dataset_name.add("EPM-Education");
-//
-//        for (int i = 0; i < dataset_name.size(); i++) {
-//            input_path_list.add(input_parent_dir + dataset_name.get(i));
-//        }
-//
-//        output_path_list.add(output_parent_dir + "\\CS-Sensors_ratio.csv"); // 0
-//        dataset_block_size.add(1024);
-//        output_path_list.add(output_parent_dir + "\\Metro-Traffic_ratio.csv");// 1
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
-//        dataset_block_size.add(256);
-//        output_path_list.add(output_parent_dir + "\\GW-Magnetic_ratio.csv"); //4
-//        dataset_block_size.add(128);
-//        output_path_list.add(output_parent_dir + "\\TY-Fuel_ratio.csv");//5
-//        dataset_block_size.add(64);
-//        output_path_list.add(output_parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
-//        dataset_block_size.add(128);
-//        output_path_list.add(output_parent_dir + "\\Vehicle-Charge_ratio.csv");//7
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\Nifty-Stocks_ratio.csv");//8
-//        dataset_block_size.add(256);
-//        output_path_list.add(output_parent_dir + "\\TH-Climate_ratio.csv");//9
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\TY-Transport_ratio.csv");//10
-//        dataset_block_size.add(512);
-//        output_path_list.add(output_parent_dir + "\\EPM-Education_ratio.csv");//11
-//        dataset_block_size.add(512);
 
 
-        ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
-        for (int i = 0; i < 2; i++) {
-            columnIndexes.add(i, i);
-        }
 
-//        for (int file_i = 3; file_i < 4; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
             String Output = output_path_list.get(file_i);
 
-            int repeatTime = 1; // set repeat time
 
             File file = new File(inputPath);
             File[] tempList = file.listFiles();
@@ -741,22 +583,14 @@ public class TS_2DIFF {
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                 ArrayList<Integer> data1 = new ArrayList<>();
                 ArrayList<Integer> data2 = new ArrayList<>();
-                int[] data_decoded ;
 
-
-//                for (int index : columnIndexes) {
-                // add a column to "data"
-//                    System.out.println(index);
 
                 loader.readHeaders();
-//                    data.clear();
                 while (loader.readRecord()) {
-//                        String value = loader.getValues()[index];
                     data1.add(Integer.valueOf(loader.getValues()[0]));
                     data2.add(Integer.valueOf(loader.getValues()[1]));
-//                        data.add(Integer.valueOf(value));
+
                 }
-//                    System.out.println(data2);
                 inputStream.close();
                 int[] data2_arr = new int[data1.size()];
                 for(int i = 0;i<data2.size();i++){
@@ -774,19 +608,18 @@ public class TS_2DIFF {
                     int repeatTime2 = 500;
 
                     long s = System.nanoTime();
-                    ArrayList<Byte> buffer2 = new ArrayList<>();
                     for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                        compressed_size = BOSEncoder(data2_arr, block_size, dataset_name.get(file_i),  encoded_result);
+                        compressed_size = BOSEncoder(data2_arr, block_size, encoded_result);
                     }
 
                     long e = System.nanoTime();
                     encodeTime += ((e - s) / repeatTime2);
-//                        compressed_size += buffer2.size();
-                    double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
+
+                    double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                     ratio += ratioTmp;
                     s = System.nanoTime();
                     for (int repeat = 0; repeat < repeatTime2; repeat++)
-                        data_decoded = BOSDecoder(encoded_result);
+                        BOSDecoder(encoded_result);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
 
@@ -804,9 +637,7 @@ public class TS_2DIFF {
                     writer.writeRecord(record);
                     System.out.println(ratio);
                 }
-//                }
 
-//   break;
             }
             writer.close();
 
@@ -815,8 +646,7 @@ public class TS_2DIFF {
 
     @Test
     public void ts2diffVaryK() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
-//        String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
+        String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
         String output_parent_dir = parent_dir + "vldb/compression_ratio/vary_k_ts2diff";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -836,8 +666,8 @@ public class TS_2DIFF {
         dataset_name.add("TY-Transport");
         dataset_name.add("EPM-Education");
 
-        for (int i = 0; i < dataset_name.size(); i++) {
-            input_path_list.add(input_parent_dir + dataset_name.get(i));
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
@@ -867,19 +697,11 @@ public class TS_2DIFF {
 
 
 
-        ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
-        for (int i = 0; i < 2; i++) {
-            columnIndexes.add(i, i);
-        }
-
-
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
             String Output = output_path_list.get(file_i);
-
-            int repeatTime = 1; // set repeat time
 
             File file = new File(inputPath);
             File[] tempList = file.listFiles();
@@ -908,22 +730,13 @@ public class TS_2DIFF {
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                 ArrayList<Integer> data1 = new ArrayList<>();
                 ArrayList<Integer> data2 = new ArrayList<>();
-                int[] data_decoded ;
 
-
-//                for (int index : columnIndexes) {
-                // add a column to "data"
-//                    System.out.println(index);
 
                 loader.readHeaders();
-//                    data.clear();
                 while (loader.readRecord()) {
-//                        String value = loader.getValues()[index];
                     data1.add(Integer.valueOf(loader.getValues()[0]));
                     data2.add(Integer.valueOf(loader.getValues()[1]));
-//                        data.add(Integer.valueOf(value));
                 }
-//                    System.out.println(data2);
                 inputStream.close();
                 int[] data2_arr = new int[data1.size()];
                 for(int i = 0;i<data2.size();i++){
@@ -931,7 +744,6 @@ public class TS_2DIFF {
                 }
                 byte[] encoded_result = new byte[data2_arr.length*4];
                 for (int k = 1; k < 8; k++) {
-//                    int q = (int) Math.pow(2, q_exp);
                     System.out.println(k);
                     long encodeTime = 0;
                     long decodeTime = 0;
@@ -940,25 +752,19 @@ public class TS_2DIFF {
                     int repeatTime2 = 10;
 
                     long s = System.nanoTime();
-                    ArrayList<Byte> buffer1 = new ArrayList<>();
-                    ArrayList<Byte> buffer2 = new ArrayList<>();
-                    long buffer_bits = 0;
+
                     for (int repeat = 0; repeat < repeatTime2; repeat++) {
-//                            buffer1 = ReorderingRegressionEncoder(data1, dataset_block_size.get(file_i), dataset_name.get(file_i));
-                        compressed_size = BOSEncoder(data2_arr, dataset_block_size.get(file_i), dataset_name.get(file_i), encoded_result);
+                        compressed_size = BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
                     }
-//                        System.out.println(buffer2.size());
-//                            buffer_bits = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_name.get(file_i));
 
                     long e = System.nanoTime();
                     encodeTime += ((e - s) / repeatTime2);
-//                        compressed_size += buffer1.size();
-//                        compressed_size += buffer2.size();
-                    double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
+
+                    double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                     ratio += ratioTmp;
                     s = System.nanoTime();
                     for (int repeat = 0; repeat < repeatTime2; repeat++)
-                        data_decoded = BOSDecoder(encoded_result);
+                        BOSDecoder(encoded_result);
                     e = System.nanoTime();
                     decodeTime += ((e - s) / repeatTime2);
 
@@ -984,9 +790,8 @@ public class TS_2DIFF {
 
     @Test
     public void ts2diffVaryQ() throws IOException {
-        String parent_dir = "/Users/xiaojinzhao/Desktop/encoding-outlier/"; ///Users/xiaojinzhao/Desktop
-//        String parent_dir = "/Users/zihanguo/Downloads/outliier_code/encoding-outlier/";
-        String output_parent_dir = parent_dir + "vldb/compression_ratio/vary_q_ts2diff";
+        String parent_dir = "iotdb/iotdb-core/tsfile/src/test/resources/"; // your data path
+        String output_parent_dir = parent_dir + "vary_q_ts2diff";
         String input_parent_dir = parent_dir + "trans_data/";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -1005,8 +810,8 @@ public class TS_2DIFF {
         dataset_name.add("TY-Transport");
         dataset_name.add("EPM-Education");
 
-        for (int i = 0; i < dataset_name.size(); i++) {
-            input_path_list.add(input_parent_dir + dataset_name.get(i));
+        for (String value : dataset_name) {
+            input_path_list.add(input_parent_dir + value);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
@@ -1036,10 +841,6 @@ public class TS_2DIFF {
 
 
 
-        ArrayList<Integer> columnIndexes = new ArrayList<>(); // set the column indexes of compressed
-        for (int i = 0; i < 2; i++) {
-            columnIndexes.add(i, i);
-        }
 
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
@@ -1075,17 +876,13 @@ public class TS_2DIFF {
                 CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                 ArrayList<Integer> data1 = new ArrayList<>();
                 ArrayList<Integer> data2 = new ArrayList<>();
-                int[] data_decoded ;
-
 
 
                 loader.readHeaders();
 
                 while (loader.readRecord()) {
-//                        String value = loader.getValues()[index];
                     data1.add(Integer.valueOf(loader.getValues()[0]));
                     data2.add(Integer.valueOf(loader.getValues()[1]));
-//                        data.add(Integer.valueOf(value));
                 }
                 inputStream.close();
                 int[] data2_arr = new int[data1.size()];
@@ -1101,17 +898,17 @@ public class TS_2DIFF {
                 long s = System.nanoTime();
 
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    compressed_size = BOSEncoder(data2_arr, dataset_block_size.get(file_i), dataset_name.get(file_i),  encoded_result);
+                    compressed_size = BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
                 }
 
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime2);
 
-                double ratioTmp = (double) compressed_size / (double) (data1.size() * Integer.BYTES);
+                double ratioTmp = compressed_size / (double) (data1.size() * Integer.BYTES);
                 ratio += ratioTmp;
                 s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++)
-                    data_decoded = BOSDecoder(encoded_result);
+                    BOSDecoder(encoded_result);
                 e = System.nanoTime();
                 decodeTime += ((e - s) / repeatTime2);
                 for (int q_exp = 0; q_exp < 8; q_exp++) {
