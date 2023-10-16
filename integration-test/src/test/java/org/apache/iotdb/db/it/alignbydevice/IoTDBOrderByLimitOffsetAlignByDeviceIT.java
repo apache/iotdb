@@ -25,19 +25,11 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 
-import static org.apache.iotdb.db.it.alignbydevice.IoTDBOrderByWithAlignByDeviceIT.checkHeader;
 import static org.apache.iotdb.db.it.alignbydevice.IoTDBOrderByWithAlignByDeviceIT.insertData;
 import static org.apache.iotdb.db.it.alignbydevice.IoTDBOrderByWithAlignByDeviceIT.insertData2;
-import static org.apache.iotdb.db.it.alignbydevice.IoTDBOrderByWithAlignByDeviceIT.startPrecipitation;
-import static org.apache.iotdb.db.it.alignbydevice.IoTDBOrderByWithAlignByDeviceIT.startTemperature;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
 
@@ -52,49 +44,6 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
-  private static final long LIMIT_VALUE = 100;
-
-  // ORDER BY TIME
-  @Test
-  public void orderByTimeTest1() {
-    String sql =
-        String.format(
-            "SELECT * FROM root.weather.** ORDER BY TIME LIMIT %s ALIGN BY DEVICE", LIMIT_VALUE);
-    int total = 0;
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      try (ResultSet resultSet = statement.executeQuery(sql)) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "Time,Device,precipitation,temperature");
-        long lastTimeStamp = -1;
-        String lastDevice = "";
-        while (resultSet.next()) {
-          long actualTimeStamp = resultSet.getLong(1);
-          assertTrue(actualTimeStamp >= lastTimeStamp);
-          String actualDevice = resultSet.getString(2);
-          if (!lastDevice.equals("") && actualTimeStamp == lastTimeStamp) {
-            assertTrue(actualDevice.compareTo(lastDevice) >= 0);
-          }
-          lastDevice = actualDevice;
-          lastTimeStamp = actualTimeStamp;
-          long actualPrecipitation = resultSet.getLong(3);
-          double actualTemperature = resultSet.getDouble(4);
-          assertEquals(
-              startPrecipitation + actualDevice.hashCode() + actualTimeStamp, actualPrecipitation);
-          assertTrue(
-              startTemperature + actualDevice.hashCode() + actualTimeStamp - actualTemperature
-                  < 0.00001);
-          total++;
-        }
-        assertEquals(LIMIT_VALUE, total);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
   }
 
   @Test

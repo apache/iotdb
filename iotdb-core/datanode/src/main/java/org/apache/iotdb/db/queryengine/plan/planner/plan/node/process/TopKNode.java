@@ -35,6 +35,12 @@ import java.util.Objects;
 
 /** TopNode is optimized for `order by time|expression limit N align by device` query. */
 public class TopKNode extends MultiChildProcessNode {
+
+  // when LIMIT value in `order by time|expression LIMIT N align by device` query is less this
+  // value,
+  // use TopKNode, otherwise use MergeSortNode
+  public static final int LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE = 1000000;
+
   private final int topValue;
 
   private final OrderByParameter mergeOrderParameter;

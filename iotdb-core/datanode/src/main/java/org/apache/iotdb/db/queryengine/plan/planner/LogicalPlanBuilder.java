@@ -130,6 +130,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDC
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_VALUE;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX_TIME;
@@ -782,7 +783,7 @@ public class LogicalPlanBuilder {
         && queryStatement.hasLimit()
         && queryStatement.getOrderByComponent() != null
         && !queryStatement.isOrderByBasedOnDevice()
-        && limitValue < Integer.MAX_VALUE) {
+        && limitValue <= LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE) {
 
       // order by time and order by expression with limit, can be optimized to TopK implementation
       TopKNode topKNode =

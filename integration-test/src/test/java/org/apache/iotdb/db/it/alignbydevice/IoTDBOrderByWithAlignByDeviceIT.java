@@ -364,45 +364,115 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByTimeTest1() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY TIME ALIGN BY DEVICE";
-    int total = 0;
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    orderByTimeTest1(
+        "SELECT * FROM root.weather.** ORDER BY TIME ALIGN BY DEVICE",
+        numOfPointsInDevice * places.length);
 
-      try (ResultSet resultSet = statement.executeQuery(sql)) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "Time,Device,precipitation,temperature");
-        long lastTimeStamp = -1;
-        String lastDevice = "";
-        while (resultSet.next()) {
-          long actualTimeStamp = resultSet.getLong(1);
-          assertTrue(actualTimeStamp >= lastTimeStamp);
-          String actualDevice = resultSet.getString(2);
-          if (!lastDevice.equals("") && actualTimeStamp == lastTimeStamp) {
-            assertTrue(actualDevice.compareTo(lastDevice) >= 0);
-          }
-          lastDevice = actualDevice;
-          lastTimeStamp = actualTimeStamp;
-          long actualPrecipitation = resultSet.getLong(3);
-          double actualTemperature = resultSet.getDouble(4);
-          assertEquals(
-              startPrecipitation + actualDevice.hashCode() + actualTimeStamp, actualPrecipitation);
-          assertTrue(
-              startTemperature + actualDevice.hashCode() + actualTimeStamp - actualTemperature
-                  < 0.00001);
-          total++;
-        }
-        assertEquals(numOfPointsInDevice * places.length, total);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+    orderByTimeTest1("SELECT * FROM root.weather.** ORDER BY TIME LIMIT 100 ALIGN BY DEVICE", 100);
   }
 
   @Test
   public void orderByTimeTest2() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY TIME ASC ALIGN BY DEVICE";
+    orderByTimeTest2(
+        "SELECT * FROM root.weather.** ORDER BY TIME ASC ALIGN BY DEVICE",
+        numOfPointsInDevice * places.length);
+
+    orderByTimeTest2(
+        "SELECT * FROM root.weather.** ORDER BY TIME ASC LIMIT 100 ALIGN BY DEVICE", 100);
+  }
+
+  @Test
+  public void orderByTimeTest3() {
+    orderByTimeTest3(
+        "SELECT * FROM root.weather.** ORDER BY TIME DESC ALIGN BY DEVICE",
+        numOfPointsInDevice * places.length);
+
+    orderByTimeTest3(
+        "SELECT * FROM root.weather.** ORDER BY TIME DESC LIMIT 100 ALIGN BY DEVICE", 100);
+  }
+
+  @Test
+  public void orderByDeviceTimeTest1() {
+    orderByDeviceTimeTest1(
+        "SELECT * FROM root.weather.** ORDER BY DEVICE ASC,TIME DESC ALIGN BY DEVICE", 10);
+
+    orderByDeviceTimeTest1(
+        "SELECT * FROM root.weather.** ORDER BY DEVICE ASC,TIME DESC LIMIT 100 ALIGN BY DEVICE", 5);
+  }
+
+  @Test
+  public void orderByDeviceTimeTest2() {
+    orderByDeviceTimeTest2(
+        "SELECT * FROM root.weather.** ORDER BY DEVICE ASC,TIME ASC ALIGN BY DEVICE", 10);
+
+    orderByDeviceTimeTest2(
+        "SELECT * FROM root.weather.** ORDER BY DEVICE ASC,TIME ASC LIMIT 100 ALIGN BY DEVICE", 5);
+  }
+
+  @Test
+  public void orderByDeviceTimeTest3() {
+    orderByDeviceTimeTest3(
+        "SELECT * FROM root.weather.** ORDER BY DEVICE DESC,TIME DESC ALIGN BY DEVICE", 10);
+
+    orderByDeviceTimeTest3(
+        "SELECT * FROM root.weather.** ORDER BY DEVICE DESC,TIME DESC LIMIT 100 ALIGN BY DEVICE",
+        5);
+  }
+
+  @Test
+  public void orderByDeviceTimeTest4() {
+    orderByDeviceTimeTest4(
+        "SELECT * FROM root.weather.** ORDER BY DEVICE DESC,TIME ASC ALIGN BY DEVICE", 10);
+
+    orderByDeviceTimeTest4(
+        "SELECT * FROM root.weather.** ORDER BY DEVICE DESC,TIME ASC LIMIT 100 ALIGN BY DEVICE", 5);
+  }
+
+  @Test
+  public void orderByTimeDeviceTest1() {
+    orderByTimeDeviceTest1(
+        "SELECT * FROM root.weather.** ORDER BY TIME ASC,DEVICE DESC ALIGN BY DEVICE",
+        numOfPointsInDevice * places.length);
+
+    orderByTimeDeviceTest1(
+        "SELECT * FROM root.weather.** ORDER BY TIME ASC,DEVICE DESC LIMIT 100 ALIGN BY DEVICE",
+        100);
+  }
+
+  @Test
+  public void orderByTimeDeviceTest2() {
+    orderByTimeDeviceTest2(
+        "SELECT * FROM root.weather.** ORDER BY TIME ASC,DEVICE ASC ALIGN BY DEVICE",
+        numOfPointsInDevice * places.length);
+
+    orderByTimeDeviceTest2(
+        "SELECT * FROM root.weather.** ORDER BY TIME ASC,DEVICE ASC LIMIT 100 ALIGN BY DEVICE",
+        100);
+  }
+
+  @Test
+  public void orderByTimeDeviceTest3() {
+    orderByTimeDeviceTest3(
+        "SELECT * FROM root.weather.** ORDER BY TIME DESC,DEVICE DESC ALIGN BY DEVICE",
+        numOfPointsInDevice * places.length);
+
+    orderByTimeDeviceTest3(
+        "SELECT * FROM root.weather.** ORDER BY TIME DESC,DEVICE DESC LIMIT 100 ALIGN BY DEVICE",
+        100);
+  }
+
+  @Test
+  public void orderByTimeDeviceTest4() {
+    orderByTimeDeviceTest4(
+        "SELECT * FROM root.weather.** ORDER BY TIME DESC,DEVICE ASC ALIGN BY DEVICE",
+        numOfPointsInDevice * places.length);
+
+    orderByTimeDeviceTest4(
+        "SELECT * FROM root.weather.** ORDER BY TIME DESC,DEVICE ASC LIMIT 100 ALIGN BY DEVICE",
+        100);
+  }
+
+  public static void orderByTimeTest1(String sql, int count) {
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -430,7 +500,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(numOfPointsInDevice * places.length, total);
+        assertEquals(count, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -438,9 +508,43 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     }
   }
 
-  @Test
-  public void orderByTimeTest3() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY TIME DESC ALIGN BY DEVICE";
+  public static void orderByTimeTest2(String sql, int count) {
+    int total = 0;
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, "Time,Device,precipitation,temperature");
+        long lastTimeStamp = -1;
+        String lastDevice = "";
+        while (resultSet.next()) {
+          long actualTimeStamp = resultSet.getLong(1);
+          assertTrue(actualTimeStamp >= lastTimeStamp);
+          String actualDevice = resultSet.getString(2);
+          if (!lastDevice.equals("") && actualTimeStamp == lastTimeStamp) {
+            assertTrue(actualDevice.compareTo(lastDevice) >= 0);
+          }
+          lastDevice = actualDevice;
+          lastTimeStamp = actualTimeStamp;
+          long actualPrecipitation = resultSet.getLong(3);
+          double actualTemperature = resultSet.getDouble(4);
+          assertEquals(
+              startPrecipitation + actualDevice.hashCode() + actualTimeStamp, actualPrecipitation);
+          assertTrue(
+              startTemperature + actualDevice.hashCode() + actualTimeStamp - actualTemperature
+                  < 0.00001);
+          total++;
+        }
+        assertEquals(count, total);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void orderByTimeTest3(String sql, int count) {
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -468,7 +572,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(numOfPointsInDevice * places.length, total);
+        assertEquals(count, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -477,10 +581,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   // ORDER BY DEVICE,TIME
-
-  @Test
-  public void orderByDeviceTimeTest1() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY DEVICE ASC,TIME DESC ALIGN BY DEVICE";
+  public static void orderByDeviceTimeTest1(String sql, int count) {
     Object[] expectedDevice = Arrays.stream(places.clone()).sorted().toArray();
     int index = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -513,7 +614,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
             cnt = 0;
           }
         }
-        assertEquals(10, index);
+        assertEquals(count, index);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -521,9 +622,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     }
   }
 
-  @Test
-  public void orderByDeviceTimeTest2() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY DEVICE ASC,TIME ASC ALIGN BY DEVICE";
+  public static void orderByDeviceTimeTest2(String sql, int count) {
     Object[] expectedDevice = Arrays.stream(places.clone()).sorted().toArray();
     int index = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -554,7 +653,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
             cnt = 0;
           }
         }
-        assertEquals(10, index);
+        assertEquals(count, index);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -562,9 +661,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     }
   }
 
-  @Test
-  public void orderByDeviceTimeTest3() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY DEVICE DESC,TIME DESC ALIGN BY DEVICE";
+  public static void orderByDeviceTimeTest3(String sql, int count) {
     Object[] expectedDevice =
         Arrays.stream(places.clone()).sorted(Comparator.reverseOrder()).toArray();
     int index = 0;
@@ -598,7 +695,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
             cnt = 0;
           }
         }
-        assertEquals(10, index);
+        assertEquals(count, index);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -606,9 +703,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     }
   }
 
-  @Test
-  public void orderByDeviceTimeTest4() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY DEVICE DESC,TIME ASC ALIGN BY DEVICE";
+  public static void orderByDeviceTimeTest4(String sql, int count) {
     Object[] expectedDevice =
         Arrays.stream(places.clone()).sorted(Comparator.reverseOrder()).toArray();
     int index = 0;
@@ -640,7 +735,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
             cnt = 0;
           }
         }
-        assertEquals(10, index);
+        assertEquals(count, index);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -649,10 +744,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   // ORDER BY TIME,DEVICE
-
-  @Test
-  public void orderByTimeDeviceTest1() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY TIME ASC,DEVICE DESC ALIGN BY DEVICE";
+  public static void orderByTimeDeviceTest1(String sql, int count) {
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -680,7 +772,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(numOfPointsInDevice * places.length, total);
+        assertEquals(count, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -688,9 +780,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     }
   }
 
-  @Test
-  public void orderByTimeDeviceTest2() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY TIME ASC,DEVICE ASC ALIGN BY DEVICE";
+  public static void orderByTimeDeviceTest2(String sql, int count) {
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -718,7 +808,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(numOfPointsInDevice * places.length, total);
+        assertEquals(count, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -726,9 +816,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     }
   }
 
-  @Test
-  public void orderByTimeDeviceTest3() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY TIME DESC,DEVICE DESC ALIGN BY DEVICE";
+  public static void orderByTimeDeviceTest3(String sql, int count) {
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -756,7 +844,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(numOfPointsInDevice * places.length, total);
+        assertEquals(count, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -764,9 +852,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     }
   }
 
-  @Test
-  public void orderByTimeDeviceTest4() {
-    String sql = "SELECT * FROM root.weather.** ORDER BY TIME DESC,DEVICE ASC ALIGN BY DEVICE";
+  public static void orderByTimeDeviceTest4(String sql, int count) {
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -794,7 +880,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
                   < 0.00001);
           total++;
         }
-        assertEquals(numOfPointsInDevice * places.length, total);
+        assertEquals(count, total);
       }
     } catch (Exception e) {
       e.printStackTrace();
