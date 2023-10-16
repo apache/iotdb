@@ -31,7 +31,6 @@
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
-                <version>1.12.1</version>
                 <executions>
                     <execution>
                         <id>install node and yarn</id>
@@ -84,8 +83,8 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
-                <version>1.3</version>
                 <executions>
                     <execution>
                         <id>test</id>
@@ -94,20 +93,20 @@
                             <goal>run</goal>
                         </goals>
                         <configuration>
-                            <tasks>
+                            <target>
                                 <condition property="osFamily" value="windows">
                                     <os family="windows"/>
                                 </condition>
                                 <condition property="osFamily" value="unix">
                                     <os family="unix"/>
                                 </condition>
-                                <exec executable="C:\\Windows\\System32\\cmd.exe" osfamily="windows">
+                                <exec executable="C:\\Windows\\System32\\cmd.exe" osfamily="windows" failonerror="true">
                                     <arg line="/c backend-compile.bat"/>
                                 </exec>
-                                <exec executable="/bin/bash" osfamily="unix">
+                                <exec executable="/bin/bash" osfamily="unix" failonerror="true">
                                     <arg line="-c ./backend-compile.sh"/>
                                 </exec>
-                            </tasks>
+                            </target>
                         </configuration>
                     </execution>
                 </executions>

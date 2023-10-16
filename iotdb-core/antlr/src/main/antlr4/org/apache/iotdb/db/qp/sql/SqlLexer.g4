@@ -97,10 +97,6 @@ ATTRIBUTES
     : A T T R I B U T E S
     ;
 
-AUTO
-    : A U T O
-    ;
-
 BEFORE
     : B E F O R E
     ;
@@ -212,6 +208,10 @@ DATANODEID
 DATANODES
 
     : D A T A N O D E S
+    ;
+
+DATASET
+    : D A T A S E T
     ;
 
 DEACTIVATE
@@ -330,12 +330,20 @@ GRANT
     : G R A N T
     ;
 
+OPTION
+    : O P T I O N
+    ;
+
 GROUP
     : G R O U P
     ;
 
 HAVING
     : H A V I N G
+    ;
+
+HYPERPARAMETERS
+    : H Y P E R P A R A M E T E R S
     ;
 
 IN
@@ -480,6 +488,10 @@ OFFSET
 
 ON
     : O N
+    ;
+
+OPTIONS
+    : O P T I O N S
     ;
 
 OR
@@ -786,8 +798,8 @@ TRACING
     : T R A C I N G
     ;
 
-TRAILS
-    : T R A I L S
+TRIALS
+    : T R I A L S
     ;
 
 TRIGGER
@@ -911,11 +923,12 @@ PRIVILEGE_VALUE
     | WRITE_SCHEMA
     | MANAGE_USER
     | MANAGE_ROLE
-    | GRANT_PRIVILEGE
-    | ALTER_PASSWORD
     | USE_TRIGGER
+    | USE_UDF
     | USE_CQ
     | USE_PIPE
+    | EXTEND_TEMPLATE
+    | AUDIT
     | MANAGE_DATABASE
     | MAINTAIN
     ;
@@ -944,16 +957,12 @@ MANAGE_ROLE
     : M A N A G E '_' R O L E
     ;
 
-GRANT_PRIVILEGE
-    : G R A N T '_' P R I V I L E G E
-    ;
-
-ALTER_PASSWORD
-    : A L T E R '_' P A S S W O R D
-    ;
-
 USE_TRIGGER
     : U S E '_' T R I G G E R
+    ;
+
+USE_UDF
+    : U S E '_' U D F
     ;
 
 USE_CQ
@@ -962,6 +971,14 @@ USE_CQ
 
 USE_PIPE
     : U S E '_' P I P E
+    ;
+
+EXTEND_TEMPLATE
+    : E X T E N D '_' T E M P L A T E
+    ;
+
+AUDIT
+    : A U D I T
     ;
 
 MANAGE_DATABASE

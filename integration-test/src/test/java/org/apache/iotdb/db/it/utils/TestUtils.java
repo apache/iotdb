@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.it.utils;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -38,10 +42,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -123,8 +129,13 @@ public class TestUtils {
   }
 
   public static void resultSetEqualTest(
-      String sql, String expectedHeader, String[] expectedRetArray, DateFormat df) {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+      String sql,
+      String expectedHeader,
+      String[] expectedRetArray,
+      DateFormat df,
+      String userName,
+      String password) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
       if (df != null) {
         connection.setClientInfo("time_zone", "+00:00");
@@ -140,7 +151,7 @@ public class TestUtils {
 
   public static void resultSetEqualTest(
       String sql, String expectedHeader, String[] expectedRetArray) {
-    resultSetEqualTest(sql, expectedHeader, expectedRetArray, null);
+    resultSetEqualTest(sql, expectedHeader, expectedRetArray, null, "root", "root");
   }
 
   public static void resultSetEqualTest(
@@ -149,12 +160,35 @@ public class TestUtils {
   }
 
   public static void resultSetEqualTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      String userName,
+      String password) {
+    resultSetEqualTest(sql, expectedHeader, expectedRetArray, null, userName, password);
+  }
+
+  public static void resultSetEqualTest(
       String sql, String[] expectedHeader, String[] expectedRetArray, DateFormat df) {
     StringBuilder header = new StringBuilder();
     for (String s : expectedHeader) {
       header.append(s).append(",");
     }
-    resultSetEqualTest(sql, header.toString(), expectedRetArray, df);
+    resultSetEqualTest(sql, header.toString(), expectedRetArray, df, "root", "root");
+  }
+
+  public static void resultSetEqualTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      DateFormat df,
+      String userName,
+      String password) {
+    StringBuilder header = new StringBuilder();
+    for (String s : expectedHeader) {
+      header.append(s).append(",");
+    }
+    resultSetEqualTest(sql, header.toString(), expectedRetArray, df, userName, password);
   }
 
   public static void resultSetEqualWithDescOrderTest(
@@ -205,7 +239,11 @@ public class TestUtils {
   }
 
   public static void assertTestFail(String sql, String errMsg) {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    assertTestFail(sql, errMsg, "root", "root");
+  }
+
+  public static void assertTestFail(String sql, String errMsg, String userName, String password) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
       fail("No exception!");
@@ -215,7 +253,12 @@ public class TestUtils {
   }
 
   public static void assertNonQueryTestFail(String sql, String errMsg) {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    assertNonQueryTestFail(sql, errMsg, "root", "root");
+  }
+
+  public static void assertNonQueryTestFail(
+      String sql, String errMsg, String userName, String password) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
       fail("No exception!");
@@ -287,13 +330,91 @@ public class TestUtils {
   }
 
   public static void executeNonQuery(String sql) {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    executeNonQuery(sql, "root", "root");
+  }
+
+  public static void executeNonQuery(String sql, String userName, String password) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  public static void executeNonQueryWithRetry(BaseEnv env, String sql) {
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
+      try (Connection connection = env.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute(sql);
+        break;
+      } catch (SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(10000);
+          } catch (InterruptedException ignored) {
+          }
+        } else {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  public static void executeNonQueryOnSpecifiedDataNodeWithRetry(
+      BaseEnv env, DataNodeWrapper wrapper, String sql) {
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
+      try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
+          Statement statement = connection.createStatement()) {
+        statement.execute(sql);
+        break;
+      } catch (SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(10000);
+          } catch (InterruptedException ignored) {
+          }
+        } else {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  public static void executeQuery(String sql) {
+    executeQuery(sql, "root", "root");
+  }
+
+  public static void executeQuery(String sql, String userName, String password) {
+    try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
+        Statement statement = connection.createStatement()) {
+      statement.executeQuery(sql);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static ResultSet executeQueryWithRetry(Statement statement, String sql) {
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
+      try {
+        return statement.executeQuery(sql);
+      } catch (SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(10000);
+          } catch (InterruptedException ignored) {
+          }
+        } else {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+    return null;
   }
 
   public static void assertResultSetEqual(
@@ -317,6 +438,82 @@ public class TestUtils {
       }
       assertEquals(expectedRetArray.length, count);
     } catch (IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void createUser(String userName, String password) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(String.format("create user %s '%s'", userName, password));
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void grantUserSystemPrivileges(String userName, PrivilegeType privilegeType) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(String.format("grant %s on root.** to user %s", privilegeType, userName));
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void grantUserSeriesPrivilege(
+      String userName, PrivilegeType privilegeType, String path) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(String.format("grant %s on %s to user %s", privilegeType, path, userName));
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void revokeUserSeriesPrivilege(
+      String userName, PrivilegeType privilegeType, String path) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format("revoke %s on %s from user %s", privilegeType, path, userName));
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void restartCluster(BaseEnv env) throws Exception {
+    for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
+      env.shutdownConfigNode(i);
+    }
+    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
+      env.shutdownDataNode(i);
+    }
+    TimeUnit.SECONDS.sleep(1);
+    for (int i = 0; i < env.getConfigNodeWrapperList().size(); ++i) {
+      env.startConfigNode(i);
+    }
+    for (int i = 0; i < env.getDataNodeWrapperList().size(); ++i) {
+      env.startDataNode(i);
+    }
+    ((AbstractEnv) env).testWorkingNoUnknown();
+  }
+
+  public static void assertDataOnEnv(
+      BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      await()
+          .atMost(600, TimeUnit.SECONDS)
+          .untilAsserted(
+              () ->
+                  TestUtils.assertResultSetEqual(
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet));
+    } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

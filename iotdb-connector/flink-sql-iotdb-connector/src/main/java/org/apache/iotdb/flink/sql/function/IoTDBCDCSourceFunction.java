@@ -22,9 +22,13 @@ import org.apache.iotdb.flink.sql.client.IoTDBWebSocketClient;
 import org.apache.iotdb.flink.sql.common.Options;
 import org.apache.iotdb.flink.sql.common.Utils;
 import org.apache.iotdb.flink.sql.exception.IllegalOptionException;
+import org.apache.iotdb.flink.sql.exception.IllegalSchemaException;
 import org.apache.iotdb.flink.sql.wrapper.SchemaWrapper;
 import org.apache.iotdb.flink.sql.wrapper.TabletWrapper;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -59,22 +63,23 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
   private final int cdcPort;
   private final List<String> nodeUrls;
   private final String taskName;
-  private final String device;
+  private final String pattern;
   private final String user;
   private final String password;
-  private final List<String> measurements;
+  private final List<String> timeseriesList;
   private final BlockingQueue<TabletWrapper> tabletWrappers;
+  private final List<Tuple2<String, DataType>> tableSchema;
   private transient ExecutorService consumeExecutor;
 
   public IoTDBCDCSourceFunction(ReadableConfig options, SchemaWrapper schemaWrapper) {
-    List<Tuple2<String, DataType>> tableSchema = schemaWrapper.getSchema();
+    tableSchema = schemaWrapper.getSchema();
+    pattern = options.get(Options.PATTERN);
     cdcPort = options.get(Options.CDC_PORT);
     nodeUrls = Arrays.asList(options.get(Options.NODE_URLS).split(","));
     taskName = options.get(Options.CDC_TASK_NAME);
-    device = options.get(Options.DEVICE);
     user = options.get(Options.USER);
     password = options.get(Options.PASSWORD);
-    measurements =
+    timeseriesList =
         tableSchema.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
 
     tabletWrappers = new ArrayBlockingQueue<>(nodeUrls.size());
@@ -86,8 +91,18 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
     Session session =
         new Session.Builder().username(user).password(password).nodeUrls(nodeUrls).build();
     session.open(false);
-    boolean hasCreatedPipeTask =
-        session.executeQueryStatement(String.format("show pipe flink_cdc_%s", taskName)).hasNext();
+    String pipeName =
+        String.format("`flink_cdc_%s_%s_%d`", taskName, pattern.replace("`", "``"), cdcPort);
+    boolean hasCreatedPipeTask = false;
+    try (SessionDataSet pipes = session.executeQueryStatement("show pipes"); ) {
+      while (pipes.hasNext()) {
+        RowRecord pipe = pipes.next();
+        if (pipeName.equals(pipe.getFields().get(0).getStringValue())) {
+          hasCreatedPipeTask = true;
+          break;
+        }
+      }
+    }
     if (!hasCreatedPipeTask) {
       for (String nodeUrl : nodeUrls) {
         URI uri = new URI(String.format("ws://%s:%d", nodeUrl.split(":")[0], cdcPort));
@@ -100,32 +115,30 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
       }
       String createPipeCommand =
           String.format(
-              "CREATE PIPE flink_cdc_%s\n"
+              "CREATE PIPE %s\n"
                   + "WITH EXTRACTOR (\n"
                   + "'extractor' = 'iotdb-extractor',\n"
                   + "'extractor.pattern' = '%s',\n"
-                  + "'extractor.history.enable' = 'true',\n"
-                  + "'extractor.realtime.enable' = 'true',\n"
-                  + "'extractor.realtime.mode' = 'hybrid',\n"
                   + ") WITH CONNECTOR (\n"
                   + "'connector' = 'websocket-connector',\n"
                   + "'connector.websocket.port' = '%d'"
                   + ")",
-              taskName, device, cdcPort);
+              pipeName, pattern, cdcPort);
       session.executeNonQueryStatement(createPipeCommand);
     }
-
-    String status =
-        session
-            .executeQueryStatement(String.format("show pipe flink_cdc_%s", taskName))
-            .next()
-            .getFields()
-            .get(2)
-            .getStringValue();
-    if ("STOPPED".equals(status)) {
-      session.executeNonQueryStatement(String.format("start pipe flink_cdc_%s", taskName));
+    try (SessionDataSet pipes = session.executeQueryStatement("show pipes"); ) {
+      String status = null;
+      while (pipes.hasNext()) {
+        RowRecord pipe = pipes.next();
+        if (pipeName.equals(pipe.getFields().get(0).getStringValue())) {
+          status = pipe.getFields().get(2).getStringValue();
+          break;
+        }
+      }
+      if ("STOPPED".equals(status)) {
+        session.executeNonQueryStatement(String.format("start pipe %s", pipeName));
+      }
     }
-
     session.close();
 
     consumeExecutor = Executors.newFixedThreadPool(1);
@@ -137,9 +150,12 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
 
   @Override
   public void run(SourceContext<RowData> ctx) throws InterruptedException {
-    consumeExecutor.submit(new ConsumeRunnable(ctx));
+    consumeExecutor.execute(new ConsumeRunnable(ctx));
     consumeExecutor.shutdown();
     while (true) {
+      if (consumeExecutor.isTerminated()) {
+        System.exit(1);
+      }
       for (IoTDBWebSocketClient socketClient : socketClients) {
         if (socketClient.getReadyState().equals(ReadyState.CLOSED)) {
           while (!Utils.isURIAvailable(socketClient.getURI())) {
@@ -200,27 +216,36 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
   }
 
   public void collectTablet(Tablet tablet, SourceContext<RowData> ctx) {
-    if (!device.equals(tablet.deviceId)) {
-      return;
-    }
     List<MeasurementSchema> schemas = tablet.getSchemas();
     int rowSize = tablet.rowSize;
     HashMap<String, Pair<BitMap, List<Object>>> values = new HashMap<>();
     for (MeasurementSchema schema : schemas) {
-      String measurement = schema.getMeasurementId();
+      String timeseries = String.format("%s.%s", tablet.deviceId, schema.getMeasurementId());
+      TSDataType iotdbType = schema.getType();
+      int index = timeseriesList.indexOf(timeseries);
+      if (index == -1) {
+        return;
+      }
+      DataType flinkType = tableSchema.get(index).f1;
+      if (!Utils.isTypeEqual(iotdbType, flinkType)) {
+        throw new IllegalSchemaException(
+            String.format(
+                "The data type of column `%s` is different in IoTDB and Flink", timeseries));
+      }
       values.put(
-          measurement,
+          timeseries,
           new Pair<>(
               tablet.bitMaps[schemas.indexOf(schema)],
-              Utils.object2List(tablet.values[schemas.indexOf(schema)], schema.getType())));
+              Utils.object2List(tablet.values[schemas.indexOf(schema)], iotdbType)));
     }
     for (int i = 0; i < rowSize; i++) {
       ArrayList<Object> row = new ArrayList<>();
       row.add(tablet.timestamps[i]);
-      for (String measurement : measurements) {
-        if (values.get(measurement).getLeft() == null
-            || !values.get(measurement).getLeft().isMarked(i)) {
-          row.add(values.get(measurement).getRight().get(i));
+      for (String timeseries : timeseriesList) {
+        if (values.containsKey(timeseries)
+            && (values.get(timeseries).getLeft() == null
+                || !values.get(timeseries).getLeft().isMarked(i))) {
+          row.add(values.get(timeseries).getRight().get(i));
         } else {
           row.add(null);
         }

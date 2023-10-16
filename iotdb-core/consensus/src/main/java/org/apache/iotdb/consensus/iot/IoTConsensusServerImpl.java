@@ -59,7 +59,6 @@ import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteReq;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
@@ -68,6 +67,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -593,12 +593,8 @@ public class IoTConsensusServerImpl {
   }
 
   public void persistConfiguration() {
-    try (PublicBAOS publicBAOS = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
-      serializeConfigurationTo(outputStream);
-      Files.write(
-          Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath()),
-          publicBAOS.getBuf());
+    try {
+      serializeConfigurationAndFsyncToDisk(CONFIGURATION_FILE_NAME);
     } catch (IOException e) {
       // TODO: (xingtanzjr) need to handle the IOException because the IoTConsensus won't
       // work expectedly
@@ -608,15 +604,13 @@ public class IoTConsensusServerImpl {
   }
 
   public void persistConfigurationUpdate() throws ConsensusGroupModifyPeerException {
-    try (PublicBAOS publicBAOS = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
-      serializeConfigurationTo(outputStream);
+    try {
+      serializeConfigurationAndFsyncToDisk(CONFIGURATION_TMP_FILE_NAME);
       Path tmpConfigurationPath =
           Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
       Path configurationPath =
           Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
-      Files.write(tmpConfigurationPath, publicBAOS.getBuf());
-      Files.delete(configurationPath);
+      Files.deleteIfExists(configurationPath);
       Files.move(tmpConfigurationPath, configurationPath);
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException(
@@ -740,6 +734,10 @@ public class IoTConsensusServerImpl {
     return retryService;
   }
 
+  public IoTConsensusServerMetrics getIoTConsensusServerMetrics() {
+    return this.ioTConsensusServerMetrics;
+  }
+
   public boolean isReadOnly() {
     return stateMachine.isReadOnly();
   }
@@ -815,6 +813,20 @@ public class IoTConsensusServerImpl {
     return consensusGroupId;
   }
 
+  private void serializeConfigurationAndFsyncToDisk(String configurationFileName)
+      throws IOException {
+    FileOutputStream fileOutputStream =
+        new FileOutputStream(new File(storageDir, configurationFileName));
+    DataOutputStream outputStream = new DataOutputStream(fileOutputStream);
+    try {
+      serializeConfigurationTo(outputStream);
+    } finally {
+      fileOutputStream.flush();
+      fileOutputStream.getFD().sync();
+      outputStream.close();
+    }
+  }
+
   /**
    * This method is used for write of IoTConsensus SyncLog. By this method, we can keep write order
    * in follower the same as the leader. And besides order insurance, we can make the
@@ -839,8 +851,16 @@ public class IoTConsensusServerImpl {
      * deserialization of PlanNode to be concurrent
      */
     private TSStatus cacheAndInsertLatestNode(DeserializedBatchIndexedConsensusRequest request) {
+      logger.debug(
+          "cacheAndInsert start: source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}",
+          sourcePeerId,
+          consensusGroupId,
+          requestCache.size(),
+          request.getStartSyncIndex(),
+          request.getEndSyncIndex());
       queueLock.lock();
       try {
+        long insertStartTime = System.nanoTime();
         requestCache.add(request);
         // If the peek is not hold by current thread, it should notify the corresponding thread to
         // process the peek when the queue is full
@@ -898,18 +918,24 @@ public class IoTConsensusServerImpl {
             Thread.currentThread().interrupt();
           }
         }
-        logger.debug(
-            "source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}",
-            sourcePeerId,
-            consensusGroupId,
-            requestCache.size(),
-            request.getStartSyncIndex(),
-            request.getEndSyncIndex());
+        long sortTime = System.nanoTime();
+        ioTConsensusServerMetrics.recordSortCost(sortTime - insertStartTime);
         List<TSStatus> subStatus = new LinkedList<>();
         for (IConsensusRequest insertNode : request.getInsertNodes()) {
           subStatus.add(stateMachine.write(insertNode));
         }
+        long applyTime = System.nanoTime();
+        ioTConsensusServerMetrics.recordApplyCost(applyTime - sortTime);
         queueSortCondition.signalAll();
+        logger.debug(
+            "cacheAndInsert end: source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}, sortTime = {}ms, applyTime = {}ms",
+            sourcePeerId,
+            consensusGroupId,
+            requestCache.size(),
+            request.getStartSyncIndex(),
+            request.getEndSyncIndex(),
+            TimeUnit.NANOSECONDS.toMillis(sortTime - insertStartTime),
+            TimeUnit.NANOSECONDS.toMillis(applyTime - sortTime));
         return new TSStatus().setSubStatus(subStatus);
       } finally {
         queueLock.unlock();

@@ -277,6 +277,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
+    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -306,7 +307,11 @@ public class TsFileProcessor {
   }
 
   private void createNewWorkingMemTable() throws WriteProcessException {
-    workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
+    workMemTable =
+        MemTableManager.getInstance()
+            .getAvailableMemTable(
+                dataRegionInfo.getDataRegion().getDatabaseName(),
+                dataRegionInfo.getDataRegion().getDataRegionId());
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 
@@ -383,6 +388,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
+    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
@@ -892,7 +898,6 @@ public class TsFileProcessor {
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
 
       try {
-        PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource);
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(
                 dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource, false);
@@ -1240,6 +1245,11 @@ public class TsFileProcessor {
 
     // for sync flush
     syncReleaseFlushedMemTable(memTableToFlush);
+    try {
+      writer.getTsFileOutput().force();
+    } catch (IOException e) {
+      logger.error("fsync memTable data to disk error,", e);
+    }
 
     // call flushed listener after memtable is released safely
     for (FlushListener flushListener : flushListeners) {
@@ -1325,7 +1335,7 @@ public class TsFileProcessor {
       String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
       WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);
-      CompressionRatio.getInstance().updateRatio(compressionRatio);
+      CompressionRatio.getInstance().updateRatio(totalMemTableSize, writer.getPos());
     } catch (IOException e) {
       logger.error(
           "{}: {} update compression ratio failed",

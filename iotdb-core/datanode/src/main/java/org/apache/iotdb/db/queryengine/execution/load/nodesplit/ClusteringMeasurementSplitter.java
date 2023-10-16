@@ -19,6 +19,24 @@
 
 package org.apache.iotdb.db.queryengine.execution.load.nodesplit;
 
+import org.apache.iotdb.db.queryengine.execution.load.AlignedChunkData;
+import org.apache.iotdb.db.queryengine.execution.load.ChunkData;
+import org.apache.iotdb.db.queryengine.execution.load.NonAlignedChunkData;
+import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+
+import net.ricecode.similarity.LevenshteinDistanceStrategy;
+import net.ricecode.similarity.SimilarityStrategy;
+import net.ricecode.similarity.StringSimilarityService;
+import net.ricecode.similarity.StringSimilarityServiceImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -33,22 +51,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import net.ricecode.similarity.LevenshteinDistanceStrategy;
-import net.ricecode.similarity.SimilarityStrategy;
-import net.ricecode.similarity.StringSimilarityService;
-import net.ricecode.similarity.StringSimilarityServiceImpl;
-import org.apache.iotdb.db.queryengine.execution.load.AlignedChunkData;
-import org.apache.iotdb.db.queryengine.execution.load.ChunkData;
-import org.apache.iotdb.db.queryengine.execution.load.NonAlignedChunkData;
-import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
 
@@ -76,8 +78,8 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
     }
 
     // split by measurement first
-    Map<String, LoadTsFilePieceNode> measurementPieceNodeMap = new HashMap<>(
-        pieceNode.getAllTsFileData().size());
+    Map<String, LoadTsFilePieceNode> measurementPieceNodeMap =
+        new HashMap<>(pieceNode.getAllTsFileData().size());
     for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
       ChunkData chunkData = (ChunkData) tsFileData;
       String currMeasurement = chunkData.firstMeasurement();
@@ -90,25 +92,34 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
     // use clustering to merge similar measurements
     List<LoadTsFilePieceNode> loadTsFilePieceNodes = clusterPieceNode(measurementPieceNodeMap);
     if (logger.isDebugEnabled()) {
-      logger.debug("Split distribution before refinement: {}",
-          loadTsFilePieceNodes.stream().map(l -> l.getAllTsFileData().size())
+      logger.debug(
+          "Split distribution before refinement: {}",
+          loadTsFilePieceNodes.stream()
+              .map(l -> l.getAllTsFileData().size())
               .collect(Collectors.toList()));
       refineClusters(loadTsFilePieceNodes);
-      logger.debug("Split distribution after refinement: {}",
-          loadTsFilePieceNodes.stream().map(l -> l.getAllTsFileData().size())
+      logger.debug(
+          "Split distribution after refinement: {}",
+          loadTsFilePieceNodes.stream()
+              .map(l -> l.getAllTsFileData().size())
               .collect(Collectors.toList()));
     }
     return loadTsFilePieceNodes;
   }
 
   private void refineClusters(List<LoadTsFilePieceNode> pieceNodes) {
-    double average = pieceNodes.stream().mapToLong(LoadTsFilePieceNode::getDataSize).average()
-        .orElse(0.0);
+    double average =
+        pieceNodes.stream().mapToLong(LoadTsFilePieceNode::getDataSize).average().orElse(0.0);
     double finalAverage1 = average;
-    double stderr = Math.sqrt(pieceNodes.stream().mapToLong(LoadTsFilePieceNode::getDataSize)
-        .mapToDouble(s -> (s - finalAverage1) * (s - finalAverage1)).sum() / pieceNodes.size());
-    logger.debug("{} splits before refinement, average/stderr: {}/{}", pieceNodes.size(), average,
-        stderr);
+    double stderr =
+        Math.sqrt(
+            pieceNodes.stream()
+                    .mapToLong(LoadTsFilePieceNode::getDataSize)
+                    .mapToDouble(s -> (s - finalAverage1) * (s - finalAverage1))
+                    .sum()
+                / pieceNodes.size());
+    logger.debug(
+        "{} splits before refinement, average/stderr: {}/{}", pieceNodes.size(), average, stderr);
 
     while (stderr > average * stdErrThreshold
         && System.currentTimeMillis() - splitStartTime < splitTimeBudget) {
@@ -126,37 +137,40 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
         }
       }
 
-      average = pieceNodes.stream().mapToLong(LoadTsFilePieceNode::getDataSize).average()
-          .orElse(0.0);
+      average =
+          pieceNodes.stream().mapToLong(LoadTsFilePieceNode::getDataSize).average().orElse(0.0);
       double finalAverage = average;
-      stderr = Math.sqrt(pieceNodes.stream().mapToLong(LoadTsFilePieceNode::getDataSize)
-          .mapToDouble(s -> (s - finalAverage) * (s - finalAverage)).sum() / pieceNodes.size());
+      stderr =
+          Math.sqrt(
+              pieceNodes.stream()
+                      .mapToLong(LoadTsFilePieceNode::getDataSize)
+                      .mapToDouble(s -> (s - finalAverage) * (s - finalAverage))
+                      .sum()
+                  / pieceNodes.size());
       logger.debug("{} splits, average/stderr: {}/{}", pieceNodes.size(), average, stderr);
     }
-    logger.debug("{} splits after refinement, average/stderr: {}/{}", pieceNodes.size(), average,
-        stderr);
+    logger.debug(
+        "{} splits after refinement, average/stderr: {}/{}", pieceNodes.size(), average, stderr);
   }
 
   private void mergeSmallPiece(List<LoadTsFilePieceNode> pieceNodes) {
     LoadTsFilePieceNode pieceA = pieceNodes.remove(0);
     LoadTsFilePieceNode pieceB = pieceNodes.remove(0);
-    LoadTsFilePieceNode newPiece = new LoadTsFilePieceNode(pieceA.getPlanNodeId(),
-        pieceA.getTsFile());
+    LoadTsFilePieceNode newPiece =
+        new LoadTsFilePieceNode(pieceA.getPlanNodeId(), pieceA.getTsFile());
     pieceA.getAllTsFileData().forEach(newPiece::addTsFileData);
     pieceB.getAllTsFileData().forEach(newPiece::addTsFileData);
     pieceNodes.add(newPiece);
-    pieceNodes.stream().mapToLong(LoadTsFilePieceNode::getDataSize)
-        .average().orElse(0.0);
-    pieceNodes.stream().mapToLong(LoadTsFilePieceNode::getDataSize)
-        .sum();
+    pieceNodes.stream().mapToLong(LoadTsFilePieceNode::getDataSize).average().orElse(0.0);
+    pieceNodes.stream().mapToLong(LoadTsFilePieceNode::getDataSize).sum();
   }
 
   private boolean splitLargePiece(List<LoadTsFilePieceNode> pieceNodes) {
     LoadTsFilePieceNode oldPiece = pieceNodes.remove(pieceNodes.size() - 1);
-    LoadTsFilePieceNode newNodeA = new LoadTsFilePieceNode(oldPiece.getPlanNodeId(),
-        oldPiece.getTsFile());
-    LoadTsFilePieceNode newNodeB = new LoadTsFilePieceNode(oldPiece.getPlanNodeId(),
-        oldPiece.getTsFile());
+    LoadTsFilePieceNode newNodeA =
+        new LoadTsFilePieceNode(oldPiece.getPlanNodeId(), oldPiece.getTsFile());
+    LoadTsFilePieceNode newNodeB =
+        new LoadTsFilePieceNode(oldPiece.getPlanNodeId(), oldPiece.getTsFile());
     long sizeTarget = oldPiece.getDataSize() / 2;
 
     // cannot break a series into two pieces since the chunk order must be preserved
@@ -290,31 +304,42 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
     int finalMinNumOfPages = minNumOfPages;
     int finalMaxNumOfPages = maxNumOfPages;
     String finalFirstDataSample = firstDataSample;
-    vectors.stream().parallel().forEach(vector -> {
-      vector.numericVector[0] = service.score(finalFirstMeasurementId, vector.measurementId);
-      vector.numericVector[1] = (vector.dataSize - finalMinDataSize) * 1.0 / (finalMaxDataSize - finalMinDataSize);
-      vector.numericVector[2] =
-          (vector.dataType.ordinal() - finalMinDataType) * 1.0 / (finalMaxDataType - finalMinDataType);
-      vector.numericVector[3] =
-          (vector.compressionType.ordinal() - finalMinCompressionType)
-              * 1.0
-              / (finalMaxCompressionType - finalMinCompressionType);
-      vector.numericVector[4] =
-          (vector.encodingType.ordinal() - finalMinEncodingType)
-              * 1.0
-              / (finalMaxEncodingType - finalMinEncodingType);
-      vector.numericVector[5] =
-          (vector.numOfPages - finalMinNumOfPages) * 1.0 / (finalMaxNumOfPages - finalMinNumOfPages);
-      vector.numericVector[6] = service.score(finalFirstDataSample, vector.dataSample);
-      double[] numericVector = vector.numericVector;
-      for (int i = 0; i < numericVector.length; i++) {
-        if (Double.isNaN(numericVector[i])) {
-          numericVector[i] = 0.0;
-        } else if (Double.isInfinite(numericVector[i])) {
-          numericVector[i] = 1.0;
-        }
-      }
-    });
+    vectors.stream()
+        .parallel()
+        .forEach(
+            vector -> {
+              vector.numericVector[0] =
+                  service.score(finalFirstMeasurementId, vector.measurementId);
+              vector.numericVector[1] =
+                  (vector.dataSize - finalMinDataSize)
+                      * 1.0
+                      / (finalMaxDataSize - finalMinDataSize);
+              vector.numericVector[2] =
+                  (vector.dataType.ordinal() - finalMinDataType)
+                      * 1.0
+                      / (finalMaxDataType - finalMinDataType);
+              vector.numericVector[3] =
+                  (vector.compressionType.ordinal() - finalMinCompressionType)
+                      * 1.0
+                      / (finalMaxCompressionType - finalMinCompressionType);
+              vector.numericVector[4] =
+                  (vector.encodingType.ordinal() - finalMinEncodingType)
+                      * 1.0
+                      / (finalMaxEncodingType - finalMinEncodingType);
+              vector.numericVector[5] =
+                  (vector.numOfPages - finalMinNumOfPages)
+                      * 1.0
+                      / (finalMaxNumOfPages - finalMinNumOfPages);
+              vector.numericVector[6] = service.score(finalFirstDataSample, vector.dataSample);
+              double[] numericVector = vector.numericVector;
+              for (int i = 0; i < numericVector.length; i++) {
+                if (Double.isNaN(numericVector[i])) {
+                  numericVector[i] = 0.0;
+                } else if (Double.isInfinite(numericVector[i])) {
+                  numericVector[i] = 1.0;
+                }
+              }
+            });
   }
 
   private SeriesFeatureVector convertToFeature(LoadTsFilePieceNode pieceNode) {
@@ -540,8 +565,8 @@ public class ClusteringMeasurementSplitter implements PieceNodeSplitter {
                 int nearestCentroid = 0;
                 for (int i = 0; i < centroids.length; i++) {
                   double dist =
-                      distance.calculate(vector, centroids[i]) * (1
-                          + centroidCounters[i].get() * 0.1);
+                      distance.calculate(vector, centroids[i])
+                          * (1 + centroidCounters[i].get() * 0.1);
                   if (dist < minDist) {
                     minDist = dist;
                     nearestCentroid = i;

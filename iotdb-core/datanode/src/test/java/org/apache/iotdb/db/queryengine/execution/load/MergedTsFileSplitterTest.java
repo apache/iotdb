@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.load;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 
 import org.junit.Test;
 

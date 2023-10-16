@@ -137,7 +137,10 @@ public class LoadTsFileScheduler implements IScheduler {
               node.getTsFileResource().getTsFilePath());
 
         } else if (!node.needDecodeTsFile(
-            partitionFetcher::queryDataPartition)) { // do not decode, load locally
+            slotList ->
+                partitionFetcher.queryDataPartition(
+                    slotList,
+                    queryContext.getSession().getUserName()))) { // do not decode, load locally
           isLoadSingleTsFileSuccess = loadLocally(node);
           node.clean();
 
@@ -192,7 +195,8 @@ public class LoadTsFileScheduler implements IScheduler {
               node.getPlanNodeId(),
               node.getTsFileResource().getTsFile(),
               partitionFetcher,
-              MAX_MEMORY_SIZE);
+              MAX_MEMORY_SIZE,
+              queryContext.getSession().getUserName());
       new TsFileSplitter(
               node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData, 0)
           .splitTsFileByDataPartition();

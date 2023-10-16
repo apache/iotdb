@@ -52,10 +52,11 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -230,42 +231,50 @@ public class TsFileResource {
   }
 
   public synchronized void serialize() throws IOException {
-    try (OutputStream outputStream =
-        fsFactory.getBufferedOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX)) {
-      ReadWriteIOUtils.write(VERSION_NUMBER, outputStream);
-      timeIndex.serialize(outputStream);
-
-      ReadWriteIOUtils.write(maxPlanIndex, outputStream);
-      ReadWriteIOUtils.write(minPlanIndex, outputStream);
-
-      if (modFile != null && modFile.exists()) {
-        String modFileName = new File(modFile.getFilePath()).getName();
-        ReadWriteIOUtils.write(modFileName, outputStream);
-      } else {
-        // make the first "inputStream.available() > 0" in deserialize() happy.
-        //
-        // if modFile not exist, write null (-1). the first "inputStream.available() > 0" in
-        // deserialize() and deserializeFromOldFile() detect -1 and deserialize modFileName as null
-        // and skip the modFile deserialize.
-        //
-        // this make sure the first and the second "inputStream.available() > 0" in deserialize()
-        // will always be called... which is a bit ugly but allows the following variable
-        // maxProgressIndex to be deserialized correctly.
-        ReadWriteIOUtils.write((String) null, outputStream);
-      }
-
-      if (maxProgressIndex != null) {
-        ReadWriteIOUtils.write(true, outputStream);
-        maxProgressIndex.serialize(outputStream);
-      } else {
-        ReadWriteIOUtils.write(false, outputStream);
-      }
+    FileOutputStream fileOutputStream = new FileOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
+    BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
+    try {
+      serializeTo(outputStream);
+    } finally {
+      outputStream.flush();
+      fileOutputStream.getFD().sync();
+      outputStream.close();
     }
-
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
     File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
     fsFactory.deleteIfExists(dest);
     fsFactory.moveFile(src, dest);
+  }
+
+  private void serializeTo(BufferedOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(VERSION_NUMBER, outputStream);
+    timeIndex.serialize(outputStream);
+
+    ReadWriteIOUtils.write(maxPlanIndex, outputStream);
+    ReadWriteIOUtils.write(minPlanIndex, outputStream);
+
+    if (modFile != null && modFile.exists()) {
+      String modFileName = new File(modFile.getFilePath()).getName();
+      ReadWriteIOUtils.write(modFileName, outputStream);
+    } else {
+      // make the first "inputStream.available() > 0" in deserialize() happy.
+      //
+      // if modFile not exist, write null (-1). the first "inputStream.available() > 0" in
+      // deserialize() and deserializeFromOldFile() detect -1 and deserialize modFileName as null
+      // and skip the modFile deserialize.
+      //
+      // this make sure the first and the second "inputStream.available() > 0" in deserialize()
+      // will always be called... which is a bit ugly but allows the following variable
+      // maxProgressIndex to be deserialized correctly.
+      ReadWriteIOUtils.write((String) null, outputStream);
+    }
+
+    if (maxProgressIndex != null) {
+      ReadWriteIOUtils.write(true, outputStream);
+      maxProgressIndex.serialize(outputStream);
+    } else {
+      ReadWriteIOUtils.write(false, outputStream);
+    }
   }
 
   /** deserialize from disk */
@@ -912,17 +921,6 @@ public class TsFileResource {
     return ramSize;
   }
 
-  public void delete() throws IOException {
-    forceMarkDeleted();
-    if (file.exists()) {
-      Files.delete(file.toPath());
-      Files.delete(
-          FSFactoryProducer.getFSFactory()
-              .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX)
-              .toPath());
-    }
-  }
-
   public long getMaxPlanIndex() {
     return maxPlanIndex;
   }
@@ -1189,6 +1187,14 @@ public class TsFileResource {
   }
 
   public ProgressIndex getMaxProgressIndex() {
-    return maxProgressIndex == null ? new MinimumProgressIndex() : maxProgressIndex;
+    return maxProgressIndex == null ? MinimumProgressIndex.INSTANCE : maxProgressIndex;
+  }
+
+  public String getDatabaseName() {
+    return file.getParentFile().getParentFile().getParentFile().getName();
+  }
+
+  public String getDataRegionId() {
+    return file.getParentFile().getParentFile().getName();
   }
 }

@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.GB;
-
-import java.util.Comparator;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -36,6 +31,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory.SyncDataNodeInternalSer
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId.Factory;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -44,11 +40,11 @@ import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
@@ -57,7 +53,6 @@ import org.apache.iotdb.db.utils.SequenceUtils.DoubleSequenceGeneratorFactory;
 import org.apache.iotdb.db.utils.SequenceUtils.GaussianDoubleSequenceGenerator;
 import org.apache.iotdb.db.utils.SequenceUtils.SimpleDoubleSequenceGenerator;
 import org.apache.iotdb.db.utils.SequenceUtils.UniformDoubleSequenceGenerator;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -69,7 +64,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
@@ -91,11 +85,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.GB;
 
 public class TestBase {
 
@@ -114,13 +111,13 @@ public class TestBase {
   protected double chunkTimeRangeRatio = 0.001;
   // the interval between two consecutive points of a series
   protected long pointInterval = 50_000;
-  protected List<Pair<String, DoubleSequenceGeneratorFactory>> measurementSequenceGeneratorPairs = Arrays.asList(
-      new Pair<>("Simple_", new SimpleDoubleSequenceGenerator.Factory()),
-      new Pair<>("UniformA_", new UniformDoubleSequenceGenerator.Factory(1.0)),
-      new Pair<>("GaussianA_", new GaussianDoubleSequenceGenerator.Factory(1.0, 1.0)),
-      new Pair<>("UniformB_", new UniformDoubleSequenceGenerator.Factory(10.0)),
-      new Pair<>("GaussianB_", new GaussianDoubleSequenceGenerator.Factory(15.0, 3.0))
-  );
+  protected List<Pair<String, DoubleSequenceGeneratorFactory>> measurementSequenceGeneratorPairs =
+      Arrays.asList(
+          new Pair<>("Simple_", new SimpleDoubleSequenceGenerator.Factory()),
+          new Pair<>("UniformA_", new UniformDoubleSequenceGenerator.Factory(1.0)),
+          new Pair<>("GaussianA_", new GaussianDoubleSequenceGenerator.Factory(1.0, 1.0)),
+          new Pair<>("UniformB_", new UniformDoubleSequenceGenerator.Factory(10.0)),
+          new Pair<>("GaussianB_", new GaussianDoubleSequenceGenerator.Factory(15.0, 3.0)));
   protected final List<File> files = new ArrayList<>();
   protected final List<TsFileResource> tsFileResources = new ArrayList<>();
   protected IPartitionFetcher partitionFetcher;
@@ -214,8 +211,7 @@ public class TestBase {
                 }
 
                 @Override
-                public void close() {
-                }
+                public void close() {}
               };
             } catch (TTransportException e) {
               throw new RuntimeException(e);
@@ -223,12 +219,10 @@ public class TestBase {
           }
 
           @Override
-          public void clear(TEndPoint node) {
-          }
+          public void clear(TEndPoint node) {}
 
           @Override
-          public void close() {
-          }
+          public void close() {}
         };
   }
 
@@ -248,10 +242,10 @@ public class TestBase {
                     .setDataNodeId(2)
                     .setInternalEndPoint(new TEndPoint("localhost", 10002))));
 
-    WALRecoverManager.getInstance()
-        .setAllDataRegionScannedLatch(new CountDownLatch(0));
-    DataRegion dataRegion = new DataRegion(BASE_OUTPUT_PATH, d1GroupId.toString(),
-        new DirectFlushPolicy(), "root.loadTest");
+    WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(0));
+    DataRegion dataRegion =
+        new DataRegion(
+            BASE_OUTPUT_PATH, d1GroupId.toString(), new DirectFlushPolicy(), "root.loadTest");
     for (int i = 0; i < deviceNum; i++) {
       partitionTable.put("d" + i, d1Replicas);
       dataRegionMap.put(d1GroupId.convertToTConsensusGroupId(), dataRegion);
@@ -284,7 +278,8 @@ public class TestBase {
       }
 
       @Override
-      public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
+      public SchemaPartition getOrCreateSchemaPartition(
+          PathPatternTree patternTree, String userName) {
         return null;
       }
 
@@ -308,13 +303,13 @@ public class TestBase {
 
       @Override
       public DataPartition getOrCreateDataPartition(
-          List<DataPartitionQueryParam> dataPartitionQueryParams) {
+          List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
         return null;
       }
 
       @Override
       public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-          PathPatternTree patternTree, Integer level) {
+          PathPatternTree patternTree, PathPatternTree scope, Integer level) {
         return null;
       }
 
@@ -324,8 +319,7 @@ public class TestBase {
       }
 
       @Override
-      public void invalidAllCache() {
-      }
+      public void invalidAllCache() {}
     };
   }
 
@@ -333,7 +327,7 @@ public class TestBase {
     return new DataPartitionBatchFetcher(partitionFetcher) {
       @Override
       public List<TRegionReplicaSet> queryDataPartition(
-          List<Pair<String, TTimePartitionSlot>> slotList) {
+          List<Pair<String, TTimePartitionSlot>> slotList, String userName) {
         return slotList.stream().map(p -> partitionTable.get(p.left)).collect(Collectors.toList());
       }
     };
@@ -341,22 +335,20 @@ public class TestBase {
 
   public void setupFiles() {
     measurementSequenceGeneratorPairs.sort(Comparator.comparing(Pair::getLeft));
-    List<Pair<MeasurementSchema, DoubleSequenceGeneratorFactory>> schemaGeneratorPairs = new ArrayList<>();
+    List<Pair<MeasurementSchema, DoubleSequenceGeneratorFactory>> schemaGeneratorPairs =
+        new ArrayList<>();
     for (int sn = 0; sn < seriesNum; sn++) {
-      Pair<String, DoubleSequenceGeneratorFactory> measurementGeneratorPair = measurementSequenceGeneratorPairs.get(
-          sn % measurementSequenceGeneratorPairs.size());
+      Pair<String, DoubleSequenceGeneratorFactory> measurementGeneratorPair =
+          measurementSequenceGeneratorPairs.get(sn % measurementSequenceGeneratorPairs.size());
       MeasurementSchema measurementSchema =
-          new MeasurementSchema(measurementGeneratorPair
-              .left + sn,
-              TSDataType.DOUBLE);
+          new MeasurementSchema(measurementGeneratorPair.left + sn, TSDataType.DOUBLE);
       measurementSchema.setCompressor(CompressionType.LZ4.serialize());
       measurementSchema.setEncoding(TSEncoding.PLAIN.serialize());
       schemaGeneratorPairs.add(new Pair<>(measurementSchema, measurementGeneratorPair.right));
     }
     schemaGeneratorPairs.sort(Comparator.comparing(s -> s.left.getMeasurementId()));
-    List<MeasurementSchema> measurementSchemas = schemaGeneratorPairs.stream().map(m -> m.left)
-        .collect(
-            Collectors.toList());
+    List<MeasurementSchema> measurementSchemas =
+        schemaGeneratorPairs.stream().map(m -> m.left).collect(Collectors.toList());
     IntStream.range(0, fileNum)
         .parallel()
         .forEach(
@@ -373,8 +365,8 @@ public class TestBase {
                   // dd2
                   for (int sn = 0; sn < seriesNum; sn++) {
                     for (int dn = 0; dn < deviceNum; dn++) {
-                      writer.registerTimeseries(new Path("d" + dn),
-                          schemaGeneratorPairs.get(sn).left);
+                      writer.registerTimeseries(
+                          new Path("d" + dn), schemaGeneratorPairs.get(sn).left);
                     }
                   }
                   writer.registerAlignedTimeseries(new Path("dd1"), measurementSchemas);
@@ -387,14 +379,15 @@ public class TestBase {
                   Tablet tablet = new Tablet("d0", measurementSchemas, chunkPointNum);
                   for (int sn = 0; sn < seriesNum; sn++) {
                     DoubleSequenceGenerator sequenceGenerator =
-                        schemaGeneratorPairs.get(sn).right
-                            .create();
+                        schemaGeneratorPairs.get(sn).right.create();
                     for (int pn = 0; pn < chunkPointNum; pn++) {
                       if (sn == 0) {
                         long currTime = chunkTimeRange * i + pointInterval * pn;
                         tablet.addTimestamp(pn, currTime);
                       }
-                      tablet.addValue(schemaGeneratorPairs.get(sn).left.getMeasurementId(), pn,
+                      tablet.addValue(
+                          schemaGeneratorPairs.get(sn).left.getMeasurementId(),
+                          pn,
                           sequenceGenerator.gen(pn));
                     }
                   }

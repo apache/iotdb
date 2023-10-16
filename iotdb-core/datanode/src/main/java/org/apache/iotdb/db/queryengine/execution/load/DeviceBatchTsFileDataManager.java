@@ -33,8 +33,9 @@ public class DeviceBatchTsFileDataManager extends TsFileDataManager {
       PlanNodeId planNodeId,
       File targetFile,
       DataPartitionBatchFetcher partitionBatchFetcher,
-      long maxMemorySize) {
-    super(dispatchFunction, planNodeId, targetFile, partitionBatchFetcher, maxMemorySize);
+      long maxMemorySize,
+      String userName) {
+    super(dispatchFunction, planNodeId, targetFile, partitionBatchFetcher, maxMemorySize, userName);
   }
 
   protected boolean addOrSendChunkData(ChunkData chunkData) {

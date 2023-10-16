@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -58,7 +57,7 @@ public class PathPatternTreeTest {
             new PartialPath("root.sg1.*.t1.s1"),
             new PartialPath("root.sg1.d2.t1.s1")),
         Arrays.asList(new PartialPath("root.sg1.d1.t2.s2"), new PartialPath("root.sg1.*.t1.s1")),
-        Arrays.asList(new PartialPath("root.sg1.d1.t2"), new PartialPath("root.sg1.*")),
+        Arrays.asList(new PartialPath("root.sg1.d1.t2"), new PartialPath("root.sg1.*.t1")),
         true);
   }
 
@@ -261,11 +260,7 @@ public class PathPatternTreeTest {
         compressedDevicePaths.stream().sorted().collect(Collectors.toList()),
         patternTree.getAllDevicePaths().stream().sorted().collect(Collectors.toList()));
 
-    PublicBAOS outputStream = new PublicBAOS();
-    resultPatternTree.serialize(outputStream);
-    ByteBuffer buffer = ByteBuffer.allocate(outputStream.size());
-    buffer.put(outputStream.getBuf(), 0, outputStream.size());
-    buffer.flip();
+    ByteBuffer buffer = resultPatternTree.serialize();
     PathPatternTree tmpPathPatternTree = PathPatternTree.deserialize(buffer);
     Assert.assertEquals(resultPatternTree, tmpPathPatternTree);
   }

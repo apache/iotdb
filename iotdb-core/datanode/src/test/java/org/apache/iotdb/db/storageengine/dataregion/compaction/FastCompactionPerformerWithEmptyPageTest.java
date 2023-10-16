@@ -43,7 +43,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class FastCompactionPerformerWithEmptyPageTest extends AbstractCompactionTest {
 
@@ -106,7 +105,6 @@ public class FastCompactionPerformerWithEmptyPageTest extends AbstractCompaction
             Arrays.asList(seqFile1),
             Arrays.asList(unseqFile1),
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     try {

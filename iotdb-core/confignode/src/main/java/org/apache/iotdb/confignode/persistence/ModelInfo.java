@@ -22,17 +22,20 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.model.ModelTable;
-import org.apache.iotdb.commons.model.TrailInformation;
+import org.apache.iotdb.commons.model.TrialInformation;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
-import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrialPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStatePlan;
-import org.apache.iotdb.confignode.consensus.response.ModelTableResp;
-import org.apache.iotdb.confignode.consensus.response.TrailTableResp;
+import org.apache.iotdb.confignode.consensus.response.model.GetModelInfoResp;
+import org.apache.iotdb.confignode.consensus.response.model.ModelTableResp;
+import org.apache.iotdb.confignode.consensus.response.model.TrialTableResp;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -40,11 +43,14 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.concurrent.locks.ReentrantLock;
+import java.nio.ByteBuffer;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @ThreadSafe
 public class ModelInfo implements SnapshotProcessor {
@@ -55,48 +61,76 @@ public class ModelInfo implements SnapshotProcessor {
 
   private ModelTable modelTable;
 
-  private final ReentrantLock modelTableLock = new ReentrantLock();
+  private final ReadWriteLock modelTableLock = new ReentrantReadWriteLock();
 
   public ModelInfo() {
     this.modelTable = new ModelTable();
   }
 
-  public void acquireModelTableLock() {
-    LOGGER.info("acquire ModelTableLock");
-    modelTableLock.lock();
+  public void acquireModelTableReadLock() {
+    LOGGER.info("acquire ModelTableReadLock");
+    modelTableLock.readLock().lock();
   }
 
-  public void releaseModelTableLock() {
-    LOGGER.info("release ModelTableLock");
-    modelTableLock.unlock();
+  public void releaseModelTableReadLock() {
+    LOGGER.info("release ModelTableReadLock");
+    modelTableLock.readLock().unlock();
+  }
+
+  public void acquireModelTableWriteLock() {
+    LOGGER.info("acquire ModelTableWriteLock");
+    modelTableLock.writeLock().lock();
+  }
+
+  public void releaseModelTableWriteLock() {
+    LOGGER.info("release ModelTableWriteLock");
+    modelTableLock.writeLock().unlock();
   }
 
   public TSStatus createModel(CreateModelPlan plan) {
     try {
+      acquireModelTableWriteLock();
       ModelInformation modelInformation = plan.getModelInformation();
-      modelTable.addModel(modelInformation);
+      if (modelTable.containsModel(modelInformation.getModelId())) {
+        return new TSStatus(TSStatusCode.MODEL_EXIST_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    "model [%s] has already been created.", modelInformation.getModelId()));
+      } else {
+        modelTable.addModel(modelInformation);
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      }
+
     } catch (Exception e) {
       final String errorMessage =
           String.format(
               "Failed to add model [%s] in ModelTable on Config Nodes, because of %s",
               plan.getModelInformation().getModelId(), e);
       LOGGER.warn(errorMessage, e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-          .setMessage(errorMessage);
+      return new TSStatus(TSStatusCode.CREATE_MODEL_ERROR.getStatusCode()).setMessage(errorMessage);
+    } finally {
+      releaseModelTableWriteLock();
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public TSStatus dropModel(DropModelPlan plan) {
+    acquireModelTableWriteLock();
     String modelId = plan.getModelId();
+    TSStatus status;
     if (modelTable.containsModel(modelId)) {
       modelTable.removeModel(modelId);
+      status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } else {
+      status =
+          new TSStatus(TSStatusCode.DROP_MODEL_ERROR.getStatusCode())
+              .setMessage(String.format("model [%s] has not been created.", modelId));
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    releaseModelTableWriteLock();
+    return status;
   }
 
   public ModelTableResp showModel(ShowModelPlan plan) {
-    acquireModelTableLock();
+    acquireModelTableReadLock();
     try {
       ModelTableResp modelTableResp =
           new ModelTableResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -115,17 +149,17 @@ public class ModelInfo implements SnapshotProcessor {
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()));
     } finally {
-      releaseModelTableLock();
+      releaseModelTableReadLock();
     }
   }
 
-  public TrailTableResp showTrail(ShowTrailPlan plan) {
-    acquireModelTableLock();
+  public TrialTableResp showTrial(ShowTrialPlan plan) {
+    acquireModelTableReadLock();
     try {
       String modelId = plan.getModelId();
       ModelInformation modelInformation = modelTable.getModelInformationById(modelId);
       if (modelInformation == null) {
-        return new TrailTableResp(
+        return new TrialTableResp(
             new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
                 .setMessage(
                     String.format(
@@ -133,51 +167,74 @@ public class ModelInfo implements SnapshotProcessor {
                         modelId)));
       }
 
-      TrailTableResp trailTableResp =
-          new TrailTableResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-      if (plan.isSetTrailId()) {
-        TrailInformation trailInformation =
-            modelInformation.getTrailInformationById(plan.getTrailId());
-        if (trailInformation != null) {
-          trailTableResp.addTrailInformation(trailInformation);
+      TrialTableResp trialTableResp =
+          new TrialTableResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      if (plan.isSetTrialId()) {
+        TrialInformation trialInformation =
+            modelInformation.getTrialInformationById(plan.getTrialId());
+        if (trialInformation != null) {
+          trialTableResp.addTrialInformation(trialInformation);
         }
       } else {
-        trailTableResp.addTrailInformation(modelInformation.getAllTrailInformation());
+        trialTableResp.addTrialInformation(modelInformation.getAllTrialInformation());
       }
-      return trailTableResp;
+      return trialTableResp;
     } catch (IOException e) {
       LOGGER.warn("Fail to get TrailTable", e);
-      return new TrailTableResp(
+      return new TrialTableResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()));
     } finally {
-      releaseModelTableLock();
+      releaseModelTableReadLock();
+    }
+  }
+
+  public GetModelInfoResp getModelInfo(GetModelInfoPlan plan) {
+    acquireModelTableReadLock();
+    try {
+      GetModelInfoResp getModelInfoResp =
+          new GetModelInfoResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      ModelInformation modelInformation = modelTable.getModelInformationById(plan.getModelId());
+      if (modelInformation != null) {
+        PublicBAOS buffer = new PublicBAOS();
+        DataOutputStream stream = new DataOutputStream(buffer);
+        modelInformation.serialize(stream);
+        getModelInfoResp.setModelInfo(ByteBuffer.wrap(buffer.getBuf(), 0, buffer.size()));
+      }
+      return getModelInfoResp;
+    } catch (IOException e) {
+      LOGGER.warn("Fail to get model info", e);
+      return new GetModelInfoResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()));
+    } finally {
+      releaseModelTableReadLock();
     }
   }
 
   public TSStatus updateModelInfo(UpdateModelInfoPlan plan) {
-    acquireModelTableLock();
+    acquireModelTableWriteLock();
     try {
       String modelId = plan.getModelId();
       if (modelTable.containsModel(modelId)) {
-        modelTable.updateModel(modelId, plan.getTrailId(), plan.getModelInfo());
+        modelTable.updateModel(modelId, plan.getTrialId(), plan.getModelInfo());
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
-      releaseModelTableLock();
+      releaseModelTableWriteLock();
     }
   }
 
   public TSStatus updateModelState(UpdateModelStatePlan plan) {
-    acquireModelTableLock();
+    acquireModelTableWriteLock();
     try {
       String modelId = plan.getModelId();
       if (modelTable.containsModel(modelId)) {
-        modelTable.updateState(modelId, plan.getState(), plan.getBestTrailId());
+        modelTable.updateState(modelId, plan.getState(), plan.getBestTrialId());
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
-      releaseModelTableLock();
+      releaseModelTableWriteLock();
     }
   }
 
@@ -191,12 +248,13 @@ public class ModelInfo implements SnapshotProcessor {
       return false;
     }
 
-    acquireModelTableLock();
+    acquireModelTableReadLock();
     try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
       modelTable.serialize(fileOutputStream);
+      fileOutputStream.getFD().sync();
       return true;
     } finally {
-      releaseModelTableLock();
+      releaseModelTableReadLock();
     }
   }
 
@@ -209,16 +267,12 @@ public class ModelInfo implements SnapshotProcessor {
           snapshotFile.getAbsolutePath());
       return;
     }
-    acquireModelTableLock();
+    acquireModelTableWriteLock();
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
       modelTable.clear();
       modelTable = ModelTable.deserialize(fileInputStream);
     } finally {
-      releaseModelTableLock();
+      releaseModelTableWriteLock();
     }
-  }
-
-  public boolean isModelExist(String modelId) {
-    return modelTable.containsModel(modelId);
   }
 }

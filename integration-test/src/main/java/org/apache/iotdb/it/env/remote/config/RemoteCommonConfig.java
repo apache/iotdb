@@ -164,6 +164,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setConfigNodeRatisSnapshotTriggerThreshold(
       int ratisSnapshotTriggerThreshold) {
     return this;
@@ -268,6 +273,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     return this;
   }
 }

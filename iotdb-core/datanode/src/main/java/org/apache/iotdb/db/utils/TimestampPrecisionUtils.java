@@ -19,12 +19,15 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import java.util.concurrent.TimeUnit;
 
 public class TimestampPrecisionUtils {
-  private static final String timestampPrecision =
+  static String TIMESTAMP_PRECISION =
       CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+  private static boolean isTimestampPrecisionCheckEnabled =
+      CommonDescriptor.getInstance().getConfig().isTimestampPrecisionCheckEnabled();
 
   @FunctionalInterface
   private interface ConvertFunction<T1, T2, R> {
@@ -34,15 +37,15 @@ public class TimestampPrecisionUtils {
   private static final ConvertFunction<Long, TimeUnit, Long> convertFunction;
 
   static {
-    switch (timestampPrecision) {
+    switch (TIMESTAMP_PRECISION) {
       case "ms":
         convertFunction = TimeUnit.MILLISECONDS::convert;
         break;
-      case "ns":
-        convertFunction = TimeUnit.NANOSECONDS::convert;
-        break;
       case "us":
         convertFunction = TimeUnit.MICROSECONDS::convert;
+        break;
+      case "ns":
+        convertFunction = TimeUnit.NANOSECONDS::convert;
         break;
         // this case will never reach
       default:
@@ -53,5 +56,36 @@ public class TimestampPrecisionUtils {
   /** convert specific precision timestamp to current precision timestamp */
   public static long convertToCurrPrecision(long sourceTime, TimeUnit sourceUnit) {
     return convertFunction.apply(sourceTime, sourceUnit);
+  }
+
+  /** check whether the input timestamp match the current system timestamp precision. */
+  public static void checkTimestampPrecision(long time) {
+    if (!isTimestampPrecisionCheckEnabled) {
+      return;
+    }
+    switch (TIMESTAMP_PRECISION) {
+      case "ms":
+        if (time > 10_000_000_000_000L) {
+          throw new SemanticException(
+              String.format(
+                  "Current system timestamp precision is %s, "
+                      + "please check whether the timestamp %s is correct.",
+                  TIMESTAMP_PRECISION, time));
+        }
+        break;
+      case "us":
+        if (time > 10_000_000_000_000_000L) {
+          throw new SemanticException(
+              String.format(
+                  "Current system timestamp precision is %s, "
+                      + "please check whether the timestamp %s is correct.",
+                  TIMESTAMP_PRECISION, time));
+        }
+        break;
+        // Long.MaxValue is 19 digits, therefore no problem when the precision is ns.
+      case "ns":
+      default:
+        break;
+    }
   }
 }

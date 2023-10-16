@@ -94,7 +94,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public ProgressIndex getProgressIndex() {
-    return sourceEvent != null ? sourceEvent.getProgressIndex() : new MinimumProgressIndex();
+    return sourceEvent != null ? sourceEvent.getProgressIndex() : MinimumProgressIndex.INSTANCE;
   }
 
   @Override
@@ -140,7 +140,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   public Tablet convertToTablet() {
-    if (!shouldParsePattern()) {
+    if (!shouldParsePatternOrTime()) {
       return tablet;
     }
 

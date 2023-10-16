@@ -54,6 +54,7 @@ public class TsFileDataManager {
   protected long dataSize;
   protected final Map<TRegionReplicaSet, LoadTsFilePieceNode> replicaSet2Piece;
   protected final List<ChunkData> nonDirectionalChunkData;
+  protected final String userName;
 
   @FunctionalInterface
   public interface DispatchFunction {
@@ -66,7 +67,8 @@ public class TsFileDataManager {
       PlanNodeId planNodeId,
       File targetFile,
       DataPartitionBatchFetcher partitionBatchFetcher,
-      long maxMemorySize) {
+      long maxMemorySize,
+      String userName) {
     this.dispatchFunction = dispatchFunction;
     this.planNodeId = planNodeId;
     this.targetFile = targetFile;
@@ -75,6 +77,7 @@ public class TsFileDataManager {
     this.nonDirectionalChunkData = new ArrayList<>();
     this.partitionBatchFetcher = partitionBatchFetcher;
     this.maxMemorySize = maxMemorySize;
+    this.userName = userName;
   }
 
   public boolean addOrSendTsFileData(TsFileData tsFileData) {
@@ -133,7 +136,8 @@ public class TsFileDataManager {
         partitionBatchFetcher.queryDataPartition(
             nonDirectionalChunkData.stream()
                 .map(data -> new Pair<>(data.getDevice(), data.getTimePartitionSlot()))
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList()),
+            userName);
     IntStream.range(0, nonDirectionalChunkData.size())
         .forEach(
             i ->

@@ -81,11 +81,7 @@ public class DistributionPlanner {
   public PlanNode addExchangeNode(PlanNode root) {
     ExchangeNodeAdder adder = new ExchangeNodeAdder(this.analysis);
     NodeGroupContext nodeGroupContext =
-        new NodeGroupContext(
-            context,
-            analysis.getStatement() instanceof QueryStatement
-                && (((QueryStatement) analysis.getStatement()).isAlignByDevice()),
-            root);
+        new NodeGroupContext(context, analysis.getStatement(), root);
     PlanNode newRoot = adder.visit(root, nodeGroupContext);
     adjustUpStream(newRoot, nodeGroupContext);
     return newRoot;
@@ -196,7 +192,7 @@ public class DistributionPlanner {
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);
     // Only execute this step for READ operation
     if (context.getQueryType() == QueryType.READ) {
-      SetSinkForRootInstance(subPlan, fragmentInstances);
+      setSinkForRootInstance(subPlan, fragmentInstances);
     }
     return new DistributedQueryPlan(
         logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
@@ -213,7 +209,7 @@ public class DistributionPlanner {
   }
 
   // TODO: (xingtanzjr) Maybe we should handle ResultNode in LogicalPlanner ?
-  public void SetSinkForRootInstance(SubPlan subPlan, List<FragmentInstance> instances) {
+  public void setSinkForRootInstance(SubPlan subPlan, List<FragmentInstance> instances) {
     FragmentInstance rootInstance = null;
     for (FragmentInstance instance : instances) {
       if (instance.getFragment().getId().equals(subPlan.getPlanFragment().getId())) {

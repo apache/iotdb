@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model;
 
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
@@ -29,14 +30,16 @@ import com.google.common.util.concurrent.ListenableFuture;
 public class CreateModelTask implements IConfigTask {
 
   private final CreateModelStatement createModelStatement;
+  private final MPPQueryContext context;
 
-  public CreateModelTask(CreateModelStatement createModelStatement) {
+  public CreateModelTask(CreateModelStatement createModelStatement, MPPQueryContext context) {
     this.createModelStatement = createModelStatement;
+    this.context = context;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createModel(createModelStatement);
+    return configTaskExecutor.createModel(createModelStatement, context);
   }
 }

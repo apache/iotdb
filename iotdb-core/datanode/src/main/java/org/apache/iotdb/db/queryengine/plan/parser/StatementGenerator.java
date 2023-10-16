@@ -66,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSch
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
@@ -111,7 +112,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.protocol.thrift.impl.MLNodeRPCServiceImpl.ML_METRICS_PATH_PREFIX;
@@ -283,6 +283,7 @@ public class StatementGenerator {
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(
         DEVICE_PATH_CACHE.getPartialPath(insertRecordReq.getPrefixPath()));
+    TimestampPrecisionUtils.checkTimestampPrecision(insertRecordReq.getTimestamp());
     insertStatement.setTime(insertRecordReq.getTimestamp());
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setAligned(insertRecordReq.isAligned);
@@ -298,6 +299,7 @@ public class StatementGenerator {
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(
         DEVICE_PATH_CACHE.getPartialPath(insertRecordReq.getPrefixPath()));
+    TimestampPrecisionUtils.checkTimestampPrecision(insertRecordReq.getTimestamp());
     insertStatement.setTime(insertRecordReq.getTimestamp());
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setDataTypes(new TSDataType[insertStatement.getMeasurements().length]);
@@ -316,8 +318,12 @@ public class StatementGenerator {
     insertStatement.setDevicePath(
         DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
-    insertStatement.setTimes(
-        QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size));
+    long[] timestamps =
+        QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size);
+    if (timestamps.length != 0) {
+      TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
+    }
+    insertStatement.setTimes(timestamps);
     insertStatement.setColumns(
         QueryDataSetUtils.readTabletValuesFromBuffer(
             insertTabletReq.values,
@@ -349,8 +355,12 @@ public class StatementGenerator {
       InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
       insertTabletStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPaths.get(i)));
       insertTabletStatement.setMeasurements(req.measurementsList.get(i).toArray(new String[0]));
-      insertTabletStatement.setTimes(
-          QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
+      long[] timestamps =
+          QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i));
+      if (timestamps.length != 0) {
+        TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
+      }
+      insertTabletStatement.setTimes(timestamps);
       insertTabletStatement.setColumns(
           QueryDataSetUtils.readTabletValuesFromBuffer(
               req.valuesList.get(i),
@@ -389,6 +399,7 @@ public class StatementGenerator {
       InsertRowStatement statement = new InsertRowStatement();
       statement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.getPrefixPaths().get(i)));
       statement.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
+      TimestampPrecisionUtils.checkTimestampPrecision(req.getTimestamps().get(i));
       statement.setTime(req.getTimestamps().get(i));
       statement.fillValues(req.valuesList.get(i));
       statement.setAligned(req.isAligned);
@@ -415,6 +426,7 @@ public class StatementGenerator {
       addMeasurementAndValue(
           statement, req.getMeasurementsList().get(i), req.getValuesList().get(i));
       statement.setDataTypes(new TSDataType[statement.getMeasurements().length]);
+      TimestampPrecisionUtils.checkTimestampPrecision(req.getTimestamps().get(i));
       statement.setTime(req.getTimestamps().get(i));
       statement.setNeedInferType(true);
       statement.setAligned(req.isAligned);
@@ -436,6 +448,8 @@ public class StatementGenerator {
     InsertRowsOfOneDeviceStatement insertStatement = new InsertRowsOfOneDeviceStatement();
     insertStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPath));
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+    // req.timestamps sorted on session side
+    TimestampPrecisionUtils.checkTimestampPrecision(req.timestamps.get(req.timestamps.size() - 1));
     for (int i = 0; i < req.timestamps.size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
       statement.setDevicePath(insertStatement.getDevicePath());
@@ -461,6 +475,8 @@ public class StatementGenerator {
     InsertRowsOfOneDeviceStatement insertStatement = new InsertRowsOfOneDeviceStatement();
     insertStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPath));
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+    // req.timestamps sorted on session side
+    TimestampPrecisionUtils.checkTimestampPrecision(req.timestamps.get(req.timestamps.size() - 1));
     for (int i = 0; i < req.timestamps.size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
       statement.setDevicePath(insertStatement.getDevicePath());
@@ -865,53 +881,8 @@ public class StatementGenerator {
     return insertRowStatement;
   }
 
-  public static Statement createStatement(TFetchTimeseriesReq fetchTimeseriesReq, ZoneId zoneId)
-      throws IllegalPathException {
-    QueryStatement queryStatement = new QueryStatement();
-
-    FromComponent fromComponent = new FromComponent();
-    for (String pathStr : fetchTimeseriesReq.getQueryExpressions()) {
-      PartialPath path = new PartialPath(pathStr);
-      fromComponent.addPrefixPath(path);
-    }
-    queryStatement.setFromComponent(fromComponent);
-
-    SelectComponent selectComponent = new SelectComponent(zoneId);
-    selectComponent.addResultColumn(
-        new ResultColumn(
-            new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
-    queryStatement.setSelectComponent(selectComponent);
-
-    if (fetchTimeseriesReq.isSetQueryFilter()) {
-      WhereCondition whereCondition = new WhereCondition();
-      String queryFilter = fetchTimeseriesReq.getQueryFilter();
-      String[] times = queryFilter.split(",");
-      int predictNum = 0;
-      LessThanExpression rightPredicate = null;
-      GreaterEqualExpression leftPredicate = null;
-      if (!Objects.equals(times[0], "-1")) {
-        leftPredicate =
-            new GreaterEqualExpression(
-                new TimestampOperand(), new ConstantOperand(TSDataType.INT64, times[0]));
-        predictNum += 1;
-      }
-      if (!Objects.equals(times[1], "-1")) {
-        rightPredicate =
-            new LessThanExpression(
-                new TimestampOperand(), new ConstantOperand(TSDataType.INT64, times[1]));
-        predictNum += 2;
-      }
-
-      if (predictNum == 3) {
-        whereCondition.setPredicate(new LogicAndExpression(leftPredicate, rightPredicate));
-      } else if (predictNum == 1) {
-        whereCondition.setPredicate(leftPredicate);
-      } else {
-        whereCondition.setPredicate(rightPredicate);
-      }
-      queryStatement.setWhereCondition(whereCondition);
-    }
-    return queryStatement;
+  public static Statement createStatement(TFetchTimeseriesReq fetchTimeseriesReq, ZoneId zoneId) {
+    return invokeParser(fetchTimeseriesReq.getQueryBody(), zoneId);
   }
 
   public static DeleteTimeSeriesStatement createStatement(TDeleteModelMetricsReq req)

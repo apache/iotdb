@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class BasicAuthorityCache implements IAuthorCache {
-  private static final Logger logger = LoggerFactory.getLogger(BasicAuthorityCache.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(BasicAuthorityCache.class);
 
   private final IoTDBDescriptor conf = IoTDBDescriptor.getInstance();
 
@@ -86,7 +86,7 @@ public class BasicAuthorityCache implements IAuthorCache {
         userCache.invalidate(userName);
       }
       if (userCache.getIfPresent(userName) != null) {
-        logger.error("datanode cache initialization failed");
+        LOGGER.error("datanode cache initialization failed");
         return false;
       }
     }
@@ -95,10 +95,16 @@ public class BasicAuthorityCache implements IAuthorCache {
         roleCache.invalidate(roleName);
       }
       if (roleCache.getIfPresent(roleName) != null) {
-        logger.error("datanode cache initialization failed");
+        LOGGER.error("datanode cache initialization failed");
         return false;
       }
     }
     return true;
+  }
+
+  @Override
+  public void invalidAllCache() {
+    userCache.invalidateAll();
+    roleCache.invalidateAll();
   }
 }

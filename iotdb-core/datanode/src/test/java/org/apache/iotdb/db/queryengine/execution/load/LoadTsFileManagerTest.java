@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -32,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId.Factory;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -40,7 +35,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
@@ -54,8 +48,16 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 import org.apache.thrift.TException;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class LoadTsFileManagerTest extends TestBase {
 
@@ -84,7 +86,8 @@ public class LoadTsFileManagerTest extends TestBase {
             internalServiceClientManager,
             false,
             maxSplitSize,
-            100);
+            100,
+            "root");
     long start = System.currentTimeMillis();
     splitSender.start();
     long timeConsumption = System.currentTimeMillis() - start;
@@ -110,12 +113,13 @@ public class LoadTsFileManagerTest extends TestBase {
     }
 
     // read and check the generated file
-    try (TsFileReader reader = new TsFileReader(
-        new TsFileSequenceReader(tsFileResource.getTsFile().getPath()))) {
+    try (TsFileReader reader =
+        new TsFileReader(new TsFileSequenceReader(tsFileResource.getTsFile().getPath()))) {
       for (int dn = 0; dn < deviceNum; dn++) {
         // "Simple_" is generated with linear function and is easy to check
-        QueryExpression queryExpression = QueryExpression.create(
-            Collections.singletonList(new Path("d" + dn, "Simple_22", false)), null);
+        QueryExpression queryExpression =
+            QueryExpression.create(
+                Collections.singletonList(new Path("d" + dn, "Simple_22", false)), null);
         QueryDataSet dataSet = reader.query(queryExpression);
         int i = 0;
         while (dataSet.hasNext()) {
@@ -141,30 +145,33 @@ public class LoadTsFileManagerTest extends TestBase {
       IUnCompressor unCompressor = IUnCompressor.getUnCompressor(compressionType);
       int uncompressedLength = req.getUncompressedLength();
       ByteBuffer allocate = ByteBuffer.allocate(uncompressedLength);
-      unCompressor.uncompress(buf.array(), buf.arrayOffset() + buf.position(), buf.remaining(),
-          allocate.array(), 0);
+      unCompressor.uncompress(
+          buf.array(), buf.arrayOffset() + buf.position(), buf.remaining(), allocate.array(), 0);
       allocate.limit(uncompressedLength);
       buf = allocate;
     }
 
     LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(buf);
-    loadTsFileManager.writeToDataRegion(dataRegionMap.get(req.consensusGroupId), pieceNode,
-        req.uuid);
+    loadTsFileManager.writeToDataRegion(
+        dataRegionMap.get(req.consensusGroupId), pieceNode, req.uuid);
 
     // forward to other replicas in the group
     if (req.isRelay) {
       req.isRelay = false;
       TRegionReplicaSet regionReplicaSet = groupId2ReplicaSetMap.get(groupId);
-      regionReplicaSet.getDataNodeLocations().stream().parallel().forEach(dataNodeLocation -> {
-        TEndPoint otherPoint = dataNodeLocation.getInternalEndPoint();
-        if (!otherPoint.equals(tEndpoint)) {
-          try {
-            handleTsFilePieceNode(req, otherPoint);
-          } catch (TException | IOException e) {
-            throw new RuntimeException(e);
-          }
-        }
-      });
+      regionReplicaSet.getDataNodeLocations().stream()
+          .parallel()
+          .forEach(
+              dataNodeLocation -> {
+                TEndPoint otherPoint = dataNodeLocation.getInternalEndPoint();
+                if (!otherPoint.equals(tEndpoint)) {
+                  try {
+                    handleTsFilePieceNode(req, otherPoint);
+                  } catch (TException | IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                }
+              });
     }
 
     return new TLoadResp()
@@ -195,5 +202,4 @@ public class LoadTsFileManagerTest extends TestBase {
         .setAccepted(true)
         .setStatus(new TSStatus().setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
-
 }

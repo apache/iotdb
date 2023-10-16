@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.DecoratingLock;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
@@ -88,10 +89,14 @@ public class PipeConnectorSubtask extends PipeSubtask {
   }
 
   @Override
-  protected synchronized boolean executeOnce() {
+  protected boolean executeOnce() {
+    if (isClosed.get()) {
+      return false;
+    }
+
     final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
     // Record this event for retrying on connection failure or other exceptions
-    lastEvent = event;
+    setLastEvent(event);
     if (event == null) {
       return false;
     }
@@ -115,15 +120,25 @@ public class PipeConnectorSubtask extends PipeSubtask {
         outputPipeConnector.transfer(event);
       }
 
-      releaseLastEvent();
+      releaseLastEvent(true);
     } catch (PipeConnectionException e) {
-      throw e;
+      if (!isClosed.get()) {
+        throw e;
+      } else {
+        LOGGER.info("PipeConnectionException in pipe transfer, ignored because pipe is dropped.");
+        releaseLastEvent(false);
+      }
     } catch (Exception e) {
-      throw new PipeException(
-          "Error occurred during executing PipeConnector#transfer, perhaps need to check "
-              + "whether the implementation of PipeConnector is correct "
-              + "according to the pipe-api description.",
-          e);
+      if (!isClosed.get()) {
+        throw new PipeException(
+            "Error occurred during executing PipeConnector#transfer, perhaps need to check "
+                + "whether the implementation of PipeConnector is correct "
+                + "according to the pipe-api description.",
+            e);
+      } else {
+        LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.");
+        releaseLastEvent(false);
+      }
     }
 
     return true;
@@ -131,6 +146,12 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   @Override
   public void onFailure(@NotNull Throwable throwable) {
+    if (isClosed.get()) {
+      LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.");
+      releaseLastEvent(false);
+      return;
+    }
+
     // Retry to connect to the target system if the connection is broken
     if (throwable instanceof PipeConnectionException) {
       LOGGER.warn(
@@ -231,20 +252,26 @@ public class PipeConnectorSubtask extends PipeSubtask {
   }
 
   @Override
-  // Synchronized for outputPipeConnector.close() and releaseLastEvent() in super.close()
-  // make sure that the lastEvent will not be updated after pipeProcessor.close() to avoid
-  // resource leak because of the lastEvent is not released.
-  public synchronized void close() {
+  public void close() {
+    isClosed.set(true);
     try {
       outputPipeConnector.close();
-
-      // Should be called after outputPipeConnector.close()
-      super.close();
     } catch (Exception e) {
       LOGGER.info(
           "Error occurred during closing PipeConnector, perhaps need to check whether the "
               + "implementation of PipeConnector is correct according to the pipe-api description.",
           e);
+    } finally {
+      inputPendingQueue.forEach(
+          event -> {
+            if (event instanceof EnrichedEvent) {
+              ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName());
+            }
+          });
+      inputPendingQueue.clear();
+
+      // Should be called after outputPipeConnector.close()
+      super.close();
     }
   }
 }

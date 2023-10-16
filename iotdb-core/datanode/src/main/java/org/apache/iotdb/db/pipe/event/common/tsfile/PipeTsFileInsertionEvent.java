@@ -44,6 +44,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   // used to filter data
   private final long startTime;
   private final long endTime;
+  private final boolean needParseTime;
 
   private final TsFileResource resource;
   private File tsFile;
@@ -55,7 +56,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private TsFileInsertionDataContainer dataContainer;
 
   public PipeTsFileInsertionEvent(TsFileResource resource, boolean isGeneratedByPipe) {
-    this(resource, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    this(resource, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE, false);
   }
 
   public PipeTsFileInsertionEvent(
@@ -64,11 +65,17 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       PipeTaskMeta pipeTaskMeta,
       String pattern,
       long startTime,
-      long endTime) {
+      long endTime,
+      boolean needParseTime) {
     super(pipeTaskMeta, pattern);
 
     this.startTime = startTime;
     this.endTime = endTime;
+    this.needParseTime = needParseTime;
+
+    if (needParseTime) {
+      this.isPatternAndTimeParsed = false;
+    }
 
     this.resource = resource;
     tsFile = resource.getTsFile();
@@ -105,10 +112,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public File getTsFile() {
     return tsFile;
-  }
-
-  public boolean hasTimeFilter() {
-    return startTime != Long.MIN_VALUE || endTime != Long.MAX_VALUE;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -153,7 +156,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath()));
       Thread.currentThread().interrupt();
-      return new MinimumProgressIndex();
+      return MinimumProgressIndex.INSTANCE;
     }
   }
 
@@ -161,7 +164,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeTsFileInsertionEvent(
-        resource, isGeneratedByPipe, pipeTaskMeta, pattern, startTime, endTime);
+        resource, isGeneratedByPipe, pipeTaskMeta, pattern, startTime, endTime, needParseTime);
   }
 
   @Override
@@ -182,16 +185,29 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       }
       return dataContainer.toTabletInsertionEvents();
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      close();
+
       final String errorMsg =
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
-      Thread.currentThread().interrupt();
       throw new PipeException(errorMsg);
     } catch (IOException e) {
+      close();
+
       final String errorMsg = String.format("Read TsFile %s error.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
+    }
+  }
+
+  /** Release the resource of data container. */
+  @Override
+  public void close() {
+    if (dataContainer != null) {
+      dataContainer.close();
+      dataContainer = null;
     }
   }
 

@@ -43,6 +43,7 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -53,7 +54,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
-import org.apache.iotdb.db.auth.AuthorizerManager;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -443,7 +444,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) {
     DataNodeSchemaCache.getInstance().takeWriteLock();
     try {
-      DataNodeSchemaCache.getInstance().invalidateAll();
+      // req.getFullPath() is a database path
+      DataNodeSchemaCache.getInstance().invalidate(req.getFullPath());
       ClusterTemplateManager.getInstance().invalid(req.getFullPath());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
@@ -514,8 +516,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaCache cache = DataNodeSchemaCache.getInstance();
     cache.takeWriteLock();
     try {
-      // todo implement precise timeseries clean rather than clean all
-      cache.invalidateAll();
+      cache.invalidate(PathPatternTree.deserialize(req.pathPatternTree).getAllPathPatterns());
     } finally {
       cache.releaseWriteLock();
     }
@@ -782,7 +783,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 for (PartialPath pattern : filteredPatternTree.getAllPathPatterns()) {
                   ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
                       SchemaSourceFactory.getTimeSeriesSchemaCountSource(
-                          pattern, false, null, null);
+                          pattern, false, null, null, SchemaConstant.ALL_MATCH_SCOPE);
                   try (ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
                       schemaSource.getSchemaReader(schemaRegion)) {
                     if (schemaReader.hasNext()) {
@@ -1185,7 +1186,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
       resp.setLoadSample(loadSample);
     }
-
+    AuthorityChecker.getAuthorityFetcher().refreshToken();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
     resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
     if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {
@@ -1206,7 +1207,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     SchemaEngine.getInstance().updateAndFillSchemaCountMap(req.schemaQuotaCount, resp);
 
     // Update pipe meta if necessary
-    PipeAgent.task().collectPipeMetaList(req, resp);
+    if (req.isNeedPipeMetaList()) {
+      PipeAgent.task().collectPipeMetaList(resp);
+    }
 
     return resp;
   }
@@ -1271,10 +1274,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private void sampleDiskLoad(TLoadSample loadSample) {
     final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-    double freeDisk =
+    double availableDisk =
         MetricService.getInstance()
             .getAutoGauge(
-                SystemMetric.SYS_DISK_FREE_SPACE.toString(),
+                SystemMetric.SYS_DISK_AVAILABLE_SPACE.toString(),
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
                 SYSTEM)
@@ -1288,9 +1291,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 SYSTEM)
             .value();
 
-    if (freeDisk != 0 && totalDisk != 0) {
-      double freeDiskRatio = freeDisk / totalDisk;
-      loadSample.setFreeDiskSpace(freeDisk);
+    if (availableDisk != 0 && totalDisk != 0) {
+      double freeDiskRatio = availableDisk / totalDisk;
+      loadSample.setFreeDiskSpace(availableDisk);
       loadSample.setDiskUsageRate(1d - freeDiskRatio);
       // Reset NodeStatus if necessary
       if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
@@ -1300,8 +1303,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             commonConfig.getDiskSpaceWarningThreshold());
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
         commonConfig.setStatusReason(NodeStatus.DISK_FULL);
-      } else if (commonConfig.getNodeStatus().equals(NodeStatus.ReadOnly)
-          && commonConfig.getStatusReason().equals(NodeStatus.DISK_FULL)) {
+      } else if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
+          && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
         commonConfig.setNodeStatus(NodeStatus.Running);
         commonConfig.setStatusReason(null);
       }
@@ -1310,7 +1313,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req) {
-    if (AuthorizerManager.getInstance().invalidateCache(req.getUsername(), req.getRoleName())) {
+    if (AuthorityChecker.invalidateCache(req.getUsername(), req.getRoleName())) {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
     return RpcUtils.getStatus(TSStatusCode.CLEAR_PERMISSION_CACHE_ERROR);

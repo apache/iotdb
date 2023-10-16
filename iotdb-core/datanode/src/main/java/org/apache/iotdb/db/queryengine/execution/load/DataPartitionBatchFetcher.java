@@ -40,14 +40,15 @@ public class DataPartitionBatchFetcher {
   }
 
   public List<TRegionReplicaSet> queryDataPartition(
-      List<Pair<String, TTimePartitionSlot>> slotList) {
+      List<Pair<String, TTimePartitionSlot>> slotList, String userName) {
     List<TRegionReplicaSet> replicaSets = new ArrayList<>();
     int size = slotList.size();
 
     for (int i = 0; i < size; i += LoadTsFileScheduler.TRANSMIT_LIMIT) {
       List<Pair<String, TTimePartitionSlot>> subSlotList =
           slotList.subList(i, Math.min(size, i + LoadTsFileScheduler.TRANSMIT_LIMIT));
-      DataPartition dataPartition = fetcher.getOrCreateDataPartition(toQueryParam(subSlotList));
+      DataPartition dataPartition =
+          fetcher.getOrCreateDataPartition(toQueryParam(subSlotList), userName);
       replicaSets.addAll(
           subSlotList.stream()
               .map(pair -> dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right))

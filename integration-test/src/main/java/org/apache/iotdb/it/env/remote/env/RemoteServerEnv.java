@@ -82,6 +82,12 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public void initClusterEnvironment(
+      int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
+    initClusterEnvironment();
+  }
+
+  @Override
   public void cleanClusterEnvironment() {
     clientManager.close();
     clusterConfig = new RemoteClusterConfig();
@@ -184,6 +190,13 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public ISession getSessionConnection() throws IoTDBConnectionException {
     Session session = new Session(ip_addr, Integer.parseInt(port));
+    session.open();
+    return session;
+  }
+
+  public ISession getSessionConnection(String userName, String password)
+      throws IoTDBConnectionException {
+    Session session = new Session(ip_addr, Integer.parseInt(port), userName, password);
     session.open();
     return session;
   }

@@ -35,7 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeProcessorSubtask extends PipeSubtask {
@@ -49,8 +48,6 @@ public class PipeProcessorSubtask extends PipeSubtask {
   private final PipeProcessor pipeProcessor;
   private final PipeEventCollector outputEventCollector;
 
-  private final AtomicBoolean isClosed;
-
   public PipeProcessorSubtask(
       String taskID,
       EventSupplier inputEventSupplier,
@@ -60,7 +57,6 @@ public class PipeProcessorSubtask extends PipeSubtask {
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
-    isClosed = new AtomicBoolean(false);
   }
 
   @Override
@@ -84,36 +80,52 @@ public class PipeProcessorSubtask extends PipeSubtask {
   }
 
   @Override
-  protected synchronized boolean executeOnce() throws Exception {
+  protected boolean executeOnce() throws Exception {
+    if (isClosed.get()) {
+      return false;
+    }
+
     final Event event = lastEvent != null ? lastEvent : inputEventSupplier.supply();
     // Record the last event for retry when exception occurs
-    lastEvent = event;
-    if (event == null) {
-      // Though there is no event to process, there may still be some buffered events
-      // in the outputEventCollector. Return true if there are still buffered events,
-      // false otherwise.
+    setLastEvent(event);
+    if (
+    // Though there is no event to process, there may still be some buffered events
+    // in the outputEventCollector. Return true if there are still buffered events,
+    // false otherwise.
+    event == null
+        // If there are still buffered events, process them first, the newly supplied
+        // event will be processed in the next round.
+        || !outputEventCollector.isBufferQueueEmpty()) {
       return outputEventCollector.tryCollectBufferedEvents();
     }
 
     try {
-      if (event instanceof TabletInsertionEvent) {
-        pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
-      } else if (event instanceof TsFileInsertionEvent) {
-        pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
-      } else if (event instanceof PipeHeartbeatEvent) {
-        pipeProcessor.process(event, outputEventCollector);
-        ((PipeHeartbeatEvent) event).onProcessed();
-      } else {
-        pipeProcessor.process(event, outputEventCollector);
+      // event can be supplied after the subtask is closed, so we need to check isClosed here
+      if (!isClosed.get()) {
+        if (event instanceof TabletInsertionEvent) {
+          pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+        } else if (event instanceof TsFileInsertionEvent) {
+          pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+        } else if (event instanceof PipeHeartbeatEvent) {
+          pipeProcessor.process(event, outputEventCollector);
+          ((PipeHeartbeatEvent) event).onProcessed();
+        } else {
+          pipeProcessor.process(event, outputEventCollector);
+        }
       }
 
-      releaseLastEvent();
+      releaseLastEvent(true);
     } catch (Exception e) {
-      throw new PipeException(
-          "Error occurred during executing PipeProcessor#process, perhaps need to check "
-              + "whether the implementation of PipeProcessor is correct "
-              + "according to the pipe-api description.",
-          e);
+      if (!isClosed.get()) {
+        throw new PipeException(
+            "Error occurred during executing PipeProcessor#process, perhaps need to check "
+                + "whether the implementation of PipeProcessor is correct "
+                + "according to the pipe-api description.",
+            e);
+      } else {
+        LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.");
+        releaseLastEvent(false);
+      }
     }
 
     return true;
@@ -127,22 +139,23 @@ public class PipeProcessorSubtask extends PipeSubtask {
   }
 
   @Override
-  // synchronized for pipeProcessor.close() and releaseLastEvent() in super.close().
-  // make sure that the lastEvent will not be updated after pipeProcessor.close() to avoid
-  // resource leak because of the lastEvent is not released.
-  public synchronized void close() {
+  public void close() {
     try {
       isClosed.set(true);
 
+      // pipeProcessor closes first, then no more events will be added into outputEventCollector.
+      // only after that, outputEventCollector can be closed.
       pipeProcessor.close();
-
-      // should be called after pipeProcessor.close()
-      super.close();
     } catch (Exception e) {
       LOGGER.info(
           "Error occurred during closing PipeProcessor, perhaps need to check whether the "
               + "implementation of PipeProcessor is correct according to the pipe-api description.",
           e);
+    } finally {
+      outputEventCollector.close();
+
+      // should be called after pipeProcessor.close()
+      super.close();
     }
   }
 

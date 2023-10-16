@@ -25,22 +25,41 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
 import org.apache.flink.table.types.DataType;
 
+import javax.annotation.Nullable;
+
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.net.Socket;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 public class Utils {
   private Utils() {}
+
+  private static final Pattern pattern = Pattern.compile("\\d*");
+
+  private static final Map<TSDataType, DataType> typeMap;
+
+  static {
+    typeMap = new HashMap<>();
+    typeMap.put(TSDataType.INT32, DataTypes.INT());
+    typeMap.put(TSDataType.INT64, DataTypes.BIGINT());
+    typeMap.put(TSDataType.FLOAT, DataTypes.FLOAT());
+    typeMap.put(TSDataType.DOUBLE, DataTypes.DOUBLE());
+    typeMap.put(TSDataType.BOOLEAN, DataTypes.BOOLEAN());
+    typeMap.put(TSDataType.TEXT, DataTypes.STRING());
+  }
 
   public static Object getValue(Field value, String dataType) {
     try {
@@ -66,6 +85,9 @@ public class Utils {
   }
 
   public static Object getValue(Field value, DataType dataType) {
+    if (value.getDataType() == null) {
+      return null;
+    }
     if (dataType.equals(DataTypes.INT())) {
       return value.getIntV();
     } else if (dataType.equals(DataTypes.BIGINT())) {
@@ -106,16 +128,20 @@ public class Utils {
   }
 
   public static boolean isNumeric(String s) {
-    Pattern pattern = Pattern.compile("\\d*");
     return pattern.matcher(s).matches();
   }
 
-  public static RowData convert(RowRecord rowRecord, List<String> columnTypes) {
+  public static RowData convert(
+      RowRecord rowRecord, List<String> columnNames, List<Tuple2<String, DataType>> tableSchema) {
     ArrayList<Object> values = new ArrayList<>();
     values.add(rowRecord.getTimestamp());
     List<Field> fields = rowRecord.getFields();
-    for (int i = 0; i < fields.size(); i++) {
-      values.add(getValue(fields.get(i), columnTypes.get(i + 1)));
+    for (Tuple2<String, DataType> field : tableSchema) {
+      if (!columnNames.contains(field.f0)) {
+        values.add(null);
+        continue;
+      }
+      values.add(getValue(fields.get(columnNames.indexOf(field.f0) - 1), field.f1));
     }
     return GenericRowData.of(values.toArray());
   }
@@ -140,5 +166,9 @@ public class Utils {
     } catch (IOException e) {
       return false;
     }
+  }
+
+  public static boolean isTypeEqual(@Nullable TSDataType iotdbType, DataType flinkType) {
+    return typeMap.get(iotdbType).equals(flinkType);
   }
 }

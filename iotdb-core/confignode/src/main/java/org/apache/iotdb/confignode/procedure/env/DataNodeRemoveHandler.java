@@ -576,7 +576,7 @@ public class DataNodeRemoveHandler {
     configManager.getClusterSchemaManager().adjustMaxRegionGroupNum();
 
     // Remove metrics
-    PartitionMetrics.unbindDataNodePartitionMetrics(
+    PartitionMetrics.unbindDataNodePartitionMetricsWhenUpdate(
         MetricService.getInstance(),
         NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint()));
   }

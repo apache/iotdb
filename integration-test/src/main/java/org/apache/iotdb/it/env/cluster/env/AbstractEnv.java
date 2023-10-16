@@ -74,6 +74,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -94,6 +95,7 @@ public abstract class AbstractEnv implements BaseEnv {
   protected String testMethodName = null;
   protected int index = 0;
   protected long startTime;
+  protected int testWorkingRetryCount = 30;
 
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
@@ -121,6 +123,11 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
+    initEnvironment(configNodesNum, dataNodesNum, 30);
+  }
+
+  protected void initEnvironment(int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
+    this.testWorkingRetryCount = testWorkingRetryCount;
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
 
@@ -228,7 +235,7 @@ public abstract class AbstractEnv implements BaseEnv {
       fail();
     }
 
-    testWorking();
+    testWorkingNoUnknown();
   }
 
   public String getTestClassName() {
@@ -242,7 +249,26 @@ public abstract class AbstractEnv implements BaseEnv {
     return "UNKNOWN-IT";
   }
 
-  public void testWorking() {
+  private Map<String, Integer> countNodeStatus(Map<Integer, String> nodeStatus) {
+    Map<String, Integer> result = new HashMap<>();
+    nodeStatus.values().forEach(status -> result.put(status, result.getOrDefault(status, 0) + 1));
+    return result;
+  }
+
+  public void testWorkingNoUnknown() {
+    testWorking(nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals));
+  }
+
+  public void testWorkingOneUnknownOtherRunning() {
+    testWorking(
+        nodeStatus -> {
+          Map<String, Integer> count = countNodeStatus(nodeStatus);
+          return count.getOrDefault("Unknown", 0) == 1
+              && count.getOrDefault("Running", 0) == nodeStatus.size() - 1;
+        });
+  }
+
+  public void testWorking(Predicate<Map<Integer, String>> statusCheck) {
     logger.info("Testing DataNode connection...");
     List<String> endpoints =
         dataNodeWrapperList.stream()
@@ -255,7 +281,7 @@ public abstract class AbstractEnv implements BaseEnv {
       testDelegate.addRequest(
           () -> {
             Exception lastException = null;
-            for (int i = 0; i < 30; i++) {
+            for (int i = 0; i < testWorkingRetryCount; i++) {
               try (Connection ignored = getConnection(dataNodeEndpoint, PROBE_TIMEOUT_MS)) {
                 logger.info("Successfully connecting to DataNode: {}.", dataNodeEndpoint);
                 return null;
@@ -271,16 +297,16 @@ public abstract class AbstractEnv implements BaseEnv {
       long startTime = System.currentTimeMillis();
       testDelegate.requestAll();
       if (!configNodeWrapperList.isEmpty()) {
-        checkNodeHeartbeat();
+        checkNodeHeartbeat(statusCheck);
       }
       logger.info("Start cluster costs: {}s", (System.currentTimeMillis() - startTime) / 1000.0);
     } catch (Exception e) {
       logger.error("exception in testWorking of ClusterID, message: {}", e.getMessage(), e);
-      fail("After 30 times retry, the cluster can't work!");
+      fail(String.format("After %d times retry, the cluster can't work!", testWorkingRetryCount));
     }
   }
 
-  private void checkNodeHeartbeat() throws Exception {
+  private void checkNodeHeartbeat(Predicate<Map<Integer, String>> statusCheck) throws Exception {
     logger.info("Testing cluster environment...");
     TShowClusterResp showClusterResp;
     Exception lastException = null;
@@ -305,12 +331,7 @@ public abstract class AbstractEnv implements BaseEnv {
         // Check the status of nodes
         if (flag) {
           Map<Integer, String> nodeStatus = showClusterResp.getNodeStatus();
-          for (String status : nodeStatus.values()) {
-            if (NodeStatus.Unknown.getStatus().equals(status)) {
-              flag = false;
-              break;
-            }
-          }
+          flag = statusCheck.test(nodeStatus);
         }
 
         if (flag) {
@@ -326,6 +347,7 @@ public abstract class AbstractEnv implements BaseEnv {
     if (lastException != null) {
       throw lastException;
     }
+    throw new Exception("Check not pass");
   }
 
   @Override
@@ -388,6 +410,16 @@ public abstract class AbstractEnv implements BaseEnv {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     Session session = new Session(dataNode.getIp(), dataNode.getPort());
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISession getSessionConnection(String userName, String password)
+      throws IoTDBConnectionException {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    Session session = new Session(dataNode.getIp(), dataNode.getPort(), userName, password);
     session.open();
     return session;
   }
@@ -704,7 +736,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
     if (isNeedVerify) {
       // Test whether register success
-      testWorking();
+      testWorkingNoUnknown();
     }
   }
 
@@ -729,7 +761,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
     if (isNeedVerify) {
       // Test whether register success
-      testWorking();
+      testWorkingNoUnknown();
     }
   }
 

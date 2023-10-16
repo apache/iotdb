@@ -22,7 +22,7 @@ package org.apache.iotdb.db.protocol.client;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.exception.IntoProcessException;
+import org.apache.iotdb.db.exception.runtime.IntoProcessException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;

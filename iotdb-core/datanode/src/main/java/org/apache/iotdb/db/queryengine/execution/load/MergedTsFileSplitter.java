@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.queryengine.execution.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -128,7 +128,6 @@ public class MergedTsFileSplitter {
       consumer.apply(tsFileData);
       statistic.consumeTime += System.nanoTime() - startTime;
 
-
       startTime = System.nanoTime();
       if (task.hasNext()) {
         taskPriorityQueue.add(task);
@@ -149,11 +148,12 @@ public class MergedTsFileSplitter {
   }
 
   public void close() throws IOException {
-    logger.info("Init/FetchData/Consume/Enqueue Time: {}/{}/{}/{}ms"
-        , statistic.initTime / 1_000_000L
-        , statistic.fetchDataTime / 1_000_000L
-        , statistic.consumeTime / 1_000_000L
-        , statistic.enqueueTime / 1_000_000L);
+    logger.info(
+        "Init/FetchData/Consume/Enqueue Time: {}/{}/{}/{}ms",
+        statistic.initTime / 1_000_000L,
+        statistic.fetchDataTime / 1_000_000L,
+        statistic.consumeTime / 1_000_000L,
+        statistic.enqueueTime / 1_000_000L);
     for (SplitTask task : taskPriorityQueue) {
       task.close();
     }
@@ -380,7 +380,7 @@ public class MergedTsFileSplitter {
                     == TsFileConstant.TIME_COLUMN_MASK);
             IChunkMetadata chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
             TTimePartitionSlot timePartitionSlot =
-                TimePartitionUtils.getTimePartition(
+                TimePartitionUtils.getTimePartitionSlot(
                     chunkMetadata.getStartTime(), timePartitionInterval);
             ChunkData chunkData =
                 ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
@@ -424,7 +424,7 @@ public class MergedTsFileSplitter {
                         ? chunkMetadata.getStartTime()
                         : pageHeader.getStartTime();
                 TTimePartitionSlot pageTimePartitionSlot =
-                    TimePartitionUtils.getTimePartition(startTime, timePartitionInterval);
+                    TimePartitionUtils.getTimePartitionSlot(startTime, timePartitionInterval);
                 if (!timePartitionSlot.equals(pageTimePartitionSlot)) {
                   if (!isAligned) {
                     insertNewChunk(chunkData);
@@ -464,7 +464,7 @@ public class MergedTsFileSplitter {
                     }
 
                     timePartitionSlot =
-                        TimePartitionUtils.getTimePartition(times[i], timePartitionInterval);
+                        TimePartitionUtils.getTimePartitionSlot(times[i], timePartitionInterval);
                     endTime = timePartitionSlot.getStartTime() + timePartitionInterval;
                     chunkData =
                         ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
@@ -577,8 +577,7 @@ public class MergedTsFileSplitter {
       }
 
       @Override
-      public void writeToFileWriter(TsFileIOWriter writer) throws IOException {
-      }
+      public void writeToFileWriter(TsFileIOWriter writer) throws IOException {}
 
       @Override
       public boolean isModification() {
@@ -586,8 +585,7 @@ public class MergedTsFileSplitter {
       }
 
       @Override
-      public void serialize(DataOutputStream stream) throws IOException {
-      }
+      public void serialize(DataOutputStream stream) throws IOException {}
 
       @Override
       public int getSplitId() {
@@ -595,8 +593,7 @@ public class MergedTsFileSplitter {
       }
 
       @Override
-      public void setSplitId(int sid) {
-      }
+      public void setSplitId(int sid) {}
     }
 
     private void getAllModification(Map<Long, List<Deletion>> offset2Deletions) throws IOException {
@@ -675,24 +672,26 @@ public class MergedTsFileSplitter {
     }
 
     private boolean needDecodeChunk(IChunkMetadata chunkMetadata) {
-      return !TimePartitionUtils.getTimePartition(
+      return !TimePartitionUtils.getTimePartitionSlot(
               chunkMetadata.getStartTime(), timePartitionInterval)
           .equals(
-              TimePartitionUtils.getTimePartition(
+              TimePartitionUtils.getTimePartitionSlot(
                   chunkMetadata.getEndTime(), timePartitionInterval));
     }
 
     private boolean needDecodePage(PageHeader pageHeader, IChunkMetadata chunkMetadata) {
       if (pageHeader.getStatistics() == null) {
-        return !TimePartitionUtils.getTimePartition(
+        return !TimePartitionUtils.getTimePartitionSlot(
                 chunkMetadata.getStartTime(), timePartitionInterval)
             .equals(
-                TimePartitionUtils.getTimePartition(
+                TimePartitionUtils.getTimePartitionSlot(
                     chunkMetadata.getEndTime(), timePartitionInterval));
       }
-      return !TimePartitionUtils.getTimePartition(pageHeader.getStartTime(), timePartitionInterval)
+      return !TimePartitionUtils.getTimePartitionSlot(
+              pageHeader.getStartTime(), timePartitionInterval)
           .equals(
-              TimePartitionUtils.getTimePartition(pageHeader.getEndTime(), timePartitionInterval));
+              TimePartitionUtils.getTimePartitionSlot(
+                  pageHeader.getEndTime(), timePartitionInterval));
     }
 
     private Pair<long[], Object[]> decodePage(

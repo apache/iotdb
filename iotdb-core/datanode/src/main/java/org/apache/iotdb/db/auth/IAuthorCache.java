@@ -32,4 +32,6 @@ public interface IAuthorCache {
   void putRoleCache(String roleName, Role role);
 
   boolean invalidateCache(String userName, String roleName);
+
+  void invalidAllCache();
 }

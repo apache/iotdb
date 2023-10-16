@@ -41,6 +41,7 @@ public class RatisConfig {
   private final Impl impl;
   private final LeaderLogAppender leaderLogAppender;
   private final Read read;
+  private final Utils utils;
 
   private RatisConfig(
       Rpc rpc,
@@ -52,7 +53,8 @@ public class RatisConfig {
       Client client,
       Impl impl,
       LeaderLogAppender leaderLogAppender,
-      Read read) {
+      Read read,
+      Utils utils) {
     this.rpc = rpc;
     this.leaderElection = leaderElection;
     this.snapshot = snapshot;
@@ -63,6 +65,7 @@ public class RatisConfig {
     this.impl = impl;
     this.leaderLogAppender = leaderLogAppender;
     this.read = read;
+    this.utils = utils;
   }
 
   public Rpc getRpc() {
@@ -105,6 +108,10 @@ public class RatisConfig {
     return read;
   }
 
+  public Utils getUtils() {
+    return utils;
+  }
+
   public static Builder newBuilder() {
     return new Builder();
   }
@@ -117,11 +124,11 @@ public class RatisConfig {
     private ThreadPool threadPool;
     private Log log;
     private Grpc grpc;
-
     private Client client;
     private Impl impl;
     private LeaderLogAppender leaderLogAppender;
     private Read read;
+    private Utils utils;
 
     public RatisConfig build() {
       return new RatisConfig(
@@ -135,7 +142,8 @@ public class RatisConfig {
           Optional.ofNullable(impl).orElseGet(() -> Impl.newBuilder().build()),
           Optional.ofNullable(leaderLogAppender)
               .orElseGet(() -> LeaderLogAppender.newBuilder().build()),
-          Optional.ofNullable(read).orElseGet(() -> Read.newBuilder().build()));
+          Optional.ofNullable(read).orElseGet(() -> Read.newBuilder().build()),
+          Optional.ofNullable(utils).orElseGet(() -> Utils.newBuilder().build()));
     }
 
     public Builder setRpc(Rpc rpc) {
@@ -186,6 +194,10 @@ public class RatisConfig {
     public Builder setRead(Read read) {
       this.read = read;
       return this;
+    }
+
+    public void setUtils(Utils utils) {
+      this.utils = utils;
     }
   }
 
@@ -255,7 +267,7 @@ public class RatisConfig {
       private TimeDuration timeoutMax = TimeDuration.valueOf(4, TimeUnit.SECONDS);
       private TimeDuration requestTimeout = TimeDuration.valueOf(20, TimeUnit.SECONDS);
       private TimeDuration sleepTime = TimeDuration.valueOf(1, TimeUnit.SECONDS);
-      private TimeDuration slownessTimeout = TimeDuration.valueOf(10, TimeUnit.MINUTES);
+      private TimeDuration slownessTimeout = TimeDuration.valueOf(3, TimeUnit.DAYS);
 
       private TimeDuration firstElectionTimeoutMin =
           TimeDuration.valueOf(50, TimeUnit.MILLISECONDS);
@@ -1101,6 +1113,36 @@ public class RatisConfig {
 
       public Read build() {
         return new Read(readOption, readTimeout);
+      }
+    }
+  }
+
+  public static class Utils {
+
+    private final int sleepDeviationThresholdMs;
+
+    private Utils(int sleepDeviationThresholdMs) {
+      this.sleepDeviationThresholdMs = sleepDeviationThresholdMs;
+    }
+
+    public int getSleepDeviationThresholdMs() {
+      return sleepDeviationThresholdMs;
+    }
+
+    public static Utils.Builder newBuilder() {
+      return new Utils.Builder();
+    }
+
+    public static class Builder {
+
+      private int sleepDeviationThresholdMs = 4 * 1000;
+
+      public Utils build() {
+        return new Utils(sleepDeviationThresholdMs);
+      }
+
+      public void setSleepDeviationThresholdMs(int sleepDeviationThresholdMs) {
+        this.sleepDeviationThresholdMs = sleepDeviationThresholdMs;
       }
     }
   }

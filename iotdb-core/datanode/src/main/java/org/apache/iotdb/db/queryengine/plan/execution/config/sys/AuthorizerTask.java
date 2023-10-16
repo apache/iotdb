@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys;
 
-import org.apache.iotdb.db.auth.AuthorizerManager;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
@@ -31,7 +31,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 public class AuthorizerTask implements IConfigTask {
 
   private final AuthorStatement authorStatement;
-  private final AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
 
   public AuthorizerTask(AuthorStatement authorStatement) {
     this.authorStatement = authorStatement;
@@ -42,9 +41,9 @@ public class AuthorizerTask implements IConfigTask {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
     if (authorStatement.getQueryType() == QueryType.WRITE) {
-      return authorizerManager.operatePermission(authorStatement);
+      return AuthorityChecker.operatePermission(authorStatement);
     } else {
-      return authorizerManager.queryPermission(authorStatement);
+      return AuthorityChecker.queryPermission(authorStatement);
     }
   }
 }

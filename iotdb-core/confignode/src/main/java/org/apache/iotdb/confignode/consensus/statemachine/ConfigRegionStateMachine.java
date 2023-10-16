@@ -115,7 +115,7 @@ public class ConfigRegionStateMachine
     TSStatus result;
     try {
       result = executor.executeNonQueryPlan(plan);
-    } catch (UnknownPhysicalPlanTypeException | AuthException e) {
+    } catch (UnknownPhysicalPlanTypeException e) {
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
@@ -198,33 +198,7 @@ public class ConfigRegionStateMachine
     // We get currentNodeId here because the currentNodeId
     // couldn't initialize earlier than the ConfigRegionStateMachine
     int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
-
-    if (currentNodeId == newLeaderId) {
-      LOGGER.info(
-          "Current node [nodeId: {}, ip:port: {}] becomes Leader",
-          newLeaderId,
-          currentNodeTEndPoint);
-
-      // Always start load services first
-      configManager.getLoadManager().startLoadServices();
-
-      // Start leader scheduling services
-      configManager.getProcedureManager().shiftExecutor(true);
-      configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
-      configManager.getPartitionManager().startRegionCleaner();
-
-      // we do cq recovery async for two reasons:
-      // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
-      // make notifyLeaderChanged not blocked by it
-      // 2. For correctness: in cq recovery processing, it will use ConsensusManager which may be
-      // initialized after notifyLeaderChanged finished
-      threadPool.submit(() -> configManager.getCQManager().startCQScheduler());
-
-      threadPool.submit(
-          () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeMetaSync());
-      threadPool.submit(
-          () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat());
-    } else {
+    if (currentNodeId != newLeaderId) {
       LOGGER.info(
           "Current node [nodeId:{}, ip:port: {}] is not longer the leader, "
               + "the new leader is [nodeId:{}]",
@@ -241,7 +215,40 @@ public class ConfigRegionStateMachine
       configManager.getPartitionManager().stopRegionCleaner();
       configManager.getCQManager().stopCQScheduler();
       configManager.getClusterSchemaManager().clearSchemaQuotaCache();
+      // Remove Metric after leader change
+      configManager.removeMetrics();
     }
+  }
+
+  @Override
+  public void notifyLeaderReady() {
+    LOGGER.info(
+        "Current node [nodeId: {}, ip:port: {}] becomes Leader",
+        ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+        currentNodeTEndPoint);
+
+    // Always start load services first
+    configManager.getLoadManager().startLoadServices();
+
+    // Start leader scheduling services
+    configManager.getProcedureManager().shiftExecutor(true);
+    configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
+    configManager.getPartitionManager().startRegionCleaner();
+    configManager.checkUserPathPrivilege();
+    // Add Metric after leader ready
+    configManager.addMetrics();
+
+    // we do cq recovery async for two reasons:
+    // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
+    // make notifyLeaderChanged not blocked by it
+    // 2. For correctness: in cq recovery processing, it will use ConsensusManager which may be
+    // initialized after notifyLeaderChanged finished
+    threadPool.submit(() -> configManager.getCQManager().startCQScheduler());
+
+    threadPool.submit(
+        () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeMetaSync());
+    threadPool.submit(
+        () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat());
   }
 
   @Override
@@ -334,7 +341,7 @@ public class ConfigRegionStateMachine
           ConfigPhysicalPlan nextPlan = logReader.next();
           try {
             executor.executeNonQueryPlan(nextPlan);
-          } catch (UnknownPhysicalPlanTypeException | AuthException e) {
+          } catch (UnknownPhysicalPlanTypeException e) {
             LOGGER.error(e.getMessage());
           }
         }

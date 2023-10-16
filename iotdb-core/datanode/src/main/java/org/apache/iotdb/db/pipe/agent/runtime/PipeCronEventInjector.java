@@ -35,7 +35,7 @@ public class PipeCronEventInjector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeCronEventInjector.class);
 
-  private static final int CRON_EVENT_INJECTOR_INTERVAL_SECONDS = 1;
+  private static final int CRON_EVENT_INJECTOR_INTERVAL_SECONDS = 30;
 
   private static final ScheduledExecutorService CRON_EVENT_INJECTOR_EXECUTOR =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(

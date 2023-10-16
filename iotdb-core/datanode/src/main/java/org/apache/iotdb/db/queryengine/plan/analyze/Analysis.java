@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByParame
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
@@ -209,11 +210,18 @@ public class Analysis {
   // timeseries, otherwise it will be null
   private Ordering timeseriesOrderingForLastQuery = null;
 
+  // Key: non-writable view expression, Value: corresponding source expressions
+  private Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap;
+
+  private Set<Expression> lastQueryBaseExpressions;
+
   // header of result dataset
   private DatasetHeader respDatasetHeader;
 
   // indicate whether the Nodes produce source data are VirtualSourceNodes
   private boolean isVirtualSource = false;
+
+  private ModelInferenceDescriptor modelInferenceDescriptor;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // SELECT INTO Analysis
@@ -268,13 +276,11 @@ public class Analysis {
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
-    // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
-    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), null);
+    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), timefilter);
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
-    // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
-    return dataPartition.getDataRegionReplicaSet(deviceName, null);
+    return dataPartition.getDataRegionReplicaSet(deviceName, globalTimeFilter);
   }
 
   public Statement getStatement() {
@@ -346,7 +352,7 @@ public class Analysis {
       return null;
     }
     TSDataType type = expressionTypes.get(NodeRef.of(expression));
-    checkArgument(type != null, "Expression not analyzed: %s", expression);
+    checkArgument(type != null, "Expression is not analyzed: %s", expression);
     return type;
   }
 
@@ -726,6 +732,31 @@ public class Analysis {
 
   public void setTimeseriesOrderingForLastQuery(Ordering timeseriesOrderingForLastQuery) {
     this.timeseriesOrderingForLastQuery = timeseriesOrderingForLastQuery;
+  }
+
+  public Set<Expression> getLastQueryBaseExpressions() {
+    return this.lastQueryBaseExpressions;
+  }
+
+  public void setLastQueryBaseExpressions(Set<Expression> lastQueryBaseExpressions) {
+    this.lastQueryBaseExpressions = lastQueryBaseExpressions;
+  }
+
+  public Map<Expression, List<Expression>> getLastQueryNonWritableViewSourceExpressionMap() {
+    return this.lastQueryNonWritableViewSourceExpressionMap;
+  }
+
+  public void setLastQueryNonWritableViewSourceExpressionMap(
+      Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap) {
+    this.lastQueryNonWritableViewSourceExpressionMap = lastQueryNonWritableViewSourceExpressionMap;
+  }
+
+  public ModelInferenceDescriptor getModelInferenceDescriptor() {
+    return modelInferenceDescriptor;
+  }
+
+  public void setModelInferenceDescriptor(ModelInferenceDescriptor modelInferenceDescriptor) {
+    this.modelInferenceDescriptor = modelInferenceDescriptor;
   }
 
   public Map<String, List<String>> getOutputDeviceToQueriedDevicesMap() {

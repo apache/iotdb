@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.async.AsyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.client.mlnode.MLNodeClient;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -275,6 +276,31 @@ public class ClientPoolFactory {
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
                   .setCoreClientNumForEachNode(conf.getPipeAsyncConnectorCoreClientNumber())
                   .setMaxClientNumForEachNode(conf.getPipeAsyncConnectorMaxClientNumber())
+                  .build()
+                  .getConfig());
+      ClientManagerMetrics.getInstance()
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
+      return clientPool;
+    }
+  }
+
+  public static class MLNodeClientPoolFactory
+      implements IClientPoolFactory<TEndPoint, MLNodeClient> {
+
+    @Override
+    public KeyedObjectPool<TEndPoint, MLNodeClient> createClientPool(
+        ClientManager<TEndPoint, MLNodeClient> manager) {
+      GenericKeyedObjectPool<TEndPoint, MLNodeClient> clientPool =
+          new GenericKeyedObjectPool<>(
+              new MLNodeClient.Factory(
+                  manager,
+                  new ThriftClientProperty.Builder()
+                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                      .setRpcThriftCompressionEnabled(true)
+                      .build()),
+              new ClientPoolProperty.Builder<MLNodeClient>()
+                  .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
+                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()

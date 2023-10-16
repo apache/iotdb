@@ -19,13 +19,28 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
@@ -37,9 +52,13 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -50,12 +69,15 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -69,6 +91,9 @@ public class LoadTsfileAnalyzer {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsfileAnalyzer.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
+      ConfigNodeClientManager.getInstance();
 
   private final LoadTsFileStatement loadTsFileStatement;
   private final MPPQueryContext context;
@@ -102,10 +127,12 @@ public class LoadTsfileAnalyzer {
         if (LOGGER.isWarnEnabled()) {
           LOGGER.warn(String.format("TsFile %s is empty.", tsFile.getPath()));
         }
-        throw new SemanticException(
-            String.format(
-                "TsFile %s is empty, please check it be flushed to disk correctly.",
-                tsFile.getPath()));
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+        }
+        continue;
       }
 
       try {
@@ -122,10 +149,16 @@ public class LoadTsfileAnalyzer {
             e);
         throw new SemanticException(
             String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
+      } catch (AuthException e) {
+        Analysis analysis = new Analysis();
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
+        return analysis;
       } catch (Exception e) {
         LOGGER.warn(String.format("Parse file %s to resource error.", tsFile.getPath()), e);
         throw new SemanticException(
-            String.format("Parse file %s to resource error", tsFile.getPath()));
+            String.format(
+                "Parse file %s to resource error, because %s", tsFile.getPath(), e.getMessage()));
       }
     }
 
@@ -138,7 +171,7 @@ public class LoadTsfileAnalyzer {
     return analysis;
   }
 
-  private void analyzeSingleTsFile(File tsFile) throws IOException {
+  private void analyzeSingleTsFile(File tsFile) throws IOException, AuthException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // can be reused when constructing tsfile resource
       Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata = null;
@@ -171,6 +204,7 @@ public class LoadTsfileAnalyzer {
       } else {
         tsFileResource.deserialize();
       }
+      TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
       loadTsFileStatement.addTsFileResource(tsFileResource);
     }
@@ -241,29 +275,57 @@ public class LoadTsfileAnalyzer {
   private final class SchemaAutoCreatorAndVerifier {
 
     private final Map<String, Boolean> tsfileDevice2IsAligned = new HashMap<>();
-    private final Set<PartialPath> alreadySetDatabases = new HashSet<>();
 
     private final int maxTimeseriesNumberPerBatch = CONFIG.getMaxLoadingTimeseriesNumber();
     private final Map<String, Set<MeasurementSchema>> currentBatchDevice2TimeseriesSchemas =
         new HashMap<>();
     private int currentBatchTimeseriesCount = 0;
 
+    private final Set<PartialPath> alreadySetDatabases = new HashSet<>();
+
     private SchemaAutoCreatorAndVerifier() {}
 
     public void autoCreateAndVerify(
-        TsFileSequenceReader reader, TimeSeriesIterator timeSeriesIterator) throws IOException {
+        TsFileSequenceReader reader, TimeSeriesIterator timeSeriesIterator)
+        throws IOException, AuthException {
       while (currentBatchTimeseriesCount < maxTimeseriesNumberPerBatch
           && timeSeriesIterator.hasNext()) {
         final Pair<String, TimeseriesMetadata> pair = timeSeriesIterator.next();
         final String device = pair.left;
         final TimeseriesMetadata timeseriesMetadata = pair.right;
-
         final TSDataType dataType = timeseriesMetadata.getTsDataType();
         if (dataType.equals(TSDataType.VECTOR)) {
           tsfileDevice2IsAligned.put(device, true);
 
           // not a timeseries, skip ++currentBatchTimeseriesCount
         } else {
+          // check WRITE_DATA permission of timeseries
+          long startTime = System.nanoTime();
+          try {
+            String userName = context.getSession().getUserName();
+            if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+              TSStatus status;
+              try {
+                List<PartialPath> paths =
+                    Collections.singletonList(
+                        new PartialPath(device, timeseriesMetadata.getMeasurementId()));
+                status =
+                    AuthorityChecker.getTSStatus(
+                        AuthorityChecker.checkFullPathListPermission(
+                            userName, paths, PrivilegeType.WRITE_DATA.ordinal()),
+                        paths,
+                        PrivilegeType.WRITE_DATA);
+              } catch (IllegalPathException e) {
+                throw new RuntimeException(e);
+              }
+              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                throw new AuthException(
+                    TSStatusCode.representOf(status.getCode()), status.getMessage());
+              }
+            }
+          } finally {
+            PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
+          }
           final Pair<CompressionType, TSEncoding> compressionEncodingPair =
               reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
           currentBatchDevice2TimeseriesSchemas
@@ -355,7 +417,7 @@ public class LoadTsfileAnalyzer {
     private void autoCreateDatabase()
         throws VerifyMetadataException, LoadFileException, IllegalPathException {
       final int databasePrefixNodesLength = loadTsFileStatement.getDatabaseLevel() + 1;
-      final Set<PartialPath> databaseSet = new HashSet<>();
+      final Set<PartialPath> databasesNeededToBeSet = new HashSet<>();
 
       for (final String device : currentBatchDevice2TimeseriesSchemas.keySet()) {
         final PartialPath devicePath = new PartialPath(device);
@@ -371,22 +433,53 @@ public class LoadTsfileAnalyzer {
         final String[] databasePrefixNodes = new String[databasePrefixNodesLength];
         System.arraycopy(devicePrefixNodes, 0, databasePrefixNodes, 0, databasePrefixNodesLength);
 
-        databaseSet.add(new PartialPath(databasePrefixNodes));
+        databasesNeededToBeSet.add(new PartialPath(databasePrefixNodes));
       }
 
-      databaseSet.removeAll(alreadySetDatabases);
-      for (final PartialPath databasePath : databaseSet) {
+      // 1. filter out the databases that already exist
+      if (alreadySetDatabases.isEmpty()) {
+        try (final ConfigNodeClient configNodeClient =
+            CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+          final TGetDatabaseReq req =
+              new TGetDatabaseReq(
+                  Arrays.asList(
+                      new ShowDatabaseStatement(new PartialPath(SqlConstant.getSingleRootArray()))
+                          .getPathPattern()
+                          .getNodes()),
+                  SchemaConstant.ALL_MATCH_SCOPE.serialize());
+          final TShowDatabaseResp resp = configNodeClient.showDatabase(req);
+
+          for (final String databaseName : resp.getDatabaseInfoMap().keySet()) {
+            alreadySetDatabases.add(new PartialPath(databaseName));
+          }
+        } catch (IOException | TException | ClientManagerException e) {
+          throw new LoadFileException(e);
+        }
+      }
+      databasesNeededToBeSet.removeAll(alreadySetDatabases);
+
+      // 2. create the databases that do not exist
+      for (final PartialPath databasePath : databasesNeededToBeSet) {
         final DatabaseSchemaStatement statement =
             new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
         statement.setDatabasePath(databasePath);
         // do not print exception log because it is not an error
         statement.setEnablePrintExceptionLog(false);
         executeSetDatabaseStatement(statement);
+
+        alreadySetDatabases.add(databasePath);
       }
-      alreadySetDatabases.addAll(databaseSet);
     }
 
     private void executeSetDatabaseStatement(Statement statement) throws LoadFileException {
+      // 1.check Authority
+      TSStatus status =
+          AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+      }
+
+      // 2.execute setDatabase statement
       final long queryId = SessionManager.getInstance().requestQueryId();
       final ExecutionResult result =
           Coordinator.getInstance()
@@ -525,9 +618,10 @@ public class LoadTsfileAnalyzer {
           }
 
           // check compressor
-          if (!tsFileSchema.getCompressor().equals(iotdbSchema.getCompressor())) {
+          if (LOGGER.isDebugEnabled()
+              && !tsFileSchema.getCompressor().equals(iotdbSchema.getCompressor())) {
             // we allow a measurement to have different compressors in different chunks
-            LOGGER.warn(
+            LOGGER.debug(
                 "Compressor not match, measurement: {}{}{}, "
                     + "TsFile compressor: {}, IoTDB compressor: {}",
                 device,

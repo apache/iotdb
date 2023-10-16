@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBLegacyPipeCon
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftSyncConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.OpcUaConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.WebSocketConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
@@ -45,6 +46,7 @@ public enum BuiltinPipePlugin {
   IOTDB_LEGACY_PIPE_CONNECTOR("iotdb-legacy-pipe-connector", IoTDBLegacyPipeConnector.class),
   IOTDB_AIR_GAP_CONNECTOR("iotdb-air-gap-connector", IoTDBAirGapConnector.class),
   WEBSOCKET_CONNECTOR("websocket-connector", WebSocketConnector.class),
+  OPC_UA_CONNECTOR("opc-ua-connector", OpcUaConnector.class),
   ;
 
   private final String pipePluginName;

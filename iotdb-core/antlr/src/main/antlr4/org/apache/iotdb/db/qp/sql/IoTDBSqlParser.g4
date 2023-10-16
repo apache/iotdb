@@ -62,7 +62,7 @@ ddlStatement
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion
     // ML Model
-    | createModel | dropModel | showModels | showTrails
+    | createModel | dropModel | showModels | showTrials
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
@@ -585,11 +585,28 @@ showPipePlugins
 // ML Model =========================================================================================
 // ---- Create Model
 createModel
-    : CREATE AUTO? MODEL modelId=identifier
-        WITH attributePair (COMMA attributePair)*
-        BEGIN
-            selectStatement
-        END
+    : CREATE MODEL modelId=identifier
+        OPTIONS LR_BRACKET attributePair (COMMA attributePair)* RR_BRACKET
+        (WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET)?
+        ON DATASET LR_BRACKET selectStatement RR_BRACKET
+    ;
+
+hparamPair
+    : hparamKey=attributeKey operator_eq hparamValue
+    ;
+
+hparamValue
+    : attributeValue
+    | hparamRange
+    | hparamCandidates
+    ;
+
+hparamRange
+    : LR_BRACKET hparamRangeStart=attributeValue COMMA hparamRangeEnd=attributeValue RR_BRACKET
+    ;
+
+hparamCandidates
+    : LS_BRACKET attributeValue (COMMA attributeValue)* RS_BRACKET
     ;
 
 // ---- Drop Model
@@ -602,9 +619,9 @@ showModels
     : SHOW MODELS
     ;
 
-// ---- Show Trails
-showTrails
-    : SHOW TRAILS modelId=identifier
+// ---- Show Trials
+showTrials
+    : SHOW TRIALS modelId=identifier
     ;
 
 // Create Logical View
@@ -846,32 +863,37 @@ alterUser
 
 // Grant User Privileges
 grantUser
-    : GRANT USER userName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
+    : GRANT privileges ON prefixPath (COMMA prefixPath)* TO USER userName=identifier (grantOpt)?
     ;
 
 // Grant Role Privileges
 grantRole
-    : GRANT ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
+    : GRANT privileges ON prefixPath (COMMA prefixPath)* TO ROLE roleName=identifier (grantOpt)?
+    ;
+
+// Grant Option
+grantOpt
+    : WITH GRANT OPTION
     ;
 
 // Grant User Role
 grantRoleToUser
-    : GRANT roleName=identifier TO userName=identifier
+    : GRANT ROLE roleName=identifier TO userName=identifier
     ;
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE USER userName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
+    : REVOKE privileges ON prefixPath (COMMA prefixPath)* FROM USER userName=identifier
     ;
 
 // Revoke Role Privileges
 revokeRole
-    : REVOKE ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
+    : REVOKE privileges ON prefixPath (COMMA prefixPath)* FROM ROLE roleName=identifier
     ;
 
 // Revoke Role From User
 revokeRoleFromUser
-    : REVOKE roleName=identifier FROM userName=identifier
+    : REVOKE ROLE roleName=identifier FROM userName=identifier
     ;
 
 // Drop User
@@ -894,14 +916,14 @@ listRole
     : LIST ROLE (OF USER userName=usernameWithRoot)?
     ;
 
-// List Privileges of Users On Specific Path
+// List Privileges of Users
 listPrivilegesUser
-    : LIST PRIVILEGES USER userName=usernameWithRoot (ON prefixPath (COMMA prefixPath)*)?
+    : LIST PRIVILEGES OF USER userName=usernameWithRoot
     ;
 
-// List Privileges of Roles On Specific Path
+// List Privileges of Roles
 listPrivilegesRole
-    : LIST PRIVILEGES ROLE roleName=identifier (ON prefixPath (COMMA prefixPath)*)?
+    : LIST PRIVILEGES OF ROLE roleName=identifier
     ;
 
 privileges

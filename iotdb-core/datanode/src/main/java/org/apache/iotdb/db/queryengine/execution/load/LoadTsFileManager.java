@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -47,8 +45,10 @@ import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -220,7 +220,8 @@ public class LoadTsFileManager {
 
     // method is synchronized because the chunks in a chunk group may be sent in parallel
     @SuppressWarnings("squid:S3824")
-    private synchronized void write(DataPartitionInfo partitionInfo, ChunkData chunkData) throws IOException {
+    private synchronized void write(DataPartitionInfo partitionInfo, ChunkData chunkData)
+        throws IOException {
       // ensure that retransmission will not result in writing duplicated data
       if (receivedSplitIds.contains(chunkData.getSplitId())) {
         return;

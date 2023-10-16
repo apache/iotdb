@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
-import java.util.ArrayDeque;
-import java.util.Queue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -37,7 +33,6 @@ import org.apache.iotdb.db.queryengine.execution.load.locseq.LocationSequencer;
 import org.apache.iotdb.db.queryengine.execution.load.locseq.LocationStatistics;
 import org.apache.iotdb.db.queryengine.execution.load.locseq.ThroughputBasedLocationSequencer;
 import org.apache.iotdb.db.queryengine.execution.load.nodesplit.ClusteringMeasurementSplitter;
-import org.apache.iotdb.db.queryengine.execution.load.nodesplit.OrderedMeasurementSplitter;
 import org.apache.iotdb.db.queryengine.execution.load.nodesplit.PieceNodeSplitter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
@@ -57,14 +52,18 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -94,12 +93,13 @@ public class TsFileSplitSender {
   private Map<TRegionReplicaSet, Exception> phaseTwoFailures = new HashMap<>();
   private long maxSplitSize;
   private PieceNodeSplitter pieceNodeSplitter = new ClusteringMeasurementSplitter(1.0, 10);
-//        private PieceNodeSplitter pieceNodeSplitter = new OrderedMeasurementSplitter();
+  //        private PieceNodeSplitter pieceNodeSplitter = new OrderedMeasurementSplitter();
   private CompressionType compressionType = CompressionType.LZ4;
   private Statistic statistic = new Statistic();
   private ExecutorService splitNodeService;
   private Queue<Pair<Future<List<LoadTsFilePieceNode>>, TRegionReplicaSet>> splitFutures;
   private int maxConcurrentFileNum;
+  private String userName;
 
   public TsFileSplitSender(
       LoadTsFileNode loadTsFileNode,
@@ -108,7 +108,8 @@ public class TsFileSplitSender {
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
       boolean isGeneratedByPipe,
       long maxSplitSize,
-      int maxConcurrentFileNum) {
+      int maxConcurrentFileNum,
+      String userName) {
     this.loadTsFileNode = loadTsFileNode;
     this.targetPartitionFetcher = targetPartitionFetcher;
     this.targetPartitionInterval = targetPartitionInterval;
@@ -118,6 +119,7 @@ public class TsFileSplitSender {
     this.splitNodeService = IoTDBThreadPoolFactory.newCachedThreadPool("SplitLoadTsFilePieceNode");
     this.splitFutures = new ArrayDeque<>(MAX_PENDING_PIECE_NODE);
     this.maxConcurrentFileNum = maxConcurrentFileNum;
+    this.userName = userName;
   }
 
   public void start() throws IOException {
@@ -146,7 +148,8 @@ public class TsFileSplitSender {
             node.getPlanNodeId(),
             node.lastResource().getTsFile(),
             targetPartitionFetcher,
-            maxSplitSize);
+            maxSplitSize,
+            userName);
 
     ExecutorService executorService =
         IoTDBThreadPoolFactory.newThreadPool(
@@ -169,8 +172,10 @@ public class TsFileSplitSender {
     splitter.splitTsFileByDataPartition();
     splitter.close();
     logger.info("Split ends after {}ms", System.currentTimeMillis() - start);
-    boolean success = tsFileDataManager.sendAllTsFileData() && processRemainingPieceNodes()
-        && phaseOneFailures.isEmpty();
+    boolean success =
+        tsFileDataManager.sendAllTsFileData()
+            && processRemainingPieceNodes()
+            && phaseOneFailures.isEmpty();
     logger.info("Cleanup ends after {}ms", System.currentTimeMillis() - start);
     return success;
   }
@@ -242,8 +247,12 @@ public class TsFileSplitSender {
     ICompressor compressor = ICompressor.getCompressor(compressionType);
     int maxBytesForCompression = compressor.getMaxBytesForCompression(buffer.remaining()) + 1;
     ByteBuffer compressed = ByteBuffer.allocate(maxBytesForCompression);
-    int compressLength = compressor.compress(buffer.array(),
-        buffer.arrayOffset() + buffer.position(), buffer.remaining(), compressed.array());
+    int compressLength =
+        compressor.compress(
+            buffer.array(),
+            buffer.arrayOffset() + buffer.position(),
+            buffer.remaining(),
+            compressed.array());
     compressed.limit(compressLength);
     statistic.compressedSize.addAndGet(compressLength);
     return compressed;
@@ -269,8 +278,8 @@ public class TsFileSplitSender {
     return true;
   }
 
-  private boolean dispatchPieceNodes(List<LoadTsFilePieceNode> subNodes,
-      TRegionReplicaSet replicaSet) {
+  private boolean dispatchPieceNodes(
+      List<LoadTsFilePieceNode> subNodes, TRegionReplicaSet replicaSet) {
     AtomicLong minDispatchTime = new AtomicLong(Long.MAX_VALUE);
     AtomicLong maxDispatchTime = new AtomicLong(Long.MIN_VALUE);
     AtomicLong sumDispatchTime = new AtomicLong();
@@ -379,8 +388,11 @@ public class TsFileSplitSender {
     statistic.dispatchNodesTime.addAndGet(elapsedTime);
     logger.debug(
         "Dispatched one node after {}ms, min/maxDispatching time: {}/{}ns, avg: {}ns, sum: {}ns, compressing: {}ns",
-        elapsedTime / 1_000_000L, minDispatchTime.get(),
-        maxDispatchTime.get(), sumDispatchTime.get() / subNodes.size(), sumDispatchTime.get(),
+        elapsedTime / 1_000_000L,
+        minDispatchTime.get(),
+        maxDispatchTime.get(),
+        sumDispatchTime.get() / subNodes.size(),
+        sumDispatchTime.get(),
         sumCompressingTime.get());
     return !subNodeResults.contains(false);
   }
@@ -394,9 +406,7 @@ public class TsFileSplitSender {
       long elapsedTime = System.nanoTime() - start;
       statistic.splitTime.addAndGet(elapsedTime);
       statistic.pieceNodeNum.incrementAndGet();
-      logger.debug(
-          "{} splits are generated after {}ms", split.size(),
-          elapsedTime / 1_000_000L);
+      logger.debug("{} splits are generated after {}ms", split.size(), elapsedTime / 1_000_000L);
       boolean success = dispatchPieceNodes(split, replicaSet);
       statistic.dispatchNodeTime.addAndGet(System.nanoTime() - allStart);
       return success;
@@ -416,8 +426,7 @@ public class TsFileSplitSender {
         statistic.splitTime.addAndGet(elapsedTime);
         statistic.pieceNodeNum.incrementAndGet();
         logger.debug(
-            "{} splits are generated after {}ms", subNodes.size(),
-            elapsedTime / 1_000_000L);
+            "{} splits are generated after {}ms", subNodes.size(), elapsedTime / 1_000_000L);
 
         splitFutures.add(new Pair<>(submitSplitPieceNode(pieceNode), replicaSet));
       } catch (InterruptedException | ExecutionException e) {
@@ -447,7 +456,8 @@ public class TsFileSplitSender {
       logger.info(
           "Generated {} piece nodes, splitTime: {}, dispatchSplitsTime: {}, dispatchNodeTime: {}",
           pieceNodeNum.get(),
-          splitTime.get() / 1_000_000L, dispatchNodesTime.get() / 1_000_000L,
+          splitTime.get() / 1_000_000L,
+          dispatchNodesTime.get() / 1_000_000L,
           dispatchNodeTime.get() / 1_000_000L);
       logger.info(
           "Transmission size: {}/{} ({}), compressionTime: {}ms",
