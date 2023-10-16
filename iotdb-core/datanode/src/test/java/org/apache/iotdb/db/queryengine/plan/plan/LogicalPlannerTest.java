@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Cre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
@@ -828,6 +829,20 @@ public class LogicalPlannerTest {
     } catch (Exception e) {
       Assert.assertTrue(
           e.getMessage().contains("Output column is duplicated with the tag key: key1"));
+    }
+  }
+
+  @Test
+  public void testOrderByWithoutRedundantMergeSortOperator() {
+    String sql = "select * from root.sg.d1 order by time asc align by device";
+    try {
+      PlanNode root = parseSQLToPlanNode(sql);
+      if (!(root instanceof SingleDeviceViewNode)) {
+        fail();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
     }
   }
 

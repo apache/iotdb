@@ -117,6 +117,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -759,9 +760,7 @@ public class LogicalPlanBuilder {
 
     // order by time, device can be optimized by SingleDeviceViewNode and MergeSortNode
     if (queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression()) {
-      MergeSortNode mergeSortNode =
-          new MergeSortNode(
-              context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
+      List<PlanNode> mergeSortNodeList = new LinkedList<>();
       for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
         String deviceName = entry.getKey();
         PlanNode subPlan = entry.getValue();
@@ -772,9 +771,19 @@ public class LogicalPlanBuilder {
                 deviceName,
                 deviceToMeasurementIndexesMap.get(deviceName));
         singleDeviceViewNode.addChild(subPlan);
-        mergeSortNode.addChild(singleDeviceViewNode);
+        mergeSortNodeList.add(singleDeviceViewNode);
       }
-      this.root = mergeSortNode;
+      if (mergeSortNodeList.size() == 1) {
+        this.root = mergeSortNodeList.get(0);
+      } else {
+        MergeSortNode mergeSortNode =
+            new MergeSortNode(
+                context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
+        for (PlanNode planNode : mergeSortNodeList) {
+          mergeSortNode.addChild(planNode);
+        }
+        this.root = mergeSortNode;
+      }
     } else {
       DeviceViewNode deviceViewNode =
           new DeviceViewNode(
