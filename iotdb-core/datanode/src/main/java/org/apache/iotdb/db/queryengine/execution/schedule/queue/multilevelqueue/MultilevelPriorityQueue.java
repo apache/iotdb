@@ -83,6 +83,8 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     this.levelTimeMultiplier = levelTimeMultiplier;
   }
 
+  // region overridden functions
+
   /**
    * During periods of time when a level has no waiting splits, it will not accumulate scheduled
    * time and will fall behind relative to other levels.
@@ -117,6 +119,7 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     levelWaitingSplits[level].offer(task);
   }
 
+  @Override
   protected DriverTask pollFirst() {
     // Always choose tasks in the highestPriorityLevelQueue first.
     if (!highestPriorityLevelQueue.isEmpty()) {
@@ -139,6 +142,66 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
       return result;
     }
   }
+
+  @Override
+  protected DriverTask remove(DriverTask driverTask) {
+    checkArgument(driverTask != null, "driverTask is null");
+    if (highestPriorityLevelQueue.remove(driverTask)) {
+      return driverTask;
+    }
+    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
+      if (level.remove(driverTask)) {
+        return driverTask;
+      }
+    }
+    return null;
+  }
+
+  @Override
+  protected boolean isEmpty() {
+    if (!highestPriorityLevelQueue.isEmpty()) {
+      return false;
+    }
+    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
+      if (!level.isEmpty()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
+  protected boolean contains(DriverTask driverTask) {
+    if (highestPriorityLevelQueue.contains(driverTask)) {
+      return true;
+    }
+    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
+      if (level.contains(driverTask)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
+  protected DriverTask get(DriverTask driverTask) {
+    // We do not support get() for MultilevelPriorityQueue since it is inefficient and not
+    // necessary.
+    throw new UnsupportedOperationException(
+        "MultilevelPriorityQueue does not support access element by get.");
+  }
+
+  @Override
+  protected void clearAllElements() {
+    highestPriorityLevelQueue.clear();
+    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
+      level.clear();
+    }
+  }
+
+  // endregion
+
+  // region helper functions
 
   /**
    * We attempt to give each level a target amount of scheduled time, which is configurable using
@@ -171,55 +234,6 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     DriverTask result = levelWaitingSplits[selectedLevel].poll();
     checkState(result != null, "result driverTask cannot be null");
     return result;
-  }
-
-  @Override
-  protected DriverTask remove(DriverTask driverTask) {
-    checkArgument(driverTask != null, "driverTask is null");
-    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
-      if (level.remove(driverTask)) {
-        return driverTask;
-      }
-    }
-    return null;
-  }
-
-  @Override
-  protected boolean isEmpty() {
-    if (!highestPriorityLevelQueue.isEmpty()) {
-      return false;
-    }
-    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
-      if (!level.isEmpty()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  @Override
-  protected boolean contains(DriverTask driverTask) {
-    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
-      if (level.contains(driverTask)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  @Override
-  protected DriverTask get(DriverTask driverTask) {
-    // We do not support get() for MultilevelPriorityQueue since it is inefficient and not
-    // necessary.
-    throw new UnsupportedOperationException(
-        "MultilevelPriorityQueue does not support access element by get.");
-  }
-
-  @Override
-  protected void clearAllElements() {
-    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
-      level.clear();
-    }
   }
 
   /**
@@ -311,6 +325,8 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
 
     return LEVEL_THRESHOLD_SECONDS.length - 1;
   }
+
+  // endregion
 
   @TestOnly
   public PriorityQueue<DriverTask> getHighestPriorityLevelQueue() {
