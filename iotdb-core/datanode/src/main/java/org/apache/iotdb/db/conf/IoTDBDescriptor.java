@@ -1972,8 +1972,12 @@ public class IoTDBDescriptor {
   private void loadPipeProps(Properties properties) {
     conf.setPipeLibDir(properties.getProperty("pipe_lib_dir", conf.getPipeLibDir()));
 
-    conf.setPipeReceiverFileDir(
-        properties.getProperty("pipe_receiver_file_dir", conf.getPipeReceiverFileDir()));
+    conf.setPipeReceiverFileDirs(
+        properties
+            .getProperty(
+                "pipe_receiver_file_dirs", String.join(",", conf.getPipeReceiverFileDirs()))
+            .trim()
+            .split(","));
   }
 
   private void loadCQProps(Properties properties) {

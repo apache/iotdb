@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 
 /** PipeReceiverAgent is the entry point of all pipe receivers' logic. */
 public class PipeReceiverAgent {
@@ -58,10 +59,7 @@ public class PipeReceiverAgent {
     return legacyAgent;
   }
 
-  public void cleanPipeReceiverDir() {
-    final File receiverFileDir =
-        new File(IoTDBDescriptor.getInstance().getConfig().getPipeReceiverFileDir());
-
+  private static void cleanPipeReceiverDir(File receiverFileDir) {
     try {
       FileUtils.deleteDirectory(receiverFileDir);
       LOGGER.info("Clean pipe receiver dir {} successfully.", receiverFileDir);
@@ -75,5 +73,13 @@ public class PipeReceiverAgent {
     } catch (IOException e) {
       LOGGER.warn("Create pipe receiver dir {} failed.", receiverFileDir, e);
     }
+  }
+
+  public void cleanPipeReceiverDirs() {
+    String[] pipeReceiverFileDirs =
+        IoTDBDescriptor.getInstance().getConfig().getPipeReceiverFileDirs();
+    Arrays.stream(pipeReceiverFileDirs)
+        .map(File::new)
+        .forEach(PipeReceiverAgent::cleanPipeReceiverDir);
   }
 }
