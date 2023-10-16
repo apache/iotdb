@@ -830,6 +830,11 @@ struct TShowThrottleReq{
   1: optional string userName;
 }
 
+struct TGetPartitionParameterResp{
+  1: required i64 partitionInterval;
+  2: required i32 seriesPartitionSlotNum;
+}
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -1463,5 +1468,7 @@ service IConfigNodeRPCService {
 
   /** Get throttle quota information */
   TThrottleQuotaResp getThrottleQuota()
+
+  TGetPartitionParameterResp getPartitionParameter()
 }
 

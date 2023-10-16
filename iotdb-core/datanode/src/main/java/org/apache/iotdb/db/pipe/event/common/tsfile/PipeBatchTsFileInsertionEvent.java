@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -33,13 +28,20 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileBatchInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PipeBatchTsFileInsertionEvent extends EnrichedEvent implements
-    TsFileBatchInsertionEvent {
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+
+public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
+    implements TsFileBatchInsertionEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeBatchTsFileInsertionEvent.class);
 
@@ -122,6 +124,10 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent implements
     return tsFiles;
   }
 
+  public List<TsFileResource> getResources() {
+    return resources;
+  }
+
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override
@@ -165,9 +171,7 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent implements
       waitForTsFileClose();
       return resources.get(resources.size() - 1).getMaxProgressIndexAfterClose();
     } catch (InterruptedException e) {
-      LOGGER.warn(
-          String.format(
-              "Interrupted when waiting for closing TsFiles %s.", resources));
+      LOGGER.warn(String.format("Interrupted when waiting for closing TsFiles %s.", resources));
       Thread.currentThread().interrupt();
       return MinimumProgressIndex.INSTANCE;
     }
@@ -202,8 +206,7 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent implements
       close();
 
       final String errorMsg =
-          String.format(
-              "Interrupted when waiting for closing TsFiles %s.", resources);
+          String.format("Interrupted when waiting for closing TsFiles %s.", resources);
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
     } catch (IOException e) {
@@ -236,5 +239,25 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent implements
         + ", isClosed="
         + isClosed
         + '}';
+  }
+
+  public List<PipeTsFileInsertionEvent> toSingleFileEvents() {
+    List<PipeTsFileInsertionEvent> result = new ArrayList<>();
+    for (TsFileResource resource : resources) {
+      result.add(
+          new PipeTsFileInsertionEvent(
+              resource,
+              isGeneratedByPipe,
+              pipeTaskMeta,
+              getPattern(),
+              startTime,
+              endTime,
+              isTsFileResourceCoveredByTimeRange(resource)));
+    }
+    return result;
+  }
+
+  protected boolean isTsFileResourceCoveredByTimeRange(TsFileResource resource) {
+    return startTime <= resource.getFileStartTime() && endTime >= resource.getFileEndTime();
   }
 }

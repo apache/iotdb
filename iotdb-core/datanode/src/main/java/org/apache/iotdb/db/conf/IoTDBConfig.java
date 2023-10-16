@@ -29,6 +29,7 @@ import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
+import org.apache.iotdb.db.queryengine.plan.analyze.partition.ClusterPartitionFetcher;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionValidationLevel;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
@@ -933,10 +934,7 @@ public class IoTDBConfig {
    */
   private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
-  /**
-   * Cache size of partition cache in {@link
-   * org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher}
-   */
+  /** Cache size of partition cache in {@link ClusterPartitionFetcher} */
   private int partitionCacheSize = 1000;
 
   private int devicePathCacheSize = 500_000;

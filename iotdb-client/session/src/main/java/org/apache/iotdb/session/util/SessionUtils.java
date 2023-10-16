@@ -260,7 +260,7 @@ public class SessionUtils {
     return endPointsList;
   }
 
-  private static TEndPoint parseNodeUrl(String nodeUrl) {
+  public static TEndPoint parseNodeUrl(String nodeUrl) {
     TEndPoint endPoint = new TEndPoint();
     String[] split = nodeUrl.split(":");
     if (split.length != 2) {

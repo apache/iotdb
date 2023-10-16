@@ -23,7 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPartitionParameterResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
@@ -39,19 +42,29 @@ import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeBatchTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.queryengine.execution.load.DataPartitionBatchFetcher;
+import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitSender;
+import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.partition.ExternalPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileBatchInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
@@ -62,13 +75,24 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXTERNAL_CONFIG_NODES_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXTERNAL_USER_NAME_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXTERNAL_USER_NAME_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOCAL_SPLIT_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SPLIT_MAX_SIZE_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SPLIT_MAX_SIZE_KEY;
 
 public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
@@ -82,6 +106,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new AtomicReference<>();
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
       asyncPipeDataTransferClientManager;
+  private static final AtomicReference<IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>>
+      SYNC_DATA_NODE_CLIENT_MANAGER_HOLDER = new AtomicReference<>();
+  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+      syncDataNodeClientManager;
 
   private final IoTDBThriftSyncConnector retryConnector = new IoTDBThriftSyncConnector();
   private final PriorityBlockingQueue<Pair<Long, Event>> retryEventQueue =
@@ -94,6 +122,19 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
   private IoTDBThriftAsyncPipeTransferBatchReqBuilder tabletBatchBuilder;
 
+  // parameters for local split feature
+  // when enabled, TsFiles will be split in this node and sent to direct managers in another
+  // cluster,
+  // using an optimized procedure
+  private boolean useLocalSplit;
+  private List<TEndPoint> targetConfigNodes = new ArrayList<>();
+  private ThriftClientProperty thriftClientProperty = new ThriftClientProperty.Builder().build();
+  private int targetSeriesSlotNum;
+  private long targetPartitionInterval;
+  private int splitMaxSize;
+  private int maxConcurrentFileNum;
+  private String targetUserName;
+
   public IoTDBThriftAsyncConnector() {
     if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
       synchronized (IoTDBThriftAsyncConnector.class) {
@@ -102,10 +143,15 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
               new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
                   .createClientManager(
                       new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
+          SYNC_DATA_NODE_CLIENT_MANAGER_HOLDER.set(
+              new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+                  .createClientManager(
+                      new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory()));
         }
       }
     }
     asyncPipeDataTransferClientManager = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get();
+    syncDataNodeClientManager = SYNC_DATA_NODE_CLIENT_MANAGER_HOLDER.get();
   }
 
   @Override
@@ -121,8 +167,41 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     retryConnector.customize(parameters, configuration);
 
+    useLocalSplit = parameters.getBooleanOrDefault(CONNECTOR_LOCAL_SPLIT_ENABLE_KEY, false);
+
+    if (useLocalSplit) {
+      String configNodeUrls =
+          parameters.getStringOrDefault(CONNECTOR_EXTERNAL_CONFIG_NODES_KEY, "");
+      String[] urlSplits = configNodeUrls.split(",");
+      for (String urlSplit : urlSplits) {
+        targetConfigNodes.add(SessionUtils.parseNodeUrl(urlSplit));
+      }
+
+      queryTargetPartitionParameters();
+
+      splitMaxSize =
+          parameters.getIntOrDefault(
+              CONNECTOR_SPLIT_MAX_SIZE_KEY, CONNECTOR_SPLIT_MAX_SIZE_DEFAULT_VALUE);
+      maxConcurrentFileNum =
+          parameters.getIntOrDefault(
+              CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_KEY,
+              CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE);
+      targetUserName =
+          parameters.getStringOrDefault(
+              CONNECTOR_EXTERNAL_USER_NAME_KEY, CONNECTOR_EXTERNAL_USER_NAME_DEFAULT_VALUE);
+    }
+
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new IoTDBThriftAsyncPipeTransferBatchReqBuilder(parameters);
+    }
+  }
+
+  private void queryTargetPartitionParameters() throws TException {
+    try (ConfigNodeClient client =
+        new ConfigNodeClient(targetConfigNodes, thriftClientProperty, null)) {
+      TGetPartitionParameterResp partitionParameter = client.getPartitionParameter();
+      targetPartitionInterval = partitionParameter.partitionInterval;
+      targetSeriesSlotNum = partitionParameter.seriesPartitionSlotNum;
     }
   }
 
@@ -312,6 +391,74 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     pipeTsFileInsertionEvent.waitForTsFileClose();
     transfer(requestCommitId, pipeTransferTsFileInsertionEventHandler);
+  }
+
+  @Override
+  public void transfer(TsFileBatchInsertionEvent tsFileInsertionEvent) throws Exception {
+    transferQueuedEventsIfNecessary();
+    transferBatchedEventsIfNecessary();
+
+    if (!(tsFileInsertionEvent instanceof PipeBatchTsFileInsertionEvent)) {
+      LOGGER.warn(
+          "IoTDBThriftAsyncConnector only support PipeBatchTsFileInsertionEvent. Current event: {}.",
+          tsFileInsertionEvent);
+      return;
+    }
+
+    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
+      try {
+        for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+          transfer(event);
+        }
+      } finally {
+        tsFileInsertionEvent.close();
+      }
+      return;
+    }
+
+    final PipeBatchTsFileInsertionEvent pipeTsFileInsertionEvent =
+        (PipeBatchTsFileInsertionEvent) tsFileInsertionEvent;
+    pipeTsFileInsertionEvent.waitForTsFileClose();
+
+    if (!useLocalSplit) {
+      List<PipeTsFileInsertionEvent> pipeTsFileInsertionEvents =
+          pipeTsFileInsertionEvent.toSingleFileEvents();
+      for (PipeTsFileInsertionEvent fileInsertionEvent : pipeTsFileInsertionEvents) {
+        transfer(fileInsertionEvent);
+      }
+    } else {
+      final long requestCommitId = commitIdGenerator.incrementAndGet();
+      transfer(requestCommitId, pipeTsFileInsertionEvent);
+    }
+  }
+
+  private void transfer(
+      long requestCommitId, PipeBatchTsFileInsertionEvent pipeTsFileInsertionEvent)
+      throws IOException {
+    LoadTsFileNode loadTsFileNode =
+        new LoadTsFileNode(
+            new PlanNodeId("Pipe-" + requestCommitId), pipeTsFileInsertionEvent.getResources());
+
+    IPartitionFetcher partitionFetcher =
+        new ExternalPartitionFetcher(targetConfigNodes, thriftClientProperty, targetSeriesSlotNum);
+    DataPartitionBatchFetcher dataPartitionBatchFetcher =
+        new DataPartitionBatchFetcher(partitionFetcher);
+    TsFileSplitSender splitSender =
+        new TsFileSplitSender(
+            loadTsFileNode,
+            dataPartitionBatchFetcher,
+            targetPartitionInterval,
+            syncDataNodeClientManager,
+            false,
+            splitMaxSize,
+            maxConcurrentFileNum,
+            targetUserName);
+    splitSender.start();
+    LOGGER.info(
+        "Sending {} files to {} complete: {}",
+        pipeTsFileInsertionEvent.getTsFiles().size(),
+        targetConfigNodes,
+        splitSender.getStatistic());
   }
 
   private void transfer(

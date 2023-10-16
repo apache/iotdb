@@ -84,6 +84,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPartitionParameterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
@@ -284,7 +285,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public void close() {
-    clientManager.returnClient(configRegionId, this);
+    if (clientManager != null) {
+      clientManager.returnClient(configRegionId, this);
+    } else {
+      // clients not managed by ClientManages will be destroyed after being closed
+      invalidate();
+    }
   }
 
   @Override
@@ -294,7 +300,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public void invalidateAll() {
-    clientManager.clear(ConfigNodeInfo.CONFIG_REGION_ID);
+    if (clientManager != null) {
+      clientManager.clear(ConfigNodeInfo.CONFIG_REGION_ID);
+    }
   }
 
   @Override
@@ -1039,6 +1047,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TThrottleQuotaResp getThrottleQuota() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getThrottleQuota(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TGetPartitionParameterResp getPartitionParameter() throws TException {
+    return executeRemoteCallWithRetry(() -> client.getPartitionParameter(), resp -> true);
   }
 
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {

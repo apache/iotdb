@@ -18,15 +18,17 @@
  */
 package org.apache.iotdb.db.pipe.extractor.historical;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeBatchTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.Event;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Similar to the base class, but it batches several files as an event to enable further
@@ -56,16 +58,17 @@ public class BatchedTsFileExtractor extends PipeHistoricalDataRegionTsFileExtrac
       tsFileResourceList.add(resource);
     }
 
-    final PipeBatchTsFileInsertionEvent event = new PipeBatchTsFileInsertionEvent(
-        tsFileResourceList,
-        false,
-        pipeTaskMeta,
-        pattern,
-        historicalDataExtractionStartTime,
-        historicalDataExtractionEndTime,
-        !(isTsFileResourceCoveredByTimeRange(tsFileResourceList.get(0))
-            && isTsFileResourceCoveredByTimeRange(
-            tsFileResourceList.get(tsFileResourceList.size() - 1))));
+    final PipeBatchTsFileInsertionEvent event =
+        new PipeBatchTsFileInsertionEvent(
+            tsFileResourceList,
+            false,
+            pipeTaskMeta,
+            pattern,
+            historicalDataExtractionStartTime,
+            historicalDataExtractionEndTime,
+            !(isTsFileResourceCoveredByTimeRange(tsFileResourceList.get(0))
+                && isTsFileResourceCoveredByTimeRange(
+                    tsFileResourceList.get(tsFileResourceList.size() - 1))));
 
     event.increaseReferenceCount(BatchedTsFileExtractor.class.getName());
 
@@ -81,5 +84,4 @@ public class BatchedTsFileExtractor extends PipeHistoricalDataRegionTsFileExtrac
 
     return event;
   }
-
 }

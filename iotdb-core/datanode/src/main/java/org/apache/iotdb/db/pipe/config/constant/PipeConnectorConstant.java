@@ -70,6 +70,17 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY = "connector.opcua.https.port";
   public static final int CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE = 8443;
 
+  public static final String CONNECTOR_LOCAL_SPLIT_ENABLE_KEY = "connector.local-split.enable";
+  public static final String CONNECTOR_EXTERNAL_CONFIG_NODES_KEY =
+      "connector.external.config-nodes";
+  public static final String CONNECTOR_SPLIT_MAX_SIZE_KEY = "connector.split.max-size";
+  public static final int CONNECTOR_SPLIT_MAX_SIZE_DEFAULT_VALUE = 64 * 1024 * 1024;
+  public static final String CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_KEY =
+      "connector.split.max-concurrent-file";
+  public static final int CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE = 16;
+  public static final String CONNECTOR_EXTERNAL_USER_NAME_KEY = "connector.external.user-name";
+  public static final String CONNECTOR_EXTERNAL_USER_NAME_DEFAULT_VALUE = "root";
+
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
   }

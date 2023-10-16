@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -43,13 +35,23 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+
 public class TsFileListInsertionDataContainer implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(
-      TsFileListInsertionDataContainer.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(TsFileListInsertionDataContainer.class);
 
   private final String pattern; // used to filter data
   private final IExpression timeFilterExpression; // used to filter data
@@ -65,9 +67,8 @@ public class TsFileListInsertionDataContainer implements AutoCloseable {
   private final List<Map<String, Boolean>> deviceIsAlignedMaps;
   private final List<Map<String, TSDataType>> measurementDataTypeMaps;
 
-  public TsFileListInsertionDataContainer(List<File> tsFiles, String pattern, long startTime,
-      long endTime)
-      throws IOException {
+  public TsFileListInsertionDataContainer(
+      List<File> tsFiles, String pattern, long startTime, long endTime) throws IOException {
     this(tsFiles, pattern, startTime, endTime, null, null);
   }
 
@@ -94,8 +95,8 @@ public class TsFileListInsertionDataContainer implements AutoCloseable {
       tsFileSequenceReaders = new ArrayList<>();
       tsFileReaders = new ArrayList<>();
       for (File tsFile : tsFiles) {
-        TsFileSequenceReader tsFileSequenceReader = new TsFileSequenceReader(
-            tsFile.getAbsolutePath(), true, true);
+        TsFileSequenceReader tsFileSequenceReader =
+            new TsFileSequenceReader(tsFile.getAbsolutePath(), true, true);
         tsFileSequenceReaders.add(tsFileSequenceReader);
         tsFileReaders.add(new TsFileReader(tsFileSequenceReader));
       }
@@ -167,9 +168,7 @@ public class TsFileListInsertionDataContainer implements AutoCloseable {
     return deviceIsAlignedResultMap;
   }
 
-  /**
-   * @return TabletInsertionEvent in a streaming way
-   */
+  /** @return TabletInsertionEvent in a streaming way */
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
     return () ->
         new Iterator<TabletInsertionEvent>() {
@@ -189,8 +188,8 @@ public class TsFileListInsertionDataContainer implements AutoCloseable {
                 }
               }
 
-              final Map.Entry<String, List<String>> entry = deviceMeasurementsMapIterators.get(
-                  currFileIndex).next();
+              final Map.Entry<String, List<String>> entry =
+                  deviceMeasurementsMapIterators.get(currFileIndex).next();
 
               try {
                 tabletIterator =
@@ -217,8 +216,8 @@ public class TsFileListInsertionDataContainer implements AutoCloseable {
             }
 
             final Tablet tablet = tabletIterator.next();
-            final boolean isAligned = deviceIsAlignedMaps.get(currFileIndex)
-                .getOrDefault(tablet.deviceId, false);
+            final boolean isAligned =
+                deviceIsAlignedMaps.get(currFileIndex).getOrDefault(tablet.deviceId, false);
 
             final TabletInsertionEvent next;
             if (!hasNext()) {
