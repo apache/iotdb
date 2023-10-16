@@ -392,6 +392,28 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   }
 
   @Test
+  public void orderByTimeExpressionTest1() {
+    orderByTimeExpressionTest1(
+        "SELECT * FROM root.weather.** ORDER BY TIME DESC, precipitation DESC ALIGN BY DEVICE",
+        numOfPointsInDevice * places.length);
+
+    orderByTimeExpressionTest1(
+        "SELECT * FROM root.weather.** ORDER BY TIME DESC, precipitation DESC LIMIT 100 ALIGN BY DEVICE",
+        100);
+  }
+
+  @Test
+  public void orderExpressionTest1() {
+    orderByExpressionTest1(
+        "SELECT * FROM root.weather.** ORDER BY precipitation DESC, time DESC ALIGN BY DEVICE",
+        numOfPointsInDevice * places.length);
+
+    orderByExpressionTest1(
+        "SELECT * FROM root.weather.** ORDER BY precipitation DESC, time DESC LIMIT 100 ALIGN BY DEVICE",
+        100);
+  }
+
+  @Test
   public void orderByDeviceTimeTest1() {
     orderByDeviceTimeTest1(
         "SELECT * FROM root.weather.** ORDER BY DEVICE ASC,TIME DESC ALIGN BY DEVICE", 10);
@@ -570,6 +592,83 @@ public class IoTDBOrderByWithAlignByDeviceIT {
           assertTrue(
               startTemperature + actualDevice.hashCode() + actualTimeStamp - actualTemperature
                   < 0.00001);
+          total++;
+        }
+        assertEquals(count, total);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void orderByTimeExpressionTest1(String sql, int count) {
+    int total = 0;
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, "Time,Device,precipitation,temperature");
+        long lastTimeStamp = Long.MAX_VALUE;
+        long lastPrecipitation = Long.MAX_VALUE;
+        String lastDevice = "";
+        while (resultSet.next()) {
+          long actualTimeStamp = resultSet.getLong(1);
+          assertTrue(actualTimeStamp <= lastTimeStamp);
+          String actualDevice = resultSet.getString(2);
+
+          long actualPrecipitation = resultSet.getLong(3);
+          double actualTemperature = resultSet.getDouble(4);
+          assertEquals(
+              startPrecipitation + actualDevice.hashCode() + actualTimeStamp, actualPrecipitation);
+          assertTrue(
+              startTemperature + actualDevice.hashCode() + actualTimeStamp - actualTemperature
+                  < 0.00001);
+          if (actualDevice.equals(lastDevice) && actualTimeStamp == lastTimeStamp) {
+            assertTrue(actualPrecipitation <= lastPrecipitation);
+            lastPrecipitation = actualPrecipitation;
+          }
+          lastDevice = actualDevice;
+          lastTimeStamp = actualTimeStamp;
+          total++;
+        }
+        assertEquals(count, total);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void orderByExpressionTest1(String sql, int count) {
+    int total = 0;
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, "Time,Device,precipitation,temperature");
+        long lastTimeStamp = Long.MAX_VALUE;
+        long lastPrecipitation = Long.MAX_VALUE;
+        String lastDevice = "";
+        while (resultSet.next()) {
+          long actualTimeStamp = resultSet.getLong(1);
+          String actualDevice = resultSet.getString(2);
+          long actualPrecipitation = resultSet.getLong(3);
+          double actualTemperature = resultSet.getDouble(4);
+          assertEquals(
+              startPrecipitation + actualDevice.hashCode() + actualTimeStamp, actualPrecipitation);
+          assertTrue(
+              startTemperature + actualDevice.hashCode() + actualTimeStamp - actualTemperature
+                  < 0.00001);
+          assertTrue(actualPrecipitation <= lastPrecipitation);
+          if (actualPrecipitation == lastPrecipitation) {
+            assertTrue(actualTimeStamp <= lastTimeStamp);
+          }
+          lastPrecipitation = actualPrecipitation;
+          lastDevice = actualDevice;
+          lastTimeStamp = actualTimeStamp;
           total++;
         }
         assertEquals(count, total);
