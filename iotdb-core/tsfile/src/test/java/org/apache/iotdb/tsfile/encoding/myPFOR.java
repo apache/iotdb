@@ -60,7 +60,7 @@ public class myPFOR {
 
     public static int decompressOneBlock(int[] outBlock, final int[] inBlock,
                                          int blockSize) {
-        int[] expAux = new int[blockSize]; //分配空间,最多blockSize个异常值
+        int[] expAux = new int[blockSize];
 
         int expNum = inBlock[1];
         int bits = inBlock[0];
@@ -72,13 +72,13 @@ public class myPFOR {
         if (bits == 0) {
             Arrays.fill(outBlock, 0);
         } else {
-            //解码bits * blocksize的部分
+
             compressedBits = decompressBBitSlots(outBlock, inBlock,
                     blockSize, bits);
         }
         offset += compressedBits;
 
-        // 解码异常值部分
+
         if (expNum > 0) {
             compressedBits = decompressBlockByS16(expAux, inBlock,
                     offset, expNum);
@@ -88,13 +88,13 @@ public class myPFOR {
             int shift;
             for (int i = 0; i < expNum; i++) {
                 int exp_value = expAux[i];
-                shift = outBlock[exp_index];//目前位置是偏移量
+                shift = outBlock[exp_index];
                 outBlock[exp_index] = exp_value;
                 exp_index += (shift + 1);
             }
 
         }
-        //加min
+
         for (int i = 0; i < blockSize; i++){
             outBlock[i] += min;
         }
@@ -122,15 +122,11 @@ public class myPFOR {
                                          int blockSize)  {
         int maxCompBitSize = HEADER_SIZE + blockSize
                 * (MAX_BITS + MAX_BITS + MAX_BITS) + 32;
-        //头部的Int存储b 异常值数量 第一个异常值的位置 HEADER_SIZE
-        //正常值最多blockSize * MAX_BITS， 异常值最多2 * blockSize * MAX_BITS
-        //向上取整 32
 
-        int[] tmpCompressedBlock = new int[(maxCompBitSize >>> 5)];//分配空间
+        int[] tmpCompressedBlock = new int[(maxCompBitSize >>> 5)];
 
-        int outputOffset = HEADER_SIZE;// 跳过头部
-        int expUpperBound = 1 << bits;// 异常值边界
-        //异常值计数，并记录一下异常值位置
+        int outputOffset = HEADER_SIZE;
+        int expUpperBound = 1 << bits;
         int expNum = 0;
         int expNum_more = 0;
         ArrayList<Integer> exp_index = new ArrayList<>();
@@ -145,15 +141,15 @@ public class myPFOR {
                 exp_index.add(i);
             }
         }
-        //b*blocksize部分 分类处理
+
         if (expNum == 0){
-            //System.out.println("无异常");
+
             for (int i = 0; i < blockSize; i++){
                 writeBits(tmpCompressedBlock, inputBlock[i], outputOffset, bits);
                 outputOffset += bits;
             }
         } else if (expNum == 1) {
-            //System.out.println("有1个异常");
+
             for (int i = 0; i < blockSize; i++){
                 if (i != exp_index.get(0)){
                     writeBits(tmpCompressedBlock, inputBlock[i], outputOffset, bits);
@@ -163,32 +159,29 @@ public class myPFOR {
                 outputOffset += bits;
             }
         }else {
-            //System.out.println("有多个异常");
-            //System.out.println(expNum);
-            //此时有两个或更多的异常值，需要编码位移量，同时还需要考虑加入的强制异常值，首先加入强制的异常值
+
             exp_index_more.add(exp_index.get(0));
             exp_value_more.add(exp_value.get(0));
             expNum_more++;
             for (int i = 0; i < expNum - 1; i++){
                 if (exp_index.get(i + 1) - exp_index.get(i) <= (1 << bits)){
-                    //此时能正常编码位移量
+
                     exp_index_more.add(exp_index.get(i + 1));
                     exp_value_more.add(exp_value.get(i + 1));
                     expNum_more++;
                     shift.add(exp_index.get(i + 1) - exp_index.get(i) - 1);
                 }else {
-//                    System.out.println("强制异常");
-                    //不够表达，需要加入强制异常值
+
                     int tag = exp_index.get(i);
                     while (exp_index.get(i + 1) - tag > (1 << bits)){
-                        //增添强制异常值
+
                         tag += (1 << bits);
                         expNum_more++;
                         exp_index_more.add(tag);
                         exp_value_more.add(inputBlock[tag]);
                         shift.add((1 << bits) - 1);
                     }
-                    //最后加上i + 1处的原异常值
+
                     exp_index_more.add(exp_index.get(i + 1));
                     exp_value_more.add(exp_value.get(i + 1));
                     expNum_more++;
@@ -196,22 +189,21 @@ public class myPFOR {
                 }
             }
             shift.add(0);
-            //加完了异常值，再来编码
-            int j = 0;//记录异常值标号
+
+            int j = 0;
             for (int i = 0; i < blockSize; i++){
                 if (j < expNum_more && exp_index_more.get(j) == i){
-                    //编码shift值
+
                     writeBits(tmpCompressedBlock, shift.get(j), outputOffset, bits);
                     j++;
                 }else {
-                    //编码正常值
+
                     writeBits(tmpCompressedBlock, inputBlock[i], outputOffset, bits);
                 }
                 outputOffset += bits;
             }
         }
 
-        // bits expNum(_more) index_of_first_exp
         tmpCompressedBlock[0] = bits;
         tmpCompressedBlock[1] = expNum;
         if (tmpCompressedBlock[1] > 1){
@@ -224,7 +216,6 @@ public class myPFOR {
         }
         tmpCompressedBlock[3] = min;
 
-        // 编码异常值
         if (expNum == 1){
             int[] expAux = new int[1];
             expAux[0] = exp_value.get(0);
@@ -234,7 +225,7 @@ public class myPFOR {
             outputOffset += compressedBitSize;
         }
         else if (expNum > 1) {
-            //Array转数组
+
             int[] expAux = new int[expNum_more];
             for (int i = 0; i < expNum_more; i++){
                 expAux[i] = exp_value_more.get(i);
@@ -245,7 +236,6 @@ public class myPFOR {
             outputOffset += compressedBitSize;
         }
 
-        // 剪掉多余的空间
         int compressedSizeInInts = (outputOffset + 31) >>> 5;
         int[] compBlock;
         compBlock = new int[compressedSizeInInts];
@@ -325,9 +315,8 @@ public class myPFOR {
         int[] timeSeries = new int[length];
         Random rand = new Random();
 
-        // 生成随机整数序列
         for (int i = 0; i < length; i++) {
-            timeSeries[i] = rand.nextInt(width) - width/2; // 可以根据需要的范围进行调整
+            timeSeries[i] = rand.nextInt(width) - width/2;
         }
         int[] outBlock;
         outBlock = compressOneBlockOpt(timeSeries,length);
