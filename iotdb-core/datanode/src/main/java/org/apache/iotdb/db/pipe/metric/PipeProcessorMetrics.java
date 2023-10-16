@@ -91,7 +91,9 @@ public class PipeProcessorMetrics implements IMetricSet {
                 taskID));
         return;
       }
-      removeMetrics(taskID);
+      if (Objects.nonNull(metricService)) {
+        removeMetrics(taskID);
+      }
       processorMap.remove(taskID);
     }
   }

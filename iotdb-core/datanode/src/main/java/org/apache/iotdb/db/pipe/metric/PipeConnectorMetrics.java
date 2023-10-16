@@ -91,7 +91,9 @@ public class PipeConnectorMetrics implements IMetricSet {
                 taskID));
         return;
       }
-      removeMetrics(taskID);
+      if (Objects.nonNull(metricService)) {
+        removeMetrics(taskID);
+      }
       connectorMap.remove(taskID);
     }
   }

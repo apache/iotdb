@@ -102,7 +102,9 @@ public class PipeAssignerMetrics implements IMetricSet {
                 dataRegionId));
         return;
       }
-      removeMetrics(dataRegionId);
+      if (Objects.nonNull(metricService)) {
+        removeMetrics(dataRegionId);
+      }
       assignerMap.remove(dataRegionId);
     }
   }
