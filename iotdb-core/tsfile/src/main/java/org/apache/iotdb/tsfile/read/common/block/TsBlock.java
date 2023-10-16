@@ -509,28 +509,44 @@ public class TsBlock {
     return columns[0].getPositionCount();
   }
 
-  public void update(int updateIdx, TsBlock tsBlock, int index) {
-    timeColumn.getTimes()[updateIdx] = tsBlock.getTimeByIndex(index);
+  public void update(int updateIdx, TsBlock sourceTsBlock, int sourceIndex) {
+    timeColumn.getTimes()[updateIdx] = sourceTsBlock.getTimeByIndex(sourceIndex);
     for (int i = 0; i < getValueColumnCount(); i++) {
+      if (sourceTsBlock.getValueColumns()[i].isNull(sourceIndex)) {
+        valueColumns[i].isNull()[updateIdx] = true;
+        continue;
+      }
       switch (valueColumns[i].getDataType()) {
         case BOOLEAN:
-          valueColumns[i].getBooleans()[updateIdx] = tsBlock.getValueColumns()[i].getBoolean(index);
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getBooleans()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getBoolean(sourceIndex);
           break;
         case INT32:
-          valueColumns[i].getInts()[updateIdx] = tsBlock.getValueColumns()[i].getInt(index);
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getInts()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getInt(sourceIndex);
           break;
         case INT64:
         case VECTOR:
-          valueColumns[i].getLongs()[updateIdx] = tsBlock.getValueColumns()[i].getLong(index);
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getLongs()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getLong(sourceIndex);
           break;
         case FLOAT:
-          valueColumns[i].getFloats()[updateIdx] = tsBlock.getValueColumns()[i].getFloat(index);
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getFloats()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getFloat(sourceIndex);
           break;
         case DOUBLE:
-          valueColumns[i].getDoubles()[updateIdx] = tsBlock.getValueColumns()[i].getDouble(index);
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getDoubles()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getDouble(sourceIndex);
           break;
         case TEXT:
-          valueColumns[i].getBinaries()[updateIdx] = tsBlock.getValueColumns()[i].getBinary(index);
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getBinaries()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getBinary(sourceIndex);
           break;
         default:
           throw new UnSupportedDataTypeException(

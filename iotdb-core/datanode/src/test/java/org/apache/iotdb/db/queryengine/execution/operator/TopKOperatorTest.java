@@ -374,7 +374,7 @@ public class TopKOperatorTest {
           assertTrue(tsBlock.getColumn(3).isNull(i));
           assertTrue(tsBlock.getColumn(4).isNull(i));
           assertTrue(tsBlock.getColumn(5).isNull(i));
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(1).getInt(i));
           // make sure the device column is by asc
           assertEquals(0, checkDevice);
           checkDevice++;
@@ -382,16 +382,16 @@ public class TopKOperatorTest {
           assertTrue(tsBlock.getColumn(1).isNull(i));
           assertTrue(tsBlock.getColumn(4).isNull(i));
           assertTrue(tsBlock.getColumn(5).isNull(i));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(3).getInt(i), getValue(lastTime));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(2).getInt(i));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(3).getInt(i));
           assertEquals(1, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
           assertTrue(tsBlock.getColumn(1).isNull(i));
           assertTrue(tsBlock.getColumn(2).isNull(i));
           assertTrue(tsBlock.getColumn(3).isNull(i));
-          assertEquals(tsBlock.getColumn(4).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(5).getInt(i), getValue(lastTime));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(4).getInt(i));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(5).getInt(i));
           assertEquals(2, checkDevice);
           checkDevice = 0;
         } else {
@@ -423,16 +423,16 @@ public class TopKOperatorTest {
           assertTrue(tsBlock.getColumn(1).isNull(i));
           assertTrue(tsBlock.getColumn(2).isNull(i));
           assertTrue(tsBlock.getColumn(3).isNull(i));
-          assertEquals(tsBlock.getColumn(4).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(5).getInt(i), getValue(lastTime));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(4).getInt(i));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(5).getInt(i));
           assertEquals(0, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
           assertTrue(tsBlock.getColumn(1).isNull(i));
           assertTrue(tsBlock.getColumn(4).isNull(i));
           assertTrue(tsBlock.getColumn(5).isNull(i));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(3).getInt(i), getValue(lastTime));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(2).getInt(i));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(3).getInt(i));
           assertEquals(1, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
@@ -440,7 +440,7 @@ public class TopKOperatorTest {
           assertTrue(tsBlock.getColumn(3).isNull(i));
           assertTrue(tsBlock.getColumn(4).isNull(i));
           assertTrue(tsBlock.getColumn(5).isNull(i));
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(1).getInt(i));
           // make sure the device column is by desc
           assertEquals(2, checkDevice);
           checkDevice = 0;
@@ -767,24 +767,24 @@ public class TopKOperatorTest {
         assertTrue(tsBlock.getTimeByIndex(i) >= lastTime);
         lastTime = tsBlock.getTimeByIndex(i);
         if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(1).getInt(i));
           assertTrue(tsBlock.getColumn(2).isNull(i));
           // make sure the device column is by asc
           assertEquals(0, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(1).getInt(i));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(2).getInt(i));
           assertEquals(1, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(1).getInt(i));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(2).getInt(i));
           assertEquals(2, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(1).getInt(i));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(2).getInt(i));
           assertEquals(3, checkDevice);
           checkDevice = 0;
         } else {
@@ -814,22 +814,22 @@ public class TopKOperatorTest {
         assertTrue(tsBlock.getTimeByIndex(i) >= lastTime);
         lastTime = tsBlock.getTimeByIndex(i);
         if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(1).getInt(i));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(2).getInt(i));
           assertEquals(0, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(1).getInt(i));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(2).getInt(i));
           assertEquals(1, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
-          assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(1).getInt(i));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(2).getInt(i));
           assertEquals(2, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
-          assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
+          assertEquals(getValue(lastTime), tsBlock.getColumn(1).getInt(i));
           assertTrue(tsBlock.getColumn(2).isNull(i));
           // make sure the device column is by desc
           assertEquals(3, checkDevice);

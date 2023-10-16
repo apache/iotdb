@@ -773,20 +773,22 @@ public class LogicalPlanBuilder {
 
     OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
 
+    long limitValue =
+        queryStatement.hasOffset()
+            ? queryStatement.getRowOffset() + queryStatement.getRowLimit()
+            : queryStatement.getRowLimit();
+
     if (!queryStatement.isAggregationQuery()
         && queryStatement.hasLimit()
         && queryStatement.getOrderByComponent() != null
-        && !queryStatement.isOrderByBasedOnDevice()) {
-      long limitValue =
-          queryStatement.hasOffset()
-              ? queryStatement.getRowOffset() + queryStatement.getRowLimit()
-              : queryStatement.getRowLimit();
+        && !queryStatement.isOrderByBasedOnDevice()
+        && limitValue < Integer.MAX_VALUE) {
 
       // order by time and order by expression with limit, can be optimized to TopK implementation
       TopKNode topKNode =
           new TopKNode(
               context.getQueryId().genPlanNodeId(),
-              limitValue,
+              (int) limitValue,
               orderByParameter,
               outputColumnNames);
 

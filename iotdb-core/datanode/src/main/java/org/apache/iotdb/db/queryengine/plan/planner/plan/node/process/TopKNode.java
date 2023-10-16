@@ -38,7 +38,7 @@ import java.util.Objects;
  * are always DeviceViewNode.
  */
 public class TopKNode extends MultiChildProcessNode {
-  private final long topValue;
+  private final int topValue;
 
   private final OrderByParameter mergeOrderParameter;
 
@@ -46,7 +46,7 @@ public class TopKNode extends MultiChildProcessNode {
 
   public TopKNode(
       PlanNodeId id,
-      long topValue,
+      int topValue,
       OrderByParameter mergeOrderParameter,
       List<String> outputColumns) {
     super(id);
@@ -57,7 +57,7 @@ public class TopKNode extends MultiChildProcessNode {
 
   public TopKNode(
       PlanNodeId id,
-      long topValue,
+      int topValue,
       List<PlanNode> children,
       OrderByParameter mergeOrderParameter,
       List<String> outputColumns) {
@@ -119,7 +119,7 @@ public class TopKNode extends MultiChildProcessNode {
   }
 
   public static TopKNode deserialize(ByteBuffer byteBuffer) {
-    long topValue = ReadWriteIOUtils.readLong(byteBuffer);
+    int topValue = ReadWriteIOUtils.readInt(byteBuffer);
     OrderByParameter orderByParameter = OrderByParameter.deserialize(byteBuffer);
     int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> outputColumns = new ArrayList<>();
@@ -157,7 +157,7 @@ public class TopKNode extends MultiChildProcessNode {
     return String.format("TopK-%s-%s", this.getPlanNodeId(), this.topValue);
   }
 
-  public long getTopValue() {
+  public int getTopValue() {
     return this.topValue;
   }
 }
