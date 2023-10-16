@@ -760,7 +760,7 @@ public class LogicalPlanBuilder {
 
     // order by time, device can be optimized by SingleDeviceViewNode and MergeSortNode
     if (queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression()) {
-      List<PlanNode> mergeSortNodeList = new LinkedList<>();
+      List<PlanNode> childNodeList = new LinkedList<>();
       for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
         String deviceName = entry.getKey();
         PlanNode subPlan = entry.getValue();
@@ -771,15 +771,15 @@ public class LogicalPlanBuilder {
                 deviceName,
                 deviceToMeasurementIndexesMap.get(deviceName));
         singleDeviceViewNode.addChild(subPlan);
-        mergeSortNodeList.add(singleDeviceViewNode);
+        childNodeList.add(singleDeviceViewNode);
       }
-      if (mergeSortNodeList.size() == 1) {
-        this.root = mergeSortNodeList.get(0);
+      if (childNodeList.size() == 1) {
+        this.root = childNodeList.get(0);
       } else {
         MergeSortNode mergeSortNode =
             new MergeSortNode(
                 context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
-        for (PlanNode planNode : mergeSortNodeList) {
+        for (PlanNode planNode : childNodeList) {
           mergeSortNode.addChild(planNode);
         }
         this.root = mergeSortNode;
