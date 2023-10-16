@@ -186,6 +186,9 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
 
   @Override
   protected boolean isEmpty() {
+    if (!highestPriorityLevelQueue.isEmpty()) {
+      return false;
+    }
     for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
       if (!level.isEmpty()) {
         return false;
