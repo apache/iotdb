@@ -88,10 +88,10 @@
                 <executions>
                     <execution>
                         <id>test</id>
-                        <phase>package</phase>
                         <goals>
                             <goal>run</goal>
                         </goals>
+                        <phase>package</phase>
                         <configuration>
                             <target>
                                 <condition property="osFamily" value="windows">
@@ -100,10 +100,10 @@
                                 <condition property="osFamily" value="unix">
                                     <os family="unix"/>
                                 </condition>
-                                <exec executable="C:\\Windows\\System32\\cmd.exe" osfamily="windows" failonerror="true">
+                                <exec executable="C:\\Windows\\System32\\cmd.exe" failonerror="true" osfamily="windows">
                                     <arg line="/c backend-compile.bat"/>
                                 </exec>
-                                <exec executable="/bin/bash" osfamily="unix" failonerror="true">
+                                <exec executable="/bin/bash" failonerror="true" osfamily="unix">
                                     <arg line="-c ./backend-compile.sh"/>
                                 </exec>
                             </target>

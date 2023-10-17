@@ -40,6 +40,21 @@
         <module>spark-tsfile</module>
         <module>zeppelin-interpreter</module>
     </modules>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.rat</groupId>
+                <artifactId>apache-rat-plugin</artifactId>
+                <version>0.15</version>
+                <inherited>false</inherited>
+                <configuration>
+                    <excludes combine.children="append">
+                        <exclude>**/grafana-plugin/**</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
     <profiles>
         <profile>
             <id>with-grafana-plugin</id>

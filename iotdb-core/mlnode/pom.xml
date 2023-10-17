@@ -27,7 +27,35 @@
         <version>1.3.0-SNAPSHOT</version>
     </parent>
     <artifactId>iotdb-mlnode</artifactId>
+    <packaging>pom</packaging>
     <name>IoTDB: Core: MlNode</name>
+    <dependencies>
+        <!-- These dependencies are just added to ensure the other modules are built first -->
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-commons</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-confignode</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-mlnode</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
     <build>
         <plugins>
             <plugin>
@@ -69,11 +97,11 @@
                 <executions>
                     <execution>
                         <id>copy-thrift-python-resources</id>
-                        <!-- here the phase you need -->
-                        <phase>generate-sources</phase>
                         <goals>
                             <goal>copy-resources</goal>
                         </goals>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
                         <configuration>
                             <encoding>utf-8</encoding>
                             <outputDirectory>${basedir}/iotdb/thrift/</outputDirectory>
@@ -92,11 +120,11 @@
                     </execution>
                     <execution>
                         <id>copy-thrift-python-resources-datanode</id>
-                        <!-- here the phase you need -->
-                        <phase>generate-sources</phase>
                         <goals>
                             <goal>copy-resources</goal>
                         </goals>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
                         <configuration>
                             <encoding>utf-8</encoding>
                             <outputDirectory>${basedir}/iotdb/thrift/datanode</outputDirectory>
@@ -110,11 +138,11 @@
                     <!-- Copy License -->
                     <execution>
                         <id>copy-pypi-file-resources</id>
-                        <!-- here the phase you need -->
-                        <phase>generate-sources</phase>
                         <goals>
                             <goal>copy-resources</goal>
                         </goals>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
                         <configuration>
                             <encoding>utf-8</encoding>
                             <outputDirectory>${basedir}/</outputDirectory>
@@ -130,28 +158,18 @@
                     </execution>
                 </executions>
             </plugin>
+            <!--plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <ignoredDependencies>
+                        <ignoredDependency>org.apache.iotdb:iotdb-thrift</ignoredDependency>
+                        <ignoredDependency>org.apache.iotdb:iotdb-thrift-common</ignoredDependency>
+                        <ignoredDependency>org.apache.iotdb:iotdb-thrift-confignode</ignoredDependency>
+                        <ignoredDependency>org.apache.iotdb:iotdb-thrift-mlnode</ignoredDependency>
+                    </ignoredDependencies>
+                </configuration>
+            </plugin-->
         </plugins>
     </build>
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-commons</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-confignode</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-mlnode</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
 </project>
