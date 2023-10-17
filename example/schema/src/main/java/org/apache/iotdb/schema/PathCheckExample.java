@@ -43,8 +43,7 @@ import java.util.Objects;
  */
 public class PathCheckExample {
   private static final List<String> inputList = new ArrayList<>();
-  private static final String DIR =
-      "/Users/lyf/iotdb/distribution/target/apache-iotdb-1.3.0-SNAPSHOT-all-bin/apache-iotdb-1.3.0-SNAPSHOT-all-bin/tools";
+  private static final String DIR = "/Users/root/iotdb/tools";
 
   private static final Logger logger = LoggerFactory.getLogger(PathCheckExample.class);
 
