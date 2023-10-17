@@ -179,7 +179,7 @@
         <!-- This is the matching version of spring-boot for spring 5.3.30 -->
         <spring-boot.version>2.7.15</spring-boot.version>
         <!-- This is the last version to support the javax namespace -->
-        <spring.version>5.3.30</spring.version>
+        <spring.version>6.0.0</spring.version>
         <!-- This was the last version to support Java 8 -->
         <swagger.version>1.6.11</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
