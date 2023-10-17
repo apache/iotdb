@@ -292,7 +292,7 @@ public class SystemPropertiesUtils {
         SERIES_PARTITION_EXECUTOR_CLASS, conf.getSeriesPartitionExecutorClass());
     systemProperties.setProperty(
         TIME_PARTITION_INTERVAL, String.valueOf(COMMON_CONFIG.getTimePartitionInterval()));
-    systemProperties.setProperty("timestamp_precision", COMMON_CONFIG.getTimestampPrecision());
+    systemProperties.setProperty(TIMESTAMP_PRECISION, COMMON_CONFIG.getTimestampPrecision());
 
     // DataNode Functions
     systemProperties.setProperty("schema_engine_mode", COMMON_CONFIG.getSchemaEngineMode());
