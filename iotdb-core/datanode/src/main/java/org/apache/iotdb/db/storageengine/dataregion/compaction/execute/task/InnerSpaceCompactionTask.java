@@ -348,8 +348,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   private void rollback() throws Exception {
     // if the task has started,
     if (recoverMemoryStatus) {
-      removeTsFileInMemory(Collections.singletonList(targetTsFileResource));
-      insertFilesToTsFileManager(selectedTsFileResourceList);
+      replaceTsFileInMemory(
+          Collections.singletonList(targetTsFileResource), selectedTsFileResourceList);
     }
     deleteCompactionModsFile(selectedTsFileResourceList);
     // delete target file

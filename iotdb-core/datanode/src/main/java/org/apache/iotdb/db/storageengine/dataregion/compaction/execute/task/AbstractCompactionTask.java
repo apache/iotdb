@@ -213,6 +213,17 @@ public abstract class AbstractCompactionTask {
     }
   }
 
+  protected void replaceTsFileInMemory(
+      List<TsFileResource> removedTsFiles, List<TsFileResource> addedTsFiles) throws IOException {
+    tsFileManager.writeLock("compactionRollBack");
+    try {
+      removeTsFileInMemory(removedTsFiles);
+      insertFilesToTsFileManager(addedTsFiles);
+    } finally {
+      tsFileManager.writeUnlock();
+    }
+  }
+
   protected boolean checkAllSourceFileExists(List<TsFileResource> tsFileResources) {
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.getTsFile().exists() || !tsFileResource.resourceFileExists()) {
@@ -241,17 +252,12 @@ public abstract class AbstractCompactionTask {
   }
 
   protected void removeTsFileInMemory(List<TsFileResource> resourceList) {
-    tsFileManager.writeLock("CompactionExceptionHandler");
-    try {
-      for (TsFileResource targetTsFile : resourceList) {
-        if (targetTsFile == null) {
-          // target file has been deleted due to empty after compaction
-          continue;
-        }
-        tsFileManager.remove(targetTsFile, targetTsFile.isSeq());
+    for (TsFileResource targetTsFile : resourceList) {
+      if (targetTsFile == null) {
+        // target file has been deleted due to empty after compaction
+        continue;
       }
-    } finally {
-      tsFileManager.writeUnlock();
+      tsFileManager.remove(targetTsFile, targetTsFile.isSeq());
     }
   }
 

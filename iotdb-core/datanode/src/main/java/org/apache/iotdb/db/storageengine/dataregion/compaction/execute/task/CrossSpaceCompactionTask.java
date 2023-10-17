@@ -47,6 +47,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   private static final Logger LOGGER =
@@ -341,9 +343,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   private void rollback() throws Exception {
     // if the task has started,
     if (recoverMemoryStatus) {
-      removeTsFileInMemory(targetTsfileResourceList);
-      insertFilesToTsFileManager(selectedSequenceFiles);
-      insertFilesToTsFileManager(selectedUnsequenceFiles);
+      replaceTsFileInMemory(
+          targetTsfileResourceList,
+          Stream.concat(selectedSequenceFiles.stream(), selectedUnsequenceFiles.stream())
+              .collect(Collectors.toList()));
     }
     deleteCompactionModsFile(selectedSequenceFiles);
     deleteCompactionModsFile(selectedUnsequenceFiles);
