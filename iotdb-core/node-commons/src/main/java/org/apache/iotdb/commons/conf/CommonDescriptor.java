@@ -62,7 +62,7 @@ public class CommonDescriptor {
     config.setProcedureWalFolder(systemDir + File.separator + "procedure");
   }
 
-  public void loadCommonProps(Properties properties) {
+  public void loadCommonProps(Properties properties) throws BadNodeUrlException {
     config.setAuthorizerProvider(
         properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()).trim());
     // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
@@ -216,13 +216,8 @@ public class CommonDescriptor {
             NodeUrlUtils.convertTEndPointUrl(config.getTargetMLNodeEndPoint()));
 
     loadPipeProps(properties);
-    try {
-      config.setTargetMLNodeEndPoint(NodeUrlUtils.parseTEndPointUrl(endPointUrl));
-    } catch (BadNodeUrlException e) {
-      LOGGER.warn(
-          "Illegal target MLNode endpoint url format in config file: {}, use default configuration.",
-          endPointUrl);
-    }
+
+    config.setTargetMLNodeEndPoint(NodeUrlUtils.parseTEndPointUrl(endPointUrl));
 
     config.setSchemaEngineMode(
         properties.getProperty("schema_engine_mode", String.valueOf(config.getSchemaEngineMode())));

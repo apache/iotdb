@@ -106,11 +106,14 @@ public class ConfigNodeDescriptor {
         commonProperties.load(inputStream);
 
       } catch (FileNotFoundException e) {
-        LOGGER.warn("Fail to find config file {}", url, e);
+        LOGGER.error("Fail to find config file {}, reject ConfigNode startup.", url, e);
+        System.exit(-1);
       } catch (IOException e) {
-        LOGGER.warn("Cannot load config file, use default configuration", e);
+        LOGGER.error("Cannot load config file, reject ConfigNode startup.", e);
+        System.exit(-1);
       } catch (Exception e) {
-        LOGGER.warn("Incorrect format in config file, use default configuration", e);
+        LOGGER.error("Incorrect format in config file, reject ConfigNode startup.", e);
+        System.exit(-1);
       }
     } else {
       LOGGER.warn(
@@ -127,7 +130,8 @@ public class ConfigNodeDescriptor {
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
       } catch (IOException | BadNodeUrlException e) {
-        LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
+        LOGGER.error("Couldn't load ConfigNode conf file, reject ConfigNode startup.", e);
+        System.exit(-1);
       } finally {
         conf.updatePath();
         commonDescriptor
@@ -268,8 +272,7 @@ public class ConfigNodeDescriptor {
                       "region_group_allocate_policy", conf.getRegionGroupAllocatePolicy().name())
                   .trim()));
     } catch (IllegalArgumentException e) {
-      LOGGER.warn(
-          "The configured region allocate strategy does not exist, use the default: GREEDY!");
+      throw new IOException(e);
     }
 
     conf.setCnRpcAdvancedCompressionEnable(

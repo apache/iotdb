@@ -57,6 +57,7 @@ public class SystemPropertiesUtils {
   private static final String CN_INTERNAL_ADDRESS = "cn_internal_address";
   private static final String CN_INTERNAL_PORT = "cn_internal_port";
   private static final String CN_CONSENSUS_PORT = "cn_consensus_port";
+  private static final String TIMESTAMP_PRECISION = "timestamp_precision";
   private static final String CN_CONSENSUS_PROTOCOL = "config_node_consensus_protocol_class";
   private static final String DATA_CONSENSUS_PROTOCOL = "data_region_consensus_protocol_class";
   private static final String SCHEMA_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol_class";
@@ -124,6 +125,17 @@ public class SystemPropertiesUtils {
       if (consensusPort != conf.getConsensusPort()) {
         LOGGER.warn(format, CN_CONSENSUS_PORT, conf.getConsensusPort(), consensusPort);
         conf.setConsensusPort(consensusPort);
+      }
+    }
+
+    if (systemProperties.getProperty(TIMESTAMP_PRECISION, null) == null) {
+      needReWrite = true;
+    } else {
+      String timestampPrecision = systemProperties.getProperty(TIMESTAMP_PRECISION);
+      if (!timestampPrecision.equals(COMMON_CONFIG.getTimestampPrecision())) {
+        LOGGER.warn(
+            format, TIMESTAMP_PRECISION, COMMON_CONFIG.getTimestampPrecision(), timestampPrecision);
+        COMMON_CONFIG.setTimestampPrecision(timestampPrecision);
       }
     }
 
