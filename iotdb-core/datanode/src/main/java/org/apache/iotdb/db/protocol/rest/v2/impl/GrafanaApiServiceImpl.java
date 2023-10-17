@@ -197,7 +197,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
         if (((QueryStatement) statement).isAggregationQuery()
-                && !((QueryStatement) statement).isGroupByTime()) {
+            && !((QueryStatement) statement).isGroupByTime()) {
           return QueryDataSetHandler.fillAggregationPlanDataSet(queryExecution, 0);
         } else {
           return QueryDataSetHandler.fillDataSetWithTimestamps(queryExecution, 0, timePrecision);
