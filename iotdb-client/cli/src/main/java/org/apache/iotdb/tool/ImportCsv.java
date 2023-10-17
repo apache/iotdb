@@ -458,11 +458,7 @@ public class ImportCsv extends AbstractCsvTool {
 
     Set<String> devices = deviceAndMeasurementNames.keySet();
     if (headerTypeMap.isEmpty()) {
-      try {
-        queryType(devices, headerTypeMap, "Time");
-      } catch (IoTDBConnectionException e) {
-        IoTPrinter.printException(e);
-      }
+      queryType(devices, headerTypeMap, "Time");
     }
 
     List<String> deviceIds = new ArrayList<>();
@@ -620,16 +616,12 @@ public class ImportCsv extends AbstractCsvTool {
                 boolean hasResult = false;
                 // query the data type in iotdb
                 if (!typeQueriedDevice.contains(deviceName.get())) {
-                  try {
-                    if (headerTypeMap.isEmpty()) {
-                      Set<String> devices = new HashSet<>();
-                      devices.add(deviceName.get());
-                      queryType(devices, headerTypeMap, deviceColumn);
-                    }
-                    typeQueriedDevice.add(deviceName.get());
-                  } catch (IoTDBConnectionException e) {
-                    IoTPrinter.printException(e);
+                  if (headerTypeMap.isEmpty()) {
+                    Set<String> devices = new HashSet<>();
+                    devices.add(deviceName.get());
+                    queryType(devices, headerTypeMap, deviceColumn);
                   }
+                  typeQueriedDevice.add(deviceName.get());
                 }
                 type = typeInfer(value);
                 if (type != null) {
@@ -851,8 +843,7 @@ public class ImportCsv extends AbstractCsvTool {
    * @throws StatementExecutionException
    */
   private static void queryType(
-      Set<String> deviceNames, HashMap<String, TSDataType> headerTypeMap, String alignedType)
-      throws IoTDBConnectionException {
+      Set<String> deviceNames, HashMap<String, TSDataType> headerTypeMap, String alignedType) {
     for (String deviceName : deviceNames) {
       String sql = "show timeseries " + deviceName + ".*";
       SessionDataSet sessionDataSet = null;
@@ -873,10 +864,14 @@ public class ImportCsv extends AbstractCsvTool {
             headerTypeMap.put(measurement, getType(dataType));
           }
         }
-      } catch (StatementExecutionException | IllegalPathException e) {
+      } catch (StatementExecutionException | IllegalPathException | IoTDBConnectionException e) {
         IoTPrinter.println(
             "Meet error when query the type of timeseries because " + e.getMessage());
-        session.close();
+        try {
+          session.close();
+        } catch (IoTDBConnectionException ex) {
+          // do nothing
+        }
         System.exit(1);
       }
     }
