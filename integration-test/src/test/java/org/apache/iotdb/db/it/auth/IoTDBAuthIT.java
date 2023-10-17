@@ -382,6 +382,12 @@ public class IoTDBAuthIT {
         adminStmt.execute("CREATE ROLE admin");
         adminStmt.execute("GRANT MANAGE_DATABASE,WRITE_SCHEMA,WRITE_DATA on root.** TO ROLE admin");
         adminStmt.execute("GRANT ROLE admin TO tempuser");
+        adminStmt.execute("CREATE ROLE admin_temp");
+
+        // tempuser can get privileges of his role
+        userStmt.execute("LIST PRIVILEGES OF ROLE admin");
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("LIST PRIVILEGS OF ROLE admin_temp"));
 
         userStmt.execute("CREATE DATABASE root.a");
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
@@ -919,7 +925,7 @@ public class IoTDBAuthIT {
     adminStmt.execute("CREATE USER user2 'password'");
     adminStmt.execute("CREATE USER user3 'password'");
     adminStmt.execute("CREATE ROLE testRole");
-    adminStmt.execute("GRANT MANAGE_DATABASE ON root.** TO ROLE testRole WITH GRANT OPTION");
+    adminStmt.execute("GRANT manage_database ON root.** TO ROLE testRole WITH GRANT OPTION");
     adminStmt.execute("GRANT READ_DATA ON root.t1.** TO ROLE testRole");
     adminStmt.execute("GRANT READ_SCHEMA ON root.t3.t2.** TO ROLE testRole WITH GRANT OPTION");
 
@@ -1048,7 +1054,7 @@ public class IoTDBAuthIT {
         Statement userStmt = userCon.createStatement()) {
       try {
         // because role's privilege
-        userStmt.execute("GRANT MANAGE_DATABASE ON root.** TO USER user1");
+        userStmt.execute("GRANT manage_database ON root.** TO USER user1");
         Assert.assertThrows(
             SQLException.class,
             () -> userStmt.execute("GRANT READ_DATA ON root.t1.** TO USER user1"));

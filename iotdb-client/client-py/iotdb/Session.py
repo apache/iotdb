@@ -59,8 +59,6 @@ from .thrift.rpc.ttypes import (
 )
 from .utils.IoTDBConnectionException import IoTDBConnectionException
 
-from .utils.IoTDBConstants import TSDataType
-
 logger = logging.getLogger("IoTDB")
 
 
@@ -176,9 +174,9 @@ class Session(object):
                 raise IoTDBConnectionException(e) from None
 
         if self.__enable_rpc_compression:
-            client = Client(TCompactProtocol.TCompactProtocol(transport))
+            client = Client(TCompactProtocol.TCompactProtocolAccelerated(transport))
         else:
-            client = Client(TBinaryProtocol.TBinaryProtocol(transport))
+            client = Client(TBinaryProtocol.TBinaryProtocolAccelerated(transport))
 
         open_req = TSOpenSessionReq(
             client_protocol=self.protocol_version,
@@ -310,9 +308,6 @@ class Session(object):
         :param attributes: Dictionary, attribute map for time series
         :param alias: String, measurement alias for time series
         """
-        data_type = data_type.value
-        encoding = encoding.value
-        compressor = compressor.value
         request = TSCreateTimeseriesReq(
             self.__session_id,
             ts_path,
@@ -349,9 +344,6 @@ class Session(object):
         :param encoding_lst: List of TSEncoding, encodings for time series
         :param compressor_lst: List of Compressor, compressing types for time series
         """
-        data_type_lst = [data_type.value for data_type in data_type_lst]
-        encoding_lst = [encoding.value for encoding in encoding_lst]
-        compressor_lst = [compressor.value for compressor in compressor_lst]
 
         request = TSCreateAlignedTimeseriesReq(
             self.__session_id,
@@ -399,9 +391,6 @@ class Session(object):
         :param attributes_lst: List of attribute Dictionary, attribute maps for time series
         :param alias_lst: List of alias, measurement alias for time series
         """
-        data_type_lst = [data_type.value for data_type in data_type_lst]
-        encoding_lst = [encoding.value for encoding in encoding_lst]
-        compressor_lst = [compressor.value for compressor in compressor_lst]
 
         request = TSCreateMultiTimeseriesReq(
             self.__session_id,
@@ -572,7 +561,6 @@ class Session(object):
         :param data_types: List of TSDataType, indicate the data type for each sensor
         :param values: List, values to be inserted, for each sensor
         """
-        data_types = [data_type.value for data_type in data_types]
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values
         )
@@ -606,10 +594,6 @@ class Session(object):
         :param types_lst: 2-D List of TSDataType, each element of outer list indicates sensor data types of a device
         :param values_lst: 2-D List, values to be inserted, for each device
         """
-        type_values_lst = []
-        for types in types_lst:
-            data_types = [data_type.value for data_type in types]
-            type_values_lst.append(data_types)
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(device_ids)):
@@ -622,7 +606,7 @@ class Session(object):
                 request.timestamps.append(times[i])
                 request.measurementsList.append(measurements_lst[i])
                 request.valuesList.append(
-                    Session.value_to_bytes(type_values_lst[i], values_lst[i])
+                    Session.value_to_bytes(types_lst[i], values_lst[i])
                 )
             for client, request in request_group.items():
                 try:
@@ -647,7 +631,7 @@ class Session(object):
             return 0
         else:
             request = self.gen_insert_records_req(
-                device_ids, times, measurements_lst, type_values_lst, values_lst
+                device_ids, times, measurements_lst, types_lst, values_lst
             )
             try:
                 return Session.verify_success(self.__client.insertRecords(request))
@@ -679,7 +663,6 @@ class Session(object):
         :param data_types: List of TSDataType, indicate the data type for each sensor
         :param values: List, values to be inserted, for each sensor
         """
-        data_types = [data_type.value for data_type in data_types]
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values, True
         )
@@ -713,10 +696,6 @@ class Session(object):
         :param types_lst: 2-D List of TSDataType, each element of outer list indicates sensor data types of a device
         :param values_lst: 2-D List, values to be inserted, for each device
         """
-        type_values_lst = []
-        for types in types_lst:
-            data_types = [data_type.value for data_type in types]
-            type_values_lst.append(data_types)
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(device_ids)):
@@ -729,7 +708,7 @@ class Session(object):
                 request.timestamps.append(times[i])
                 request.measurementsList.append(measurements_lst[i])
                 request.valuesList.append(
-                    Session.value_to_bytes(type_values_lst[i], values_lst[i])
+                    Session.value_to_bytes(types_lst[i], values_lst[i])
                 )
             for client, request in request_group.items():
                 try:
@@ -754,7 +733,7 @@ class Session(object):
             return 0
         else:
             request = self.gen_insert_records_req(
-                device_ids, times, measurements_lst, type_values_lst, values_lst, True
+                device_ids, times, measurements_lst, types_lst, values_lst, True
             )
             try:
                 return Session.verify_success(self.__client.insertRecords(request))
@@ -784,7 +763,6 @@ class Session(object):
         :param data_types: List of TSDataType, indicate the data type for each sensor
         :param values: List, values to be inserted, for each sensor
         """
-        data_types = [data_type.value for data_type in data_types]
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values
         )
@@ -813,12 +791,8 @@ class Session(object):
         :param types_lst: 2-D List of TSDataType, each element of outer list indicates sensor data types of a device
         :param values_lst: 2-D List, values to be inserted, for each device
         """
-        type_values_lst = []
-        for types in types_lst:
-            data_types = [data_type.value for data_type in types]
-            type_values_lst.append(data_types)
         request = self.gen_insert_records_req(
-            device_ids, times, measurements_lst, type_values_lst, values_lst
+            device_ids, times, measurements_lst, types_lst, values_lst
         )
         try:
             return Session.verify_success(self.__client.testInsertRecords(request))
@@ -951,10 +925,7 @@ class Session(object):
                 request.measurementsList.append(tablet_lst[i].get_measurements())
                 request.valuesList.append(tablet_lst[i].get_binary_values())
                 request.sizeList.append(tablet_lst[i].get_row_number())
-                data_type_values = [
-                    data_type.value for data_type in tablet_lst[i].get_data_types()
-                ]
-                request.typesList.append(data_type_values)
+                request.typesList.append(tablet_lst[i].get_data_types())
             for client, request in request_group.items():
                 try:
                     Session.verify_success_with_redirection_for_multi_devices(
@@ -1045,10 +1016,7 @@ class Session(object):
                 request.measurementsList.append(tablet_lst[i].get_measurements())
                 request.valuesList.append(tablet_lst[i].get_binary_values())
                 request.sizeList.append(tablet_lst[i].get_row_number())
-                data_type_values = [
-                    data_type.value for data_type in tablet_lst[i].get_data_types()
-                ]
-                request.typesList.append(data_type_values)
+                request.typesList.append(tablet_lst[i].get_data_types())
             for client, request in request_group.items():
                 try:
                     Session.verify_success_with_redirection_for_multi_devices(
@@ -1243,7 +1211,6 @@ class Session(object):
         for values, data_types, measurements in zip(
             values_list, types_list, measurements_list
         ):
-            data_types = [data_type.value for data_type in data_types]
             if (len(values) != len(data_types)) or (len(values) != len(measurements)):
                 raise RuntimeError(
                     "insert records of one device error: deviceIds, times, measurementsList and valuesList's size should be equal"
@@ -1303,14 +1270,13 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def gen_insert_tablet_req(self, tablet, is_aligned=False):
-        data_type_values = [data_type.value for data_type in tablet.get_data_types()]
         return TSInsertTabletReq(
             self.__session_id,
             tablet.get_device_id(),
             tablet.get_measurements(),
             tablet.get_binary_values(),
             tablet.get_binary_timestamps(),
-            data_type_values,
+            tablet.get_data_types(),
             tablet.get_row_number(),
             is_aligned,
         )
@@ -1323,14 +1289,11 @@ class Session(object):
         type_lst = []
         size_lst = []
         for tablet in tablet_lst:
-            data_type_values = [
-                data_type.value for data_type in tablet.get_data_types()
-            ]
             device_id_lst.append(tablet.get_device_id())
             measurements_lst.append(tablet.get_measurements())
             values_lst.append(tablet.get_binary_values())
             timestamps_lst.append(tablet.get_binary_timestamps())
-            type_lst.append(data_type_values)
+            type_lst.append(tablet.get_data_types())
             size_lst.append(tablet.get_row_number())
         return TSInsertTabletsReq(
             self.__session_id,
@@ -1440,41 +1403,41 @@ class Session(object):
         format_str_list = [">"]
         values_tobe_packed = []
         for data_type, value in zip(data_types, values):
-            if data_type == TSDataType.BOOLEAN.value:
-                format_str_list.append("c")
-                format_str_list.append("?")
-                values_tobe_packed.append(bytes([TSDataType.BOOLEAN.value]))
+            # BOOLEAN
+            if data_type == 0:
+                format_str_list.append("c?")
+                values_tobe_packed.append(b"\x00")
                 values_tobe_packed.append(value)
-            elif data_type == TSDataType.INT32.value:
-                format_str_list.append("c")
-                format_str_list.append("i")
-                values_tobe_packed.append(bytes([TSDataType.INT32.value]))
+            # INT32
+            elif data_type == 1:
+                format_str_list.append("ci")
+                values_tobe_packed.append(b"\x01")
                 values_tobe_packed.append(value)
-            elif data_type == TSDataType.INT64.value:
-                format_str_list.append("c")
-                format_str_list.append("q")
-                values_tobe_packed.append(bytes([TSDataType.INT64.value]))
+            # INT64
+            elif data_type == 2:
+                format_str_list.append("cq")
+                values_tobe_packed.append(b"\x02")
                 values_tobe_packed.append(value)
-            elif data_type == TSDataType.FLOAT.value:
-                format_str_list.append("c")
-                format_str_list.append("f")
-                values_tobe_packed.append(bytes([TSDataType.FLOAT.value]))
+            # FLOAT
+            elif data_type == 3:
+                format_str_list.append("cf")
+                values_tobe_packed.append(b"\x03")
                 values_tobe_packed.append(value)
-            elif data_type == TSDataType.DOUBLE.value:
-                format_str_list.append("c")
-                format_str_list.append("d")
-                values_tobe_packed.append(bytes([TSDataType.DOUBLE.value]))
+            # DOUBLE
+            elif data_type == 4:
+                format_str_list.append("cd")
+                values_tobe_packed.append(b"\x04")
                 values_tobe_packed.append(value)
-            elif data_type == TSDataType.TEXT.value:
+            # TEXT
+            elif data_type == 5:
                 if isinstance(value, str):
                     value_bytes = bytes(value, "utf-8")
                 else:
                     value_bytes = value
-                format_str_list.append("c")
-                format_str_list.append("i")
+                format_str_list.append("ci")
                 format_str_list.append(str(len(value_bytes)))
                 format_str_list.append("s")
-                values_tobe_packed.append(bytes([TSDataType.TEXT.value]))
+                values_tobe_packed.append(b"\x05")
                 values_tobe_packed.append(len(value_bytes))
                 values_tobe_packed.append(value_bytes)
             else:
@@ -1913,9 +1876,9 @@ class Session(object):
             template_name,
             is_aligned,
             measurements_path,
-            list(map(lambda x: x.value, data_types)),
-            list(map(lambda x: x.value, encodings)),
-            list(map(lambda x: x.value, compressors)),
+            data_types,
+            encodings,
+            compressors,
         )
         try:
             return Session.verify_success(self.__client.appendSchemaTemplate(request))

@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -51,6 +52,18 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   IUserManager userManager;
   IRoleManager roleManager;
+
+  /**
+   * This filed only for pre version. When we do a major version upgrade, it can be removed
+   * directly.
+   */
+  // FOR PRE VERSION BEGIN -----
+  public void checkUserPathPrivilege() {
+    userManager.checkAndRefreshPathPri();
+    roleManager.checkAndRefreshPathPri();
+  }
+
+  // FOR PRE VERSION END -----
 
   BasicAuthorizer(IUserManager userManager, IRoleManager roleManager) throws AuthException {
     this.userManager = userManager;
@@ -109,14 +122,15 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void createUser(String username, String password) throws AuthException {
-    if (!userManager.createUser(username, password, false)) {
+    if (!userManager.createUser(username, password, true)) {
       throw new AuthException(
           TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
     }
   }
 
-  public void createOpenIdUser(String username, String password) throws AuthException {
-    if (!userManager.createUser(username, password, true)) {
+  @Override
+  public void createUserWithoutCheck(String username, String password) throws AuthException {
+    if (!userManager.createUser(username, password, false)) {
       throw new AuthException(
           TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
     }
@@ -428,5 +442,27 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     userManager.processLoadSnapshot(snapshotDir);
     roleManager.processLoadSnapshot(snapshotDir);
+  }
+
+  @Override
+  public void setUserForPreVersion(boolean preVersion) {
+    userManager.setPreVersion(preVersion);
+  }
+
+  @Override
+  public void setRoleForPreVersion(boolean preVersion) {
+    roleManager.setPreVersion(preVersion);
+  }
+
+  @Override
+  @TestOnly
+  public boolean forUserPreVersion() {
+    return this.userManager.preVersion();
+  }
+
+  @Override
+  @TestOnly
+  public boolean forRolePreVersion() {
+    return this.roleManager.preVersion();
   }
 }

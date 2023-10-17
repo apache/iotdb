@@ -210,8 +210,7 @@ public class Analysis {
   // timeseries, otherwise it will be null
   private Ordering timeseriesOrderingForLastQuery = null;
 
-  // Used to store view expression in last query which is non-writable
-  private Set<Expression> lastQueryNonWritableViewExpressions;
+  // Key: non-writable view expression, Value: corresponding source expressions
   private Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap;
 
   private Set<Expression> lastQueryBaseExpressions;
@@ -272,18 +271,19 @@ public class Analysis {
   // can use statistics to skip
   private boolean lastLevelUseWildcard = false;
 
+  // if `order by limit N align by device` query use topK optimization
+  private boolean useTopKNode = false;
+
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
-    // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
-    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), null);
+    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), timefilter);
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
-    // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
-    return dataPartition.getDataRegionReplicaSet(deviceName, null);
+    return dataPartition.getDataRegionReplicaSet(deviceName, globalTimeFilter);
   }
 
   public Statement getStatement() {
@@ -745,15 +745,6 @@ public class Analysis {
     this.lastQueryBaseExpressions = lastQueryBaseExpressions;
   }
 
-  public Set<Expression> getLastQueryNonWritableViewExpressions() {
-    return this.lastQueryNonWritableViewExpressions;
-  }
-
-  public void setLastQueryNonWritableViewExpression(
-      Set<Expression> lastQueryNonWritableViewExpression) {
-    this.lastQueryNonWritableViewExpressions = lastQueryNonWritableViewExpression;
-  }
-
   public Map<Expression, List<Expression>> getLastQueryNonWritableViewSourceExpressionMap() {
     return this.lastQueryNonWritableViewSourceExpressionMap;
   }
@@ -790,6 +781,14 @@ public class Analysis {
 
   public void setLastLevelUseWildcard(boolean lastLevelUseWildcard) {
     this.lastLevelUseWildcard = lastLevelUseWildcard;
+  }
+
+  public boolean isUseTopKNode() {
+    return useTopKNode;
+  }
+
+  public void setUseTopKNode() {
+    this.useTopKNode = true;
   }
 
   public void setDeviceList(List<PartialPath> deviceList) {

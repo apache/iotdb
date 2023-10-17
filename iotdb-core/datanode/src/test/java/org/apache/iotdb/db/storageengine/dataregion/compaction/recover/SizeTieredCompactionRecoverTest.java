@@ -20,6 +20,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.recover;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -175,7 +176,7 @@ public class SizeTieredCompactionRecoverTest {
 
   /** Test when a file that is not a directory exists under virtual storageGroup dir. */
   @Test
-  public void testRecoverWithUncorrectTimePartionDir() {
+  public void testRecoverWithUncorrectTimePartionDir() throws StartupException {
     StorageEngine.getInstance().start();
     try {
       File timePartitionDir = new File(SEQ_FILE_DIR);

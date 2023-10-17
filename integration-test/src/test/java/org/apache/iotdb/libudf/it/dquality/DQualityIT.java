@@ -34,6 +34,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Locale;
 
 import static org.junit.Assert.fail;
 
@@ -95,6 +96,7 @@ public class DQualityIT {
                 (int) Math.floor(x + Math.random() * y % (y - x + 1))));
         statement.execute(
             (String.format(
+                Locale.ENGLISH,
                 "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%f,%f)",
                 (int) Math.floor(a + Math.random() * b % (b - a + 1)),
                 x + Math.random() * y % (y - x + 1),

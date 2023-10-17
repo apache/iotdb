@@ -138,7 +138,7 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
 
     // first source file does not exist
-    seqResources.get(0).delete();
+    seqResources.get(0).remove();
 
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -236,7 +236,7 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
         Collections.singletonList(targetResource), true, "root.compactionTest");
 
     // first source file does not exist
-    unseqResources.get(0).delete();
+    unseqResources.get(0).remove();
 
     for (int i = 0; i < unseqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();

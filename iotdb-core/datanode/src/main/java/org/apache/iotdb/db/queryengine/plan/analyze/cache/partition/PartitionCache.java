@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
@@ -241,15 +242,21 @@ public class PartitionCache {
         // try to create databases one by one until done or one database fail
         Set<String> successFullyCreatedStorageGroup = new HashSet<>();
         for (String storageGroupName : storageGroupNamesNeedCreated) {
-          if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-            TSStatus status =
-                AuthorityChecker.getTSStatus(
-                    AuthorityChecker.checkSystemPermission(
-                        userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
-                    PrivilegeType.MANAGE_DATABASE);
-            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+          long startTime = System.nanoTime();
+          try {
+            if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+              TSStatus status =
+                  AuthorityChecker.getTSStatus(
+                      AuthorityChecker.checkSystemPermission(
+                          userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
+                      PrivilegeType.MANAGE_DATABASE);
+              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                throw new RuntimeException(
+                    new IoTDBException(status.getMessage(), status.getCode()));
+              }
             }
+          } finally {
+            PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
           }
           TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
           storageGroupSchema.setName(storageGroupName);
@@ -334,10 +341,12 @@ public class PartitionCache {
       boolean tryToFetch,
       boolean isAutoCreate,
       String userName) {
-    // miss when devicePath contains *
-    for (String devicePath : devicePaths) {
-      if (devicePath.contains("*")) {
-        return;
+    if (!isAutoCreate) {
+      // miss when devicePath contains *
+      for (String devicePath : devicePaths) {
+        if (devicePath.contains("*")) {
+          return;
+        }
       }
     }
     // first try to hit database in fast-fail way

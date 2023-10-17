@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDevi
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
@@ -189,6 +190,15 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("MergeSort-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("ChildrenCount: %d", node.getChildren().size()));
+    boxValue.add(node.getMergeOrderParameter().toString());
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitTopK(TopKNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("TopK-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("LimitValue: %d", node.getTopValue()));
     boxValue.add(node.getMergeOrderParameter().toString());
     return render(node, boxValue, context);
   }

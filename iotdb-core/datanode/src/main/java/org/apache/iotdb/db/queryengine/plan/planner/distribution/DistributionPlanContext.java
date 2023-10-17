@@ -41,7 +41,6 @@ public class DistributionPlanContext {
   protected DistributionPlanContext(MPPQueryContext queryContext) {
     this.isRoot = true;
     this.queryContext = queryContext;
-    this.forceAddParent = false;
   }
 
   protected DistributionPlanContext copy() {
@@ -53,8 +52,8 @@ public class DistributionPlanContext {
     return this;
   }
 
-  protected void setForceAddParent(boolean forceAddParent) {
-    this.forceAddParent = forceAddParent;
+  protected void setForceAddParent() {
+    this.forceAddParent = true;
   }
 
   public void setOneSeriesInMultiRegion(boolean oneSeriesInMultiRegion) {

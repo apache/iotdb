@@ -122,4 +122,8 @@ public class PermissionManager {
       throws AuthException {
     return authorInfo.checkRoleOfUser(username, rolename);
   }
+
+  public void checkUserPathPrivilege() {
+    authorInfo.checkUserPathPrivilege();
+  }
 }

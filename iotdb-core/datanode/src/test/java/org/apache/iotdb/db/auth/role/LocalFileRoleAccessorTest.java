@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.auth.role;
 
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.role.LocalFileRoleAccessor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -34,12 +35,12 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -105,21 +106,59 @@ public class LocalFileRoleAccessorTest {
 
   @Test
   public void testLoadOldVersion() throws IOException, IllegalPathException {
+    // In this test, we will store role with old func and role might have illegal path.
     Role role = new Role();
     role.setName("root");
+    List<PathPrivilege> pathPriList = new ArrayList<>();
+
+    // root.a.b.c -- read_data, wirte_shcema.
     PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c"));
-    pathPrivilege.grantPrivilege(1, false);
-    role.setPrivilegeList(Collections.singletonList(pathPrivilege));
+    pathPrivilege.grantPrivilege(PriPrivilegeType.READ_DATA.ordinal(), false);
+    pathPrivilege.grantPrivilege(PriPrivilegeType.WRITE_SCHEMA.ordinal(), false);
+    pathPriList.add(pathPrivilege);
+
+    // root.a.*.b -- read_schema, write_data
+    pathPrivilege = new PathPrivilege(new PartialPath("root.a.*.b"));
+    pathPrivilege.grantPrivilege(PriPrivilegeType.READ_SCHEMA.ordinal(), false);
+    pathPrivilege.grantPrivilege(PriPrivilegeType.WRITE_DATA.ordinal(), false);
+    pathPriList.add(pathPrivilege);
+
+    // root.a.* -- manage_database -- will ignore the path.
+    pathPrivilege = new PathPrivilege(new PartialPath("root.a.*"));
+    pathPrivilege.grantPrivilege(PriPrivilegeType.MANAGE_DATABASE.ordinal(), false);
+    pathPriList.add(pathPrivilege);
+
+    // root.** -- for some systems.
+    pathPrivilege = new PathPrivilege(new PartialPath("root.**"));
+    pathPrivilege.grantPrivilege(PriPrivilegeType.MAINTAIN.ordinal(), false);
+    pathPrivilege.grantPrivilege(PriPrivilegeType.MANAGE_ROLE.ordinal(), false);
+    pathPrivilege.grantPrivilege(PriPrivilegeType.MANAGE_USER.ordinal(), false);
+    pathPrivilege.grantPrivilege(PriPrivilegeType.ALTER_PASSWORD.ordinal(), false);
+    pathPrivilege.grantPrivilege(PriPrivilegeType.GRANT_PRIVILEGE.ordinal(), false);
+    pathPrivilege.grantPrivilege(PriPrivilegeType.USE_CQ.ordinal(), false);
+    pathPrivilege.grantPrivilege(PriPrivilegeType.USE_PIPE.ordinal(), false);
+    pathPrivilege.grantPrivilege(PriPrivilegeType.USE_TRIGGER.ordinal(), false);
+    pathPriList.add(pathPrivilege);
+
+    role.setPrivilegeList(pathPriList);
     role.setSysPriGrantOpt(new HashSet<>());
     role.setSysPrivilegeSet(new HashSet<>());
     accessor.saveRoleOldVer(role);
     Role newRole = accessor.loadRole("root");
     assertEquals("root", newRole.getName());
-    assertEquals(new ArrayList<>(), newRole.getPathPrivilegeList());
-    assertEquals(new HashSet<>(), newRole.getSysPrivilege());
+
+    // because newRole has illegal path, its not ready to service.
+    assertFalse(newRole.getServiceReady());
+
+    // ignore manage_database.
+    assertEquals(2, newRole.getPathPrivilegeList().size());
+
+    // ignore alterpassword and grant_privilege
+    assertEquals(7, newRole.getSysPrivilege().size());
+    assertNotNull(newRole.getSysPriGrantOpt());
     accessor.deleteRole("root");
-    accessor.saveRole(role);
-    newRole = accessor.loadRole("root");
-    assertEquals(role, newRole);
+    accessor.saveRole(newRole);
+    Role newRole2 = accessor.loadRole("root");
+    assertEquals(newRole, newRole2);
   }
 }

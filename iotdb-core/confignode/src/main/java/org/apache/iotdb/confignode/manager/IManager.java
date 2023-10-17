@@ -482,6 +482,8 @@ public interface IManager {
 
   void addMetrics();
 
+  void removeMetrics();
+
   /** Show (data/schemaengine) regions. */
   DataSet showRegion(GetRegionInfoListPlan getRegionInfoListPlan);
 
@@ -604,7 +606,7 @@ public interface IManager {
   TGetAllPipeInfoResp getAllPipeInfo();
 
   /**
-   * Get RegionId。used for Show cluster slots information in
+   * Get RegionId. used for Show cluster slots information in
    * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
    *
    * @return TGetRegionIdResp.

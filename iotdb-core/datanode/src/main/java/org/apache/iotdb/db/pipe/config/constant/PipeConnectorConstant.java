@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.config.constant;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
 public class PipeConnectorConstant {
@@ -28,6 +30,10 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_IOTDB_IP_KEY = "connector.ip";
   public static final String CONNECTOR_IOTDB_PORT_KEY = "connector.port";
   public static final String CONNECTOR_IOTDB_NODE_URLS_KEY = "connector.node-urls";
+
+  public static final String CONNECTOR_IOTDB_PARALLEL_TASKS_KEY = "connector.parallel.tasks";
+  public static final int CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE =
+      PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum();
 
   public static final String CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY = "connector.batch.enable";
   public static final boolean CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE = true;

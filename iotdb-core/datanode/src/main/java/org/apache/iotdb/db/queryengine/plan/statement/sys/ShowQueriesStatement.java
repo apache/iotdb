@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.sys;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
@@ -47,7 +48,7 @@ public class ShowQueriesStatement extends ShowStatement {
   private ZoneId zoneId;
 
   public ShowQueriesStatement() {
-    // do nothing
+    this.statementType = StatementType.SHOW_QUERIES;
   }
 
   @Override

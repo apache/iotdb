@@ -290,6 +290,10 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         }
 
       case CREATE_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(this.roleName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot create role has same name with admin user");
+        }
       case DROP_ROLE:
       case GRANT_USER_ROLE:
       case REVOKE_USER_ROLE:
@@ -301,27 +305,28 @@ public class AuthorStatement extends Statement implements IConfigStatement {
             PrivilegeType.MANAGE_ROLE);
 
       case REVOKE_USER:
+      case GRANT_USER:
         if (AuthorityChecker.SUPER_USER.equals(this.userName)) {
-          return AuthorityChecker.getTSStatus(false, "Cannot revoke privileges of admin user");
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant/revoke privileges of admin user");
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
-        return AuthorityChecker.getTSStatus(
+        return AuthorityChecker.getOptTSStatus(
             AuthorityChecker.checkGrantOption(userName, privilegeList, nodeNameList),
-            "Has no permission to "
+            "Has no permission to execute"
                 + authorType
                 + ", please ensure you have these privileges and the grant option is TRUE when granted");
 
-      case GRANT_USER:
       case GRANT_ROLE:
       case REVOKE_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
-        return AuthorityChecker.getTSStatus(
+        return AuthorityChecker.getOptTSStatus(
             AuthorityChecker.checkGrantOption(userName, privilegeList, nodeNameList),
-            "Has no permission to "
+            "Has no permission to execute "
                 + authorType
                 + ", please ensure you have these privileges and the grant option is TRUE when granted");
       default:

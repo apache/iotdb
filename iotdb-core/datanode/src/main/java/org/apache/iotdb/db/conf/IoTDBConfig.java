@@ -61,6 +61,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -522,7 +523,8 @@ public class IoTDBConfig {
    */
   private int subCompactionTaskNum = 4;
 
-  private CompactionValidationLevel compactionValidationLevel = CompactionValidationLevel.NONE;
+  private CompactionValidationLevel compactionValidationLevel =
+      CompactionValidationLevel.RESOURCE_ONLY;
 
   /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
@@ -1078,8 +1080,8 @@ public class IoTDBConfig {
   private double maxMemoryRatioForQueue = 0.6;
 
   /** Pipe related */
-  private String pipeReceiverFileDir =
-      systemDir + File.separator + "pipe" + File.separator + "receiver";
+  /** initialized as null, updated based on the latest `systemDir` during querying */
+  private String pipeReceiverFileDir = null;
 
   /** Resource control */
   private boolean quotaEnable = false;
@@ -3711,7 +3713,9 @@ public class IoTDBConfig {
   }
 
   public String getPipeReceiverFileDir() {
-    return pipeReceiverFileDir;
+    return Objects.isNull(this.pipeReceiverFileDir)
+        ? (systemDir + File.separator + "pipe" + File.separator + "receiver")
+        : this.pipeReceiverFileDir;
   }
 
   public boolean isQuotaEnable() {

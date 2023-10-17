@@ -458,12 +458,13 @@ public class NodeInfo implements SnapshotProcessor {
 
       serializeVersionInfo(fileOutputStream);
 
-      fileOutputStream.flush();
+      tioStreamTransport.flush();
+      fileOutputStream.getFD().sync();
 
-      fileOutputStream.close();
+      // The tmpFile can be renamed only after the stream is closed
+      tioStreamTransport.close();
 
       return tmpFile.renameTo(snapshotFile);
-
     } finally {
       versionInfoReadWriteLock.readLock().unlock();
       dataNodeInfoReadWriteLock.readLock().unlock();

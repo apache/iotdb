@@ -22,53 +22,244 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
+        <artifactId>iotdb-parent</artifactId>
         <version>1.3.0-SNAPSHOT</version>
     </parent>
     <artifactId>integration-test</artifactId>
     <name>IoTDB: Integration-Test</name>
     <properties>
+        <highPerformanceMode.configNodeConsensus>Ratis</highPerformanceMode.configNodeConsensus>
+        <highPerformanceMode.configNodeNumber>1</highPerformanceMode.configNodeNumber>
+        <highPerformanceMode.dataNodeNumber>3</highPerformanceMode.dataNodeNumber>
+        <highPerformanceMode.dataRegionConsensus>IoT</highPerformanceMode.dataRegionConsensus>
+        <highPerformanceMode.dataRegionReplicaNumber>2</highPerformanceMode.dataRegionReplicaNumber>
+        <highPerformanceMode.schemaRegionConsensus>Ratis</highPerformanceMode.schemaRegionConsensus>
+        <highPerformanceMode.schemaRegionReplicaNumber>3</highPerformanceMode.schemaRegionReplicaNumber>
+        <integrationTest.excludedGroups/>
         <integrationTest.forkCount>1</integrationTest.forkCount>
-        <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
-        <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+        <integrationTest.includedGroups/>
         <integrationTest.launchNodeInSameJVM>true</integrationTest.launchNodeInSameJVM>
         <integrationTest.nodeMaxHeapSize>200m</integrationTest.nodeMaxHeapSize>
         <integrationTest.nodeNewHeapSize>200m</integrationTest.nodeNewHeapSize>
+        <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+        <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
         <integrationTest.testEnv/>
-        <integrationTest.excludedGroups/>
-        <integrationTest.includedGroups/>
+        <lightWeightStandaloneMode.configNodeConsensus>Simple</lightWeightStandaloneMode.configNodeConsensus>
         <!-- -DClusterConfigurations values configured here -->
         <lightWeightStandaloneMode.configNodeNumber>1</lightWeightStandaloneMode.configNodeNumber>
         <lightWeightStandaloneMode.dataNodeNumber>1</lightWeightStandaloneMode.dataNodeNumber>
-        <lightWeightStandaloneMode.configNodeConsensus>Simple</lightWeightStandaloneMode.configNodeConsensus>
-        <lightWeightStandaloneMode.schemaRegionConsensus>Simple</lightWeightStandaloneMode.schemaRegionConsensus>
         <lightWeightStandaloneMode.dataRegionConsensus>Simple</lightWeightStandaloneMode.dataRegionConsensus>
-        <lightWeightStandaloneMode.schemaRegionReplicaNumber>1</lightWeightStandaloneMode.schemaRegionReplicaNumber>
         <lightWeightStandaloneMode.dataRegionReplicaNumber>1</lightWeightStandaloneMode.dataRegionReplicaNumber>
+        <lightWeightStandaloneMode.schemaRegionConsensus>Simple</lightWeightStandaloneMode.schemaRegionConsensus>
+        <lightWeightStandaloneMode.schemaRegionReplicaNumber>1</lightWeightStandaloneMode.schemaRegionReplicaNumber>
+        <scalableSingleNodeMode.configNodeConsensus>Ratis</scalableSingleNodeMode.configNodeConsensus>
         <scalableSingleNodeMode.configNodeNumber>1</scalableSingleNodeMode.configNodeNumber>
         <scalableSingleNodeMode.dataNodeNumber>1</scalableSingleNodeMode.dataNodeNumber>
-        <scalableSingleNodeMode.configNodeConsensus>Ratis</scalableSingleNodeMode.configNodeConsensus>
-        <scalableSingleNodeMode.schemaRegionConsensus>Ratis</scalableSingleNodeMode.schemaRegionConsensus>
         <scalableSingleNodeMode.dataRegionConsensus>IoT</scalableSingleNodeMode.dataRegionConsensus>
-        <scalableSingleNodeMode.schemaRegionReplicaNumber>1</scalableSingleNodeMode.schemaRegionReplicaNumber>
         <scalableSingleNodeMode.dataRegionReplicaNumber>1</scalableSingleNodeMode.dataRegionReplicaNumber>
-        <highPerformanceMode.configNodeNumber>1</highPerformanceMode.configNodeNumber>
-        <highPerformanceMode.dataNodeNumber>3</highPerformanceMode.dataNodeNumber>
-        <highPerformanceMode.configNodeConsensus>Ratis</highPerformanceMode.configNodeConsensus>
-        <highPerformanceMode.schemaRegionConsensus>Ratis</highPerformanceMode.schemaRegionConsensus>
-        <highPerformanceMode.dataRegionConsensus>IoT</highPerformanceMode.dataRegionConsensus>
-        <highPerformanceMode.schemaRegionReplicaNumber>3</highPerformanceMode.schemaRegionReplicaNumber>
-        <highPerformanceMode.dataRegionReplicaNumber>2</highPerformanceMode.dataRegionReplicaNumber>
+        <scalableSingleNodeMode.schemaRegionConsensus>Ratis</scalableSingleNodeMode.schemaRegionConsensus>
+        <scalableSingleNodeMode.schemaRegionReplicaNumber>1</scalableSingleNodeMode.schemaRegionReplicaNumber>
+        <strongConsistencyClusterMode.configNodeConsensus>Ratis</strongConsistencyClusterMode.configNodeConsensus>
         <strongConsistencyClusterMode.configNodeNumber>3</strongConsistencyClusterMode.configNodeNumber>
         <strongConsistencyClusterMode.dataNodeNumber>3</strongConsistencyClusterMode.dataNodeNumber>
-        <strongConsistencyClusterMode.configNodeConsensus>Ratis</strongConsistencyClusterMode.configNodeConsensus>
-        <strongConsistencyClusterMode.schemaRegionConsensus>Ratis</strongConsistencyClusterMode.schemaRegionConsensus>
         <strongConsistencyClusterMode.dataRegionConsensus>Ratis</strongConsistencyClusterMode.dataRegionConsensus>
-        <strongConsistencyClusterMode.schemaRegionReplicaNumber>3</strongConsistencyClusterMode.schemaRegionReplicaNumber>
         <strongConsistencyClusterMode.dataRegionReplicaNumber>3</strongConsistencyClusterMode.dataRegionReplicaNumber>
-        <flink-table.version>1.17.0</flink-table.version>
+        <strongConsistencyClusterMode.schemaRegionConsensus>Ratis</strongConsistencyClusterMode.schemaRegionConsensus>
+        <strongConsistencyClusterMode.schemaRegionReplicaNumber>3</strongConsistencyClusterMode.schemaRegionReplicaNumber>
     </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-server</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-session</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-jdbc</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>trigger-api</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>isession</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>service-rpc</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-confignode</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>node-commons</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-commons</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>tsfile</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>udf-api</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>library-udf</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-consensus</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.thrift</groupId>
+            <artifactId>libthrift</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-confignode</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>zeppelin-iotdb</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>spark-iotdb-connector_2.12</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-cli</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>flink-sql-iotdb-connector</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql-api_2.12</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-server</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.stephenc.jcip</groupId>
+            <artifactId>jcip-annotations</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.zeppelin</groupId>
+            <artifactId>zeppelin-interpreter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-core_2.12</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_2.12</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-table-api-java</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-table-common</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-table-test-utils</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
     <build>
         <plugins>
             <!-- skip default-test -->
@@ -95,10 +286,10 @@
                     <!-- Package binaries-->
                     <execution>
                         <id>cluster-test-assembly</id>
-                        <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
+                        <phase>package</phase>
                         <configuration>
                             <descriptors>
                                 <descriptor>src/assembly/mpp-test.xml</descriptor>
@@ -109,10 +300,10 @@
                     </execution>
                     <execution>
                         <id>cluster-test-assembly-share</id>
-                        <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
+                        <phase>package</phase>
                         <configuration>
                             <descriptors>
                                 <descriptor>src/assembly/mpp-share.xml</descriptor>
@@ -189,6 +380,23 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Running this here wouldn't really make much sense -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>check-dependencies</id>
+                        <goals>
+                            <goal>analyze-only</goal>
+                        </goals>
+                        <phase>verify</phase>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -198,10 +406,10 @@
                 <executions>
                     <execution>
                         <id>report</id>
-                        <phase>post-integration-test</phase>
                         <goals>
                             <goal>java</goal>
                         </goals>
+                        <phase>post-integration-test</phase>
                     </execution>
                 </executions>
             </plugin>
@@ -222,368 +430,102 @@
             </plugin>
         </plugins>
     </build>
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-server</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-server</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-session</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-jdbc</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-cli</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-confignode</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>library-udf</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.awaitility</groupId>
-            <artifactId>awaitility</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>zeppelin-iotdb</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-jcl</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-api</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.zeppelin</groupId>
-            <artifactId>zeppelin-interpreter</artifactId>
-            <version>${zeppelin.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-api</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>spark-iotdb-connector_2.12</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.12</artifactId>
-            <version>3.3.2</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.dropwizard.metrics</groupId>
-                    <artifactId>metrics-core</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-slf4j-impl</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_2.12</artifactId>
-            <version>3.3.2</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- dependencies for Flink SQL Connector test -->
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>flink-sql-iotdb-connector</artifactId>
-            <version>${project.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-slf4j-impl</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <!-- used by tests -->
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-core</artifactId>
-            <version>${flink-table.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-slf4j-impl</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-java</artifactId>
-            <version>${flink-table.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-slf4j-impl</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-streaming-java</artifactId>
-            <version>${flink-table.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-slf4j-impl</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-table-api-java</artifactId>
-            <version>${flink-table.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-slf4j-impl</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-table-runtime</artifactId>
-            <version>${flink-table.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-slf4j-impl</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-table-planner-loader</artifactId>
-            <version>${flink-table.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-slf4j-impl</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-connector-files</artifactId>
-            <version>${flink-table.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-slf4j-impl</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-connector-datagen</artifactId>
-            <version>${flink-table.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-slf4j-impl</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-clients</artifactId>
-            <version>${flink-table.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-slf4j-impl</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-test-utils</artifactId>
-            <version>${flink-table.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-slf4j-impl</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-table-test-utils</artifactId>
-            <version>${flink-table.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-slf4j-impl</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-    </dependencies>
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0-M5</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
     <profiles>
         <profile>
             <id>SimpleIT</id>
-            <properties>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneIT</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
-                <integrationTest.testEnv>Simple</integrationTest.testEnv>
-                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
-                <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
-                <integrationTest.readAndVerifyWithMultiNode>false</integrationTest.readAndVerifyWithMultiNode>
-            </properties>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
+            <properties>
+                <integrationTest.excludedGroups/>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneIT</integrationTest.includedGroups>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>false</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.testEnv>Simple</integrationTest.testEnv>
+            </properties>
         </profile>
         <!-- Currently RemoteIT is not working as it lacks of the remote endpoint parameters -->
         <profile>
             <id>RemoteIT</id>
-            <properties>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.RemoteIT</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
-                <integrationTest.testEnv>Remote</integrationTest.testEnv>
-            </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
+            <properties>
+                <integrationTest.excludedGroups/>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.RemoteIT</integrationTest.includedGroups>
+                <integrationTest.testEnv>Remote</integrationTest.testEnv>
+            </properties>
         </profile>
         <profile>
             <id>MultiClusterIT</id>
-            <properties>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1,org.apache.iotdb.itbase.category.MultiClusterIT2,org.apache.iotdb.itbase.category.MultiClusterIT3</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
-                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
-                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
-                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
-                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
-            </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
+            <properties>
+                <integrationTest.excludedGroups/>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1,org.apache.iotdb.itbase.category.MultiClusterIT2,org.apache.iotdb.itbase.category.MultiClusterIT3</integrationTest.includedGroups>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+            </properties>
         </profile>
         <profile>
             <id>MultiClusterIT1</id>
-            <properties>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
-                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
-                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
-                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
-                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
-            </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
+            <properties>
+                <integrationTest.excludedGroups/>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1</integrationTest.includedGroups>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+            </properties>
         </profile>
         <profile>
             <id>MultiClusterIT2</id>
-            <properties>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
-                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
-                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
-                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
-                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
-            </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
+            <properties>
+                <integrationTest.excludedGroups/>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2</integrationTest.includedGroups>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+            </properties>
         </profile>
         <profile>
             <id>MultiClusterIT3</id>
-            <properties>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT3</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
-                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
-                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
-                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
-                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
-            </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
+            <properties>
+                <integrationTest.excludedGroups/>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT3</integrationTest.includedGroups>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+            </properties>
         </profile>
         <profile>
             <id>ClusterIT</id>
-            <properties>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.ClusterIT</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
-                <integrationTest.testEnv>Cluster1</integrationTest.testEnv>
-                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
-                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
-                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
-            </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
+            <properties>
+                <integrationTest.excludedGroups/>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.ClusterIT</integrationTest.includedGroups>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.testEnv>Cluster1</integrationTest.testEnv>
+            </properties>
         </profile>
     </profiles>
 </project>

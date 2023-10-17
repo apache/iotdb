@@ -64,11 +64,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTag
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
@@ -128,6 +130,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDC
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_VALUE;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX_TIME;
@@ -184,6 +187,8 @@ public class LogicalPlanBuilder {
       Set<Expression> sourceExpressions,
       Ordering scanOrder,
       Filter timeFilter,
+      long offset,
+      long limit,
       boolean lastLevelUseWildcard) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     List<PartialPath> selectedPaths =
@@ -192,27 +197,37 @@ public class LogicalPlanBuilder {
             .collect(Collectors.toList());
     List<PartialPath> groupedPaths = MetaUtils.groupAlignedSeries(selectedPaths);
     for (PartialPath path : groupedPaths) {
-      if (path instanceof MeasurementPath) { // non-aligned series
+      if (path instanceof MeasurementPath) {
+        // non-aligned series
+        // TODO: push down value filter
         SeriesScanNode seriesScanNode =
             new SeriesScanNode(
-                context.getQueryId().genPlanNodeId(), (MeasurementPath) path, scanOrder);
-        seriesScanNode.setTimeFilter(timeFilter);
-        // TODO: push down value filter
-        seriesScanNode.setValueFilter(timeFilter);
+                context.getQueryId().genPlanNodeId(),
+                (MeasurementPath) path,
+                scanOrder,
+                timeFilter,
+                timeFilter,
+                limit,
+                offset,
+                null);
         sourceNodeList.add(seriesScanNode);
-      } else if (path instanceof AlignedPath) { // aligned series
+      } else if (path instanceof AlignedPath) {
+        // aligned series
+        // TODO: push down value filter
         AlignedSeriesScanNode alignedSeriesScanNode =
             new AlignedSeriesScanNode(
                 context.getQueryId().genPlanNodeId(),
                 (AlignedPath) path,
                 scanOrder,
+                timeFilter,
+                timeFilter,
+                limit,
+                offset,
+                null,
                 lastLevelUseWildcard);
-        alignedSeriesScanNode.setTimeFilter(timeFilter);
-        // TODO: push down value filter
-        alignedSeriesScanNode.setValueFilter(timeFilter);
         sourceNodeList.add(alignedSeriesScanNode);
       } else {
-        throw new IllegalArgumentException("unexpected path type");
+        throw new IllegalArgumentException("Unexpected path type");
       }
     }
 
@@ -223,7 +238,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLast(
-      Analysis analysis, Ordering timeseriesOrdering, Ordering resultTimeOrder, ZoneId zoneId) {
+      Analysis analysis, Ordering timeseriesOrdering, ZoneId zoneId) {
     Set<String> deviceAlignedSet = new HashSet<>();
     Set<String> deviceExistViewSet = new HashSet<>();
     // <Device, <Measurement, Expression>>
@@ -306,53 +321,7 @@ public class LogicalPlanBuilder {
       }
     }
 
-    Set<Expression> lastQueryNonWriteViewExpressions =
-        analysis.getLastQueryNonWritableViewExpressions();
-    Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap =
-        analysis.getLastQueryNonWritableViewSourceExpressionMap();
-    if (lastQueryNonWriteViewExpressions != null) {
-      for (Expression expression : lastQueryNonWriteViewExpressions) {
-        Set<Expression> sourceTransformExpressions = Collections.singleton(expression);
-        FunctionExpression maxTimeAgg =
-            new FunctionExpression(
-                MAX_TIME, new LinkedHashMap<>(), Collections.singletonList(expression));
-        FunctionExpression lastValueAgg =
-            new FunctionExpression(
-                LAST_VALUE, new LinkedHashMap<>(), Collections.singletonList(expression));
-        analyzeExpression(analysis, expression);
-        analyzeExpression(analysis, maxTimeAgg);
-        analyzeExpression(analysis, lastValueAgg);
-
-        Set<Expression> sources =
-            new LinkedHashSet<>(lastQueryNonWritableViewSourceExpressionMap.get(expression));
-        LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-        planBuilder =
-            planBuilder
-                .planRawDataSource(
-                    sources,
-                    resultTimeOrder,
-                    analysis.getGlobalTimeFilter(),
-                    analysis.isLastLevelUseWildcard())
-                .planWhereAndSourceTransform(
-                    null, sourceTransformExpressions, false, zoneId, resultTimeOrder)
-                .planAggregation(
-                    new LinkedHashSet<>(Arrays.asList(maxTimeAgg, lastValueAgg)),
-                    null,
-                    analysis.getGroupByTimeParameter(),
-                    analysis.getGroupByParameter(),
-                    false,
-                    AggregationStep.SINGLE,
-                    resultTimeOrder);
-
-        LastQueryTransformNode transformNode =
-            new LastQueryTransformNode(
-                context.getQueryId().genPlanNodeId(),
-                planBuilder.getRoot(),
-                expression.getViewPath().getFullPath(),
-                analysis.getType(expression).toString());
-        sourceNodeList.add(transformNode);
-      }
-    }
+    processLastQueryTransformNode(analysis, sourceNodeList, zoneId);
 
     if (timeseriesOrdering != null) {
       sourceNodeList.sort(
@@ -379,7 +348,7 @@ public class LogicalPlanBuilder {
             sourceNodeList,
             analysis.getGlobalTimeFilter(),
             timeseriesOrdering,
-            lastQueryNonWriteViewExpressions != null);
+            analysis.getLastQueryNonWritableViewSourceExpressionMap() != null);
 
     ColumnHeaderConstant.lastQueryColumnHeaders.forEach(
         columnHeader ->
@@ -388,6 +357,58 @@ public class LogicalPlanBuilder {
                 .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
 
     return this;
+  }
+
+  private void processLastQueryTransformNode(
+      Analysis analysis, List<PlanNode> sourceNodeList, ZoneId zoneId) {
+    if (analysis.getLastQueryNonWritableViewSourceExpressionMap() == null) {
+      return;
+    }
+
+    for (Map.Entry<Expression, List<Expression>> entry :
+        analysis.getLastQueryNonWritableViewSourceExpressionMap().entrySet()) {
+      Expression expression = entry.getKey();
+      Set<Expression> sourceExpressions = new LinkedHashSet<>(entry.getValue());
+      Set<Expression> sourceTransformExpressions = Collections.singleton(expression);
+      FunctionExpression maxTimeAgg =
+          new FunctionExpression(
+              MAX_TIME, new LinkedHashMap<>(), Collections.singletonList(expression));
+      FunctionExpression lastValueAgg =
+          new FunctionExpression(
+              LAST_VALUE, new LinkedHashMap<>(), Collections.singletonList(expression));
+      analyzeExpression(analysis, expression);
+      analyzeExpression(analysis, maxTimeAgg);
+      analyzeExpression(analysis, lastValueAgg);
+
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+      planBuilder =
+          planBuilder
+              .planRawDataSource(
+                  sourceExpressions,
+                  Ordering.DESC,
+                  analysis.getGlobalTimeFilter(),
+                  0,
+                  0,
+                  analysis.isLastLevelUseWildcard())
+              .planWhereAndSourceTransform(
+                  null, sourceTransformExpressions, false, zoneId, Ordering.DESC)
+              .planAggregation(
+                  new LinkedHashSet<>(Arrays.asList(maxTimeAgg, lastValueAgg)),
+                  null,
+                  analysis.getGroupByTimeParameter(),
+                  analysis.getGroupByParameter(),
+                  false,
+                  AggregationStep.SINGLE,
+                  Ordering.DESC);
+
+      LastQueryTransformNode transformNode =
+          new LastQueryTransformNode(
+              context.getQueryId().genPlanNodeId(),
+              planBuilder.getRoot(),
+              expression.getViewPath().getFullPath(),
+              analysis.getType(expression).toString());
+      sourceNodeList.add(transformNode);
+    }
   }
 
   public LogicalPlanBuilder planAggregationSource(
@@ -753,57 +774,141 @@ public class LogicalPlanBuilder {
 
     OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
 
-    // order by time, device can be optimized by SingleDeviceViewNode and MergeSortNode
-    if (queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression()) {
+    long limitValue =
+        queryStatement.hasOffset()
+            ? queryStatement.getRowOffset() + queryStatement.getRowLimit()
+            : queryStatement.getRowLimit();
+
+    if (!queryStatement.isAggregationQuery()
+        && queryStatement.hasLimit()
+        && queryStatement.getOrderByComponent() != null
+        && !queryStatement.isOrderByBasedOnDevice()
+        && limitValue <= LIMIT_USE_TOP_K_FOR_ALIGN_BY_DEVICE) {
+
+      // order by time and order by expression with limit, can be optimized to TopK implementation
+      TopKNode topKNode =
+          new TopKNode(
+              context.getQueryId().genPlanNodeId(),
+              (int) limitValue,
+              orderByParameter,
+              outputColumnNames);
+
+      // if value filter exists, need add a LIMIT-NODE as the child node of TopKNode
+      long valueFilterLimit = queryStatement.hasWhere() ? limitValue : -1;
+
+      if ((queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression())) {
+        addSingleDeviceViewNodes(
+            topKNode,
+            deviceNameToSourceNodesMap,
+            outputColumnNames,
+            deviceToMeasurementIndexesMap,
+            valueFilterLimit);
+      } else {
+        topKNode.addChild(
+            addDeviceViewNode(
+                orderByParameter,
+                outputColumnNames,
+                deviceToMeasurementIndexesMap,
+                deviceNameToSourceNodesMap,
+                valueFilterLimit));
+      }
+
+      this.root = topKNode;
+    }
+    // order by time + no limit, device can be optimized by SingleDeviceViewNode and MergeSortNode
+    else if (queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression()) {
       MergeSortNode mergeSortNode =
           new MergeSortNode(
               context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
-      for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
-        String deviceName = entry.getKey();
-        PlanNode subPlan = entry.getValue();
-        SingleDeviceViewNode singleDeviceViewNode =
-            new SingleDeviceViewNode(
-                context.getQueryId().genPlanNodeId(),
-                outputColumnNames,
-                deviceName,
-                deviceToMeasurementIndexesMap.get(deviceName));
-        singleDeviceViewNode.addChild(subPlan);
-        mergeSortNode.addChild(singleDeviceViewNode);
-      }
+      addSingleDeviceViewNodes(
+          mergeSortNode,
+          deviceNameToSourceNodesMap,
+          outputColumnNames,
+          deviceToMeasurementIndexesMap,
+          -1);
       this.root = mergeSortNode;
     } else {
-      DeviceViewNode deviceViewNode =
-          new DeviceViewNode(
-              context.getQueryId().genPlanNodeId(),
+      this.root =
+          addDeviceViewNode(
               orderByParameter,
               outputColumnNames,
-              deviceToMeasurementIndexesMap);
-
-      for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
-        String deviceName = entry.getKey();
-        PlanNode subPlan = entry.getValue();
-        deviceViewNode.addChildDeviceNode(deviceName, subPlan);
-      }
-      this.root = deviceViewNode;
+              deviceToMeasurementIndexesMap,
+              deviceNameToSourceNodesMap,
+              -1);
     }
 
     context.getTypeProvider().setType(DEVICE, TSDataType.TEXT);
     updateTypeProvider(deviceViewOutputExpressions);
 
-    if (queryStatement.needPushDownSort()) {
-      if (selectExpression.size() != deviceViewOutputExpressions.size()) {
-        this.root =
-            new TransformNode(
-                context.getQueryId().genPlanNodeId(),
-                root,
-                selectExpression.toArray(new Expression[0]),
-                queryStatement.isGroupByTime(),
-                queryStatement.getSelectComponent().getZoneId(),
-                queryStatement.getResultTimeOrder());
-      }
+    if (queryStatement.needPushDownSort()
+        && (selectExpression.size() != deviceViewOutputExpressions.size())) {
+      this.root =
+          new TransformNode(
+              context.getQueryId().genPlanNodeId(),
+              root,
+              selectExpression.toArray(new Expression[0]),
+              queryStatement.isGroupByTime(),
+              queryStatement.getSelectComponent().getZoneId(),
+              queryStatement.getResultTimeOrder());
     }
 
     return this;
+  }
+
+  private void addSingleDeviceViewNodes(
+      MultiChildProcessNode parent,
+      Map<String, PlanNode> deviceNameToSourceNodesMap,
+      List<String> outputColumnNames,
+      Map<String, List<Integer>> deviceToMeasurementIndexesMap,
+      long valueFilterLimit) {
+    for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
+      String deviceName = entry.getKey();
+      PlanNode subPlan = entry.getValue();
+      SingleDeviceViewNode singleDeviceViewNode =
+          new SingleDeviceViewNode(
+              context.getQueryId().genPlanNodeId(),
+              outputColumnNames,
+              deviceName,
+              deviceToMeasurementIndexesMap.get(deviceName));
+
+      // put LIMIT-NODE below of SingleDeviceViewNode if exists value filter
+      if (valueFilterLimit > 0) {
+        LimitNode limitNode =
+            new LimitNode(context.getQueryId().genPlanNodeId(), subPlan, valueFilterLimit);
+        singleDeviceViewNode.addChild(limitNode);
+      } else {
+        singleDeviceViewNode.addChild(subPlan);
+      }
+
+      parent.addChild(singleDeviceViewNode);
+    }
+  }
+
+  private DeviceViewNode addDeviceViewNode(
+      OrderByParameter orderByParameter,
+      List<String> outputColumnNames,
+      Map<String, List<Integer>> deviceToMeasurementIndexesMap,
+      Map<String, PlanNode> deviceNameToSourceNodesMap,
+      long valueFilterLimit) {
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(
+            context.getQueryId().genPlanNodeId(),
+            orderByParameter,
+            outputColumnNames,
+            deviceToMeasurementIndexesMap);
+
+    for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
+      String deviceName = entry.getKey();
+      PlanNode subPlan = entry.getValue();
+      if (valueFilterLimit > 0) {
+        LimitNode limitNode =
+            new LimitNode(context.getQueryId().genPlanNodeId(), subPlan, valueFilterLimit);
+        deviceViewNode.addChildDeviceNode(deviceName, limitNode);
+      } else {
+        deviceViewNode.addChildDeviceNode(deviceName, subPlan);
+      }
+    }
+    return deviceViewNode;
   }
 
   public LogicalPlanBuilder planGroupByLevel(
@@ -1094,6 +1199,10 @@ public class LogicalPlanBuilder {
       return this;
     }
 
+    if (this.getRoot() instanceof TopKNode) {
+      return this;
+    }
+
     this.root = new LimitNode(context.getQueryId().genPlanNodeId(), this.getRoot(), rowLimit);
     return this;
   }
@@ -1149,10 +1258,9 @@ public class LogicalPlanBuilder {
     }
 
     ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders.forEach(
-        columnHeader -> {
-          updateTypeProviderWithConstantType(
-              columnHeader.getColumnName(), columnHeader.getColumnType());
-        });
+        columnHeader ->
+            updateTypeProviderWithConstantType(
+                columnHeader.getColumnName(), columnHeader.getColumnType()));
     this.root =
         new DeviceViewIntoNode(
             context.getQueryId().genPlanNodeId(), this.getRoot(), deviceViewIntoPathDescriptor);
@@ -1463,6 +1571,11 @@ public class LogicalPlanBuilder {
       Set<Expression> selectExpression) {
     // only the order by clause having expression needs a sortNode
     if (!queryStatement.hasOrderByExpression()) {
+      return this;
+    }
+
+    // TopKNode is already sorted, does not need sort
+    if (root instanceof TopKNode) {
       return this;
     }
 

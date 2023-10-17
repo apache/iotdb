@@ -87,6 +87,10 @@ public abstract class PipeWALResourceManager {
         TimeUnit.MILLISECONDS);
   }
 
+  public int getApproximatePinnedWALCount() {
+    return memtableIdToPipeWALResourceMap.size();
+  }
+
   public final void pin(final WALEntryHandler walEntryHandler) throws IOException {
     final long memtableId = walEntryHandler.getMemTableId();
     final ReentrantLock lock = memtableIdSegmentLocks[(int) (memtableId % SEGMENT_LOCK_COUNT)];

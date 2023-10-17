@@ -49,7 +49,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createChunkWriter;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createCompressionType;
@@ -256,7 +255,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -272,7 +270,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -523,7 +520,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -539,7 +535,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -789,7 +784,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -805,7 +799,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -1072,7 +1065,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -1088,7 +1080,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -1454,7 +1445,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -1470,7 +1460,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -1844,7 +1833,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -1860,7 +1848,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -2244,7 +2231,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -2260,7 +2246,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -2628,7 +2613,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -2644,7 +2628,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -3013,7 +2996,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -3029,7 +3011,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -3409,7 +3390,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -3425,7 +3405,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -3859,7 +3838,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -3875,7 +3853,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -4312,7 +4289,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -4328,7 +4304,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -4765,7 +4740,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -4781,7 +4755,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -5270,7 +5243,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -5286,7 +5258,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -5720,7 +5691,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -5736,7 +5706,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -5951,7 +5920,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -5967,7 +5935,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -6244,7 +6211,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -6260,7 +6226,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -6664,7 +6629,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -6680,7 +6644,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -7049,7 +7012,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -7065,7 +7027,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -7316,7 +7277,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -7332,7 +7292,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -7469,7 +7428,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -7485,7 +7443,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -7673,7 +7630,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -7689,7 +7645,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
@@ -7914,7 +7869,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     Assert.assertTrue(task.start());
@@ -7930,7 +7884,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(0),
             0);
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);

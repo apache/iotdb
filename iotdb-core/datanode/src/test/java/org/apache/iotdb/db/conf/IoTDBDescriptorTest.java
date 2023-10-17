@@ -22,17 +22,32 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLStreamHandler;
+import java.net.URLStreamHandlerFactory;
+import java.util.HashMap;
+import java.util.Map;
 
 public class IoTDBDescriptorTest {
   private final String confPath = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
 
-  @Before
-  public void init() {
-    org.apache.catalina.webresources.TomcatURLStreamHandlerFactory.getInstance();
+  @BeforeClass
+  public static void init() {
+    URL.setURLStreamHandlerFactory(
+        new ConfigurableStreamHandlerFactory(
+            "classpath",
+            new URLStreamHandler() {
+              @Override
+              protected URLConnection openConnection(URL u) {
+                // Well ... we actually don't even need to do anything ... just need to provide a
+                // handler...
+                throw new RuntimeException("This shouldn't have been called");
+              }
+            }));
   }
 
   @After
@@ -73,5 +88,22 @@ public class IoTDBDescriptorTest {
     System.setProperty(IoTDBConstant.IOTDB_CONF, filePath);
     URL confURL = desc.getPropsUrl(IoTDBConfig.CONFIG_NAME);
     Assert.assertEquals(confURL.toString(), path.toString());
+  }
+
+  static class ConfigurableStreamHandlerFactory implements URLStreamHandlerFactory {
+    private final Map<String, URLStreamHandler> protocolHandlers;
+
+    public ConfigurableStreamHandlerFactory(String protocol, URLStreamHandler urlHandler) {
+      protocolHandlers = new HashMap<>();
+      addHandler(protocol, urlHandler);
+    }
+
+    public void addHandler(String protocol, URLStreamHandler urlHandler) {
+      protocolHandlers.put(protocol, urlHandler);
+    }
+
+    public URLStreamHandler createURLStreamHandler(String protocol) {
+      return protocolHandlers.get(protocol);
+    }
   }
 }
