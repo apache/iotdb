@@ -19,17 +19,26 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
@@ -41,6 +50,9 @@ import java.util.List;
  * finished. The future returns the {@link CompactionTaskSummary} of this task execution.
  */
 public abstract class AbstractCompactionTask {
+  protected static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+
   protected String dataRegionId;
   protected String storageGroupName;
   protected long timePartition;
@@ -109,6 +121,8 @@ public abstract class AbstractCompactionTask {
   }
 
   protected abstract boolean doCompaction();
+
+  protected abstract void recover();
 
   protected void printLogWhenException(Logger logger, Exception e) {
     if (e instanceof InterruptedException) {
@@ -195,6 +209,99 @@ public abstract class AbstractCompactionTask {
     if (Thread.currentThread().isInterrupted()) {
       throw new InterruptedException(
           String.format("%s-%s [Compaction] abort", storageGroupName, dataRegionId));
+    }
+  }
+
+  protected boolean checkAllSourceFileExists(List<TsFileResource> tsFileResources) {
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (!tsFileResource.getTsFile().exists() || !tsFileResource.resourceFileExists()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  protected void handleRecoverException(Exception e) {
+    LOGGER.error(
+        "{} [Compaction][Recover] Failed to recover compaction. TaskInfo: {}, Exception: {}",
+        dataRegionId,
+        this,
+        e);
+    tsFileManager.setAllowCompaction(false);
+    LOGGER.error("stop compaction because of exception during recovering");
+    // 考虑是否需要将系统设置为 READONLY
+    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+  }
+
+  protected void insertFilesToTsFileManager(List<TsFileResource> tsFiles) throws IOException {
+    for (TsFileResource tsFileResource : tsFiles) {
+      tsFileManager.keepOrderInsert(tsFileResource, tsFileResource.isSeq());
+    }
+  }
+
+  protected void removeTsFileInMemory(List<TsFileResource> resourceList) {
+    tsFileManager.writeLock("CompactionExceptionHandler");
+    try {
+      for (TsFileResource targetTsFile : resourceList) {
+        if (targetTsFile == null) {
+          // target file has been deleted due to empty after compaction
+          continue;
+        }
+        tsFileManager.remove(targetTsFile, targetTsFile.isSeq());
+      }
+    } finally {
+      tsFileManager.writeUnlock();
+    }
+  }
+
+  public File getRealTargetFile(TsFileIdentifier targetFileIdentifier, String suffix) {
+    File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
+    File targetFile =
+        getFileFromDataDirs(
+            targetFileIdentifier.getFilePath().replace(suffix, TsFileConstant.TSFILE_SUFFIX));
+    return tmpTargetFile != null ? tmpTargetFile : targetFile;
+  }
+
+  /**
+   * This method find the File object of given filePath by searching it in every data directory. If
+   * the file is not found, it will return null.
+   */
+  public File getFileFromDataDirs(String filePath) {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs();
+    for (String dataDir : dataDirs) {
+      File f = new File(dataDir, filePath);
+      if (f.exists()) {
+        return f;
+      }
+    }
+    return null;
+  }
+
+  protected void deleteCompactionModsFile(List<TsFileResource> tsFileResourceList)
+      throws IOException {
+    for (TsFileResource seqFile : tsFileResourceList) {
+      ModificationFile modificationFile = seqFile.getCompactionModFile();
+      if (modificationFile.exists()) {
+        modificationFile.remove();
+      }
+    }
+  }
+
+  protected boolean deleteTsFilesOnDisk(List<TsFileResource> tsFiles) {
+    for (TsFileResource resource : tsFiles) {
+      if (!deleteTsFileOnDisk(resource)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  protected boolean deleteTsFileOnDisk(TsFileResource tsFileResource) {
+    tsFileResource.writeLock();
+    try {
+      return tsFileResource.remove();
+    } finally {
+      tsFileResource.writeUnlock();
     }
   }
 
