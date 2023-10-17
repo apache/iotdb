@@ -29,6 +29,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSp
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCrossSpaceEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.DeviceInfo;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.TsFileResourceCandidate;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.XXXXCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -118,6 +121,11 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           candidate.getSeqFiles().size(),
           candidate.getUnseqFiles().size());
 
+      XXXXCrossCompactionTaskResource result = executeXXXXTaskResourceSelection(candidate);
+      if (result.isValid()) {
+        return result;
+      }
+
       return executeTaskResourceSelection(candidate);
     } catch (IOException e) {
       throw new MergeException(e);
@@ -131,8 +139,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   }
 
   private boolean isAllFileCandidateValid(
-      List<CrossSpaceCompactionCandidate.TsFileResourceCandidate> tsFileResourceCandidates) {
-    for (CrossSpaceCompactionCandidate.TsFileResourceCandidate candidate :
+      List<TsFileResourceCandidate> tsFileResourceCandidates) {
+    for (TsFileResourceCandidate candidate :
         tsFileResourceCandidates) {
       if (!candidate.isValidCandidate) {
         return false;
@@ -140,6 +148,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     }
     return true;
   }
+
+
 
   /**
    * In a preset time (30 seconds), for each unseqFile, find the list of seqFiles that overlap with
@@ -164,7 +174,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
       if (!split.atLeastOneSeqFileSelected) {
         LOGGER.debug("Unseq file {} does not overlap with any seq files.", unseqFile);
-        CrossSpaceCompactionCandidate.TsFileResourceCandidate latestSealedSeqFile =
+        TsFileResourceCandidate latestSealedSeqFile =
             getLatestSealedSeqFile(candidate.getSeqFileCandidates());
         if (latestSealedSeqFile == null) {
           break;
@@ -199,10 +209,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     return taskResource;
   }
 
-  private CrossSpaceCompactionCandidate.TsFileResourceCandidate getLatestSealedSeqFile(
-      List<CrossSpaceCompactionCandidate.TsFileResourceCandidate> seqResourceCandidateList) {
+  private TsFileResourceCandidate getLatestSealedSeqFile(
+      List<TsFileResourceCandidate> seqResourceCandidateList) {
     for (int i = seqResourceCandidateList.size() - 1; i >= 0; i--) {
-      CrossSpaceCompactionCandidate.TsFileResourceCandidate seqResourceCandidate =
+      TsFileResourceCandidate seqResourceCandidate =
           seqResourceCandidateList.get(i);
       if (seqResourceCandidate.resource.isClosed()) {
         // We must select the latest sealed and valid seq file to compact with, in order to avoid
@@ -342,5 +352,71 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
     return Collections.emptyList();
+  }
+
+  public static class XXXXCompactionSelector {
+
+    private List<TsFileResourceCandidate> seqFiles;
+    private List<TsFileResourceCandidate> unseqFiles;
+
+    public XXXXCompactionSelector(CrossSpaceCompactionCandidate candidate) {
+      seqFiles = candidate.getSeqFileCandidates();
+      unseqFiles = candidate.getUnseqFileCandidates();
+    }
+    private XXXXCrossCompactionTaskResource executeXXXXTaskResourceSelection() throws IOException {
+      XXXXCrossCompactionTaskResource result = new XXXXCrossCompactionTaskResource();
+
+      for (TsFileResourceCandidate unseqFile : unseqFiles) {
+        if (canSelectCurrentUnSeqFile(unseqFile)) {
+
+        }
+
+      }
+
+
+      return result;
+    }
+
+    private boolean canSelectCurrentUnSeqFile(TsFileResourceCandidate unseqFile) throws IOException {
+      int previousSeqFileIndex = -1;
+      int nextSeqFileIndex = seqFiles.size();
+
+      boolean hasPreviousSeqFile = false, hasNextSeqFile = false;
+      for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
+        String deviceId = unseqDeviceInfo.deviceId;
+        long startTimeOfUnSeqDevice = unseqDeviceInfo.startTime;
+        long endTimeOfUnSeqDevice = unseqDeviceInfo.endTime;
+        for (int i = 0; i <= seqFiles.size(); i++) {
+          TsFileResourceCandidate seqFile = seqFiles.get(i);
+          if (!seqFile.containsDevice(deviceId)) {
+            continue;
+          }
+          DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(deviceId);
+          long startTimeOfSeqDevice = seqDeviceInfo.startTime;
+          long endTimeOfSeqDevice = seqDeviceInfo.endTime;
+
+          // overlap
+          if (startTimeOfUnSeqDevice <= endTimeOfSeqDevice && endTimeOfUnSeqDevice >= startTimeOfSeqDevice) {
+            return false;
+          }
+
+          // 乱序文件在顺序文件之后
+          if (startTimeOfUnSeqDevice > endTimeOfSeqDevice) {
+            previousSeqFileIndex = Math.max(previousSeqFileIndex, i);
+            hasPreviousSeqFile = true;
+            continue;
+          }
+          // 乱序文件在顺序文件之前
+          nextSeqFileIndex = Math.min(nextSeqFileIndex, i);
+          hasNextSeqFile = true;
+          // 后续不可能出现其他情况
+          break;
+        }
+      }
+
+      // select position to insert
+
+      return true;
+    }
   }
 }
