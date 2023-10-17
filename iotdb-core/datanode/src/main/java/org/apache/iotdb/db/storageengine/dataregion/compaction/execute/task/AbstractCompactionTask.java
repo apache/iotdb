@@ -27,6 +27,7 @@ import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionTaskStage;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -63,7 +64,7 @@ public abstract class AbstractCompactionTask {
   protected long serialId;
   protected boolean crossTask;
   protected boolean innerSeqTask;
-
+  protected CompactionTaskStage taskStage;
   protected long memoryCost = 0L;
 
   protected boolean recoverMemoryStatus;
@@ -310,6 +311,10 @@ public abstract class AbstractCompactionTask {
     } finally {
       tsFileResource.writeUnlock();
     }
+  }
+
+  public void setTaskStage(CompactionTaskStage stage) {
+    this.taskStage = stage;
   }
 
   public boolean isTaskRan() {

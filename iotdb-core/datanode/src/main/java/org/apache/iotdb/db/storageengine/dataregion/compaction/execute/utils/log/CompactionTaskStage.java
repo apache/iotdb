@@ -19,8 +19,21 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log;
 
-import java.util.List;
+public enum CompactionTaskStage {
+  NOT_STARTED("task does not started"),
+  STARTED("task has started"),
+  TARGET_FILE_GENERATED("target file has been generated completely"),
+  TARGET_FILE_REPLACED("target file has been replaced in TsFileManager"),
+  SOURCE_FILE_CLEANED("source files are cleaned up"),
+  FINISHED("task finished");
 
-public interface ICompactionLogger {
-  List<String> getSourceFileList();
+  private final String descirption;
+
+  CompactionTaskStage(String descirption) {
+    this.descirption = descirption;
+  }
+
+  public String getDescription() {
+    return this.descirption;
+  }
 }

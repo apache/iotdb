@@ -60,6 +60,12 @@ public class CompactionLogger implements AutoCloseable {
     }
   }
 
+  public void logTaskStage(CompactionTaskStage stage) throws IOException {
+    logStream.write(stage.name().getBytes());
+    logStream.write(System.lineSeparator().getBytes());
+    logStream.flush();
+  }
+
   public void logFile(TsFileResource tsFile, String flag) throws IOException {
     String log =
         flag

@@ -22,7 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionExceptionHandler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
@@ -31,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subt
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.CompactionValidator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -39,12 +39,12 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -121,6 +121,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         this.emptyTargetTsFileResourceList.add(targetTsFile);
       }
     }
+    this.taskStage = logAnalyzer.getTaskStage();
   }
 
   @Override
@@ -178,11 +179,11 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
                   + targetTsfileResourceList.get(0).getTsFile().getName()
                   + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
 
-      try (CompactionLogger compactionLogger = new CompactionLogger(logFile)) {
+      try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
         // print the path of the temporary file first for priority check during recovery
-        compactionLogger.logFiles(selectedSequenceFiles, CompactionLogger.STR_SOURCE_FILES);
-        compactionLogger.logFiles(selectedUnsequenceFiles, CompactionLogger.STR_SOURCE_FILES);
-        compactionLogger.logFiles(targetTsfileResourceList, CompactionLogger.STR_TARGET_FILES);
+        compactionLogger.logSourceFiles(selectedSequenceFiles);
+        compactionLogger.logSourceFiles(selectedUnsequenceFiles);
+        compactionLogger.logTargetFiles(targetTsfileResourceList);
         compactionLogger.force();
 
         performer.setSourceFiles(selectedSequenceFiles, selectedUnsequenceFiles);
@@ -209,7 +210,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (targetResource.isDeleted()) {
             emptyTargetTsFileResourceList.add(targetResource);
-            compactionLogger.logFile(targetResource, CompactionLogger.STR_DELETED_TARGET_FILES);
+            compactionLogger.logEmptyTargetFile(targetResource);
             compactionLogger.force();
           }
         }
@@ -284,35 +285,11 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
                 (selectedSeqFileSize + selectedUnseqFileSize) / 1024.0d / 1024.0d / costTime),
             summary);
       }
-      if (logFile.exists()) {
-        FileUtils.delete(logFile);
-      }
+      Files.deleteIfExists(logFile.toPath());
     } catch (Exception e) {
       isSuccess = false;
-      // catch throwable to handle OOM errors
-      if (!(e instanceof InterruptedException)) {
-        LOGGER.error(
-            "{}-{} [Compaction] Meet errors in cross space compaction.",
-            storageGroupName,
-            dataRegionId,
-            e);
-      } else {
-        LOGGER.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
-        // clean the interrupted flag
-        Thread.interrupted();
-      }
-
-      // handle exception
-      CompactionExceptionHandler.handleException(
-          storageGroupName + "-" + dataRegionId,
-          logFile,
-          targetTsfileResourceList,
-          selectedSequenceFiles,
-          selectedUnsequenceFiles,
-          tsFileManager,
-          timePartition,
-          false,
-          true);
+      printLogWhenException(LOGGER, e);
+      recover();
     } finally {
       releaseAllLocks();
     }

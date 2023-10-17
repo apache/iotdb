@@ -23,45 +23,28 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 /** MergeLogger records the progress of a merge in file "merge.log" as text lines. */
-public class InnerCompactionLogger extends CompactionLogger {
+public class SimpleCompactionLogger extends CompactionLogger {
 
-  private List<TsFileResource> sourceFiles;
-  private TsFileResource targetFile;
-  private TsFileResource emptyTargetFile;
-
-  public InnerCompactionLogger(File logFile) throws IOException {
+  public SimpleCompactionLogger(File logFile) throws IOException {
     super(logFile);
-    this.sourceFiles = new ArrayList<>();
-  }
-
-  public List<TsFileResource> getSourceFiles() {
-    return sourceFiles;
-  }
-
-  public TsFileResource getTargetFile() {
-    return targetFile;
-  }
-
-  public TsFileResource getEmptyTargetFile() {
-    return emptyTargetFile;
   }
 
   public void logSourceFiles(List<TsFileResource> sourceFiles) throws IOException {
-    this.sourceFiles.addAll(sourceFiles);
     logFiles(sourceFiles, STR_SOURCE_FILES);
   }
 
   public void logTargetFile(TsFileResource targetFile) throws IOException {
-    this.targetFile = targetFile;
     logFile(targetFile, STR_TARGET_FILES);
   }
 
+  public void logTargetFiles(List<TsFileResource> targetFiles) throws IOException {
+    logFiles(targetFiles, STR_TARGET_FILES);
+  }
+
   public void logEmptyTargetFile(TsFileResource emptyTargetFile) throws IOException {
-    this.emptyTargetFile = emptyTargetFile;
     logFile(emptyTargetFile, STR_DELETED_TARGET_FILES);
   }
 }

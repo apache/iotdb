@@ -25,6 +25,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_DELETED_TARGET_FILES;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_SOURCE_FILES;
@@ -36,6 +37,7 @@ public class CompactionLogAnalyzer {
   private final List<TsFileIdentifier> sourceFileInfos = new ArrayList<>();
   private final List<TsFileIdentifier> targetFileInfos = new ArrayList<>();
   private final List<TsFileIdentifier> deletedTargetFileInfos = new ArrayList<>();
+  private CompactionTaskStage taskStage;
   private boolean isLogFromOld = false;
 
   public CompactionLogAnalyzer(File logFile) {
@@ -48,9 +50,10 @@ public class CompactionLogAnalyzer {
    * @throws IOException if io errors occurred
    */
   public void analyze() throws IOException {
-    String currLine;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
+      String currLine;
       while ((currLine = bufferedReader.readLine()) != null) {
+        final String lineValue = currLine;
         String fileInfo;
         if (currLine.startsWith(STR_SOURCE_FILES)) {
           fileInfo = currLine.replaceFirst(STR_SOURCE_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
@@ -58,10 +61,16 @@ public class CompactionLogAnalyzer {
         } else if (currLine.startsWith(STR_TARGET_FILES)) {
           fileInfo = currLine.replaceFirst(STR_TARGET_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
           targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromInfoString(fileInfo));
-        } else {
+        } else if (currLine.startsWith(STR_DELETED_TARGET_FILES)) {
           fileInfo =
               currLine.replaceFirst(STR_DELETED_TARGET_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
           deletedTargetFileInfos.add(TsFileIdentifier.getFileIdentifierFromInfoString(fileInfo));
+        } else if (Stream.of(CompactionTaskStage.values())
+            .anyMatch(stage -> lineValue.startsWith(stage.name()))) {
+          taskStage = CompactionTaskStage.valueOf(currLine);
+        } else {
+          throw new IllegalArgumentException(
+              String.format("unknown compaction log line: %s", currLine));
         }
       }
     }
@@ -79,7 +88,7 @@ public class CompactionLogAnalyzer {
     return deletedTargetFileInfos;
   }
 
-  public boolean isLogFromOld() {
-    return isLogFromOld;
+  public CompactionTaskStage getTaskStage() {
+    return taskStage;
   }
 }
