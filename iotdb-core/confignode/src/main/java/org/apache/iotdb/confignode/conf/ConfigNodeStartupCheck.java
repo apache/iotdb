@@ -89,12 +89,12 @@ public class ConfigNodeStartupCheck extends StartupChecks {
    */
   private void checkGlobalConfig() throws ConfigurationException {
     // When the ConfigNode consensus protocol is set to SIMPLE_CONSENSUS,
-    // the target_config_node_list needs to point to itself
+    // the target_config_node needs to point to itself
     if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
         && (!CONF.getInternalAddress().equals(CONF.getTargetConfigNode().getIp())
             || CONF.getInternalPort() != CONF.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
-          IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST,
+          IoTDBConstant.CN_TARGET_CONFIG_NODE,
           CONF.getTargetConfigNode().getIp() + ":" + CONF.getTargetConfigNode().getPort(),
           CONF.getInternalAddress() + ":" + CONF.getInternalPort(),
           "the config_node_consensus_protocol_class is set to" + ConsensusFactory.SIMPLE_CONSENSUS);

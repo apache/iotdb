@@ -85,8 +85,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     reloadMutableFields();
 
     // initialize immutable properties
-    immutableNodeProperties.setProperty(
-        IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, targetConfigNodes);
+    immutableNodeProperties.setProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE, targetConfigNodes);
     immutableNodeProperties.setProperty(CN_SYSTEM_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(CN_CONSENSUS_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(

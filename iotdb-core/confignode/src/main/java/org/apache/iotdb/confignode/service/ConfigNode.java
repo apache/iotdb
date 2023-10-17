@@ -318,7 +318,7 @@ public class ConfigNode implements ConfigNodeMBean {
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
       LOGGER.error(
-          "Please set the cn_target_config_node_list parameter in iotdb-confignode.properties file.");
+          "Please set the cn_target_config_node parameter in iotdb-confignode.properties file.");
       throw new StartupException("The targetConfigNode setting in conf is empty");
     }
 

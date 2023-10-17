@@ -1993,14 +1993,20 @@ public class IoTDBDescriptor {
   }
 
   public void loadClusterProps(Properties properties) {
-    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
+    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE);
+    if (configNodeUrls == null) {
+      configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
+      logger.warn(
+          "The parameter dn_target_config_node_list has been abandoned, "
+              + "only the first ConfigNode address will be used to join in the cluster. "
+              + "Please use dn_target_config_node instead.");
+    }
     if (configNodeUrls != null) {
       try {
         configNodeUrls = configNodeUrls.trim();
-        conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
+        conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
-        logger.error(
-            "Config nodes are set in wrong format, please set them like 127.0.0.1:10710,127.0.0.1:10712");
+        logger.error("ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710");
       }
     }
 

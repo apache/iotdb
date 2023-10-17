@@ -109,7 +109,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     immutableCommonProperties.setProperty(
         PIPE_AIR_GAP_RECEIVER_PORT, String.valueOf(this.pipeAirGapReceiverPort));
 
-    immutableNodeProperties.setProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST, targetConfigNode);
+    immutableNodeProperties.setProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE, targetConfigNode);
     immutableNodeProperties.setProperty(DN_SYSTEM_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(DN_DATA_DIRS, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(DN_CONSENSUS_DIR, MppBaseConfig.NULL_VALUE);
