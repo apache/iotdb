@@ -23,7 +23,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 public class MergeSortKey extends SortKey {
 
-  // This filed only used in operation as a intermediate tool, which is used to locate the origin of
+  // This filed only used in operation as an intermediate tool, which is used to locate the origin
+  // of
   // sortKey when there are more than one channels as input of mergeSort.
   // It was initialized during the calculation in operator.
   public int inputChannelIndex;

@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceView
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
@@ -194,11 +195,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       deviceViewNodeList.add(regionDeviceViewNode);
     }
 
-    if (deviceViewNodeList.size() == 1) {
-      return deviceViewNodeList;
-    }
-
-    if (analysis.isHasSort()) {
+    if (deviceViewNodeList.size() == 1 || analysis.isHasSort() || analysis.isUseTopKNode()) {
       return deviceViewNodeList;
     }
 
@@ -954,6 +951,18 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             : groupSourcesForGroupByTag(root, sourceGroup, context));
   }
 
+  @Override
+  public List<PlanNode> visitLimit(LimitNode node, DistributionPlanContext context) {
+    List<PlanNode> result = new ArrayList<>();
+    for (PlanNode planNode : rewrite(node.getChild(), context)) {
+      LimitNode newNode =
+          new LimitNode(
+              context.queryContext.getQueryId().genPlanNodeId(), planNode, node.getLimit());
+      result.add(newNode);
+    }
+    return result;
+  }
+
   // If the Aggregation Query contains value filter, we need to use the naive query plan
   // for it. That is, do the raw data query and then do the aggregation operation.
   // Currently, the method to judge whether the query should use naive query plan is whether
@@ -1122,14 +1131,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               n ->
                   n.getAggregationDescriptorList()
                       .forEach(
-                          v -> {
-                            childDescriptors.add(
-                                new AggregationDescriptor(
-                                    v.getAggregationFuncName(),
-                                    AggregationStep.INTERMEDIATE,
-                                    v.getInputExpressions(),
-                                    v.getInputAttributes()));
-                          }));
+                          v ->
+                              childDescriptors.add(
+                                  new AggregationDescriptor(
+                                      v.getAggregationFuncName(),
+                                      AggregationStep.INTERMEDIATE,
+                                      v.getInputExpressions(),
+                                      v.getInputAttributes()))));
           parentOfGroup.setAggregationDescriptorList(childDescriptors);
           if (sourceNodes.size() == 1) {
             parentOfGroup.addChild(sourceNodes.get(0));

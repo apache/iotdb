@@ -34,16 +34,15 @@ import java.util.List;
 @RunListener.ThreadSafe
 public class IoTDBTestListener extends RunListener {
 
-  public static final String statOutputDir = "target" + File.separator + "test-stats";
-  public static final String statExt = ".stats";
   private final List<IoTDBTestStat> stats = new ArrayList<>();
   private final String statFileName;
 
   public IoTDBTestListener(String statFileName) {
     try {
-      String dirName = System.getProperty("user.dir") + File.separator + statOutputDir;
+      String dirName =
+          System.getProperty("user.dir") + File.separator + IoTDBTestConstants.statOutputDir;
       FileUtils.forceMkdir(new File(dirName));
-      this.statFileName = dirName + File.separator + statFileName + statExt;
+      this.statFileName = dirName + File.separator + statFileName + IoTDBTestConstants.statExt;
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

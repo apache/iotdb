@@ -29,8 +29,8 @@
     <artifactId>flink-sql-example</artifactId>
     <name>IoTDB: Example: Apache Flink SQL</name>
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <flink-table.version>1.17.0</flink-table.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <dependencies>
         <dependency>
