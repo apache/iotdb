@@ -46,9 +46,11 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.utils.constant.TestConstant.sum;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByNaturalMonthIT {
 
   private static final List<String> dataSet = new ArrayList<>();
@@ -58,6 +60,12 @@ public class IoTDBGroupByNaturalMonthIT {
         i <= 1617148800000L /* 2021-03-31 08:00:00 */;
         i += 86400_000L) {
       dataSet.add("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");
+    }
+
+    for (long i = 1672531200000L /*  2023-01-01 00:00:00 */;
+        i <= 1798761600000L /* 2027-01-01 00:00:00 */;
+        i += 86400_000L) {
+      dataSet.add("insert into root.test.d1(timestamp, s1) values (" + i + ", 1)");
     }
   }
 
@@ -80,7 +88,6 @@ public class IoTDBGroupByNaturalMonthIT {
    * 00:00:00
    */
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByNaturalMonthTest1() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
     String[] retArray =
@@ -104,7 +111,6 @@ public class IoTDBGroupByNaturalMonthIT {
    * 2021-03-01 00:00:00
    */
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByNaturalMonthTest2() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
     String[] retArray = {
@@ -127,7 +133,6 @@ public class IoTDBGroupByNaturalMonthIT {
    * 00:00:00
    */
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByNaturalMonthTest3() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
     String[] retArray = {"10/31/2020:00:00:00,30.0,"};
@@ -144,7 +149,6 @@ public class IoTDBGroupByNaturalMonthIT {
    * month with 31 days
    */
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByNaturalMonthTest4() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
     String[] retArray = {"01/31/2021:00:00:00,28.0,", "02/28/2021:00:00:00,31.0,"};
@@ -157,7 +161,6 @@ public class IoTDBGroupByNaturalMonthIT {
 
   /** Test group by month with order by time desc. */
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByNaturalMonthFailTest() {
     assertTestFail(
         "select sum(temperature) from root.sg1.d1 "
@@ -197,7 +200,6 @@ public class IoTDBGroupByNaturalMonthIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupBySlingWindowNaturalMonth1() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
     String[] retArray = {
@@ -216,7 +218,6 @@ public class IoTDBGroupByNaturalMonthIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupBySlingWindowNaturalMonth2() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
     String[] retArray = {
@@ -237,6 +238,97 @@ public class IoTDBGroupByNaturalMonthIT {
     resultSetEqualTest(
         "select sum(temperature) from root.sg1.d1 "
             + "GROUP BY ([1604102400000, 1614556800000), 1mo, 10d)",
+        expectedHeader,
+        retArray,
+        df);
+  }
+
+  @Test
+  public void groupByNaturalYearTest1() {
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.d1.s1")};
+    String[] retArray =
+        new String[] {
+          "01/01/2023:00:00:00,365,",
+          "01/01/2024:00:00:00,366,",
+          "01/01/2025:00:00:00,365,",
+          "01/01/2026:00:00:00,365,"
+        };
+    resultSetEqualTest(
+        "select count(s1) from root.test.d1 " + "group by ([2023-01-01, 2027-01-01), 1y)",
+        expectedHeader,
+        retArray,
+        df);
+  }
+
+  @Ignore
+  // TODO After potential bug fixed
+  @Test
+  public void groupByNaturalYearTest2() {
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.d1.s1")};
+    String[] retArray =
+        new String[] {
+          "01/01/2024:00:00:00,365,",
+          "01/01/2025:00:00:00,366,",
+          "01/01/2026:00:00:00,365,",
+          "01/01/2027:00:00:00,365,"
+        };
+    resultSetEqualTest(
+        "select count(s1) from root.test.d1 " + "group by ((2023-01-01, 2027-01-01], 1y)",
+        expectedHeader,
+        retArray,
+        df);
+  }
+
+  @Test
+  public void groupByNaturalYearWithSlidingWindowTest1() {
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.d1.s1")};
+    String[] retArray =
+        new String[] {
+          "01/01/2023:00:00:00,365,",
+          "07/01/2023:00:00:00,366,",
+          "01/01/2024:00:00:00,366,",
+          "07/01/2024:00:00:00,365,",
+          "01/01/2025:00:00:00,365,",
+          "07/01/2025:00:00:00,365,",
+          "01/01/2026:00:00:00,365,",
+          "07/01/2026:00:00:00,184,"
+        };
+    resultSetEqualTest(
+        "select count(s1) from root.test.d1 " + "group by ([2023-01-01, 2027-01-01), 1y, 6mo)",
+        expectedHeader,
+        retArray,
+        df);
+  }
+
+  @Test
+  public void groupByNaturalYearWithSlidingWindowTest2() {
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.d1.s1")};
+    String[] retArray =
+        new String[] {
+          "01/01/2023:00:00:00,731,",
+          "01/01/2024:00:00:00,731,",
+          "01/01/2025:00:00:00,730,",
+          "01/01/2026:00:00:00,365,"
+        };
+    resultSetEqualTest(
+        "select count(s1) from root.test.d1 " + "group by ([2023-01-01, 2027-01-01), 2y, 1y)",
+        expectedHeader,
+        retArray,
+        df);
+  }
+
+  @Test
+  public void groupByNaturalYearWithSlidingWindowTest3() {
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.d1.s1")};
+    String[] retArray =
+        new String[] {
+          "01/01/2023:00:00:00,181,",
+          "01/01/2024:00:00:00,182,",
+          "01/01/2025:00:00:00,181,",
+          "01/01/2026:00:00:00,181,"
+        };
+    resultSetEqualTest(
+        "select count(s1) from root.test.d1 " + "group by ([2023-01-01, 2027-01-01), 6mo, 1y)",
         expectedHeader,
         retArray,
         df);
