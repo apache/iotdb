@@ -72,8 +72,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected boolean[] isHoldingWriteLock;
   protected long maxModsFileSize;
   protected AbstractInnerSpaceEstimator innerSpaceEstimator;
-
-  protected boolean recoverMemoryStatus;
   protected boolean needRecoverTaskInfoFromLogFile;
 
   public InnerSpaceCompactionTask(

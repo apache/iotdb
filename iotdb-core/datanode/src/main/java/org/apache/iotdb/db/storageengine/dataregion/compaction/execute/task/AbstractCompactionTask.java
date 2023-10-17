@@ -66,6 +66,7 @@ public abstract class AbstractCompactionTask {
 
   protected long memoryCost = 0L;
 
+  protected boolean recoverMemoryStatus;
   protected CompactionTaskType compactionTaskType;
 
   protected AbstractCompactionTask(
