@@ -28,6 +28,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
+import org.slf4j.Logger;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -107,6 +109,20 @@ public abstract class AbstractCompactionTask {
   }
 
   protected abstract boolean doCompaction();
+
+  protected void printLogWhenException(Logger logger, Exception e) {
+    if (e instanceof InterruptedException) {
+      logger.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
+      Thread.currentThread().interrupt();
+    } else {
+      logger.error(
+          "{}-{} [Compaction] Meet errors {}.",
+          compactionTaskType,
+          storageGroupName,
+          dataRegionId,
+          e);
+    }
+  }
 
   public boolean start() {
     boolean isSuccess = false;

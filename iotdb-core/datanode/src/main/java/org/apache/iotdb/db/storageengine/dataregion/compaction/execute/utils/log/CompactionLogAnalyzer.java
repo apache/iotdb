@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -29,16 +26,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.SEQUENCE_NAME_FROM_OLD;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_DELETED_TARGET_FILES;
-import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_MERGE_START_FROM_OLD;
-import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_SEQ_FILES_FROM_OLD;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_SOURCE_FILES;
-import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_SOURCE_FILES_FROM_OLD;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_TARGET_FILES;
-import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_TARGET_FILES_FROM_OLD;
-import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_UNSEQ_FILES_FROM_OLD;
-import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.UNSEQUENCE_NAME_FROM_OLD;
 
 public class CompactionLogAnalyzer {
 
@@ -73,91 +63,6 @@ public class CompactionLogAnalyzer {
               currLine.replaceFirst(STR_DELETED_TARGET_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
           deletedTargetFileInfos.add(TsFileIdentifier.getFileIdentifierFromInfoString(fileInfo));
         }
-      }
-    }
-  }
-
-  /**
-   * Analyze inner space compaction log of previous version (<0.13).
-   *
-   * @throws IOException if io errors occurred
-   */
-  public void analyzeOldInnerCompactionLog() throws IOException {
-    isLogFromOld = true;
-    String currLine;
-    try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
-      while ((currLine = bufferedReader.readLine()) != null) {
-        switch (currLine) {
-          case STR_SOURCE_FILES_FROM_OLD:
-            currLine = bufferedReader.readLine();
-            sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(currLine));
-            break;
-          case STR_TARGET_FILES_FROM_OLD:
-            currLine = bufferedReader.readLine();
-            targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(currLine));
-            break;
-          case STR_SOURCE_FILES:
-            currLine = bufferedReader.readLine();
-            sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromFilePath(currLine));
-            break;
-          case STR_TARGET_FILES:
-            currLine = bufferedReader.readLine();
-            targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromFilePath(currLine));
-            break;
-          case SEQUENCE_NAME_FROM_OLD:
-          case UNSEQUENCE_NAME_FROM_OLD:
-            break;
-          default:
-            break;
-        }
-      }
-    }
-  }
-
-  /**
-   * Analyze cross space compaction log of previous version (<0.13).
-   *
-   * @throws IOException if io errors occurred
-   */
-  @SuppressWarnings("squid:S135")
-  public void analyzeOldCrossCompactionLog() throws IOException {
-    isLogFromOld = true;
-    String currLine;
-    boolean isSeqSource = true;
-    try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
-      while ((currLine = bufferedReader.readLine()) != null) {
-        if (currLine.equals(STR_UNSEQ_FILES_FROM_OLD)) {
-          isSeqSource = false;
-          continue;
-        } else if (currLine.equals(STR_SEQ_FILES_FROM_OLD)) {
-          isSeqSource = true;
-          continue;
-        } else if (currLine.equals(STR_MERGE_START_FROM_OLD)) {
-          break;
-        }
-        analyzeOldFilePath(isSeqSource, currLine);
-      }
-    }
-  }
-
-  private void analyzeOldFilePath(boolean isSeqSource, String oldFilePath) {
-    if (oldFilePath.startsWith("root")) {
-      sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(oldFilePath));
-    } else {
-      sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromFilePath(oldFilePath));
-    }
-
-    int pos = oldFilePath.lastIndexOf(TsFileConstant.TSFILE_SUFFIX);
-    if (isSeqSource) {
-      String targetFilePath =
-          oldFilePath.substring(0, pos)
-              + TsFileConstant.TSFILE_SUFFIX
-              + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD
-              + oldFilePath.substring(pos + TsFileConstant.TSFILE_SUFFIX.length());
-      if (oldFilePath.startsWith("root")) {
-        targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(targetFilePath));
-      } else {
-        targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromFilePath(targetFilePath));
       }
     }
   }

@@ -30,26 +30,22 @@ import java.util.List;
 public class CompactionLogger implements AutoCloseable {
 
   public static final String CROSS_COMPACTION_LOG_NAME_SUFFIX = ".cross-compaction.log";
-  public static final String CROSS_COMPACTION_LOG_NAME_FROM_OLD = "merge.log";
   public static final String INNER_COMPACTION_LOG_NAME_SUFFIX = ".inner-compaction.log";
-  public static final String INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD = ".compaction.log";
 
   public static final String STR_SOURCE_FILES = "source";
   public static final String STR_TARGET_FILES = "target";
-
   public static final String STR_DELETED_TARGET_FILES = "empty";
 
-  public static final String STR_SOURCE_FILES_FROM_OLD = "info-source";
-  public static final String STR_TARGET_FILES_FROM_OLD = "info-target";
-  public static final String STR_SEQ_FILES_FROM_OLD = "seqFiles";
-  public static final String STR_UNSEQ_FILES_FROM_OLD = "unseqFiles";
-  public static final String SEQUENCE_NAME_FROM_OLD = "sequence";
-  public static final String UNSEQUENCE_NAME_FROM_OLD = "unsequence";
-  public static final String STR_MERGE_START_FROM_OLD = "merge start";
+  protected List<TsFileIdentifier> sourceFileIdentifiers;
+  protected List<TsFileIdentifier> targetFileIdentifiers;
+  protected List<TsFileIdentifier> deletedTargetFileIdentifiers;
 
+  protected boolean needRecoverFromLogFile;
+  private File logFile;
   private FileOutputStream logStream;
 
   public CompactionLogger(File logFile) throws IOException {
+    this.logFile = logFile;
     logStream = new FileOutputStream(logFile, true);
   }
 

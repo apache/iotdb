@@ -32,7 +32,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.CompactionValidator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 
@@ -49,8 +48,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   protected List<TsFileResource> selectedSequenceFiles;
   protected List<TsFileResource> selectedUnsequenceFiles;
-  protected TsFileResourceList seqTsFileResourceList;
-  protected TsFileResourceList unseqTsFileResourceList;
   private File logFile;
   protected List<TsFileResource> targetTsfileResourceList;
   protected List<TsFileResource> holdWriteLockList = new ArrayList<>();
@@ -74,10 +71,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         serialId);
     this.selectedSequenceFiles = selectedSequenceFiles;
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
-    this.seqTsFileResourceList =
-        tsFileManager.getOrCreateSequenceListByTimePartition(timePartition);
-    this.unseqTsFileResourceList =
-        tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition);
     this.performer = performer;
     this.hashCode = this.toString().hashCode();
     this.memoryCost = memoryCost;
