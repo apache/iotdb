@@ -80,14 +80,26 @@ public class Int32ArrayColumnEncoder implements ColumnEncoder {
     TSDataType dataType = column.getDataType();
     int positionCount = column.getPositionCount();
     if (TSDataType.INT32.equals(dataType)) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
+      if (column.mayHaveNull()) {
+        for (int i = 0; i < positionCount; i++) {
+          if (!column.isNull(i)) {
+            output.writeInt(column.getInt(i));
+          }
+        }
+      } else {
+        for (int i = 0; i < positionCount; i++) {
           output.writeInt(column.getInt(i));
         }
       }
     } else if (TSDataType.FLOAT.equals(dataType)) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
+      if (column.mayHaveNull()) {
+        for (int i = 0; i < positionCount; i++) {
+          if (!column.isNull(i)) {
+            output.writeInt(Float.floatToIntBits(column.getFloat(i)));
+          }
+        }
+      } else {
+        for (int i = 0; i < positionCount; i++) {
           output.writeInt(Float.floatToIntBits(column.getFloat(i)));
         }
       }
