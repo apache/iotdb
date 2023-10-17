@@ -1475,5 +1475,17 @@ public class AlignedByDeviceTest {
     Analysis analysis = Util.analyze(sql, context);
     PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
     assertTrue(logicalPlanNode instanceof DeviceViewNode);
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    DistributedQueryPlan plan = planner.planFragments();
+    assertEquals(2, plan.getInstances().size());
+
+    sql = "select * from root.sg.d22 order by time asc align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    assertTrue(logicalPlanNode instanceof DeviceViewNode);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(1, plan.getInstances().size());
   }
 }

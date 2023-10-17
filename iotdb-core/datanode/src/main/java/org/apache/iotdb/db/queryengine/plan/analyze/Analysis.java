@@ -271,6 +271,9 @@ public class Analysis {
   // can use statistics to skip
   private boolean lastLevelUseWildcard = false;
 
+  // if `order by limit N align by device` query use topK optimization
+  private boolean useTopKNode = false;
+
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
   }
@@ -778,6 +781,14 @@ public class Analysis {
 
   public void setLastLevelUseWildcard(boolean lastLevelUseWildcard) {
     this.lastLevelUseWildcard = lastLevelUseWildcard;
+  }
+
+  public boolean isUseTopKNode() {
+    return useTopKNode;
+  }
+
+  public void setUseTopKNode() {
+    this.useTopKNode = true;
   }
 
   public void setDeviceList(List<PartialPath> deviceList) {
