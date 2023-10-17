@@ -107,7 +107,7 @@
         <!-- This is the last version to support the javax namespace -->
         <jersey.version>2.40</jersey.version>
         <!-- This was the last version to support Java 8 -->
-        <jetty.version>9.4.52.v20230823</jetty.version>
+        <jetty.version>9.4.53.v20231009</jetty.version>
         <jjwt.version>0.11.5</jjwt.version>
         <jline.version>3.23.0</jline.version>
         <!--
