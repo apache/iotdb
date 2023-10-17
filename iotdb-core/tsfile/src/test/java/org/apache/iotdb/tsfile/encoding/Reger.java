@@ -793,6 +793,154 @@ public class Reger {
     return ts_block_delta;
   }
 
+  public static int getBeta(
+          int[][] ts_block,
+          int alpha,
+          ArrayList<Integer> min_index,
+          int block_size,
+          int[] raw_length,
+          float[] theta,
+          int segment_size,
+          int new_length_j,
+          int[][] final_new_length_list) {
+
+    int raw_abs_sum = raw_length[0];
+    ArrayList<ArrayList<Integer>> new_length_list =new ArrayList<>();
+
+    ArrayList<Integer> j_star_list = new ArrayList<>(); // beta list of min b phi alpha to j
+    int j_star = -1;
+    ArrayList<Integer> b = new ArrayList<>();
+    if (alpha == -1) {
+      return j_star;
+    }
+
+    if (alpha == 0) {
+      for (int j = 2; j < block_size; j++) {
+        // if j, alpha+1, alpha points are min residuals, need to recalculate min residuals
+        if(min_index.contains(j)||min_index.contains(0)||min_index.contains(1)){
+          b = adjust0MinChange(ts_block, raw_length, j, theta, segment_size);
+        }else {
+          b = adjust0MinChangeNo(ts_block, raw_length, j, theta, segment_size);
+        }
+        if (b.get(0) < raw_abs_sum) {
+          raw_abs_sum = b.get(0);
+          j_star_list = new ArrayList<>();
+          new_length_list = new ArrayList<>();
+          j_star_list.add(j);
+          new_length_list.add(b);
+        } else if (b.get(0) == raw_abs_sum) {
+          j_star_list.add(j);
+          new_length_list.add(b);
+        }
+      }
+      if(min_index.contains(0)||min_index.contains(1)){
+        b = adjust0n1MinChange(ts_block, raw_length, theta, segment_size);
+      }else {
+        b = adjust0n1MinChangeNo(ts_block, raw_length, theta, segment_size);
+      }
+      if (b.get(0) < raw_abs_sum) {
+        raw_abs_sum = b.get(0);
+        j_star_list = new ArrayList<>();
+        new_length_list = new ArrayList<>();
+        j_star_list.add(block_size);
+        new_length_list.add(b);
+      } else if (b.get(0) == raw_abs_sum) {
+        j_star_list.add(block_size);
+        new_length_list.add(b);
+      }
+    } // alpha == n
+    else if (alpha == block_size - 1) {
+      for (int j = 1; j < block_size - 1; j++) {
+        if(min_index.contains(block_size - 1)||min_index.contains(j)){
+          b = adjustnMinChange(ts_block, raw_length, j, theta, segment_size);
+        }else {
+          b = adjustnMinChangeNo(ts_block, raw_length, j, theta, segment_size);
+        }
+        if (b.get(0) < raw_abs_sum) {
+          raw_abs_sum = b.get(0);
+          j_star_list = new ArrayList<>();
+          new_length_list = new ArrayList<>();
+          j_star_list.add(j);
+          new_length_list.add(b);
+        } else if (b.get(0) == raw_abs_sum) {
+          j_star_list.add(j);
+          new_length_list.add(b);
+        }
+      }
+      if(min_index.contains(block_size - 1)||min_index.contains(0)){
+        b = adjustn0MinChange(ts_block, raw_length, theta, segment_size);
+      }else {
+        b = adjustn0MinChangeNo(ts_block, raw_length, theta, segment_size);
+      }
+      if (b.get(0) < raw_abs_sum) {
+        raw_abs_sum = b.get(0);
+        j_star_list.clear();
+        j_star_list = new ArrayList<>();
+        new_length_list = new ArrayList<>();
+        j_star_list.add(0);
+        new_length_list.add(b);
+      } else if (b.get(0) == raw_abs_sum) {
+        j_star_list.add(0);
+        new_length_list.add(b);
+      }
+    } // alpha != 1 and alpha != n
+    else {
+      for (int j = 1; j < block_size; j++) {
+        if (alpha != j && (alpha + 1) != j) {
+          if(min_index.contains(j)||min_index.contains(alpha)||min_index.contains(alpha+1)){
+            b = adjustAlphaToJMinChange(ts_block, raw_length, alpha, j, theta, segment_size);
+          }else {
+            b = adjustAlphaToJMinChangeNo(ts_block, raw_length, alpha, j, theta, segment_size);
+          }
+          if (b.get(0) < raw_abs_sum) {
+            raw_abs_sum = b.get(0);
+            j_star_list = new ArrayList<>();
+            new_length_list = new ArrayList<>();
+            j_star_list.add(j);
+            new_length_list.add(b);
+          } else if (b.get(0) == raw_abs_sum) {
+            j_star_list.add(j);
+            new_length_list.add(b);
+          }
+        }
+      }
+      if(min_index.contains(0)||min_index.contains(alpha)||min_index.contains(alpha+1)){
+        b = adjustTo0MinChange(ts_block, raw_length, alpha, theta, segment_size);
+      }else{
+        b = adjustTo0MinChangeNo(ts_block, raw_length, alpha, theta,segment_size);
+      }
+      if (b.get(0) < raw_abs_sum) {
+        raw_abs_sum = b.get(0);
+        j_star_list = new ArrayList<>();
+        new_length_list = new ArrayList<>();
+        j_star_list.add(0);
+        new_length_list.add(b);
+      } else if (b.get(0) == raw_abs_sum) {
+        j_star_list.add(0);
+        new_length_list.add(b);
+      }
+      if(min_index.contains(block_size-1)||min_index.contains(alpha)||min_index.contains(alpha+1)){
+        b = adjustTonMinChange(ts_block,raw_length, alpha, theta, segment_size);
+      }else {
+        b = adjustTonMinChangeNo(ts_block,raw_length, alpha, theta, segment_size);
+      }
+
+      if (b.get(0) < raw_abs_sum) {
+        raw_abs_sum = b.get(0);
+        j_star_list = new ArrayList<>();
+        new_length_list = new ArrayList<>();
+        j_star_list.add(block_size);
+        new_length_list.add(b);
+      } else if (b.get(0) == raw_abs_sum) {
+        j_star_list.add(block_size);
+        new_length_list.add(b);
+      }
+    }
+    if (j_star_list.size() != 0) {
+      j_star = getIstarClose(alpha, j_star_list, new_length_list, raw_length);
+    }
+    return j_star;
+  }
 
   public static int getBeta(
           ArrayList<ArrayList<Integer>> ts_block,
@@ -942,6 +1090,150 @@ public class Reger {
   }
 
   // adjust 0 to no n
+  private static int[] adjust0MinChange(
+          int[][] ts_block, int[] raw_length,  int j, ArrayList<Float> theta, int segment_size) {
+    int block_size = ts_block.length;
+    assert j != block_size;
+
+    int[] b = new int[3];
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    int timestamp_delta_max = Integer.MIN_VALUE;
+    int value_delta_max = Integer.MIN_VALUE;
+    int[][] ts_block_delta = new int[block_size-2][2];
+
+    float theta0_t = theta.get(0);
+    float theta1_t = theta.get(1);
+    float theta0_v = theta.get(2);
+    float theta1_v = theta.get(3);
+
+
+    int pos_ts_block_delta = 0;
+    for (int i = 2; i < block_size; i++) {
+      int timestamp_delta_i;
+      int value_delta_i;
+      if (i != j) {
+        timestamp_delta_i =
+                ts_block[i][0]
+                        - (int) (theta0_t + theta1_t * (float) ts_block[i - 1][0]);
+        value_delta_i =
+                ts_block[i][1]
+                        - (int) (theta0_v + theta1_v * (float) ts_block[i - 1][1]);
+      } else {
+        timestamp_delta_i =
+                ts_block[j][0]
+                        - (int) (theta0_t + theta1_t * (float) ts_block[0][0]);
+        value_delta_i =
+                ts_block[j][1]
+                        - (int) (theta0_v + theta1_v * (float) ts_block[0][1]);
+
+        ts_block_delta[pos_ts_block_delta][0] = timestamp_delta_i;
+        ts_block_delta[pos_ts_block_delta][1] = value_delta_i;
+        pos_ts_block_delta++;
+
+        if (timestamp_delta_i > timestamp_delta_max) {
+          timestamp_delta_max = timestamp_delta_i;
+        }
+        if (timestamp_delta_i < timestamp_delta_min) {
+          timestamp_delta_min = timestamp_delta_i;
+        }
+        if (value_delta_i > value_delta_max) {
+          value_delta_max = value_delta_i;
+        }
+        if (value_delta_i < value_delta_min) {
+          value_delta_min = value_delta_i;
+        }
+        timestamp_delta_i = ts_block[0][0] - (int) (theta0_t + theta1_t * (float) ts_block[j - 1][0]);
+        value_delta_i = ts_block[0][1] - (int) (theta0_v + theta1_v * (float) ts_block[j - 1][1]);
+      }
+      ts_block_delta[pos_ts_block_delta][0] = timestamp_delta_i;
+      ts_block_delta[pos_ts_block_delta][1] = value_delta_i;
+      pos_ts_block_delta++;
+
+      if (timestamp_delta_i > timestamp_delta_max) {
+        timestamp_delta_max = timestamp_delta_i;
+      }
+      if (timestamp_delta_i < timestamp_delta_min) {
+        timestamp_delta_min = timestamp_delta_i;
+      }
+      if (value_delta_i > value_delta_max) {
+        value_delta_max = value_delta_i;
+      }
+      if (value_delta_i < value_delta_min) {
+        value_delta_min = value_delta_i;
+      }
+
+    }
+    int length = 0;
+    for (int[] segment_max : ts_block_delta) {
+      length += getBitWith(segment_max[0] - timestamp_delta_min);
+      length += getBitWith(segment_max[1] - value_delta_min);
+    }
+
+    b[0] = length;
+    b[1] = timestamp_delta_min;
+    b[2] = value_delta_min;
+
+    return b;
+  }
+  private static int[] adjust0MinChangeNo(
+          int[][] ts_block, int[] raw_length, int j, float[] theta, int segment_size) {
+    int block_size = ts_block.length;
+    assert j != block_size;
+
+    ArrayList<Integer> b = new ArrayList<>();
+    int timestamp_delta_min = raw_length[3];
+    int value_delta_min = raw_length[4];
+
+
+    float theta0_t = theta[0];
+    float theta1_t = theta[1];
+    float theta0_v = theta[2];
+    float theta1_v = theta[3];
+    int length = raw_length[0];
+    int timestamp_delta_i;
+    int value_delta_i;
+    timestamp_delta_i = ts_block[j + 1][0] - (int) (theta0_t + theta1_t * (float) ts_block[j-1][0]);
+    value_delta_i = ts_block[j + 1][1] - (int) (theta0_v + theta1_v * (float) ts_block[j-1][1]);
+
+    length -= getBitWith(timestamp_delta_i-timestamp_delta_min);
+    length -= getBitWith(value_delta_i-value_delta_min);
+    timestamp_delta_i = ts_block[1][0] - (int) (theta0_t + theta1_t * (float) ts_block[0][0]);
+    value_delta_i = ts_block[1][1] - (int) (theta0_v + theta1_v * (float) ts_block[0][1]);
+
+    length -= getBitWith(timestamp_delta_i-timestamp_delta_min);
+    length -= getBitWith(value_delta_i-value_delta_min);
+    timestamp_delta_i =
+            ts_block.get(0).get(0)
+                    - (int) (theta0_t + theta1_t * (float) ts_block.get(j - 1).get(0));
+    value_delta_i =
+            ts_block.get(0).get(1)
+                    - (int) (theta0_v + theta1_v * (float) ts_block.get(j - 1).get(1));
+    if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+      return adjust0MinChange( ts_block, raw_length,  j, theta,  segment_size);
+    }
+
+    length += getBitWith(timestamp_delta_i-timestamp_delta_min);
+    length += getBitWith(value_delta_i-value_delta_min);
+
+    timestamp_delta_i =
+            ts_block.get(j + 1).get(0)
+                    - (int) (theta0_t + theta1_t * (float) ts_block.get(0).get(0));
+    value_delta_i =
+            ts_block.get(j + 1).get(1)
+                    - (int) (theta0_v + theta1_v * (float) ts_block.get(0).get(1));
+    if(timestamp_delta_i<timestamp_delta_min ||  value_delta_i < timestamp_delta_min){
+      return adjust0MinChange( ts_block, raw_length,  j, theta,  segment_size);
+    }
+    length += getBitWith(timestamp_delta_i-timestamp_delta_min);
+    length += getBitWith(value_delta_i-value_delta_min);
+
+    b.add(length);
+    b.add(timestamp_delta_min);
+    b.add(value_delta_min);
+
+    return b;
+  }
 
   private static ArrayList<Integer> adjust0MinChange(
           ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> raw_length,  int j, ArrayList<Float> theta, int segment_size) {
