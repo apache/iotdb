@@ -611,7 +611,7 @@ public class WALNode implements IWALNode {
     /** true means filesToSearch and currentFileIndex are outdated, call updateFilesToSearch */
     private boolean needUpdatingFilesToSearch = true;
     /** batch store insert nodes */
-    private final List<IndexedConsensusRequest> insertNodes = new LinkedList<>();
+    private final LinkedList<IndexedConsensusRequest> insertNodes = new LinkedList<>();
     /** iterator of insertNodes */
     private ListIterator<IndexedConsensusRequest> itr = null;
 
@@ -837,7 +837,7 @@ public class WALNode implements IWALNode {
       if (itr != null
           && itr.hasNext()
           && insertNodes.get(itr.nextIndex()).getSearchIndex() <= targetIndex
-          && targetIndex <= insertNodes.get(insertNodes.size() - 1).getSearchIndex()) {
+          && targetIndex <= insertNodes.getLast().getSearchIndex()) {
         while (itr.hasNext()) {
           IndexedConsensusRequest request = itr.next();
           if (targetIndex == request.getSearchIndex()) {
