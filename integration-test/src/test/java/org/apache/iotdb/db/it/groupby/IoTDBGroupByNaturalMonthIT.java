@@ -38,6 +38,7 @@ import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.TimeZone;
 
@@ -62,9 +63,14 @@ public class IoTDBGroupByNaturalMonthIT {
       dataSet.add("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");
     }
 
-    for (long i = 1672531200000L /*  2023-01-01 00:00:00 */;
-        i <= 1798761600000L /* 2027-01-01 00:00:00 */;
-        i += 86400_000L) {
+    // TimeRange: [2023-01-01 00:00:00, 2027-01-01 00:00:00]
+    // insert a record each first day of month
+    Calendar calendar = Calendar.getInstance();
+    calendar.setTimeZone(TimeZone.getTimeZone("+00:00"));
+    calendar.setTimeInMillis(1672531200000L);
+    for (long i = calendar.getTimeInMillis();
+        i <= 1798761600000L;
+        calendar.add(Calendar.MONTH, 1), i = calendar.getTimeInMillis()) {
       dataSet.add("insert into root.test.d1(timestamp, s1) values (" + i + ", 1)");
     }
   }
@@ -248,10 +254,10 @@ public class IoTDBGroupByNaturalMonthIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.d1.s1")};
     String[] retArray =
         new String[] {
-          "01/01/2023:00:00:00,365,",
-          "01/01/2024:00:00:00,366,",
-          "01/01/2025:00:00:00,365,",
-          "01/01/2026:00:00:00,365,"
+          "01/01/2023:00:00:00,12,",
+          "01/01/2024:00:00:00,12,",
+          "01/01/2025:00:00:00,12,",
+          "01/01/2026:00:00:00,12,"
         };
     resultSetEqualTest(
         "select count(s1) from root.test.d1 " + "group by ([2023-01-01, 2027-01-01), 1y)",
@@ -267,10 +273,10 @@ public class IoTDBGroupByNaturalMonthIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.d1.s1")};
     String[] retArray =
         new String[] {
-          "01/01/2024:00:00:00,365,",
-          "01/01/2025:00:00:00,366,",
-          "01/01/2026:00:00:00,365,",
-          "01/01/2027:00:00:00,365,"
+          "01/01/2024:00:00:00,12,",
+          "01/01/2025:00:00:00,12,",
+          "01/01/2026:00:00:00,12,",
+          "01/01/2027:00:00:00,12,"
         };
     resultSetEqualTest(
         "select count(s1) from root.test.d1 " + "group by ((2023-01-01, 2027-01-01], 1y)",
@@ -284,14 +290,14 @@ public class IoTDBGroupByNaturalMonthIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.d1.s1")};
     String[] retArray =
         new String[] {
-          "01/01/2023:00:00:00,365,",
-          "07/01/2023:00:00:00,366,",
-          "01/01/2024:00:00:00,366,",
-          "07/01/2024:00:00:00,365,",
-          "01/01/2025:00:00:00,365,",
-          "07/01/2025:00:00:00,365,",
-          "01/01/2026:00:00:00,365,",
-          "07/01/2026:00:00:00,184,"
+          "01/01/2023:00:00:00,12,",
+          "07/01/2023:00:00:00,12,",
+          "01/01/2024:00:00:00,12,",
+          "07/01/2024:00:00:00,12,",
+          "01/01/2025:00:00:00,12,",
+          "07/01/2025:00:00:00,12,",
+          "01/01/2026:00:00:00,12,",
+          "07/01/2026:00:00:00,6,"
         };
     resultSetEqualTest(
         "select count(s1) from root.test.d1 " + "group by ([2023-01-01, 2027-01-01), 1y, 6mo)",
@@ -305,10 +311,10 @@ public class IoTDBGroupByNaturalMonthIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.d1.s1")};
     String[] retArray =
         new String[] {
-          "01/01/2023:00:00:00,731,",
-          "01/01/2024:00:00:00,731,",
-          "01/01/2025:00:00:00,730,",
-          "01/01/2026:00:00:00,365,"
+          "01/01/2023:00:00:00,24,",
+          "01/01/2024:00:00:00,24,",
+          "01/01/2025:00:00:00,24,",
+          "01/01/2026:00:00:00,12,"
         };
     resultSetEqualTest(
         "select count(s1) from root.test.d1 " + "group by ([2023-01-01, 2027-01-01), 2y, 1y)",
@@ -322,10 +328,10 @@ public class IoTDBGroupByNaturalMonthIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.d1.s1")};
     String[] retArray =
         new String[] {
-          "01/01/2023:00:00:00,181,",
-          "01/01/2024:00:00:00,182,",
-          "01/01/2025:00:00:00,181,",
-          "01/01/2026:00:00:00,181,"
+          "01/01/2023:00:00:00,6,",
+          "01/01/2024:00:00:00,6,",
+          "01/01/2025:00:00:00,6,",
+          "01/01/2026:00:00:00,6,"
         };
     resultSetEqualTest(
         "select count(s1) from root.test.d1 " + "group by ([2023-01-01, 2027-01-01), 6mo, 1y)",
