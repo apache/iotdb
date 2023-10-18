@@ -248,7 +248,9 @@ public abstract class AbstractCompactionTask {
 
   protected void insertFilesToTsFileManager(List<TsFileResource> tsFiles) throws IOException {
     for (TsFileResource tsFileResource : tsFiles) {
-      tsFileManager.keepOrderInsert(tsFileResource, tsFileResource.isSeq());
+      if (!tsFileResource.isFileInList()) {
+        tsFileManager.keepOrderInsert(tsFileResource, tsFileResource.isSeq());
+      }
     }
   }
 
