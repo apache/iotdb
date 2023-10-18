@@ -45,6 +45,7 @@ public class ChunkSuit4CPV {
   public Statistics statistics; // dynamically updated, includes FP/LP/BP/TP info
 
   // [startPos,endPos] definitely for curStartTime interval, thanks to split4CPV
+  public boolean needsUpdateStartEndPos = false;
   public int startPos = -1; // the first point position, starting from 0
   public int endPos = -1; // the last point position, starting from 0
 

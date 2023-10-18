@@ -41,6 +41,7 @@ import java.util.Locale;
 import static org.junit.Assert.fail;
 
 public class MyTest8 {
+
   // test MinMax-LSM
   private static final String TIMESTAMP_STR = "Time";
 
@@ -65,6 +66,7 @@ public class MyTest8 {
   @Before
   public void setUp() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setEnableMinMaxLSM(true);
+
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("PLAIN");
     originalCompactionStrategy = config.getCompactionStrategy();
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
@@ -84,6 +86,7 @@ public class MyTest8 {
 
   @After
   public void tearDown() throws Exception {
+    TSFileDescriptor.getInstance().getConfig().setEnableMinMaxLSM(false);
     EnvironmentUtils.cleanEnv();
     config.setCompactionStrategy(originalCompactionStrategy);
     config.setEnableCPV(originalEnableCPV);
