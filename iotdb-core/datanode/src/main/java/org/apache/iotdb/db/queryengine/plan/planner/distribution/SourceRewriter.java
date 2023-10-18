@@ -622,7 +622,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // For last query, we need to keep every FI's root node is LastQueryMergeNode. So we
     // force every region group have a parent node even if there is only 1 child for it.
     context.setForceAddParent();
-    PlanNode root = processRawMultiChildNode(node, context, true);
+    PlanNode root = processRawMultiChildNode(node, context, false);
     if (context.queryMultiRegion) {
       PlanNode newRoot = genLastQueryRootNode(node, context);
       // add sort op for each if we add LastQueryMergeNode as root
@@ -694,11 +694,12 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     if (containsAggregationSource(node)) {
       return planAggregationWithTimeJoin(node, context);
     }
-    return Collections.singletonList(processRawMultiChildNode(node, context, false));
+    return Collections.singletonList(processRawMultiChildNode(node, context, true));
   }
 
+  // Only `visitTimeJoin` and `visitLastQuery` invoke this method
   private PlanNode processRawMultiChildNode(
-      MultiChildProcessNode node, DistributionPlanContext context, boolean isLast) {
+      MultiChildProcessNode node, DistributionPlanContext context, boolean isTimeJoin) {
     MultiChildProcessNode root = (MultiChildProcessNode) node.clone();
     // Step 1: Get all source nodes. For the node which is not source, add it as the child of
     // current TimeJoinNode
@@ -740,7 +741,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // TODO: (xingtanzjr) optimize the procedure here to remove duplicated TimeJoinNode
     boolean addParent = false;
     for (List<SourceNode> seriesScanNodes : sourceGroup.values()) {
-      if (seriesScanNodes.size() == 1 && (!context.forceAddParent || !isLast)) {
+      if (seriesScanNodes.size() == 1 && (!context.isForceAddParent() || isTimeJoin)) {
         root.addChild(seriesScanNodes.get(0));
         continue;
       }
@@ -750,7 +751,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       // At last, we can use the parameter `addParent` to judge whether to create new
       // MultiChildNode.
       boolean appendToRootDirectly =
-          sourceGroup.size() == 1 || (!addParent && !context.forceAddParent);
+          sourceGroup.size() == 1 || (!addParent && !context.isForceAddParent());
       if (appendToRootDirectly) {
         seriesScanNodes.forEach(root::addChild);
         addParent = true;

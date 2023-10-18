@@ -52,7 +52,15 @@ public class DistributionPlanContext {
     return this;
   }
 
-  protected void setForceAddParent() {
+  public boolean isOneSeriesInMultiRegion() {
+    return oneSeriesInMultiRegion;
+  }
+
+  public boolean isForceAddParent() {
+    return this.forceAddParent;
+  }
+
+  public void setForceAddParent() {
     this.forceAddParent = true;
   }
 
