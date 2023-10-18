@@ -32,6 +32,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * Before creating paths in IoTDB, it's essential to check whether the paths are correct to avoid
@@ -49,6 +54,9 @@ public class PathCheckExample {
   private static final String DIR = "/Users/root/iotdb/tools";
 
   private static final Logger logger = LoggerFactory.getLogger(PathCheckExample.class);
+
+  // concurrent thread of path check
+  private static final int CONCURRENCY = 5;
 
   public static void main(String[] args) {
     inputTest();
@@ -68,31 +76,58 @@ public class PathCheckExample {
     }
   }
 
+  public static void inputDir() {
+
+    List<Future<Void>> futureList = new ArrayList<>();
+    ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENCY);
+    File dir = new File(DIR);
+    for (File file : Objects.requireNonNull(dir.listFiles())) {
+      if (file.getName().startsWith("dump") && file.getName().endsWith(".csv")) {
+        Future<Void> future = executorService.submit(new CheckThread(file));
+        futureList.add(future);
+      }
+    }
+    try {
+      for (Future<Void> future : futureList) {
+        future.get();
+      }
+    } catch (InterruptedException | ExecutionException e) {
+      logger.error("Error when checking paths.");
+      Thread.currentThread().interrupt();
+    }
+    executorService.shutdown();
+  }
+
+  static class CheckThread implements Callable<Void> {
+    File file;
+
+    public CheckThread(File file) {
+      this.file = file;
+    }
+
+    @Override
+    public Void call() {
+      try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+
+        String line = br.readLine();
+        while ((line = br.readLine()) != null) {
+          String[] split = line.split(",");
+          String path = split[0];
+          checkPath(path);
+        }
+      } catch (IOException e) {
+        logger.error("Error reading file: {}", file.getName());
+        throw new RuntimeException(e);
+      }
+      return null;
+    }
+  }
+
   private static void checkPath(String path) {
     try {
       PathNodesGenerator.checkPath(path);
     } catch (PathParseException e) {
       logger.error("{} is not a legal path.", path);
-    }
-  }
-
-  public static void inputDir() {
-    File dir = new File(DIR);
-    for (File file : Objects.requireNonNull(dir.listFiles())) {
-      if (file.getName().startsWith("dump") && file.getName().endsWith(".csv")) {
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-
-          String line = br.readLine();
-          while ((line = br.readLine()) != null) {
-            String[] split = line.split(",");
-            String path = split[0];
-            checkPath(path);
-          }
-        } catch (IOException e) {
-          logger.error("Error reading file: {}", file.getName());
-          throw new RuntimeException(e);
-        }
-      }
     }
   }
 }
