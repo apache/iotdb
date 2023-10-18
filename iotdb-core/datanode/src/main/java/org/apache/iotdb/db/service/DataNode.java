@@ -168,7 +168,7 @@ public class DataNode implements DataNodeMBean {
 
       // Set target ConfigNodeList from iotdb-datanode.properties file
       ConfigNodeInfo.getInstance()
-          .updateConfigNodeList(Collections.singletonList(config.getTargetConfigNode()));
+          .updateConfigNodeList(Collections.singletonList(config.getSeedConfigNode()));
 
       // Pull and check system configurations from ConfigNode-leader
       pullAndCheckSystemConfigurations();
@@ -394,7 +394,7 @@ public class DataNode implements DataNodeMBean {
       // All tries failed
       logger.error(
           "Cannot register into cluster after {} retries. "
-              + "Please check dn_target_config_node in iotdb-datanode.properties.",
+              + "Please check dn_seed_config_node in iotdb-datanode.properties.",
           DEFAULT_RETRY);
       throw new StartupException("Cannot register into the cluster.");
     }
@@ -455,7 +455,7 @@ public class DataNode implements DataNodeMBean {
       // All tries failed
       logger.error(
           "Cannot send restart DataNode request to ConfigNode-leader after {} retries. "
-              + "Please check dn_target_config_node in iotdb-datanode.properties.",
+              + "Please check dn_seed_config_node in iotdb-datanode.properties.",
           DEFAULT_RETRY);
       throw new StartupException("Cannot send restart DataNode request to ConfigNode-leader.");
     }

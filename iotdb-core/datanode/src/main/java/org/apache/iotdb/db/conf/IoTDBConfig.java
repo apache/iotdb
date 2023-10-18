@@ -865,7 +865,7 @@ public class IoTDBConfig {
   private int schemaRegionConsensusPort = 10750;
 
   /** Ip and port of config nodes. */
-  private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 10710);
+  private TEndPoint seedConfigNode = new TEndPoint("127.0.0.1", 10710);
 
   /** The time of data node waiting for the next retry to join into the cluster */
   private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(5);
@@ -2919,12 +2919,12 @@ public class IoTDBConfig {
     this.schemaRegionConsensusPort = schemaRegionConsensusPort;
   }
 
-  public TEndPoint getTargetConfigNode() {
-    return targetConfigNode;
+  public TEndPoint getSeedConfigNode() {
+    return seedConfigNode;
   }
 
-  public void setTargetConfigNode(List<TEndPoint> targetConfigNodes) {
-    this.targetConfigNode = targetConfigNodes.get(0);
+  public void setSeedConfigNode(List<TEndPoint> seedConfigNodes) {
+    this.seedConfigNode = seedConfigNodes.get(0);
   }
 
   public long getJoinClusterRetryIntervalMs() {

@@ -51,7 +51,7 @@ public class ConfigNodeConfig {
   private int consensusPort = 10720;
 
   /** Used for connecting to the ConfigNodeGroup. */
-  private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 10710);
+  private TEndPoint seedConfigNode = new TEndPoint("127.0.0.1", 10710);
 
   // TODO: Read from iotdb-confignode.properties.
   private int configRegionId = 0;
@@ -383,12 +383,12 @@ public class ConfigNodeConfig {
     this.consensusPort = consensusPort;
   }
 
-  public TEndPoint getTargetConfigNode() {
-    return targetConfigNode;
+  public TEndPoint getSeedConfigNode() {
+    return seedConfigNode;
   }
 
-  public void setTargetConfigNode(TEndPoint targetConfigNode) {
-    this.targetConfigNode = targetConfigNode;
+  public void setSeedConfigNode(TEndPoint seedConfigNode) {
+    this.seedConfigNode = seedConfigNode;
   }
 
   public int getConfigRegionId() {
