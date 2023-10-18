@@ -122,7 +122,7 @@ public class PipeAssignerMetrics implements IMetricSet {
         dataRegionId);
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.UNASSIGNED_TS_FILE_COUNT.toString(),
+        Metric.UNASSIGNED_TSFILE_COUNT.toString(),
         Tag.REGION.toString(),
         dataRegionId);
   }
@@ -143,7 +143,7 @@ public class PipeAssignerMetrics implements IMetricSet {
         Tag.REGION.toString(),
         dataRegionId);
     metricService.createAutoGauge(
-        Metric.UNASSIGNED_TS_FILE_COUNT.toString(),
+        Metric.UNASSIGNED_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         assignerMap.get(dataRegionId),
         PipeDataRegionAssigner::getTsFileInsertionEventCount,

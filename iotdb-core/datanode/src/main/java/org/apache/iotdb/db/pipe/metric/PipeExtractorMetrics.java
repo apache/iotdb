@@ -100,14 +100,14 @@ public class PipeExtractorMetrics implements IMetricSet {
 
   private void createAutoGauge(String taskID) {
     metricService.createAutoGauge(
-        Metric.UNPROCESSED_HISTORICAL_TS_FILE_COUNT.toString(),
+        Metric.UNPROCESSED_HISTORICAL_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         extractorMap.get(taskID),
         IoTDBDataRegionExtractor::getHistoricalTsFileInsertionEventCount,
         Tag.NAME.toString(),
         taskID);
     metricService.createAutoGauge(
-        Metric.UNPROCESSED_REALTIME_TS_FILE_COUNT.toString(),
+        Metric.UNPROCESSED_REALTIME_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         extractorMap.get(taskID),
         IoTDBDataRegionExtractor::getRealtimeTsFileInsertionEventCount,
@@ -140,7 +140,7 @@ public class PipeExtractorMetrics implements IMetricSet {
     tsFileRateMap.put(
         taskID,
         metricService.getOrCreateRate(
-            Metric.PIPE_EXTRACTOR_TS_FILE_SUPPLY.toString(),
+            Metric.PIPE_EXTRACTOR_TSFILE_SUPPLY.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             taskID));
@@ -161,12 +161,12 @@ public class PipeExtractorMetrics implements IMetricSet {
   private void removeAutoGauge(String taskID) {
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.UNPROCESSED_HISTORICAL_TS_FILE_COUNT.toString(),
+        Metric.UNPROCESSED_HISTORICAL_TSFILE_COUNT.toString(),
         Tag.NAME.toString(),
         taskID);
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.UNPROCESSED_REALTIME_TS_FILE_COUNT.toString(),
+        Metric.UNPROCESSED_REALTIME_TSFILE_COUNT.toString(),
         Tag.NAME.toString(),
         taskID);
     metricService.remove(
@@ -189,7 +189,7 @@ public class PipeExtractorMetrics implements IMetricSet {
         taskID);
     metricService.remove(
         MetricType.RATE,
-        Metric.PIPE_EXTRACTOR_TS_FILE_SUPPLY.toString(),
+        Metric.PIPE_EXTRACTOR_TSFILE_SUPPLY.toString(),
         Tag.NAME.toString(),
         taskID);
     metricService.remove(

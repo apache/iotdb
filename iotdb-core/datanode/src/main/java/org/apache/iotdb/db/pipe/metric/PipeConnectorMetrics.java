@@ -107,7 +107,7 @@ public class PipeConnectorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         taskID);
     metricService.createAutoGauge(
-        Metric.UNTRANSFERRED_TS_FILE_COUNT.toString(),
+        Metric.UNTRANSFERRED_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         connectorMap.get(taskID),
         PipeConnectorSubtask::getTsFileInsertionEventCount,
@@ -133,7 +133,7 @@ public class PipeConnectorMetrics implements IMetricSet {
     tsFileRateMap.put(
         taskID,
         metricService.getOrCreateRate(
-            Metric.PIPE_CONNECTOR_TS_FILE_TRANSFER.toString(),
+            Metric.PIPE_CONNECTOR_TSFILE_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             taskID));
@@ -159,7 +159,7 @@ public class PipeConnectorMetrics implements IMetricSet {
         taskID);
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.UNTRANSFERRED_TS_FILE_COUNT.toString(),
+        Metric.UNTRANSFERRED_TSFILE_COUNT.toString(),
         Tag.NAME.toString(),
         taskID);
     metricService.remove(
@@ -177,7 +177,7 @@ public class PipeConnectorMetrics implements IMetricSet {
         taskID);
     metricService.remove(
         MetricType.RATE,
-        Metric.PIPE_CONNECTOR_TS_FILE_TRANSFER.toString(),
+        Metric.PIPE_CONNECTOR_TSFILE_TRANSFER.toString(),
         Tag.NAME.toString(),
         taskID);
     metricService.remove(
