@@ -46,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
@@ -145,6 +146,9 @@ public class TopKOperator implements ProcessOperator {
       return getResultFromCachedTopKResult();
     }
 
+    long startTime = System.nanoTime();
+    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+
     boolean batchFinished = true;
     int operatorBatchEnd = Math.min(deviceIndex + deviceBatchStep, deviceOperators.size());
     for (int i = deviceIndex; i < operatorBatchEnd; i++) {
@@ -189,6 +193,10 @@ public class TopKOperator implements ProcessOperator {
         closeOperator(i);
       }
       canCallNext[i] = false;
+
+      if (System.nanoTime() - startTime > maxRuntime) {
+        break;
+      }
     }
 
     if (batchFinished) {
