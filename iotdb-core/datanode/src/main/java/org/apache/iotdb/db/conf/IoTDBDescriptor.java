@@ -2007,7 +2007,8 @@ public class IoTDBDescriptor {
     conf.setContinuousQueryMinimumEveryInterval(
         DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+            false));
   }
 
   public void loadClusterProps(Properties properties) {
