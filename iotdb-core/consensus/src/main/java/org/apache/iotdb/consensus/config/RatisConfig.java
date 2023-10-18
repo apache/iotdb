@@ -939,18 +939,22 @@ public class RatisConfig {
     private final int retryTimesMax;
     private final long retryWaitMillis;
 
-    private final long triggerSnapshotTime;
-    private final long triggerSnapshotFileSize;
+    private final long checkAndTakeSnapshotInterval;
+    private final long raftLogSizeMaxThreshold;
+
+    private final long forceSnapshotInterval;
 
     public Impl(
         int retryTimesMax,
         long retryWaitMillis,
-        long triggerSnapshotTime,
-        long triggerSnapshotFileSize) {
+        long checkAndTakeSnapshotInterval,
+        long raftLogSizeMaxThreshold,
+        long forceSnapshotInterval) {
       this.retryTimesMax = retryTimesMax;
       this.retryWaitMillis = retryWaitMillis;
-      this.triggerSnapshotTime = triggerSnapshotTime;
-      this.triggerSnapshotFileSize = triggerSnapshotFileSize;
+      this.checkAndTakeSnapshotInterval = checkAndTakeSnapshotInterval;
+      this.raftLogSizeMaxThreshold = raftLogSizeMaxThreshold;
+      this.forceSnapshotInterval = forceSnapshotInterval;
     }
 
     public int getRetryTimesMax() {
@@ -961,12 +965,16 @@ public class RatisConfig {
       return retryWaitMillis;
     }
 
-    public long getTriggerSnapshotTime() {
-      return triggerSnapshotTime;
+    public long getCheckAndTakeSnapshotInterval() {
+      return checkAndTakeSnapshotInterval;
     }
 
-    public long getTriggerSnapshotFileSize() {
-      return triggerSnapshotFileSize;
+    public long getRaftLogSizeMaxThreshold() {
+      return raftLogSizeMaxThreshold;
+    }
+
+    public long getForceSnapshotInterval() {
+      return forceSnapshotInterval;
     }
 
     public static Impl.Builder newBuilder() {
@@ -982,10 +990,16 @@ public class RatisConfig {
       private long triggerSnapshotTime = 120;
       // 20GB
       private long triggerSnapshotFileSize = 20L << 30;
+      // -1L means no force, measured in seconds
+      private long forceSnapshotInterval = -1;
 
       public Impl build() {
         return new Impl(
-            retryTimesMax, retryWaitMillis, triggerSnapshotTime, triggerSnapshotFileSize);
+            retryTimesMax,
+            retryWaitMillis,
+            triggerSnapshotTime,
+            triggerSnapshotFileSize,
+            forceSnapshotInterval);
       }
 
       public Impl.Builder setRetryTimesMax(int retryTimesMax) {
@@ -1005,6 +1019,11 @@ public class RatisConfig {
 
       public Impl.Builder setTriggerSnapshotFileSize(long triggerSnapshotFileSize) {
         this.triggerSnapshotFileSize = triggerSnapshotFileSize;
+        return this;
+      }
+
+      public Impl.Builder setForceSnapshotInterval(long forceSnapshotInterval) {
+        this.forceSnapshotInterval = forceSnapshotInterval;
         return this;
       }
     }

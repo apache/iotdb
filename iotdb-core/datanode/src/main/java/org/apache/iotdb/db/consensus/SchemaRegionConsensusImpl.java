@@ -130,6 +130,7 @@ public class SchemaRegionConsensusImpl {
                             .setImpl(
                                 RatisConfig.Impl.newBuilder()
                                     .setTriggerSnapshotFileSize(CONF.getSchemaRatisLogMax())
+                                    .setForceSnapshotInterval(60 * 60 * 2) // every 2 hrs
                                     .build())
                             .setLeaderLogAppender(
                                 RatisConfig.LeaderLogAppender.newBuilder()
