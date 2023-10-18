@@ -157,6 +157,20 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
 
+  /////////////////////////////// Memory ///////////////////////////////
+
+  public long getPipeTotalMemorySizeInBytes() {
+    return COMMON_CONFIG.getPipeTotalMemorySizeInBytes();
+  }
+
+  public int getPipeMemoryAllocateMaxRetries() {
+    return COMMON_CONFIG.getPipeMemoryAllocateMaxRetries();
+  }
+
+  public long getPipeMemoryAllocateRetryIntervalInMs() {
+    return COMMON_CONFIG.getPipeMemoryAllocateRetryIntervalInMs();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
