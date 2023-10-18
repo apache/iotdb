@@ -1496,6 +1496,12 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public void removeMetrics() {
+    MetricService.getInstance().removeMetricSet(new NodeMetrics(getNodeManager()));
+    MetricService.getInstance().removeMetricSet(new PartitionMetrics(this));
+  }
+
+  @Override
   public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

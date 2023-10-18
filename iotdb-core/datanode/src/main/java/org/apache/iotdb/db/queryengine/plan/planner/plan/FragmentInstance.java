@@ -72,6 +72,8 @@ public class FragmentInstance implements IConsensusRequest {
   // The num of all FI on the dispatched DataNode in this query
   private int dataNodeFINum;
 
+  private boolean isHighestPriority;
+
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
@@ -152,6 +154,14 @@ public class FragmentInstance implements IConsensusRequest {
 
   public boolean isRoot() {
     return isRoot;
+  }
+
+  public boolean isHighestPriority() {
+    return isHighestPriority;
+  }
+
+  public void setHighestPriority(boolean highestPriority) {
+    isHighestPriority = highestPriority;
   }
 
   public void setTimeFilter(Filter timeFilter) {

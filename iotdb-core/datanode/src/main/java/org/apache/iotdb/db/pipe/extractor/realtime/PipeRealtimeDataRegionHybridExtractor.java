@@ -86,7 +86,21 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       //  size of wal buffer), the write operation will be throttled, so we should not extract any
       //  more tablet events.
       //  3. The number of tsfile events in the pending queue has exceeded the limit.
-      event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
+      event
+          .getTsFileEpoch()
+          .migrateState(
+              this,
+              state -> {
+                switch (state) {
+                  case EMPTY:
+                  case USING_TSFILE:
+                    return TsFileEpoch.State.USING_TSFILE;
+                  case USING_TABLET:
+                  case USING_BOTH:
+                  default:
+                    return TsFileEpoch.State.USING_BOTH;
+                }
+              });
     }
 
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
@@ -97,6 +111,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         break;
       case EMPTY:
       case USING_TABLET:
+      case USING_BOTH:
         if (!pendingQueue.waitedOffer(event)) {
           // this would not happen, but just in case.
           // pendingQueue is unbounded, so it should never reach capacity.
@@ -127,13 +142,24 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         .getTsFileEpoch()
         .migrateState(
             this,
-            state ->
-                state.equals(TsFileEpoch.State.EMPTY) ? TsFileEpoch.State.USING_TSFILE : state);
+            state -> {
+              switch (state) {
+                case EMPTY:
+                case USING_TSFILE:
+                  return TsFileEpoch.State.USING_TSFILE;
+                case USING_TABLET:
+                  return TsFileEpoch.State.USING_TABLET;
+                case USING_BOTH:
+                default:
+                  return TsFileEpoch.State.USING_BOTH;
+              }
+            });
 
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
     switch (state) {
       case EMPTY:
       case USING_TSFILE:
+      case USING_BOTH:
         if (!pendingQueue.waitedOffer(event)) {
           // this would not happen, but just in case.
           // pendingQueue is unbounded, so it should never reach capacity.
@@ -265,23 +291,29 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
             state ->
                 (state.equals(TsFileEpoch.State.EMPTY)) ? TsFileEpoch.State.USING_TABLET : state);
 
-    if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TABLET)) {
-      if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
-        return event.getEvent();
-      } else {
-        // if the event's reference count can not be increased, it means the data represented by
-        // this event is not reliable anymore. but the data represented by this event
-        // has been carried by the following tsfile event, so we can just discard this event.
-        event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
-        LOGGER.warn(
-            "Discard tablet event {} because it is not reliable anymore. "
-                + "Change the state of TsFileEpoch to USING_TSFILE.",
-            event);
+    final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+    switch (state) {
+      case USING_TSFILE:
+        // if the state is USING_TSFILE, discard the event and poll the next one.
         return null;
-      }
+      case EMPTY:
+      case USING_TABLET:
+      case USING_BOTH:
+      default:
+        if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
+          return event.getEvent();
+        } else {
+          // if the event's reference count can not be increased, it means the data represented by
+          // this event is not reliable anymore. but the data represented by this event
+          // has been carried by the following tsfile event, so we can just discard this event.
+          event.getTsFileEpoch().migrateState(this, s -> TsFileEpoch.State.USING_BOTH);
+          LOGGER.warn(
+              "Discard tablet event {} because it is not reliable anymore. "
+                  + "Change the state of TsFileEpoch to USING_TSFILE.",
+              event);
+          return null;
+        }
     }
-    // if the state is USING_TSFILE, discard the event and poll the next one.
-    return null;
   }
 
   private Event supplyTsFileInsertion(PipeRealtimeEvent event) {
@@ -299,26 +331,34 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
               return state;
             });
 
-    if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TSFILE)) {
-      if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
-        return event.getEvent();
-      } else {
-        // if the event's reference count can not be increased, it means the data represented by
-        // this event is not reliable anymore. the data has been lost. we simply discard this event
-        // and report the exception to PipeRuntimeAgent.
-        final String errorMessage =
-            String.format(
-                "TsFile Event %s can not be supplied because "
-                    + "the reference count can not be increased, "
-                    + "the data represented by this event is lost",
-                event.getEvent());
-        LOGGER.error(errorMessage);
-        PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+    final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+    switch (state) {
+      case USING_TABLET:
+        // if the state is USING_TABLET, discard the event and poll the next one.
         return null;
-      }
+      case EMPTY:
+      case USING_TSFILE:
+      case USING_BOTH:
+      default:
+        if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
+          return event.getEvent();
+        } else {
+          // if the event's reference count can not be increased, it means the data represented by
+          // this event is not reliable anymore. the data has been lost. we simply discard this
+          // event
+          // and report the exception to PipeRuntimeAgent.
+          final String errorMessage =
+              String.format(
+                  "TsFile Event %s can not be supplied because "
+                      + "the reference count can not be increased, "
+                      + "the data represented by this event is lost",
+                  event.getEvent());
+          LOGGER.error(errorMessage);
+          PipeAgent.runtime()
+              .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+          return null;
+        }
     }
-    // if the state is USING_TABLET, discard the event and poll the next one.
-    return null;
   }
 
   private Event supplyHeartbeat(PipeRealtimeEvent event) {

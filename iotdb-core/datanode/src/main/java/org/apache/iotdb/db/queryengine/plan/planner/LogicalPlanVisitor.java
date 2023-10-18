@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Int
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -173,6 +174,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         }
         deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
       }
+
       // convert to ALIGN BY DEVICE view
       planBuilder =
           planBuilder.planDeviceView(
@@ -181,6 +183,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               analysis.getDeviceViewInputIndexesMap(),
               analysis.getSelectExpressions(),
               queryStatement);
+
+      if (planBuilder.getRoot() instanceof TopKNode) {
+        analysis.setUseTopKNode();
+      }
     } else {
       planBuilder =
           planBuilder.withNewRoot(
@@ -255,7 +261,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       List<Integer> deviceViewInputIndexes,
       MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-
     if (aggregationExpressions == null) {
       // raw data query
       planBuilder =
@@ -264,6 +269,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   sourceExpressions,
                   queryStatement.getResultTimeOrder(),
                   analysis.getGlobalTimeFilter(),
+                  0,
+                  pushDownLimitToScanNode(queryStatement),
                   analysis.isLastLevelUseWildcard())
               .planWhereAndSourceTransform(
                   whereExpression,
@@ -286,6 +293,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     sourceExpressions,
                     queryStatement.getResultTimeOrder(),
                     analysis.getGlobalTimeFilter(),
+                    0,
+                    0,
                     analysis.isLastLevelUseWildcard())
                 .planWhereAndSourceTransform(
                     whereExpression,
@@ -362,6 +371,26 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     }
 
     return planBuilder.getRoot();
+  }
+
+  private long pushDownLimitToScanNode(QueryStatement queryStatement) {
+    // `order by time|device LIMIT N align by device` and no value filter,
+    // can push down limitValue to ScanNode
+    if (queryStatement.isAlignByDevice()
+        && queryStatement.hasLimit()
+        && !analysis.hasValueFilter()
+        && (queryStatement.isOrderByBasedOnDevice() || queryStatement.isOrderByBasedOnTime())) {
+
+      // both `offset` and `limit` exist, push `limit+offset` down as limitValue
+      if (queryStatement.hasOffset()) {
+        return queryStatement.getRowOffset() + queryStatement.getRowLimit();
+      }
+
+      // only `limit` exist, push `limit` down as limitValue
+      return queryStatement.getRowLimit();
+    }
+
+    return 0;
   }
 
   private boolean needTransform(Set<Expression> expressions) {

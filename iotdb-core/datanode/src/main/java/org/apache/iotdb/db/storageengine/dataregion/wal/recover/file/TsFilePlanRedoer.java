@@ -78,12 +78,9 @@ public class TsFilePlanRedoer {
     if (!node.hasValidMeasurements()) {
       return;
     }
+    String deviceId = node.getDevicePath().getFullPath();
     if (tsFileResource != null) {
-      String deviceId =
-          node.isAligned()
-              ? node.getDevicePath().getDevicePath().getFullPath()
-              : node.getDevicePath().getFullPath();
-      // orders of insert node is guaranteed by storage storageengine, just check time in the file
+      // orders of insert node is guaranteed by storage engine, just check time in the file
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       long lastEndTime = tsFileResource.getEndTime(deviceId);
       long minTimeInNode;
@@ -97,7 +94,7 @@ public class TsFilePlanRedoer {
       }
     }
 
-    node.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(node.getDevicePath()));
+    node.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(deviceId));
 
     if (node instanceof InsertRowNode) {
       if (node.isAligned()) {

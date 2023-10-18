@@ -164,7 +164,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         targetTsFileList = new ArrayList<>(Collections.singletonList(targetTsFileResource));
         compactionLogger.logFiles(selectedTsFileResourceList, CompactionLogger.STR_SOURCE_FILES);
         compactionLogger.logFiles(targetTsFileList, CompactionLogger.STR_TARGET_FILES);
-
+        compactionLogger.force();
         LOGGER.info(
             "{}-{} [Compaction] compaction with {}",
             storageGroupName,
@@ -216,6 +216,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
         if (targetTsFileResource.isDeleted()) {
           compactionLogger.logFile(targetTsFileResource, CompactionLogger.STR_DELETED_TARGET_FILES);
+          compactionLogger.force();
         }
 
         CompactionValidator validator = CompactionValidator.getInstance();

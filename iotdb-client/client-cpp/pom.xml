@@ -32,12 +32,20 @@
     <description>C++ client</description>
     <!-- TODO: The tests don't run, if distribution has not been built locally and fails without reasoning -->
     <properties>
+        <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.7/catch.hpp</catch2.url>
+        <cmake.build.type>Release</cmake.build.type>
         <!-- Default value of cmake root -->
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
-        <cmake.build.type>Release</cmake.build.type>
         <thrift.exec.absolute.path>${project.build.directory}/thrift/bin/${thrift.executable}</thrift.exec.absolute.path>
-        <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.7/catch.hpp</catch2.url>
     </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-commons</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
     <build>
         <plugins>
             <!-- Build and do session integration test -->
@@ -47,10 +55,10 @@
                 <executions>
                     <execution>
                         <id>copy-test-resources</id>
-                        <phase>validate</phase>
                         <goals>
                             <goal>copy-resources</goal>
                         </goals>
+                        <phase>validate</phase>
                         <configuration>
                             <outputDirectory>${project.build.directory}/build/test</outputDirectory>
                             <resources>
@@ -69,10 +77,10 @@
                 <executions>
                     <execution>
                         <id>get-thrift</id>
-                        <phase>generate-sources</phase>
                         <goals>
                             <goal>unpack</goal>
                         </goals>
+                        <phase>generate-sources</phase>
                         <configuration>
                             <artifactItems>
                                 <artifactItem>
@@ -96,10 +104,10 @@
                     <!-- Download the Catch2 header file. -->
                     <execution>
                         <id>get-catch2</id>
-                        <phase>generate-resources</phase>
                         <goals>
                             <goal>wget</goal>
                         </goals>
+                        <phase>generate-resources</phase>
                         <configuration>
                             <url>${catch2.url}</url>
                             <unpack>false</unpack>
@@ -135,10 +143,10 @@
                     <execution>
                         <!-- Copy source file and CmakeLists.txt into target directory -->
                         <id>copy-cmakelist-file</id>
-                        <phase>compile</phase>
                         <goals>
                             <goal>copy</goal>
                         </goals>
+                        <phase>compile</phase>
                         <configuration>
                             <fileSets>
                                 <fileSet>
@@ -164,11 +172,11 @@
                 <executions>
                     <execution>
                         <id>generate-thrift-sources-cpp</id>
-                        <!-- Move from generate-sources to generate-resources to avoid double executions -->
-                        <phase>generate-resources</phase>
                         <goals>
                             <goal>compile</goal>
                         </goals>
+                        <!-- Move from generate-sources to generate-resources to avoid double executions -->
+                        <phase>generate-resources</phase>
                         <configuration>
                             <generator>cpp:no_skeleton</generator>
                             <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
@@ -185,10 +193,10 @@
                     <!-- Uses a CMake generator to generate the build using the build tool of choice -->
                     <execution>
                         <id>cmake-generate</id>
-                        <phase>compile</phase>
                         <goals>
                             <goal>generate</goal>
                         </goals>
+                        <phase>compile</phase>
                         <configuration>
                             <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}/build/main</sourcePath>
@@ -201,10 +209,10 @@
                     <!-- Generate Cmake build directory to compile testing program -->
                     <execution>
                         <id>cmake-generate-test</id>
-                        <phase>test-compile</phase>
                         <goals>
                             <goal>generate</goal>
                         </goals>
+                        <phase>test-compile</phase>
                         <configuration>
                             <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}/build/test</sourcePath>
@@ -217,10 +225,10 @@
                     <!-- Actually executes the build -->
                     <execution>
                         <id>cmake-compile</id>
-                        <phase>compile</phase>
                         <goals>
                             <goal>compile</goal>
                         </goals>
+                        <phase>compile</phase>
                         <configuration>
                             <config>${cmake.build.type}</config>
                             <!-- The directory where the "generate" step generated the build configuration -->
@@ -230,10 +238,10 @@
                     <!-- Actually executes the testing compilation -->
                     <execution>
                         <id>cmake-compile-test</id>
-                        <phase>test-compile</phase>
                         <goals>
                             <goal>compile</goal>
                         </goals>
+                        <phase>test-compile</phase>
                         <configuration>
                             <config>${cmake.build.type}</config>
                             <projectDirectory>${project.build.directory}/build/test</projectDirectory>
@@ -243,10 +251,10 @@
                     <!-- TODO: This execution doesn't seem to respect the "skipTests" config -->
                     <execution>
                         <id>cmake-run-test</id>
-                        <phase>integration-test</phase>
                         <goals>
                             <goal>test</goal>
                         </goals>
+                        <phase>integration-test</phase>
                         <configuration>
                             <buildDirectory>${project.build.directory}/build/test</buildDirectory>
                         </configuration>
@@ -260,10 +268,10 @@
                 <executions>
                     <execution>
                         <id>package-client-cpp</id>
-                        <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
+                        <phase>package</phase>
                         <configuration>
                             <finalName>${project.artifactId}-${project.version}</finalName>
                             <descriptors>
@@ -280,10 +288,10 @@
                     <!-- Start a local IoTDB server to run integration test cases -->
                     <execution>
                         <id>start-iotdb</id>
-                        <phase>pre-integration-test</phase>
                         <goals>
                             <goal>start</goal>
                         </goals>
+                        <phase>pre-integration-test</phase>
                         <configuration>
                             <skip>${ctest.skip.tests}</skip>
                             <name>iotdb-server</name>
@@ -301,10 +309,10 @@
                     <!-- Stop the IoTDB server when integration test finishes -->
                     <execution>
                         <id>stop-iotdb</id>
-                        <phase>post-integration-test</phase>
                         <goals>
                             <goal>stop-all</goal>
                         </goals>
+                        <phase>post-integration-test</phase>
                         <configuration>
                             <skip>${ctest.skip.tests}</skip>
                             <name>iotdb-server</name>
@@ -322,42 +330,35 @@
             </plugin>
         </plugins>
     </build>
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-commons</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
     <profiles>
         <profile>
             <id>.os-unix</id>
             <activation>
                 <os>
-                    <family>unix</family>
                     <name>Linux</name>
+                    <family>unix</family>
                     <arch>!aarch64</arch>
                 </os>
             </activation>
             <properties>
-                <os.suffix>linux</os.suffix>
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
+                <os.suffix>linux</os.suffix>
             </properties>
         </profile>
         <profile>
             <id>.os-unix-arm</id>
             <activation>
                 <os>
-                    <family>unix</family>
                     <name>Linux</name>
+                    <family>unix</family>
                     <arch>aarch64</arch>
                 </os>
             </activation>
             <properties>
-                <os.suffix>linux</os.suffix>
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
+                <os.suffix>linux</os.suffix>
             </properties>
         </profile>
         <profile>
@@ -369,9 +370,9 @@
                 </os>
             </activation>
             <properties>
-                <os.suffix>mac</os.suffix>
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
+                <os.suffix>mac</os.suffix>
             </properties>
         </profile>
         <profile>
@@ -383,9 +384,9 @@
                 </os>
             </activation>
             <properties>
-                <os.suffix>mac</os.suffix>
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
+                <os.suffix>mac</os.suffix>
             </properties>
         </profile>
         <profile>
@@ -396,9 +397,9 @@
                 </os>
             </activation>
             <properties>
-                <os.suffix>win</os.suffix>
                 <iotdb.start.script>start-standalone.bat</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.bat</iotdb.stop.script>
+                <os.suffix>win</os.suffix>
             </properties>
         </profile>
     </profiles>

@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -55,6 +59,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
+
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
     this.measurementIndexMap = new LinkedHashMap<>();
@@ -362,6 +368,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         for (int sortedRowIndex = pageRange.get(pageNum * 2);
             sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
             sortedRowIndex++) {
+          TSDataType tsDataType = dataTypes.get(columnIndex);
 
           // skip time duplicated rows
           long time = list.getTime(sortedRowIndex);
@@ -371,6 +378,16 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
               lastValidPointIndexForTimeDupCheck.right = list.getValueIndex(sortedRowIndex);
             }
             if (timeDuplicateInfo[sortedRowIndex]) {
+              if (!list.isNullValue(sortedRowIndex, columnIndex)) {
+                long recordSize =
+                    MemUtils.getRecordSize(
+                        tsDataType,
+                        tsDataType == TSDataType.TEXT
+                            ? list.getBinaryByValueIndex(sortedRowIndex, columnIndex)
+                            : null,
+                        CONFIG.isEnableMemControl());
+                CompressionRatio.decreaseDuplicatedMemorySize(recordSize);
+              }
               continue;
             }
           }
@@ -393,7 +410,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           }
 
           boolean isNull = list.isNullValue(originRowIndex, columnIndex);
-          switch (dataTypes.get(columnIndex)) {
+          switch (tsDataType) {
             case BOOLEAN:
               alignedChunkWriter.writeByColumn(
                   time, list.getBooleanByValueIndex(originRowIndex, columnIndex), isNull);

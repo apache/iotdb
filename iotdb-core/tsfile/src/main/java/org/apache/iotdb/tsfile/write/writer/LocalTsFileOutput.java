@@ -97,4 +97,10 @@ public class LocalTsFileOutput extends OutputStream implements TsFileOutput {
     outputStream.getChannel().truncate(size);
     position = outputStream.getChannel().position();
   }
+
+  @Override
+  public void force() throws IOException {
+    flush();
+    outputStream.getFD().sync();
+  }
 }

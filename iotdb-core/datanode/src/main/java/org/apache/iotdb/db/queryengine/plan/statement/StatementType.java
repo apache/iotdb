@@ -84,6 +84,7 @@ public enum StatementType {
 
   SHOW,
   SHOW_MERGE_STATUS,
+  SHOW_QUERIES,
 
   CREATE_INDEX,
   DROP_INDEX,
