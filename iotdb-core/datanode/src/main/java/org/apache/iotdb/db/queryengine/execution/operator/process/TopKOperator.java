@@ -97,9 +97,6 @@ public class TopKOperator implements ProcessOperator {
 
     initResultTsBlock();
 
-    // activate each FI, to improve FI parallelism
-    deviceOperators.forEach(Operator::isBlocked);
-
     deviceBatchStep = 10000 % topValue == 0 ? 10000 / topValue : 10000 / topValue + 1;
     canCallNext = new boolean[deviceOperators.size()];
   }
@@ -139,7 +136,7 @@ public class TopKOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return !(deviceIndex >= deviceOperators.size() && resultReturnSize == topKResult.length);
+    return !(deviceIndex >= deviceOperators.size() && resultReturnSize >= topKResult.length);
   }
 
   @Override
@@ -151,7 +148,12 @@ public class TopKOperator implements ProcessOperator {
     boolean batchFinished = true;
     int operatorBatchEnd = Math.min(deviceIndex + deviceBatchStep, deviceOperators.size());
     for (int i = deviceIndex; i < operatorBatchEnd; i++) {
-      if (getOperator(i) == null || !canCallNext[i]) {
+      if (getOperator(i) == null) {
+        continue;
+      }
+
+      if (!canCallNext[i]) {
+        batchFinished = false;
         continue;
       }
 
@@ -186,6 +188,7 @@ public class TopKOperator implements ProcessOperator {
       if (skipCurrentBatch) {
         closeOperator(i);
       }
+      canCallNext[i] = false;
     }
 
     if (batchFinished) {
