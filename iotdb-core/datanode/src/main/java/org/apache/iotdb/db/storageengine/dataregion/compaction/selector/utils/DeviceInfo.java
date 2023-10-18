@@ -29,5 +29,4 @@ public class DeviceInfo {
     this.startTime = startTime;
     this.endTime = endTime;
   }
-
 }

@@ -121,7 +121,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           candidate.getSeqFiles().size(),
           candidate.getUnseqFiles().size());
 
-      XXXXCrossCompactionTaskResource result = executeXXXXTaskResourceSelection(candidate);
+      XXXXCompactionSelector xxxxCompactionSelector = new XXXXCompactionSelector(candidate);
+      XXXXCrossCompactionTaskResource result =
+          xxxxCompactionSelector.executeXXXXTaskResourceSelection();
       if (result.isValid()) {
         return result;
       }
@@ -138,18 +140,14 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     }
   }
 
-  private boolean isAllFileCandidateValid(
-      List<TsFileResourceCandidate> tsFileResourceCandidates) {
-    for (TsFileResourceCandidate candidate :
-        tsFileResourceCandidates) {
+  private boolean isAllFileCandidateValid(List<TsFileResourceCandidate> tsFileResourceCandidates) {
+    for (TsFileResourceCandidate candidate : tsFileResourceCandidates) {
       if (!candidate.isValidCandidate) {
         return false;
       }
     }
     return true;
   }
-
-
 
   /**
    * In a preset time (30 seconds), for each unseqFile, find the list of seqFiles that overlap with
@@ -212,8 +210,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   private TsFileResourceCandidate getLatestSealedSeqFile(
       List<TsFileResourceCandidate> seqResourceCandidateList) {
     for (int i = seqResourceCandidateList.size() - 1; i >= 0; i--) {
-      TsFileResourceCandidate seqResourceCandidate =
-          seqResourceCandidateList.get(i);
+      TsFileResourceCandidate seqResourceCandidate = seqResourceCandidateList.get(i);
       if (seqResourceCandidate.resource.isClosed()) {
         // We must select the latest sealed and valid seq file to compact with, in order to avoid
         // overlapping of the new compacted files with the subsequent seq files.
@@ -363,31 +360,41 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       seqFiles = candidate.getSeqFileCandidates();
       unseqFiles = candidate.getUnseqFileCandidates();
     }
+
     private XXXXCrossCompactionTaskResource executeXXXXTaskResourceSelection() throws IOException {
       XXXXCrossCompactionTaskResource result = new XXXXCrossCompactionTaskResource();
-
-      for (TsFileResourceCandidate unseqFile : unseqFiles) {
-        if (canSelectCurrentUnSeqFile(unseqFile)) {
-
-        }
-
+      if (unseqFiles.isEmpty()) {
+        return result;
       }
-
+      for (TsFileResourceCandidate unseqFile : unseqFiles) {
+        result = selectCurrentUnSeqFile(unseqFile);
+        if (result != null) {
+          break;
+        }
+      }
+      TsFileResourceCandidate firstUnseqFile = unseqFiles.get(0);
+      if (!firstUnseqFile.selected) {
+        firstUnseqFile.markAsSelected();
+      }
 
       return result;
     }
 
-    private boolean canSelectCurrentUnSeqFile(TsFileResourceCandidate unseqFile) throws IOException {
-      int previousSeqFileIndex = -1;
-      int nextSeqFileIndex = seqFiles.size();
+    private XXXXCrossCompactionTaskResource selectCurrentUnSeqFile(
+        TsFileResourceCandidate unseqFile) throws IOException {
+      int previousSeqFileIndex = 0;
+      int nextSeqFileIndex = seqFiles.size() - 1;
 
-      boolean hasPreviousSeqFile = false, hasNextSeqFile = false;
+      boolean hasPreviousSeqFile = false;
       for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
         String deviceId = unseqDeviceInfo.deviceId;
         long startTimeOfUnSeqDevice = unseqDeviceInfo.startTime;
         long endTimeOfUnSeqDevice = unseqDeviceInfo.endTime;
-        for (int i = 0; i <= seqFiles.size(); i++) {
+        for (int i = 0; i < seqFiles.size(); i++) {
           TsFileResourceCandidate seqFile = seqFiles.get(i);
+          if (seqFile.unsealed()) {
+            nextSeqFileIndex = Math.min(nextSeqFileIndex, i);
+          }
           if (!seqFile.containsDevice(deviceId)) {
             continue;
           }
@@ -396,8 +403,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           long endTimeOfSeqDevice = seqDeviceInfo.endTime;
 
           // overlap
-          if (startTimeOfUnSeqDevice <= endTimeOfSeqDevice && endTimeOfUnSeqDevice >= startTimeOfSeqDevice) {
-            return false;
+          if (startTimeOfUnSeqDevice <= endTimeOfSeqDevice
+              && endTimeOfUnSeqDevice >= startTimeOfSeqDevice) {
+            return null;
           }
 
           // 乱序文件在顺序文件之后
@@ -408,15 +416,38 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           }
           // 乱序文件在顺序文件之前
           nextSeqFileIndex = Math.min(nextSeqFileIndex, i);
-          hasNextSeqFile = true;
           // 后续不可能出现其他情况
           break;
         }
       }
 
+      XXXXCrossCompactionTaskResource result = new XXXXCrossCompactionTaskResource();
+      TsFileResourceCandidate selectedPreviousSeqFile = null, selectedNextSeqFile = null;
       // select position to insert
-
-      return true;
+      if (hasPreviousSeqFile) {
+        // 从这个范围内找出两个文件
+        for (int i = previousSeqFileIndex; i < nextSeqFileIndex; i += 2) {
+          TsFileResourceCandidate prev = seqFiles.get(i);
+          TsFileResourceCandidate next = seqFiles.get(i + 1);
+          if (prev.isValidCandidate && next.isValidCandidate) {
+            long prevTimestamp =
+                TsFileNameGenerator.getTsFileName(prev.resource.getTsFile().getName()).getTime();
+            long nextTimestamp =
+                TsFileNameGenerator.getTsFileName(next.resource.getTsFile().getName()).getTime();
+            if (prevTimestamp + 1 != nextTimestamp) {
+              selectedPreviousSeqFile = prev;
+              selectedNextSeqFile = next;
+              break;
+            }
+          }
+        }
+      } else {
+        selectedNextSeqFile = seqFiles.get(0);
+      }
+      if (selectedNextSeqFile == null) {
+        return null;
+      }
+      return result;
     }
   }
 }

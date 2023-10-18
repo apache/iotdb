@@ -119,8 +119,7 @@ public class TsFileResourceCandidate {
     return hasDetailedDeviceInfo;
   }
 
-  public boolean mayHasOverlapWithUnseqFile(DeviceInfo unseqFileDeviceInfo)
-      throws IOException {
+  public boolean mayHasOverlapWithUnseqFile(DeviceInfo unseqFileDeviceInfo) throws IOException {
     prepareDeviceInfos();
     long endTime =
         containsDevice(unseqFileDeviceInfo.deviceId)
@@ -128,5 +127,4 @@ public class TsFileResourceCandidate {
             : resource.getFileEndTime();
     return unseqFileDeviceInfo.startTime <= endTime;
   }
-
 }
