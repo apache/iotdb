@@ -71,6 +71,7 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.ServiceLoader;
@@ -1987,11 +1988,14 @@ public class IoTDBDescriptor {
     conf.setPipeLibDir(properties.getProperty("pipe_lib_dir", conf.getPipeLibDir()));
 
     conf.setPipeReceiverFileDirs(
-        properties
-            .getProperty(
-                "pipe_receiver_file_dirs", String.join(",", conf.getPipeReceiverFileDirs()))
-            .trim()
-            .split(","));
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "pipe_receiver_file_dirs", String.join(",", conf.getPipeReceiverFileDirs()))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
   }
 
   private void loadCQProps(Properties properties) {
