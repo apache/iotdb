@@ -111,10 +111,10 @@ public class LocalFileRoleAccessorTest {
     role.setName("root");
     List<PathPrivilege> pathPriList = new ArrayList<>();
 
-    // root.a.b.c -- read_data, wirte_shcema.
+    // root.a.b.c -- insert_timeseries and alter_timeseries
     PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c"));
-    pathPrivilege.grantPrivilege(PriPrivilegeType.READ_DATA.ordinal(), false);
-    pathPrivilege.grantPrivilege(PriPrivilegeType.WRITE_SCHEMA.ordinal(), false);
+    pathPrivilege.grantPrivilege(PriPrivilegeType.INSERT_TIMESERIES.ordinal(), false);
+    pathPrivilege.grantPrivilege(PriPrivilegeType.ALTER_TIMESERIES.ordinal(), false);
     pathPriList.add(pathPrivilege);
 
     // root.a.*.b -- read_schema, write_data
