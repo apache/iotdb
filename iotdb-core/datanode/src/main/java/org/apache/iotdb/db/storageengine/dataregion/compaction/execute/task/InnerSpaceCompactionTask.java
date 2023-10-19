@@ -99,19 +99,20 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(this.logFile);
     logAnalyzer.analyze();
     List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
-    List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
-    List<TsFileIdentifier> deletedTargetFileIdentifiers = logAnalyzer.getDeletedTargetFileInfos();
     this.selectedTsFileResourceList = new ArrayList<>();
     sourceFileIdentifiers.forEach(
         f -> this.selectedTsFileResourceList.add(new TsFileResource(f.getFileFromDataDirs())));
-    if (targetFileIdentifiers.size() > 0) {
+
+    List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
+    List<TsFileIdentifier> deletedTargetFileIdentifiers = logAnalyzer.getDeletedTargetFileInfos();
+    if (!targetFileIdentifiers.isEmpty()) {
       File targetFileOnDisk =
           getRealTargetFile(
               targetFileIdentifiers.get(0), IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX);
       // The targetFileOnDisk may be null, but it won't impact the task recover stage
       this.targetTsFileResource = new TsFileResource(targetFileOnDisk);
     }
-    this.isTargetTsFileEmpty = deletedTargetFileIdentifiers.size() > 0;
+    this.isTargetTsFileEmpty = !deletedTargetFileIdentifiers.isEmpty();
     this.taskStage = logAnalyzer.getTaskStage();
   }
 
@@ -341,7 +342,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     }
   }
 
-  private void rollback() throws Exception {
+  private void rollback() throws IOException {
     // if the task has started,
     if (recoverMemoryStatus) {
       replaceTsFileInMemory(
@@ -349,11 +350,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     }
     deleteCompactionModsFile(selectedTsFileResourceList);
     // delete target file
-    if (targetTsFileResource != null) {
-      if (!deleteTsFileOnDisk(targetTsFileResource)) {
-        throw new CompactionRecoverException(
-            String.format("failed to delete target file %s", targetTsFileResource));
-      }
+    if (targetTsFileResource != null && !deleteTsFileOnDisk(targetTsFileResource)) {
+      throw new CompactionRecoverException(
+          String.format("failed to delete target file %s", targetTsFileResource));
     }
   }
 

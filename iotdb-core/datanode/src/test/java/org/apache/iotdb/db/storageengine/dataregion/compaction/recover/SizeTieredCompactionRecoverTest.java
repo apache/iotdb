@@ -200,8 +200,6 @@ public class SizeTieredCompactionRecoverTest {
   /**
    * Test a compaction task in finished. The compaction log use file info to record files. The
    * sources file are all existed.
-   *
-   * @throws Exception
    */
   private List<TsFileResource> getSourceFiles() throws IllegalPathException, IOException {
     List<TsFileResource> sourceFiles = new ArrayList<>();

@@ -101,8 +101,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(this.logFile);
     logAnalyzer.analyze();
     List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
-    List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
-    List<TsFileIdentifier> deletedTargetFileIdentifiers = logAnalyzer.getDeletedTargetFileInfos();
     this.selectedSequenceFiles = new ArrayList<>();
     sourceFileIdentifiers.stream()
         .filter(TsFileIdentifier::isSequence)
@@ -112,6 +110,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         .forEach(
             f -> this.selectedUnsequenceFiles.add(new TsFileResource(f.getFileFromDataDirs())));
 
+    List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
+    List<TsFileIdentifier> deletedTargetFileIdentifiers = logAnalyzer.getDeletedTargetFileInfos();
     for (TsFileIdentifier f : targetFileIdentifiers) {
       File targetFileOnDisk = getRealTargetFile(f, IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX);
       // The targetFileOnDisk may be null, but it won't impact the task recover stage
@@ -317,7 +317,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         && checkAllSourceFileExists(selectedUnsequenceFiles);
   }
 
-  private void rollback() throws Exception {
+  private void rollback() throws IOException {
     // if the task has started,
     if (recoverMemoryStatus) {
       replaceTsFileInMemory(
@@ -328,10 +328,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     deleteCompactionModsFile(selectedSequenceFiles);
     deleteCompactionModsFile(selectedUnsequenceFiles);
     // delete target file
-    if (targetTsfileResourceList != null) {
-      if (!deleteTsFilesOnDisk(targetTsfileResourceList)) {
-        throw new CompactionRecoverException("failed to delete target file %s");
-      }
+    if (targetTsfileResourceList != null && !deleteTsFilesOnDisk(targetTsfileResourceList)) {
+      throw new CompactionRecoverException("failed to delete target file %s");
     }
   }
 

@@ -35,17 +35,9 @@ public class CompactionLogger implements AutoCloseable {
   public static final String STR_SOURCE_FILES = "source";
   public static final String STR_TARGET_FILES = "target";
   public static final String STR_DELETED_TARGET_FILES = "empty";
-
-  protected List<TsFileIdentifier> sourceFileIdentifiers;
-  protected List<TsFileIdentifier> targetFileIdentifiers;
-  protected List<TsFileIdentifier> deletedTargetFileIdentifiers;
-
-  protected boolean needRecoverFromLogFile;
-  private File logFile;
   private FileOutputStream logStream;
 
   public CompactionLogger(File logFile) throws IOException {
-    this.logFile = logFile;
     logStream = new FileOutputStream(logFile, true);
   }
 

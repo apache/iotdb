@@ -38,18 +38,13 @@ public class CompactionLogAnalyzer {
   private final List<TsFileIdentifier> targetFileInfos = new ArrayList<>();
   private final List<TsFileIdentifier> deletedTargetFileInfos = new ArrayList<>();
   private CompactionTaskStage taskStage;
-  private boolean isLogFromOld = false;
 
   public CompactionLogAnalyzer(File logFile) {
     this.logFile = logFile;
   }
 
-  /**
-   * analyze (source files, target files, deleted target files).
-   *
-   * @throws IOException if io errors occurred
-   */
-  public void analyze() throws IOException {
+  /** analyze (source files, target files, deleted target files). */
+  public void analyze() throws IOException, IllegalArgumentException {
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
       String currLine;
       while ((currLine = bufferedReader.readLine()) != null) {
