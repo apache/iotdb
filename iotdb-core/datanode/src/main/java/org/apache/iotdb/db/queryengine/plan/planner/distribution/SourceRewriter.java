@@ -70,6 +70,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -735,12 +736,22 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       context.setQueryMultiRegion(true);
     }
 
+    // sort by size of SourceNode list firstly (reversed)
+    // then sort by region id (reversed)
+    List<Map.Entry<TRegionReplicaSet, List<SourceNode>>> list =
+        new LinkedList<>(sourceGroup.entrySet());
+    list.sort(
+        Comparator.comparingInt(
+                (Map.Entry<TRegionReplicaSet, List<SourceNode>> o) -> -o.getValue().size())
+            .thenComparingInt(o -> -o.getKey().getRegionId().getId()));
+
     // Step 3: For the source nodes which belong to same data region, add a TimeJoinNode for them
     // and make the
     // new TimeJoinNode as the child of current TimeJoinNode
     // TODO: (xingtanzjr) optimize the procedure here to remove duplicated TimeJoinNode
     boolean addParent = false;
-    for (List<SourceNode> seriesScanNodes : sourceGroup.values()) {
+    for (Map.Entry<TRegionReplicaSet, List<SourceNode>> entry : list) {
+      List<SourceNode> seriesScanNodes = entry.getValue();
       if (seriesScanNodes.size() == 1 && (!context.isForceAddParent() || isTimeJoin)) {
         root.addChild(seriesScanNodes.get(0));
         continue;

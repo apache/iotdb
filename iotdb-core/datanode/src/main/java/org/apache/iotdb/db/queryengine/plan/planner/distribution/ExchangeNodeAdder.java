@@ -331,47 +331,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     // optimize `order by time limit N align by device` query,
     // to ensure that the number of ExchangeNode equals to DataRegionNum but not equals to DeviceNum
     if (node instanceof TopKNode) {
-      TopKNode rootNode = (TopKNode) node;
-      Map<TRegionReplicaSet, TopKNode> regionTopKNodeMap = new HashMap<>();
-      for (PlanNode child : visitedChildren) {
-        if (child instanceof SingleDeviceViewNode) {
-          ((SingleDeviceViewNode) child).setCacheOutputColumnNames(true);
-        }
-        TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).region;
-        regionTopKNodeMap
-            .computeIfAbsent(
-                region,
-                k -> {
-                  TopKNode childTopKNode =
-                      new TopKNode(
-                          context.queryContext.getQueryId().genPlanNodeId(),
-                          rootNode.getTopValue(),
-                          rootNode.getMergeOrderParameter(),
-                          rootNode.getOutputColumnNames());
-                  context.putNodeDistribution(
-                      childTopKNode.getPlanNodeId(),
-                      new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, region));
-                  return childTopKNode;
-                })
-            .addChild(child);
-      }
-
-      for (Map.Entry<TRegionReplicaSet, TopKNode> entry : regionTopKNodeMap.entrySet()) {
-        TRegionReplicaSet topKNodeLocatedRegion = entry.getKey();
-        TopKNode topKNode = entry.getValue();
-
-        if (!dataRegion.equals(topKNodeLocatedRegion)) {
-          ExchangeNode exchangeNode =
-              new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
-          exchangeNode.setChild(topKNode);
-          exchangeNode.setOutputColumnNames(topKNode.getOutputColumnNames());
-          context.hasExchangeNode = true;
-          newNode.addChild(exchangeNode);
-        } else {
-          newNode.addChild(topKNode);
-        }
-      }
-      return newNode;
+      return processTopNode(node, visitedChildren, context, newNode, dataRegion);
     }
 
     // Otherwise, we need to add ExchangeNode for the child whose DataRegion is different from the
@@ -408,6 +368,55 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
       context.hasExchangeNode = true;
       newNode.addChild(exchangeNode);
+    }
+    return newNode;
+  }
+
+  private PlanNode processTopNode(
+      MultiChildProcessNode node,
+      List<PlanNode> visitedChildren,
+      NodeGroupContext context,
+      MultiChildProcessNode newNode,
+      TRegionReplicaSet dataRegion) {
+    TopKNode rootNode = (TopKNode) node;
+    Map<TRegionReplicaSet, TopKNode> regionTopKNodeMap = new HashMap<>();
+    for (PlanNode child : visitedChildren) {
+      if (child instanceof SingleDeviceViewNode) {
+        ((SingleDeviceViewNode) child).setCacheOutputColumnNames(true);
+      }
+      TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).region;
+      regionTopKNodeMap
+          .computeIfAbsent(
+              region,
+              k -> {
+                TopKNode childTopKNode =
+                    new TopKNode(
+                        context.queryContext.getQueryId().genPlanNodeId(),
+                        rootNode.getTopValue(),
+                        rootNode.getMergeOrderParameter(),
+                        rootNode.getOutputColumnNames());
+                context.putNodeDistribution(
+                    childTopKNode.getPlanNodeId(),
+                    new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, region));
+                return childTopKNode;
+              })
+          .addChild(child);
+    }
+
+    for (Map.Entry<TRegionReplicaSet, TopKNode> entry : regionTopKNodeMap.entrySet()) {
+      TRegionReplicaSet topKNodeLocatedRegion = entry.getKey();
+      TopKNode topKNode = entry.getValue();
+
+      if (!dataRegion.equals(topKNodeLocatedRegion)) {
+        ExchangeNode exchangeNode =
+            new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+        exchangeNode.setChild(topKNode);
+        exchangeNode.setOutputColumnNames(topKNode.getOutputColumnNames());
+        context.hasExchangeNode = true;
+        newNode.addChild(exchangeNode);
+      } else {
+        newNode.addChild(topKNode);
+      }
     }
     return newNode;
   }
@@ -467,6 +476,9 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       }
       if (planNodeCount > maxCount) {
         maxCount = planNodeCount;
+        result = region;
+      } else if (planNodeCount == maxCount
+          && region.getRegionId().getId() > result.getRegionId().getId()) {
         result = region;
       }
     }

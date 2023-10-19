@@ -80,8 +80,8 @@ public class Util2 {
     Analysis analysis = new Analysis();
 
     String device1 = "root.sg.d1";
-    String device2 = "root.sg.d22";
-    String device3 = "root.sg.d333";
+    String device2 = "root.sg.d2";
+    String device3 = "root.sg.d3";
 
     TRegionReplicaSet dataRegion1 =
         new TRegionReplicaSet(
@@ -178,8 +178,8 @@ public class Util2 {
     d1.addChild("s1", s1);
     d1.addChild("s2", s2);
 
-    SchemaEntityNode d2 = new SchemaEntityNode("d22");
-    sg.addChild("d22", d2);
+    SchemaEntityNode d2 = new SchemaEntityNode("d2");
+    sg.addChild("d2", d2);
     d2.addChild("t1", t1);
     d2.addChild("t2", t2);
     d2.addChild("t3", t3);
