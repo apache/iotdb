@@ -1465,4 +1465,27 @@ public class AlignedByDeviceTest {
         f3Root.getChildren().get(0).getChildren().get(0).getChildren().get(0)
             instanceof TimeJoinNode);
   }
+
+  @Test
+  public void testOrderByWithoutRedundantMergeSortOperator() {
+    QueryId queryId = new QueryId("test");
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
+    String sql = "select * from root.sg.d1 order by time asc align by device";
+    Analysis analysis = Util.analyze(sql, context);
+    PlanNode logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    assertTrue(logicalPlanNode instanceof DeviceViewNode);
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    DistributedQueryPlan plan = planner.planFragments();
+    assertEquals(2, plan.getInstances().size());
+
+    sql = "select * from root.sg.d22 order by time asc align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    assertTrue(logicalPlanNode instanceof DeviceViewNode);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(1, plan.getInstances().size());
+  }
 }

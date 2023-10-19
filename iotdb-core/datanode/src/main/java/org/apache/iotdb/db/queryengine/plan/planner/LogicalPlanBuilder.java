@@ -817,16 +817,26 @@ public class LogicalPlanBuilder {
     }
     // order by time + no limit, device can be optimized by SingleDeviceViewNode and MergeSortNode
     else if (queryStatement.isOrderByBasedOnTime() && !queryStatement.hasOrderByExpression()) {
-      MergeSortNode mergeSortNode =
-          new MergeSortNode(
-              context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
-      addSingleDeviceViewNodes(
-          mergeSortNode,
-          deviceNameToSourceNodesMap,
-          outputColumnNames,
-          deviceToMeasurementIndexesMap,
-          -1);
-      this.root = mergeSortNode;
+      if (deviceNameToSourceNodesMap.size() == 1) {
+        this.root =
+            addDeviceViewNode(
+                orderByParameter,
+                outputColumnNames,
+                deviceToMeasurementIndexesMap,
+                deviceNameToSourceNodesMap,
+                -1);
+      } else {
+        MergeSortNode mergeSortNode =
+            new MergeSortNode(
+                context.getQueryId().genPlanNodeId(), orderByParameter, outputColumnNames);
+        addSingleDeviceViewNodes(
+            mergeSortNode,
+            deviceNameToSourceNodesMap,
+            outputColumnNames,
+            deviceToMeasurementIndexesMap,
+            -1);
+        this.root = mergeSortNode;
+      }
     } else {
       this.root =
           addDeviceViewNode(
