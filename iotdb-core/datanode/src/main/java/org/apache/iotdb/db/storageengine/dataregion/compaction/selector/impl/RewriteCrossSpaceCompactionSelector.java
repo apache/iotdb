@@ -121,12 +121,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           candidate.getSeqFiles().size(),
           candidate.getUnseqFiles().size());
 
-      XXXXCompactionSelector xxxxCompactionSelector = new XXXXCompactionSelector(candidate);
-      XXXXCrossCompactionTaskResource result =
-          xxxxCompactionSelector.executeXXXXTaskResourceSelection();
-      if (result.isValid()) {
-        return result;
-      }
 
       return executeTaskResourceSelection(candidate);
     } catch (IOException e) {
@@ -138,6 +132,16 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         throw new MergeException(e);
       }
     }
+  }
+
+  public XXXXCrossCompactionTaskResource selectOneInsertionTask(CrossSpaceCompactionCandidate candidate) throws IOException {
+    XXXXCompactionSelector xxxxCompactionSelector = new XXXXCompactionSelector(candidate);
+    XXXXCrossCompactionTaskResource result =
+        xxxxCompactionSelector.executeXXXXTaskResourceSelection();
+    if (result != null && result.isValid()) {
+      return result;
+    }
+    return null;
   }
 
   private boolean isAllFileCandidateValid(List<TsFileResourceCandidate> tsFileResourceCandidates) {
@@ -369,14 +373,15 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       for (TsFileResourceCandidate unseqFile : unseqFiles) {
         result = selectCurrentUnSeqFile(unseqFile);
         if (result != null) {
+          result.toInsertUnSeqFile = unseqFile.resource;
           break;
         }
       }
-      TsFileResourceCandidate firstUnseqFile = unseqFiles.get(0);
-      if (!firstUnseqFile.selected) {
-        firstUnseqFile.markAsSelected();
+      if (result == null) {
+        return null;
       }
-
+      TsFileResourceCandidate firstUnseqFile = unseqFiles.get(0);
+      result.firstUnSeqFileInParitition = firstUnseqFile.resource;
       return result;
     }
 
@@ -422,7 +427,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       }
 
       XXXXCrossCompactionTaskResource result = new XXXXCrossCompactionTaskResource();
-      TsFileResourceCandidate selectedPreviousSeqFile = null, selectedNextSeqFile = null;
       // select position to insert
       if (hasPreviousSeqFile) {
         // 从这个范围内找出两个文件
@@ -435,16 +439,25 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
             long nextTimestamp =
                 TsFileNameGenerator.getTsFileName(next.resource.getTsFile().getName()).getTime();
             if (prevTimestamp + 1 != nextTimestamp) {
-              selectedPreviousSeqFile = prev;
-              selectedNextSeqFile = next;
+              result.prevSeqFile = prev.resource;
+              prev.markAsSelected();
+              result.nextSeqFile = next.resource;
+              next.markAsSelected();
               break;
             }
           }
         }
+        if (previousSeqFileIndex == nextSeqFileIndex) {
+          TsFileResourceCandidate prev = seqFiles.get(previousSeqFileIndex);
+          if (prev.isValidCandidate) {
+            result.prevSeqFile = prev.resource;
+          }
+        }
       } else {
-        selectedNextSeqFile = seqFiles.get(0);
+        result.nextSeqFile = seqFiles.get(0).resource;
+        seqFiles.get(0).markAsSelected();
       }
-      if (selectedNextSeqFile == null) {
+      if (result.prevSeqFile == null && result.nextSeqFile == null) {
         return null;
       }
       return result;

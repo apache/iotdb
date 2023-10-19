@@ -19,11 +19,31 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.XXXXCrossCompactionTaskResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import java.io.IOException;
 import java.util.List;
 
 public class XXXXCrossSpaceCompactionTask extends AbstractCompactionTask {
+
+  public XXXXCrossSpaceCompactionTask(
+    long timePartition,
+    TsFileManager tsFileManager,
+    XXXXCrossCompactionTaskResource taskResource,
+    long serialId) {
+    super(
+        tsFileManager.getStorageGroupName(),
+        tsFileManager.getDataRegionId(),
+        timePartition,
+        tsFileManager,
+        serialId);
+    selectedSeqFiles = taskResource.getSeqFiles();
+    selectedUnseqFiles = taskResource.getUnseqFiles();
+
+  }
+
   private TsFileResource previousSeqFile;
   private TsFileResource nextSeqFile;
   private TsFileResource unseqFile;
@@ -32,7 +52,13 @@ public class XXXXCrossSpaceCompactionTask extends AbstractCompactionTask {
   private List<TsFileResource> selectedUnseqFiles;
 
   @Override
+  protected List<TsFileResource> getAllSourceTsFiles() {
+    return null;
+  }
+
+  @Override
   protected boolean doCompaction() {
+
     // 1. 日志记录任务相关的文件
     // 2. TsFileManager 中移动到顺序区(不能使用 keepOrderInsert，因为还没有改名，此时排序插入会出错, 可以直接使用 insertBefore 或
     // insertAfter )
@@ -40,5 +66,28 @@ public class XXXXCrossSpaceCompactionTask extends AbstractCompactionTask {
     // 4. rename 源乱序 TsFileResource 到目标位置
     // 5. 释放写锁
     return false;
+  }
+
+  @Override
+  public boolean equalsOtherTask(AbstractCompactionTask otherTask) {
+    if (!(otherTask instanceof XXXXCrossSpaceCompactionTask)) {
+      return false;
+    }
+    return false;
+  }
+
+  @Override
+  public long getEstimatedMemoryCost() {
+    return 0;
+  }
+
+  @Override
+  public int getProcessedFileNum() {
+    return 0;
+  }
+
+  @Override
+  protected void createSummary() {
+
   }
 }

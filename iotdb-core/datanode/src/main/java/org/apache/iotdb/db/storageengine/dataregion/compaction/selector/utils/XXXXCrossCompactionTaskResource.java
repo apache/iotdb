@@ -22,7 +22,10 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 public class XXXXCrossCompactionTaskResource extends CrossCompactionTaskResource {
-  private TsFileResource toInsertUnSeqFile = null;
+  public TsFileResource prevSeqFile = null;
+  public TsFileResource nextSeqFile = null;
+  public TsFileResource toInsertUnSeqFile = null;
+  public TsFileResource firstUnSeqFileInParitition = null;
 
   public void setToInsertUnSeqFile(TsFileResource toInsertUnSeqFile) {
     this.toInsertUnSeqFile = toInsertUnSeqFile;
@@ -31,5 +34,10 @@ public class XXXXCrossCompactionTaskResource extends CrossCompactionTaskResource
   @Override
   public float getTotalSeqFileSize() {
     return super.getTotalSeqFileSize();
+  }
+
+  @Override
+  public boolean isValid() {
+    return toInsertUnSeqFile != null;
   }
 }
