@@ -2925,8 +2925,8 @@ public class IoTDBConfig {
     return seedConfigNode;
   }
 
-  public void setSeedConfigNode(List<TEndPoint> seedConfigNodes) {
-    this.seedConfigNode = seedConfigNodes.get(0);
+  public void setSeedConfigNode(TEndPoint seedConfigNode) {
+    this.seedConfigNode = seedConfigNode;
   }
 
   public long getJoinClusterRetryIntervalMs() {

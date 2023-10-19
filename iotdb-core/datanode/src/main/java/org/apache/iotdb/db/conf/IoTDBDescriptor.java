@@ -220,7 +220,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  public void loadProperties(Properties properties) throws BadNodeUrlException {
+  public void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
     conf.setClusterSchemaLimitLevel(
         properties
             .getProperty("cluster_schema_limit_level", conf.getClusterSchemaLimitLevel())
@@ -2015,7 +2015,7 @@ public class IoTDBDescriptor {
             false));
   }
 
-  public void loadClusterProps(Properties properties) {
+  public void loadClusterProps(Properties properties) throws IOException {
     String configNodeUrls = properties.getProperty(IoTDBConstant.DN_SEED_CONFIG_NODE);
     if (configNodeUrls == null) {
       configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
@@ -2027,10 +2027,13 @@ public class IoTDBDescriptor {
     if (configNodeUrls != null) {
       try {
         configNodeUrls = configNodeUrls.trim();
-        conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
+        conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(configNodeUrls).get(0));
       } catch (BadNodeUrlException e) {
         logger.error("ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710");
       }
+    } else {
+      throw new IOException(
+          "The parameter dn_seed_config_node is not set, this DataNode will not join in any cluster.");
     }
 
     conf.setInternalAddress(
