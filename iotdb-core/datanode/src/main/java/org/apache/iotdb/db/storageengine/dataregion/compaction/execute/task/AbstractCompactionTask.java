@@ -242,7 +242,6 @@ public abstract class AbstractCompactionTask {
         e);
     tsFileManager.setAllowCompaction(false);
     LOGGER.error("stop compaction because of exception during recovering");
-    // 考虑是否需要将系统设置为 READONLY
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
   }
 

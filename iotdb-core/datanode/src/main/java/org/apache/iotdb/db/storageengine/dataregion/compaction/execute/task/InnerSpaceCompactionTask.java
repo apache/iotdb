@@ -313,8 +313,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             String.format("%.2f", costTime),
             String.format("%.2f", selectedFileSize / 1024.0d / 1024.0d / costTime),
             summary);
-
-        // 在何时关闭
       }
       Files.deleteIfExists(logFile.toPath());
     } catch (Exception e) {

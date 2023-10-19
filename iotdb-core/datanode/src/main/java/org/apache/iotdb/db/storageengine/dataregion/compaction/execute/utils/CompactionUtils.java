@@ -212,16 +212,6 @@ public class CompactionUtils {
     }
   }
 
-  public static void deleteCompactionModsFile(List<TsFileResource> tsFileResourceList)
-      throws IOException {
-    for (TsFileResource seqFile : tsFileResourceList) {
-      ModificationFile modificationFile = seqFile.getCompactionModFile();
-      if (modificationFile.exists()) {
-        modificationFile.remove();
-      }
-    }
-  }
-
   public static boolean deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
     logger.info("{} [Compaction] Compaction starts to delete real file ", storageGroupName);
@@ -458,8 +448,6 @@ public class CompactionUtils {
     deleteSourceTsFileAndUpdateFileMetrics(sourceSeqResourceList, true);
     deleteSourceTsFileAndUpdateFileMetrics(sourceUnseqResourceList, false);
   }
-
-  public static void deleteTsFiles(List<TsFileResource> tsfiles) {}
 
   public static void deleteSourceTsFileAndUpdateFileMetrics(
       List<TsFileResource> resources, boolean seq) {
