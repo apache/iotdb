@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 import java.util.Objects;
 
@@ -39,6 +40,11 @@ public class QueryExecutor implements ExecutorType {
   @Override
   public boolean isStorageExecutor() {
     return false;
+  }
+
+  @Override
+  public TRegionReplicaSet getRegionReplicaSet() {
+    return null;
   }
 
   @Override
