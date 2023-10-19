@@ -19,12 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
-import java.util.HashMap;
 import java.util.Map;
 
 public class DistributionPlanContext {
@@ -40,8 +37,6 @@ public class DistributionPlanContext {
 
   // used by group by level
   private Map<String, Expression> columnNameToExpression;
-
-  private Map<PlanNodeId, TRegionReplicaSet> preferDataRegion;
 
   protected DistributionPlanContext(MPPQueryContext queryContext) {
     this.isRoot = true;
@@ -83,20 +78,5 @@ public class DistributionPlanContext {
 
   public void setColumnNameToExpression(Map<String, Expression> columnNameToExpression) {
     this.columnNameToExpression = columnNameToExpression;
-  }
-
-  public void putNodePreferDataRegion(PlanNodeId id, TRegionReplicaSet region) {
-    if (preferDataRegion == null) {
-      preferDataRegion = new HashMap<>();
-    }
-    preferDataRegion.put(id, region);
-  }
-
-  public Map<PlanNodeId, TRegionReplicaSet> getPreferDataRegion() {
-    return this.preferDataRegion;
-  }
-
-  public void setMainFragmentLocatedRegion(TRegionReplicaSet region) {
-    this.queryContext.setMainFragmentLocatedRegion(region);
   }
 }

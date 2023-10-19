@@ -167,11 +167,11 @@ public class Util2 {
         new SchemaMeasurementNode("s2", new MeasurementSchema("s2", TSDataType.DOUBLE));
 
     SchemaMeasurementNode t1 =
-        new SchemaMeasurementNode("t1", new MeasurementSchema("t1", TSDataType.INT32));
+        new SchemaMeasurementNode("s1", new MeasurementSchema("t1", TSDataType.INT32));
     SchemaMeasurementNode t2 =
-        new SchemaMeasurementNode("t2", new MeasurementSchema("t2", TSDataType.DOUBLE));
+        new SchemaMeasurementNode("s2", new MeasurementSchema("t2", TSDataType.DOUBLE));
     SchemaMeasurementNode t3 =
-        new SchemaMeasurementNode("t3", new MeasurementSchema("t3", TSDataType.DOUBLE));
+        new SchemaMeasurementNode("s3", new MeasurementSchema("t3", TSDataType.DOUBLE));
 
     SchemaEntityNode d1 = new SchemaEntityNode("d1");
     sg.addChild("d1", d1);
@@ -180,9 +180,9 @@ public class Util2 {
 
     SchemaEntityNode d2 = new SchemaEntityNode("d2");
     sg.addChild("d2", d2);
-    d2.addChild("t1", t1);
-    d2.addChild("t2", t2);
-    d2.addChild("t3", t3);
+    d2.addChild("s1", t1);
+    d2.addChild("s2", t2);
+    d2.addChild("s3", t3);
 
     ClusterSchemaTree tree = new ClusterSchemaTree(root);
     tree.setDatabases(Collections.singleton("root.sg"));

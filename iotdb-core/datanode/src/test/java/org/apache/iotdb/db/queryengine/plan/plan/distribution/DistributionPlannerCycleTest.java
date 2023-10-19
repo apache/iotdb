@@ -27,20 +27,31 @@ import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPla
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class DistributionPlannerCycleTest {
 
-  /**
-   * Query sql: `select * from root.sg.d1,root.sg.d2`
-   *
-   * <p>root.sg.d1 has 2 SeriesScanNodes, root.sg.d2 has 3 SeriesScanNodes.
-   *
-   * <p>Identity | d2-Scan1 d2-Scan2 d2-Scan3 TimeJoin | d1-Scan1 d1-Scan2
-   */
+  // Query sql: `select * from root.sg.d1,root.sg.d2`
+  // root.sg.d1 has 2 SeriesScanNodes, root.sg.d2 has 3 SeriesScanNodes.
+  //
+  // ------------------------------------------------------------------------------------------------
+  // Note: d1.s1[1] means a SeriesScanNode with target series d1.s1 and its data region is 1
+  //
+  //                                       IdentityNode
+  //                           ____________________|_____________
+  //                           |      |                          \
+  //                      d1.s1[1]   d1.s2[1]                  Exchange
+  //                                                             |
+  //                                                          TimeJoinNode
+  //                                                         /      \      \
+  //                                                    d2.s1[2]  d2.s2[2] d2.s3[2]
+  // ------------------------------------------------------------------------------------------------
   @Test
   public void timeJoinNodeTest() {
     QueryId queryId = new QueryId("test");
@@ -58,7 +69,13 @@ public class DistributionPlannerCycleTest {
         plan.getInstances().get(0).getFragment().getPlanNodeTree().getChildren().get(0);
     PlanNode secondNode =
         plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
-    assertEquals(4, firstNode.getChildren().size());
-    assertEquals(2, secondNode.getChildren().size());
+    assertEquals(3, firstNode.getChildren().size());
+    assertTrue(firstNode.getChildren().get(0) instanceof SeriesScanNode);
+    assertTrue(firstNode.getChildren().get(1) instanceof SeriesScanNode);
+    assertTrue(firstNode.getChildren().get(2) instanceof ExchangeNode);
+    assertEquals(3, secondNode.getChildren().size());
+    assertTrue(secondNode.getChildren().get(0) instanceof SeriesScanNode);
+    assertTrue(secondNode.getChildren().get(1) instanceof SeriesScanNode);
+    assertTrue(secondNode.getChildren().get(2) instanceof SeriesScanNode);
   }
 }
