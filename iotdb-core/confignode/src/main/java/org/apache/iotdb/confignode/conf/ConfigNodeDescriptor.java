@@ -799,6 +799,24 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.getDataRegionRatisLogMax()))
                 .trim()));
 
+    conf.setConfigNodeRatisPeriodicSnapshotInterval(
+        Long.parseLong(
+            properties.getProperty(
+                "config_node_ratis_periodic_snapshot_interval",
+                String.valueOf(conf.getConfigNodeRatisPeriodicSnapshotInterval()).trim())));
+
+    conf.setSchemaRegionRatisPeriodicSnapshotInterval(
+        Long.parseLong(
+            properties.getProperty(
+                "schema_region_ratis_periodic_snapshot_interval",
+                String.valueOf(conf.getSchemaRegionRatisPeriodicSnapshotInterval()).trim())));
+
+    conf.setDataRegionRatisPeriodicSnapshotInterval(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_ratis_periodic_snapshot_interval",
+                String.valueOf(conf.getDataRegionRatisPeriodicSnapshotInterval()).trim())));
+
     conf.setEnablePrintingNewlyCreatedPartition(
         Boolean.parseBoolean(
             properties

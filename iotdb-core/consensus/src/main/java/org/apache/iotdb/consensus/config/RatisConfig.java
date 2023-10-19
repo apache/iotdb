@@ -987,9 +987,9 @@ public class RatisConfig {
       private long retryWaitMillis = 500;
 
       // 120s
-      private long triggerSnapshotTime = 120;
+      private long checkAndTakeSnapshotInterval = 120;
       // 20GB
-      private long triggerSnapshotFileSize = 20L << 30;
+      private long raftLogSizeMaxThreshold = 20L << 30;
       // -1L means no force, measured in seconds
       private long forceSnapshotInterval = -1;
 
@@ -997,8 +997,8 @@ public class RatisConfig {
         return new Impl(
             retryTimesMax,
             retryWaitMillis,
-            triggerSnapshotTime,
-            triggerSnapshotFileSize,
+            checkAndTakeSnapshotInterval,
+            raftLogSizeMaxThreshold,
             forceSnapshotInterval);
       }
 
@@ -1012,13 +1012,13 @@ public class RatisConfig {
         return this;
       }
 
-      public Impl.Builder setTriggerSnapshotTime(long triggerSnapshotTime) {
-        this.triggerSnapshotTime = triggerSnapshotTime;
+      public Impl.Builder setCheckAndTakeSnapshotInterval(long checkAndTakeSnapshotInterval) {
+        this.checkAndTakeSnapshotInterval = checkAndTakeSnapshotInterval;
         return this;
       }
 
-      public Impl.Builder setTriggerSnapshotFileSize(long triggerSnapshotFileSize) {
-        this.triggerSnapshotFileSize = triggerSnapshotFileSize;
+      public Impl.Builder setRaftLogSizeMaxThreshold(long raftLogSizeMaxThreshold) {
+        this.raftLogSizeMaxThreshold = raftLogSizeMaxThreshold;
         return this;
       }
 

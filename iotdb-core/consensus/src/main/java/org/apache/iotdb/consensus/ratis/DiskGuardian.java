@@ -27,7 +27,6 @@ import org.apache.iotdb.consensus.ratis.utils.Utils;
 
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.util.MemoizedSupplier;
-import org.apache.ratis.util.Preconditions;
 import org.apache.ratis.util.TimeDuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -180,7 +179,12 @@ class DiskGuardian {
         try {
           serverRef.get().triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(groupId));
           final boolean flagCleared = snapshotFlag.get(groupId).compareAndSet(true, false);
-          Preconditions.assertTrue(flagCleared);
+          if (!flagCleared) {
+            logger.warn(
+                "{}: clear snapshot flag failed for group {}, please check the related implementation",
+                this,
+                groupId);
+          }
         } catch (ConsensusException e) {
           logger.warn(
               "{} take snapshot failed for group {} due to {}. Disk file status {}",
@@ -231,7 +235,7 @@ class DiskGuardian {
                   .getRaftStorage()
                   .getStorageDir()
                   .getCurrentDir();
-          bookkeeper.put(groupId, new RaftLogSummary(groupId, root));
+          bookkeeper.computeIfAbsent(groupId, gid -> new RaftLogSummary(gid, root));
         } catch (IOException e) {
           logger.warn("{}: group not exists for {} and caught exception ", this, groupId, e);
           return Optional.empty();

@@ -56,8 +56,8 @@ public class DiskGuardianTest {
             .setImpl(
                 RatisConfig.Impl.newBuilder()
                     .setForceSnapshotInterval(periodicSnapshot ? 5 : -1)
-                    .setTriggerSnapshotTime(5)
-                    .setTriggerSnapshotFileSize(thresholdSnapshot ? 1 : 1024 * 1024 * 1024)
+                    .setCheckAndTakeSnapshotInterval(5)
+                    .setRaftLogSizeMaxThreshold(thresholdSnapshot ? 1 : 1024 * 1024 * 1024)
                     .build())
             .build();
 

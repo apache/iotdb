@@ -1048,6 +1048,9 @@ public class IoTDBConfig {
   private long dataRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
   private long schemaRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
 
+  private long dataRatisPeriodicSnapshotInterval = 24L * 60 * 60; // 24hr
+  private long schemaRatisPeriodicSnapshotInterval = 24L * 60 * 60; // 24hr
+
   /** whether to enable the audit log * */
   private boolean enableAuditLog = false;
 
@@ -3764,5 +3767,21 @@ public class IoTDBConfig {
 
   public String getObjectStorageBucket() {
     throw new UnsupportedOperationException("object storage is not supported yet");
+  }
+
+  public long getDataRatisPeriodicSnapshotInterval() {
+    return dataRatisPeriodicSnapshotInterval;
+  }
+
+  public void setDataRatisPeriodicSnapshotInterval(long dataRatisPeriodicSnapshotInterval) {
+    this.dataRatisPeriodicSnapshotInterval = dataRatisPeriodicSnapshotInterval;
+  }
+
+  public long getSchemaRatisPeriodicSnapshotInterval() {
+    return schemaRatisPeriodicSnapshotInterval;
+  }
+
+  public void setSchemaRatisPeriodicSnapshotInterval(long schemaRatisPeriodicSnapshotInterval) {
+    this.schemaRatisPeriodicSnapshotInterval = schemaRatisPeriodicSnapshotInterval;
   }
 }

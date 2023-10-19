@@ -293,6 +293,10 @@ public class ConfigNodeConfig {
   private long schemaRegionRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
   private long dataRegionRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
 
+  private long configNodeRatisPeriodicSnapshotInterval = 60 * 60 * 24L; // 24h
+  private long schemaRegionRatisPeriodicSnapshotInterval = 60 * 60 * 24L; // 24h
+  private long dataRegionRatisPeriodicSnapshotInterval = 60 * 60 * 24L; // 24h
+
   /** The getOrCreatePartitionTable interface will log new created Partition if set true. */
   private boolean isEnablePrintingNewlyCreatedPartition = false;
 
@@ -1200,5 +1204,32 @@ public class ConfigNodeConfig {
       }
     }
     return configMessage.toString();
+  }
+
+  public long getConfigNodeRatisPeriodicSnapshotInterval() {
+    return configNodeRatisPeriodicSnapshotInterval;
+  }
+
+  public void setConfigNodeRatisPeriodicSnapshotInterval(
+      long configNodeRatisPeriodicSnapshotInterval) {
+    this.configNodeRatisPeriodicSnapshotInterval = configNodeRatisPeriodicSnapshotInterval;
+  }
+
+  public long getSchemaRegionRatisPeriodicSnapshotInterval() {
+    return schemaRegionRatisPeriodicSnapshotInterval;
+  }
+
+  public void setSchemaRegionRatisPeriodicSnapshotInterval(
+      long schemaRegionRatisPeriodicSnapshotInterval) {
+    this.schemaRegionRatisPeriodicSnapshotInterval = schemaRegionRatisPeriodicSnapshotInterval;
+  }
+
+  public long getDataRegionRatisPeriodicSnapshotInterval() {
+    return dataRegionRatisPeriodicSnapshotInterval;
+  }
+
+  public void setDataRegionRatisPeriodicSnapshotInterval(
+      long dataRegionRatisPeriodicSnapshotInterval) {
+    this.dataRegionRatisPeriodicSnapshotInterval = dataRegionRatisPeriodicSnapshotInterval;
   }
 }
