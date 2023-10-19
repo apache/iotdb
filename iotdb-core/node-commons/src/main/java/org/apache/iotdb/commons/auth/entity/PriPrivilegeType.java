@@ -55,7 +55,22 @@ public enum PriPrivilegeType {
   STOP_TRIGGER(true, false, PrivilegeType.USE_TRIGGER),
   CREATE_CONTINUOUS_QUERY(false, PrivilegeType.USE_CQ),
   DROP_CONTINUOUS_QUERY(false, PrivilegeType.USE_CQ),
-  ALL(false),
+  ALL(
+      true,
+      PrivilegeType.USE_PIPE,
+      PrivilegeType.USE_UDF,
+      PrivilegeType.USE_CQ,
+      PrivilegeType.USE_TRIGGER,
+      PrivilegeType.MANAGE_USER,
+      PrivilegeType.MANAGE_ROLE,
+      PrivilegeType.MANAGE_DATABASE,
+      PrivilegeType.EXTEND_TEMPLATE,
+      PrivilegeType.WRITE_SCHEMA,
+      PrivilegeType.WRITE_DATA,
+      PrivilegeType.READ_DATA,
+      PrivilegeType.READ_SCHEMA,
+      PrivilegeType.MAINTAIN,
+      PrivilegeType.AUDIT),
   DELETE_DATABASE(true, false, PrivilegeType.MANAGE_DATABASE),
   ALTER_TIMESERIES(true, true, PrivilegeType.WRITE_SCHEMA),
   UPDATE_TEMPLATE(false),
@@ -128,6 +143,16 @@ public enum PriPrivilegeType {
     Set<Integer> result = new HashSet<>();
     for (PrivilegeType peivType : refPri) {
       result.add(peivType.ordinal());
+    }
+    return result;
+  }
+
+  public Set<Integer> getSubSysPriOrd() {
+    Set<Integer> result = new HashSet<>();
+    for (PrivilegeType peivType : refPri) {
+      if (!peivType.isPathRelevant()) {
+        result.add(peivType.ordinal());
+      }
     }
     return result;
   }

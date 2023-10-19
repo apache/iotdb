@@ -1029,7 +1029,7 @@ public class AuthorInfoTest {
               BasicAuthorizer.getInstance()
                   .getUser("user1")
                   .getSysPrivilege()
-                  .containsAll(item.getSubPriOrd()));
+                  .containsAll(item.getSubSysPriOrd()));
           authorPlan =
               new AuthorPlan(
                   ConfigPhysicalPlanType.RevokeUserDep,
