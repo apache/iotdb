@@ -127,7 +127,7 @@ public class ConfigNodeRemoveCheck {
   }
 
   /**
-   * config_node of confignode-system.properties
+   * config_node_list of confignode-system.properties
    *
    * @throws BadNodeUrlException loadConfigNodeList()
    * @throws IOException loadConfigNodeList()
