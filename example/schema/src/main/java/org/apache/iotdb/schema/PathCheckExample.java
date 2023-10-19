@@ -59,11 +59,11 @@ public class PathCheckExample {
   private static final int CONCURRENCY = 5;
 
   public static void main(String[] args) {
-    inputTest();
-    inputDir();
+    batchCheck();
+    dirCheck();
   }
 
-  private static void inputTest() {
+  private static void batchCheck() {
     inputList.add("root.test.d1.s1");
     inputList.add("root.b+.d1.s2");
     inputList.add("root.test.1.s3");
@@ -76,7 +76,20 @@ public class PathCheckExample {
     }
   }
 
-  public static void inputDir() {
+  // This function wile check whether the paths are correct in current version.
+  private static void checkPath(String path) {
+    try {
+      PathNodesGenerator.checkPath(path);
+    } catch (PathParseException e) {
+      logger.error("{} is not a legal path.", path);
+    }
+  }
+
+  /**
+   * Using multiple threads to check the paths in the files of the directory. the files are created
+   * by export-csv.sh/export-csv.bat.
+   */
+  public static void dirCheck() {
 
     List<Future<Void>> futureList = new ArrayList<>();
     ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENCY);
@@ -120,14 +133,6 @@ public class PathCheckExample {
         throw new RuntimeException(e);
       }
       return null;
-    }
-  }
-
-  private static void checkPath(String path) {
-    try {
-      PathNodesGenerator.checkPath(path);
-    } catch (PathParseException e) {
-      logger.error("{} is not a legal path.", path);
     }
   }
 }
