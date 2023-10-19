@@ -23,6 +23,23 @@
 @REM set JAVA_HOME=%JAVA_HOME%
 
 set PATH="%JAVA_HOME%\bin\";%PATH%
+set "FULL_VERSION="
+set "MAJOR_VERSION="
+set "MINOR_VERSION="
+
+
+for /f tokens^=2-5^ delims^=.-_+^" %%j in ('java -fullversion 2^>^&1') do (
+	set "FULL_VERSION=%%j-%%k-%%l-%%m"
+	IF "%%j" == "1" (
+	    set "MAJOR_VERSION=%%k"
+	    set "MINOR_VERSION=%%l"
+	) else (
+	    set "MAJOR_VERSION=%%j"
+	    set "MINOR_VERSION=%%k"
+	)
+)
+
+set JAVA_VERSION=%MAJOR_VERSION%
 
 if "%OS%" == "Windows_NT" setlocal
 
@@ -68,7 +85,14 @@ echo %PARAMETERS% | findstr /c:"-h ">nul && (set PARAMETERS=%PARAMETERS%) || (se
 
 echo %PARAMETERS%
 
-java %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %PARAMETERS%
+@REM Add args for Java 11 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
+IF "%JAVA_VERSION%" == "8" (
+    set ILLEGAL_ACCESS_PARAMS=
+) ELSE (
+    set ILLEGAL_ACCESS_PARAMS=--add-opens=java.base/java.lang=ALL-UNNAMED
+)
+
+java %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %PARAMETERS%
 set ret_code=%ERRORLEVEL%
 goto finally
 
