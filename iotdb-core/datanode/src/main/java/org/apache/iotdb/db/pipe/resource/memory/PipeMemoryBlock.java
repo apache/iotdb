@@ -37,7 +37,7 @@ public class PipeMemoryBlock implements AutoCloseable {
     return isReleased;
   }
 
-  void markAsReleased() {
+  synchronized void markAsReleased() {
     isReleased = true;
   }
 

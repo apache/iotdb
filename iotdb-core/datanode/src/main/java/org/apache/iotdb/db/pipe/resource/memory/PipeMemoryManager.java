@@ -37,39 +37,34 @@ public class PipeMemoryManager {
   private final long retryIntervalInMs =
       PipeConfig.getInstance().getPipeMemoryAllocateRetryIntervalInMs();
 
-  public PipeMemoryManager() {}
+  public PipeMemoryManager() {
+    // do nothing
+  }
 
-  synchronized PipeMemoryBlock allocate(long size) throws PipeRuntimeException {
-    for (int i = 0; i < maxRetries; i++) {
-      if (totalMemorySizeInBytes - getUsedMemorySizeInBytes() >= size) {
+  synchronized PipeMemoryBlock allocate(long size)
+      throws PipeRuntimeException, InterruptedException {
+    for (int i = 1; i <= maxRetries; i++) {
+      if (totalMemorySizeInBytes - usedMemorySizeInBytes >= size) {
         PipeMemoryBlock block = new PipeMemoryBlock(size);
         usedMemorySizeInBytes += size;
         return block;
-      } else {
-        LOGGER.warn(
-            "Not enough memory for allocating PipeMemoryBlock, total memory size: {}, used memory size: {}, requested memory size: {}, retrying...",
-            totalMemorySizeInBytes,
-            getUsedMemorySizeInBytes(),
-            size);
-        try {
-          Thread.sleep(retryIntervalInMs * i);
-        } catch (Exception ignored) {
-          // do nothing
-        }
       }
+
+      this.wait(retryIntervalInMs * i);
     }
-    throw new PipeRuntimeCriticalException(
-        String.format(
-            "Not enough memory for Pipe Memory, total memory size: %d, used memory size: %d, requested memory size: %d",
-            totalMemorySizeInBytes, getUsedMemorySizeInBytes(), size));
+
+    throw new PipeRuntimeCriticalException("Not enough memory for Pipe Memory...");
   }
 
   synchronized void release(PipeMemoryBlock block) {
-    if (block == null) {
-      LOGGER.warn("No memory block found, skipping...");
+    if (block == null || block.isReleased()) {
       return;
     }
+
+    block.markAsReleased();
     usedMemorySizeInBytes -= block.getMemoryUsage();
+
+    this.notify();
   }
 
   public long getUsedMemorySizeInBytes() {
