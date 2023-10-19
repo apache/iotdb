@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeHardlinkFileDirStartupCleaner;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -58,7 +59,7 @@ public class PipeRuntimeAgent implements IService {
     PipeHardlinkFileDirStartupCleaner.clean();
 
     // clean receiver file dir
-    PipeAgent.receiver().cleanPipeReceiverDir();
+    PipeAgent.receiver().cleanPipeReceiverDirs();
 
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
     simpleConsensusProgressIndexAssigner.start();
@@ -95,8 +96,8 @@ public class PipeRuntimeAgent implements IService {
 
   ////////////////////// SimpleConsensus ProgressIndex Assigner //////////////////////
 
-  public void assignSimpleProgressIndexIfNeeded(TsFileResource tsFileResource) {
-    simpleConsensusProgressIndexAssigner.assignIfNeeded(tsFileResource);
+  public void assignSimpleProgressIndexIfNeeded(InsertNode insertNode) {
+    simpleConsensusProgressIndexAssigner.assignIfNeeded(insertNode);
   }
 
   ////////////////////// Recover ProgressIndex Assigner //////////////////////

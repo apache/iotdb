@@ -75,7 +75,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class DataRegionTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -777,7 +776,6 @@ public class DataRegionTest {
               dataRegion.getSequenceFileList(),
               true,
               performer,
-              new AtomicInteger(0),
               0);
       CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
       Thread.sleep(20);

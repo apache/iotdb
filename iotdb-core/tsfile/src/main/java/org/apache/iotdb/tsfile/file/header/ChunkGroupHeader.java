@@ -73,6 +73,9 @@ public class ChunkGroupHeader {
     }
 
     String deviceID = ReadWriteIOUtils.readVarIntString(inputStream);
+    if (deviceID == null || deviceID.isEmpty()) {
+      throw new IOException("DeviceId is empty");
+    }
     return new ChunkGroupHeader(deviceID);
   }
 

@@ -22,16 +22,16 @@ package org.apache.iotdb.web.grafana.interceptor;
 import org.osgi.service.component.annotations.Component;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.util.Base64Utils;
-import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
+import org.springframework.web.servlet.HandlerInterceptor;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 @Component
-public class LoginInterceptor extends HandlerInterceptorAdapter {
+public class LoginInterceptor implements HandlerInterceptor {
 
   @Value("${spring.datasource.username}")
   private String username;
@@ -44,10 +44,10 @@ public class LoginInterceptor extends HandlerInterceptorAdapter {
       throws Exception {
     String authorization = request.getHeader("authorization");
     if (authorization != null) {
-      authorization =
-          new String(
-              Base64Utils.decode(
-                  authorization.replace("Basic ", "").getBytes(StandardCharsets.UTF_8)));
+      byte[] decodedBytes =
+          Base64.getDecoder()
+              .decode(authorization.replace("Basic ", "").getBytes(StandardCharsets.UTF_8));
+      authorization = new String(decodedBytes);
       String[] authorizationHeader = authorization.split(":");
       if (authorizationHeader.length != 2
           || !authorizationHeader[0].equals(username)

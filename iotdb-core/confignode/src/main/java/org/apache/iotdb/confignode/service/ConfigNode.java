@@ -298,8 +298,6 @@ public class ConfigNode implements ConfigNodeMBean {
       LOGGER.error("Can't start ConfigNode consensus group!", e);
       stop();
     }
-    // Add some Metrics for configManager
-    configManager.addMetrics();
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 
@@ -350,7 +348,9 @@ public class ConfigNode implements ConfigNodeMBean {
         return;
       } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         targetConfigNode = status.getRedirectNode();
-        LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
+        LOGGER.info("ConfigNode need redirect to  {}, retry {} ...", targetConfigNode, retry);
+      } else if (status.getCode() == TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode()) {
+        LOGGER.warn("The result of register self ConfigNode is {}, retry {} ...", status, retry);
       } else {
         throw new StartupException(status.getMessage());
       }
@@ -413,6 +413,11 @@ public class ConfigNode implements ConfigNodeMBean {
 
   public ConfigManager getConfigManager() {
     return configManager;
+  }
+
+  public void addMetrics() {
+    // Add some Metrics for configManager
+    configManager.addMetrics();
   }
 
   @TestOnly

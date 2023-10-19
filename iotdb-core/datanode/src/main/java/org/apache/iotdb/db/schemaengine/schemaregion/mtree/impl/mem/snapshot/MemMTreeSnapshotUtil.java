@@ -81,9 +81,14 @@ public class MemMTreeSnapshotUtil {
     File snapshot = SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT);
 
     try {
-      try (BufferedOutputStream outputStream =
-          new BufferedOutputStream(new FileOutputStream(snapshotTmp))) {
+      FileOutputStream fileOutputStream = new FileOutputStream(snapshotTmp);
+      BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
+      try {
         serializeTo(store, outputStream);
+      } finally {
+        outputStream.flush();
+        fileOutputStream.getFD().sync();
+        outputStream.close();
       }
       if (snapshot.exists() && !FileUtils.deleteFileIfExist(snapshot)) {
         logger.error(

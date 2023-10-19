@@ -67,4 +67,9 @@ public class TestTsFileOutput implements TsFileOutput {
   public void truncate(long size) {
     publicBAOS.truncate((int) size);
   }
+
+  @Override
+  public void force() {
+    // do nothing
+  }
 }

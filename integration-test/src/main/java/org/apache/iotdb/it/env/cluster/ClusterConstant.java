@@ -165,6 +165,8 @@ public class ClusterConstant {
   public static final String DN_MPP_DATA_EXCHANGE_PORT = "dn_mpp_data_exchange_port";
   public static final String DN_DATA_REGION_CONSENSUS_PORT = "dn_data_region_consensus_port";
   public static final String DN_SCHEMA_REGION_CONSENSUS_PORT = "dn_schema_region_consensus_port";
+  public static final String PIPE_AIR_GAP_RECEIVER_ENABLED = "pipe_air_gap_receiver_enabled";
+  public static final String PIPE_AIR_GAP_RECEIVER_PORT = "pipe_air_gap_receiver_port";
   public static final String MAX_TSBLOCK_SIZE_IN_BYTES = "max_tsblock_size_in_bytes";
   public static final String PAGE_SIZE_IN_BYTE = "page_size_in_byte";
   public static final String DN_JOIN_CLUSTER_RETRY_INTERVAL_MS =

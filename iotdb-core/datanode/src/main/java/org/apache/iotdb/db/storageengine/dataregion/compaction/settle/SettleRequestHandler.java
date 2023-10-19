@@ -275,7 +275,6 @@ public class SettleRequestHandler {
               tsFileResources,
               hasSeqFiles,
               performer,
-              CompactionTaskManager.currentTaskNum,
               tsFileManager.getNextCompactionTaskId());
       try {
         CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);

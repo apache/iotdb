@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty.DefaultProperty;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 
@@ -54,7 +55,10 @@ public class IoTConsensusClientPool {
               new SyncIoTConsensusServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(config.getRpc().getConnectionTimeoutInMs())
+                      // We never let it time out, because the logic behind a timeout is also to
+                      // retry, which might actually worsen the situation. For example, resulting in
+                      // a significant increase in the number of file handles.
+                      .setConnectionTimeoutMs(DefaultProperty.CONNECTION_NEVER_TIMEOUT_MS)
                       .setRpcThriftCompressionEnabled(
                           config.getRpc().isRpcThriftCompressionEnabled())
                       .setPrintLogWhenEncounterException(
@@ -88,7 +92,10 @@ public class IoTConsensusClientPool {
               new AsyncIoTConsensusServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(config.getRpc().getConnectionTimeoutInMs())
+                      // We never let it time out, because the logic behind a timeout is also to
+                      // retry, which might actually worsen the situation. For example, resulting in
+                      // a significant increase in the number of file handles.
+                      .setConnectionTimeoutMs(DefaultProperty.CONNECTION_NEVER_TIMEOUT_MS)
                       .setRpcThriftCompressionEnabled(
                           config.getRpc().isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(

@@ -100,4 +100,10 @@ public interface IRoleManager extends SnapshotProcessor {
    * @throws AuthException
    */
   void replaceAllRoles(Map<String, Role> roles) throws AuthException;
+
+  void setPreVersion(boolean preVersion);
+
+  boolean preVersion();
+
+  void checkAndRefreshPathPri();
 }

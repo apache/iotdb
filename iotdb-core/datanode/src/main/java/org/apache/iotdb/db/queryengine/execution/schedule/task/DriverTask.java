@@ -50,6 +50,8 @@ public class DriverTask implements IDIndexedAccessible {
   private final long ddl;
   private final Lock lock;
 
+  private final boolean isHighestPriority;
+
   private String abortCause;
 
   private final AtomicReference<Priority> priority;
@@ -62,7 +64,7 @@ public class DriverTask implements IDIndexedAccessible {
 
   /** Initialize a dummy instance for queryHolder. */
   public DriverTask() {
-    this(new StubFragmentInstance(), 0L, null, null, 0);
+    this(new StubFragmentInstance(), 0L, null, null, 0, false);
   }
 
   public DriverTask(
@@ -70,7 +72,8 @@ public class DriverTask implements IDIndexedAccessible {
       long timeoutMs,
       DriverTaskStatus status,
       DriverTaskHandle driverTaskHandle,
-      long estimatedMemorySize) {
+      long estimatedMemorySize,
+      boolean isHighestPriority) {
     this.driver = driver;
     this.setStatus(status);
     this.ddl = System.currentTimeMillis() + timeoutMs;
@@ -78,6 +81,7 @@ public class DriverTask implements IDIndexedAccessible {
     this.driverTaskHandle = driverTaskHandle;
     this.priority = new AtomicReference<>(new Priority(0, 0));
     this.estimatedMemorySize = estimatedMemorySize;
+    this.isHighestPriority = isHighestPriority;
   }
 
   @Override
@@ -129,6 +133,10 @@ public class DriverTask implements IDIndexedAccessible {
 
   public long getDDL() {
     return ddl;
+  }
+
+  public boolean isHighestPriority() {
+    return isHighestPriority;
   }
 
   @Override
@@ -275,6 +283,16 @@ public class DriverTask implements IDIndexedAccessible {
     @Override
     public DriverContext getDriverContext() {
       return null;
+    }
+
+    @Override
+    public boolean isHighestPriority() {
+      return false;
+    }
+
+    @Override
+    public void setHighestPriority(boolean isHighestPriority) {
+      // do nothing
     }
   }
 }

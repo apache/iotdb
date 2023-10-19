@@ -40,12 +40,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
@@ -59,8 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -107,11 +108,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   private PlanNode internalVisitSchemaMerge(
       AbstractSchemaMergeNode node, NodeGroupContext context) {
-    node.getChildren()
-        .forEach(
-            child -> {
-              visit(child, context);
-            });
+    node.getChildren().forEach(child -> visit(child, context));
     NodeDistribution nodeDistribution =
         new NodeDistribution(NodeDistributionType.DIFFERENT_FROM_ALL_CHILDREN);
     PlanNode newNode = node.clone();
@@ -216,6 +213,11 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   }
 
   @Override
+  public PlanNode visitTopK(TopKNode node, NodeGroupContext context) {
+    return processMultiChildNode(node, context);
+  }
+
+  @Override
   public PlanNode visitLastQueryMerge(LastQueryMergeNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
   }
@@ -281,68 +283,114 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return processOneChildNode(node, context);
   }
 
+  @Override
+  public PlanNode visitLimit(LimitNode node, NodeGroupContext context) {
+    return processOneChildNode(node, context);
+  }
+
   private PlanNode processMultiChildNode(MultiChildProcessNode node, NodeGroupContext context) {
     if (analysis.isVirtualSource()) {
       return processMultiChildNodeByLocation(node, context);
     }
 
     MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
-    List<PlanNode> visitedChildren = new ArrayList<>();
-    node.getChildren().forEach(child -> visitedChildren.add(visit(child, context)));
+    List<PlanNode> visitedChildren =
+        node.getChildren().stream()
+            .map(child -> visit(child, context))
+            .collect(Collectors.toList());
 
+    // DataRegion which node locates
     TRegionReplicaSet dataRegion;
-    NodeDistributionType distributionType;
+    boolean isChildrenDistributionSame = nodeDistributionIsSame(visitedChildren, context);
+    NodeDistributionType distributionType =
+        isChildrenDistributionSame
+            ? NodeDistributionType.SAME_WITH_ALL_CHILDREN
+            : NodeDistributionType.SAME_WITH_SOME_CHILD;
     if (context.isAlignByDevice()) {
       // For align by device,
       // if dataRegions of children are the same, we set child's dataRegion to this node,
       // else we set the selected mostlyUsedDataRegion to this node
-      boolean inSame = nodeDistributionIsSame(visitedChildren, context);
       dataRegion =
-          inSame
+          isChildrenDistributionSame
               ? context.getNodeDistribution(visitedChildren.get(0).getPlanNodeId()).region
               : context.getMostlyUsedDataRegion();
       context.putNodeDistribution(
-          newNode.getPlanNodeId(),
-          new NodeDistribution(
-              inSame
-                  ? NodeDistributionType.SAME_WITH_ALL_CHILDREN
-                  : NodeDistributionType.SAME_WITH_SOME_CHILD,
-              dataRegion));
+          newNode.getPlanNodeId(), new NodeDistribution(distributionType, dataRegion));
     } else {
-      // TODO For align by time, we keep old logic for now
       dataRegion = calculateDataRegionByChildren(visitedChildren, context);
-      distributionType =
-          nodeDistributionIsSame(visitedChildren, context)
-              ? NodeDistributionType.SAME_WITH_ALL_CHILDREN
-              : NodeDistributionType.SAME_WITH_SOME_CHILD;
       context.putNodeDistribution(
           newNode.getPlanNodeId(), new NodeDistribution(distributionType, dataRegion));
+    }
 
-      // If the distributionType of all the children are same, no ExchangeNode need to be added.
-      if (distributionType == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
-        newNode.setChildren(visitedChildren);
-        return newNode;
+    // If the distributionType of all the children are same, no ExchangeNode need to be added.
+    if (distributionType == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
+      newNode.setChildren(visitedChildren);
+      return newNode;
+    }
+
+    // optimize `order by time limit N align by device` query,
+    // to ensure that the number of ExchangeNode equals to DataRegionNum but not equals to DeviceNum
+    if (node instanceof TopKNode) {
+      TopKNode rootNode = (TopKNode) node;
+      Map<TRegionReplicaSet, TopKNode> regionTopKNodeMap = new HashMap<>();
+      for (PlanNode child : visitedChildren) {
+        if (child instanceof SingleDeviceViewNode) {
+          ((SingleDeviceViewNode) child).setCacheOutputColumnNames(true);
+        }
+        TRegionReplicaSet region = context.getNodeDistribution(child.getPlanNodeId()).region;
+        regionTopKNodeMap
+            .computeIfAbsent(
+                region,
+                k -> {
+                  TopKNode childTopKNode =
+                      new TopKNode(
+                          context.queryContext.getQueryId().genPlanNodeId(),
+                          rootNode.getTopValue(),
+                          rootNode.getMergeOrderParameter(),
+                          rootNode.getOutputColumnNames());
+                  context.putNodeDistribution(
+                      childTopKNode.getPlanNodeId(),
+                      new NodeDistribution(NodeDistributionType.SAME_WITH_ALL_CHILDREN, region));
+                  return childTopKNode;
+                })
+            .addChild(child);
       }
+
+      for (Map.Entry<TRegionReplicaSet, TopKNode> entry : regionTopKNodeMap.entrySet()) {
+        TRegionReplicaSet topKNodeLocatedRegion = entry.getKey();
+        TopKNode topKNode = entry.getValue();
+
+        if (!dataRegion.equals(topKNodeLocatedRegion)) {
+          ExchangeNode exchangeNode =
+              new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+          exchangeNode.setChild(topKNode);
+          exchangeNode.setOutputColumnNames(topKNode.getOutputColumnNames());
+          context.hasExchangeNode = true;
+          newNode.addChild(exchangeNode);
+        } else {
+          newNode.addChild(topKNode);
+        }
+      }
+      return newNode;
     }
 
     // Otherwise, we need to add ExchangeNode for the child whose DataRegion is different from the
     // parent.
-    visitedChildren.forEach(
-        child -> {
-          if (!dataRegion.equals(context.getNodeDistribution(child.getPlanNodeId()).region)) {
-            if (child instanceof SingleDeviceViewNode) {
-              ((SingleDeviceViewNode) child).setCacheOutputColumnNames(true);
-            }
-            ExchangeNode exchangeNode =
-                new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
-            exchangeNode.setChild(child);
-            exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
-            context.hasExchangeNode = true;
-            newNode.addChild(exchangeNode);
-          } else {
-            newNode.addChild(child);
-          }
-        });
+    for (PlanNode child : visitedChildren) {
+      if (!dataRegion.equals(context.getNodeDistribution(child.getPlanNodeId()).region)) {
+        if (child instanceof SingleDeviceViewNode) {
+          ((SingleDeviceViewNode) child).setCacheOutputColumnNames(true);
+        }
+        ExchangeNode exchangeNode =
+            new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+        exchangeNode.setChild(child);
+        exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
+        context.hasExchangeNode = true;
+        newNode.addChild(exchangeNode);
+      } else {
+        newNode.addChild(child);
+      }
+    }
     return newNode;
   }
 
@@ -383,6 +431,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   private TRegionReplicaSet calculateDataRegionByChildren(
       List<PlanNode> children, NodeGroupContext context) {
+
     // Step 1: calculate the count of children group by DataRegion.
     Map<TRegionReplicaSet, Long> groupByRegion =
         children.stream()
@@ -399,16 +448,29 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
                       return region;
                     },
                     Collectors.counting()));
-    if (groupByRegion.entrySet().size() == 1) {
-      return groupByRegion.entrySet().iterator().next().getKey();
+
+    if (groupByRegion.size() == 1) {
+      return groupByRegion.keySet().iterator().next();
     }
-    // Step 2: return the RegionReplicaSet with max count
-    return Collections.max(
-            groupByRegion.entrySet().stream()
-                .filter(e -> e.getKey() != DataPartition.NOT_ASSIGNED)
-                .collect(Collectors.toList()),
-            Map.Entry.comparingByValue())
-        .getKey();
+
+    // Step 2: return the RegionReplicaSet with max node count
+    long maxCount = -1;
+    TRegionReplicaSet result = null;
+    for (Map.Entry<TRegionReplicaSet, Long> entry : groupByRegion.entrySet()) {
+      TRegionReplicaSet region = entry.getKey();
+      long planNodeCount = entry.getValue();
+      if (DataPartition.NOT_ASSIGNED.equals(region)) {
+        continue;
+      }
+      if (region.equals(context.getMostlyUsedDataRegion())) {
+        return region;
+      }
+      if (planNodeCount > maxCount) {
+        maxCount = planNodeCount;
+        result = region;
+      }
+    }
+    return result == null ? context.getMostlyUsedDataRegion() : result;
   }
 
   private TRegionReplicaSet calculateSchemaRegionByChildren(

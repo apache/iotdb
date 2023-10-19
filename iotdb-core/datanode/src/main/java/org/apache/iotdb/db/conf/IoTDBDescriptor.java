@@ -71,6 +71,7 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.ServiceLoader;
@@ -90,7 +91,15 @@ public class IoTDBDescriptor {
     for (IPropertiesLoader loader : propertiesLoaderServiceLoader) {
       logger.info("Will reload properties from {} ", loader.getClass().getName());
       Properties properties = loader.loadProperties();
-      loadProperties(properties);
+      try {
+        loadProperties(properties);
+      } catch (Exception e) {
+        logger.error(
+            "Failed to reload properties from {}, reject DataNode startup.",
+            loader.getClass().getName(),
+            e);
+        System.exit(-1);
+      }
       conf.setCustomizedProperties(loader.getCustomizedProperties());
       TSFileDescriptor.getInstance().overwriteConfigByCustomSettings(properties);
       TSFileDescriptor.getInstance()
@@ -163,11 +172,14 @@ public class IoTDBDescriptor {
         logger.info("Start to read config file {}", url);
         commonProperties.load(inputStream);
       } catch (FileNotFoundException e) {
-        logger.warn("Fail to find config file {}", url, e);
+        logger.error("Fail to find config file {}, reject DataNode startup.", url, e);
+        System.exit(-1);
       } catch (IOException e) {
-        logger.warn("Cannot load config file, use default configuration", e);
+        logger.error("Cannot load config file, reject DataNode startup.", e);
+        System.exit(-1);
       } catch (Exception e) {
-        logger.warn("Incorrect format in config file, use default configuration", e);
+        logger.error("Incorrect format in config file, reject DataNode startup.", e);
+        System.exit(-1);
       }
     } else {
       logger.warn(
@@ -183,11 +195,14 @@ public class IoTDBDescriptor {
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
       } catch (FileNotFoundException e) {
-        logger.warn("Fail to find config file {}", url, e);
+        logger.error("Fail to find config file {}, reject DataNode startup.", url, e);
+        System.exit(-1);
       } catch (IOException e) {
-        logger.warn("Cannot load config file, use default configuration", e);
+        logger.error("Cannot load config file, reject DataNode startup.", e);
+        System.exit(-1);
       } catch (Exception e) {
-        logger.warn("Incorrect format in config file, use default configuration", e);
+        logger.error("Incorrect format in config file, reject DataNode startup.", e);
+        System.exit(-1);
       } finally {
         // update all data seriesPath
         conf.updatePath();
@@ -205,7 +220,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  public void loadProperties(Properties properties) {
+  public void loadProperties(Properties properties) throws BadNodeUrlException {
     conf.setClusterSchemaLimitLevel(
         properties
             .getProperty("cluster_schema_limit_level", conf.getClusterSchemaLimitLevel())
@@ -1972,8 +1987,15 @@ public class IoTDBDescriptor {
   private void loadPipeProps(Properties properties) {
     conf.setPipeLibDir(properties.getProperty("pipe_lib_dir", conf.getPipeLibDir()));
 
-    conf.setPipeReceiverFileDir(
-        properties.getProperty("pipe_receiver_file_dir", conf.getPipeReceiverFileDir()));
+    conf.setPipeReceiverFileDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "pipe_receiver_file_dirs", String.join(",", conf.getPipeReceiverFileDirs()))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
   }
 
   private void loadCQProps(Properties properties) {
@@ -1989,7 +2011,8 @@ public class IoTDBDescriptor {
     conf.setContinuousQueryMinimumEveryInterval(
         DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+            false));
   }
 
   public void loadClusterProps(Properties properties) {

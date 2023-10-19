@@ -20,6 +20,8 @@ package org.apache.iotdb.db.auth.user;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
+import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -66,13 +68,13 @@ public class LocalFileUserManagerTest {
   public void testIllegalInput() throws AuthException {
     // Password contains space
     try {
-      manager.createUser("username1", "password_ ", false);
+      manager.createUser("username1", "password_ ", true);
     } catch (AuthException e) {
       assertTrue(e.getMessage().contains("cannot contain spaces"));
     }
     // Username contains space
     try {
-      assertFalse(manager.createUser("username 2", "password_", false));
+      assertFalse(manager.createUser("username 2", "password_", true));
     } catch (AuthException e) {
       assertTrue(e.getMessage().contains("cannot contain spaces"));
     }
@@ -105,8 +107,8 @@ public class LocalFileUserManagerTest {
 
     assertFalse(manager.createUser(users[0].getName(), users[0].getPassword(), false));
 
-    Assert.assertThrows(AuthException.class, () -> manager.createUser("too", "short", false));
-    Assert.assertThrows(AuthException.class, () -> manager.createUser("short", "too", false));
+    Assert.assertThrows(AuthException.class, () -> manager.createUser("too", "short", true));
+    Assert.assertThrows(AuthException.class, () -> manager.createUser("short", "too", true));
 
     // delete
     assertFalse(manager.deleteUser("not a user"));
@@ -182,5 +184,51 @@ public class LocalFileUserManagerTest {
     for (int i = 0; i < users.length - 1; i++) {
       assertEquals(users[i].getName(), usernames.get(i + 1));
     }
+  }
+
+  @Test
+  public void testPathCheckForUpgrade() throws AuthException, IllegalPathException {
+    manager.createUser("test", "pwssord", false);
+    manager.setPreVersion(true);
+
+    // turn to root.d.a
+    manager.grantPrivilegeToUser(
+        "test", new PartialPath("root.d.a"), PriPrivilegeType.READ_SCHEMA.ordinal(), false);
+    // turn to root.**
+    manager.grantPrivilegeToUser(
+        "test", new PartialPath("root.d*.a"), PriPrivilegeType.READ_DATA.ordinal(), false);
+    // turn to root.**
+    manager.grantPrivilegeToUser(
+        "test", new PartialPath("root.d*.a"), PriPrivilegeType.READ_SCHEMA.ordinal(), false);
+    // turn to root.**
+    manager.grantPrivilegeToUser(
+        "test", new PartialPath("root.*.a.b"), PriPrivilegeType.READ_SCHEMA.ordinal(), false);
+    // turn to root.ds.a.**
+    manager.grantPrivilegeToUser(
+        "test", new PartialPath("root.ds.a.b*"), PriPrivilegeType.READ_SCHEMA.ordinal(), false);
+    // turn to root.ds.a.b
+    manager.grantPrivilegeToUser(
+        "test", new PartialPath("root.ds.a.b"), PriPrivilegeType.READ_SCHEMA.ordinal(), false);
+    assertFalse(manager.getUser("test").getServiceReady());
+    // after this operation, the user has these privileges:
+    // root.d.a : read_schema
+    // root.** : read_data, read_schema
+    // root.ds.a.** :read_schema
+    // root.ds.a.b : read_schema
+    manager.checkAndRefreshPathPri();
+    Role role = manager.getUser("test");
+    assertTrue(role.getServiceReady());
+    assertEquals(4, role.getPathPrivilegeList().size());
+    manager.revokePrivilegeFromUser(
+        "test", new PartialPath("root.**"), PriPrivilegeType.READ_SCHEMA.ordinal());
+    manager.revokePrivilegeFromUser(
+        "test", new PartialPath("root.**"), PriPrivilegeType.READ_DATA.ordinal());
+    assertEquals(3, role.getPathPrivilegeList().size());
+    assertTrue(
+        role.checkPathPrivilege(
+            new PartialPath("root.ds.a.**"), PriPrivilegeType.READ_SCHEMA.ordinal()));
+    assertFalse(
+        role.checkPathPrivilege(
+            new PartialPath("root.ds.a.**"), PriPrivilegeType.READ_DATA.ordinal()));
   }
 }

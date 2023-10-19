@@ -125,7 +125,7 @@ public class TsFileSequenceReaderTest {
       List<ChunkMetadata> metadataList = chunkMetadataMap.get("s" + id);
       int numOfPoints = 0;
       for (ChunkMetadata metadata : metadataList) {
-        numOfPoints += metadata.getNumOfPoints();
+        numOfPoints += (int) metadata.getNumOfPoints();
       }
       Assert.assertEquals(res[i], numOfPoints);
     }
@@ -167,9 +167,10 @@ public class TsFileSequenceReaderTest {
     }
 
     // read tsfile with selfCheck method
-    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
-    Assert.assertEquals(
-        TsFileCheckStatus.COMPLETE_FILE,
-        reader.selfCheck(new HashMap<>(), new ArrayList<>(), false));
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
+      Assert.assertEquals(
+          TsFileCheckStatus.COMPLETE_FILE,
+          reader.selfCheck(new HashMap<>(), new ArrayList<>(), false));
+    }
   }
 }

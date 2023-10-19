@@ -61,6 +61,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -522,7 +523,8 @@ public class IoTDBConfig {
    */
   private int subCompactionTaskNum = 4;
 
-  private CompactionValidationLevel compactionValidationLevel = CompactionValidationLevel.NONE;
+  private CompactionValidationLevel compactionValidationLevel =
+      CompactionValidationLevel.RESOURCE_ONLY;
 
   /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
@@ -1078,8 +1080,8 @@ public class IoTDBConfig {
   private double maxMemoryRatioForQueue = 0.6;
 
   /** Pipe related */
-  private String pipeReceiverFileDir =
-      systemDir + File.separator + "pipe" + File.separator + "receiver";
+  /** initialized as empty, updated based on the latest `systemDir` during querying */
+  private String[] pipeReceiverFileDirs = new String[0];
 
   /** Resource control */
   private boolean quotaEnable = false;
@@ -1212,7 +1214,9 @@ public class IoTDBConfig {
     triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
     pipeDir = addDataHomeDir(pipeDir);
     pipeTemporaryLibDir = addDataHomeDir(pipeTemporaryLibDir);
-    pipeReceiverFileDir = addDataHomeDir(pipeReceiverFileDir);
+    for (int i = 0; i < pipeReceiverFileDirs.length; i++) {
+      pipeReceiverFileDirs[i] = addDataHomeDir(pipeReceiverFileDirs[i]);
+    }
     mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
     queryDir = addDataHomeDir(queryDir);
@@ -3706,12 +3710,14 @@ public class IoTDBConfig {
     return modeMapSizeThreshold;
   }
 
-  public void setPipeReceiverFileDir(String pipeReceiverFileDir) {
-    this.pipeReceiverFileDir = pipeReceiverFileDir;
+  public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {
+    this.pipeReceiverFileDirs = pipeReceiverFileDirs;
   }
 
-  public String getPipeReceiverFileDir() {
-    return pipeReceiverFileDir;
+  public String[] getPipeReceiverFileDirs() {
+    return (Objects.isNull(this.pipeReceiverFileDirs) || this.pipeReceiverFileDirs.length == 0)
+        ? new String[] {systemDir + File.separator + "pipe" + File.separator + "receiver"}
+        : this.pipeReceiverFileDirs;
   }
 
   public boolean isQuotaEnable() {
