@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -58,23 +59,7 @@ public class NodeGroupContext {
     if (regionCountMap.isEmpty()) {
       return DataPartition.NOT_ASSIGNED;
     }
-
-    // return the Region with max count
-    // if count equals, return the Region with bigger RegionId
-    long maxCount = Integer.MIN_VALUE;
-    TRegionReplicaSet regionWithMaxCount = DataPartition.NOT_ASSIGNED;
-    for (Map.Entry<TRegionReplicaSet, Long> entry : regionCountMap.entrySet()) {
-      TRegionReplicaSet region = entry.getKey();
-      long count = entry.getValue();
-      if (count > maxCount) {
-        maxCount = count;
-        regionWithMaxCount = region;
-      } else if (count == maxCount
-          && region.getRegionId().getId() > regionWithMaxCount.getRegionId().getId()) {
-        regionWithMaxCount = region;
-      }
-    }
-    return regionWithMaxCount;
+    return Collections.max(regionCountMap.entrySet(), Map.Entry.comparingByValue()).getKey();
   }
 
   private void countRegionOfSourceNodes(PlanNode root, Map<TRegionReplicaSet, Long> result) {

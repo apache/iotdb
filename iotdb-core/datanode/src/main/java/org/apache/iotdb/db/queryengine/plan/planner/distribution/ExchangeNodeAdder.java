@@ -471,6 +471,9 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       if (DataPartition.NOT_ASSIGNED.equals(region)) {
         continue;
       }
+      if (region.equals(context.queryContext.getMainFragmentLocatedRegion())) {
+        return context.queryContext.getMainFragmentLocatedRegion();
+      }
       if (region.equals(context.getMostlyUsedDataRegion())) {
         return region;
       }
@@ -478,7 +481,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
         maxCount = planNodeCount;
         result = region;
       } else if (planNodeCount == maxCount
-          && region.getRegionId().getId() > result.getRegionId().getId()) {
+          && region.getRegionId().getId() < result.getRegionId().getId()) {
         result = region;
       }
     }

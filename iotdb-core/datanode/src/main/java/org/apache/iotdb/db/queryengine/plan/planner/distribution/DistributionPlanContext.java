@@ -57,10 +57,6 @@ public class DistributionPlanContext {
     return this;
   }
 
-  public boolean isOneSeriesInMultiRegion() {
-    return oneSeriesInMultiRegion;
-  }
-
   public boolean isForceAddParent() {
     return this.forceAddParent;
   }
@@ -98,5 +94,9 @@ public class DistributionPlanContext {
 
   public Map<PlanNodeId, TRegionReplicaSet> getPreferDataRegion() {
     return this.preferDataRegion;
+  }
+
+  public void setMainFragmentLocatedRegion(TRegionReplicaSet region) {
+    this.queryContext.setMainFragmentLocatedRegion(region);
   }
 }
