@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.auth.entity;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -26,12 +28,12 @@ import java.util.List;
 import java.util.Set;
 
 public enum PriPrivilegeType {
-  CREATE_DATABASE(false, PrivilegeType.MANAGE_DATABASE),
-  INSERT_TIMESERIES(true, PrivilegeType.WRITE_DATA),
-  UPDATE_TIMESERIES(true, PrivilegeType.WRITE_DATA),
-  READ_TIMESERIES(true, PrivilegeType.READ_DATA),
-  CREATE_TIMESERIES(true, PrivilegeType.WRITE_SCHEMA),
-  DELETE_TIMESERIES(true, PrivilegeType.WRITE_SCHEMA),
+  CREATE_DATABASE(true, false, PrivilegeType.MANAGE_DATABASE),
+  INSERT_TIMESERIES(true, true, PrivilegeType.WRITE_DATA),
+  UPDATE_TIMESERIES(true, true, PrivilegeType.WRITE_DATA),
+  READ_TIMESERIES(true, true, PrivilegeType.READ_DATA),
+  CREATE_TIMESERIES(true, true, PrivilegeType.WRITE_SCHEMA),
+  DELETE_TIMESERIES(true, true, PrivilegeType.WRITE_SCHEMA),
   CREATE_USER(false, PrivilegeType.MANAGE_USER),
   DELETE_USER(false, PrivilegeType.MANAGE_USER),
   MODIFY_PASSWORD(false),
@@ -47,29 +49,15 @@ public enum PriPrivilegeType {
   REVOKE_ROLE_PRIVILEGE(false),
   CREATE_FUNCTION(false, PrivilegeType.USE_UDF),
   DROP_FUNCTION(false, PrivilegeType.USE_UDF),
-  CREATE_TRIGGER(false, PrivilegeType.USE_TRIGGER),
-  DROP_TRIGGER(false, PrivilegeType.USE_TRIGGER),
-  START_TRIGGER(false, PrivilegeType.USE_TRIGGER),
-  STOP_TRIGGER(false, PrivilegeType.USE_TRIGGER),
+  CREATE_TRIGGER(true, false, PrivilegeType.USE_TRIGGER),
+  DROP_TRIGGER(true, false, PrivilegeType.USE_TRIGGER),
+  START_TRIGGER(true, false, PrivilegeType.USE_TRIGGER),
+  STOP_TRIGGER(true, false, PrivilegeType.USE_TRIGGER),
   CREATE_CONTINUOUS_QUERY(false, PrivilegeType.USE_CQ),
   DROP_CONTINUOUS_QUERY(false, PrivilegeType.USE_CQ),
-  ALL(
-      true,
-      PrivilegeType.USE_PIPE,
-      PrivilegeType.USE_UDF,
-      PrivilegeType.USE_CQ,
-      PrivilegeType.USE_TRIGGER,
-      PrivilegeType.MANAGE_USER,
-      PrivilegeType.MANAGE_ROLE,
-      PrivilegeType.MANAGE_DATABASE,
-      PrivilegeType.EXTEND_TEMPLATE,
-      PrivilegeType.WRITE_SCHEMA,
-      PrivilegeType.WRITE_DATA,
-      PrivilegeType.READ_DATA,
-      PrivilegeType.READ_SCHEMA,
-      PrivilegeType.MAINTAIN),
-  DELETE_DATABASE(false, PrivilegeType.MANAGE_DATABASE),
-  ALTER_TIMESERIES(true, PrivilegeType.WRITE_SCHEMA),
+  ALL(false),
+  DELETE_DATABASE(true, false, PrivilegeType.MANAGE_DATABASE),
+  ALTER_TIMESERIES(true, true, PrivilegeType.WRITE_SCHEMA),
   UPDATE_TEMPLATE(false),
   READ_TEMPLATE(false),
   APPLY_TEMPLATE(false),
@@ -91,15 +79,26 @@ public enum PriPrivilegeType {
 
   boolean accept = false;
   private final boolean isPathRelevant;
+  private final boolean preIsPathRelevant;
   private final List<PrivilegeType> refPri = new ArrayList<>();
 
   PriPrivilegeType(boolean accept) {
     this.accept = accept;
     this.isPathRelevant = false;
+    this.preIsPathRelevant = false;
   }
 
   PriPrivilegeType(boolean isPathRelevant, PrivilegeType... privilegeTypes) {
     this.accept = true;
+    this.isPathRelevant = isPathRelevant;
+    this.preIsPathRelevant = false;
+    this.refPri.addAll(Arrays.asList(privilegeTypes));
+  }
+
+  PriPrivilegeType(
+      boolean preIsPathRelevant, boolean isPathRelevant, PrivilegeType... privilegeTypes) {
+    this.accept = true;
+    this.preIsPathRelevant = preIsPathRelevant;
     this.isPathRelevant = isPathRelevant;
     this.refPri.addAll(Arrays.asList(privilegeTypes));
   }
@@ -112,10 +111,23 @@ public enum PriPrivilegeType {
     return this.isPathRelevant;
   }
 
+  @TestOnly
+  public boolean isPreIsPathRelevant() {
+    return this.preIsPathRelevant;
+  }
+
   public Set<PrivilegeType> getSubPri() {
     Set<PrivilegeType> result = new HashSet<>();
     for (PrivilegeType peivType : refPri) {
       result.add(peivType);
+    }
+    return result;
+  }
+
+  public Set<Integer> getSubPriOrd() {
+    Set<Integer> result = new HashSet<>();
+    for (PrivilegeType peivType : refPri) {
+      result.add(peivType.ordinal());
     }
     return result;
   }
