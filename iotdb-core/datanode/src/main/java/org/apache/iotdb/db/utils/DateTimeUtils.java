@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.tsfile.utils.duration.TimeDuration;
 
 import java.time.DateTimeException;
 import java.time.Instant;
@@ -755,5 +756,45 @@ public class DateTimeUtils {
       calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
     }
     return calendar.getTimeInMillis();
+  }
+
+  /**
+   * Storage the duration into two parts: month part and ns part.
+   *
+   * @param duration the input duration string
+   * @return the TimeDuration instance contains month part and ns part
+   */
+  public static TimeDuration constructTimeDuration(String duration) {
+    duration = duration.toLowerCase();
+    int temp = 0;
+    int months = 0;
+    long ns = 0;
+    for (int i = 0; i < duration.length(); i++) {
+      char ch = duration.charAt(i);
+      if (Character.isDigit(ch)) {
+        temp *= 10;
+        temp += (ch - '0');
+      } else {
+        String unit = String.valueOf(duration.charAt(i));
+        // This is to identify units with two letters.
+        if (i + 1 < duration.length() && !Character.isDigit(duration.charAt(i + 1))) {
+          i++;
+          unit += duration.charAt(i);
+        }
+        if (unit.equals("y")) {
+          months = temp * 12;
+          temp = 0;
+          continue;
+        }
+        if (unit.equals("mo")) {
+          months += temp;
+          temp = 0;
+          continue;
+        }
+        ns += DateTimeUtils.convertDurationStrToLong(-1, temp, unit, "ns");
+        temp = 0;
+      }
+    }
+    return new TimeDuration(months, ns);
   }
 }
