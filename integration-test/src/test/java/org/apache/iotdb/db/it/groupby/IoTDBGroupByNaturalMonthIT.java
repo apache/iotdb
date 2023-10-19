@@ -266,8 +266,6 @@ public class IoTDBGroupByNaturalMonthIT {
         df);
   }
 
-  @Ignore
-  // TODO After potential bug fixed
   @Test
   public void groupByNaturalYearTest2() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.d1.s1")};
