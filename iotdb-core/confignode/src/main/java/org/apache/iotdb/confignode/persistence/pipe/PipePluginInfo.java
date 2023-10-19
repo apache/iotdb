@@ -254,6 +254,7 @@ public class PipePluginInfo implements SnapshotProcessor {
 
       try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
         pipePluginMetaKeeper.processTakeSnapshot(fileOutputStream);
+        fileOutputStream.getChannel().force(true);
       }
       return true;
     } finally {
