@@ -149,10 +149,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     this.crossTask = false;
     collectSelectedFilesInfo();
     createSummary();
-    prepareLogFile();
   }
 
-  private void prepareLogFile() {
+  private void prepare() throws IOException {
+    targetTsFileResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(
+            selectedTsFileResourceList, sequence);
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     logFile =
         new File(
@@ -179,9 +181,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     boolean isSuccess = true;
 
     try {
-      targetTsFileResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(
-              selectedTsFileResourceList, sequence);
+      prepare();
       try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
         // Here is tmpTargetFile, which is xxx.target
         targetTsFileList = new ArrayList<>(Collections.singletonList(targetTsFileResource));
