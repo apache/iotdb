@@ -23,12 +23,11 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.XX
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import java.io.IOException;
 import java.util.List;
 
-public class XXXXCrossSpaceCompactionTask extends AbstractCompactionTask {
+public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
-  public XXXXCrossSpaceCompactionTask(
+  public InsertionCrossSpaceCompactionTask(
     long timePartition,
     TsFileManager tsFileManager,
     XXXXCrossCompactionTaskResource taskResource,
@@ -70,7 +69,7 @@ public class XXXXCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public boolean equalsOtherTask(AbstractCompactionTask otherTask) {
-    if (!(otherTask instanceof XXXXCrossSpaceCompactionTask)) {
+    if (!(otherTask instanceof InsertionCrossSpaceCompactionTask)) {
       return false;
     }
     return false;

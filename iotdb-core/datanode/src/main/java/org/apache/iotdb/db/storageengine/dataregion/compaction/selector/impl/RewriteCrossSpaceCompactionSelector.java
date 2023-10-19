@@ -429,8 +429,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       XXXXCrossCompactionTaskResource result = new XXXXCrossCompactionTaskResource();
       // select position to insert
       if (hasPreviousSeqFile) {
-        // 从这个范围内找出两个文件
-        for (int i = previousSeqFileIndex; i < nextSeqFileIndex; i += 2) {
+        for (int i = previousSeqFileIndex; i < nextSeqFileIndex; i++) {
           TsFileResourceCandidate prev = seqFiles.get(i);
           TsFileResourceCandidate next = seqFiles.get(i + 1);
           if (prev.isValidCandidate && next.isValidCandidate) {
@@ -454,7 +453,12 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           }
         }
       } else {
-        result.nextSeqFile = seqFiles.get(0).resource;
+        TsFileResourceCandidate next = seqFiles.get(0);
+        long nextTimestamp = TsFileNameGenerator.getTsFileName(next.resource.getTsFile().getName()).getTime();
+        if (nextTimestamp < 1) {
+          return null;
+        }
+        result.nextSeqFile = next.resource;
         seqFiles.get(0).markAsSelected();
       }
       if (result.prevSeqFile == null && result.nextSeqFile == null) {

@@ -545,6 +545,238 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
+  public void testInsertionCompactionWithManySeqFilesManyDevices2() throws IOException {
+    String d1 = "root.testsg.d1";
+    String d2 = "root.testsg.d2";
+    String d3 = "root.testsg.d3";
+    TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
+    seqResource1.updateStartTime(d1, 10);
+    seqResource1.updateEndTime(d1, 20);
+    seqResource1.updateStartTime(d2, 15);
+    seqResource1.updateEndTime(d2, 30);
+    seqResource1.updateStartTime(d3, 1);
+    seqResource1.updateEndTime(d3, 3);
+    TsFileResource seqResource2 = createTsFileResource("3-3-0-0.tsfile", true);
+    seqResource2.updateStartTime(d1, 30);
+    seqResource2.updateEndTime(d1, 40);
+    TsFileResource seqResource3 = createTsFileResource("5-5-0-0.tsfile", true);
+    seqResource3.updateStartTime(d3, 21);
+    seqResource3.updateEndTime(d3, 23);
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+    seqResources.add(seqResource3);
+    TsFileResource unseqResource1 = createTsFileResource("9-9-0-0.tsfile", false);
+    unseqResource1.updateStartTime(d1, 56);
+    unseqResource1.updateEndTime(d1, 75);
+    unseqResource1.updateStartTime(d2, 31);
+    unseqResource1.updateEndTime(d2, 37);
+    unseqResource1.updateStartTime(d3, 40);
+    unseqResource1.updateEndTime(d3, 50);
+    unseqResources.add(unseqResource1);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg",
+            "0",
+            0,
+            tsFileManager
+        );
+    XXXXCrossCompactionTaskResource task = selector.selectOneInsertionTask(new CrossSpaceCompactionCandidate(seqResources, unseqResources));
+    Assert.assertEquals(unseqResource1, task.toInsertUnSeqFile);
+    Assert.assertEquals(seqResource3, task.prevSeqFile);
+    Assert.assertNull(task.nextSeqFile);
+  }
+
+  @Test
+  public void testInsertionCompactionWithManySeqFilesManyDevices3() throws IOException {
+    String d1 = "root.testsg.d1";
+    String d2 = "root.testsg.d2";
+    String d3 = "root.testsg.d3";
+    TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
+    seqResource1.updateStartTime(d1, 10);
+    seqResource1.updateEndTime(d1, 20);
+    seqResource1.updateStartTime(d2, 15);
+    seqResource1.updateEndTime(d2, 30);
+    seqResource1.updateStartTime(d3, 3);
+    seqResource1.updateEndTime(d3, 5);
+    TsFileResource seqResource2 = createTsFileResource("3-3-0-0.tsfile", true);
+    seqResource2.updateStartTime(d1, 30);
+    seqResource2.updateEndTime(d1, 40);
+    TsFileResource seqResource3 = createTsFileResource("5-5-0-0.tsfile", true);
+    seqResource3.updateStartTime(d3, 21);
+    seqResource3.updateEndTime(d3, 23);
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+    seqResources.add(seqResource3);
+    TsFileResource unseqResource1 = createTsFileResource("9-9-0-0.tsfile", false);
+    unseqResource1.updateStartTime(d1, 1);
+    unseqResource1.updateEndTime(d1, 2);
+    unseqResource1.updateStartTime(d2, 1);
+    unseqResource1.updateEndTime(d2, 2);
+    unseqResource1.updateStartTime(d3, 1);
+    unseqResource1.updateEndTime(d3, 2);
+    unseqResources.add(unseqResource1);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg",
+            "0",
+            0,
+            tsFileManager
+        );
+    XXXXCrossCompactionTaskResource task = selector.selectOneInsertionTask(new CrossSpaceCompactionCandidate(seqResources, unseqResources));
+    Assert.assertEquals(unseqResource1, task.toInsertUnSeqFile);
+    Assert.assertNull(task.prevSeqFile);
+    Assert.assertEquals(seqResource1, task.nextSeqFile);
+  }
+
+  @Test
+  public void testInsertionCompactionWithManySeqFilesManyDevices4() throws IOException {
+    String d1 = "root.testsg.d1";
+    String d2 = "root.testsg.d2";
+    String d3 = "root.testsg.d3";
+    TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
+    seqResource1.updateStartTime(d1, 10);
+    seqResource1.updateEndTime(d1, 20);
+    seqResource1.updateStartTime(d2, 10);
+    seqResource1.updateEndTime(d2, 20);
+    seqResource1.updateStartTime(d3, 10);
+    seqResource1.updateEndTime(d3, 20);
+    TsFileResource seqResource2 = createTsFileResource("3-3-0-0.tsfile", true);
+    seqResource2.updateStartTime(d2, 30);
+    seqResource2.updateEndTime(d2, 40);
+    TsFileResource seqResource3 = createTsFileResource("5-5-0-0.tsfile", true);
+    seqResource3.updateStartTime(d2, 51);
+    seqResource3.updateEndTime(d2, 63);
+    TsFileResource seqResource4 = createTsFileResource("7-7-0-0.tsfile", true);
+    seqResource4.updateStartTime(d3, 60);
+    seqResource4.updateEndTime(d3, 70);
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+    seqResources.add(seqResource3);
+    seqResources.add(seqResource4);
+    TsFileResource unseqResource1 = createTsFileResource("9-9-0-0.tsfile", false);
+    unseqResource1.updateStartTime(d1, 30);
+    unseqResource1.updateEndTime(d1, 40);
+    unseqResource1.updateStartTime(d3, 30);
+    unseqResource1.updateEndTime(d3, 40);
+    unseqResources.add(unseqResource1);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg",
+            "0",
+            0,
+            tsFileManager
+        );
+    XXXXCrossCompactionTaskResource task = selector.selectOneInsertionTask(new CrossSpaceCompactionCandidate(seqResources, unseqResources));
+    Assert.assertEquals(unseqResource1, task.toInsertUnSeqFile);
+    Assert.assertEquals(seqResource1, task.prevSeqFile);
+    Assert.assertEquals(seqResource2, task.nextSeqFile);
+  }
+
+  @Test
+  public void testInsertionCompactionWithManySeqFilesManyDevices5() throws IOException {
+    String d1 = "root.testsg.d1";
+    String d2 = "root.testsg.d2";
+    String d3 = "root.testsg.d3";
+    TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
+    seqResource1.updateStartTime(d1, 10);
+    seqResource1.updateEndTime(d1, 20);
+    seqResource1.updateStartTime(d2, 10);
+    seqResource1.updateEndTime(d2, 20);
+    seqResource1.updateStartTime(d3, 10);
+    seqResource1.updateEndTime(d3, 20);
+    TsFileResource seqResource2 = createTsFileResource("2-2-0-0.tsfile", true);
+    seqResource2.updateStartTime(d2, 30);
+    seqResource2.updateEndTime(d2, 40);
+    TsFileResource seqResource3 = createTsFileResource("5-5-0-0.tsfile", true);
+    seqResource3.updateStartTime(d2, 51);
+    seqResource3.updateEndTime(d2, 63);
+    TsFileResource seqResource4 = createTsFileResource("7-7-0-0.tsfile", true);
+    seqResource4.updateStartTime(d3, 60);
+    seqResource4.updateEndTime(d3, 70);
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+    seqResources.add(seqResource3);
+    seqResources.add(seqResource4);
+    TsFileResource unseqResource1 = createTsFileResource("9-9-0-0.tsfile", false);
+    unseqResource1.updateStartTime(d1, 30);
+    unseqResource1.updateEndTime(d1, 40);
+    unseqResource1.updateStartTime(d3, 30);
+    unseqResource1.updateEndTime(d3, 40);
+    unseqResources.add(unseqResource1);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg",
+            "0",
+            0,
+            tsFileManager
+        );
+    XXXXCrossCompactionTaskResource task = selector.selectOneInsertionTask(new CrossSpaceCompactionCandidate(seqResources, unseqResources));
+    Assert.assertEquals(unseqResource1, task.toInsertUnSeqFile);
+    Assert.assertEquals(seqResource2, task.prevSeqFile);
+    Assert.assertEquals(seqResource3, task.nextSeqFile);
+  }
+
+  @Test
+  public void testInsertionCompactionWithManySeqFilesManyDevices6() throws IOException {
+    String d1 = "root.testsg.d1";
+    String d2 = "root.testsg.d2";
+    String d3 = "root.testsg.d3";
+    TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
+    seqResource1.updateStartTime(d1, 10);
+    seqResource1.updateEndTime(d1, 20);
+    seqResource1.updateStartTime(d2, 10);
+    seqResource1.updateEndTime(d2, 20);
+    TsFileResource seqResource2 = createTsFileResource("2-2-0-0.tsfile", true);
+    seqResource2.updateStartTime(d2, 30);
+    seqResource2.updateEndTime(d2, 40);
+    TsFileResource seqResource3 = createTsFileResource("5-5-0-0.tsfile", true);
+    seqResource3.updateStartTime(d2, 51);
+    seqResource3.updateEndTime(d2, 63);
+    TsFileResource seqResource4 = createTsFileResource("7-7-0-0.tsfile", true);
+    seqResource4.updateStartTime(d3, 60);
+    seqResource4.updateEndTime(d3, 70);
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+    seqResources.add(seqResource3);
+    seqResources.add(seqResource4);
+    TsFileResource unseqResource1 = createTsFileResource("9-9-0-0.tsfile", false);
+    unseqResource1.updateStartTime(d3, 30);
+    unseqResource1.updateEndTime(d3, 40);
+    unseqResources.add(unseqResource1);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg",
+            "0",
+            0,
+            tsFileManager
+        );
+    XXXXCrossCompactionTaskResource task = selector.selectOneInsertionTask(new CrossSpaceCompactionCandidate(seqResources, unseqResources));
+    Assert.assertEquals(unseqResource1, task.toInsertUnSeqFile);
+    Assert.assertNull(task.prevSeqFile);
+    Assert.assertEquals(seqResource1, task.nextSeqFile);
+  }
+
+  @Test
   public void testInsertionCompactionWithManySeqFilesManyDevicesWithOverlap() throws IOException {
     String d1 = "root.testsg.d1";
     String d2 = "root.testsg.d2";

@@ -24,7 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.XXXXCrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
@@ -144,7 +144,7 @@ public class CompactionScheduler {
       if (taskList.get(i) instanceof XXXXCrossCompactionTaskResource) {
         if (CompactionTaskManager.getInstance()
             .addTaskToWaitingQueue(
-                new XXXXCrossSpaceCompactionTask(
+                new InsertionCrossSpaceCompactionTask(
                     timePartition,
                     tsFileManager,
                     (XXXXCrossCompactionTaskResource) taskList.get(i),
