@@ -464,10 +464,9 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
     // Step 2: return the RegionReplicaSet with max node count
     long maxCount = -1;
-    TRegionReplicaSet result = null;
+    TRegionReplicaSet result = DataPartition.NOT_ASSIGNED;
     for (Map.Entry<TRegionReplicaSet, Long> entry : groupByRegion.entrySet()) {
       TRegionReplicaSet region = entry.getKey();
-      long planNodeCount = entry.getValue();
       if (DataPartition.NOT_ASSIGNED.equals(region)) {
         continue;
       }
@@ -477,6 +476,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
       if (region.equals(context.getMostlyUsedDataRegion())) {
         return region;
       }
+      long planNodeCount = entry.getValue();
       if (planNodeCount > maxCount) {
         maxCount = planNodeCount;
         result = region;
@@ -485,7 +485,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
         result = region;
       }
     }
-    return result == null ? context.getMostlyUsedDataRegion() : result;
+    return result;
   }
 
   private TRegionReplicaSet calculateSchemaRegionByChildren(

@@ -63,7 +63,6 @@ import org.mockito.Mockito;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -73,77 +72,68 @@ public class Util2 {
   public static final Analysis ANALYSIS = constructAnalysis();
 
   public static Analysis constructAnalysis() {
-    SeriesPartitionExecutor executor =
-        SeriesPartitionExecutor.getSeriesPartitionExecutor(
-            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
-            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
-    Analysis analysis = new Analysis();
-
-    String device1 = "root.sg.d1";
-    String device2 = "root.sg.d2";
-    String device3 = "root.sg.d3";
-
     TRegionReplicaSet dataRegion1 =
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
-            Arrays.asList(genDataNodeLocation(11, "192.0.1.1")));
-
-    TRegionReplicaSet dataRegion2 =
-        new TRegionReplicaSet(
-            new TConsensusGroupId(TConsensusGroupType.DataRegion, 2),
-            Arrays.asList(genDataNodeLocation(21, "192.0.1.1")));
-
-    DataPartition dataPartition =
-        new DataPartition(
-            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
-            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
-
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-        dataPartitionMap = new HashMap<>();
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> sgPartitionMap =
-        new HashMap<>();
-
+            Collections.singletonList(genDataNodeLocation(11, "192.0.1.1")));
     List<TRegionReplicaSet> d1DataRegions = new ArrayList<>();
     d1DataRegions.add(dataRegion1);
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> d1DataRegionMap = new HashMap<>();
     d1DataRegionMap.put(new TTimePartitionSlot(), d1DataRegions);
 
+    TRegionReplicaSet dataRegion2 =
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 2),
+            Collections.singletonList(genDataNodeLocation(21, "192.0.1.1")));
     List<TRegionReplicaSet> d2DataRegions = new ArrayList<>();
     d2DataRegions.add(dataRegion2);
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> d2DataRegionMap = new HashMap<>();
     d2DataRegionMap.put(new TTimePartitionSlot(), d2DataRegions);
 
+    DataPartition dataPartition =
+        new DataPartition(
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        dataPartitionMap = new HashMap<>();
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> sgPartitionMap =
+        new HashMap<>();
+    String device1 = "root.sg.d1";
+    String device2 = "root.sg.d2";
+    String device3 = "root.sg.d3";
+    SeriesPartitionExecutor executor =
+        SeriesPartitionExecutor.getSeriesPartitionExecutor(
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     sgPartitionMap.put(executor.getSeriesPartitionSlot(device1), d1DataRegionMap);
     sgPartitionMap.put(executor.getSeriesPartitionSlot(device2), d2DataRegionMap);
-
     dataPartitionMap.put("root.sg", sgPartitionMap);
-
     dataPartition.setDataPartitionMap(dataPartitionMap);
 
+    Analysis analysis = new Analysis();
     analysis.setDataPartitionInfo(dataPartition);
 
     // construct schema partition
-    SchemaPartition schemaPartition =
-        new SchemaPartition(
-            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
-            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap = new HashMap<>();
-
     TRegionReplicaSet schemaRegion1 =
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 11),
-            Arrays.asList(genDataNodeLocation(11, "192.0.1.1")));
+            Collections.singletonList(genDataNodeLocation(11, "192.0.1.1")));
 
     TRegionReplicaSet schemaRegion2 =
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 21),
-            Arrays.asList(genDataNodeLocation(21, "192.0.1.1")));
+            Collections.singletonList(genDataNodeLocation(21, "192.0.1.1")));
 
     Map<TSeriesPartitionSlot, TRegionReplicaSet> schemaRegionMap = new HashMap<>();
     schemaRegionMap.put(executor.getSeriesPartitionSlot(device1), schemaRegion1);
     schemaRegionMap.put(executor.getSeriesPartitionSlot(device2), schemaRegion2);
     schemaRegionMap.put(executor.getSeriesPartitionSlot(device3), schemaRegion2);
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap = new HashMap<>();
     schemaPartitionMap.put("root.sg", schemaRegionMap);
+    SchemaPartition schemaPartition =
+        new SchemaPartition(
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     schemaPartition.setSchemaPartitionMap(schemaPartitionMap);
 
     analysis.setDataPartitionInfo(dataPartition);
@@ -161,24 +151,22 @@ public class Util2 {
     SchemaNode sg = new SchemaInternalNode("sg");
     root.addChild("sg", sg);
 
+    SchemaEntityNode d1 = new SchemaEntityNode("d1");
     SchemaMeasurementNode s1 =
         new SchemaMeasurementNode("s1", new MeasurementSchema("s1", TSDataType.INT32));
     SchemaMeasurementNode s2 =
         new SchemaMeasurementNode("s2", new MeasurementSchema("s2", TSDataType.DOUBLE));
+    sg.addChild("d1", d1);
+    d1.addChild("s1", s1);
+    d1.addChild("s2", s2);
 
+    SchemaEntityNode d2 = new SchemaEntityNode("d2");
     SchemaMeasurementNode t1 =
         new SchemaMeasurementNode("s1", new MeasurementSchema("t1", TSDataType.INT32));
     SchemaMeasurementNode t2 =
         new SchemaMeasurementNode("s2", new MeasurementSchema("t2", TSDataType.DOUBLE));
     SchemaMeasurementNode t3 =
         new SchemaMeasurementNode("s3", new MeasurementSchema("t3", TSDataType.DOUBLE));
-
-    SchemaEntityNode d1 = new SchemaEntityNode("d1");
-    sg.addChild("d1", d1);
-    d1.addChild("s1", s1);
-    d1.addChild("s2", s2);
-
-    SchemaEntityNode d2 = new SchemaEntityNode("d2");
     sg.addChild("d2", d2);
     d2.addChild("s1", t1);
     d2.addChild("s2", t2);
