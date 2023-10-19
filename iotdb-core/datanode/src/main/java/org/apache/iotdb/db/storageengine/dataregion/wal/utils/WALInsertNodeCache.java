@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.Weigher;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -59,12 +60,16 @@ public class WALInsertNodeCache {
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
 
   private WALInsertNodeCache() {
+    // TODO: try allocate memory 2 * config.getWalFileSizeThresholdInByte() for the cache
+    // If allocate memory failed, disable batch load
+    isBatchLoadEnabled = true;
     lruCache =
         Caffeine.newBuilder()
-            .maximumSize(config.getWalBufferQueueCapacity())
+            .maximumWeight(config.getWalFileSizeThresholdInByte())
+            .weigher(
+                (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
+                    (position, pair) -> position.getSize())
             .build(new WALInsertNodeCacheLoader());
-    isBatchLoadEnabled =
-        config.getAllocateMemoryForWALPipeCache() >= 3 * config.getWalFileSizeThresholdInByte();
   }
 
   @TestOnly
@@ -89,6 +94,8 @@ public class WALInsertNodeCache {
 
     if (pair.getRight() == null) {
       try {
+        // multi pipes may share the same wal entry, so we need to wrap the byte[] into
+        // different ByteBuffer for each pipe
         pair.setRight(parse(ByteBuffer.wrap(pair.getLeft().array())));
       } catch (Exception e) {
         logger.error(
@@ -123,7 +130,9 @@ public class WALInsertNodeCache {
       throw new IllegalStateException();
     }
 
-    return pair.getLeft();
+    // multi pipes may share the same wal entry, so we need to wrap the byte[] into different
+    // ByteBuffer for each pipe
+    return ByteBuffer.wrap(pair.getLeft().array());
   }
 
   boolean contains(WALEntryPosition position) {
@@ -156,10 +165,7 @@ public class WALInsertNodeCache {
     @Override
     public @NonNull Map<@NonNull WALEntryPosition, @NonNull Pair<ByteBuffer, InsertNode>> loadAll(
         @NonNull Iterable<? extends @NonNull WALEntryPosition> keys) {
-
-      lruCache.invalidateAll();
-
-      Map<WALEntryPosition, Pair<ByteBuffer, InsertNode>> res = new HashMap<>();
+      final Map<WALEntryPosition, Pair<ByteBuffer, InsertNode>> res = new HashMap<>();
 
       for (WALEntryPosition pos : keys) {
         if (res.containsKey(pos) || !pos.canRead()) {

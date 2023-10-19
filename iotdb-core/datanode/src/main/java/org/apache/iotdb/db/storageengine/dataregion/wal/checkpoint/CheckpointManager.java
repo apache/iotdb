@@ -350,12 +350,11 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   public int getRegionId(long memtableId) {
-    MemTableInfo info = memTableId2Info.get(memtableId);
+    final MemTableInfo info = memTableId2Info.get(memtableId);
     if (info == null) {
       logger.warn("memtableId {} not found in MemTableId2Info", memtableId);
       return -1;
     }
-
     return Integer.parseInt(info.getMemTable().getDataRegionId());
   }
 
