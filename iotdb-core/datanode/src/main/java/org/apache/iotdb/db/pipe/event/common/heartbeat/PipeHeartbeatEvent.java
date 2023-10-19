@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionHybridExtractor;
+import org.apache.iotdb.db.pipe.metric.PipeHeartbeatEventMetrics;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.connection.EnrichedDeque;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
@@ -133,18 +134,24 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public void onAssigned() {
     if (shouldPrintMessage) {
       timeAssigned = System.currentTimeMillis();
+      PipeHeartbeatEventMetrics.getInstance()
+          .recordPublishedToAssignedTime(timeAssigned - timePublished);
     }
   }
 
   public void onProcessed() {
     if (shouldPrintMessage) {
       timeProcessed = System.currentTimeMillis();
+      PipeHeartbeatEventMetrics.getInstance()
+          .recordAssignedToProcessedTime(timeProcessed - timeAssigned);
     }
   }
 
   public void onTransferred() {
     if (shouldPrintMessage) {
       timeTransferred = System.currentTimeMillis();
+      PipeHeartbeatEventMetrics.getInstance()
+          .recordProcessedToTransferredTime(timeTransferred - timeProcessed);
     }
   }
 
