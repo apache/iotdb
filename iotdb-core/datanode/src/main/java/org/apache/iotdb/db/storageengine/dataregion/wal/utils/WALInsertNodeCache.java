@@ -65,7 +65,7 @@ public class WALInsertNodeCache {
     isBatchLoadEnabled = true;
     lruCache =
         Caffeine.newBuilder()
-            .maximumWeight(config.getWalFileSizeThresholdInByte())
+            .maximumWeight(2 * config.getWalFileSizeThresholdInByte())
             .weigher(
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
                     (position, pair) -> position.getSize())
