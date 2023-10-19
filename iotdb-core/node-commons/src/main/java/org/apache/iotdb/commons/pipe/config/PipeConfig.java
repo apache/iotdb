@@ -159,10 +159,6 @@ public class PipeConfig {
 
   /////////////////////////////// Memory ///////////////////////////////
 
-  public long getPipeTotalMemorySizeInBytes() {
-    return COMMON_CONFIG.getPipeTotalMemorySizeInBytes();
-  }
-
   public int getPipeMemoryAllocateMaxRetries() {
     return COMMON_CONFIG.getPipeMemoryAllocateMaxRetries();
   }

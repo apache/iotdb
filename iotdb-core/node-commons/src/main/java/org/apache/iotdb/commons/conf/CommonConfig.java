@@ -191,7 +191,6 @@ public class CommonConfig {
 
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 1;
 
-  private long allocateMemoryForPipe = Runtime.getRuntime().maxMemory() / 10;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
   private int pipeMemoryAllocateMaxRetries = 10;
 
@@ -734,14 +733,6 @@ public class CommonConfig {
   public void setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
       int pipeExtractorPendingQueueTsfileLimit) {
     this.pipeMaxAllowedPendingTsFileEpochPerDataRegion = pipeExtractorPendingQueueTsfileLimit;
-  }
-
-  public long getPipeTotalMemorySizeInBytes() {
-    return allocateMemoryForPipe;
-  }
-
-  public void setPipeTotalMemorySizeInBytes(long pipeTotalMemorySize) {
-    this.allocateMemoryForPipe = pipeTotalMemorySize;
   }
 
   public int getPipeMemoryAllocateMaxRetries() {

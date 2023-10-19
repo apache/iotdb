@@ -390,12 +390,6 @@ public class CommonDescriptor {
                 "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
                 String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
 
-    config.setPipeTotalMemorySizeInBytes(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_total_memory_size_in_bytes",
-                String.valueOf(config.getPipeTotalMemorySizeInBytes()))));
-
     config.setPipeMemoryAllocateMaxRetries(
         Integer.parseInt(
             properties.getProperty(

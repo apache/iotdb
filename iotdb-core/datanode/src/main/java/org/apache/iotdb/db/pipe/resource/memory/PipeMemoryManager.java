@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.resource.memory;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +31,7 @@ public class PipeMemoryManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeMemoryManager.class);
 
   private final long totalMemorySizeInBytes =
-      PipeConfig.getInstance().getPipeTotalMemorySizeInBytes();
+      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForPipe();
   private long usedMemorySizeInBytes = 0;
 
   private final int maxRetries = PipeConfig.getInstance().getPipeMemoryAllocateMaxRetries();
@@ -64,7 +65,7 @@ public class PipeMemoryManager {
     block.markAsReleased();
     usedMemorySizeInBytes -= block.getMemoryUsage();
 
-    this.notify();
+    this.notifyAll();
   }
 
   public long getUsedMemorySizeInBytes() {
@@ -73,9 +74,5 @@ public class PipeMemoryManager {
 
   public long getTotalMemorySizeInBytes() {
     return totalMemorySizeInBytes;
-  }
-
-  public void clean() {
-    usedMemorySizeInBytes = 0;
   }
 }
