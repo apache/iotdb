@@ -289,8 +289,8 @@ public abstract class AbstractCompactionTask {
 
   protected void deleteCompactionModsFile(List<TsFileResource> tsFileResourceList)
       throws IOException {
-    for (TsFileResource seqFile : tsFileResourceList) {
-      ModificationFile modificationFile = seqFile.getCompactionModFile();
+    for (TsFileResource tsFile : tsFileResourceList) {
+      ModificationFile modificationFile = tsFile.getCompactionModFile();
       if (modificationFile.exists()) {
         modificationFile.remove();
       }

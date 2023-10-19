@@ -380,7 +380,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       throw new CompactionRecoverException("source files cannot be deleted successfully");
     }
     if (recoverMemoryStatus) {
-      // 这个地方的统计可能是不准确的
       FileMetrics.getInstance().deleteTsFile(true, selectedTsFileResourceList);
     }
     deleteCompactionModsFile(selectedTsFileResourceList);
