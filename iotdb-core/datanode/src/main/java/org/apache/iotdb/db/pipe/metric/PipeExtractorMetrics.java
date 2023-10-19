@@ -52,50 +52,21 @@ public class PipeExtractorMetrics implements IMetricSet {
 
   private AbstractMetricService metricService;
 
-  private static class PipeExtractorMetricsHolder {
+  //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
-    private static final PipeExtractorMetrics INSTANCE = new PipeExtractorMetrics();
-
-    private PipeExtractorMetricsHolder() {
-      // empty constructor
-    }
-  }
-
-  public static PipeExtractorMetrics getInstance() {
-    return PipeExtractorMetrics.PipeExtractorMetricsHolder.INSTANCE;
-  }
-
-  private PipeExtractorMetrics() {
-    // empty constructor
-  }
-
-  public void register(@NonNull IoTDBDataRegionExtractor extractor) {
-    String taskID = extractor.getTaskID();
+  @Override
+  public void bindTo(AbstractMetricService metricService) {
+    this.metricService = metricService;
     synchronized (this) {
-      if (!extractorMap.containsKey(taskID)) {
-        extractorMap.put(taskID, extractor);
-      }
-      if (Objects.nonNull(metricService)) {
+      for (String taskID : extractorMap.keySet()) {
         createMetrics(taskID);
       }
     }
   }
 
-  public void deregister(String taskID) {
-    synchronized (this) {
-      if (!extractorMap.containsKey(taskID)) {
-        LOGGER.info(
-            String.format(
-                "Failed to deregister pipe extractor metrics, "
-                    + "IoTDBDataRegionExtractor(%s) does not exist",
-                taskID));
-        return;
-      }
-      if (Objects.nonNull(metricService)) {
-        removeMetrics(taskID);
-      }
-      extractorMap.remove(taskID);
-    }
+  private void createMetrics(String taskID) {
+    createAutoGauge(taskID);
+    createRate(taskID);
   }
 
   private void createAutoGauge(String taskID) {
@@ -153,9 +124,20 @@ public class PipeExtractorMetrics implements IMetricSet {
             taskID));
   }
 
-  private void createMetrics(String taskID) {
-    createAutoGauge(taskID);
-    createRate(taskID);
+  @Override
+  public void unbindFrom(AbstractMetricService metricService) {
+    ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
+    for (String taskID : taskIDs) {
+      deregister(taskID);
+    }
+    if (!extractorMap.isEmpty()) {
+      LOGGER.warn("Failed to unbind from pipe extractor metrics, extractor map not empty");
+    }
+  }
+
+  private void removeMetrics(String taskID) {
+    removeAutoGauge(taskID);
+    removeRate(taskID);
   }
 
   private void removeAutoGauge(String taskID) {
@@ -202,28 +184,31 @@ public class PipeExtractorMetrics implements IMetricSet {
     pipeHeartbeatRateMap.remove(taskID);
   }
 
-  private void removeMetrics(String taskID) {
-    removeAutoGauge(taskID);
-    removeRate(taskID);
-  }
+  //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  @Override
-  public void bindTo(AbstractMetricService metricService) {
-    this.metricService = metricService;
+  public void register(@NonNull IoTDBDataRegionExtractor extractor) {
+    String taskID = extractor.getTaskID();
     synchronized (this) {
-      for (String taskID : extractorMap.keySet()) {
+      extractorMap.putIfAbsent(taskID, extractor);
+      if (Objects.nonNull(metricService)) {
         createMetrics(taskID);
       }
     }
   }
 
-  @Override
-  public void unbindFrom(AbstractMetricService metricService) {
-    ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
-    for (String taskID : taskIDs) {
-      deregister(taskID);
+  public void deregister(String taskID) {
+    synchronized (this) {
+      if (!extractorMap.containsKey(taskID)) {
+        LOGGER.info(
+            "Failed to deregister pipe extractor metrics, IoTDBDataRegionExtractor({}) does not exist",
+            taskID);
+        return;
+      }
+      if (Objects.nonNull(metricService)) {
+        removeMetrics(taskID);
+      }
+      extractorMap.remove(taskID);
     }
-    assert extractorMap.isEmpty();
   }
 
   public Rate getTabletRate(String taskID) {
@@ -236,5 +221,24 @@ public class PipeExtractorMetrics implements IMetricSet {
 
   public Rate getPipeHeartbeatRate(String taskID) {
     return pipeHeartbeatRateMap.get(taskID);
+  }
+
+  //////////////////////////// singleton ////////////////////////////
+
+  private static class PipeExtractorMetricsHolder {
+
+    private static final PipeExtractorMetrics INSTANCE = new PipeExtractorMetrics();
+
+    private PipeExtractorMetricsHolder() {
+      // empty constructor
+    }
+  }
+
+  public static PipeExtractorMetrics getInstance() {
+    return PipeExtractorMetrics.PipeExtractorMetricsHolder.INSTANCE;
+  }
+
+  private PipeExtractorMetrics() {
+    // empty constructor
   }
 }

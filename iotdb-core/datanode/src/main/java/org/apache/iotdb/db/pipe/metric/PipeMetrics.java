@@ -24,6 +24,8 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
 public class PipeMetrics implements IMetricSet {
 
+  //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
+
   @Override
   public void bindTo(AbstractMetricService metricService) {
     PipeAssignerMetrics.getInstance().bindTo(metricService);
@@ -41,6 +43,8 @@ public class PipeMetrics implements IMetricSet {
     PipeConnectorMetrics.getInstance().unbindFrom(metricService);
     PipeHeartbeatEventMetrics.getInstance().unbindFrom(metricService);
   }
+
+  //////////////////////////// singleton ////////////////////////////
 
   private static class PipeMetricsHolder {
 

@@ -36,6 +36,13 @@ public class PipeHeartbeatEventMetrics implements IMetricSet {
 
   private Timer processedToTransferredTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
+  //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
+
+  @Override
+  public void bindTo(AbstractMetricService metricService) {
+    bindStageTimer(metricService);
+  }
+
   private void bindStageTimer(AbstractMetricService metricService) {
     publishedToAssignedTimer =
         metricService.getOrCreateTimer(
@@ -55,6 +62,11 @@ public class PipeHeartbeatEventMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.STAGE.toString(),
             "processedToTransferred");
+  }
+
+  @Override
+  public void unbindFrom(AbstractMetricService metricService) {
+    unbindStageTimer(metricService);
   }
 
   private void unbindStageTimer(AbstractMetricService metricService) {
@@ -78,15 +90,21 @@ public class PipeHeartbeatEventMetrics implements IMetricSet {
         "processedToTransferred");
   }
 
-  @Override
-  public void bindTo(AbstractMetricService metricService) {
-    bindStageTimer(metricService);
+  //////////////////////////// pipe integration ////////////////////////////
+
+  public void recordPublishedToAssignedTime(long costTimeInMillis) {
+    publishedToAssignedTimer.updateMillis(costTimeInMillis);
   }
 
-  @Override
-  public void unbindFrom(AbstractMetricService metricService) {
-    unbindStageTimer(metricService);
+  public void recordAssignedToProcessedTime(long costTimeInMillis) {
+    assignedToProcessedTimer.updateMillis(costTimeInMillis);
   }
+
+  public void recordProcessedToTransferredTime(long costTimeInMillis) {
+    processedToTransferredTimer.updateMillis(costTimeInMillis);
+  }
+
+  //////////////////////////// singleton ////////////////////////////
 
   private static class PipeHeartbeatEventMetricsHolder {
 
@@ -103,17 +121,5 @@ public class PipeHeartbeatEventMetrics implements IMetricSet {
 
   private PipeHeartbeatEventMetrics() {
     // empty constructor
-  }
-
-  public void recordPublishedToAssignedTime(long costTimeInMillis) {
-    publishedToAssignedTimer.updateMillis(costTimeInMillis);
-  }
-
-  public void recordAssignedToProcessedTime(long costTimeInMillis) {
-    assignedToProcessedTimer.updateMillis(costTimeInMillis);
-  }
-
-  public void recordProcessedToTransferredTime(long costTimeInMillis) {
-    processedToTransferredTimer.updateMillis(costTimeInMillis);
   }
 }

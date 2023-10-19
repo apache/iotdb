@@ -256,30 +256,18 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   }
 
   public int getHistoricalTsFileInsertionEventCount() {
-    if (!hasBeenStarted.get()) {
-      return 0;
-    }
-    return historicalExtractor.getPendingQueueSize();
+    return hasBeenStarted.get() ? historicalExtractor.getPendingQueueSize() : 0;
   }
 
   public int getTabletInsertionEventCount() {
-    if (!hasBeenStarted.get()) {
-      return 0;
-    }
-    return realtimeExtractor.getTabletInsertionEventCount();
+    return hasBeenStarted.get() ? realtimeExtractor.getTabletInsertionEventCount() : 0;
   }
 
   public int getRealtimeTsFileInsertionEventCount() {
-    if (!hasBeenStarted.get()) {
-      return 0;
-    }
-    return realtimeExtractor.getTsFileInsertionEventCount();
+    return hasBeenStarted.get() ? realtimeExtractor.getTsFileInsertionEventCount() : 0;
   }
 
   public int getPipeHeartbeatEventCount() {
-    if (!hasBeenStarted.get()) {
-      return 0;
-    }
-    return realtimeExtractor.getPipeHeartbeatEventCount();
+    return hasBeenStarted.get() ? realtimeExtractor.getPipeHeartbeatEventCount() : 0;
   }
 }

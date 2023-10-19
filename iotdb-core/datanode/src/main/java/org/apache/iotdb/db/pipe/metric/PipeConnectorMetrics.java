@@ -52,50 +52,21 @@ public class PipeConnectorMetrics implements IMetricSet {
 
   private final Map<String, Rate> pipeHeartbeatRateMap = new ConcurrentHashMap<>();
 
-  private static class PipeConnectorMetricsHolder {
+  //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
-    private static final PipeConnectorMetrics INSTANCE = new PipeConnectorMetrics();
-
-    private PipeConnectorMetricsHolder() {
-      // empty constructor
-    }
-  }
-
-  public static PipeConnectorMetrics getInstance() {
-    return PipeConnectorMetrics.PipeConnectorMetricsHolder.INSTANCE;
-  }
-
-  private PipeConnectorMetrics() {
-    // empty constructor
-  }
-
-  public void register(@NonNull PipeConnectorSubtask pipeConnectorSubtask) {
-    String taskID = pipeConnectorSubtask.getTaskID();
+  @Override
+  public void bindTo(AbstractMetricService metricService) {
+    this.metricService = metricService;
     synchronized (this) {
-      if (!connectorMap.containsKey(taskID)) {
-        connectorMap.put(taskID, pipeConnectorSubtask);
-      }
-      if (Objects.nonNull(metricService)) {
+      for (String taskID : connectorMap.keySet()) {
         createMetrics(taskID);
       }
     }
   }
 
-  public void deregister(String taskID) {
-    synchronized (this) {
-      if (!connectorMap.containsKey(taskID)) {
-        LOGGER.info(
-            String.format(
-                "Failed to deregister pipe connector metrics, "
-                    + "PipeConnectorSubtask(%s) does not exist",
-                taskID));
-        return;
-      }
-      if (Objects.nonNull(metricService)) {
-        removeMetrics(taskID);
-      }
-      connectorMap.remove(taskID);
-    }
+  private void createMetrics(String taskID) {
+    createAutoGauge(taskID);
+    createRate(taskID);
   }
 
   private void createAutoGauge(String taskID) {
@@ -146,9 +117,20 @@ public class PipeConnectorMetrics implements IMetricSet {
             taskID));
   }
 
-  private void createMetrics(String taskID) {
-    createAutoGauge(taskID);
-    createRate(taskID);
+  @Override
+  public void unbindFrom(AbstractMetricService metricService) {
+    ImmutableSet<String> taskIDs = ImmutableSet.copyOf(connectorMap.keySet());
+    for (String taskID : taskIDs) {
+      deregister(taskID);
+    }
+    if (!connectorMap.isEmpty()) {
+      LOGGER.warn("Failed to unbind from pipe connector metrics, connector map not empty");
+    }
+  }
+
+  private void removeMetrics(String taskID) {
+    removeAutoGauge(taskID);
+    removeRate(taskID);
   }
 
   private void removeAutoGauge(String taskID) {
@@ -190,28 +172,31 @@ public class PipeConnectorMetrics implements IMetricSet {
     pipeHeartbeatRateMap.remove(taskID);
   }
 
-  private void removeMetrics(String taskID) {
-    removeAutoGauge(taskID);
-    removeRate(taskID);
-  }
+  //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  @Override
-  public void bindTo(AbstractMetricService metricService) {
-    this.metricService = metricService;
+  public void register(@NonNull PipeConnectorSubtask pipeConnectorSubtask) {
+    String taskID = pipeConnectorSubtask.getTaskID();
     synchronized (this) {
-      for (String taskID : connectorMap.keySet()) {
+      connectorMap.putIfAbsent(taskID, pipeConnectorSubtask);
+      if (Objects.nonNull(metricService)) {
         createMetrics(taskID);
       }
     }
   }
 
-  @Override
-  public void unbindFrom(AbstractMetricService metricService) {
-    ImmutableSet<String> taskIDs = ImmutableSet.copyOf(connectorMap.keySet());
-    for (String taskID : taskIDs) {
-      deregister(taskID);
+  public void deregister(String taskID) {
+    synchronized (this) {
+      if (!connectorMap.containsKey(taskID)) {
+        LOGGER.info(
+            "Failed to deregister pipe connector metrics, PipeConnectorSubtask({}) does not exist",
+            taskID);
+        return;
+      }
+      if (Objects.nonNull(metricService)) {
+        removeMetrics(taskID);
+      }
+      connectorMap.remove(taskID);
     }
-    assert connectorMap.isEmpty();
   }
 
   public Rate getTabletRate(String taskID) {
@@ -224,5 +209,24 @@ public class PipeConnectorMetrics implements IMetricSet {
 
   public Rate getPipeHeartbeatRate(String taskID) {
     return pipeHeartbeatRateMap.get(taskID);
+  }
+
+  //////////////////////////// singleton ////////////////////////////
+
+  private static class PipeConnectorMetricsHolder {
+
+    private static final PipeConnectorMetrics INSTANCE = new PipeConnectorMetrics();
+
+    private PipeConnectorMetricsHolder() {
+      // empty constructor
+    }
+  }
+
+  public static PipeConnectorMetrics getInstance() {
+    return PipeConnectorMetrics.PipeConnectorMetricsHolder.INSTANCE;
+  }
+
+  private PipeConnectorMetrics() {
+    // empty constructor
   }
 }

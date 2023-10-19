@@ -44,6 +44,8 @@ public class PipeAssignerMetrics implements IMetricSet {
 
   private final Map<String, PipeDataRegionAssigner> assignerMap = new HashMap<>();
 
+  //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
+
   @Override
   public void bindTo(AbstractMetricService metricService) {
     this.metricService = metricService;
@@ -54,77 +56,8 @@ public class PipeAssignerMetrics implements IMetricSet {
     }
   }
 
-  @Override
-  public void unbindFrom(AbstractMetricService metricService) {
-    ImmutableSet<String> dataRegionIds = ImmutableSet.copyOf(assignerMap.keySet());
-    for (String dataRegionId : dataRegionIds) {
-      deregister(dataRegionId);
-    }
-    assert assignerMap.isEmpty();
-  }
-
-  private static class PipeAssignerMetricsHolder {
-
-    private static final PipeAssignerMetrics INSTANCE = new PipeAssignerMetrics();
-
-    private PipeAssignerMetricsHolder() {
-      // empty constructor
-    }
-  }
-
-  public static PipeAssignerMetrics getInstance() {
-    return PipeAssignerMetrics.PipeAssignerMetricsHolder.INSTANCE;
-  }
-
-  private PipeAssignerMetrics() {
-    // empty constructor
-  }
-
-  public void register(@NonNull PipeDataRegionAssigner pipeDataRegionAssigner) {
-    String dataRegionId = pipeDataRegionAssigner.getDataRegionId();
-    synchronized (this) {
-      if (!assignerMap.containsKey(dataRegionId)) {
-        assignerMap.put(dataRegionId, pipeDataRegionAssigner);
-      }
-      if (Objects.nonNull(metricService)) {
-        createMetrics(dataRegionId);
-      }
-    }
-  }
-
-  public void deregister(String dataRegionId) {
-    synchronized (this) {
-      if (!assignerMap.containsKey(dataRegionId)) {
-        LOGGER.info(
-            String.format(
-                "Failed to deregister pipe assigner metrics, "
-                    + "PipeDataRegionAssigner(%s) does not exist",
-                dataRegionId));
-        return;
-      }
-      if (Objects.nonNull(metricService)) {
-        removeMetrics(dataRegionId);
-      }
-      assignerMap.remove(dataRegionId);
-    }
-  }
-
-  private void removeAutoGauge(String dataRegionId) {
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.UNASSIGNED_HEARTBEAT_COUNT.toString(),
-        Tag.REGION.toString(),
-        dataRegionId);
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.UNASSIGNED_TABLET_COUNT.toString(),
-        Tag.REGION.toString(),
-        dataRegionId);
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.UNASSIGNED_TSFILE_COUNT.toString(),
-        Tag.REGION.toString(),
-        dataRegionId);
+  private void createMetrics(String dataRegionId) {
+    createAutoGauge(dataRegionId);
   }
 
   private void createAutoGauge(String dataRegionId) {
@@ -151,11 +84,82 @@ public class PipeAssignerMetrics implements IMetricSet {
         dataRegionId);
   }
 
-  private void createMetrics(String dataRegionId) {
-    createAutoGauge(dataRegionId);
+  @Override
+  public void unbindFrom(AbstractMetricService metricService) {
+    ImmutableSet<String> dataRegionIds = ImmutableSet.copyOf(assignerMap.keySet());
+    for (String dataRegionId : dataRegionIds) {
+      deregister(dataRegionId);
+    }
+    if (!assignerMap.isEmpty()) {
+      LOGGER.warn("Failed to unbind from pipe assigner metrics, assigner map not empty");
+    }
   }
 
   private void removeMetrics(String dataRegionId) {
     removeAutoGauge(dataRegionId);
+  }
+
+  private void removeAutoGauge(String dataRegionId) {
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.UNASSIGNED_HEARTBEAT_COUNT.toString(),
+        Tag.REGION.toString(),
+        dataRegionId);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.UNASSIGNED_TABLET_COUNT.toString(),
+        Tag.REGION.toString(),
+        dataRegionId);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.UNASSIGNED_TSFILE_COUNT.toString(),
+        Tag.REGION.toString(),
+        dataRegionId);
+  }
+
+  //////////////////////////// register & deregister (pipe integration) ////////////////////////////
+
+  public void register(@NonNull PipeDataRegionAssigner pipeDataRegionAssigner) {
+    String dataRegionId = pipeDataRegionAssigner.getDataRegionId();
+    synchronized (this) {
+      assignerMap.putIfAbsent(dataRegionId, pipeDataRegionAssigner);
+      if (Objects.nonNull(metricService)) {
+        createMetrics(dataRegionId);
+      }
+    }
+  }
+
+  public void deregister(String dataRegionId) {
+    synchronized (this) {
+      if (!assignerMap.containsKey(dataRegionId)) {
+        LOGGER.warn(
+            "Failed to deregister pipe assigner metrics, PipeDataRegionAssigner({}) does not exist",
+            dataRegionId);
+        return;
+      }
+      if (Objects.nonNull(metricService)) {
+        removeMetrics(dataRegionId);
+      }
+      assignerMap.remove(dataRegionId);
+    }
+  }
+
+  //////////////////////////// singleton ////////////////////////////
+
+  private static class PipeAssignerMetricsHolder {
+
+    private static final PipeAssignerMetrics INSTANCE = new PipeAssignerMetrics();
+
+    private PipeAssignerMetricsHolder() {
+      // empty constructor
+    }
+  }
+
+  public static PipeAssignerMetrics getInstance() {
+    return PipeAssignerMetrics.PipeAssignerMetricsHolder.INSTANCE;
+  }
+
+  private PipeAssignerMetrics() {
+    // empty constructor
   }
 }
