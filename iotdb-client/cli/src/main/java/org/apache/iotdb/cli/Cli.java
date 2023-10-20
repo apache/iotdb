@@ -50,6 +50,8 @@ public class Cli extends AbstractCli {
   private static CommandLine commandLine;
   private static LineReader lineReader;
 
+  private static Properties info = new Properties();
+
   /**
    * IoTDB Client main function.
    *
@@ -141,7 +143,6 @@ public class Cli extends AbstractCli {
         password = lineReader.readLine("please input your password:", '\0');
       }
       receiveCommands(lineReader);
-
     } catch (Exception e) {
       println(IOTDB_ERROR_PREFIX + ": Exit cli with error: " + e.getMessage());
       System.exit(CODE_ERROR);
@@ -149,7 +150,7 @@ public class Cli extends AbstractCli {
   }
 
   private static void executeSql() throws TException {
-    Properties info = new Properties();
+
     if (useSsl != null && Boolean.parseBoolean(useSsl)) {
       info.setProperty("use_ssl", useSsl);
       info.setProperty("trust_store", trustStore);
@@ -173,7 +174,6 @@ public class Cli extends AbstractCli {
   }
 
   private static void receiveCommands(LineReader reader) throws TException {
-    Properties info = new Properties();
     if (useSsl != null && Boolean.parseBoolean(useSsl)) {
       info.setProperty("use_ssl", useSsl);
       info.setProperty("trust_store", trustStore);

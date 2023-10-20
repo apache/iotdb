@@ -1929,10 +1929,6 @@ public class IoTDBDescriptor {
     conf.setEnableSSL(
         Boolean.parseBoolean(
             properties.getProperty("enable_thrift_ssl", Boolean.toString(conf.isEnableSSL()))));
-    conf.setClientTimeout(
-        Integer.parseInt(
-            properties.getProperty("client_timeout", Integer.toString(conf.getClientTimeout()))));
-
     conf.setKeyStorePath(properties.getProperty("key_store_path", conf.getKeyStorePath()).trim());
     conf.setKeyStorePwd(properties.getProperty("key_store_pwd", conf.getKeyStorePath()).trim());
   }

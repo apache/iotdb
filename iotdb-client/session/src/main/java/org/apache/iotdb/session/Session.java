@@ -319,230 +319,6 @@ public class Session implements ISession {
     this.version = version;
   }
 
-  public Session(
-      String host, int rpcPort, boolean useSSL, String trustStore, String trustStorePwd) {
-    this(
-        host,
-        rpcPort,
-        SessionConfig.DEFAULT_USER,
-        SessionConfig.DEFAULT_PASSWORD,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-  }
-
-  public Session(
-      String host,
-      String rpcPort,
-      String username,
-      String password,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        host,
-        Integer.parseInt(rpcPort),
-        username,
-        password,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-  }
-
-  public Session(
-      String host,
-      int rpcPort,
-      String username,
-      String password,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        host,
-        rpcPort,
-        username,
-        password,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-  }
-
-  public Session(
-      String host,
-      int rpcPort,
-      String username,
-      String password,
-      int fetchSize,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        host,
-        rpcPort,
-        username,
-        password,
-        fetchSize,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-  }
-
-  public Session(
-      String host,
-      int rpcPort,
-      String username,
-      String password,
-      int fetchSize,
-      long queryTimeoutInMs,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        host,
-        rpcPort,
-        username,
-        password,
-        fetchSize,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-    this.queryTimeoutInMs = queryTimeoutInMs;
-  }
-
-  public Session(
-      String host,
-      int rpcPort,
-      String username,
-      String password,
-      ZoneId zoneId,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        host,
-        rpcPort,
-        username,
-        password,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        zoneId,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-  }
-
-  public Session(
-      String host,
-      int rpcPort,
-      String username,
-      String password,
-      boolean enableRedirection,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        host,
-        rpcPort,
-        username,
-        password,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        enableRedirection,
-        SessionConfig.DEFAULT_VERSION,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-  }
-
-  public Session(
-      String host,
-      int rpcPort,
-      String username,
-      String password,
-      int fetchSize,
-      ZoneId zoneId,
-      boolean enableRedirection,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        host,
-        rpcPort,
-        username,
-        password,
-        fetchSize,
-        zoneId,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        enableRedirection,
-        SessionConfig.DEFAULT_VERSION,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-  }
-
-  @SuppressWarnings("squid:S107")
-  public Session(
-      String host,
-      int rpcPort,
-      String username,
-      String password,
-      int fetchSize,
-      ZoneId zoneId,
-      int thriftDefaultBufferSize,
-      int thriftMaxFrameSize,
-      boolean enableRedirection,
-      Version version,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this.defaultEndPoint = new TEndPoint(host, rpcPort);
-    this.username = username;
-    this.password = password;
-    this.fetchSize = fetchSize;
-    this.zoneId = zoneId;
-    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
-    this.thriftMaxFrameSize = thriftMaxFrameSize;
-    this.enableRedirection = enableRedirection;
-    this.version = version;
-    this.useSSL = useSSL;
-    this.trustStore = trustStore;
-    this.trustStorePwd = trustStorePwd;
-  }
-
   public Session(List<String> nodeUrls, String username, String password) {
     this(
         nodeUrls,
@@ -554,28 +330,6 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE,
         SessionConfig.DEFAULT_REDIRECTION_MODE,
         SessionConfig.DEFAULT_VERSION);
-  }
-
-  public Session(
-      List<String> nodeUrls,
-      String username,
-      String password,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        nodeUrls,
-        username,
-        password,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION,
-        useSSL,
-        trustStore,
-        trustStorePwd);
   }
 
   /**
@@ -614,52 +368,6 @@ public class Session implements ISession {
       String username,
       String password,
       int fetchSize,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        nodeUrls,
-        username,
-        password,
-        fetchSize,
-        null,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-  }
-
-  public Session(
-      List<String> nodeUrls,
-      String username,
-      String password,
-      ZoneId zoneId,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        nodeUrls,
-        username,
-        password,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        zoneId,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_VERSION,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-  }
-
-  public Session(
-      List<String> nodeUrls,
-      String username,
-      String password,
-      int fetchSize,
       ZoneId zoneId,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
@@ -676,31 +384,23 @@ public class Session implements ISession {
     this.version = version;
   }
 
-  public Session(
-      List<String> nodeUrls,
-      String username,
-      String password,
-      int fetchSize,
-      ZoneId zoneId,
-      int thriftDefaultBufferSize,
-      int thriftMaxFrameSize,
-      boolean enableRedirection,
-      Version version,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this.nodeUrls = nodeUrls;
-    this.username = username;
-    this.password = password;
-    this.fetchSize = fetchSize;
-    this.zoneId = zoneId;
-    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
-    this.thriftMaxFrameSize = thriftMaxFrameSize;
-    this.enableRedirection = enableRedirection;
-    this.version = version;
-    this.useSSL = useSSL;
-    this.trustStore = trustStore;
-    this.trustStorePwd = trustStorePwd;
+  public Session(Builder builder) {
+    if (builder.nodeUrls != null && builder.nodeUrls.size() > 0) {
+      this.nodeUrls = builder.nodeUrls;
+    } else {
+      this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
+    }
+    this.username = builder.username;
+    this.password = builder.pw;
+    this.fetchSize = builder.fetchSize;
+    this.zoneId = builder.zoneId;
+    this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    this.enableRedirection = builder.enableRedirection;
+    this.version = builder.version;
+    this.useSSL = builder.useSSL;
+    this.trustStore = builder.trustStore;
+    this.trustStorePwd = builder.trustStorePwd;
   }
 
   @Override
@@ -3862,67 +3562,11 @@ public class Session implements ISession {
         throw new IllegalArgumentException(
             "You should specify either nodeUrls or (host + rpcPort), but not both");
       }
-      Session newSession;
-      if (nodeUrls != null && useSSL) {
-
-        newSession =
-            new Session(
-                nodeUrls,
-                username,
-                pw,
-                fetchSize,
-                zoneId,
-                thriftDefaultBufferSize,
-                thriftMaxFrameSize,
-                enableRedirection,
-                version,
-                useSSL,
-                trustStore,
-                trustStorePwd);
+      Session newSession = new Session(this);
+      if (nodeUrls != null) {
         newSession.setEnableQueryRedirection(true);
-        return newSession;
-      } else if (nodeUrls != null && !useSSL) {
-        newSession =
-            new Session(
-                nodeUrls,
-                username,
-                pw,
-                fetchSize,
-                zoneId,
-                thriftDefaultBufferSize,
-                thriftMaxFrameSize,
-                enableRedirection,
-                version);
-        newSession.setEnableQueryRedirection(true);
-        return newSession;
-      } else if (nodeUrls == null && useSSL) {
-        return new Session(
-            host,
-            rpcPort,
-            username,
-            pw,
-            fetchSize,
-            zoneId,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize,
-            enableRedirection,
-            version,
-            useSSL,
-            trustStore,
-            trustStorePwd);
-      } else {
-        return new Session(
-            host,
-            rpcPort,
-            username,
-            pw,
-            fetchSize,
-            zoneId,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize,
-            enableRedirection,
-            version);
       }
+      return newSession;
     }
   }
 }

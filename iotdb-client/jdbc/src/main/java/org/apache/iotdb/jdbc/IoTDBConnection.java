@@ -482,9 +482,9 @@ public class IoTDBConnection implements Connection {
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
               params.getHost(), params.getPort(), getNetworkTimeout());
-      if (!transport.isOpen()) {
-        transport.open();
-      }
+    }
+    if (!transport.isOpen()) {
+      transport.open();
     }
   }
 

@@ -133,9 +133,6 @@ public class IoTDBConfig {
   /** ssl key Store password. */
   private String keyStorePwd = "";
 
-  /** ssl client timeout(ms). */
-  private int clientTimeout = 300000;
-
   /** Rpc Selector thread num */
   private int rpcSelectorThreadCount = 1;
 
@@ -1191,14 +1188,6 @@ public class IoTDBConfig {
 
   public void setKeyStorePwd(String keyStorePwd) {
     this.keyStorePwd = keyStorePwd;
-  }
-
-  public int getClientTimeout() {
-    return clientTimeout;
-  }
-
-  public void setClientTimeout(int clientTimeout) {
-    this.clientTimeout = clientTimeout;
   }
 
   public int getUdfInitialByteArrayLengthForMemoryControl() {

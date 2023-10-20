@@ -182,35 +182,6 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
-  public SessionPool(
-      String host,
-      int port,
-      String user,
-      String password,
-      int maxSize,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        host,
-        port,
-        user,
-        password,
-        maxSize,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        60_000,
-        false,
-        null,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
-        SessionConfig.DEFAULT_VERSION,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-  }
-
   public SessionPool(List<String> nodeUrls, String user, String password, int maxSize) {
     this(
         nodeUrls,
@@ -226,33 +197,6 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
-  }
-
-  public SessionPool(
-      List<String> nodeUrls,
-      String user,
-      String password,
-      int maxSize,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        nodeUrls,
-        user,
-        password,
-        maxSize,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        60_000,
-        false,
-        null,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
-        SessionConfig.DEFAULT_VERSION,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        useSSL,
-        trustStore,
-        trustStorePwd);
   }
 
   public SessionPool(
@@ -275,36 +219,6 @@ public class SessionPool implements ISessionPool {
   }
 
   public SessionPool(
-      String host,
-      int port,
-      String user,
-      String password,
-      int maxSize,
-      boolean enableCompression,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        host,
-        port,
-        user,
-        password,
-        maxSize,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        60_000,
-        enableCompression,
-        null,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
-        SessionConfig.DEFAULT_VERSION,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-  }
-
-  public SessionPool(
       List<String> nodeUrls, String user, String password, int maxSize, boolean enableCompression) {
     this(
         nodeUrls,
@@ -323,34 +237,6 @@ public class SessionPool implements ISessionPool {
   }
 
   public SessionPool(
-      List<String> nodeUrls,
-      String user,
-      String password,
-      int maxSize,
-      boolean enableCompression,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        nodeUrls,
-        user,
-        password,
-        maxSize,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        60_000,
-        enableCompression,
-        null,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
-        SessionConfig.DEFAULT_VERSION,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-  }
-
-  public SessionPool(
       String host,
       int port,
       String user,
@@ -376,37 +262,6 @@ public class SessionPool implements ISessionPool {
   }
 
   public SessionPool(
-      String host,
-      int port,
-      String user,
-      String password,
-      int maxSize,
-      boolean enableCompression,
-      boolean enableRedirection,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        host,
-        port,
-        user,
-        password,
-        maxSize,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        60_000,
-        enableCompression,
-        null,
-        enableRedirection,
-        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
-        SessionConfig.DEFAULT_VERSION,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-  }
-
-  public SessionPool(
       List<String> nodeUrls,
       String user,
       String password,
@@ -427,35 +282,6 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
-  }
-
-  public SessionPool(
-      List<String> nodeUrls,
-      String user,
-      String password,
-      int maxSize,
-      boolean enableCompression,
-      boolean enableRedirection,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        nodeUrls,
-        user,
-        password,
-        maxSize,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        60_000,
-        enableCompression,
-        null,
-        enableRedirection,
-        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
-        SessionConfig.DEFAULT_VERSION,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        useSSL,
-        trustStore,
-        trustStorePwd);
   }
 
   public SessionPool(
@@ -478,36 +304,6 @@ public class SessionPool implements ISessionPool {
   }
 
   public SessionPool(
-      String host,
-      int port,
-      String user,
-      String password,
-      int maxSize,
-      ZoneId zoneId,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        host,
-        port,
-        user,
-        password,
-        maxSize,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        60_000,
-        false,
-        zoneId,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
-        SessionConfig.DEFAULT_VERSION,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        useSSL,
-        trustStore,
-        trustStorePwd);
-  }
-
-  public SessionPool(
       List<String> nodeUrls, String user, String password, int maxSize, ZoneId zoneId) {
     this(
         nodeUrls,
@@ -523,34 +319,6 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_VERSION,
         SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
-  }
-
-  public SessionPool(
-      List<String> nodeUrls,
-      String user,
-      String password,
-      int maxSize,
-      ZoneId zoneId,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this(
-        nodeUrls,
-        user,
-        password,
-        maxSize,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        60_000,
-        false,
-        zoneId,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
-        SessionConfig.DEFAULT_VERSION,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-        useSSL,
-        trustStore,
-        trustStorePwd);
   }
 
   @SuppressWarnings("squid:S107")
@@ -668,45 +436,36 @@ public class SessionPool implements ISessionPool {
     this.formattedNodeUrls = nodeUrls.toString();
   }
 
-  public SessionPool(
-      List<String> nodeUrls,
-      String user,
-      String password,
-      int maxSize,
-      int fetchSize,
-      long waitToGetSessionTimeoutInMs,
-      boolean enableCompression,
-      ZoneId zoneId,
-      boolean enableRedirection,
-      int connectionTimeoutInMs,
-      Version version,
-      int thriftDefaultBufferSize,
-      int thriftMaxFrameSize,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd) {
-    this.maxSize = maxSize;
-    this.host = null;
-    this.port = -1;
-    this.nodeUrls = nodeUrls;
-    this.user = user;
-    this.password = password;
-    this.fetchSize = fetchSize;
-    this.waitToGetSessionTimeoutInMs = waitToGetSessionTimeoutInMs;
-    this.enableCompression = enableCompression;
-    this.zoneId = zoneId;
-    this.enableRedirection = enableRedirection;
+  public SessionPool(Builder builder) {
+    this.maxSize = builder.maxSize;
+    this.user = builder.user;
+    this.password = builder.pw;
+    this.fetchSize = builder.fetchSize;
+    this.waitToGetSessionTimeoutInMs = builder.waitToGetSessionTimeoutInMs;
+    this.enableCompression = builder.enableCompression;
+    this.zoneId = builder.zoneId;
+    this.enableRedirection = builder.enableRedirection;
     if (this.enableRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
     }
-    this.connectionTimeoutInMs = connectionTimeoutInMs;
-    this.version = version;
-    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
-    this.thriftMaxFrameSize = thriftMaxFrameSize;
-    this.formattedNodeUrls = nodeUrls.toString();
-    this.useSSL = useSSL;
-    this.trustStore = trustStore;
-    this.trustStorePwd = trustStorePwd;
+    this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
+    this.version = builder.version;
+    this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    if (builder.nodeUrls != null && builder.nodeUrls.size() > 0) {
+      this.nodeUrls = builder.nodeUrls;
+      this.host = null;
+      this.port = -1;
+      this.formattedNodeUrls = builder.nodeUrls.toString();
+    } else {
+      this.host = builder.host;
+      this.port = builder.port;
+      this.nodeUrls = null;
+      this.formattedNodeUrls = String.format("%s:%s", host, port);
+    }
+    this.useSSL = builder.useSSL;
+    this.trustStore = builder.trustStore;
+    this.trustStorePwd = builder.trustStorePwd;
   }
 
   private Session constructNewSession() {
@@ -3891,75 +3650,7 @@ public class SessionPool implements ISessionPool {
     }
 
     public SessionPool build() {
-      if (nodeUrls == null && !useSSL) {
-        return new SessionPool(
-            host,
-            port,
-            user,
-            pw,
-            maxSize,
-            fetchSize,
-            waitToGetSessionTimeoutInMs,
-            enableCompression,
-            zoneId,
-            enableRedirection,
-            connectionTimeoutInMs,
-            version,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize);
-      } else if (nodeUrls == null && useSSL) {
-        return new SessionPool(
-            host,
-            port,
-            user,
-            pw,
-            maxSize,
-            fetchSize,
-            waitToGetSessionTimeoutInMs,
-            enableCompression,
-            zoneId,
-            enableRedirection,
-            connectionTimeoutInMs,
-            version,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize,
-            useSSL,
-            trustStore,
-            trustStorePwd);
-      } else if (nodeUrls != null && useSSL) {
-        return new SessionPool(
-            nodeUrls,
-            user,
-            pw,
-            maxSize,
-            fetchSize,
-            waitToGetSessionTimeoutInMs,
-            enableCompression,
-            zoneId,
-            enableRedirection,
-            connectionTimeoutInMs,
-            version,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize,
-            useSSL,
-            trustStore,
-            trustStorePwd);
-      } else {
-        return new SessionPool(
-            nodeUrls,
-            user,
-            pw,
-            maxSize,
-            fetchSize,
-            waitToGetSessionTimeoutInMs,
-            enableCompression,
-            zoneId,
-            enableRedirection,
-            connectionTimeoutInMs,
-            version,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize);
-      }
+      return new SessionPool(this);
     }
   }
 }

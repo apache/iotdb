@@ -73,7 +73,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
                 IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable(),
                 config.getKeyStorePath(),
                 config.getKeyStorePwd(),
-                config.getClientTimeout());
+                config.getConnectionTimeoutInMS());
       } else {
         thriftServiceThread =
             new ThriftServiceThread(
