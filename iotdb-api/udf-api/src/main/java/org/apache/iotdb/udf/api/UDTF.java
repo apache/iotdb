@@ -116,6 +116,18 @@ public interface UDTF extends UDF {
     // do nothing
   }
 
+  /**
+   * When the user specifies {@link MappableRowByRowAccessStrategy} to access the original data in
+   * {@link UDTFConfigurations}, this method will be called to process the transformation. Compared
+   * to {@link #transform(Row)}, this method processes input data in batches. In a single UDF query,
+   * this method may be called multiple times.
+   *
+   * @param columns original input data columns (aligned by time)
+   * @param builder used to collect output data points
+   * @throws Exception the user can throw errors if necessary
+   * @throws UnsupportedOperationException if the user does not override this method
+   * @see MappableRowByRowAccessStrategy
+   */
   default void transform(Column[] columns, ColumnBuilder builder) throws Exception {
     int colCount = columns.length;
     int rowCount = columns[0].getPositionCount();
