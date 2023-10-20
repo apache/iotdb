@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.multi;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
@@ -35,21 +34,15 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
 
   private final UDTFExecutor executor;
 
-  private final TSDataType[] inputDataTypes;
-
   private final Logger logger = LoggerFactory.getLogger(MappableUDFColumnTransformer.class);
 
   private long totalTime = 0L;
 
   public MappableUDFColumnTransformer(
-      Type returnType,
-      ColumnTransformer[] inputColumnTransformers,
-      TSDataType[] inputDataTypes,
-      UDTFExecutor executor) {
+      Type returnType, ColumnTransformer[] inputColumnTransformers, UDTFExecutor executor) {
     super(returnType);
     this.inputColumnTransformers = inputColumnTransformers;
     this.executor = executor;
-    this.inputDataTypes = inputDataTypes;
   }
 
   @Override

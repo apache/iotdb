@@ -238,9 +238,6 @@ public class ColumnTransformerVisitor
                   .map(expression -> this.process(expression, context))
                   .toArray(ColumnTransformer[]::new);
 
-          TSDataType[] inputTransformerDataTypes =
-              expressions.stream().map(context::getType).toArray(TSDataType[]::new);
-
           UDTFExecutor executor =
               context.udtfContext.getExecutorByFunctionExpression(functionExpression);
 
@@ -260,7 +257,6 @@ public class ColumnTransformerVisitor
               new MappableUDFColumnTransformer(
                   TypeFactory.getType(context.getType(functionExpression)),
                   inputColumnTransformers,
-                  inputTransformerDataTypes,
                   context.udtfContext.getExecutorByFunctionExpression(functionExpression)));
         }
       }
