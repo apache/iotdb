@@ -62,10 +62,10 @@ public class IoTDBClusterMeasurementQuotaIT extends AbstractSchemaIT {
       // create database
       statement.execute("CREATE DATABASE root.sg1");
       statement.execute("CREATE DATABASE root.sg2");
-      // create schema template
-      statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
-      // set schema template
-      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg2");
+      // create device template
+      statement.execute("CREATE DEVICE TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
+      // set device template
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg2");
       statement.execute(
           "create timeseries root.sg1.d0.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
       statement.execute(
@@ -74,7 +74,7 @@ public class IoTDBClusterMeasurementQuotaIT extends AbstractSchemaIT {
           "create timeseries root.sg1.d1.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
       statement.execute(
           "create timeseries root.sg1.d1.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
-      statement.execute("create timeseries of schema template on root.sg2.d1;");
+      statement.execute("create timeseries of device template on root.sg2.d1;");
     }
   }
 
@@ -92,7 +92,7 @@ public class IoTDBClusterMeasurementQuotaIT extends AbstractSchemaIT {
                 .contains("The current metadata capacity has exceeded the cluster quota"));
       }
       try {
-        statement.execute("create timeseries of schema template on root.sg2.d2;");
+        statement.execute("create timeseries of device template on root.sg2.d2;");
         Assert.fail();
       } catch (Exception e) {
         Assert.assertTrue(
@@ -104,8 +104,8 @@ public class IoTDBClusterMeasurementQuotaIT extends AbstractSchemaIT {
       statement.execute("delete timeseries root.sg1.d0.s0;");
       Thread.sleep(2000); // wait heartbeat
       // now we can create 3 new timeseries or 1 new device
-      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d4");
-      statement.execute("create timeseries of schema template on root.sg1.d4");
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1.d4");
+      statement.execute("create timeseries of device template on root.sg1.d4");
       statement.execute(
           "create timeseries root.sg1.d1.s3 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
       Thread.sleep(2000); // wait heartbeat

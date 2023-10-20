@@ -3033,7 +3033,7 @@ public class Session implements ISession {
     if (len != dataTypes.size() || len != encodings.size() || len != compressors.size()) {
       throw new StatementExecutionException(
           "Different length of measurements, datatypes, encodings "
-              + "or compressors when create schema tempalte.");
+              + "or compressors when create device template.");
     }
     for (int idx = 0; idx < measurements.size(); idx++) {
       MeasurementNode mNode =
@@ -3325,7 +3325,7 @@ public class Session implements ISession {
   }
 
   /**
-   * Create timeseries represented by schema template under given device paths.
+   * Create timeseries represented by device template under given device paths.
    *
    * @param devicePathList the target device paths used for timeseries creation
    */

@@ -1578,7 +1578,7 @@ public class ConfigManager implements IManager {
       return RpcUtils.getStatus(
           TSStatusCode.TEMPLATE_NOT_SET,
           String.format(
-              "Schema Template %s is not set on any prefix path of %s",
+              "Device Template %s is not set on any prefix path of %s",
               req.getTemplateName(), patternList));
     }
 
@@ -1597,7 +1597,7 @@ public class ConfigManager implements IManager {
         return RpcUtils.getStatus(
             TSStatusCode.TEMPLATE_NOT_SET,
             String.format(
-                "Schema Template %s is not set on any prefix path of %s",
+                "Device Template %s is not set on any prefix path of %s",
                 req.getTemplateName(), patternList));
       }
 
