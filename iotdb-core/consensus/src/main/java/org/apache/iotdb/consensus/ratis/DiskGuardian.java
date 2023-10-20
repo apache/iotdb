@@ -223,28 +223,30 @@ class DiskGuardian {
 
   private Optional<RaftLogSummary> getLatestSummary(RaftGroupId groupId) {
     // initialize the RaftLog Summary for the first time
-    if (!bookkeeper.containsKey(groupId)) {
-      synchronized (bookkeeper) {
-        final File root;
-        try {
-          root =
-              serverRef
-                  .get()
-                  .getServer()
-                  .getDivision(groupId)
-                  .getRaftStorage()
-                  .getStorageDir()
-                  .getCurrentDir();
-          bookkeeper.computeIfAbsent(groupId, gid -> new RaftLogSummary(gid, root));
-        } catch (IOException e) {
-          logger.warn("{}: group not exists for {} and caught exception ", this, groupId, e);
-          return Optional.empty();
-        }
-      }
-    }
+    final RaftLogSummary summary =
+        bookkeeper.computeIfAbsent(
+            groupId,
+            gid -> {
+              final File root;
+              try {
+                root =
+                    serverRef
+                        .get()
+                        .getServer()
+                        .getDivision(groupId)
+                        .getRaftStorage()
+                        .getStorageDir()
+                        .getCurrentDir();
+                return new RaftLogSummary(gid, root);
+              } catch (IOException e) {
+                logger.warn("{}: group not exists for {} and caught exception ", this, groupId, e);
+                return null;
+              }
+            });
 
-    final RaftLogSummary summary = bookkeeper.get(groupId);
-    summary.updateNow();
-    return Optional.of(summary);
+    if (summary != null) {
+      summary.updateNow();
+    }
+    return Optional.ofNullable(summary);
   }
 }
