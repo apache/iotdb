@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.multi;
 
-import org.apache.iotdb.db.queryengine.transformation.dag.adapter.ElasticSerializableRowRecordListBackedMultiColumnRow;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MappableUDFColumnTransformer extends ColumnTransformer {
 
@@ -34,6 +36,10 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
   private final UDTFExecutor executor;
 
   private final TSDataType[] inputDataTypes;
+
+  private final Logger logger = LoggerFactory.getLogger(MappableUDFColumnTransformer.class);
+
+  private long totalTime = 0L;
 
   public MappableUDFColumnTransformer(
       Type returnType,
@@ -48,40 +54,25 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
 
   @Override
   public void evaluate() {
+    // pull columns from previous transformers
     for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
       inputColumnTransformer.tryEvaluate();
     }
+    // construct input TsBlock with columns
     int size = inputColumnTransformers.length;
     Column[] columns = new Column[size];
-    // attention: get positionCount before calling getColumn
-    int positionCount = inputColumnTransformers[0].getColumnCachePositionCount();
     for (int i = 0; i < size; i++) {
       columns[i] = inputColumnTransformers[i].getColumn();
     }
-    ColumnBuilder columnBuilder = returnType.createColumnBuilder(positionCount);
-    for (int i = 0; i < positionCount; i++) {
-
-      Object[] values = new Object[size];
-      for (int j = 0; j < size; j++) {
-        if (columns[j].isNull(i)) {
-          values[j] = null;
-        } else {
-          values[j] = columns[j].getObject(i);
-        }
-      }
-      // construct input row for executor
-      ElasticSerializableRowRecordListBackedMultiColumnRow row =
-          new ElasticSerializableRowRecordListBackedMultiColumnRow(inputDataTypes);
-      row.setRowRecord(values);
-      executor.execute(row);
-      Object res = executor.getCurrentValue();
-      if (res != null) {
-        returnType.writeObject(columnBuilder, res);
-      } else {
-        columnBuilder.appendNull();
-      }
-    }
-    initializeColumnCache(columnBuilder.build());
+    // construct TsBlockBuilder
+    int count = inputColumnTransformers[0].getColumnCachePositionCount();
+    ColumnBuilder builder = returnType.createColumnBuilder(count);
+    // executor UDF and cache result
+    long begin = System.nanoTime();
+    executor.execute(columns, builder);
+    long end = System.nanoTime();
+    totalTime += (end - begin);
+    initializeColumnCache(builder.build());
   }
 
   @Override
@@ -95,6 +86,7 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
 
   @Override
   public void close() {
+    logger.info("UDF total execution time: " + totalTime);
     // finalize executor
     executor.beforeDestroy();
   }

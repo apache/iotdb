@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -48,6 +50,7 @@ public class UDTFExecutor {
   protected UDTF udtf;
   protected ElasticSerializableTVList collector;
   protected Object currentValue;
+  protected Column outputColumn;
 
   public UDTFExecutor(String functionName, ZoneId zoneId) {
     this.functionName = functionName;
@@ -130,8 +133,20 @@ public class UDTFExecutor {
     }
   }
 
+  public void execute(Column[] columns, ColumnBuilder builder) {
+    try {
+      udtf.transform(columns, builder);
+    } catch (Exception e) {
+      onError("transform(TsBlock, ColumnBuilder)", e);
+    }
+  }
+
   public Object getCurrentValue() {
     return currentValue;
+  }
+
+  public Column getOutputColumn() {
+    return outputColumn;
   }
 
   public void terminate() {

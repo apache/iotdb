@@ -28,6 +28,19 @@
     </parent>
     <artifactId>udf-api</artifactId>
     <name>IoTDB: API: UDF API</name>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>tsfile</artifactId>
+            <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>javax.servlet</groupId>
+                    <artifactId>servlet-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+    </dependencies>
     <profiles>
         <profile>
             <id>get-jar-with-dependencies</id>
