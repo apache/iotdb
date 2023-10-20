@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 
@@ -41,6 +42,10 @@ public class MPPQueryContext {
   private TEndPoint localDataBlockEndpoint;
   private TEndPoint localInternalEndpoint;
   private ResultNodeContext resultNodeContext;
+
+  // Main FragmentInstance, the other FragmentInstance should push data result to this
+  // FragmentInstance
+  private TRegionReplicaSet mainFragmentLocatedRegion;
 
   // When some DataNode cannot be connected, its endPoint will be put
   // in this list. And the following retry will avoid planning fragment
@@ -127,6 +132,14 @@ public class MPPQueryContext {
 
   public List<TEndPoint> getEndPointBlackList() {
     return endPointBlackList;
+  }
+
+  public TRegionReplicaSet getMainFragmentLocatedRegion() {
+    return this.mainFragmentLocatedRegion;
+  }
+
+  public void setMainFragmentLocatedRegion(TRegionReplicaSet region) {
+    this.mainFragmentLocatedRegion = region;
   }
 
   public TypeProvider getTypeProvider() {
