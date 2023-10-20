@@ -22,7 +22,10 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.XXXXCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
@@ -38,14 +41,15 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         timePartition,
         tsFileManager,
         serialId);
-    selectedSeqFiles = taskResource.getSeqFiles();
-    selectedUnseqFiles = taskResource.getUnseqFiles();
-
+    this.selectedSeqFiles = new ArrayList<>();
+    if (taskResource.prevSeqFile != null) {
+      selectedSeqFiles.add(taskResource.prevSeqFile);
+    }
   }
 
   private TsFileResource previousSeqFile;
   private TsFileResource nextSeqFile;
-  private TsFileResource unseqFile;
+  private TsFileResource unseqFileToInsert;
 
   private List<TsFileResource> selectedSeqFiles;
   private List<TsFileResource> selectedUnseqFiles;
@@ -64,6 +68,12 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     // 3. 源 TsFileResource 加写锁
     // 4. rename 源乱序 TsFileResource 到目标位置
     // 5. 释放写锁
+
+
+    // log
+    File tsFile = unseqFileToInsert.getTsFile();
+    TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(tsFile.getName());
+
     return false;
   }
 
