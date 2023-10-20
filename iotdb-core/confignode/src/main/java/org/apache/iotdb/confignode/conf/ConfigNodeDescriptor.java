@@ -172,11 +172,19 @@ public class ConfigNodeDescriptor {
                     IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(conf.getConsensusPort()))
                 .trim()));
 
-    // TODO: Enable multiple target_config_node_list
-    String targetConfigNodes =
-        properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, null);
-    if (targetConfigNodes != null) {
-      conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes.trim()));
+    String seedConfigNode = properties.getProperty(IoTDBConstant.CN_SEED_CONFIG_NODE, null);
+    if (seedConfigNode == null) {
+      seedConfigNode = properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, null);
+      LOGGER.warn(
+          "The parameter cn_target_config_node_list has been abandoned, "
+              + "only the first ConfigNode address will be used to join in the cluster. "
+              + "Please use cn_seed_config_node instead.");
+    }
+    if (seedConfigNode != null) {
+      conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(seedConfigNode.trim()).get(0));
+    } else {
+      throw new IOException(
+          "The parameter dn_seed_config_node is not set, this ConfigNode will not join in any cluster.");
     }
 
     conf.setSeriesSlotNum(
@@ -879,13 +887,13 @@ public class ConfigNodeDescriptor {
    *
    * <p>Notice: Only invoke this interface when first startup.
    *
-   * @return True if the target_config_node_list points to itself
+   * @return True if the seed_config_node points to itself
    */
   public boolean isSeedConfigNode() {
-    return (conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+    return (conf.getInternalAddress().equals(conf.getSeedConfigNode().getIp())
             || (NodeUrlUtils.isLocalAddress(conf.getInternalAddress())
-                && NodeUrlUtils.isLocalAddress(conf.getTargetConfigNode().getIp())))
-        && conf.getInternalPort() == conf.getTargetConfigNode().getPort();
+                && NodeUrlUtils.isLocalAddress(conf.getSeedConfigNode().getIp())))
+        && conf.getInternalPort() == conf.getSeedConfigNode().getPort();
   }
 
   public static ConfigNodeDescriptor getInstance() {

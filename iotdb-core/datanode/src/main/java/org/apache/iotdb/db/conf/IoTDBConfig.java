@@ -58,7 +58,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -862,8 +861,7 @@ public class IoTDBConfig {
   private int schemaRegionConsensusPort = 10750;
 
   /** Ip and port of config nodes. */
-  private List<TEndPoint> targetConfigNodeList =
-      Collections.singletonList(new TEndPoint("127.0.0.1", 10710));
+  private TEndPoint seedConfigNode = new TEndPoint("127.0.0.1", 10710);
 
   /** The time of data node waiting for the next retry to join into the cluster */
   private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(5);
@@ -2913,12 +2911,12 @@ public class IoTDBConfig {
     this.schemaRegionConsensusPort = schemaRegionConsensusPort;
   }
 
-  public List<TEndPoint> getTargetConfigNodeList() {
-    return targetConfigNodeList;
+  public TEndPoint getSeedConfigNode() {
+    return seedConfigNode;
   }
 
-  public void setTargetConfigNodeList(List<TEndPoint> targetConfigNodeList) {
-    this.targetConfigNodeList = targetConfigNodeList;
+  public void setSeedConfigNode(TEndPoint seedConfigNode) {
+    this.seedConfigNode = seedConfigNode;
   }
 
   public long getJoinClusterRetryIntervalMs() {
