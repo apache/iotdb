@@ -55,12 +55,14 @@ public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
       task.unlock();
     }
 
-    // If this task is not timeout, we can wait it to timeout.
+    // If this task has not reached the time limit, we can wait for some time.
     // SlEEP_BOUND ensures that DriverTaskTimeoutSentinelThread won't sleep for too long when the
     // waitTime of the task is long.
     long waitTime = Math.min(task.getDDL() - System.currentTimeMillis(), SLEEP_BOUND);
-    if (waitTime > 0L) {
+    while (waitTime > 0L) {
+      long startSleep = System.currentTimeMillis();
       Thread.sleep(waitTime);
+      waitTime -= (System.currentTimeMillis() - startSleep);
     }
 
     task.lock();
