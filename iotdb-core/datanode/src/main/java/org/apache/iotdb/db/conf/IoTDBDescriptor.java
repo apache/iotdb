@@ -2176,6 +2176,10 @@ public class IoTDBDescriptor {
 
     conf.setSchemaRatisLogMax(ratisConfig.getSchemaRegionRatisLogMax());
     conf.setDataRatisLogMax(ratisConfig.getDataRegionRatisLogMax());
+
+    conf.setSchemaRatisPeriodicSnapshotInterval(
+        ratisConfig.getSchemaRegionPeriodicSnapshotInterval());
+    conf.setDataRatisPeriodicSnapshotInterval(ratisConfig.getDataRegionPeriodicSnapshotInterval());
   }
 
   public void loadCQConfig(TCQConfig cqConfig) {
