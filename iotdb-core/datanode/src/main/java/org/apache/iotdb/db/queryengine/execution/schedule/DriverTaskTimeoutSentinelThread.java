@@ -31,6 +31,8 @@ public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DriverTaskTimeoutSentinelThread.class);
 
+  private final long SLEEP_BOUND = 5 * 1000L;
+
   public DriverTaskTimeoutSentinelThread(
       String workerId,
       ThreadGroup tg,
@@ -49,9 +51,18 @@ public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
       if (task.isEndState()) {
         return;
       }
+      long waitTime = task.getDDL() - System.currentTimeMillis();
+      // if the waitTime is more than SLEEP_BOUND, re-push the task in the TimeoutQueue. SlEEP_BOUND
+      // ensures that DriverTaskTimeoutSentinelThread won't sleep for too long when the waitTime
+      // of the current task is long.
+      if (waitTime > SLEEP_BOUND) {
+        scheduler.enforceTimeLimit(task);
+        return;
+      }
     } finally {
       task.unlock();
     }
+
     // If this task is not timeout, we can wait it to timeout.
     long waitTime = task.getDDL() - System.currentTimeMillis();
     while (waitTime > 0L) {
