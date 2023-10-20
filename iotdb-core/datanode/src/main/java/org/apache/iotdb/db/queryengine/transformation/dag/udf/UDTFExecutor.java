@@ -50,7 +50,6 @@ public class UDTFExecutor {
   protected UDTF udtf;
   protected ElasticSerializableTVList collector;
   protected Object currentValue;
-  protected Column outputColumn;
 
   public UDTFExecutor(String functionName, ZoneId zoneId) {
     this.functionName = functionName;
@@ -143,10 +142,6 @@ public class UDTFExecutor {
 
   public Object getCurrentValue() {
     return currentValue;
-  }
-
-  public Column getOutputColumn() {
-    return outputColumn;
   }
 
   public void terminate() {
