@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.recover;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -30,9 +31,11 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
@@ -197,11 +200,8 @@ public class SizeTieredCompactionRecoverTest {
   /**
    * Test a compaction task in finished. The compaction log use file info to record files. The
    * sources file are all existed.
-   *
-   * @throws Exception
    */
-  @Test
-  public void testRecoverWithCompleteTargetFileUsingFileInfo() throws Exception {
+  private List<TsFileResource> getSourceFiles() throws IllegalPathException, IOException {
     List<TsFileResource> sourceFiles = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
@@ -226,11 +226,17 @@ public class SizeTieredCompactionRecoverTest {
           fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
       sourceFiles.add(tsFileResource);
     }
+    return sourceFiles;
+  }
+
+  @Test
+  public void testRecoverWithCompleteTargetFileUsingFileInfo() throws Exception {
+    List<TsFileResource> sourceFiles = getSourceFiles();
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
     CompactionLogger compactionLogger = new CompactionLogger(new File(logFilePath));
     compactionLogger.logFiles(sourceFiles, STR_SOURCE_FILES);
-    compactionLogger.logFiles(Collections.singletonList(targetResource), STR_TARGET_FILES);
+    compactionLogger.logFile(targetResource, STR_TARGET_FILES);
     compactionLogger.close();
     performer.setSourceFiles(sourceFiles);
     performer.setTargetFiles(Collections.singletonList(targetResource));
@@ -238,11 +244,37 @@ public class SizeTieredCompactionRecoverTest {
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+
     CompactionRecoverTask recoverTask =
         new CompactionRecoverTask(
             COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
     recoverTask.doCompaction();
     // all the source file should still exist
+    for (TsFileResource resource : sourceFiles) {
+      Assert.assertTrue(resource.getTsFile().exists());
+    }
+    Assert.assertFalse(targetResource.getTsFile().exists());
+  }
+
+  @Test
+  public void testInnerRecoverWithCompleteTargetFileUsingFileInfo() throws Exception {
+    List<TsFileResource> sourceFiles = getSourceFiles();
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+    SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(new File(logFilePath));
+    compactionLogger.logSourceFiles(sourceFiles);
+    compactionLogger.logTargetFile(targetResource);
+    compactionLogger.close();
+    performer.setSourceFiles(sourceFiles);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
+    performer.setSummary(new FastCompactionTaskSummary());
+    performer.perform();
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+
+    InnerSpaceCompactionTask innerSpaceCompactionTask =
+        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+    innerSpaceCompactionTask.recover();
     for (TsFileResource resource : sourceFiles) {
       Assert.assertTrue(resource.getTsFile().exists());
     }
@@ -256,30 +288,7 @@ public class SizeTieredCompactionRecoverTest {
    */
   @Test
   public void testRecoverWithIncompleteTargetFileUsingFileInfo() throws Exception {
-    List<TsFileResource> sourceFiles = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          new TsFileResource(
-              new File(
-                  SEQ_FILE_DIR
-                      + File.separator.concat(
-                          i
-                              + IoTDBConstant.FILE_NAME_SEPARATOR
-                              + i
-                              + IoTDBConstant.FILE_NAME_SEPARATOR
-                              + 0
-                              + IoTDBConstant.FILE_NAME_SEPARATOR
-                              + 0
-                              + ".tsfile")));
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      sourceFiles.add(tsFileResource);
-    }
+    List<TsFileResource> sourceFiles = getSourceFiles();
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
     CompactionLogger compactionLogger = new CompactionLogger(new File(logFilePath));
@@ -307,6 +316,35 @@ public class SizeTieredCompactionRecoverTest {
     Assert.assertFalse(targetResource.getTsFile().exists());
   }
 
+  @Test
+  public void testInnerRecoverWithIncompleteTargetFileUsingFileInfo() throws Exception {
+    List<TsFileResource> sourceFiles = getSourceFiles();
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+    SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(new File(logFilePath));
+    compactionLogger.logSourceFiles(sourceFiles);
+    compactionLogger.logTargetFile(targetResource);
+    compactionLogger.close();
+    performer.setSourceFiles(sourceFiles);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
+    performer.setSummary(new FastCompactionTaskSummary());
+    performer.perform();
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+    FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
+    FileChannel channel = targetStream.getChannel();
+    channel.truncate(targetResource.getTsFile().length() - 100);
+    channel.close();
+    InnerSpaceCompactionTask recoverTask =
+        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+    recoverTask.recover();
+    // all the source file should be deleted
+    for (TsFileResource resource : sourceFiles) {
+      Assert.assertTrue(resource.getTsFile().exists());
+    }
+    Assert.assertFalse(targetResource.getTsFile().exists());
+  }
+
   /**
    * Test a compaction task in finished. The compaction log use file path to record files. All the
    * sources file is still existed.
@@ -315,30 +353,7 @@ public class SizeTieredCompactionRecoverTest {
    */
   @Test
   public void testRecoverWithCompleteTargetFileUsingFilePath() throws Exception {
-    List<TsFileResource> sourceFiles = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          new TsFileResource(
-              new File(
-                  SEQ_FILE_DIR
-                      + File.separator.concat(
-                          i
-                              + IoTDBConstant.FILE_NAME_SEPARATOR
-                              + i
-                              + IoTDBConstant.FILE_NAME_SEPARATOR
-                              + 0
-                              + IoTDBConstant.FILE_NAME_SEPARATOR
-                              + 0
-                              + ".tsfile")));
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      sourceFiles.add(tsFileResource);
-    }
+    List<TsFileResource> sourceFiles = getSourceFiles();
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
     CompactionLogger logger = new CompactionLogger(new File(logFilePath));
@@ -362,6 +377,31 @@ public class SizeTieredCompactionRecoverTest {
     Assert.assertFalse(targetResource.getTsFile().exists());
   }
 
+  @Test
+  public void testInnerRecoverWithCompleteTargetFileUsingFilePath() throws Exception {
+    List<TsFileResource> sourceFiles = getSourceFiles();
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+    SimpleCompactionLogger logger = new SimpleCompactionLogger(new File(logFilePath));
+    logger.logSourceFiles(sourceFiles);
+    logger.logTargetFile(targetResource);
+    logger.close();
+    performer.setSourceFiles(sourceFiles);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
+    performer.setSummary(new FastCompactionTaskSummary());
+    performer.perform();
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+    InnerSpaceCompactionTask innerSpaceCompactionTask =
+        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+    innerSpaceCompactionTask.recover();
+    // all the source file should still exist
+    for (TsFileResource resource : sourceFiles) {
+      Assert.assertTrue(resource.getTsFile().exists());
+    }
+    Assert.assertFalse(targetResource.getTsFile().exists());
+  }
+
   /**
    * Test a compaction task in not finished. The compaction log use file path to record files.
    *
@@ -369,30 +409,7 @@ public class SizeTieredCompactionRecoverTest {
    */
   @Test
   public void testRecoverWithIncompleteTargetFileUsingFilePath() throws Exception {
-    List<TsFileResource> sourceFiles = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          new TsFileResource(
-              new File(
-                  SEQ_FILE_DIR
-                      + File.separator.concat(
-                          i
-                              + IoTDBConstant.FILE_NAME_SEPARATOR
-                              + i
-                              + IoTDBConstant.FILE_NAME_SEPARATOR
-                              + 0
-                              + IoTDBConstant.FILE_NAME_SEPARATOR
-                              + 0
-                              + ".tsfile")));
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      sourceFiles.add(tsFileResource);
-    }
+    List<TsFileResource> sourceFiles = getSourceFiles();
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
     CompactionLogger compactionLogger = new CompactionLogger(new File(logFilePath));
@@ -420,6 +437,35 @@ public class SizeTieredCompactionRecoverTest {
     Assert.assertFalse(targetResource.getTsFile().exists());
   }
 
+  @Test
+  public void testInnerRecoverWithIncompleteTargetFileUsingFilePath() throws Exception {
+    List<TsFileResource> sourceFiles = getSourceFiles();
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+    SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(new File(logFilePath));
+    compactionLogger.logSourceFiles(sourceFiles);
+    compactionLogger.logTargetFile(targetResource);
+    compactionLogger.close();
+    performer.setSourceFiles(sourceFiles);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
+    performer.setSummary(new FastCompactionTaskSummary());
+    performer.perform();
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+    FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
+    FileChannel channel = targetStream.getChannel();
+    channel.truncate(targetResource.getTsFile().length() - 100);
+    channel.close();
+    InnerSpaceCompactionTask innerSpaceCompactionTask =
+        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+    innerSpaceCompactionTask.recover();
+    // all the source file should be deleted
+    for (TsFileResource resource : sourceFiles) {
+      Assert.assertTrue(resource.getTsFile().exists());
+    }
+    Assert.assertFalse(targetResource.getTsFile().exists());
+  }
+
   /**
    * Test a compaction task is finished, and the data dirs of the system is change. The compaction
    * log use file info to record files.
@@ -429,32 +475,9 @@ public class SizeTieredCompactionRecoverTest {
   @Test
   public void testRecoverWithCompleteTargetFileUsingFileInfoAndChangingDataDirs() throws Exception {
     try {
-      List<TsFileResource> sourceFiles = new ArrayList<>();
+      List<TsFileResource> sourceFiles = getSourceFiles();
       List<String> sourceFileNames = new ArrayList<>();
-      for (int i = 0; i < 10; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-        List<Long> pagePointsNum = new ArrayList<>();
-        pagePointsNum.add(100L);
-        chunkPagePointsNum.add(pagePointsNum);
-        TsFileResource tsFileResource =
-            new TsFileResource(
-                new File(
-                    SEQ_FILE_DIR
-                        + File.separator.concat(
-                            i
-                                + IoTDBConstant.FILE_NAME_SEPARATOR
-                                + i
-                                + IoTDBConstant.FILE_NAME_SEPARATOR
-                                + 0
-                                + IoTDBConstant.FILE_NAME_SEPARATOR
-                                + 0
-                                + ".tsfile")));
-        CompactionFileGeneratorUtils.writeTsFile(
-            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-        sourceFiles.add(tsFileResource);
-        sourceFileNames.add(tsFileResource.getTsFile().getName());
-      }
+      sourceFiles.forEach(f -> sourceFileNames.add(f.getTsFile().getName()));
       TsFileResource targetResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       CompactionLogger compactionLogger = new CompactionLogger(new File(logFilePath));
@@ -467,7 +490,6 @@ public class SizeTieredCompactionRecoverTest {
       performer.perform();
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
-      long sizeOfTargetFile = targetResource.getTsFileSize();
       FileUtils.moveDirectory(
           new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data"),
           new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
@@ -476,6 +498,76 @@ public class SizeTieredCompactionRecoverTest {
           new CompactionRecoverTask(
               COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
       recoverTask.doCompaction();
+      // all the source files should exist
+      for (String sourceFileName : sourceFileNames) {
+        Assert.assertTrue(
+            new File(
+                    TestConstant.BASE_OUTPUT_PATH
+                        + File.separator
+                        + "data1"
+                        + File.separator
+                        + "sequence"
+                        + File.separator
+                        + COMPACTION_TEST_SG
+                        + File.separator
+                        + "0"
+                        + File.separator
+                        + "0",
+                    sourceFileName)
+                .exists());
+      }
+      File targetFileAfterMoved =
+          new File(
+              TestConstant.BASE_OUTPUT_PATH
+                  + File.separator
+                  + "data1"
+                  + File.separator
+                  + "sequence"
+                  + File.separator
+                  + COMPACTION_TEST_SG
+                  + File.separator
+                  + "0"
+                  + File.separator
+                  + "0",
+              targetResource
+                  .getTsFile()
+                  .getName()
+                  .replace(
+                      IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                      TsFileConstant.TSFILE_SUFFIX));
+      Assert.assertFalse(targetFileAfterMoved.exists());
+    } finally {
+      FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
+    }
+  }
+
+  @Test
+  public void testInnerRecoverWithCompleteTargetFileUsingFileInfoAndChangingDataDirs()
+      throws Exception {
+    try {
+      List<TsFileResource> sourceFiles = getSourceFiles();
+      List<String> sourceFileNames = new ArrayList<>();
+      sourceFiles.forEach(f -> sourceFileNames.add(f.getTsFile().getName()));
+      TsFileResource targetResource =
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+      SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(new File(logFilePath));
+      compactionLogger.logSourceFiles(sourceFiles);
+      compactionLogger.logTargetFile(targetResource);
+      compactionLogger.close();
+      performer.setSourceFiles(sourceFiles);
+      performer.setTargetFiles(Collections.singletonList(targetResource));
+      performer.setSummary(new FastCompactionTaskSummary());
+      performer.perform();
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+      FileUtils.moveDirectory(
+          new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data"),
+          new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
+      setDataDirs(new String[][] {{TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"}});
+      InnerSpaceCompactionTask recoverTask =
+          new InnerSpaceCompactionTask(
+              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+      recoverTask.recover();
       // all the source files should exist
       for (String sourceFileName : sourceFileNames) {
         Assert.assertTrue(
@@ -529,32 +621,9 @@ public class SizeTieredCompactionRecoverTest {
   public void testRecoverWithIncompleteTargetFileUsingFileInfoAndChangingDataDirs()
       throws Exception {
     try {
-      List<TsFileResource> sourceFiles = new ArrayList<>();
+      List<TsFileResource> sourceFiles = getSourceFiles();
       List<String> sourceFileNames = new ArrayList<>();
-      for (int i = 0; i < 10; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-        List<Long> pagePointsNum = new ArrayList<>();
-        pagePointsNum.add(100L);
-        chunkPagePointsNum.add(pagePointsNum);
-        TsFileResource tsFileResource =
-            new TsFileResource(
-                new File(
-                    SEQ_FILE_DIR
-                        + File.separator.concat(
-                            i
-                                + IoTDBConstant.FILE_NAME_SEPARATOR
-                                + i
-                                + IoTDBConstant.FILE_NAME_SEPARATOR
-                                + 0
-                                + IoTDBConstant.FILE_NAME_SEPARATOR
-                                + 0
-                                + ".tsfile")));
-        CompactionFileGeneratorUtils.writeTsFile(
-            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-        sourceFiles.add(tsFileResource);
-        sourceFileNames.add(tsFileResource.getTsFile().getName());
-      }
+      sourceFiles.forEach(f -> sourceFileNames.add(f.getTsFile().getName()));
       TsFileResource targetResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       CompactionLogger compactionLogger = new CompactionLogger(new File(logFilePath));
@@ -617,6 +686,75 @@ public class SizeTieredCompactionRecoverTest {
     }
   }
 
+  @Test
+  public void testInnerRecoverWithIncompleteTargetFileUsingFileInfoAndChangingDataDirs()
+      throws Exception {
+    try {
+      List<TsFileResource> sourceFiles = getSourceFiles();
+      List<String> sourceFileNames = new ArrayList<>();
+      sourceFiles.forEach(f -> sourceFileNames.add(f.getTsFile().getName()));
+      TsFileResource targetResource =
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+      SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(new File(logFilePath));
+      compactionLogger.logSourceFiles(sourceFiles);
+      compactionLogger.logTargetFile(targetResource);
+      compactionLogger.close();
+      performer.setSourceFiles(sourceFiles);
+      performer.setTargetFiles(Collections.singletonList(targetResource));
+      performer.setSummary(new FastCompactionTaskSummary());
+      performer.perform();
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+      FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
+      FileChannel channel = targetStream.getChannel();
+      channel.truncate(targetResource.getTsFile().length() - 100);
+      channel.close();
+      FileUtils.moveDirectory(
+          new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data"),
+          new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
+      setDataDirs(new String[][] {{TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"}});
+      InnerSpaceCompactionTask recoverTask =
+          new InnerSpaceCompactionTask(
+              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+      recoverTask.recover();
+      // all the source file should be deleted
+      for (String sourceFileName : sourceFileNames) {
+        Assert.assertTrue(
+            new File(
+                    TestConstant.BASE_OUTPUT_PATH
+                        + File.separator
+                        + "data1"
+                        + File.separator
+                        + "sequence"
+                        + File.separator
+                        + COMPACTION_TEST_SG
+                        + File.separator
+                        + "0"
+                        + File.separator
+                        + "0",
+                    sourceFileName)
+                .exists());
+      }
+      Assert.assertFalse(
+          new File(
+                  TestConstant.BASE_OUTPUT_PATH
+                      + File.separator
+                      + "data1"
+                      + File.separator
+                      + "sequence"
+                      + File.separator
+                      + COMPACTION_TEST_SG
+                      + File.separator
+                      + "0"
+                      + File.separator
+                      + "0",
+                  targetResource.getTsFile().getName())
+              .exists());
+    } finally {
+      FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
+    }
+  }
+
   /**
    * Test a compaction task is finished, and the data dirs of the system is change. The compaction
    * log use file path to record files.
@@ -626,32 +764,9 @@ public class SizeTieredCompactionRecoverTest {
   @Test
   public void testRecoverWithCompleteTargetFileUsingFilePathAndChangingDataDirs() throws Exception {
     try {
-      List<TsFileResource> sourceFiles = new ArrayList<>();
+      List<TsFileResource> sourceFiles = getSourceFiles();
       List<String> sourceFileNames = new ArrayList<>();
-      for (int i = 0; i < 10; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-        List<Long> pagePointsNum = new ArrayList<>();
-        pagePointsNum.add(100L);
-        chunkPagePointsNum.add(pagePointsNum);
-        TsFileResource tsFileResource =
-            new TsFileResource(
-                new File(
-                    SEQ_FILE_DIR
-                        + File.separator.concat(
-                            i
-                                + IoTDBConstant.FILE_NAME_SEPARATOR
-                                + i
-                                + IoTDBConstant.FILE_NAME_SEPARATOR
-                                + 0
-                                + IoTDBConstant.FILE_NAME_SEPARATOR
-                                + 0
-                                + ".tsfile")));
-        CompactionFileGeneratorUtils.writeTsFile(
-            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-        sourceFiles.add(tsFileResource);
-        sourceFileNames.add(tsFileResource.getTsFile().getName());
-      }
+      sourceFiles.forEach(f -> sourceFileNames.add(f.getTsFile().getName()));
       TsFileResource targetResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       CompactionLogger compactionLogger = new CompactionLogger(new File(logFilePath));
@@ -664,7 +779,6 @@ public class SizeTieredCompactionRecoverTest {
       performer.perform();
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
-      long sizeOfTargetFile = targetResource.getTsFileSize();
       FileUtils.moveDirectory(
           new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data"),
           new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
@@ -673,6 +787,76 @@ public class SizeTieredCompactionRecoverTest {
           new CompactionRecoverTask(
               COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
       recoverTask.doCompaction();
+      // all the source files should exist
+      for (String sourceFileName : sourceFileNames) {
+        Assert.assertTrue(
+            new File(
+                    TestConstant.BASE_OUTPUT_PATH
+                        + File.separator
+                        + "data1"
+                        + File.separator
+                        + "sequence"
+                        + File.separator
+                        + COMPACTION_TEST_SG
+                        + File.separator
+                        + "0"
+                        + File.separator
+                        + "0",
+                    sourceFileName)
+                .exists());
+      }
+      File targetFileAfterMoved =
+          new File(
+              TestConstant.BASE_OUTPUT_PATH
+                  + File.separator
+                  + "data1"
+                  + File.separator
+                  + "sequence"
+                  + File.separator
+                  + COMPACTION_TEST_SG
+                  + File.separator
+                  + "0"
+                  + File.separator
+                  + "0",
+              targetResource
+                  .getTsFile()
+                  .getName()
+                  .replace(
+                      IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                      TsFileConstant.TSFILE_SUFFIX));
+      Assert.assertFalse(targetFileAfterMoved.exists());
+    } finally {
+      FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
+    }
+  }
+
+  @Test
+  public void testInnerRecoverWithCompleteTargetFileUsingFilePathAndChangingDataDirs()
+      throws Exception {
+    try {
+      List<TsFileResource> sourceFiles = getSourceFiles();
+      List<String> sourceFileNames = new ArrayList<>();
+      sourceFiles.forEach(f -> sourceFileNames.add(f.getTsFile().getName()));
+      TsFileResource targetResource =
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+      SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(new File(logFilePath));
+      compactionLogger.logSourceFiles(sourceFiles);
+      compactionLogger.logTargetFile(targetResource);
+      compactionLogger.close();
+      performer.setSourceFiles(sourceFiles);
+      performer.setTargetFiles(Collections.singletonList(targetResource));
+      performer.setSummary(new FastCompactionTaskSummary());
+      performer.perform();
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+      FileUtils.moveDirectory(
+          new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data"),
+          new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
+      setDataDirs(new String[][] {{TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"}});
+      InnerSpaceCompactionTask recoverTask =
+          new InnerSpaceCompactionTask(
+              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+      recoverTask.recover();
       // all the source files should exist
       for (String sourceFileName : sourceFileNames) {
         Assert.assertTrue(
@@ -726,32 +910,9 @@ public class SizeTieredCompactionRecoverTest {
   public void testRecoverWithIncompleteTargetFileUsingFilePathAndChangingDataDirs()
       throws Exception {
     try {
-      List<TsFileResource> sourceFiles = new ArrayList<>();
+      List<TsFileResource> sourceFiles = getSourceFiles();
       List<String> sourceFileNames = new ArrayList<>();
-      for (int i = 0; i < 10; i++) {
-        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-        List<Long> pagePointsNum = new ArrayList<>();
-        pagePointsNum.add(100L);
-        chunkPagePointsNum.add(pagePointsNum);
-        TsFileResource tsFileResource =
-            new TsFileResource(
-                new File(
-                    SEQ_FILE_DIR
-                        + File.separator.concat(
-                            i
-                                + IoTDBConstant.FILE_NAME_SEPARATOR
-                                + i
-                                + IoTDBConstant.FILE_NAME_SEPARATOR
-                                + 0
-                                + IoTDBConstant.FILE_NAME_SEPARATOR
-                                + 0
-                                + ".tsfile")));
-        CompactionFileGeneratorUtils.writeTsFile(
-            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-        sourceFiles.add(tsFileResource);
-        sourceFileNames.add(tsFileResource.getTsFile().getName());
-      }
+      sourceFiles.forEach(f -> sourceFileNames.add(f.getTsFile().getName()));
       TsFileResource targetResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       CompactionLogger compactionLogger = new CompactionLogger(new File(logFilePath));
@@ -776,6 +937,75 @@ public class SizeTieredCompactionRecoverTest {
           new CompactionRecoverTask(
               COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
       recoverTask.doCompaction();
+      // all the source file should be deleted
+      for (String sourceFileName : sourceFileNames) {
+        Assert.assertTrue(
+            new File(
+                    TestConstant.BASE_OUTPUT_PATH
+                        + File.separator
+                        + "data1"
+                        + File.separator
+                        + "sequence"
+                        + File.separator
+                        + COMPACTION_TEST_SG
+                        + File.separator
+                        + "0"
+                        + File.separator
+                        + "0",
+                    sourceFileName)
+                .exists());
+      }
+      Assert.assertFalse(
+          new File(
+                  TestConstant.BASE_OUTPUT_PATH
+                      + File.separator
+                      + "data1"
+                      + File.separator
+                      + "sequence"
+                      + File.separator
+                      + COMPACTION_TEST_SG
+                      + File.separator
+                      + "0"
+                      + File.separator
+                      + "0",
+                  targetResource.getTsFile().getName())
+              .exists());
+    } finally {
+      FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
+    }
+  }
+
+  @Test
+  public void testInnerRecoverWithIncompleteTargetFileUsingFilePathAndChangingDataDirs()
+      throws Exception {
+    try {
+      List<TsFileResource> sourceFiles = getSourceFiles();
+      List<String> sourceFileNames = new ArrayList<>();
+      sourceFiles.forEach(f -> sourceFileNames.add(f.getTsFile().getName()));
+      TsFileResource targetResource =
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+      SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(new File(logFilePath));
+      compactionLogger.logSourceFiles(sourceFiles);
+      compactionLogger.logTargetFile(targetResource);
+      compactionLogger.close();
+      performer.setSourceFiles(sourceFiles);
+      performer.setTargetFiles(Collections.singletonList(targetResource));
+      performer.setSummary(new FastCompactionTaskSummary());
+      performer.perform();
+      CompactionUtils.moveTargetFile(
+          Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+      FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
+      FileChannel channel = targetStream.getChannel();
+      channel.truncate(targetResource.getTsFile().length() - 100);
+      channel.close();
+      FileUtils.moveDirectory(
+          new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data"),
+          new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
+      setDataDirs(new String[][] {{TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"}});
+      InnerSpaceCompactionTask recoverTask =
+          new InnerSpaceCompactionTask(
+              COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath));
+      recoverTask.recover();
       // all the source file should be deleted
       for (String sourceFileName : sourceFileNames) {
         Assert.assertTrue(
