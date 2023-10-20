@@ -119,7 +119,7 @@ public class StartClientScriptIT extends AbstractScript {
     };
     ProcessBuilder builder =
         new ProcessBuilder(
-            "sh",
+            "bash",
             sbinPath + File.separator + "start-cli.sh",
             "-h",
             ip,
@@ -135,7 +135,7 @@ public class StartClientScriptIT extends AbstractScript {
     final String[] output2 = {"Msg: The statement is executed successfully."};
     ProcessBuilder builder2 =
         new ProcessBuilder(
-            "sh",
+            "bash",
             sbinPath + File.separator + "start-cli.sh",
             "-h",
             ip,
