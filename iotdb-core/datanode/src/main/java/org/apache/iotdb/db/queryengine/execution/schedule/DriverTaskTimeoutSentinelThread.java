@@ -70,9 +70,8 @@ public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
       if (task.isEndState()) {
         return;
       }
-      waitTime = task.getDDL() - System.currentTimeMillis();
       // if the Task still has not reached the time limit, re-push the task in the TimeoutQueue.
-      if (waitTime > 0L) {
+      if (task.getDDL() - System.currentTimeMillis() > 0L) {
         scheduler.enforceTimeLimit(task);
         return;
       }
