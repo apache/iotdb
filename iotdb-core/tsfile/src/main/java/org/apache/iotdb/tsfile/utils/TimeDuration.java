@@ -16,18 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.utils.duration;
+package org.apache.iotdb.tsfile.utils;
+
+import java.util.concurrent.TimeUnit;
 
 public class TimeDuration {
   public final int monthDuration;
-  public final long nsDuration;
+  public final long currPrecisionDuration;
 
   public TimeDuration(int monthDuration, long nsDuration) {
     this.monthDuration = monthDuration;
-    this.nsDuration = nsDuration;
+    this.currPrecisionDuration = nsDuration;
   }
 
   public boolean containsMonth() {
     return monthDuration != 0;
+  }
+
+  /**
+   * Convert monthDuration to current precision duration, then add currPrecisionDuration field.
+   * Think month as 30 days.
+   *
+   * @return the total duration of this timeDuration in current precision
+   */
+  public long getTotalDuration(TimeUnit currPrecision) {
+    return currPrecision.convert(monthDuration * 30 * 86400_000L, TimeUnit.MILLISECONDS)
+        + currPrecisionDuration;
   }
 }

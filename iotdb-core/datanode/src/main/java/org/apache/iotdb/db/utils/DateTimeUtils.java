@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.tsfile.utils.duration.TimeDuration;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import java.time.DateTimeException;
 import java.time.Instant;
@@ -759,16 +759,19 @@ public class DateTimeUtils {
   }
 
   /**
-   * Storage the duration into two parts: month part and ns part.
+   * Storage the duration into two parts: month part and current precision part. e.g. ms precision:
+   * '1y1mo1ms' -> monthDuration = 13, currPrecisionDuration = 1; ns precision: '1y1mo1ms' ->
+   * monthDuration = 13, currPrecisionDuration = 1000_0000;
    *
    * @param duration the input duration string
    * @return the TimeDuration instance contains month part and ns part
    */
   public static TimeDuration constructTimeDuration(String duration) {
     duration = duration.toLowerCase();
+    String currTimePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
     int temp = 0;
-    int months = 0;
-    long ns = 0;
+    int monthDuration = 0;
+    long currPrecisionDuration = 0;
     for (int i = 0; i < duration.length(); i++) {
       char ch = duration.charAt(i);
       if (Character.isDigit(ch)) {
@@ -782,19 +785,20 @@ public class DateTimeUtils {
           unit += duration.charAt(i);
         }
         if (unit.equals("y")) {
-          months = temp * 12;
+          monthDuration = temp * 12;
           temp = 0;
           continue;
         }
         if (unit.equals("mo")) {
-          months += temp;
+          monthDuration += temp;
           temp = 0;
           continue;
         }
-        ns += DateTimeUtils.convertDurationStrToLong(-1, temp, unit, "ns");
+        currPrecisionDuration +=
+            DateTimeUtils.convertDurationStrToLong(-1, temp, unit, currTimePrecision);
         temp = 0;
       }
     }
-    return new TimeDuration(months, ns);
+    return new TimeDuration(monthDuration, currPrecisionDuration);
   }
 }
