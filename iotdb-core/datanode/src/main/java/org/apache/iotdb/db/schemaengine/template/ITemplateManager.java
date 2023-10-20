@@ -32,18 +32,18 @@ import java.util.Map;
 public interface ITemplateManager {
 
   /**
-   * Create schema template by sending request to ConfigNode.
+   * Create device template by sending request to ConfigNode.
    *
    * @param statement CreateSchemaTemplateStatement
    * @return TSStatus
    */
   TSStatus createSchemaTemplate(CreateSchemaTemplateStatement statement);
 
-  /** Show schema templates. */
+  /** Show device templates. */
   List<Template> getAllTemplates();
 
   /**
-   * show nodes in schema template xx
+   * show nodes in device template xx
    *
    * @param name template name
    * @return Template

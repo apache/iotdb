@@ -60,16 +60,16 @@ public class WALInsertNodeCache {
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
 
   private WALInsertNodeCache() {
+    // TODO: try allocate memory 2 * config.getWalFileSizeThresholdInByte() for the cache
+    // If allocate memory failed, disable batch load
+    isBatchLoadEnabled = true;
     lruCache =
         Caffeine.newBuilder()
-            // TODO: pipe module should determine how to configure this param
-            .maximumWeight(config.getAllocateMemoryForWALPipeCache())
+            .maximumWeight(2 * config.getWalFileSizeThresholdInByte())
             .weigher(
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
                     (position, pair) -> position.getSize())
             .build(new WALInsertNodeCacheLoader());
-    isBatchLoadEnabled =
-        config.getAllocateMemoryForWALPipeCache() >= 3 * config.getWalFileSizeThresholdInByte();
   }
 
   @TestOnly
@@ -94,6 +94,8 @@ public class WALInsertNodeCache {
 
     if (pair.getRight() == null) {
       try {
+        // multi pipes may share the same wal entry, so we need to wrap the byte[] into
+        // different ByteBuffer for each pipe
         pair.setRight(parse(ByteBuffer.wrap(pair.getLeft().array())));
       } catch (Exception e) {
         logger.error(
@@ -128,7 +130,9 @@ public class WALInsertNodeCache {
       throw new IllegalStateException();
     }
 
-    return pair.getLeft();
+    // multi pipes may share the same wal entry, so we need to wrap the byte[] into different
+    // ByteBuffer for each pipe
+    return ByteBuffer.wrap(pair.getLeft().array());
   }
 
   boolean contains(WALEntryPosition position) {
@@ -161,7 +165,7 @@ public class WALInsertNodeCache {
     @Override
     public @NonNull Map<@NonNull WALEntryPosition, @NonNull Pair<ByteBuffer, InsertNode>> loadAll(
         @NonNull Iterable<? extends @NonNull WALEntryPosition> keys) {
-      Map<WALEntryPosition, Pair<ByteBuffer, InsertNode>> res = new HashMap<>();
+      final Map<WALEntryPosition, Pair<ByteBuffer, InsertNode>> res = new HashMap<>();
 
       for (WALEntryPosition pos : keys) {
         if (res.containsKey(pos) || !pos.canRead()) {
@@ -207,20 +211,19 @@ public class WALInsertNodeCache {
               e);
         }
       }
-
       return res;
     }
   }
 
-  public static WALInsertNodeCache getInstance() {
-    return InstanceHolder.INSTANCE;
+  public static WALInsertNodeCache getInstance(Integer regionId) {
+    return InstanceHolder.getOrCreateInstance(regionId);
   }
 
   private static class InstanceHolder {
-    private InstanceHolder() {
-      // do nothing
-    }
+    private static final Map<Integer, WALInsertNodeCache> INSTANCE_MAP = new ConcurrentHashMap<>();
 
-    private static final WALInsertNodeCache INSTANCE = new WALInsertNodeCache();
+    public static WALInsertNodeCache getOrCreateInstance(Integer key) {
+      return INSTANCE_MAP.computeIfAbsent(key, k -> new WALInsertNodeCache());
+    }
   }
 }

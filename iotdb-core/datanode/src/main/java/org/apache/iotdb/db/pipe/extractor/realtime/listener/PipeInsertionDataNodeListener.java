@@ -54,7 +54,7 @@ public class PipeInsertionDataNodeListener {
   public synchronized void startListenAndAssign(
       String dataRegionId, PipeRealtimeDataRegionExtractor extractor) {
     dataRegionId2Assigner
-        .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner())
+        .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner(dataRegionId))
         .startAssignTo(extractor);
 
     if (extractor.isNeedListenToTsFile()) {

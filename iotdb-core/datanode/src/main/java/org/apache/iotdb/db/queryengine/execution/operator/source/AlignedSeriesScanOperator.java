@@ -35,6 +35,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder.MAX_LINE_NUMBER;
+
 public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   private final TsBlockBuilder builder;
@@ -100,9 +102,11 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
           break;
         }
 
-      } while (System.nanoTime() - start < maxRuntime && !builder.isFull());
+      } while (System.nanoTime() - start < maxRuntime
+          && !builder.isFull()
+          && retainedTsBlock == null);
 
-      finished = builder.isEmpty();
+      finished = (builder.isEmpty() && retainedTsBlock == null);
 
       return !finished;
     } catch (IOException e) {
@@ -163,6 +167,10 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   private void appendToBuilder(TsBlock tsBlock) {
     int size = tsBlock.getPositionCount();
+    if (builder.isEmpty() && tsBlock.getPositionCount() >= MAX_LINE_NUMBER) {
+      retainedTsBlock = tsBlock;
+      return;
+    }
     TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
     TimeColumn timeColumn = tsBlock.getTimeColumn();
     for (int i = 0; i < size; i++) {

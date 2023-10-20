@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.SingleDeviceViewOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
@@ -45,13 +46,18 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -59,11 +65,13 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey.DEVICE;
 import static org.junit.Assert.assertEquals;
 
 public class PipelineBuilderTest {
@@ -374,6 +382,56 @@ public class PipelineBuilderTest {
 
     // Validate the number exchange operator
     assertEquals(4, context.getExchangeSumNum());
+  }
+
+  /**
+   * This test will test dop = 3. Expected result is three pipelines:
+   *
+   * <p>The first is: TopKNode1 - [SingleDeviceViewNode0, ExchangeOperator, ExchangeOperator];
+   *
+   * <p>The second is: ExchangeOperator - SingleDeviceViewNode1.
+   *
+   * <p>The third is: ExchangeOperator - TopKNode1-1[SingleDeviceViewNode2, SingleDeviceViewNode3].
+   */
+  @Test
+  public void testTopKConsumeAllChildrenPipelineBuilder3() throws IllegalPathException {
+    TypeProvider typeProvider = new TypeProvider();
+    TopKNode topKNode = initTopKNode(typeProvider, 4);
+    LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
+    context.setDegreeOfParallelism(3);
+
+    List<Operator> childrenOperator =
+        operatorTreeGenerator.dealWithConsumeAllChildrenPipelineBreaker(topKNode, context);
+    // The number of pipeline is 2, since parent pipeline hasn't joined
+    assertEquals(2, context.getPipelineNumber());
+
+    // Validate the first pipeline
+    assertEquals(3, childrenOperator.size());
+    assertEquals(SingleDeviceViewOperator.class, childrenOperator.get(0).getClass());
+    assertEquals(ExchangeOperator.class, childrenOperator.get(1).getClass());
+    assertEquals(ExchangeOperator.class, childrenOperator.get(2).getClass());
+
+    // Validate the changes of node structure
+    assertEquals(3, topKNode.getChildren().size());
+    assertEquals("Time", topKNode.getChildren().get(0).getOutputColumnNames().get(0));
+    assertEquals("Time", topKNode.getChildren().get(1).getOutputColumnNames().get(0));
+    assertEquals("Time", topKNode.getChildren().get(2).getOutputColumnNames().get(0));
+    assertEquals(TopKNode.class, topKNode.getChildren().get(2).getClass());
+
+    // Validate the second pipeline
+    ExchangeOperator exchangeOperator1 = (ExchangeOperator) childrenOperator.get(1);
+    assertEquals("SingleDeviceViewNode1", exchangeOperator1.getSourceId().getId());
+
+    // Validate the third pipeline
+    TopKNode subTimeJoinNode = (TopKNode) topKNode.getChildren().get(2);
+    assertEquals(2, subTimeJoinNode.getChildren().size());
+    assertEquals("Time", subTimeJoinNode.getChildren().get(0).getOutputColumnNames().get(0));
+    assertEquals("Time", subTimeJoinNode.getChildren().get(1).getOutputColumnNames().get(0));
+    ExchangeOperator exchangeOperator2 = (ExchangeOperator) childrenOperator.get(2);
+    assertEquals(exchangeOperator2.getSourceId(), subTimeJoinNode.getPlanNodeId());
+
+    // Validate the number exchange operator
+    assertEquals(2, context.getExchangeSumNum());
   }
 
   /**
@@ -854,5 +912,38 @@ public class PipelineBuilderTest {
       deviceViewNode.addChild(alignedSeriesScanNode);
     }
     return deviceViewNode;
+  }
+
+  private TopKNode initTopKNode(TypeProvider typeProvider, int childNum)
+      throws IllegalPathException {
+    TopKNode topKNode =
+        new TopKNode(
+            new PlanNodeId("TopKNode"),
+            10,
+            new OrderByParameter(
+                Arrays.asList(
+                    new SortItem(OrderByKey.TIME, Ordering.ASC),
+                    new SortItem(DEVICE, Ordering.ASC))),
+            Arrays.asList("Time", "Device", "s1"));
+    for (int i = 0; i < childNum; i++) {
+      SingleDeviceViewNode singleDeviceViewNode =
+          new SingleDeviceViewNode(
+              new PlanNodeId(String.format("SingleDeviceViewNode%d", i)),
+              Arrays.asList("Time", "Device", "s1"),
+              "root.sg.d" + i,
+              Arrays.asList(0, 1, 2));
+      singleDeviceViewNode.setCacheOutputColumnNames(true);
+      SeriesScanNode seriesScanNode =
+          new SeriesScanNode(
+              new PlanNodeId(String.format("SeriesScanNode%d", i)),
+              new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
+      typeProvider.setType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
+      singleDeviceViewNode.addChild(seriesScanNode);
+      typeProvider.setType("Time", TSDataType.INT64);
+      typeProvider.setType("Device", TSDataType.TEXT);
+      typeProvider.setType("s1", TSDataType.INT32);
+      topKNode.addChild(singleDeviceViewNode);
+    }
+    return topKNode;
   }
 }

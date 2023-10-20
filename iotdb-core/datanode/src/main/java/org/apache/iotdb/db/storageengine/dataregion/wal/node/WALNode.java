@@ -930,6 +930,10 @@ public class WALNode implements IWALNode {
     return buffer.getFileNum();
   }
 
+  public int getRegionId(long memtableId) {
+    return checkpointManager.getRegionId(memtableId);
+  }
+
   @TestOnly
   long getCurrentLogVersion() {
     return buffer.getCurrentWALFileVersion();

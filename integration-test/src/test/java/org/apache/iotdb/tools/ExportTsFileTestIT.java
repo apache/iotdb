@@ -135,7 +135,7 @@ public class ExportTsFileTestIT extends AbstractScript {
     // -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
     ProcessBuilder builder =
         new ProcessBuilder(
-            "sh",
+            "bash",
             toolsPath + File.separator + "export-tsfile.sh",
             "-h",
             ip,
@@ -158,7 +158,7 @@ public class ExportTsFileTestIT extends AbstractScript {
     // -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
     ProcessBuilder builder1 =
         new ProcessBuilder(
-            "sh",
+            "bash",
             toolsPath + File.separator + "export-tsfile.sh",
             "-h",
             ip,

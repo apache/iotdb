@@ -60,6 +60,14 @@ public class PaginationController {
     curOffset--;
   }
 
+  public long getCurOffset() {
+    return curOffset;
+  }
+
+  public long getCurLimit() {
+    return curLimit;
+  }
+
   public void consumeLimit() {
     if (hasLimit) {
       curLimit--;

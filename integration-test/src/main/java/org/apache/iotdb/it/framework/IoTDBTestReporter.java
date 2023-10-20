@@ -35,7 +35,7 @@ public class IoTDBTestReporter {
     List<IoTDBTestStat> stats = new ArrayList<>();
     Path outputDirPath =
         Paths.get(
-            System.getProperty("user.dir"), "integration-test", IoTDBTestListener.statOutputDir);
+            System.getProperty("user.dir"), "integration-test", IoTDBTestConstants.statOutputDir);
     File outputDir = outputDirPath.toFile();
     if (!outputDir.exists() || !outputDir.isDirectory()) {
       IoTDBTestLogger.logger.error(
@@ -46,7 +46,7 @@ public class IoTDBTestReporter {
     try (Stream<Path> s = Files.walk(outputDirPath)) {
       s.forEach(
           source -> {
-            if (source.toString().endsWith(IoTDBTestListener.statExt)) {
+            if (source.toString().endsWith(IoTDBTestConstants.statExt)) {
               try {
                 List<String> lines = Files.readAllLines(source);
                 for (String l : lines) {
