@@ -51,24 +51,16 @@ public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
       if (task.isEndState()) {
         return;
       }
-      long waitTime = task.getDDL() - System.currentTimeMillis();
-      // if the waitTime is more than SLEEP_BOUND, re-push the task in the TimeoutQueue. SlEEP_BOUND
-      // ensures that DriverTaskTimeoutSentinelThread won't sleep for too long when the waitTime
-      // of the current task is long.
-      if (waitTime > SLEEP_BOUND) {
-        scheduler.enforceTimeLimit(task);
-        return;
-      }
     } finally {
       task.unlock();
     }
 
     // If this task is not timeout, we can wait it to timeout.
-    long waitTime = task.getDDL() - System.currentTimeMillis();
-    while (waitTime > 0L) {
-      // After this time, the task must be timeout.
+    // SlEEP_BOUND ensures that DriverTaskTimeoutSentinelThread won't sleep for too long when the
+    // waitTime of the task is long.
+    long waitTime = Math.min(task.getDDL() - System.currentTimeMillis(), SLEEP_BOUND);
+    if (waitTime > 0L) {
       Thread.sleep(waitTime);
-      waitTime = task.getDDL() - System.currentTimeMillis();
     }
 
     task.lock();
@@ -76,6 +68,12 @@ public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
       // If this task is already in an end state, it means that the resource releasing will be
       // handled by other threads, we don't care anymore.
       if (task.isEndState()) {
+        return;
+      }
+      waitTime = task.getDDL() - System.currentTimeMillis();
+      // if the Task still has not reached the time limit, re-push the task in the TimeoutQueue.
+      if (waitTime > 0L) {
+        scheduler.enforceTimeLimit(task);
         return;
       }
     } finally {
