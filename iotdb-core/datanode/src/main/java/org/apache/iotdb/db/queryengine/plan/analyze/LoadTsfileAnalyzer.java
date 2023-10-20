@@ -58,6 +58,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -149,7 +150,10 @@ public class LoadTsfileAnalyzer {
         throw new SemanticException(
             String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
       } catch (AuthException e) {
-        throw new RuntimeException(e);
+        Analysis analysis = new Analysis();
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
+        return analysis;
       } catch (Exception e) {
         LOGGER.warn(String.format("Parse file %s to resource error.", tsFile.getPath()), e);
         throw new SemanticException(
@@ -614,9 +618,10 @@ public class LoadTsfileAnalyzer {
           }
 
           // check compressor
-          if (!tsFileSchema.getCompressor().equals(iotdbSchema.getCompressor())) {
+          if (LOGGER.isDebugEnabled()
+              && !tsFileSchema.getCompressor().equals(iotdbSchema.getCompressor())) {
             // we allow a measurement to have different compressors in different chunks
-            LOGGER.warn(
+            LOGGER.debug(
                 "Compressor not match, measurement: {}{}{}, "
                     + "TsFile compressor: {}, IoTDB compressor: {}",
                 device,

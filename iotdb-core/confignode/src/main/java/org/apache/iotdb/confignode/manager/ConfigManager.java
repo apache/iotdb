@@ -446,8 +446,18 @@ public class ConfigManager implements IManager {
               .map(TDataNodeConfiguration::getLocation)
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
-      Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
       Map<Integer, TNodeVersionInfo> nodeVersionInfo = getNodeManager().getNodeVersionInfo();
+      Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
+      for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
+        if (!nodeStatus.containsKey(configNodeLocation.getConfigNodeId())) {
+          nodeStatus.put(configNodeLocation.getConfigNodeId(), NodeStatus.Unknown.toString());
+        }
+      }
+      for (TDataNodeLocation dataNodeLocation : dataNodeInfoLocations) {
+        if (!nodeStatus.containsKey(dataNodeLocation.getDataNodeId())) {
+          nodeStatus.put(dataNodeLocation.getDataNodeId(), NodeStatus.Unknown.toString());
+        }
+      }
       return new TShowClusterResp(
           status, configNodeLocations, dataNodeInfoLocations, nodeStatus, nodeVersionInfo);
     } else {
@@ -1486,6 +1496,12 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public void removeMetrics() {
+    MetricService.getInstance().removeMetricSet(new NodeMetrics(getNodeManager()));
+    MetricService.getInstance().removeMetricSet(new PartitionMetrics(this));
+  }
+
+  @Override
   public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1562,7 +1578,7 @@ public class ConfigManager implements IManager {
       return RpcUtils.getStatus(
           TSStatusCode.TEMPLATE_NOT_SET,
           String.format(
-              "Schema Template %s is not set on any prefix path of %s",
+              "Device Template %s is not set on any prefix path of %s",
               req.getTemplateName(), patternList));
     }
 
@@ -1581,7 +1597,7 @@ public class ConfigManager implements IManager {
         return RpcUtils.getStatus(
             TSStatusCode.TEMPLATE_NOT_SET,
             String.format(
-                "Schema Template %s is not set on any prefix path of %s",
+                "Device Template %s is not set on any prefix path of %s",
                 req.getTemplateName(), patternList));
       }
 

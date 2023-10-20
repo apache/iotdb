@@ -67,6 +67,9 @@ public class ProcedureWAL {
         DataOutputStream dataOutputStream = new DataOutputStream(publicBAOS)) {
       procedure.serialize(dataOutputStream);
       channel.write(ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size()));
+
+      channel.force(true);
+      fos.getFD().sync();
     }
     Files.deleteIfExists(walFilePath);
     Files.move(walTmpPath, walFilePath);

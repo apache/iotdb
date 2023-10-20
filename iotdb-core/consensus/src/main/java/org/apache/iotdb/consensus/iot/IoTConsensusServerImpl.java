@@ -59,7 +59,6 @@ import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteReq;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
@@ -68,6 +67,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -593,12 +593,8 @@ public class IoTConsensusServerImpl {
   }
 
   public void persistConfiguration() {
-    try (PublicBAOS publicBAOS = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
-      serializeConfigurationTo(outputStream);
-      Files.write(
-          Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath()),
-          publicBAOS.getBuf());
+    try {
+      serializeConfigurationAndFsyncToDisk(CONFIGURATION_FILE_NAME);
     } catch (IOException e) {
       // TODO: (xingtanzjr) need to handle the IOException because the IoTConsensus won't
       // work expectedly
@@ -608,15 +604,13 @@ public class IoTConsensusServerImpl {
   }
 
   public void persistConfigurationUpdate() throws ConsensusGroupModifyPeerException {
-    try (PublicBAOS publicBAOS = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
-      serializeConfigurationTo(outputStream);
+    try {
+      serializeConfigurationAndFsyncToDisk(CONFIGURATION_TMP_FILE_NAME);
       Path tmpConfigurationPath =
           Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
       Path configurationPath =
           Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
-      Files.write(tmpConfigurationPath, publicBAOS.getBuf());
-      Files.delete(configurationPath);
+      Files.deleteIfExists(configurationPath);
       Files.move(tmpConfigurationPath, configurationPath);
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException(
@@ -817,6 +811,20 @@ public class IoTConsensusServerImpl {
 
   public String getConsensusGroupId() {
     return consensusGroupId;
+  }
+
+  private void serializeConfigurationAndFsyncToDisk(String configurationFileName)
+      throws IOException {
+    FileOutputStream fileOutputStream =
+        new FileOutputStream(new File(storageDir, configurationFileName));
+    DataOutputStream outputStream = new DataOutputStream(fileOutputStream);
+    try {
+      serializeConfigurationTo(outputStream);
+    } finally {
+      fileOutputStream.flush();
+      fileOutputStream.getFD().sync();
+      outputStream.close();
+    }
   }
 
   /**

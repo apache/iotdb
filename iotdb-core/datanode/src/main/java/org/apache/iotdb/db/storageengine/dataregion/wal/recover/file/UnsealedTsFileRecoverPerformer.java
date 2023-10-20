@@ -36,7 +36,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -119,44 +118,36 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
                 chunkMetadata.getMeasurementUid(), n -> new ArrayList<>());
         list.add(chunkMetadata);
       }
-
-      for (List<ChunkMetadata> metadataList : measurementToChunkMetadatas.values()) {
-        TSDataType dataType = metadataList.get(metadataList.size() - 1).getDataType();
-        for (ChunkMetadata chunkMetaData : chunkMetadataList) {
-          if (!chunkMetaData.getDataType().equals(dataType)) {
-            continue;
-          }
-
-          // calculate startTime and endTime according to chunkMetaData and modifications
-          long startTime = chunkMetaData.getStartTime();
-          long endTime = chunkMetaData.getEndTime();
-          long chunkHeaderOffset = chunkMetaData.getOffsetOfChunkHeader();
-          if (modificationsForResource.containsKey(deviceId)
-              && modificationsForResource
-                  .get(deviceId)
-                  .containsKey(chunkMetaData.getMeasurementUid())) {
-            // exist deletion for current measurement
-            for (Deletion modification :
-                modificationsForResource.get(deviceId).get(chunkMetaData.getMeasurementUid())) {
-              long fileOffset = modification.getFileOffset();
-              if (chunkHeaderOffset < fileOffset) {
-                // deletion is valid for current chunk
-                long modsStartTime = modification.getStartTime();
-                long modsEndTime = modification.getEndTime();
-                if (startTime >= modsStartTime && endTime <= modsEndTime) {
-                  startTime = Long.MAX_VALUE;
-                  endTime = Long.MIN_VALUE;
-                } else if (startTime >= modsStartTime && startTime <= modsEndTime) {
-                  startTime = modsEndTime + 1;
-                } else if (endTime >= modsStartTime && endTime <= modsEndTime) {
-                  endTime = modsStartTime - 1;
-                }
+      for (ChunkMetadata chunkMetaData : chunkMetadataList) {
+        // calculate startTime and endTime according to chunkMetaData and modifications
+        long startTime = chunkMetaData.getStartTime();
+        long endTime = chunkMetaData.getEndTime();
+        long chunkHeaderOffset = chunkMetaData.getOffsetOfChunkHeader();
+        if (modificationsForResource.containsKey(deviceId)
+            && modificationsForResource
+                .get(deviceId)
+                .containsKey(chunkMetaData.getMeasurementUid())) {
+          // exist deletion for current measurement
+          for (Deletion modification :
+              modificationsForResource.get(deviceId).get(chunkMetaData.getMeasurementUid())) {
+            long fileOffset = modification.getFileOffset();
+            if (chunkHeaderOffset < fileOffset) {
+              // deletion is valid for current chunk
+              long modsStartTime = modification.getStartTime();
+              long modsEndTime = modification.getEndTime();
+              if (startTime >= modsStartTime && endTime <= modsEndTime) {
+                startTime = Long.MAX_VALUE;
+                endTime = Long.MIN_VALUE;
+              } else if (startTime >= modsStartTime && startTime <= modsEndTime) {
+                startTime = modsEndTime + 1;
+              } else if (endTime >= modsStartTime && endTime <= modsEndTime) {
+                endTime = modsStartTime - 1;
               }
             }
           }
-          tsFileResource.updateStartTime(deviceId, startTime);
-          tsFileResource.updateEndTime(deviceId, endTime);
         }
+        tsFileResource.updateStartTime(deviceId, startTime);
+        tsFileResource.updateEndTime(deviceId, endTime);
       }
     }
     tsFileResource.updatePlanIndexes(writer.getMinPlanIndex());

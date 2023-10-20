@@ -73,6 +73,10 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
     }
   }
 
+  public boolean isBufferQueueEmpty() {
+    return bufferQueue.isEmpty();
+  }
+
   /**
    * Try to collect buffered events into pending queue.
    *
@@ -103,5 +107,17 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
           }
         });
     bufferQueue.clear();
+  }
+
+  public int getTabletInsertionEventCount() {
+    return bufferQueue.getTabletInsertionEventCount();
+  }
+
+  public int getTsFileInsertionEventCount() {
+    return bufferQueue.getTsFileInsertionEventCount();
+  }
+
+  public int getPipeHeartbeatEventCount() {
+    return bufferQueue.getPipeHeartbeatEventCount();
   }
 }

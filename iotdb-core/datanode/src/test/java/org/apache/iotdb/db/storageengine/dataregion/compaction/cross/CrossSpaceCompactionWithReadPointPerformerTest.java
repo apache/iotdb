@@ -59,7 +59,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.fail;
 
@@ -419,14 +418,10 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
             AbstractCompactionTask compactionTask =
                 new CrossSpaceCompactionTask(
                     0,
-                    new TsFileManager(
-                        "root.compactionTest",
-                        "0",
-                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
+                    getTsFileManager(),
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles(),
                     new ReadPointCompactionPerformer(),
-                    new AtomicInteger(0),
                     0,
                     0);
             compactionTask.start();
@@ -723,14 +718,10 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
             AbstractCompactionTask compactionTask =
                 new CrossSpaceCompactionTask(
                     0,
-                    new TsFileManager(
-                        "root.compactionTest",
-                        "0",
-                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
+                    getTsFileManager(),
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles(),
                     new ReadPointCompactionPerformer(),
-                    new AtomicInteger(0),
                     0,
                     0);
             compactionTask.start();
@@ -1026,14 +1017,10 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
             AbstractCompactionTask compactionTask =
                 new CrossSpaceCompactionTask(
                     0,
-                    new TsFileManager(
-                        "root.compactionTest",
-                        "0",
-                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
+                    getTsFileManager(),
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles(),
                     new ReadPointCompactionPerformer(),
-                    new AtomicInteger(0),
                     0,
                     0);
             compactionTask.start();
@@ -1054,5 +1041,16 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
         }
       }
     }
+  }
+
+  private TsFileManager getTsFileManager() {
+    TsFileManager tsFileManager =
+        new TsFileManager(
+            "root.compactionTest",
+            "0",
+            "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\");
+    tsFileManager.getOrCreateUnsequenceListByTimePartition(0);
+    tsFileManager.getOrCreateSequenceListByTimePartition(0);
+    return tsFileManager;
   }
 }

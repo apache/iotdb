@@ -30,7 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -57,7 +56,7 @@ public class LocalTextModificationAccessor
       "No modification has been written to this file[{}]";
 
   private final String filePath;
-  private BufferedWriter writer;
+  private FileOutputStream fos;
 
   /**
    * Construct a LocalTextModificationAccessor using a file specified by filePath.
@@ -150,37 +149,44 @@ public class LocalTextModificationAccessor
 
   @Override
   public void close() throws IOException {
-    if (writer != null) {
-      writer.close();
-      writer = null;
+    if (fos != null) {
+      fos.close();
+      fos = null;
     }
   }
 
   @Override
+  public void force() throws IOException {
+    fos.flush();
+    fos.getFD().sync();
+  }
+
+  @Override
   public void write(Modification mod) throws IOException {
-    if (writer == null) {
-      writer = FSFactoryProducer.getFSFactory().getBufferedWriter(filePath, true);
+    if (fos == null) {
+      fos = new FileOutputStream(filePath, true);
     }
-    writer.write(encodeModification(mod));
-    writer.newLine();
-    writer.flush();
+    fos.write(encodeModification(mod).getBytes());
+    fos.write(System.lineSeparator().getBytes());
+    force();
   }
 
   @TestOnly
   public void writeInComplete(Modification mod) throws IOException {
-    if (writer == null) {
-      writer = FSFactoryProducer.getFSFactory().getBufferedWriter(filePath, true);
+    if (fos == null) {
+      fos = new FileOutputStream(filePath, true);
     }
     String line = encodeModification(mod);
     if (line != null) {
-      writer.write(line.substring(0, 2));
+      fos.write(line.substring(0, 2).getBytes());
+      force();
     }
   }
 
   @TestOnly
   public void writeMeetException(Modification mod) throws IOException {
-    if (writer == null) {
-      writer = FSFactoryProducer.getFSFactory().getBufferedWriter(filePath, true);
+    if (fos == null) {
+      fos = new FileOutputStream(filePath, true);
     }
     writeInComplete(mod);
     throw new IOException();

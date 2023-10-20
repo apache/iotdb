@@ -34,7 +34,6 @@ import java.util.Objects;
  * and give some methods to read the content from the disk.
  */
 public class WALEntryPosition {
-  private static final WALInsertNodeCache CACHE = WALInsertNodeCache.getInstance();
   private volatile String identifier = "";
   private volatile long walFileVersionId = -1;
   private volatile long position;
@@ -43,6 +42,8 @@ public class WALEntryPosition {
   private WALNode walNode = null;
   // wal file is not null when openReadFileChannel method has been called
   private File walFile = null;
+  // cache for wal entry
+  private WALInsertNodeCache cache = null;
 
   public WALEntryPosition() {}
 
@@ -62,7 +63,7 @@ public class WALEntryPosition {
     if (!canRead()) {
       throw new IOException("This entry isn't ready for read.");
     }
-    return CACHE.getInsertNode(this);
+    return cache.getInsertNode(this);
   }
 
   /**
@@ -74,7 +75,7 @@ public class WALEntryPosition {
     if (!canRead()) {
       throw new IOException("This entry isn't ready for read.");
     }
-    return CACHE.getByteBuffer(this);
+    return cache.getByteBuffer(this);
   }
 
   /**
@@ -142,6 +143,10 @@ public class WALEntryPosition {
   public void setEntryPosition(long walFileVersionId, long position) {
     this.position = position;
     this.walFileVersionId = walFileVersionId;
+  }
+
+  public void setWalInsertNodeCache(int regionId) {
+    cache = WALInsertNodeCache.getInstance(regionId);
   }
 
   public String getIdentifier() {

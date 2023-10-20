@@ -182,4 +182,9 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       LOG.debug("event process result: {}", tsStatus);
     }
   }
+
+  @Override
+  public void onSessionLoopError(Throwable throwable) {
+    // TODO: Implement something sensible here ...
+  }
 }

@@ -28,8 +28,6 @@ import org.apache.iotdb.db.protocol.session.RestClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.glassfish.jersey.internal.util.Base64;
-
 import javax.servlet.annotation.WebFilter;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
@@ -43,6 +41,7 @@ import javax.ws.rs.ext.Provider;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.UUID;
+import java.util.Base64;
 
 @WebFilter("/*")
 @Provider
@@ -115,7 +114,9 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
   private User checkLogin(
       ContainerRequestContext containerRequestContext, String authorizationHeader) {
 
-    String decoded = Base64.decodeAsString(authorizationHeader.replace("Basic ", ""));
+    byte[] decodedBytes = Base64.getDecoder().decode(authorizationHeader.replace("Basic ", ""));
+    String decoded = new String(decodedBytes);
+
     // todo: support special chars in username and password
     String[] split = decoded.split(":");
     if (split.length != 2) {

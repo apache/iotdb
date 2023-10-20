@@ -196,7 +196,8 @@ public class DriverScheduler implements IDriverScheduler, IService {
                     timeOut > 0 ? timeOut : QUERY_TIMEOUT_MS,
                     DriverTaskStatus.READY,
                     driverTaskHandle,
-                    driver.getEstimatedMemorySize())));
+                    driver.getEstimatedMemorySize(),
+                    driver.isHighestPriority())));
 
     List<DriverTask> submittedTasks = new ArrayList<>();
     for (DriverTask task : tasks) {
@@ -430,7 +431,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   @TestOnly
-  IndexedBlockingQueue<DriverTask> getReadyQueue() {
+  public IndexedBlockingQueue<DriverTask> getReadyQueue() {
     return readyQueue;
   }
 

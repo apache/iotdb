@@ -23,21 +23,25 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.util.List;
@@ -174,7 +178,6 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          CompactionTaskManager.currentTaskNum,
                           tsFileManager.getNextCompactionTaskId());
                   // set file status to COMPACTION_CANDIDATE
                   if (idx == 0) {
@@ -275,7 +278,6 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          CompactionTaskManager.currentTaskNum,
                           tsFileManager.getNextCompactionTaskId());
 
                   if (!innerSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
@@ -289,9 +291,19 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     cd1.countDown();
                     cd2.await();
 
-                    if (innerSpaceCompactionTask.checkValidAndSetMerging()) {
-                      throw new RuntimeException("cross space compaction task should be invalid.");
-                    }
+                    Assert.assertThrows(
+                        "inner space compaction task should be invalid.",
+                        FileCannotTransitToCompactingException.class,
+                        innerSpaceCompactionTask::transitSourceFilesToMerging);
+
+                    FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
+                        Mockito.mock(FixedPriorityBlockingQueue.class);
+                    Mockito.when(mockQueue.take())
+                        .thenReturn(innerSpaceCompactionTask)
+                        .thenThrow(new InterruptedException());
+                    CompactionWorker worker = new CompactionWorker(0, mockQueue);
+                    worker.run();
+
                     for (int i = 0; i < task.size(); i++) {
                       TsFileResource resource = task.get(i);
                       if (i == 1) {
@@ -303,8 +315,10 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                       }
                     }
                   } else {
-                    if (!innerSpaceCompactionTask.checkValidAndSetMerging()) {
-                      throw new RuntimeException("cross space compaction task should be valid.");
+                    try {
+                      innerSpaceCompactionTask.transitSourceFilesToMerging();
+                    } catch (FileCannotTransitToCompactingException e) {
+                      Assert.fail("inner space compaction task should be valid.");
                     }
                     for (int i = 0; i < task.size(); i++) {
                       TsFileResource resource = task.get(i);
@@ -465,7 +479,6 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          CompactionTaskManager.currentTaskNum,
                           tsFileManager.getNextCompactionTaskId());
                   // set file status to COMPACTION_CANDIDATE
                   if (idx == 0) {
@@ -570,7 +583,6 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          CompactionTaskManager.currentTaskNum,
                           tsFileManager.getNextCompactionTaskId());
 
                   if (!innerSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
@@ -584,9 +596,19 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     cd1.countDown();
                     cd2.await();
 
-                    if (innerSpaceCompactionTask.checkValidAndSetMerging()) {
-                      throw new RuntimeException("cross space compaction task should be invalid.");
-                    }
+                    Assert.assertThrows(
+                        "inner space compaction task should be invalid.",
+                        FileCannotTransitToCompactingException.class,
+                        innerSpaceCompactionTask::transitSourceFilesToMerging);
+
+                    FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
+                        Mockito.mock(FixedPriorityBlockingQueue.class);
+                    Mockito.when(mockQueue.take())
+                        .thenReturn(innerSpaceCompactionTask)
+                        .thenThrow(new InterruptedException());
+                    CompactionWorker worker = new CompactionWorker(0, mockQueue);
+                    worker.run();
+
                     for (int i = 0; i < task.size(); i++) {
                       TsFileResource resource = task.get(i);
                       if (i == 1) {
@@ -598,8 +620,10 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                       }
                     }
                   } else {
-                    if (!innerSpaceCompactionTask.checkValidAndSetMerging()) {
-                      throw new RuntimeException("cross space compaction task should be valid.");
+                    try {
+                      innerSpaceCompactionTask.transitSourceFilesToMerging();
+                    } catch (FileCannotTransitToCompactingException e) {
+                      Assert.fail("inner space compaction task should be valid.");
                     }
                     for (int i = 0; i < task.size(); i++) {
                       TsFileResource resource = task.get(i);
