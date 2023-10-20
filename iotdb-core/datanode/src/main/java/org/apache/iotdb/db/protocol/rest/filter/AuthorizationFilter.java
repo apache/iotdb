@@ -40,8 +40,8 @@ import javax.ws.rs.ext.Provider;
 
 import java.io.IOException;
 import java.time.ZoneId;
-import java.util.UUID;
 import java.util.Base64;
+import java.util.UUID;
 
 @WebFilter("/*")
 @Provider
