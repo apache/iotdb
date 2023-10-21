@@ -1709,9 +1709,9 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
         conf.setAllocateMemoryForSchema(
             maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
-        conf.setAllocateMemoryForPipe(
-            maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
         conf.setAllocateMemoryForConsensus(
+            maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
+        conf.setAllocateMemoryForPipe(
             maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum);
       }
     }
