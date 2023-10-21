@@ -1927,8 +1927,8 @@ public class Reger {
             }
 
             if (cur_value != pre_value) {
-                run_length_time[pos_value][0] = count_of_value;
-                run_length_time[pos_value][1] = pre_value;
+                run_length_value[pos_value][0] = count_of_value;
+                run_length_value[pos_value][1] = pre_value;
                 pos_value++;
 
                 pre_value = cur_value;
@@ -1936,8 +1936,8 @@ public class Reger {
             } else {
                 count_of_value++;
                 if (count_of_value == 256) {
-                    run_length_time[pos_value][0] = count_of_value;
-                    run_length_time[pos_value][1] = pre_value;
+                    run_length_value[pos_value][0] = count_of_value;
+                    run_length_value[pos_value][1] = pre_value;
                     pos_value++;
                     count_of_value = 0;
                 }
@@ -1950,8 +1950,8 @@ public class Reger {
             pos_time++;
         }
         if (count_of_value != 0) {
-            run_length_time[pos_value][0] = count_of_value;
-            run_length_time[pos_value][1] = pre_value;
+            run_length_value[pos_value][0] = count_of_value;
+            run_length_value[pos_value][1] = pre_value;
             pos_value++;
         }
 
@@ -2989,7 +2989,7 @@ public class Reger {
             count = bytes2Integer(encoded, decode_pos, 1);
             decode_pos++;
             num = bytes2Integer(encoded, decode_pos, 1);
-//            System.out.println("count:"+count+"num:"+num);
+            System.out.println("count:"+count+"num:"+num);
             decode_pos++;
             for(int j=0;j<count;j++){
                 bit_width_segments[pos_bit_width_segments][0]=num;
@@ -3154,34 +3154,34 @@ public class Reger {
         for (int i = 0; i < dataset_name.size(); i++) {
             input_path_list.add(input_parent_dir + dataset_name.get(i));
             dataset_k.add(1);
-            dataset_block_size.add(1024);
+//            dataset_block_size.add(1024);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
-//        dataset_block_size.add(1024);
+        dataset_block_size.add(128);
 
         output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
-//        dataset_block_size.add(512);
+        dataset_block_size.add(4096);
         output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
-//        dataset_block_size.add(512);
+        dataset_block_size.add(8192);
         output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
-//        dataset_block_size.add(256);
+        dataset_block_size.add(8192);
         output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
-//        dataset_block_size.add(128);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
-//        dataset_block_size.add(64);
+        dataset_block_size.add(8192);
         output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
-//        dataset_block_size.add(128);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
-//        dataset_block_size.add(512);
+        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
-//        dataset_block_size.add(256);
+        dataset_block_size.add(128);
         output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
-//        dataset_block_size.add(512);
+        dataset_block_size.add(64);
         output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
-//        dataset_block_size.add(512);
+        dataset_block_size.add(64);
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
-//        dataset_block_size.add(512);
+        dataset_block_size.add(256);
 
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 //        for (int file_i = 9; file_i < 10; file_i++) {
