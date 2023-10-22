@@ -85,6 +85,14 @@ public class Reger {
         return value;
     }
 
+    private static int byte2Integer(byte[] encoded, int decode_pos) {
+        int value = 0;
+        int b = encoded[decode_pos] & 0xFF;
+        value |= b;
+        if(value == 0)
+            return 256;
+        return value%256;
+    }
     public static void pack8Values(ArrayList<Integer> values, int offset, int width, int encode_pos, byte[] encoded_result) {
         int bufIdx = 0;
         int valueIdx = offset;
@@ -2026,6 +2034,9 @@ public class Reger {
         pos_encode += 2;
         intWord2Bytes(pos_value, pos_encode, encoded_result);
         pos_encode += 2;
+//        System.out.println("pos_time="+pos_time);
+//        System.out.println("pos_value="+pos_value);
+
 
 //        System.out.println(Arrays.deepToString(run_length_time));
 //        System.out.println(Arrays.deepToString(run_length_value));
@@ -2035,6 +2046,9 @@ public class Reger {
             pos_encode++;
             intByte2Bytes(bit_width_time[1], pos_encode, encoded_result);
             pos_encode++;
+
+//            System.out.println("bit_width_time[0]="+bit_width_time[0]);
+//            System.out.println("bit_width_time[1]="+bit_width_time[1]);
         }
         for (int i=0;i<pos_value;i++) {
             int[] bit_width_value = run_length_value[i];
@@ -2042,6 +2056,9 @@ public class Reger {
             pos_encode++;
             intByte2Bytes(bit_width_value[1], pos_encode, encoded_result);
             pos_encode++;
+
+//            System.out.println("bit_width_value[0]="+bit_width_value[0]);
+//            System.out.println("bit_width_value[1]="+bit_width_value[1]);
         }
 
         return pos_encode;
@@ -2153,6 +2170,15 @@ public class Reger {
         pos_encode += 4;
         float2bytes(theta[3], pos_encode, encoded_result);
         pos_encode += 4;
+
+//        System.out.println(delta_segments[0][0]);
+//        System.out.println(delta_segments[0][1]);
+//        System.out.println(theta[0] + raw_length[3]);
+//        System.out.println(theta[1]);
+//        System.out.println(theta[2] + raw_length[4]);
+//        System.out.println(theta[3]);
+
+
 
         pos_encode = encodeRLEBitWidth2Bytes(bit_width_segments, pos_encode, encoded_result);
         for (int segment_i = 0; segment_i < segment_n; segment_i++) {
@@ -2617,6 +2643,7 @@ public class Reger {
 
         encode_pos = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, theta, encode_pos, cur_byte);
 
+//        System.out.println("encode_pos="+encode_pos);
         return encode_pos;
     }
 
@@ -2712,19 +2739,22 @@ public class Reger {
         if (length_partition < length_time && length_partition < length_value) { // partition performs better
             data = data_partition;
 
-
+//            for (int i = 0; i < 2; i++) {
+                System.out.println("Partition");
             for (int i = 0; i < block_num; i++) {
                 encode_pos = REGERBlockEncoderPartition(data, i, block_size, segment_size, k, encode_pos, encoded_result);
             }
         } else {
             if (length_value < length_time) { // order by value performs better
-//                System.out.println("type2");
+                System.out.println("Value");
                 data = data_value;
+//                for (int i = 0; i < 2; i++) {
                 for (int i = 0; i < block_num; i++) {
                     encode_pos = REGERBlockEncoder(data, 1, i, block_size, 0, third_value, segment_size, k, encode_pos, encoded_result);
                 }
             } else {
-//                System.out.println("type1");
+                System.out.println("Time");
+//                for (int i = 0; i < 2; i++) {
                 for (int i = 0; i < block_num; i++) {
                     encode_pos = REGERBlockEncoder(data, 0, i, block_size, 0, third_value, segment_size, k, encode_pos, encoded_result);
                 }
@@ -2893,61 +2923,8 @@ public class Reger {
             } else {
                 supple_length = segment_size+1 - remaining_length % segment_size;
             }
-//            if(supple_length+remaining_length<segment_size){
-//                segment_size = 8;
-//            }
             encode_pos = REGERBlockEncoder(data, 0, block_num, block_size, supple_length+remaining_length, third_value, segment_size, k, encode_pos, encoded_result);
 
-//      ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
-//      ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
-//
-//      int min_time = data.get(block_num * block_size).get(0);
-//      for (int j = block_num * block_size; j < length_all; j++) {
-//        data.get(j).set(0,data.get(j).get(0) - min_time);
-//        ts_block.add(data.get(j));
-//        ts_block_reorder.add(data.get(j));
-//      }
-//      ArrayList<Integer> result2 = new ArrayList<>();
-//      splitTimeStamp3(ts_block, result2);
-//
-//      quickSort(ts_block, 0, 0, remaining_length - 1);
-//
-//      // time-order
-//      ArrayList<Integer> raw_length =
-//              new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-//      ArrayList<Integer> i_star_ready = new ArrayList<>();
-//      ArrayList<Float> theta = new ArrayList<>();
-//      ArrayList<ArrayList<Integer>> ts_block_delta =
-//              getEncodeBitsRegression(ts_block, remaining_length, raw_length, theta, segment_size);
-//
-//      // value-order
-//      quickSort(ts_block, 1, 0, remaining_length - 1);
-//      ArrayList<Integer> reorder_length = new ArrayList<>();
-//      ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
-//      ArrayList<Float> theta_reorder = new ArrayList<>();
-//      ArrayList<ArrayList<Integer>> ts_block_delta_reorder =
-//              getEncodeBitsRegression(
-//                      ts_block, remaining_length, reorder_length, theta_reorder, segment_size);
-//
-//      if (raw_length.get(0) <= reorder_length.get(0)) {
-//        quickSort(ts_block, 0, 0, remaining_length - 1);
-//      } else {
-//        raw_length = reorder_length;
-//        theta = theta_reorder;
-//        quickSort(ts_block, 1, 0, remaining_length - 1);
-//      }
-//      ts_block_delta =
-//              getEncodeBitsRegression(ts_block, remaining_length, raw_length, theta, segment_size);
-//
-//      for (int s = 0; s < supple_length; s++) {
-//        ArrayList<Integer> tmp = new ArrayList<>();
-//        tmp.add(0);
-//        tmp.add(0);
-//        ts_block_delta.add(tmp);
-//      }
-//      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, theta, result2);
-//
-//      encode_pos += cur_encoded_result.size();
         }
         return encode_pos;
     }
@@ -2977,6 +2954,15 @@ public class Reger {
         decode_pos += 2;
         int bit_width_value_count = bytes2Integer(encoded, decode_pos, 2);
         decode_pos += 2;
+//        System.out.println(time0);
+//        System.out.println(value0);
+//        System.out.println(theta_time0);
+//        System.out.println(theta_time1);
+//        System.out.println(theta_time0);
+//        System.out.println(theta_time1);
+//        System.out.println("bit_width_time_count="+bit_width_time_count);
+//        System.out.println("bit_width_value_count="+bit_width_value_count);
+
 
 //        int[][] run_length_time = new int[bit_width_time_count][2];
 //        int[][] run_length_value = new int[bit_width_value_count][2];
@@ -2986,10 +2972,11 @@ public class Reger {
         int[][] bit_width_segments = new int[segment_n][2];
         int pos_bit_width_segments = 0;
         for (int i=0;i<bit_width_time_count;i++) {
-            count = bytes2Integer(encoded, decode_pos, 1);
+            count = byte2Integer(encoded, decode_pos);
             decode_pos++;
-            num = bytes2Integer(encoded, decode_pos, 1);
-            System.out.println("count:"+count+"num:"+num);
+            num = byte2Integer(encoded, decode_pos);
+//            System.out.println("count:"+count);
+//            System.out.println("num:"+num);
             decode_pos++;
             for(int j=0;j<count;j++){
                 bit_width_segments[pos_bit_width_segments][0]=num;
@@ -3000,17 +2987,19 @@ public class Reger {
 
         pos_bit_width_segments = 0;
         for (int i=0;i<bit_width_value_count;i++) {
-            count = bytes2Integer(encoded, decode_pos, 1);
+            count = byte2Integer(encoded, decode_pos);
             decode_pos++;
-            num =bytes2Integer(encoded, decode_pos, 1);
+            num =byte2Integer(encoded, decode_pos);
             decode_pos++;
+//            System.out.println("count:"+count);
+//            System.out.println("num:"+num);
             for(int j=0;j<count;j++){
                 bit_width_segments[pos_bit_width_segments][1]=num;
                 pos_bit_width_segments ++;
             }
         }
 
-        ArrayList<Integer> decode_pos_result = new ArrayList<>();
+//        ArrayList<Integer> decode_pos_result = new ArrayList<>();
         int pre_time = time0;
         int pre_value = value0;
 
@@ -3038,7 +3027,7 @@ public class Reger {
         }
 
 
-
+//        System.out.println("decode_pos="+decode_pos);
 
 //        ArrayList<Integer> decode_pos_normal = new ArrayList<>();
 //        ArrayList<Integer> final_normal =  decodeBitPacking(encoded, decode_pos, bit_width_final, block_size,decode_pos_normal);
@@ -3053,6 +3042,9 @@ public class Reger {
 //        }
         return decode_pos;
     }
+
+
+
     public static void REGERDecoder(byte[] encoded) {
 
         int decode_pos = 0;
@@ -3078,6 +3070,7 @@ public class Reger {
 
         int[] value_pos_arr = new int[1];
 
+//        for (int k = 0; k < 2; k++) {
         for (int k = 0; k < block_num; k++) {
 //            System.out.println("k="+k);
             decode_pos = REGERBlockDecoder(encoded, decode_pos, value_list, block_size,segment_size,value_pos_arr);
@@ -3184,7 +3177,7 @@ public class Reger {
         dataset_block_size.add(256);
 
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-//        for (int file_i = 9; file_i < 10; file_i++) {
+//        for (int file_i = 2; file_i < 3; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
@@ -3270,6 +3263,7 @@ public class Reger {
                 writer.writeRecord(record);
                 System.out.println(ratio);
 
+//                break;
             }
             writer.close();
         }
