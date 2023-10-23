@@ -72,7 +72,7 @@ public class StartClientScriptIT extends AbstractScript {
   @Override
   protected void testOnWindows() throws IOException {
     final String homePath =
-            libPath.substring(0, libPath.lastIndexOf(File.separator + "lib" + File.separator + "*"));
+        libPath.substring(0, libPath.lastIndexOf(File.separator + "lib" + File.separator + "*"));
 
     final String[] output = {
       "Error: Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."
