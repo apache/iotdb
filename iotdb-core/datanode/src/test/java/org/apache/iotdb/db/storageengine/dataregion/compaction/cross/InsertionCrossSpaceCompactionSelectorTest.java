@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
@@ -52,7 +53,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testSimpleInsertionCompaction() throws IOException {
+  public void testSimpleInsertionCompaction() throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -81,7 +82,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testSimpleInsertionCompactionWithMultiUnseqFiles() throws IOException {
+  public void testSimpleInsertionCompactionWithMultiUnseqFiles()
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -114,7 +116,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testSimpleInsertionCompactionWithFirstUnseqFileCannotSelect() throws IOException {
+  public void testSimpleInsertionCompactionWithFirstUnseqFileCannotSelect()
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -149,7 +152,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testSimpleInsertionCompactionWithFirstUnseqFileInvalid() throws IOException {
+  public void testSimpleInsertionCompactionWithFirstUnseqFileInvalid()
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -182,7 +186,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testSimpleInsertionCompactionWithFirstTwoUnseqFileCannotSelect() throws IOException {
+  public void testSimpleInsertionCompactionWithFirstTwoUnseqFileCannotSelect()
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -221,7 +226,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testSimpleInsertionCompactionWithUnseqDeviceNotExistInSeqSpace() throws IOException {
+  public void testSimpleInsertionCompactionWithUnseqDeviceNotExistInSeqSpace()
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1", d2 = "root.testsg.d2";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -250,7 +256,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testSimpleInsertionCompactionWithUnseqFileInsertFirstInSeqSpace() throws IOException {
+  public void testSimpleInsertionCompactionWithUnseqFileInsertFirstInSeqSpace()
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -279,7 +286,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testSimpleInsertionCompactionWithUnseqFileInsertLastInSeqSpace() throws IOException {
+  public void testSimpleInsertionCompactionWithUnseqFileInsertLastInSeqSpace()
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -308,7 +316,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testSimpleInsertionCompactionWithCloseTimestamp() throws IOException {
+  public void testSimpleInsertionCompactionWithCloseTimestamp() throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -335,7 +343,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testSimpleInsertionCompactionWithOverlap() throws IOException {
+  public void testSimpleInsertionCompactionWithOverlap() throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -363,7 +371,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testSimpleInsertionCompactionWithPrevSeqFileInvalidCompactionCandidate()
-      throws IOException {
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -395,7 +403,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testSimpleInsertionCompactionWithNextSeqFileInvalidCompactionCandidate()
-      throws IOException {
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -426,7 +434,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testSimpleInsertionCompactionWithManySeqFiles() throws IOException {
+  public void testSimpleInsertionCompactionWithManySeqFiles() throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -463,7 +471,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testInsertionCompactionWithManySeqFilesManyDevices() throws IOException {
+  public void testInsertionCompactionWithManySeqFilesManyDevices()
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     String d2 = "root.testsg.d2";
     String d3 = "root.testsg.d3";
@@ -506,7 +515,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testInsertionCompactionWithManySeqFilesManyDevices2() throws IOException {
+  public void testInsertionCompactionWithManySeqFilesManyDevices2()
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     String d2 = "root.testsg.d2";
     String d3 = "root.testsg.d3";
@@ -549,7 +559,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testInsertionCompactionWithManySeqFilesManyDevices3() throws IOException {
+  public void testInsertionCompactionWithManySeqFilesManyDevices3()
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     String d2 = "root.testsg.d2";
     String d3 = "root.testsg.d3";
@@ -592,7 +603,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testInsertionCompactionWithManySeqFilesManyDevices4() throws IOException {
+  public void testInsertionCompactionWithManySeqFilesManyDevices4()
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     String d2 = "root.testsg.d2";
     String d3 = "root.testsg.d3";
@@ -637,7 +649,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testInsertionCompactionWithManySeqFilesManyDevices5() throws IOException {
+  public void testInsertionCompactionWithManySeqFilesManyDevices5()
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     String d2 = "root.testsg.d2";
     String d3 = "root.testsg.d3";
@@ -682,7 +695,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testInsertionCompactionWithManySeqFilesManyDevices6() throws IOException {
+  public void testInsertionCompactionWithManySeqFilesManyDevices6()
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     String d2 = "root.testsg.d2";
     String d3 = "root.testsg.d3";
@@ -723,7 +737,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testInsertionCompactionWithManySeqFilesManyDevicesWithOverlap() throws IOException {
+  public void testInsertionCompactionWithManySeqFilesManyDevicesWithOverlap()
+      throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     String d2 = "root.testsg.d2";
     String d3 = "root.testsg.d3";

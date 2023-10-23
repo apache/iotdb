@@ -134,13 +134,17 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   }
 
   public InsertionCrossCompactionTaskResource selectOneInsertionTask(
-      CrossSpaceCompactionCandidate candidate) throws IOException {
+      CrossSpaceCompactionCandidate candidate) throws MergeException {
     InsertionCrossSpaceCompactionSelector insertionCrossSpaceCompactionSelector =
         new InsertionCrossSpaceCompactionSelector(candidate);
-    InsertionCrossCompactionTaskResource result =
-        insertionCrossSpaceCompactionSelector.executeXXXXTaskResourceSelection();
-    if (result != null && result.isValid()) {
-      return result;
+    try {
+      InsertionCrossCompactionTaskResource result =
+          insertionCrossSpaceCompactionSelector.executeXXXXTaskResourceSelection();
+      if (result != null && result.isValid()) {
+        return result;
+      }
+    } catch (IOException e) {
+      throw new MergeException(e);
     }
     return null;
   }
@@ -292,9 +296,21 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
+  public List<CrossCompactionTaskResource> selectCrossSpaceTask(
+      List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFilelist) {
+    return selectCrossSpaceTask(sequenceFileList, unsequenceFilelist, false);
+  }
+
+  public List<CrossCompactionTaskResource> selectInsertionCrossSpaceTask(
+      List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
+    return selectCrossSpaceTask(sequenceFileList, unsequenceFileList, true);
+  }
+
   @SuppressWarnings({"squid:S1135", "squid:S2696"})
   public List<CrossCompactionTaskResource> selectCrossSpaceTask(
-      List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
+      List<TsFileResource> sequenceFileList,
+      List<TsFileResource> unsequenceFileList,
+      boolean isInsertionTask) {
     if (!canSubmitCrossTask(sequenceFileList, unsequenceFileList)) {
       return Collections.emptyList();
     }
@@ -308,7 +324,12 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     CrossSpaceCompactionCandidate candidate =
         new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
     try {
-      CrossCompactionTaskResource taskResources = selectOneTaskResources(candidate);
+      CrossCompactionTaskResource taskResources;
+      if (isInsertionTask) {
+        taskResources = selectOneInsertionTask(candidate);
+      } else {
+        taskResources = selectOneTaskResources(candidate);
+      }
       String sgDataRegionId = logicalStorageGroupName + "-" + dataRegionId;
       if (!taskResources.isValid()) {
         if (!hasPrintedLog) {

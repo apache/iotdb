@@ -77,7 +77,8 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   protected List<TsFileResource> getAllSourceTsFiles() {
-    return Stream.concat(selectedSeqFiles.stream(), selectedUnseqFiles.stream()).collect(Collectors.toList());
+    return Stream.concat(selectedSeqFiles.stream(), selectedUnseqFiles.stream())
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -149,9 +150,13 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   private File generateTargetFile() throws IOException {
     String path = unseqFileToInsert.getTsFile().getParentFile().getAbsolutePath();
     path = path.replace("unsequence", "sequence");
-    TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(unseqFileToInsert.getTsFile().getName());
+    TsFileNameGenerator.TsFileName tsFileName =
+        TsFileNameGenerator.getTsFileName(unseqFileToInsert.getTsFile().getName());
     tsFileName.setTime(timestamp);
-    String fileNameStr = String.format("%d-%d-%d-%d.tsfile", tsFileName.getTime(), tsFileName.getVersion(), tsFileName.getInnerCompactionCnt(), 0);
+    String fileNameStr =
+        String.format(
+            "%d-%d-%d-%d.tsfile",
+            tsFileName.getTime(), tsFileName.getVersion(), tsFileName.getInnerCompactionCnt(), 0);
     return new File(path + File.separator + fileNameStr);
   }
 
@@ -170,9 +175,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  protected void recover() {
-
-  }
+  protected void recover() {}
 
   @Override
   public boolean equalsOtherTask(AbstractCompactionTask otherTask) {

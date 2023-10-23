@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Inne
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -79,7 +80,7 @@ public class CompactionScheduler {
     }
     return trySubmitCount;
   }
-  
+
   public static int scheduleInsertionCompaction(
       TsFileManager tsFileManager, long timePartition, Phaser insertionTaskPhaser) {
     if (!tsFileManager.isAllowCompaction()) {
@@ -139,8 +140,27 @@ public class CompactionScheduler {
       TsFileManager tsFileManager, long timePartition, Phaser insertionTaskPhaser)
       throws InterruptedException {
     // 在提交一个任务的时候调用这个方法
-    insertionTaskPhaser.register();
+    if (!config.isEnableCrossSpaceCompaction()) {
+      return 0;
+    }
+    String logicalStorageGroupName = tsFileManager.getStorageGroupName();
+    String dataRegionId = tsFileManager.getDataRegionId();
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector(
+            logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
 
+    List<CrossCompactionTaskResource> selectedTasks = selector.selectInsertionCrossSpaceTask(
+        tsFileManager.getOrCreateSequenceListByTimePartition(timePartition),
+        tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
+    if (selectedTasks.isEmpty()) {
+      return 0;
+    }
+
+    InsertionCrossSpaceCompactionTask task = new InsertionCrossSpaceCompactionTask(insertionTaskPhaser, timePartition, tsFileManager, (InsertionCrossCompactionTaskResource) selectedTasks.get(0), tsFileManager.getNextCompactionTaskId());
+    if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
+      insertionTaskPhaser.register();
+      return 1;
+    }
     return 0;
   }
 
@@ -168,32 +188,20 @@ public class CompactionScheduler {
     // evicted due to the low priority of the task
     int trySubmitCount = 0;
     for (int i = 0, size = taskList.size(); i < size; ++i) {
-      if (taskList.get(i) instanceof InsertionCrossCompactionTaskResource) {
-        if (CompactionTaskManager.getInstance()
-            .addTaskToWaitingQueue(
-                new InsertionCrossSpaceCompactionTask(
-                    timePartition,
-                    tsFileManager,
-                    (InsertionCrossCompactionTaskResource) taskList.get(i),
-                    tsFileManager.getNextCompactionTaskId()))) {
-          trySubmitCount++;
-        }
-      } else {
-        if (CompactionTaskManager.getInstance()
-            .addTaskToWaitingQueue(
-                new CrossSpaceCompactionTask(
-                    timePartition,
-                    tsFileManager,
-                    taskList.get(i).getSeqFiles(),
-                    taskList.get(i).getUnseqFiles(),
-                    IoTDBDescriptor.getInstance()
-                        .getConfig()
-                        .getCrossCompactionPerformer()
-                        .createInstance(),
-                    memoryCost.get(i),
-                    tsFileManager.getNextCompactionTaskId()))) {
-          trySubmitCount++;
-        }
+      if (CompactionTaskManager.getInstance()
+          .addTaskToWaitingQueue(
+              new CrossSpaceCompactionTask(
+                  timePartition,
+                  tsFileManager,
+                  taskList.get(i).getSeqFiles(),
+                  taskList.get(i).getUnseqFiles(),
+                  IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .getCrossCompactionPerformer()
+                      .createInstance(),
+                  memoryCost.get(i),
+                  tsFileManager.getNextCompactionTaskId()))) {
+        trySubmitCount++;
       }
     }
     return trySubmitCount;
