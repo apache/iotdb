@@ -25,6 +25,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.SocketException;
 
@@ -102,9 +103,11 @@ public interface ThriftClient {
    * @param cause Throwable
    * @return true/false
    */
-  public static boolean isConnectionBroken(Throwable cause) {
+  static boolean isConnectionBroken(Throwable cause) {
     return (cause instanceof SocketException && cause.getMessage().contains("Broken pipe"))
         || (cause instanceof TTransportException
-            && cause.getMessage().contains("Socket is closed by peer"));
+            && cause.getMessage().contains("Socket is closed by peer"))
+        || (cause instanceof IOException
+            && cause.getMessage().contains("Connection reset by peer"));
   }
 }
