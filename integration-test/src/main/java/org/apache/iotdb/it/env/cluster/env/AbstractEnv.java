@@ -153,7 +153,7 @@ public abstract class AbstractEnv implements BaseEnv {
         (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
     seedConfigNodeWrapper.createLogDir();
     seedConfigNodeWrapper.start();
-    String targetConfigNode = seedConfigNodeWrapper.getIpAndPortString();
+    String seedConfigNode = seedConfigNodeWrapper.getIpAndPortString();
     this.configNodeWrapperList.add(seedConfigNodeWrapper);
 
     // Check if the Seed-ConfigNode started successfully
@@ -171,7 +171,7 @@ public abstract class AbstractEnv implements BaseEnv {
       ConfigNodeWrapper configNodeWrapper =
           new ConfigNodeWrapper(
               false,
-              targetConfigNode,
+              seedConfigNode,
               testClassName,
               testMethodName,
               EnvUtils.searchAvailablePorts(),
@@ -205,7 +205,7 @@ public abstract class AbstractEnv implements BaseEnv {
     for (int i = 0; i < dataNodesNum; i++) {
       DataNodeWrapper dataNodeWrapper =
           new DataNodeWrapper(
-              targetConfigNode,
+              seedConfigNode,
               testClassName,
               testMethodName,
               EnvUtils.searchAvailablePorts(),

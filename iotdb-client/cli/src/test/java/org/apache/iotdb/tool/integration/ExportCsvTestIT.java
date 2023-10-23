@@ -89,7 +89,7 @@ public class ExportCsvTestIT extends AbstractScript {
     String dir = getCliPath();
     ProcessBuilder builder =
         new ProcessBuilder(
-            "sh",
+            "bash",
             dir + File.separator + "tools" + File.separator + "export-csv.sh",
             "-h",
             "127.0.0.1",

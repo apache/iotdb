@@ -220,7 +220,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  public void loadProperties(Properties properties) throws BadNodeUrlException {
+  public void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
     conf.setClusterSchemaLimitLevel(
         properties
             .getProperty("cluster_schema_limit_level", conf.getClusterSchemaLimitLevel())
@@ -2015,16 +2015,25 @@ public class IoTDBDescriptor {
             false));
   }
 
-  public void loadClusterProps(Properties properties) {
-    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
+  public void loadClusterProps(Properties properties) throws IOException {
+    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_SEED_CONFIG_NODE);
+    if (configNodeUrls == null) {
+      configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
+      logger.warn(
+          "The parameter dn_target_config_node_list has been abandoned, "
+              + "only the first ConfigNode address will be used to join in the cluster. "
+              + "Please use dn_seed_config_node instead.");
+    }
     if (configNodeUrls != null) {
       try {
         configNodeUrls = configNodeUrls.trim();
-        conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
+        conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(configNodeUrls).get(0));
       } catch (BadNodeUrlException e) {
-        logger.error(
-            "Config nodes are set in wrong format, please set them like 127.0.0.1:10710,127.0.0.1:10712");
+        logger.error("ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710");
       }
+    } else {
+      throw new IOException(
+          "The parameter dn_seed_config_node is not set, this DataNode will not join in any cluster.");
     }
 
     conf.setInternalAddress(
@@ -2176,6 +2185,10 @@ public class IoTDBDescriptor {
 
     conf.setSchemaRatisLogMax(ratisConfig.getSchemaRegionRatisLogMax());
     conf.setDataRatisLogMax(ratisConfig.getDataRegionRatisLogMax());
+
+    conf.setSchemaRatisPeriodicSnapshotInterval(
+        ratisConfig.getSchemaRegionPeriodicSnapshotInterval());
+    conf.setDataRatisPeriodicSnapshotInterval(ratisConfig.getDataRegionPeriodicSnapshotInterval());
   }
 
   public void loadCQConfig(TCQConfig cqConfig) {

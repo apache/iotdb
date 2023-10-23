@@ -210,6 +210,11 @@ public class NodeManager {
     ratisConfig.setSchemaRegionRatisLogMax(conf.getSchemaRegionRatisLogMax());
     ratisConfig.setDataRegionRatisLogMax(conf.getDataRegionRatisLogMax());
 
+    ratisConfig.setSchemaRegionPeriodicSnapshotInterval(
+        conf.getSchemaRegionRatisPeriodicSnapshotInterval());
+    ratisConfig.setDataRegionPeriodicSnapshotInterval(
+        conf.getDataRegionRatisPeriodicSnapshotInterval());
+
     dataSet.setRatisConfig(ratisConfig);
   }
 
