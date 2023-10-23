@@ -20,22 +20,27 @@
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.consensus.iot.client.DispatchLogHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.apache.iotdb.commons.client.ThriftClient.isConnectionBroken;
+
 public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchPlanNodeResp> {
 
   private final List<Integer> instanceIds;
   private final AtomicLong pendingNumber;
   private final Map<Integer, TSendSinglePlanNodeResp> instanceId2RespMap;
+  private final List<Integer> needRetryInstanceIndex;
   private final long sendTime;
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
@@ -44,17 +49,23 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
       List<Integer> instanceIds,
       AtomicLong pendingNumber,
       Map<Integer, TSendSinglePlanNodeResp> instanceId2RespMap,
+      List<Integer> needRetryInstanceIndex,
       long sendTime) {
     this.instanceIds = instanceIds;
     this.pendingNumber = pendingNumber;
     this.instanceId2RespMap = instanceId2RespMap;
+    this.needRetryInstanceIndex = needRetryInstanceIndex;
     this.sendTime = sendTime;
   }
 
   @Override
   public void onComplete(TSendBatchPlanNodeResp sendBatchPlanNodeResp) {
     for (int i = 0; i < sendBatchPlanNodeResp.getResponses().size(); i++) {
-      instanceId2RespMap.put(instanceIds.get(i), sendBatchPlanNodeResp.getResponses().get(i));
+      TSendSinglePlanNodeResp singlePlanNodeResp = sendBatchPlanNodeResp.getResponses().get(i);
+      instanceId2RespMap.put(instanceIds.get(i), singlePlanNodeResp);
+      if (needRetry(singlePlanNodeResp)) {
+        needRetryInstanceIndex.add(instanceIds.get(i));
+      }
     }
     if (pendingNumber.decrementAndGet() == 0) {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleRemoteCost(System.nanoTime() - sendTime);
@@ -66,6 +77,9 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
 
   @Override
   public void onError(Exception e) {
+    if (needRetry(e)) {
+      needRetryInstanceIndex.addAll(instanceIds);
+    }
     TSendSinglePlanNodeResp resp = new TSendSinglePlanNodeResp();
     String errorMsg = String.format("Fail to send plan node, exception message: %s", e);
     resp.setAccepted(false);
@@ -79,5 +93,16 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
         pendingNumber.notifyAll();
       }
     }
+  }
+
+  private boolean needRetry(Exception e) {
+    Throwable rootCause = ExceptionUtils.getRootCause(e);
+    // if the exception is SocketException and its error message is Broken pipe, it means that the
+    // remote node may go offline
+    return isConnectionBroken(rootCause);
+  }
+
+  private boolean needRetry(TSendSinglePlanNodeResp resp) {
+    return DispatchLogHandler.needRetry(resp.status.code);
   }
 }
