@@ -103,6 +103,6 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
   }
 
   private boolean needRetry(TSendSinglePlanNodeResp resp) {
-    return DispatchLogHandler.needRetry(resp.status.code);
+    return !resp.accepted && DispatchLogHandler.needRetry(resp.status.code);
   }
 }

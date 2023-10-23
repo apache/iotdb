@@ -89,8 +89,8 @@ public interface ThriftClient {
         if (o.printLogWhenEncounterException()) {
           logger.info(
               "Broken pipe error happened in sending RPC,"
-                  + " we need to clear all previous cached connection",
-              t);
+                  + " we need to clear all previous cached connection, error msg is {}",
+              rootCause.toString());
         }
         o.invalidateAll();
       }
@@ -106,7 +106,8 @@ public interface ThriftClient {
   static boolean isConnectionBroken(Throwable cause) {
     return (cause instanceof SocketException && cause.getMessage().contains("Broken pipe"))
         || (cause instanceof TTransportException
-            && cause.getMessage().contains("Socket is closed by peer"))
+            && (cause.getMessage().contains("Socket is closed by peer")
+                || cause.getMessage().contains("Read call frame size failed")))
         || (cause instanceof IOException
             && cause.getMessage().contains("Connection reset by peer"));
   }
