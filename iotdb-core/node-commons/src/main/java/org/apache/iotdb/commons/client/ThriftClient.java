@@ -102,7 +102,7 @@ public interface ThriftClient {
    * @param cause Throwable
    * @return true/false
    */
-  static boolean isConnectionBroken(Throwable cause) {
+  public static boolean isConnectionBroken(Throwable cause) {
     return (cause instanceof SocketException && cause.getMessage().contains("Broken pipe"))
         || (cause instanceof TTransportException
             && cause.getMessage().contains("Socket is closed by peer"));
