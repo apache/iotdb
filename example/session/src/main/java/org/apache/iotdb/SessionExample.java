@@ -348,9 +348,9 @@ public class SessionExample {
     types.add(TSDataType.FLOAT);
     types.add(TSDataType.FLOAT);
     List<Object> values = new ArrayList<>();
-    values.add(2.0f);
-    values.add(2.0f);
-    values.add(2.0f);
+    values.add(4.0f);
+    values.add(4.0f);
+    values.add(4.0f);
 
     List<List<String>> measurementsList = new ArrayList<>();
     measurementsList.add(measurements);
@@ -363,9 +363,9 @@ public class SessionExample {
     valuesList.add(values);
 
     List<Long> timestamps = new ArrayList<>();
-    timestamps.add(2L);
-    timestamps.add(2L);
-    timestamps.add(2L);
+    timestamps.add(4L);
+    timestamps.add(4L);
+    timestamps.add(4L);
 
     List<List<TSDataType>> typesList = new ArrayList<>();
     typesList.add(types);
