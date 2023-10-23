@@ -182,9 +182,12 @@ public class AuthorInfo implements SnapshotProcessor {
     String password = authorPlan.getPassword();
     String newPassword = authorPlan.getNewPassword();
     Set<Integer> permissions = authorPlan.getPermissions();
+    boolean grantOpt = authorPlan.getGrantOpt();
+    List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
     if (authorType.ordinal() >= ConfigPhysicalPlanType.GrantRoleDep.ordinal()
         && authorType.ordinal() <= ConfigPhysicalPlanType.RevokeRoleFromUserDep.ordinal()) {
       HashSet<Integer> pricopy = new HashSet<>();
+      // for all privilege. the nodeNameList will be root.**
       for (int permission : permissions) {
         PriPrivilegeType type = PriPrivilegeType.values()[permission];
         if (type.isAccept()) {
@@ -195,8 +198,7 @@ public class AuthorInfo implements SnapshotProcessor {
       }
       permissions = pricopy;
     }
-    boolean grantOpt = authorPlan.getGrantOpt();
-    List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
+
     try {
       switch (authorType) {
         case UpdateUserDep:

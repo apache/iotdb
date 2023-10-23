@@ -220,7 +220,7 @@ public abstract class BasicUserManager implements IUserManager {
           AuthUtils.validatePath(path);
           AuthUtils.removePrivilegePre(path, privilegeId, user.getPathPrivilegeList());
         } else {
-          if (user.getSysPrivilege().contains(privilegeId)) {
+          if (!user.getSysPrivilege().contains(privilegeId)) {
             return false;
           }
           user.getSysPrivilege().remove(privilegeId);
