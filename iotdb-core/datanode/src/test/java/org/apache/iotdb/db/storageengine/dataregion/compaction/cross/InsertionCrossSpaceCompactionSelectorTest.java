@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.XXXXCrossCompactionTaskResource;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
@@ -72,7 +72,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource result =
+    InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertEquals(unseqResource1, result.toInsertUnSeqFile);
@@ -105,7 +105,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource result =
+    InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertEquals(unseqResource1, result.toInsertUnSeqFile);
@@ -139,7 +139,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource result =
+    InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertEquals(unseqResource2, result.toInsertUnSeqFile);
@@ -175,7 +175,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource result =
+    InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertNull(result);
@@ -211,7 +211,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource result =
+    InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertEquals(unseqResource3, result.toInsertUnSeqFile);
@@ -241,7 +241,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource result =
+    InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertEquals(unseqResource1, result.toInsertUnSeqFile);
@@ -270,7 +270,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource result =
+    InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertEquals(unseqResource1, result.toInsertUnSeqFile);
@@ -299,7 +299,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource result =
+    InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertEquals(unseqResource1, result.toInsertUnSeqFile);
@@ -328,7 +328,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource result =
+    InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertNull(result);
@@ -355,7 +355,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource result =
+    InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertNull(result);
@@ -387,7 +387,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource result =
+    InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertNull(result);
@@ -419,7 +419,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource result =
+    InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertNull(result);
@@ -454,7 +454,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource task =
+    InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertEquals(unseqResource1, task.toInsertUnSeqFile);
@@ -497,7 +497,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource task =
+    InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertEquals(unseqResource1, task.toInsertUnSeqFile);
@@ -540,7 +540,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource task =
+    InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertEquals(unseqResource1, task.toInsertUnSeqFile);
@@ -583,7 +583,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource task =
+    InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertEquals(unseqResource1, task.toInsertUnSeqFile);
@@ -628,7 +628,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource task =
+    InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertEquals(unseqResource1, task.toInsertUnSeqFile);
@@ -673,7 +673,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource task =
+    InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertEquals(unseqResource1, task.toInsertUnSeqFile);
@@ -714,7 +714,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource task =
+    InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertEquals(unseqResource1, task.toInsertUnSeqFile);
@@ -761,7 +761,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-    XXXXCrossCompactionTaskResource task =
+    InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
     Assert.assertNull(task);

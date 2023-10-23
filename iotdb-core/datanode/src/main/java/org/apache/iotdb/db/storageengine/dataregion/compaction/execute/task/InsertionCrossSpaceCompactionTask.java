@@ -23,7 +23,7 @@ import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.XXXXCrossCompactionTaskResource;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -41,7 +41,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   public InsertionCrossSpaceCompactionTask(
       long timePartition,
       TsFileManager tsFileManager,
-      XXXXCrossCompactionTaskResource taskResource,
+      InsertionCrossCompactionTaskResource taskResource,
       long serialId) {
     super(
         tsFileManager.getStorageGroupName(),

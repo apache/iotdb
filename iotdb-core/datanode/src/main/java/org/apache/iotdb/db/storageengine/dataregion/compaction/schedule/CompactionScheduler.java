@@ -28,13 +28,15 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Inse
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.XXXXCrossCompactionTaskResource;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 /**
@@ -51,6 +53,7 @@ public class CompactionScheduler {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  public static Lock compactionScheduleLock = new ReentrantLock();
 
   private CompactionScheduler() {}
 
@@ -72,6 +75,20 @@ public class CompactionScheduler {
       trySubmitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition);
       trySubmitCount += tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true);
       trySubmitCount += tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false);
+    } catch (InterruptedException e) {
+      LOGGER.error("Exception occurs when selecting compaction tasks", e);
+      Thread.currentThread().interrupt();
+    }
+    return trySubmitCount;
+  }
+
+  public static int scheduleInsertionCompaction(TsFileManager tsFileManager, long timePartition) {
+    if (!tsFileManager.isAllowCompaction()) {
+      return 0;
+    }
+    int trySubmitCount = 0;
+    try {
+      trySubmitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition);
     } catch (InterruptedException e) {
       LOGGER.error("Exception occurs when selecting compaction tasks", e);
       Thread.currentThread().interrupt();
@@ -141,13 +158,13 @@ public class CompactionScheduler {
     // evicted due to the low priority of the task
     int trySubmitCount = 0;
     for (int i = 0, size = taskList.size(); i < size; ++i) {
-      if (taskList.get(i) instanceof XXXXCrossCompactionTaskResource) {
+      if (taskList.get(i) instanceof InsertionCrossCompactionTaskResource) {
         if (CompactionTaskManager.getInstance()
             .addTaskToWaitingQueue(
                 new InsertionCrossSpaceCompactionTask(
                     timePartition,
                     tsFileManager,
-                    (XXXXCrossCompactionTaskResource) taskList.get(i),
+                    (InsertionCrossCompactionTaskResource) taskList.get(i),
                     tsFileManager.getNextCompactionTaskId()))) {
           trySubmitCount++;
         }

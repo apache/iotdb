@@ -31,7 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.Cr
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.DeviceInfo;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.TsFileResourceCandidate;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.XXXXCrossCompactionTaskResource;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -133,11 +133,11 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     }
   }
 
-  public XXXXCrossCompactionTaskResource selectOneInsertionTask(
+  public InsertionCrossCompactionTaskResource selectOneInsertionTask(
       CrossSpaceCompactionCandidate candidate) throws IOException {
-    XXXXCompactionSelector xxxxCompactionSelector = new XXXXCompactionSelector(candidate);
-    XXXXCrossCompactionTaskResource result =
-        xxxxCompactionSelector.executeXXXXTaskResourceSelection();
+    InsertionCrossSpaceCompactionSelector insertionCrossSpaceCompactionSelector = new InsertionCrossSpaceCompactionSelector(candidate);
+    InsertionCrossCompactionTaskResource result =
+        insertionCrossSpaceCompactionSelector.executeXXXXTaskResourceSelection();
     if (result != null && result.isValid()) {
       return result;
     }
@@ -355,19 +355,23 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     return Collections.emptyList();
   }
 
-  public static class XXXXCompactionSelector {
+  public static class InsertionCrossSpaceCompactionSelector {
 
     private List<TsFileResourceCandidate> seqFiles;
     private List<TsFileResourceCandidate> unseqFiles;
 
-    public XXXXCompactionSelector(CrossSpaceCompactionCandidate candidate) {
+    public InsertionCrossSpaceCompactionSelector(CrossSpaceCompactionCandidate candidate) {
       seqFiles = candidate.getSeqFileCandidates();
       unseqFiles = candidate.getUnseqFileCandidates();
     }
 
-    private XXXXCrossCompactionTaskResource executeXXXXTaskResourceSelection() throws IOException {
-      XXXXCrossCompactionTaskResource result = new XXXXCrossCompactionTaskResource();
+    private InsertionCrossCompactionTaskResource executeXXXXTaskResourceSelection() throws IOException {
+      InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
       if (unseqFiles.isEmpty()) {
+        return result;
+      }
+      if (seqFiles.isEmpty()) {
+        result.toInsertUnSeqFile = unseqFiles.get(0).resource;
         return result;
       }
       for (TsFileResourceCandidate unseqFile : unseqFiles) {
@@ -385,7 +389,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       return result;
     }
 
-    private XXXXCrossCompactionTaskResource selectCurrentUnSeqFile(
+    private InsertionCrossCompactionTaskResource selectCurrentUnSeqFile(
         TsFileResourceCandidate unseqFile) throws IOException {
       int previousSeqFileIndex = 0;
       int nextSeqFileIndex = seqFiles.size() - 1;
@@ -426,7 +430,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         }
       }
 
-      XXXXCrossCompactionTaskResource result = new XXXXCrossCompactionTaskResource();
+      InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
       // select position to insert
       if (hasPreviousSeqFile) {
         for (int i = previousSeqFileIndex; i < nextSeqFileIndex; i++) {
@@ -437,7 +441,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
                 TsFileNameGenerator.getTsFileName(prev.resource.getTsFile().getName()).getTime();
             long nextTimestamp =
                 TsFileNameGenerator.getTsFileName(next.resource.getTsFile().getName()).getTime();
-            if (prevTimestamp + 1 != nextTimestamp) {
+            if (nextTimestamp - prevTimestamp > 1) {
               result.prevSeqFile = prev.resource;
               prev.markAsSelected();
               result.nextSeqFile = next.resource;

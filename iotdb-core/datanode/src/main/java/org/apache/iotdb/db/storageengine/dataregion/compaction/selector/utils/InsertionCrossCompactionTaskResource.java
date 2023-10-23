@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-public class XXXXCrossCompactionTaskResource extends CrossCompactionTaskResource {
+public class InsertionCrossCompactionTaskResource extends CrossCompactionTaskResource {
   public TsFileResource prevSeqFile = null;
   public TsFileResource nextSeqFile = null;
   public TsFileResource toInsertUnSeqFile = null;
