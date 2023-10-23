@@ -148,9 +148,7 @@ public class CompactionScheduler {
                     timePartition,
                     tsFileManager,
                     (XXXXCrossCompactionTaskResource) taskList.get(i),
-                    tsFileManager.getNextCompactionTaskId()
-                )
-            )) {
+                    tsFileManager.getNextCompactionTaskId()))) {
           trySubmitCount++;
         }
       } else {

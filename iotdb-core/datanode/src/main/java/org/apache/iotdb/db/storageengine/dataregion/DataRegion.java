@@ -570,17 +570,14 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void updateLastFlushTime(TsFileResource resource, boolean isSeq) {
-    //  only update flush time when it is a seq file
-    if (isSeq) {
-      long timePartitionId = resource.getTimePartition();
-      Map<String, Long> endTimeMap = new HashMap<>();
-      for (String deviceId : resource.getDevices()) {
-        long endTime = resource.getEndTime(deviceId);
-        endTimeMap.put(deviceId.intern(), endTime);
-      }
-      lastFlushTimeMap.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
-      lastFlushTimeMap.setMultiDeviceGlobalFlushedTime(endTimeMap);
+    long timePartitionId = resource.getTimePartition();
+    Map<String, Long> endTimeMap = new HashMap<>();
+    for (String deviceId : resource.getDevices()) {
+      long endTime = resource.getEndTime(deviceId);
+      endTimeMap.put(deviceId.intern(), endTime);
     }
+    lastFlushTimeMap.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
+    lastFlushTimeMap.setMultiDeviceGlobalFlushedTime(endTimeMap);
   }
 
   private void initCompaction() {
@@ -794,11 +791,17 @@ public class DataRegion implements IDataRegionForQuery {
     for (TsFileResource tsFileResource : resourceList) {
       recoverSealedTsFiles(tsFileResource, context, isSeq);
     }
-    if (isLatestPartition && isSeq) {
-      lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId);
+    lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId);
+    if (isSeq) {
       for (TsFileResource tsFileResource : resourceList) {
         updateLastFlushTime(tsFileResource, true);
       }
+    } else {
+      for (TsFileResource tsFileResource : resourceList) {
+
+      }
+    }
+    if (isLatestPartition) {
       TimePartitionManager.getInstance()
           .registerTimePartitionInfo(
               new TimePartitionInfo(

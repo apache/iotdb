@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Cros
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,7 +37,8 @@ import java.util.List;
 
 public class TempCompactionTest extends AbstractCompactionTest {
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException, InterruptedException {
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
   }
 
@@ -77,8 +79,7 @@ public class TempCompactionTest extends AbstractCompactionTest {
             unseqList,
             new FastCompactionPerformer(true),
             0,
-            0
-        );
+            0);
     task.start();
   }
 }

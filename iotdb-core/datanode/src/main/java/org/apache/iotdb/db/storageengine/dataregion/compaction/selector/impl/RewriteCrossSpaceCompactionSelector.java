@@ -121,7 +121,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           candidate.getSeqFiles().size(),
           candidate.getUnseqFiles().size());
 
-
       return executeTaskResourceSelection(candidate);
     } catch (IOException e) {
       throw new MergeException(e);
@@ -134,7 +133,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     }
   }
 
-  public XXXXCrossCompactionTaskResource selectOneInsertionTask(CrossSpaceCompactionCandidate candidate) throws IOException {
+  public XXXXCrossCompactionTaskResource selectOneInsertionTask(
+      CrossSpaceCompactionCandidate candidate) throws IOException {
     XXXXCompactionSelector xxxxCompactionSelector = new XXXXCompactionSelector(candidate);
     XXXXCrossCompactionTaskResource result =
         xxxxCompactionSelector.executeXXXXTaskResourceSelection();
@@ -454,7 +454,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         }
       } else {
         TsFileResourceCandidate next = seqFiles.get(0);
-        long nextTimestamp = TsFileNameGenerator.getTsFileName(next.resource.getTsFile().getName()).getTime();
+        long nextTimestamp =
+            TsFileNameGenerator.getTsFileName(next.resource.getTsFile().getName()).getTime();
         if (nextTimestamp < 1) {
           return null;
         }

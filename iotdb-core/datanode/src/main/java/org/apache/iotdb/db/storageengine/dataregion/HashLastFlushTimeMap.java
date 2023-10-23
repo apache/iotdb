@@ -86,9 +86,10 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
     }
     long memIncr = 0;
     for (Map.Entry<String, Long> entry : flushedTimeMap.entrySet()) {
-      if (flushTimeMapForPartition.put(entry.getKey(), entry.getValue()) == null) {
+      if (!flushTimeMapForPartition.containsKey(entry.getKey())) {
         memIncr += HASHMAP_NODE_BASIC_SIZE + 2L * entry.getKey().length();
       }
+      flushTimeMapForPartition.merge(entry.getKey(), entry.getValue(), Math::max);
     }
     long finalMemIncr = memIncr;
     memCostForEachPartition.compute(
@@ -111,7 +112,9 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
   @Override
   public void setMultiDeviceGlobalFlushedTime(Map<String, Long> globalFlushedTimeMap) {
-    globalLatestFlushedTimeForEachDevice.putAll(globalFlushedTimeMap);
+    for (Map.Entry<String, Long> entry : globalFlushedTimeMap.entrySet()) {
+      globalLatestFlushedTimeForEachDevice.merge(entry.getKey(), entry.getValue(), Math::max);
+    }
   }
 
   @Override
@@ -126,6 +129,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
     if (flushTimeMapForPartition == null) {
       return;
     }
+    recoverFlushTime(timePartitionId, path);
     flushTimeMapForPartition.compute(
         path,
         (k, v) -> {
