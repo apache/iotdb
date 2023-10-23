@@ -592,12 +592,6 @@ public class DataRegion implements IDataRegionForQuery {
             ThreadName.COMPACTION_SCHEDULE.getName() + "-" + databaseName + "-" + dataRegionId);
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         timedCompactionScheduleTask,
-        this::executeInsertionCompaction,
-        COMPACTION_TASK_SUBMIT_DELAY,
-        30000L,
-        TimeUnit.MILLISECONDS);
-    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        timedCompactionScheduleTask,
         this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,
         IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),

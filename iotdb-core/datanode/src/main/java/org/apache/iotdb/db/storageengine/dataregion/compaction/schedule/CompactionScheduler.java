@@ -79,7 +79,7 @@ public class CompactionScheduler {
     }
     return trySubmitCount;
   }
-
+  
   public static int scheduleInsertionCompaction(
       TsFileManager tsFileManager, long timePartition, Phaser insertionTaskPhaser) {
     if (!tsFileManager.isAllowCompaction()) {
@@ -155,6 +155,7 @@ public class CompactionScheduler {
         config
             .getCrossCompactionSelector()
             .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+
     List<CrossCompactionTaskResource> taskList =
         crossSpaceCompactionSelector.selectCrossSpaceTask(
             tsFileManager.getOrCreateSequenceListByTimePartition(timePartition),

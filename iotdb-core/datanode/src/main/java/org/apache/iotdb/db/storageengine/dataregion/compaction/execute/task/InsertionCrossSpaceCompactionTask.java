@@ -36,6 +36,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Phaser;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
@@ -70,7 +72,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   protected List<TsFileResource> getAllSourceTsFiles() {
-    return null;
+    return Stream.concat(selectedSeqFiles.stream(), selectedUnseqFiles.stream()).collect(Collectors.toList());
   }
 
   @Override
@@ -89,6 +91,10 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     // 5. 释放写锁
 
     // log
+    boolean isSuccess = true;
+    if (!tsFileManager.isAllowCompaction()) {
+      return true;
+    }
     File tsFile = unseqFileToInsert.getTsFile();
     File logFile =
         new File(
@@ -130,11 +136,11 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       try {
         Files.deleteIfExists(logFile.toPath());
       } catch (IOException e) {
-
+        printLogWhenException(LOGGER, e);
       }
     }
 
-    return false;
+    return isSuccess;
   }
 
   private File generateTargetFile() {
