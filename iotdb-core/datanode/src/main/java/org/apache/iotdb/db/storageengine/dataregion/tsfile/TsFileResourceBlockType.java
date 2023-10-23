@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.OutputStream;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public enum TsFileResourceBlockType {
   EMPTY_BLOCK((byte) 0),
