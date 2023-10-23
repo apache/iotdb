@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,11 +57,19 @@ public class WALEntryPosition {
   }
 
   /**
+   * Try to read the wal entry directly from the cache. No need to check if the wal entry is ready
+   * for read.
+   */
+  public Pair<ByteBuffer, InsertNode> readByteBufferOrInsertNodeViaCacheDirectly() {
+    return cache.getByteBufferOrInsertNode(this);
+  }
+
+  /**
    * Read the wal entry and parse it to the InsertNode. Use LRU cache to accelerate read.
    *
    * @throws IOException failing to read.
    */
-  public InsertNode readInsertNodeViaCache() throws IOException {
+  public InsertNode readInsertNodeViaCacheAfterCanRead() throws IOException {
     if (!canRead()) {
       throw new IOException("This entry isn't ready for read.");
     }
@@ -71,7 +81,7 @@ public class WALEntryPosition {
    *
    * @throws IOException failing to read.
    */
-  public ByteBuffer readByteBufferViaCache() throws IOException {
+  public ByteBuffer readByteBufferViaCacheAfterCanRead() throws IOException {
     if (!canRead()) {
       throw new IOException("This entry isn't ready for read.");
     }
@@ -122,6 +132,10 @@ public class WALEntryPosition {
     }
   }
 
+  public File getWalFile() {
+    return walFile;
+  }
+
   /** Return true only when the tuple(file, position, size) is ready. */
   public boolean canRead() {
     return walFileVersionId >= 0;
@@ -135,34 +149,30 @@ public class WALEntryPosition {
     return walFileVersionId < walNode.getCurrentWALFileVersion();
   }
 
-  public void setWalNode(WALNode walNode) {
+  public void setWalNode(WALNode walNode, long memTableId) {
     this.walNode = walNode;
-    this.identifier = walNode.getIdentifier();
-  }
-
-  public void setEntryPosition(long walFileVersionId, long position) {
-    this.position = position;
-    this.walFileVersionId = walFileVersionId;
-  }
-
-  public void setWalInsertNodeCache(int regionId) {
-    cache = WALInsertNodeCache.getInstance(regionId);
+    identifier = walNode.getIdentifier();
+    cache = WALInsertNodeCache.getInstance(walNode.getRegionId(memTableId));
   }
 
   public String getIdentifier() {
     return identifier;
   }
 
-  public long getWalFileVersionId() {
-    return walFileVersionId;
-  }
-
-  public File getWalFile() {
-    return walFile;
+  public void setEntryPosition(long walFileVersionId, long position, WALEntryValue value) {
+    this.position = position;
+    this.walFileVersionId = walFileVersionId;
+    if (cache != null && value instanceof InsertNode) {
+      cache.cacheInsertNodeIfNeeded(this, (InsertNode) value);
+    }
   }
 
   public long getPosition() {
     return position;
+  }
+
+  public long getWalFileVersionId() {
+    return walFileVersionId;
   }
 
   public void setSize(int size) {
