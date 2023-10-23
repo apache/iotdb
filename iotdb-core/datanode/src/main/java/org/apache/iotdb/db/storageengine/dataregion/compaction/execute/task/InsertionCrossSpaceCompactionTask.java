@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 
 import java.io.File;
 import java.io.IOException;
@@ -60,12 +61,16 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     if (taskResource.prevSeqFile != null) {
       selectedSeqFiles.add(taskResource.prevSeqFile);
     }
+    if (taskResource.nextSeqFile != null) {
+      selectedSeqFiles.add(taskResource.nextSeqFile);
+    }
+    this.unseqFileToInsert = taskResource.toInsertUnSeqFile;
+    this.selectedUnseqFiles = Collections.singletonList(unseqFileToInsert);
   }
 
-  private TsFileResource previousSeqFile;
-  private TsFileResource nextSeqFile;
   private TsFileResource unseqFileToInsert;
   private TsFileResource targetFile;
+  private long timestamp;
 
   private List<TsFileResource> selectedSeqFiles;
   private List<TsFileResource> selectedUnseqFiles;
@@ -95,12 +100,10 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     if (!tsFileManager.isAllowCompaction()) {
       return true;
     }
-    File tsFile = unseqFileToInsert.getTsFile();
     File logFile =
         new File(
             unseqFileToInsert.getTsFilePath()
                 + CompactionLogger.INSERTION_COMPACTION_LOG_NAME_SUFFIX);
-    long targetFileNameTimestamp = 0;
     try (SimpleCompactionLogger logger = new SimpleCompactionLogger(logFile)) {
       targetFile = new TsFileResource(generateTargetFile());
 
@@ -143,9 +146,13 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     return isSuccess;
   }
 
-  private File generateTargetFile() {
-
-    return null;
+  private File generateTargetFile() throws IOException {
+    String path = unseqFileToInsert.getTsFile().getParentFile().getAbsolutePath();
+    path = path.replace("unsequence", "sequence");
+    TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(unseqFileToInsert.getTsFile().getName());
+    tsFileName.setTime(timestamp);
+    String fileNameStr = String.format("%d-%d-%d-%d.tsfile", tsFileName.getTime(), tsFileName.getVersion(), tsFileName.getInnerCompactionCnt(), 0);
+    return new File(path + File.separator + fileNameStr);
   }
 
   private void prepareTargetFiles() throws IOException {
@@ -163,7 +170,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  protected void recover() {}
+  protected void recover() {
+
+  }
 
   @Override
   public boolean equalsOtherTask(AbstractCompactionTask otherTask) {
