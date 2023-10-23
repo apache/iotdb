@@ -132,7 +132,7 @@ public abstract class AbstractMetricService {
 
     // if no more implementations, we use nothingManager.
     if (size == 0 || metricManager == null) {
-      LOGGER.debug("No MetricManager available, defaulting to DoNothingMetricManager");
+      LOGGER.info("No MetricManager available, defaulting to DoNothingMetricManager");
       metricManager = new DoNothingMetricManager();
     } else if (size > 1) {
       LOGGER.info(
