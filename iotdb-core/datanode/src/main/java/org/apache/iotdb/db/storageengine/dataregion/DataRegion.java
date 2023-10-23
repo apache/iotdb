@@ -591,12 +591,6 @@ public class DataRegion implements IDataRegionForQuery {
             ThreadName.COMPACTION_SCHEDULE.getName() + "-" + databaseName + "-" + dataRegionId);
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         timedCompactionScheduleTask,
-        this::executeInsertionCompaction,
-        COMPACTION_TASK_SUBMIT_DELAY,
-        30000L,
-        TimeUnit.MILLISECONDS);
-    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        timedCompactionScheduleTask,
         this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,
         IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
@@ -2101,7 +2095,6 @@ public class DataRegion implements IDataRegionForQuery {
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
     int trySubmitCount = 0;
-    CompactionScheduler.compactionScheduleLock.lock();
     try {
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // sort the time partition from largest to smallest
@@ -2111,33 +2104,6 @@ public class DataRegion implements IDataRegionForQuery {
       }
     } catch (Throwable e) {
       logger.error("Meet error in compaction schedule.", e);
-    } finally {
-      CompactionScheduler.compactionScheduleLock.unlock();
-    }
-    return trySubmitCount;
-  }
-
-  protected int executeInsertionCompaction() {
-    int trySubmitCount = 0;
-    CompactionScheduler.compactionScheduleLock.lock();
-    try {
-      List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
-      timePartitions.sort(Comparator.reverseOrder());
-      while (true) {
-        int currentSubmitCount = 0;
-        for (long timePartition : timePartitions) {
-          currentSubmitCount += CompactionScheduler.scheduleInsertionCompaction(tsFileManager, timePartition);
-        }
-        if (currentSubmitCount != 0) {
-          Thread.sleep(TimeUnit.SECONDS.toMillis(5));
-          continue;
-        }
-        break;
-      }
-    } catch (Throwable e) {
-      logger.error("Meet error in compaction schedule.", e);
-    } finally {
-      CompactionScheduler.compactionScheduleLock.unlock();
     }
     return trySubmitCount;
   }
