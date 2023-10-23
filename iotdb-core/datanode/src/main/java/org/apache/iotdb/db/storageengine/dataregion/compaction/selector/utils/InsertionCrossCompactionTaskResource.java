@@ -26,6 +26,7 @@ public class InsertionCrossCompactionTaskResource extends CrossCompactionTaskRes
   public TsFileResource nextSeqFile = null;
   public TsFileResource toInsertUnSeqFile = null;
   public TsFileResource firstUnSeqFileInParitition = null;
+  public long targetFileTimestamp;
 
   public void setToInsertUnSeqFile(TsFileResource toInsertUnSeqFile) {
     this.toInsertUnSeqFile = toInsertUnSeqFile;

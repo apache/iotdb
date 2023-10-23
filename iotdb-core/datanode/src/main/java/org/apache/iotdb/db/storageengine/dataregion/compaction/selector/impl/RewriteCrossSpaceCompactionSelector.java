@@ -401,6 +401,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         result = selectCurrentUnSeqFile(unseqFile);
         if (result != null) {
           result.toInsertUnSeqFile = unseqFile.resource;
+          result.targetFileTimestamp = 1;
           break;
         }
       }
@@ -469,14 +470,18 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
               prev.markAsSelected();
               result.nextSeqFile = next.resource;
               next.markAsSelected();
+              result.targetFileTimestamp = prevTimestamp + 1;
               break;
             }
           }
         }
         if (previousSeqFileIndex == nextSeqFileIndex) {
           TsFileResourceCandidate prev = seqFiles.get(previousSeqFileIndex);
+          long prevTimestamp =
+              TsFileNameGenerator.getTsFileName(prev.resource.getTsFile().getName()).getTime();
           if (prev.isValidCandidate) {
             result.prevSeqFile = prev.resource;
+            result.targetFileTimestamp = prevTimestamp + 1;
           }
         }
       } else {
@@ -487,6 +492,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           return null;
         }
         result.nextSeqFile = next.resource;
+        result.targetFileTimestamp = nextTimestamp - 1;
         seqFiles.get(0).markAsSelected();
       }
       if (result.prevSeqFile == null && result.nextSeqFile == null) {
