@@ -270,10 +270,10 @@ public class TsFileResource {
     }
 
     if (maxProgressIndex != null) {
-      ReadWriteIOUtils.write(true, outputStream);
+      TsFileResourceBlockType.PROGRESS_INDEX.serialize(outputStream);
       maxProgressIndex.serialize(outputStream);
     } else {
-      ReadWriteIOUtils.write(false, outputStream);
+      TsFileResourceBlockType.EMPTY_BLOCK.serialize(outputStream);
     }
   }
 
@@ -294,53 +294,10 @@ public class TsFileResource {
         }
       }
 
-      if (inputStream.available() > 0) {
-        final boolean hasMaxProgressIndex = ReadWriteIOUtils.readBool(inputStream);
-        if (hasMaxProgressIndex) {
-          maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
-        }
-      }
-    }
-  }
-
-  /** deserialize tsfile resource from old file */
-  public void deserializeFromOldFile() throws IOException {
-    try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
-      // deserialize old TsfileResource
-      int size = ReadWriteIOUtils.readInt(inputStream);
-      Map<String, Integer> deviceMap = new HashMap<>();
-      long[] startTimesArray = new long[size];
-      long[] endTimesArray = new long[size];
-      for (int i = 0; i < size; i++) {
-        String path = ReadWriteIOUtils.readString(inputStream);
-        long time = ReadWriteIOUtils.readLong(inputStream);
-        deviceMap.put(path.intern(), i);
-        startTimesArray[i] = time;
-      }
-      size = ReadWriteIOUtils.readInt(inputStream);
-      for (int i = 0; i < size; i++) {
-        ReadWriteIOUtils.readString(inputStream); // String path
-        long time = ReadWriteIOUtils.readLong(inputStream);
-        endTimesArray[i] = time;
-      }
-      timeIndex = new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
-      if (inputStream.available() > 0) {
-        int versionSize = ReadWriteIOUtils.readInt(inputStream);
-        for (int i = 0; i < versionSize; i++) {
-          // historicalVersions
-          ReadWriteIOUtils.readLong(inputStream);
-        }
-      }
-      if (inputStream.available() > 0) {
-        String modFileName = ReadWriteIOUtils.readString(inputStream);
-        if (modFileName != null) {
-          File modF = new File(file.getParentFile(), modFileName);
-          modFile = new ModificationFile(modF.getPath());
-        }
-      }
-      if (inputStream.available() > 0) {
-        final boolean hasMaxProgressIndex = ReadWriteIOUtils.readBool(inputStream);
-        if (hasMaxProgressIndex) {
+      while (inputStream.available() > 0) {
+        final TsFileResourceBlockType blockType =
+            TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
+        if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
           maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
         }
       }
