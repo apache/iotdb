@@ -30,8 +30,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimato
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.DeviceInfo;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.TsFileResourceCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.TsFileResourceCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -135,7 +135,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
   public InsertionCrossCompactionTaskResource selectOneInsertionTask(
       CrossSpaceCompactionCandidate candidate) throws IOException {
-    InsertionCrossSpaceCompactionSelector insertionCrossSpaceCompactionSelector = new InsertionCrossSpaceCompactionSelector(candidate);
+    InsertionCrossSpaceCompactionSelector insertionCrossSpaceCompactionSelector =
+        new InsertionCrossSpaceCompactionSelector(candidate);
     InsertionCrossCompactionTaskResource result =
         insertionCrossSpaceCompactionSelector.executeXXXXTaskResourceSelection();
     if (result != null && result.isValid()) {
@@ -365,7 +366,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       unseqFiles = candidate.getUnseqFileCandidates();
     }
 
-    private InsertionCrossCompactionTaskResource executeXXXXTaskResourceSelection() throws IOException {
+    private InsertionCrossCompactionTaskResource executeXXXXTaskResourceSelection()
+        throws IOException {
       InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
       if (unseqFiles.isEmpty()) {
         return result;

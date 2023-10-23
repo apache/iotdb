@@ -35,10 +35,14 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Phaser;
 
 public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
+  private Phaser phaser;
+
   public InsertionCrossSpaceCompactionTask(
+      Phaser phaser,
       long timePartition,
       TsFileManager tsFileManager,
       InsertionCrossCompactionTaskResource taskResource,
@@ -49,6 +53,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         timePartition,
         tsFileManager,
         serialId);
+    this.phaser = phaser;
     this.selectedSeqFiles = new ArrayList<>();
     if (taskResource.prevSeqFile != null) {
       selectedSeqFiles.add(taskResource.prevSeqFile);
@@ -66,6 +71,11 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   protected List<TsFileResource> getAllSourceTsFiles() {
     return null;
+  }
+
+  @Override
+  public void handleTaskCleanup() {
+    phaser.arrive();
   }
 
   @Override

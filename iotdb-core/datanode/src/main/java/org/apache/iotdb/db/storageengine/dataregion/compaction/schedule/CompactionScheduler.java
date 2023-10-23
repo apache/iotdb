@@ -35,8 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.Phaser;
 import java.util.stream.Collectors;
 
 /**
@@ -53,7 +52,6 @@ public class CompactionScheduler {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  public static Lock compactionScheduleLock = new ReentrantLock();
 
   private CompactionScheduler() {}
 
@@ -82,13 +80,15 @@ public class CompactionScheduler {
     return trySubmitCount;
   }
 
-  public static int scheduleInsertionCompaction(TsFileManager tsFileManager, long timePartition) {
+  public static int scheduleInsertionCompaction(
+      TsFileManager tsFileManager, long timePartition, Phaser insertionTaskPhaser) {
     if (!tsFileManager.isAllowCompaction()) {
       return 0;
     }
     int trySubmitCount = 0;
     try {
-      trySubmitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition);
+      trySubmitCount +=
+          tryToSubmitInsertionCompactionTask(tsFileManager, timePartition, insertionTaskPhaser);
     } catch (InterruptedException e) {
       LOGGER.error("Exception occurs when selecting compaction tasks", e);
       Thread.currentThread().interrupt();
@@ -133,6 +133,15 @@ public class CompactionScheduler {
       }
     }
     return trySubmitCount;
+  }
+
+  private static int tryToSubmitInsertionCompactionTask(
+      TsFileManager tsFileManager, long timePartition, Phaser insertionTaskPhaser)
+      throws InterruptedException {
+    // 在提交一个任务的时候调用这个方法
+    insertionTaskPhaser.register();
+
+    return 0;
   }
 
   private static int tryToSubmitCrossSpaceCompactionTask(

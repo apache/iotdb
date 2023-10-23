@@ -98,6 +98,7 @@ public class CompactionTaskManager implements IService {
       initThreadPool();
       candidateCompactionTaskQueue.regsitPollLastHook(
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
+      candidateCompactionTaskQueue.regsitPollLastHook(AbstractCompactionTask::handleTaskCleanup);
       init = true;
     }
     logger.info("Compaction task manager started.");

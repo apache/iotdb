@@ -155,6 +155,9 @@ public class TsFileResource {
 
   private ProgressIndex maxProgressIndex;
 
+  // 选择时通过这个属性快速跳过一个乱序文件的判断
+  private boolean isInsertionCompactionTaskCandidate;
+
   public TsFileResource() {}
 
   public TsFileResource(TsFileResource other) throws IOException {

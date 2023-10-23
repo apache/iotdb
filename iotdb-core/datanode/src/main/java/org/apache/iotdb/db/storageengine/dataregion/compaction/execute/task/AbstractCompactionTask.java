@@ -126,6 +126,8 @@ public abstract class AbstractCompactionTask {
 
   protected abstract void recover();
 
+  public void handleTaskCleanup() {}
+
   protected void printLogWhenException(Logger logger, Exception e) {
     if (e instanceof InterruptedException) {
       logger.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);

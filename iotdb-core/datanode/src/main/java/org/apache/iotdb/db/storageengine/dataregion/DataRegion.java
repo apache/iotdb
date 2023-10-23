@@ -134,6 +134,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.Phaser;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -803,9 +804,7 @@ public class DataRegion implements IDataRegionForQuery {
         updateLastFlushTime(tsFileResource, true);
       }
     } else {
-      for (TsFileResource tsFileResource : resourceList) {
-
-      }
+      for (TsFileResource tsFileResource : resourceList) {}
     }
     if (isLatestPartition) {
       TimePartitionManager.getInstance()
@@ -2101,7 +2100,6 @@ public class DataRegion implements IDataRegionForQuery {
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
     int trySubmitCount = 0;
-    CompactionScheduler.compactionScheduleLock.lock();
     try {
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // sort the time partition from largest to smallest
@@ -2111,33 +2109,31 @@ public class DataRegion implements IDataRegionForQuery {
       }
     } catch (Throwable e) {
       logger.error("Meet error in compaction schedule.", e);
-    } finally {
-      CompactionScheduler.compactionScheduleLock.unlock();
     }
     return trySubmitCount;
   }
 
   protected int executeInsertionCompaction() {
     int trySubmitCount = 0;
-    CompactionScheduler.compactionScheduleLock.lock();
     try {
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       timePartitions.sort(Comparator.reverseOrder());
       while (true) {
         int currentSubmitCount = 0;
+        Phaser insertionTaskPhaser = new Phaser(1);
         for (long timePartition : timePartitions) {
-          currentSubmitCount += CompactionScheduler.scheduleInsertionCompaction(tsFileManager, timePartition);
+          currentSubmitCount +=
+              CompactionScheduler.scheduleInsertionCompaction(
+                  tsFileManager, timePartition, insertionTaskPhaser);
         }
+        insertionTaskPhaser.arriveAndAwaitAdvance();
         if (currentSubmitCount != 0) {
-          Thread.sleep(TimeUnit.SECONDS.toMillis(5));
           continue;
         }
         break;
       }
     } catch (Throwable e) {
       logger.error("Meet error in compaction schedule.", e);
-    } finally {
-      CompactionScheduler.compactionScheduleLock.unlock();
     }
     return trySubmitCount;
   }
