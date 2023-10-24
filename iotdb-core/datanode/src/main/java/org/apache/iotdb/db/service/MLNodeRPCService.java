@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
@@ -64,7 +63,7 @@ public class MLNodeRPCService extends ThriftService implements MLNodeRPCServiceM
               config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new MLNodeRPCServiceThriftHandler(impl),
-              CommonDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled());
+              config.isRpcThriftCompressionEnable());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
