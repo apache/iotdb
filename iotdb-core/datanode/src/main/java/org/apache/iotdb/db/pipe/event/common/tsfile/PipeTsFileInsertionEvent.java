@@ -49,7 +49,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final TsFileResource resource;
   private File tsFile;
 
-  private boolean isLoaded = false;
+  private boolean isLoaded;
   private final boolean isGeneratedByPipe;
 
   private final AtomicBoolean isClosed;
@@ -57,12 +57,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
-    this(resource, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE, false);
-    this.isLoaded = isLoaded;
+    this(resource, isLoaded, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE, false);
   }
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource,
+      boolean isLoaded,
       boolean isGeneratedByPipe,
       PipeTaskMeta pipeTaskMeta,
       String pattern,
@@ -82,6 +82,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     this.resource = resource;
     tsFile = resource.getTsFile();
 
+    this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
 
     isClosed = new AtomicBoolean(resource.isClosed());
@@ -170,7 +171,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeTsFileInsertionEvent(
-        resource, isGeneratedByPipe, pipeTaskMeta, pattern, startTime, endTime, needParseTime);
+        resource,
+        isLoaded,
+        isGeneratedByPipe,
+        pipeTaskMeta,
+        pattern,
+        startTime,
+        endTime,
+        needParseTime);
   }
 
   @Override
