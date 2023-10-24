@@ -194,8 +194,8 @@ public class AsyncPlanNodeSender {
 
   /**
    * This class is used to aggregate PlanNode of the same datanode into one rpc. In order to ensure
-   * the one-to-one correspondence between r esponse and request, the corresponding index needs to
-   * be recorded.
+   * the one-to-one correspondence between response and request, the corresponding index needs to be
+   * recorded.
    */
   static class BatchRequestWithIndex {
 
