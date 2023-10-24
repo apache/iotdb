@@ -70,6 +70,8 @@ public abstract class AbstractMetricService {
   /** The list of metric sets. */
   protected Set<IMetricSet> metricSets = new HashSet<>();
 
+  private static final String METRIC_MANAGER_NAME = "IoTDBMetricManager";
+
   protected AbstractMetricService() {
     // empty constructor
   }
@@ -120,8 +122,10 @@ public abstract class AbstractMetricService {
     int size = 0;
     for (AbstractMetricManager mf : metricManagers) {
       size++;
-      metricManager = mf;
-      break;
+      if (mf.getClass().getName().toLowerCase().contains(METRIC_MANAGER_NAME.toLowerCase())) {
+        metricManager = mf;
+        break;
+      }
     }
 
     // if no more implementations, we use nothingManager.
