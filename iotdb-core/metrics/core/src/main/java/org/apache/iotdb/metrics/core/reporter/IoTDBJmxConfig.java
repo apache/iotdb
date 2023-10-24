@@ -17,33 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.micrometer.type;
+package org.apache.iotdb.metrics.core.reporter;
 
-import org.apache.iotdb.metrics.type.HistogramSnapshot;
-import org.apache.iotdb.metrics.type.Timer;
-
-import java.util.concurrent.TimeUnit;
-
-public class IoTDBTimer implements Timer {
-
-  io.micrometer.core.instrument.Timer timer;
-
-  public IoTDBTimer(io.micrometer.core.instrument.Timer timer) {
-    this.timer = timer;
-  }
+public interface IoTDBJmxConfig extends io.micrometer.jmx.JmxConfig {
+  IoTDBJmxConfig DEFAULT = k -> null;
 
   @Override
-  public void update(long duration, TimeUnit unit) {
-    timer.record(duration, unit);
-  }
-
-  @Override
-  public HistogramSnapshot takeSnapshot() {
-    return new IoTDBTimerHistogramSnapshot(timer);
-  }
-
-  @Override
-  public long getCount() {
-    return timer.count();
+  default String domain() {
+    return "org.apache.iotdb.metrics";
   }
 }

@@ -17,36 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.micrometer.type;
+package org.apache.iotdb.metrics.core.type;
 
-import org.apache.iotdb.metrics.type.AutoGauge;
+import org.apache.iotdb.metrics.type.Histogram;
 
-import io.micrometer.core.instrument.Tags;
+public class IoTDBHistogram implements Histogram {
 
-import java.lang.ref.WeakReference;
-import java.util.function.ToDoubleFunction;
+  io.micrometer.core.instrument.DistributionSummary distributionSummary;
 
-public class IoTDBAutoGauge<T> implements AutoGauge {
-
-  private final WeakReference<T> refObject;
-  private final ToDoubleFunction<T> mapper;
-
-  public IoTDBAutoGauge(
-      io.micrometer.core.instrument.MeterRegistry meterRegistry,
-      String metricName,
-      T object,
-      ToDoubleFunction<T> mapper,
-      String... tags) {
-    this.refObject =
-        new WeakReference<>(meterRegistry.gauge(metricName, Tags.of(tags), object, mapper));
-    this.mapper = mapper;
+  public IoTDBHistogram(io.micrometer.core.instrument.DistributionSummary distributionSummary) {
+    this.distributionSummary = distributionSummary;
   }
 
   @Override
-  public double value() {
-    if (refObject.get() == null) {
-      return 0d;
-    }
-    return mapper.applyAsDouble(refObject.get());
+  public void update(long value) {
+    distributionSummary.record(value);
+  }
+
+  @Override
+  public long count() {
+    return distributionSummary.count();
+  }
+
+  @Override
+  public org.apache.iotdb.metrics.type.HistogramSnapshot takeSnapshot() {
+    return new IoTDBHistogramSnapshot(distributionSummary);
   }
 }

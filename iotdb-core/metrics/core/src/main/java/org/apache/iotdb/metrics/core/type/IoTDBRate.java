@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.micrometer.type;
+package org.apache.iotdb.metrics.core.type;
 
-import org.apache.iotdb.metrics.micrometer.uitls.IoTDBMovingAverage;
+import org.apache.iotdb.metrics.core.uitls.IoTDBMovingAverage;
 import org.apache.iotdb.metrics.type.Rate;
 
 import com.codahale.metrics.Clock;

@@ -17,15 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.micrometer;
+package org.apache.iotdb.metrics.core;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
-import org.apache.iotdb.metrics.micrometer.type.IoTDBAutoGauge;
-import org.apache.iotdb.metrics.micrometer.type.IoTDBCounter;
-import org.apache.iotdb.metrics.micrometer.type.IoTDBGauge;
-import org.apache.iotdb.metrics.micrometer.type.IoTDBHistogram;
-import org.apache.iotdb.metrics.micrometer.type.IoTDBRate;
-import org.apache.iotdb.metrics.micrometer.type.IoTDBTimer;
+import org.apache.iotdb.metrics.core.type.IoTDBAutoGauge;
+import org.apache.iotdb.metrics.core.type.IoTDBCounter;
+import org.apache.iotdb.metrics.core.type.IoTDBGauge;
+import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
+import org.apache.iotdb.metrics.core.type.IoTDBRate;
+import org.apache.iotdb.metrics.core.type.IoTDBTimer;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;

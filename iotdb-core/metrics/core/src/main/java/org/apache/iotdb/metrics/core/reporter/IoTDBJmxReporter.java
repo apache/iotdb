@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.micrometer.reporter;
+package org.apache.iotdb.metrics.core.reporter;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.reporter.JmxReporter;

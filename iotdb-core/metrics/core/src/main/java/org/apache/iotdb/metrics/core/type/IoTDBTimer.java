@@ -17,30 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.micrometer.type;
+package org.apache.iotdb.metrics.core.type;
 
-import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.HistogramSnapshot;
+import org.apache.iotdb.metrics.type.Timer;
 
-public class IoTDBHistogram implements Histogram {
+import java.util.concurrent.TimeUnit;
 
-  io.micrometer.core.instrument.DistributionSummary distributionSummary;
+public class IoTDBTimer implements Timer {
 
-  public IoTDBHistogram(io.micrometer.core.instrument.DistributionSummary distributionSummary) {
-    this.distributionSummary = distributionSummary;
+  io.micrometer.core.instrument.Timer timer;
+
+  public IoTDBTimer(io.micrometer.core.instrument.Timer timer) {
+    this.timer = timer;
   }
 
   @Override
-  public void update(long value) {
-    distributionSummary.record(value);
+  public void update(long duration, TimeUnit unit) {
+    timer.record(duration, unit);
   }
 
   @Override
-  public long count() {
-    return distributionSummary.count();
+  public HistogramSnapshot takeSnapshot() {
+    return new IoTDBTimerHistogramSnapshot(timer);
   }
 
   @Override
-  public org.apache.iotdb.metrics.type.HistogramSnapshot takeSnapshot() {
-    return new IoTDBHistogramSnapshot(distributionSummary);
+  public long getCount() {
+    return timer.count();
   }
 }

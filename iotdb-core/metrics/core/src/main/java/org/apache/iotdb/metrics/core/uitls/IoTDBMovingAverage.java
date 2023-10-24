@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.micrometer.uitls;
+package org.apache.iotdb.metrics.core.uitls;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.EWMA;

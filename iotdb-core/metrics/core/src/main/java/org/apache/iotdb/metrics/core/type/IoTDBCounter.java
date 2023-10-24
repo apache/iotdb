@@ -17,13 +17,38 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.micrometer.reporter;
+package org.apache.iotdb.metrics.core.type;
 
-public interface IoTDBJmxConfig extends io.micrometer.jmx.JmxConfig {
-  IoTDBJmxConfig DEFAULT = k -> null;
+import org.apache.iotdb.metrics.type.Counter;
+
+import java.util.concurrent.atomic.LongAdder;
+
+public class IoTDBCounter implements Counter {
+  private LongAdder count;
+  // 这里我们保留 counter 的接口，是为了使用它在 micrometer 内的命名系统。
+  io.micrometer.core.instrument.Counter counter;
+
+  public IoTDBCounter() {
+    this.count = new LongAdder();
+  }
+
+  public IoTDBCounter(io.micrometer.core.instrument.Counter counter) {
+    this.counter = counter;
+    this.count = new LongAdder();
+  }
 
   @Override
-  default String domain() {
-    return "org.apache.iotdb.metrics";
+  public void inc() {
+    this.count.add(1L);
+  }
+
+  @Override
+  public void inc(long n) {
+    this.count.add(n);
+  }
+
+  @Override
+  public long count() {
+    return this.count.sum();
   }
 }
