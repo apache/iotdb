@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
+import java.util.Objects;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -160,7 +161,7 @@ public class WALInsertNodeCache {
   }
 
   public double getCacheHitRate() {
-    return lruCache.stats().hitRate();
+    return Objects.nonNull(lruCache) ? lruCache.stats().hitRate() : 0;
   }
 
   /////////////////////////// MemTable ///////////////////////////
