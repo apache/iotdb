@@ -63,7 +63,7 @@ public class MLNodeRPCService extends ThriftService implements MLNodeRPCServiceM
               config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new MLNodeRPCServiceThriftHandler(impl),
-              false);
+              config.isRpcThriftCompressionEnable());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
