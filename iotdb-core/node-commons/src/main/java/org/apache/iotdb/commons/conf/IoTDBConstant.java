@@ -69,7 +69,7 @@ public class IoTDBConstant {
   public static final String CN_SEED_CONFIG_NODE = "cn_seed_config_node";
   public static final String CN_TARGET_CONFIG_NODE_LIST = "cn_target_config_node_list";
   public static final String DN_SEED_CONFIG_NODE = "dn_seed_config_node";
-  public static final String DN_TARGET_CONFIG_NODE_LIST = "dn_target_config_node_list ";
+  public static final String DN_TARGET_CONFIG_NODE_LIST = "dn_target_config_node_list";
 
   public static final String CLUSTER_NAME = "cluster_name";
   public static final String DEFAULT_CLUSTER_NAME = "defaultCluster";
