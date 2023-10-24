@@ -77,7 +77,7 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE =
       IoTDBDescriptor.getInstance().getConfDir() != null
           ? IoTDBDescriptor.getInstance().getConfDir() + File.separatorChar + "opc_security"
-          : null;
+          : System.getProperty("user.home") + File.separatorChar + "iotdb_opc_security";
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
