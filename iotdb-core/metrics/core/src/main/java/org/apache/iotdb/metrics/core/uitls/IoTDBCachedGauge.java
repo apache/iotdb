@@ -30,17 +30,21 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.ToDoubleFunction;
 
 /**
- * TODO 注释
- *
- * @param <T>
+ * Gauges with cache, which have better performance in some read-intensive and calculation-intensive
+ * scenarios. Can be served as an additional option.
  */
 public class IoTDBCachedGauge<T> implements AutoGauge {
+  /** The timer of metric system */
   private final Clock clock;
+  /** The time to reload cache */
   private final AtomicLong reloadAt;
+  /** The timeout duration */
   private final long timeoutNS;
-  // 对外接口是 double
+  /** The cache's value */
   private final AtomicReference<Double> value;
+  /** The reference object of gauge */
   private final WeakReference<T> refObj;
+  /** The calculate function of gauge */
   private final ToDoubleFunction<T> mapper;
 
   protected IoTDBCachedGauge(
@@ -76,6 +80,7 @@ public class IoTDBCachedGauge<T> implements AutoGauge {
 
   public double getValue() {
     Double currentValue = this.value.get();
+    // if cache expires or is not loaded, we update the cache with calculate function
     if (shouldLoad() || currentValue == null) {
       double newValue = loadValue();
       if (!this.value.compareAndSet(currentValue, newValue)) {
@@ -83,6 +88,7 @@ public class IoTDBCachedGauge<T> implements AutoGauge {
       }
       return newValue;
     }
+    // else we directly return the cache's value
     return currentValue;
   }
 

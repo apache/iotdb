@@ -26,7 +26,10 @@ import com.codahale.metrics.MovingAverages;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** TODO 注释 */
+/**
+ * This file is modified from com.codahale.metrics.ExponentialMovingAverages, some unnecessary
+ * variables are removed.
+ */
 public class IoTDBMovingAverage implements MovingAverages {
 
   private static final long TICK_INTERVAL = TimeUnit.SECONDS.toNanos(5);

@@ -27,7 +27,6 @@ import java.lang.ref.WeakReference;
 import java.util.function.ToDoubleFunction;
 
 public class IoTDBAutoGauge<T> implements AutoGauge {
-
   private final WeakReference<T> refObject;
   private final ToDoubleFunction<T> mapper;
 

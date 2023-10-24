@@ -69,8 +69,10 @@ public abstract class AbstractMetricService {
 
   /** The list of metric sets. */
   protected Set<IMetricSet> metricSets = new HashSet<>();
-
+  /** The name of default metric manager */
   private static final String METRIC_MANAGER_NAME = "IoTDBMetricManager";
+  /** The name of default jmx reporter */
+  private static final String JMX_REPORTER_NAME = "IoTDBJmxReporter";
 
   protected AbstractMetricService() {
     // empty constructor
@@ -151,9 +153,15 @@ public abstract class AbstractMetricService {
         case JMX:
           ServiceLoader<JmxReporter> reporters = ServiceLoader.load(JmxReporter.class);
           for (JmxReporter jmxReporter : reporters) {
-            jmxReporter.setMetricManager(metricManager);
-            reporter = jmxReporter;
-            break;
+            if (jmxReporter
+                .getClass()
+                .getName()
+                .toLowerCase()
+                .contains(JMX_REPORTER_NAME.toLowerCase())) {
+              jmxReporter.setMetricManager(metricManager);
+              reporter = jmxReporter;
+              break;
+            }
           }
           break;
         case PROMETHEUS:

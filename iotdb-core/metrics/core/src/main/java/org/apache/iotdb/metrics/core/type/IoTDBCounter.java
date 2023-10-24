@@ -25,7 +25,8 @@ import java.util.concurrent.atomic.LongAdder;
 
 public class IoTDBCounter implements Counter {
   private LongAdder count;
-  // 这里我们保留 counter 的接口，是为了使用它在 micrometer 内的命名系统。
+  // Here we retain the micrometer counter variable in order to use its naming system within
+  // micrometer.
   io.micrometer.core.instrument.Counter counter;
 
   public IoTDBCounter() {
