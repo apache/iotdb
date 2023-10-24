@@ -49,14 +49,16 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final TsFileResource resource;
   private File tsFile;
 
+  private boolean isLoaded = false;
   private final boolean isGeneratedByPipe;
 
   private final AtomicBoolean isClosed;
-
   private TsFileInsertionDataContainer dataContainer;
 
-  public PipeTsFileInsertionEvent(TsFileResource resource, boolean isGeneratedByPipe) {
+  public PipeTsFileInsertionEvent(
+      TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
     this(resource, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE, false);
+    this.isLoaded = isLoaded;
   }
 
   public PipeTsFileInsertionEvent(
@@ -112,6 +114,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public File getTsFile() {
     return tsFile;
+  }
+
+  public boolean getIsLoaded() {
+    return isLoaded;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
