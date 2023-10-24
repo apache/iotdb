@@ -28,42 +28,52 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PipeMemoryManager {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeMemoryManager.class);
 
-  private final long totalMemorySizeInBytes =
+  private static final int MEMORY_ALLOCATE_MAX_RETRIES =
+      PipeConfig.getInstance().getPipeMemoryAllocateMaxRetries();
+  private static final long MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS =
+      PipeConfig.getInstance().getPipeMemoryAllocateRetryIntervalInMs();
+
+  private static final long TOTAL_MEMORY_SIZE_IN_BYTES =
       IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForPipe();
   private long usedMemorySizeInBytes = 0;
 
-  private final int maxRetries = PipeConfig.getInstance().getPipeMemoryAllocateMaxRetries();
-  private final long retryIntervalInMs =
-      PipeConfig.getInstance().getPipeMemoryAllocateRetryIntervalInMs();
-
-  public PipeMemoryManager() {
-    // do nothing
-  }
-
-  synchronized PipeMemoryBlock allocate(long size)
+  public synchronized PipeMemoryBlock allocate(long sizeInBytes)
       throws PipeRuntimeException, InterruptedException {
-    for (int i = 1; i <= maxRetries; i++) {
-      if (totalMemorySizeInBytes - usedMemorySizeInBytes >= size) {
-        PipeMemoryBlock block = new PipeMemoryBlock(size);
-        usedMemorySizeInBytes += size;
-        return block;
+    for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
+      if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes) {
+        usedMemorySizeInBytes += sizeInBytes;
+        return new PipeMemoryBlock(sizeInBytes);
       }
 
-      this.wait(retryIntervalInMs * i);
+      try {
+        this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("allocate: interrupted while waiting for available memory", e);
+      }
     }
 
-    throw new PipeRuntimeCriticalException("Not enough memory for Pipe Memory...");
+    throw new PipeRuntimeCriticalException(
+        String.format(
+            "failed to allocate memory after %d retries, "
+                + "total memory size %d bytes, used memory size %d bytes, "
+                + "requested memory size %d bytes",
+            MEMORY_ALLOCATE_MAX_RETRIES,
+            TOTAL_MEMORY_SIZE_IN_BYTES,
+            usedMemorySizeInBytes,
+            sizeInBytes));
   }
 
-  synchronized void release(PipeMemoryBlock block) {
+  public synchronized void release(PipeMemoryBlock block) {
     if (block == null || block.isReleased()) {
       return;
     }
 
+    usedMemorySizeInBytes -= block.getMemoryUsageInBytes();
     block.markAsReleased();
-    usedMemorySizeInBytes -= block.getMemoryUsage();
 
     this.notifyAll();
   }
@@ -73,6 +83,6 @@ public class PipeMemoryManager {
   }
 
   public long getTotalMemorySizeInBytes() {
-    return totalMemorySizeInBytes;
+    return TOTAL_MEMORY_SIZE_IN_BYTES;
   }
 }

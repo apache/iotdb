@@ -22,22 +22,24 @@ package org.apache.iotdb.db.pipe.resource.memory;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 
 public class PipeMemoryBlock implements AutoCloseable {
-  private volatile boolean isReleased = false;
-  private final long memoryUsage;
 
-  public PipeMemoryBlock(long memoryUsage) {
-    this.memoryUsage = memoryUsage;
+  private final long memoryUsageInBytes;
+
+  private volatile boolean isReleased = false;
+
+  public PipeMemoryBlock(long memoryUsageInBytes) {
+    this.memoryUsageInBytes = memoryUsageInBytes;
   }
 
-  public long getMemoryUsage() {
-    return memoryUsage;
+  long getMemoryUsageInBytes() {
+    return memoryUsageInBytes;
   }
 
   boolean isReleased() {
     return isReleased;
   }
 
-  synchronized void markAsReleased() {
+  void markAsReleased() {
     isReleased = true;
   }
 
