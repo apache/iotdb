@@ -20,12 +20,12 @@
 package org.apache.iotdb.metrics.micrometer;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerAutoGauge;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerCounter;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerGauge;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerHistogram;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerRate;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerTimer;
+import org.apache.iotdb.metrics.micrometer.type.IoTDBAutoGauge;
+import org.apache.iotdb.metrics.micrometer.type.IoTDBCounter;
+import org.apache.iotdb.metrics.micrometer.type.IoTDBGauge;
+import org.apache.iotdb.metrics.micrometer.type.IoTDBHistogram;
+import org.apache.iotdb.metrics.micrometer.type.IoTDBRate;
+import org.apache.iotdb.metrics.micrometer.type.IoTDBTimer;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
@@ -36,7 +36,6 @@ import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
@@ -46,30 +45,29 @@ import java.util.function.ToDoubleFunction;
 
 /** Metric manager based on micrometer. More details in https://micrometer.io/. */
 @SuppressWarnings("common-java:DuplicatedBlocks")
-public class MicrometerMetricManager extends AbstractMetricManager {
+public class IoTDBMetricManager extends AbstractMetricManager {
 
   io.micrometer.core.instrument.MeterRegistry meterRegistry;
 
-  public MicrometerMetricManager() {
-    meterRegistry = Metrics.globalRegistry;
-    Metrics.globalRegistry.add(new SimpleMeterRegistry());
+  public IoTDBMetricManager() {
+    meterRegistry = new SimpleMeterRegistry();
   }
 
   @Override
   public Counter createCounter(MetricInfo metricInfo) {
-    return new MicrometerCounter(
+    return new IoTDBCounter(
         meterRegistry.counter(metricInfo.getName(), metricInfo.getTagsInArray()));
   }
 
   @Override
   public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToDoubleFunction<T> mapper) {
-    return new MicrometerAutoGauge<>(
+    return new IoTDBAutoGauge<>(
         meterRegistry, metricInfo.getName(), obj, mapper, metricInfo.getTagsInArray());
   }
 
   @Override
   public Gauge createGauge(MetricInfo metricInfo) {
-    return new MicrometerGauge(meterRegistry, metricInfo.getName(), metricInfo.getTagsInArray());
+    return new IoTDBGauge(meterRegistry, metricInfo.getName(), metricInfo.getTagsInArray());
   }
 
   @Override
@@ -79,12 +77,12 @@ public class MicrometerMetricManager extends AbstractMetricManager {
             .tags(metricInfo.getTagsInArray())
             .publishPercentiles(0.5, 0.99)
             .register(meterRegistry);
-    return new MicrometerHistogram(distributionSummary);
+    return new IoTDBHistogram(distributionSummary);
   }
 
   @Override
   public Rate createRate(MetricInfo metricInfo) {
-    return new MicrometerRate(
+    return new IoTDBRate(
         meterRegistry.gauge(
             metricInfo.getName(), Tags.of(metricInfo.getTagsInArray()), new AtomicLong(0)));
   }
@@ -96,7 +94,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
             .tags(metricInfo.getTagsInArray())
             .publishPercentiles(0.5, 0.99)
             .register(meterRegistry);
-    return new MicrometerTimer(timer);
+    return new IoTDBTimer(timer);
   }
 
   @Override
@@ -142,7 +140,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
     if (!super.equals(o)) {
       return false;
     }
-    MicrometerMetricManager that = (MicrometerMetricManager) o;
+    IoTDBMetricManager that = (IoTDBMetricManager) o;
     return Objects.equals(meterRegistry, that.meterRegistry);
   }
 

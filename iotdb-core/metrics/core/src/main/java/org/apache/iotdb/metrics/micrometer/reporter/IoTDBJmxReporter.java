@@ -33,8 +33,8 @@ import org.slf4j.LoggerFactory;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class MicrometerJmxReporter implements JmxReporter {
-  private static final Logger LOGGER = LoggerFactory.getLogger(MicrometerJmxReporter.class);
+public class IoTDBJmxReporter implements JmxReporter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBJmxReporter.class);
 
   @Override
   public boolean start() {
@@ -47,7 +47,7 @@ public class MicrometerJmxReporter implements JmxReporter {
         LOGGER.warn("Micrometer JmxReporter already start!");
         return false;
       }
-      Metrics.addRegistry(new JmxMeterRegistry(MicrometerJmxConfig.DEFAULT, Clock.SYSTEM));
+      Metrics.addRegistry(new JmxMeterRegistry(IoTDBJmxConfig.DEFAULT, Clock.SYSTEM));
     } catch (Exception e) {
       LOGGER.warn("Micrometer JmxReporter failed to start, because ", e);
       return false;

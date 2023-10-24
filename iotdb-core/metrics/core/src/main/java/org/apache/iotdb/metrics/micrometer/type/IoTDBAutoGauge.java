@@ -19,39 +19,34 @@
 
 package org.apache.iotdb.metrics.micrometer.type;
 
-import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.AutoGauge;
 
 import io.micrometer.core.instrument.Tags;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.lang.ref.WeakReference;
+import java.util.function.ToDoubleFunction;
 
-public class MicrometerGauge implements Gauge {
-  private final AtomicLong atomicLong;
+public class IoTDBAutoGauge<T> implements AutoGauge {
 
-  public MicrometerGauge(
+  private final WeakReference<T> refObject;
+  private final ToDoubleFunction<T> mapper;
+
+  public IoTDBAutoGauge(
       io.micrometer.core.instrument.MeterRegistry meterRegistry,
       String metricName,
+      T object,
+      ToDoubleFunction<T> mapper,
       String... tags) {
-    atomicLong = meterRegistry.gauge(metricName, Tags.of(tags), new AtomicLong(0));
+    this.refObject =
+        new WeakReference<>(meterRegistry.gauge(metricName, Tags.of(tags), object, mapper));
+    this.mapper = mapper;
   }
 
   @Override
-  public long value() {
-    return atomicLong.get();
-  }
-
-  @Override
-  public void incr(long value) {
-    atomicLong.addAndGet(value);
-  }
-
-  @Override
-  public void decr(long value) {
-    atomicLong.addAndGet(-value);
-  }
-
-  @Override
-  public void set(long value) {
-    atomicLong.set(value);
+  public double value() {
+    if (refObject.get() == null) {
+      return 0d;
+    }
+    return mapper.applyAsDouble(refObject.get());
   }
 }

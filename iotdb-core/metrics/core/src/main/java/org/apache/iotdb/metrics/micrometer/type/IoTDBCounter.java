@@ -19,34 +19,36 @@
 
 package org.apache.iotdb.metrics.micrometer.type;
 
-import org.apache.iotdb.metrics.type.AutoGauge;
+import org.apache.iotdb.metrics.type.Counter;
 
-import io.micrometer.core.instrument.Tags;
+import java.util.concurrent.atomic.LongAdder;
 
-import java.lang.ref.WeakReference;
-import java.util.function.ToDoubleFunction;
+public class IoTDBCounter implements Counter {
+  private LongAdder count;
+  // 这里我们保留 counter 的接口，是为了使用它在 micrometer 内的命名系统。
+  io.micrometer.core.instrument.Counter counter;
 
-public class MicrometerAutoGauge<T> implements AutoGauge {
+  public IoTDBCounter() {
+    this.count = new LongAdder();
+  }
 
-  private final WeakReference<T> refObject;
-  private final ToDoubleFunction<T> mapper;
-
-  public MicrometerAutoGauge(
-      io.micrometer.core.instrument.MeterRegistry meterRegistry,
-      String metricName,
-      T object,
-      ToDoubleFunction<T> mapper,
-      String... tags) {
-    this.refObject =
-        new WeakReference<>(meterRegistry.gauge(metricName, Tags.of(tags), object, mapper));
-    this.mapper = mapper;
+  public IoTDBCounter(io.micrometer.core.instrument.Counter counter) {
+    this.counter = counter;
+    this.count = new LongAdder();
   }
 
   @Override
-  public double value() {
-    if (refObject.get() == null) {
-      return 0d;
-    }
-    return mapper.applyAsDouble(refObject.get());
+  public void inc() {
+    this.count.add(1L);
+  }
+
+  @Override
+  public void inc(long n) {
+    this.count.add(n);
+  }
+
+  @Override
+  public long count() {
+    return this.count.sum();
   }
 }

@@ -19,27 +19,39 @@
 
 package org.apache.iotdb.metrics.micrometer.type;
 
-import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Gauge;
 
-public class MicrometerCounter implements Counter {
-  io.micrometer.core.instrument.Counter counter;
+import io.micrometer.core.instrument.Tags;
 
-  public MicrometerCounter(io.micrometer.core.instrument.Counter counter) {
-    this.counter = counter;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class IoTDBGauge implements Gauge {
+  private final AtomicLong atomicLong;
+
+  public IoTDBGauge(
+      io.micrometer.core.instrument.MeterRegistry meterRegistry,
+      String metricName,
+      String... tags) {
+    atomicLong = meterRegistry.gauge(metricName, Tags.of(tags), new AtomicLong(0));
   }
 
   @Override
-  public void inc() {
-    counter.increment();
+  public long value() {
+    return atomicLong.get();
   }
 
   @Override
-  public void inc(long n) {
-    counter.increment(n);
+  public void incr(long value) {
+    atomicLong.addAndGet(value);
   }
 
   @Override
-  public long count() {
-    return (long) counter.count();
+  public void decr(long value) {
+    atomicLong.addAndGet(-value);
+  }
+
+  @Override
+  public void set(long value) {
+    atomicLong.set(value);
   }
 }
