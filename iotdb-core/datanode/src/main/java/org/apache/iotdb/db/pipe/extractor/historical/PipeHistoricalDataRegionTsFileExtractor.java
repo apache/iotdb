@@ -307,7 +307,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public int getPendingQueueSize() {
-    return pendingQueue.size();
+    return pendingQueue != null ? pendingQueue.size() : 0;
   }
 
   @Override
