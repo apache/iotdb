@@ -26,6 +26,7 @@ import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -77,48 +78,48 @@ public class SessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    //    try {
-    //      session.createDatabase("root.sg1");
-    //    } catch (StatementExecutionException e) {
-    //      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-    //        throw e;
-    //      }
-    //    }
+    try {
+      session.createDatabase("root.sg1");
+    } catch (StatementExecutionException e) {
+      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+        throw e;
+      }
+    }
 
     //     createTemplate();
-    //    createTimeseries();
-    //    createMultiTimeseries();
-    //    insertRecord();
-    //    insertTablet();
+    createTimeseries();
+    createMultiTimeseries();
+    insertRecord();
+    insertTablet();
     //    insertTabletWithNullValues();
     //    insertTablets();
-    insertRecords();
+    //    insertRecords();
     //    insertText();
     //    selectInto();
     //    createAndDropContinuousQueries();
     //    nonQuery();
-    //    query();
+    query();
     //    queryWithTimeout();
-    //    rawDataQuery();
-    //    lastDataQuery();
-    //    aggregationQuery();
-    //    groupByQuery();
+    rawDataQuery();
+    lastDataQuery();
+    aggregationQuery();
+    groupByQuery();
     //    queryByIterator();
     //    deleteData();
     //    deleteTimeseries();
     //    setTimeout();
 
-    //    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
-    //    sessionEnableRedirect.setEnableQueryRedirection(true);
-    //    sessionEnableRedirect.open(false);
+    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+    sessionEnableRedirect.setEnableQueryRedirection(true);
+    sessionEnableRedirect.open(false);
 
     // set session fetchSize
-    //    sessionEnableRedirect.setFetchSize(10000);
+    sessionEnableRedirect.setFetchSize(10000);
 
-    //    fastLastDataQueryForOneDevice();
-    //    insertRecord4Redirect();
-    //    query4Redirect();
-    //    sessionEnableRedirect.close();
+    fastLastDataQueryForOneDevice();
+    insertRecord4Redirect();
+    query4Redirect();
+    sessionEnableRedirect.close();
     session.close();
   }
 
@@ -335,42 +336,41 @@ public class SessionExample {
   }
 
   private static void insertRecords() throws IoTDBConnectionException, StatementExecutionException {
+    String deviceId = ROOT_SG1_D1;
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
     measurements.add("s3");
     List<String> deviceIds = new ArrayList<>();
-    deviceIds.add("root.db.d1");
-    deviceIds.add("root.db.d2");
-    deviceIds.add("root.db.d3");
-    List<TSDataType> types = new ArrayList<>();
-    types.add(TSDataType.FLOAT);
-    types.add(TSDataType.FLOAT);
-    types.add(TSDataType.FLOAT);
-    List<Object> values = new ArrayList<>();
-    values.add(4.0f);
-    values.add(4.0f);
-    values.add(4.0f);
-
     List<List<String>> measurementsList = new ArrayList<>();
-    measurementsList.add(measurements);
-    measurementsList.add(measurements);
-    measurementsList.add(measurements);
-
     List<List<Object>> valuesList = new ArrayList<>();
-    valuesList.add(values);
-    valuesList.add(values);
-    valuesList.add(values);
-
     List<Long> timestamps = new ArrayList<>();
-    timestamps.add(4L);
-    timestamps.add(4L);
-    timestamps.add(4L);
-
     List<List<TSDataType>> typesList = new ArrayList<>();
-    typesList.add(types);
-    typesList.add(types);
-    typesList.add(types);
+
+    for (long time = 0; time < 500; time++) {
+      List<Object> values = new ArrayList<>();
+      List<TSDataType> types = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+
+      deviceIds.add(deviceId);
+      measurementsList.add(measurements);
+      valuesList.add(values);
+      typesList.add(types);
+      timestamps.add(time);
+      if (time != 0 && time % 100 == 0) {
+        session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
+        deviceIds.clear();
+        measurementsList.clear();
+        valuesList.clear();
+        typesList.clear();
+        timestamps.clear();
+      }
+    }
 
     session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
   }
