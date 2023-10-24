@@ -2175,7 +2175,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       CreateSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("create schema template %s", req.getName()), statement);
+        AuditLogger.log(String.format("create device template %s", req.getName()), statement);
       }
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
@@ -2354,7 +2354,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (ENABLE_AUDIT_LOG) {
         AuditLogger.log(
-            String.format("set schema template %s.%s", req.getTemplateName(), req.getPrefixPath()),
+            String.format("set device template %s.%s", req.getTemplateName(), req.getPrefixPath()),
             statement);
       }
 
@@ -2402,7 +2402,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (ENABLE_AUDIT_LOG) {
         AuditLogger.log(
             String.format(
-                "unset schema template %s from %s", req.getTemplateName(), req.getPrefixPath()),
+                "unset device template %s from %s", req.getTemplateName(), req.getPrefixPath()),
             statement);
       }
 
@@ -2448,7 +2448,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       DropSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(String.format("drop schema template %s", req.getTemplateName()), statement);
+        AuditLogger.log(String.format("drop device template %s", req.getTemplateName()), statement);
       }
 
       // permission check
@@ -2492,7 +2492,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (ENABLE_AUDIT_LOG) {
         AuditLogger.log(
-            String.format("batch activate schema template %s", req.getDevicePathList()), statement);
+            String.format("batch activate device template %s", req.getDevicePathList()), statement);
       }
 
       // permission check

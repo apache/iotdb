@@ -307,6 +307,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       }
 
       writingFileWriter.write(req.getFilePiece());
+      writingFileWriter.getFD().sync();
       return PipeTransferFilePieceResp.toTPipeTransferResp(
           RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
     } catch (Exception e) {
@@ -461,6 +462,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
       // loaded file. Since the writing file writer has already been closed, it will throw a Stream
       // Close exception.
+      writingFileWriter.getFD().sync();
       writingFileWriter.close();
       writingFileWriter = null;
 

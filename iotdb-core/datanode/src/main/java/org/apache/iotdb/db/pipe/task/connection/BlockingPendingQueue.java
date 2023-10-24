@@ -20,16 +20,14 @@
 package org.apache.iotdb.db.pipe.task.connection;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public abstract class BlockingPendingQueue<E extends Event> {
@@ -39,14 +37,12 @@ public abstract class BlockingPendingQueue<E extends Event> {
   private static final long MAX_BLOCKING_TIME_MS =
       PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
 
-  private final AtomicInteger tabletInsertionEventCount;
-  private final AtomicInteger tsFileInsertionEventCount;
   protected final BlockingQueue<E> pendingQueue;
+
+  private final PipeEventCounter eventCounter = new PipeEventCounter();
 
   protected BlockingPendingQueue(BlockingQueue<E> pendingQueue) {
     this.pendingQueue = pendingQueue;
-    tabletInsertionEventCount = new AtomicInteger(0);
-    tsFileInsertionEventCount = new AtomicInteger(0);
   }
 
   public boolean waitedOffer(E event) {
@@ -54,11 +50,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
       final boolean offered =
           pendingQueue.offer(event, MAX_BLOCKING_TIME_MS, TimeUnit.MILLISECONDS);
       if (offered) {
-        if (event instanceof TabletInsertionEvent) {
-          tabletInsertionEventCount.incrementAndGet();
-        } else if (event instanceof TsFileInsertionEvent) {
-          tsFileInsertionEventCount.incrementAndGet();
-        }
+        eventCounter.increaseEventCount(event);
       }
       return offered;
     } catch (InterruptedException e) {
@@ -71,11 +63,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
   public boolean directOffer(E event) {
     final boolean offered = pendingQueue.offer(event);
     if (offered) {
-      if (event instanceof TabletInsertionEvent) {
-        tabletInsertionEventCount.incrementAndGet();
-      } else if (event instanceof TsFileInsertionEvent) {
-        tsFileInsertionEventCount.incrementAndGet();
-      }
+      eventCounter.increaseEventCount(event);
     }
     return offered;
   }
@@ -83,11 +71,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
   public boolean put(E event) {
     try {
       pendingQueue.put(event);
-      if (event instanceof TabletInsertionEvent) {
-        tabletInsertionEventCount.incrementAndGet();
-      } else if (event instanceof TsFileInsertionEvent) {
-        tsFileInsertionEventCount.incrementAndGet();
-      }
+      eventCounter.increaseEventCount(event);
       return true;
     } catch (InterruptedException e) {
       LOGGER.info("pending queue put is interrupted.", e);
@@ -98,12 +82,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   public E directPoll() {
     final E event = pendingQueue.poll();
-    if (event instanceof TabletInsertionEvent) {
-      tabletInsertionEventCount.decrementAndGet();
-    }
-    if (event instanceof TsFileInsertionEvent) {
-      tsFileInsertionEventCount.decrementAndGet();
-    }
+    eventCounter.decreaseEventCount(event);
     return event;
   }
 
@@ -111,11 +90,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     E event = null;
     try {
       event = pendingQueue.poll(MAX_BLOCKING_TIME_MS, TimeUnit.MILLISECONDS);
-      if (event instanceof TabletInsertionEvent) {
-        tabletInsertionEventCount.decrementAndGet();
-      } else if (event instanceof TsFileInsertionEvent) {
-        tsFileInsertionEventCount.decrementAndGet();
-      }
+      eventCounter.decreaseEventCount(event);
     } catch (InterruptedException e) {
       LOGGER.info("pending queue poll is interrupted.", e);
       Thread.currentThread().interrupt();
@@ -125,8 +100,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   public void clear() {
     pendingQueue.clear();
-    tabletInsertionEventCount.set(0);
-    tsFileInsertionEventCount.set(0);
+    eventCounter.reset();
   }
 
   public void forEach(Consumer<? super E> action) {
@@ -142,10 +116,14 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public int getTabletInsertionEventCount() {
-    return tabletInsertionEventCount.get();
+    return eventCounter.getTabletInsertionEventCount();
   }
 
   public int getTsFileInsertionEventCount() {
-    return tsFileInsertionEventCount.get();
+    return eventCounter.getTsFileInsertionEventCount();
+  }
+
+  public int getPipeHeartbeatEventCount() {
+    return eventCounter.getPipeHeartbeatEventCount();
   }
 }

@@ -280,18 +280,16 @@
             <artifactId>junit</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- These two dependencies are needed at runtime -->
+        <!-- These two dependencies are needed at runtime, so please not set test scope -->
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>dropwizard-metrics</artifactId>
             <version>1.3.0-SNAPSHOT</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>micrometer-metrics</artifactId>
             <version>1.3.0-SNAPSHOT</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
@@ -328,7 +326,7 @@
         <dependency>
             <groupId>org.apache.ratis</groupId>
             <artifactId>ratis-thirdparty-misc</artifactId>
-            <scope>test</scope>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>com.nimbusds</groupId>

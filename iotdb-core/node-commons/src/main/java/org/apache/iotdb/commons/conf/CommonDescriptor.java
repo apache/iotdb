@@ -404,10 +404,10 @@ public class CommonDescriptor {
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
+    config.setTimestampPrecision(globalConfig.timestampPrecision);
     config.setTimePartitionInterval(
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
             globalConfig.timePartitionInterval, config.getTimestampPrecision()));
-    config.setTimestampPrecision(globalConfig.timestampPrecision);
     config.setSchemaEngineMode(globalConfig.schemaEngineMode);
     config.setTagAttributeTotalSize(globalConfig.tagAttributeTotalSize);
     config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());

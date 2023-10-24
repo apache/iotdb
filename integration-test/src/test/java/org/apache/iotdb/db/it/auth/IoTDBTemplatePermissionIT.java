@@ -63,42 +63,42 @@ public class IoTDBTemplatePermissionIT {
   @Test
   public void adminOperationsTest() {
     assertNonQueryTestFail(
-        "create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
+        "create device template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
         "803: Only the admin user can perform this operation",
         "test",
         "test123");
     assertNonQueryTestFail(
-        "drop schema template t1",
+        "drop device template t1",
         "803: Only the admin user can perform this operation",
         "test",
         "test123");
     assertNonQueryTestFail(
-        "alter schema template t1 add (speed FLOAT encoding=RLE, FLOAT TEXT encoding=PLAIN compression=SNAPPY)",
+        "alter device template t1 add (speed FLOAT encoding=RLE, FLOAT TEXT encoding=PLAIN compression=SNAPPY)",
         "803: Only the admin user can perform this operation",
         "test",
         "test123");
     assertNonQueryTestFail(
-        "show schema templates",
+        "show device templates",
         "803: Only the admin user can perform this operation",
         "test",
         "test123");
     assertNonQueryTestFail(
-        "show nodes in schema template t1",
+        "show nodes in device template t1",
         "803: Only the admin user can perform this operation",
         "test",
         "test123");
     assertNonQueryTestFail(
-        "set schema template t1 to root.sg1",
+        "set device template t1 to root.sg1",
         "803: Only the admin user can perform this operation",
         "test",
         "test123");
     assertNonQueryTestFail(
-        "unset schema template t1 from root.sg1",
+        "unset device template t1 from root.sg1",
         "803: Only the admin user can perform this operation",
         "test",
         "test123");
     assertNonQueryTestFail(
-        "show paths set schema template t1",
+        "show paths set device template t1",
         "803: Only the admin user can perform this operation",
         "test",
         "test123");
@@ -107,18 +107,18 @@ public class IoTDBTemplatePermissionIT {
   @Test
   public void otherTest() {
     executeNonQuery(
-        "create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
+        "create device template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
     executeNonQuery("create database root.sg1");
-    executeNonQuery("set schema template t1 to root.sg1.d1");
+    executeNonQuery("set device template t1 to root.sg1.d1");
 
     // active
     assertNonQueryTestFail(
-        "create timeseries using schema template on root.sg1.d1",
+        "create timeseries using device template on root.sg1.d1",
         "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.temperature, root.sg1.d1.status]",
         "test",
         "test123");
     grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
-    executeNonQuery("create timeseries using schema template on root.sg1.d1", "test", "test123");
+    executeNonQuery("create timeseries using device template on root.sg1.d1", "test", "test123");
 
     // insert
     assertNonQueryTestFail(
@@ -138,9 +138,9 @@ public class IoTDBTemplatePermissionIT {
 
     // show
     executeNonQuery("create database root.sg2");
-    executeNonQuery("set schema template t1 to root.sg2.d1");
+    executeNonQuery("set device template t1 to root.sg2.d1");
     resultSetEqualTest(
-        "show paths using schema template t1",
+        "show paths using device template t1",
         showPathsUsingTemplateHeaders.stream()
             .map(ColumnHeader::getColumnName)
             .toArray(String[]::new),
@@ -151,11 +151,11 @@ public class IoTDBTemplatePermissionIT {
     // deActive
     revokeUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
     assertNonQueryTestFail(
-        "deactivate schema template t1 from root.sg1.d1",
+        "deactivate device template t1 from root.sg1.d1",
         "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.sg1.d1.temperature, root.sg1.d1.s1, root.sg1.d1.status]",
         "test",
         "test123");
     grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.sg1.d1.**");
-    executeNonQuery("deactivate schema template t1 from root.sg1.d1", "test", "test123");
+    executeNonQuery("deactivate device template t1 from root.sg1.d1", "test", "test123");
   }
 }
