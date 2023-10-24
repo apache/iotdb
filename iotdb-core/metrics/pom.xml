@@ -32,7 +32,7 @@
     <description>Metrics interfaces for IoTDB</description>
     <modules>
         <module>interface</module>
-        <module>micrometer-metrics</module>
+        <module>metrics-core</module>
         <module>dropwizard-metrics</module>
     </modules>
     <properties>

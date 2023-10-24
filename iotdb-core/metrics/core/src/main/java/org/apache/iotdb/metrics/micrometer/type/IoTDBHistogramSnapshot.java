@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -21,19 +21,15 @@ package org.apache.iotdb.metrics.micrometer.type;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
-import java.util.concurrent.TimeUnit;
+public class IoTDBHistogramSnapshot implements HistogramSnapshot {
 
-/** This implementation is just for a timer as it needs the TimeUnit to convert from nanoseconds. */
-public class MicrometerTimerHistogramSnapshot implements HistogramSnapshot {
-
-  io.micrometer.core.instrument.Timer timer;
+  io.micrometer.core.instrument.DistributionSummary distributionSummary;
   io.micrometer.core.instrument.distribution.HistogramSnapshot histogramSnapshot;
-  private final TimeUnit baseTimeUnit;
 
-  public MicrometerTimerHistogramSnapshot(io.micrometer.core.instrument.Timer timer) {
-    this.timer = timer;
-    this.histogramSnapshot = timer.takeSnapshot();
-    this.baseTimeUnit = timer.baseTimeUnit();
+  public IoTDBHistogramSnapshot(
+      io.micrometer.core.instrument.DistributionSummary distributionSummary) {
+    this.distributionSummary = distributionSummary;
+    this.histogramSnapshot = distributionSummary.takeSnapshot();
   }
 
   @Override
@@ -49,12 +45,12 @@ public class MicrometerTimerHistogramSnapshot implements HistogramSnapshot {
       }
     }
 
-    return this.histogramSnapshot.percentileValues()[prevIndex].value(baseTimeUnit);
+    return this.histogramSnapshot.percentileValues()[prevIndex].value();
   }
 
   @Override
   public double getSum() {
-    return this.timer.totalTime(baseTimeUnit);
+    return this.distributionSummary.totalAmount();
   }
 
   @Override
@@ -64,11 +60,11 @@ public class MicrometerTimerHistogramSnapshot implements HistogramSnapshot {
 
   @Override
   public double getMax() {
-    return this.histogramSnapshot.max(baseTimeUnit);
+    return this.histogramSnapshot.max();
   }
 
   @Override
   public double getMean() {
-    return this.histogramSnapshot.mean(baseTimeUnit);
+    return this.histogramSnapshot.mean();
   }
 }

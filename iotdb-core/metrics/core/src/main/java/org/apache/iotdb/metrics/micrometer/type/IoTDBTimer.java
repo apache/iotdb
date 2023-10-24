@@ -24,11 +24,11 @@ import org.apache.iotdb.metrics.type.Timer;
 
 import java.util.concurrent.TimeUnit;
 
-public class MicrometerTimer implements Timer {
+public class IoTDBTimer implements Timer {
 
   io.micrometer.core.instrument.Timer timer;
 
-  public MicrometerTimer(io.micrometer.core.instrument.Timer timer) {
+  public IoTDBTimer(io.micrometer.core.instrument.Timer timer) {
     this.timer = timer;
   }
 
@@ -39,7 +39,7 @@ public class MicrometerTimer implements Timer {
 
   @Override
   public HistogramSnapshot takeSnapshot() {
-    return new MicrometerTimerHistogramSnapshot(timer);
+    return new IoTDBTimerHistogramSnapshot(timer);
   }
 
   @Override

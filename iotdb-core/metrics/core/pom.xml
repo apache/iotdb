@@ -26,8 +26,8 @@
         <artifactId>iotdb-metrics</artifactId>
         <version>1.3.0-SNAPSHOT</version>
     </parent>
-    <artifactId>micrometer-metrics</artifactId>
-    <name>IoTDB: Core: Metrics: Micrometer</name>
+    <artifactId>metrics-core</artifactId>
+    <name>IoTDB: Core: Metrics: API Impl</name>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>

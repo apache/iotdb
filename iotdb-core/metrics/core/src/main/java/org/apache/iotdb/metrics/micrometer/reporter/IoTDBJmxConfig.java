@@ -17,31 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.micrometer.type;
+package org.apache.iotdb.metrics.micrometer.reporter;
 
-import org.apache.iotdb.metrics.type.Histogram;
-
-public class MicrometerHistogram implements Histogram {
-
-  io.micrometer.core.instrument.DistributionSummary distributionSummary;
-
-  public MicrometerHistogram(
-      io.micrometer.core.instrument.DistributionSummary distributionSummary) {
-    this.distributionSummary = distributionSummary;
-  }
+public interface IoTDBJmxConfig extends io.micrometer.jmx.JmxConfig {
+  IoTDBJmxConfig DEFAULT = k -> null;
 
   @Override
-  public void update(long value) {
-    distributionSummary.record(value);
-  }
-
-  @Override
-  public long count() {
-    return distributionSummary.count();
-  }
-
-  @Override
-  public org.apache.iotdb.metrics.type.HistogramSnapshot takeSnapshot() {
-    return new MicrometerHistogramSnapshot(distributionSummary);
+  default String domain() {
+    return "org.apache.iotdb.metrics";
   }
 }
