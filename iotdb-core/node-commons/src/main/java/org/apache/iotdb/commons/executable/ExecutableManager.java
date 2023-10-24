@@ -237,7 +237,7 @@ public class ExecutableManager {
       // already exists.
       try (FileOutputStream outputStream = new FileOutputStream(destination)) {
         outputStream.getChannel().write(byteBuffer);
-        outputStream.getChannel().force(true);
+        outputStream.getFD().sync();
       }
     } catch (IOException e) {
       LOGGER.warn(
