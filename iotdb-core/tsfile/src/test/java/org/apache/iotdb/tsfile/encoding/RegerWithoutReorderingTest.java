@@ -438,11 +438,13 @@ public class RegerWithoutReorderingTest {
         int encoded_result = 0;
 
 
-        int count_of_time = 0;
-        int count_of_value = 0;
+        int count_of_time = 1;
+        int count_of_value = 1;
         int pre_time = bit_width_segments[0][0];
         int pre_value = bit_width_segments[0][1];
         int size = bit_width_segments.length;
+        int[][] run_length_time = new int[size][2];
+        int[][] run_length_value = new int[size][2];
 
         int pos_time = 0;
         int pos_value = 0;
@@ -450,26 +452,36 @@ public class RegerWithoutReorderingTest {
         for (int i = 1; i < size; i++) {
             int cur_time = bit_width_segments[i][0];
             int cur_value = bit_width_segments[i][1];
-            if (cur_time != pre_time) {
+            if (cur_time != pre_time && count_of_time != 0) {
+                run_length_time[pos_time][0] = count_of_time;
+                run_length_time[pos_time][1] = pre_time;
                 pos_time++;
                 pre_time = cur_time;
-                count_of_time = 0;
+                count_of_time = 1;
             } else {
                 count_of_time++;
+                pre_time = cur_time;
                 if (count_of_time == 256) {
+                    run_length_time[pos_time][0] = count_of_time;
+                    run_length_time[pos_time][1] = pre_time;
                     pos_time++;
-                    count_of_time = 0;
+                    count_of_time = 1;
                 }
             }
 
-            if (cur_value != pre_value) {
+            if (cur_value != pre_value && count_of_value != 0) {
+                run_length_value[pos_value][0] = count_of_value;
+                run_length_value[pos_value][1] = pre_value;
                 pos_value++;
 
                 pre_value = cur_value;
-                count_of_value = 0;
+                count_of_value = 1;
             } else {
                 count_of_value++;
+                pre_value = cur_value;
                 if (count_of_value == 256) {
+                    run_length_value[pos_value][0] = count_of_value;
+                    run_length_value[pos_value][1] = pre_value;
                     pos_value++;
                     count_of_value = 0;
                 }
@@ -477,9 +489,13 @@ public class RegerWithoutReorderingTest {
 
         }
         if (count_of_time != 0) {
+            run_length_time[pos_time][0] = count_of_time;
+            run_length_time[pos_time][1] = pre_time;
             pos_time++;
         }
         if (count_of_value != 0) {
+            run_length_value[pos_value][0] = count_of_value;
+            run_length_value[pos_value][1] = pre_value;
             pos_value++;
         }
 
@@ -506,14 +522,15 @@ public class RegerWithoutReorderingTest {
         for (int i = 1; i < size; i++) {
             int cur_time = bit_width_segments[i][0];
             int cur_value = bit_width_segments[i][1];
-            if (cur_time != pre_time) {
+            if (cur_time != pre_time && count_of_time != 0) {
                 run_length_time[pos_time][0] = count_of_time;
                 run_length_time[pos_time][1] = pre_time;
                 pos_time++;
                 pre_time = cur_time;
-                count_of_time = 0;
+                count_of_time = 1;
             } else {
                 count_of_time++;
+                pre_time = cur_time;
                 if (count_of_time == 256) {
                     run_length_time[pos_time][0] = count_of_time;
                     run_length_time[pos_time][1] = pre_time;
@@ -522,15 +539,16 @@ public class RegerWithoutReorderingTest {
                 }
             }
 
-            if (cur_value != pre_value) {
+            if (cur_value != pre_value && count_of_value != 0) {
                 run_length_value[pos_value][0] = count_of_value;
                 run_length_value[pos_value][1] = pre_value;
                 pos_value++;
 
                 pre_value = cur_value;
-                count_of_value = 0;
+                count_of_value = 1;
             } else {
                 count_of_value++;
+                pre_value = cur_value;
                 if (count_of_value == 256) {
                     run_length_value[pos_value][0] = count_of_value;
                     run_length_value[pos_value][1] = pre_value;
@@ -562,6 +580,8 @@ public class RegerWithoutReorderingTest {
             intByte2Bytes(bit_width_time[1], pos_encode, encoded_result);
             pos_encode++;
 
+//            System.out.println("bit_width_time[0]="+bit_width_time[0]);
+//            System.out.println("bit_width_time[1]="+bit_width_time[1]);
         }
         for (int i=0;i<pos_value;i++) {
             int[] bit_width_value = run_length_value[i];
@@ -570,11 +590,12 @@ public class RegerWithoutReorderingTest {
             intByte2Bytes(bit_width_value[1], pos_encode, encoded_result);
             pos_encode++;
 
+//            System.out.println("bit_width_value[0]="+bit_width_value[0]);
+//            System.out.println("bit_width_value[1]="+bit_width_value[1]);
         }
 
         return pos_encode;
     }
-
     public static int[][] segmentBitPacking(int[][] ts_block_delta, int block_size, int segment_size) {
 
         int segment_n = (block_size - 1) / segment_size;
@@ -913,6 +934,7 @@ public class RegerWithoutReorderingTest {
         output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
 //        dataset_block_size.add(8192);
         output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
+
 //        dataset_block_size.add(2048);
         output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
 //        dataset_block_size.add(8192);
