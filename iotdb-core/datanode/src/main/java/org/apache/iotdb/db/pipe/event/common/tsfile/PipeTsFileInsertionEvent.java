@@ -49,7 +49,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final TsFileResource resource;
   private File tsFile;
 
-  private boolean isLoaded;
+  private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
 
   private final AtomicBoolean isClosed;
