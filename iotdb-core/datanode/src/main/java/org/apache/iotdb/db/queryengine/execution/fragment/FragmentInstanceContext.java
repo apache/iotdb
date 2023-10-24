@@ -409,6 +409,7 @@ public class FragmentInstanceContext extends QueryContext {
         allDriversClosed.await();
         break;
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         LOGGER.warn(
             "Interrupted when await on allDriversClosed, FragmentInstance Id is {}", this.getId());
       }
