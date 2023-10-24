@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
@@ -123,7 +124,10 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
       return true;
     } catch (Exception e) {
       if (printLogWhenEncounterException) {
-        logger.error("Unexpected exception occurs in {} : {}", this, e.getMessage());
+        logger.error(
+            "Unexpected exception occurs in {}, error msg is {}",
+            this,
+            ExceptionUtils.getRootCause(e).toString());
       }
       return false;
     }

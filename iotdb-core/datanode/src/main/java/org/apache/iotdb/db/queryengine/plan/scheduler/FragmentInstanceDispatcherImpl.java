@@ -48,6 +48,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -339,7 +340,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   String.format("unknown read type [%s]", instance.getType())));
       }
     } catch (ClientManagerException | TException e) {
-      logger.warn("can't connect to node {}", endPoint, e);
+      logger.warn(
+          "can't connect to node {}, error msg is {}.",
+          endPoint,
+          ExceptionUtils.getRootCause(e).toString());
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
       status.setMessage("can't connect to node " + endPoint);
