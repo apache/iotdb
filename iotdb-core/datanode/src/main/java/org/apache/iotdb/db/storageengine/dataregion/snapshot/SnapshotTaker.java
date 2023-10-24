@@ -172,7 +172,7 @@ public class SnapshotTaker {
         }
         File snapshotTsFile = getSnapshotFilePathForTsFile(tsFile, snapshotId);
         // create hard link for tsfile, resource, mods
-        createHardLink(snapshotTsFile, tsFile);
+        createHardLinkForTsFile(snapshotTsFile, resource);
         createHardLink(
             new File(snapshotTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
             new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
@@ -199,6 +199,18 @@ public class SnapshotTaker {
     Files.deleteIfExists(target.toPath());
     Files.createLink(target.toPath(), source.toPath());
     snapshotLogger.logFile(source);
+  }
+
+  private void createHardLinkForTsFile(File target, TsFileResource source) throws IOException {
+    if (!target.getParentFile().exists()) {
+      LOGGER.error("Hard link target dir {} doesn't exist", target.getParentFile());
+    }
+    if (!source.getTsFile().exists()) {
+      LOGGER.error("Hard link source file {} doesn't exist", source);
+    }
+    Files.deleteIfExists(target.toPath());
+    source.hardLinkOrCopyTsFileTo(target.toPath());
+    snapshotLogger.logFile(source.getTsFile());
   }
 
   /**

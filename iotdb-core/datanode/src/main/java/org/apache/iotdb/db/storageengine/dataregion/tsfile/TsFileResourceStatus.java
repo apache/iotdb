@@ -24,5 +24,10 @@ public enum TsFileResourceStatus {
   NORMAL,
   COMPACTION_CANDIDATE,
   COMPACTING,
+  /**
+   * Indicating the TsFile is prepared to be hard linked. It is seemed as a write operation because
+   * it cannot be modified by other module during hard linking
+   */
+  HARD_LINKING,
   DELETED
 }

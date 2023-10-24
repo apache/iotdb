@@ -38,7 +38,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -57,9 +56,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -154,6 +152,11 @@ public class TsFileResource {
   private TsFileResource originTsFileResource;
 
   private ProgressIndex maxProgressIndex;
+
+  private long dataSize;
+
+  private boolean isMetaSplit = false;
+  private boolean hasHardLink = false;
 
   public TsFileResource() {}
 
@@ -648,7 +651,8 @@ public class TsFileResource {
         return compareAndSetStatus(TsFileResourceStatus.UNCLOSED, TsFileResourceStatus.NORMAL)
             || compareAndSetStatus(TsFileResourceStatus.COMPACTING, TsFileResourceStatus.NORMAL)
             || compareAndSetStatus(
-                TsFileResourceStatus.COMPACTION_CANDIDATE, TsFileResourceStatus.NORMAL);
+                TsFileResourceStatus.COMPACTION_CANDIDATE, TsFileResourceStatus.NORMAL)
+            || compareAndSetStatus(TsFileResourceStatus.HARD_LINKING, TsFileResourceStatus.NORMAL);
       case UNCLOSED:
         // TsFile cannot be set back to UNCLOSED so false is always returned
         return false;
@@ -659,6 +663,10 @@ public class TsFileResource {
       case COMPACTING:
         return compareAndSetStatus(
             TsFileResourceStatus.COMPACTION_CANDIDATE, TsFileResourceStatus.COMPACTING);
+      case HARD_LINKING:
+        return compareAndSetStatus(TsFileResourceStatus.NORMAL, TsFileResourceStatus.HARD_LINKING)
+            || compareAndSetStatus(
+                TsFileResourceStatus.COMPACTION_CANDIDATE, TsFileResourceStatus.HARD_LINKING);
       case COMPACTION_CANDIDATE:
         return compareAndSetStatus(
             TsFileResourceStatus.NORMAL, TsFileResourceStatus.COMPACTION_CANDIDATE);
@@ -822,48 +830,6 @@ public class TsFileResource {
   /** Check whether the tsFile spans multiple time partitions. */
   public boolean isSpanMultiTimePartitions() {
     return timeIndex.isSpanMultiTimePartitions();
-  }
-
-  /**
-   * Create a hardlink for the TsFile and modification file (if exists) The hardlink will have a
-   * suffix like ".{sysTime}_{randomLong}"
-   *
-   * @return a new TsFileResource with its file changed to the hardlink or null the hardlink cannot
-   *     be created.
-   */
-  public TsFileResource createHardlink() {
-    if (!file.exists()) {
-      return null;
-    }
-
-    TsFileResource newResource;
-    try {
-      newResource = new TsFileResource(this);
-    } catch (IOException e) {
-      LOGGER.error("Cannot create hardlink for {}", file, e);
-      return null;
-    }
-
-    while (true) {
-      String hardlinkSuffix =
-          TsFileConstant.PATH_SEPARATOR + System.currentTimeMillis() + "_" + random.nextLong();
-      File hardlink = new File(file.getAbsolutePath() + hardlinkSuffix);
-
-      try {
-        Files.createLink(Paths.get(hardlink.getAbsolutePath()), Paths.get(file.getAbsolutePath()));
-        newResource.setFile(hardlink);
-        if (modFile != null && modFile.exists()) {
-          newResource.setModFile(modFile.createHardlink());
-        }
-        break;
-      } catch (FileAlreadyExistsException e) {
-        // retry a different name if the file is already created
-      } catch (IOException e) {
-        LOGGER.error("Cannot create hardlink for {}", file, e);
-        return null;
-      }
-    }
-    return newResource;
   }
 
   public void setModFile(ModificationFile modFile) {
@@ -1153,5 +1119,54 @@ public class TsFileResource {
 
   public String getDataRegionId() {
     return file.getParentFile().getParentFile().getName();
+  }
+
+  public void hardLinkOrCopyTsFileTo(Path targetPath) throws IOException {
+    if (setStatus(TsFileResourceStatus.HARD_LINKING)) {
+      try {
+        // use hard link directly
+        Files.createLink(targetPath, getTsFile().toPath());
+        this.hasHardLink = true;
+      } finally {
+        // no matter what previous status is, we transit it status back to NORMAL directly.
+        // For example, its previous is COMPACTION_CANDIDATE, if its status is transit back to
+        // NORMAL, the compaction task will be terminated before executing, which has no side effect
+        // to the whole process
+        setStatus(TsFileResourceStatus.NORMAL);
+      }
+    } else {
+      // copy this file to target path
+      readLock();
+      try {
+        if (isMetaSplit) {
+          // combine the data part and meta part into target file
+
+        } else {
+          Files.copy(getTsFile().toPath(), targetPath);
+        }
+      } finally {
+        readUnlock();
+      }
+    }
+  }
+
+  public void setDataSize(long dataSize) {
+    this.dataSize = dataSize;
+  }
+
+  public long getDataSize() {
+    return dataSize;
+  }
+
+  public boolean isMetaSplit() {
+    return isMetaSplit;
+  }
+
+  public void setMetaSplit(boolean metaSplit) {
+    isMetaSplit = metaSplit;
+  }
+
+  public boolean isHasHardLink() {
+    return hasHardLink;
   }
 }

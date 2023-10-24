@@ -54,10 +54,12 @@ public class PipeTsFileResourceManager {
    * @param file tsfile, resource file or mod file. can be original file or hardlink/copy of
    *     original file
    * @param isTsFile true to create hardlink, false to copy file
+   * @param resource original TsFileResource or null if isTsFile is false
    * @return the hardlink or copied file
    * @throws IOException when create hardlink or copy file failed
    */
-  public synchronized File increaseFileReference(File file, boolean isTsFile) throws IOException {
+  public synchronized File increaseFileReference(
+      File file, boolean isTsFile, TsFileResource resource) throws IOException {
     // if the file is already a hardlink or copied file, just increase reference count and return it
     if (increaseReferenceIfExists(file.getPath())) {
       return file;
@@ -77,9 +79,12 @@ public class PipeTsFileResourceManager {
     fileNameToFileMap.put(hardlinkOrCopiedFile.getPath(), hardlinkOrCopiedFile);
     // if the file is a tsfile, create a hardlink in pipe dir and return it.
     // otherwise, copy the file (.mod or .resource) to pipe dir and return it.
-    return isTsFile
-        ? createHardLink(file, hardlinkOrCopiedFile)
-        : copyFile(file, hardlinkOrCopiedFile);
+    if (isTsFile) {
+      resource.hardLinkOrCopyTsFileTo(hardlinkOrCopiedFile.toPath());
+    } else {
+      copyFile(file, hardlinkOrCopiedFile);
+    }
+    return hardlinkOrCopiedFile;
   }
 
   private boolean increaseReferenceIfExists(String path) {
@@ -181,7 +186,7 @@ public class PipeTsFileResourceManager {
   }
 
   public synchronized void pinTsFileResource(TsFileResource resource) throws IOException {
-    increaseFileReference(resource.getTsFile(), true);
+    increaseFileReference(resource.getTsFile(), true, resource);
   }
 
   public synchronized void unpinTsFileResource(TsFileResource resource) throws IOException {
