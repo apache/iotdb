@@ -29,6 +29,9 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.StorageExecutor;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
@@ -39,6 +42,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
 import org.apache.iotdb.db.queryengine.execution.load.ChunkData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
+import org.apache.iotdb.db.queryengine.metric.LoadMetrics;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -47,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsF
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -104,6 +109,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private final PlanFragmentId fragmentId;
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
+  private static final String METRIC_POINT_IN = "pointsIn";
 
   public LoadTsFileScheduler(
       DistributedQueryPlan distributedQueryPlan,
@@ -124,6 +130,8 @@ public class LoadTsFileScheduler implements IScheduler {
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
       tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getPlanNodeTree());
     }
+
+    MetricService.getInstance().addMetricSet(LoadMetrics.getInstance());
   }
 
   @Override
@@ -341,6 +349,23 @@ public class LoadTsFileScheduler implements IScheduler {
       stateMachine.transitionToFailed(e.getFailureStatus());
       return false;
     }
+
+    // add metrics
+    LoadMetrics.getInstance().getLoadWriteCounter().inc(node.getWritePointTotalCount());
+
+    for (Map.Entry<String, Long> entry : node.getDevice2WritePointCountMap().entrySet()) {
+      MetricService.getInstance()
+          .count(
+              entry.getValue(),
+              Metric.QUANTITY.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              METRIC_POINT_IN,
+              Tag.DATABASE.toString(),
+              entry.getKey(),
+              Tag.REGION.toString(),
+              Integer.toString(node.getLocalRegionReplicaSet().getRegionId().getId()));
+    }
     return true;
   }
 
@@ -409,6 +434,8 @@ public class LoadTsFileScheduler implements IScheduler {
             return false;
           }
 
+          markMetric(pieceNode, Integer.toString(sortedReplicaSet.getRegionId().getId()));
+
           dataSize -= pieceNode.getDataSize();
           replicaSet2Piece.put(
               sortedReplicaSet,
@@ -465,15 +492,39 @@ public class LoadTsFileScheduler implements IScheduler {
       routeChunkData();
 
       for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
-        if (!scheduler.dispatchOnePieceNode(entry.getValue(), entry.getKey())) {
+        LoadTsFilePieceNode pieceNode = entry.getValue();
+        if (!scheduler.dispatchOnePieceNode(pieceNode, entry.getKey())) {
           logger.warn(
               "Dispatch piece node {} of TsFile {} error.",
               entry.getValue(),
               singleTsFileNode.getTsFileResource().getTsFile());
           return false;
         }
+
+        markMetric(pieceNode, Integer.toString(entry.getKey().getRegionId().getId()));
       }
       return true;
+    }
+
+    private void markMetric(LoadTsFilePieceNode pieceNode, String regionId) {
+      LoadMetrics.getInstance().getLoadWriteCounter().inc(pieceNode.getWritePointTotalCount());
+
+      List<TsFileData> tsFileDataList = pieceNode.getAllTsFileData();
+      for (int i = 0; i < tsFileDataList.size(); i++) {
+        if (!tsFileDataList.get(i).isModification() && tsFileDataList.get(i) instanceof ChunkData) {
+          MetricService.getInstance()
+              .count(
+                  pieceNode.getEachTsFileDataWritePointCount().get(i),
+                  Metric.QUANTITY.toString(),
+                  MetricLevel.CORE,
+                  Tag.NAME.toString(),
+                  METRIC_POINT_IN,
+                  Tag.DATABASE.toString(),
+                  ((ChunkData) tsFileDataList.get(i)).getDevice(),
+                  Tag.REGION.toString(),
+                  regionId);
+        }
+      }
     }
   }
 

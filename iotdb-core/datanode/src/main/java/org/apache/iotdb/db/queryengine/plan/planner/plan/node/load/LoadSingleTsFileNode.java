@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -58,18 +59,20 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private TsFileResource resource;
   private boolean needDecodeTsFile;
   private boolean deleteAfterLoad;
+  private final Map<String, Long> device2WritePointCountMap;
 
   private TRegionReplicaSet localRegionReplicaSet;
 
-  public LoadSingleTsFileNode(PlanNodeId id) {
-    super(id);
-  }
-
-  public LoadSingleTsFileNode(PlanNodeId id, TsFileResource resource, boolean deleteAfterLoad) {
+  public LoadSingleTsFileNode(
+      PlanNodeId id,
+      TsFileResource resource,
+      boolean deleteAfterLoad,
+      Map<String, Long> device2WritePointCountMap) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
     this.deleteAfterLoad = deleteAfterLoad;
+    this.device2WritePointCountMap = device2WritePointCountMap;
   }
 
   public boolean isTsFileEmpty() {
@@ -136,6 +139,14 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public boolean isDeleteAfterLoad() {
     return deleteAfterLoad;
+  }
+
+  public long getWritePointTotalCount() {
+    return device2WritePointCountMap.values().stream().mapToLong(Long::longValue).sum();
+  }
+
+  public Map<String, Long> getDevice2WritePointCountMap() {
+    return device2WritePointCountMap;
   }
 
   /**

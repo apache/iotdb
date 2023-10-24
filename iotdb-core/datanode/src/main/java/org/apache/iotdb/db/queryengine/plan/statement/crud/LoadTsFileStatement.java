@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class LoadTsFileStatement extends Statement {
 
@@ -46,6 +47,7 @@ public class LoadTsFileStatement extends Statement {
 
   private final List<File> tsFiles;
   private final List<TsFileResource> resources;
+  private final List<Map<String, Long>> tsFilesDevice2WritePointCountMapList;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath);
@@ -55,6 +57,7 @@ public class LoadTsFileStatement extends Statement {
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
+    this.tsFilesDevice2WritePointCountMapList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
 
     if (file.isFile()) {
@@ -79,6 +82,7 @@ public class LoadTsFileStatement extends Statement {
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
+    this.tsFilesDevice2WritePointCountMapList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
   }
 
@@ -151,6 +155,14 @@ public class LoadTsFileStatement extends Statement {
 
   public List<TsFileResource> getResources() {
     return resources;
+  }
+
+  public List<Map<String, Long>> getTsFilesDevice2WritePointCountMapList() {
+    return tsFilesDevice2WritePointCountMapList;
+  }
+
+  public void addDevice2WritePointCountMap(Map<String, Long> device2WritePointCountMap) {
+    this.tsFilesDevice2WritePointCountMapList.add(device2WritePointCountMap);
   }
 
   @Override

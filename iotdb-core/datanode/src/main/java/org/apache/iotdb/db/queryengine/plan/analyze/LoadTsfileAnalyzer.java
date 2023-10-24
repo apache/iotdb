@@ -204,10 +204,33 @@ public class LoadTsfileAnalyzer {
       } else {
         tsFileResource.deserialize();
       }
+
+      if (device2TimeseriesMetadata == null) {
+        device2TimeseriesMetadata = reader.getAllTimeseriesMetadata(false);
+      }
+
+      final Map<String, Long> device2CountMap =
+          getDevice2WritePointCountMap(device2TimeseriesMetadata);
+
       TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
       loadTsFileStatement.addTsFileResource(tsFileResource);
+      loadTsFileStatement.addDevice2WritePointCountMap(device2CountMap);
     }
+  }
+
+  private Map<String, Long> getDevice2WritePointCountMap(
+      Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata) {
+    Map<String, Long> device2WritePointCountMap = new HashMap<>();
+
+    device2TimeseriesMetadata.forEach(
+        (device, timeseriesMetadataList) ->
+            device2WritePointCountMap.put(
+                device,
+                timeseriesMetadataList.stream()
+                    .mapToLong(timeseriesMetadata -> timeseriesMetadata.getStatistics().getCount())
+                    .sum()));
+    return device2WritePointCountMap;
   }
 
   private static final class TimeSeriesIterator

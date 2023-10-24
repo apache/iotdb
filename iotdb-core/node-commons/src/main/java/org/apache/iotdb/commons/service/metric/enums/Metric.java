@@ -118,6 +118,9 @@ public enum Metric {
   PIPE_CONNECTOR_TSFILE_TRANSFER("pipe_connector_tsfile_transfer"),
   PIPE_CONNECTOR_HEARTBEAT_TRANSFER("pipe_connector_heartbeat_transfer"),
   PIPE_HEARTBEAT_EVENT("pipe_heartbeat_event"),
+
+  // load related
+  LOAD_WRITE_POINT_COUNTER("load_write_point_counter"),
   ;
 
   final String value;

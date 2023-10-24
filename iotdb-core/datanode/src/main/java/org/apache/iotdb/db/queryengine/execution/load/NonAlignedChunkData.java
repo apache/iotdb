@@ -58,8 +58,13 @@ public class NonAlignedChunkData implements ChunkData {
   private ChunkWriterImpl chunkWriter;
   private Chunk chunk;
 
+  private final long writePointCount;
+
   public NonAlignedChunkData(
-      String device, ChunkHeader chunkHeader, TTimePartitionSlot timePartitionSlot) {
+      String device,
+      ChunkHeader chunkHeader,
+      TTimePartitionSlot timePartitionSlot,
+      long writePointCount) {
     this.dataSize = 0;
     this.device = device;
     this.chunkHeader = chunkHeader;
@@ -68,6 +73,7 @@ public class NonAlignedChunkData implements ChunkData {
     this.pageNumber = 0;
     this.byteStream = new PublicBAOS();
     this.stream = new DataOutputStream(byteStream);
+    this.writePointCount = writePointCount;
 
     addAttrDataSize();
   }
@@ -79,6 +85,7 @@ public class NonAlignedChunkData implements ChunkData {
     dataSize += ReadWriteForEncodingUtils.varIntSize(deviceLength);
     dataSize += deviceLength; // device
     dataSize += chunkHeader.getSerializedSize(); // timeChunkHeader
+    dataSize += Long.BYTES; // writePointCount
   }
 
   @Override
@@ -191,6 +198,11 @@ public class NonAlignedChunkData implements ChunkData {
     }
   }
 
+  // only used after dispatching tsfile OnePieceNode
+  public long getWritePointCount() {
+    return writePointCount;
+  }
+
   private void deserializeTsFileData(InputStream stream) throws IOException, PageException {
     if (needDecodeChunk) {
       buildChunkWriter(stream);
@@ -270,7 +282,8 @@ public class NonAlignedChunkData implements ChunkData {
       pageNumber = ReadWriteIOUtils.readInt(stream);
     }
 
-    NonAlignedChunkData chunkData = new NonAlignedChunkData(device, chunkHeader, timePartitionSlot);
+    NonAlignedChunkData chunkData =
+        new NonAlignedChunkData(device, chunkHeader, timePartitionSlot, 0);
     chunkData.needDecodeChunk = needDecodeChunk;
     chunkData.pageNumber = pageNumber;
     chunkData.deserializeTsFileData(stream);
