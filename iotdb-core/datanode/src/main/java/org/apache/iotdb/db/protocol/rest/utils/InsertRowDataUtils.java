@@ -19,7 +19,7 @@ package org.apache.iotdb.db.protocol.rest.utils;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.nio.charset.StandardCharsets;

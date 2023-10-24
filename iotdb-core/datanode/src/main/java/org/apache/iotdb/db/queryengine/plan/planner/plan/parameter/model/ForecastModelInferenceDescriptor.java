@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model;
 
 import org.apache.iotdb.commons.model.ForecastModeInformation;
 import org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;

@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.ViewTypeFilter;
 import org.apache.iotdb.commons.schema.view.ViewType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 
 public class SchemaFilterFactory {
 

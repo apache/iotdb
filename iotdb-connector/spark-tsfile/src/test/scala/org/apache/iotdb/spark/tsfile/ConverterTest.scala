@@ -29,7 +29,7 @@ import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.iotdb.spark.constant.TestConstant
 import org.apache.iotdb.spark.tool.TsFileWriteTool
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType
+import org.apache.iotdb.tsfile.enums.TSDataType
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.iotdb.tsfile.read.common.Field
 import org.apache.iotdb.tsfile.utils.Binary

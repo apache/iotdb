@@ -38,7 +38,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -216,7 +217,7 @@ public class AuthorityChecker {
       builder = new TsBlockBuilder(types);
       for (String name : authResp.getMemberInfo()) {
         builder.getTimeColumnBuilder().writeLong(0L);
-        builder.getColumnBuilder(0).writeBinary(new Binary(name));
+        builder.getColumnBuilder(0).writeBinary(new Binary(name, TSFileConfig.STRING_CHARSET));
         builder.declarePosition();
       }
     } else {
@@ -255,9 +256,12 @@ public class AuthorityChecker {
   private static void appendPriBuilder(
       String name, String path, Set<Integer> priv, Set<Integer> grantOpt, TsBlockBuilder builder) {
     for (int i : priv) {
-      builder.getColumnBuilder(0).writeBinary(new Binary(name));
-      builder.getColumnBuilder(1).writeBinary(new Binary(path));
-      builder.getColumnBuilder(2).writeBinary(new Binary(PrivilegeType.values()[i].toString()));
+      builder.getColumnBuilder(0).writeBinary(new Binary(name, TSFileConfig.STRING_CHARSET));
+      builder.getColumnBuilder(1).writeBinary(new Binary(path, TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(2)
+          .writeBinary(
+              new Binary(PrivilegeType.values()[i].toString(), TSFileConfig.STRING_CHARSET));
       builder.getColumnBuilder(3).writeBoolean(grantOpt.contains(i));
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.declarePosition();

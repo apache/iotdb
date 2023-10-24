@@ -17,23 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.common.block;
-
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilderStatus;
+package org.apache.iotdb.tsfile.access;
 
 public class TsBlockBuilderStatus {
-
-  public static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private final int maxTsBlockSizeInBytes;
 
   private long currentSize;
-
-  public TsBlockBuilderStatus() {
-    this(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
-  }
 
   public TsBlockBuilderStatus(int maxTsBlockSizeInBytes) {
     this.maxTsBlockSizeInBytes = maxTsBlockSizeInBytes;

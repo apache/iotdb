@@ -23,7 +23,7 @@ import org.apache.iotdb.spark.tsfile.qp.common.FilterOperator;
 import org.apache.iotdb.spark.tsfile.qp.common.SQLConstant;
 import org.apache.iotdb.spark.tsfile.qp.common.SingleQuery;
 import org.apache.iotdb.spark.tsfile.qp.common.TSQueryPlan;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 

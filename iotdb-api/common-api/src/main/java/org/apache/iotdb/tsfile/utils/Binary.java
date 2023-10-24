@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-
 import java.io.Serializable;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /**
@@ -30,7 +30,7 @@ import java.util.Arrays;
 public class Binary implements Comparable<Binary>, Serializable {
 
   private static final long serialVersionUID = 6394197743397020735L;
-  public static final Binary EMPTY_VALUE = new Binary("");
+  public static final Binary EMPTY_VALUE = new Binary(new byte[0]);
 
   private byte[] values;
 
@@ -39,12 +39,8 @@ public class Binary implements Comparable<Binary>, Serializable {
     this.values = v;
   }
 
-  public Binary(String s) {
-    this.values = (s == null) ? null : s.getBytes(TSFileConfig.STRING_CHARSET);
-  }
-
-  public static Binary valueOf(String value) {
-    return new Binary(BytesUtils.stringToBytes(value));
+  public Binary(String s, Charset charset) {
+    this.values = (s == null) ? null : s.getBytes(charset);
   }
 
   @Override
@@ -106,17 +102,14 @@ public class Binary implements Comparable<Binary>, Serializable {
     return this.values.length;
   }
 
-  public String getStringValue() {
-    return new String(this.values, TSFileConfig.STRING_CHARSET);
-  }
-
-  public String getTextEncodingType() {
-    return TSFileConfig.STRING_ENCODING;
+  public String getStringValue(Charset charset) {
+    return new String(this.values, charset);
   }
 
   @Override
   public String toString() {
-    return getStringValue();
+    // use UTF_8 by default since toString do not provide parameter
+    return getStringValue(StandardCharsets.UTF_8);
   }
 
   public byte[] getValues() {

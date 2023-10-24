@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -42,8 +43,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
-
 public class SchemaFetchScanOperator implements SourceOperator {
   private final PlanNodeId sourceId;
   private final OperatorContext operatorContext;
@@ -54,6 +53,9 @@ public class SchemaFetchScanOperator implements SourceOperator {
   private final boolean withTags;
 
   private boolean isFinished = false;
+
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   public SchemaFetchScanOperator(
       PlanNodeId planNodeId,

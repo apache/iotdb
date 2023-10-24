@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.model;
 
 import org.apache.iotdb.common.rpc.thrift.TaskType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;

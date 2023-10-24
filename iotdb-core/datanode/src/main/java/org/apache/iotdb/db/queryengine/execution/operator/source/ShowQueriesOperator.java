@@ -25,17 +25,16 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class ShowQueriesOperator implements SourceOperator {
 
@@ -47,6 +46,9 @@ public class ShowQueriesOperator implements SourceOperator {
   private boolean hasConsumed;
 
   private final Coordinator coordinator;
+
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   public ShowQueriesOperator(
       OperatorContext operatorContext, PlanNodeId sourceId, Coordinator coordinator) {
@@ -121,12 +123,12 @@ public class ShowQueriesOperator implements SourceOperator {
         timeColumnBuilder.writeLong(
             TimestampPrecisionUtils.convertToCurrPrecision(
                 queryExecution.getStartExecutionTime(), TimeUnit.MILLISECONDS));
-        columnBuilders[0].writeBinary(Binary.valueOf(queryExecution.getQueryId()));
+        columnBuilders[0].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
         columnBuilders[1].writeInt(dataNodeId);
         columnBuilders[2].writeFloat(
             (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
         columnBuilders[3].writeBinary(
-            Binary.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
+            BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
         builder.declarePosition();
       }
     }

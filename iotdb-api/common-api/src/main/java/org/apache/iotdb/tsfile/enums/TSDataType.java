@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.file.metadata.enums;
+package org.apache.iotdb.tsfile.enums;
 
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;

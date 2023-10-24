@@ -24,7 +24,8 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -540,7 +541,10 @@ public class IoTDBRpcDataSet {
       case DOUBLE:
         return String.valueOf(curTsBlock.getColumn(index).getDouble(tsBlockIndex));
       case TEXT:
-        return curTsBlock.getColumn(index).getBinary(tsBlockIndex).getStringValue();
+        return curTsBlock
+            .getColumn(index)
+            .getBinary(tsBlockIndex)
+            .getStringValue(TSFileConfig.STRING_CHARSET);
       default:
         return null;
     }

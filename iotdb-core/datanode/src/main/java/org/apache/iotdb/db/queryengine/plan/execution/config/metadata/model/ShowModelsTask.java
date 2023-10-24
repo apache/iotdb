@@ -27,9 +27,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -75,22 +75,22 @@ public class ShowModelsTask implements IConfigTask {
       }
 
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder.getColumnBuilder(0).writeBinary(Binary.valueOf(modelId));
-      builder.getColumnBuilder(1).writeBinary(Binary.valueOf(modelTask));
-      builder.getColumnBuilder(2).writeBinary(Binary.valueOf(modelType));
-      builder.getColumnBuilder(3).writeBinary(Binary.valueOf(queryBody));
-      builder.getColumnBuilder(4).writeBinary(Binary.valueOf(trainingState));
-      builder.getColumnBuilder(5).writeBinary(Binary.valueOf(modelHyperparameter.get(0)));
+      builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(modelId));
+      builder.getColumnBuilder(1).writeBinary(BytesUtils.valueOf(modelTask));
+      builder.getColumnBuilder(2).writeBinary(BytesUtils.valueOf(modelType));
+      builder.getColumnBuilder(3).writeBinary(BytesUtils.valueOf(queryBody));
+      builder.getColumnBuilder(4).writeBinary(BytesUtils.valueOf(trainingState));
+      builder.getColumnBuilder(5).writeBinary(BytesUtils.valueOf(modelHyperparameter.get(0)));
       builder.declarePosition();
 
       for (int i = 1; i < listSize; i++) {
         builder.getTimeColumnBuilder().writeLong(0L);
         for (int columnIndex = 0; columnIndex <= MODEL_INFO_COLUMN_NUM - 1; columnIndex++) {
-          builder.getColumnBuilder(columnIndex).writeBinary(Binary.valueOf(""));
+          builder.getColumnBuilder(columnIndex).writeBinary(BytesUtils.valueOf(""));
         }
         builder
             .getColumnBuilder(MODEL_INFO_COLUMN_NUM)
-            .writeBinary(Binary.valueOf(modelHyperparameter.get(i)));
+            .writeBinary(BytesUtils.valueOf(modelHyperparameter.get(i)));
         builder.declarePosition();
       }
     }

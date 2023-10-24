@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
@@ -324,7 +325,9 @@ public class TsFileGeneratorUtils {
                       + "d"
                       + (deviceIndex.get(i) + alignDeviceOffset));
           for (IMeasurementSchema schema : alignedMeasurementSchemas) {
-            DataPoint dPoint = new StringDataPoint(schema.getMeasurementId(), new Binary(value));
+            DataPoint dPoint =
+                new StringDataPoint(
+                    schema.getMeasurementId(), new Binary(value, TSFileConfig.STRING_CHARSET));
             tsRecord.addTuple(dPoint);
           }
           // write
@@ -374,7 +377,9 @@ public class TsFileGeneratorUtils {
           TSRecord tsRecord =
               new TSRecord(time, testStorageGroup + PATH_SEPARATOR + "d" + deviceIndex.get(i));
           for (IMeasurementSchema schema : measurementSchemas) {
-            DataPoint dPoint = new StringDataPoint(schema.getMeasurementId(), new Binary(value));
+            DataPoint dPoint =
+                new StringDataPoint(
+                    schema.getMeasurementId(), new Binary(value, TSFileConfig.STRING_CHARSET));
             tsRecord.addTuple(dPoint);
           }
           // write

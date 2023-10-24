@@ -22,9 +22,10 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -174,7 +175,8 @@ public class TsFileGeneratorUtils {
   public static void writeNonAlignedPoint(PageWriter pageWriter, long timestamp, boolean isSeq) {
     switch (pageWriter.getStatistics().getType()) {
       case TEXT:
-        pageWriter.write(timestamp, new Binary(isSeq ? "seqText" : "unSeqText"));
+        pageWriter.write(
+            timestamp, new Binary(isSeq ? "seqText" : "unSeqText", TSFileConfig.STRING_CHARSET));
         break;
       case DOUBLE:
         pageWriter.write(timestamp, isSeq ? timestamp + 0.01 : 100000.01 + timestamp);
@@ -225,7 +227,10 @@ public class TsFileGeneratorUtils {
       ValuePageWriter valuePageWriter, long timestamp, boolean isSeq) {
     switch (valuePageWriter.getStatistics().getType()) {
       case TEXT:
-        valuePageWriter.write(timestamp, new Binary(isSeq ? "seqText" : "unSeqText"), false);
+        valuePageWriter.write(
+            timestamp,
+            new Binary(isSeq ? "seqText" : "unSeqText", TSFileConfig.STRING_CHARSET),
+            false);
         break;
       case DOUBLE:
         valuePageWriter.write(timestamp, isSeq ? timestamp + 0.01 : 100000.01 + timestamp, false);

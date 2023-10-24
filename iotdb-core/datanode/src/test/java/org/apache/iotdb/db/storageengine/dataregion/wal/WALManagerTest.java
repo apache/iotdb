@@ -31,7 +31,8 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -130,7 +131,7 @@ public class WALManagerTest {
     columns[2] = 10000L;
     columns[3] = 100;
     columns[4] = false;
-    columns[5] = new Binary("hh" + 0);
+    columns[5] = new Binary("hh" + 0, TSFileConfig.STRING_CHARSET);
 
     InsertRowNode node =
         new InsertRowNode(

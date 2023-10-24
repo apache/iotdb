@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.udf.api.utils;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.type.Binary;
 import org.apache.iotdb.udf.api.type.Type;
@@ -73,7 +74,8 @@ public class RowImpl implements Row {
 
   @Override
   public String getString(int columnIndex) {
-    return ((org.apache.iotdb.tsfile.utils.Binary) rowRecord[columnIndex]).getStringValue();
+    return ((org.apache.iotdb.tsfile.utils.Binary) rowRecord[columnIndex])
+        .getStringValue(TSFileConfig.STRING_CHARSET);
   }
 
   @Override

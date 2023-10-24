@@ -20,7 +20,7 @@
 package org.apache.iotdb.tsfile.file.header;
 
 import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
 

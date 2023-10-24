@@ -27,9 +27,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -71,16 +71,16 @@ public class ShowTrialsTask implements IConfigTask {
       }
 
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder.getColumnBuilder(0).writeBinary(Binary.valueOf(trailId));
-      builder.getColumnBuilder(1).writeBinary(Binary.valueOf(modelPath));
-      builder.getColumnBuilder(2).writeBinary(Binary.valueOf(modelHyperparameter.get(0)));
+      builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(trailId));
+      builder.getColumnBuilder(1).writeBinary(BytesUtils.valueOf(modelPath));
+      builder.getColumnBuilder(2).writeBinary(BytesUtils.valueOf(modelHyperparameter.get(0)));
       builder.declarePosition();
 
       for (int i = 1; i < listSize; i++) {
         builder.getTimeColumnBuilder().writeLong(0L);
-        builder.getColumnBuilder(0).writeBinary(Binary.valueOf(""));
-        builder.getColumnBuilder(1).writeBinary(Binary.valueOf(""));
-        builder.getColumnBuilder(2).writeBinary(Binary.valueOf(modelHyperparameter.get(i)));
+        builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(""));
+        builder.getColumnBuilder(1).writeBinary(BytesUtils.valueOf(""));
+        builder.getColumnBuilder(2).writeBinary(BytesUtils.valueOf(modelHyperparameter.get(i)));
         builder.declarePosition();
       }
     }

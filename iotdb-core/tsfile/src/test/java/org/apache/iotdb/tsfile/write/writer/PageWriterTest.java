@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.encoding.decoder.PlainDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -166,7 +167,7 @@ public class PageWriterTest {
     String value = "I have a dream";
     int timeCount = 0;
     try {
-      writer.write(timeCount++, new Binary(value));
+      writer.write(timeCount++, new Binary(value, TSFileConfig.STRING_CHARSET));
       assertEquals(23, writer.estimateMaxMemSize());
       ByteBuffer buffer1 = writer.getUncompressedBytes();
       ByteBuffer buffer = ByteBuffer.wrap(buffer1.array());
@@ -180,7 +181,7 @@ public class PageWriterTest {
       for (int i = 0; i < timeCount; i++) {
         assertEquals(i, decoder.readLong(buffer2));
       }
-      assertEquals(value, decoder.readBinary(buffer).getStringValue());
+      assertEquals(value, decoder.readBinary(buffer).getStringValue(TSFileConfig.STRING_CHARSET));
 
     } catch (IOException e) {
       fail();

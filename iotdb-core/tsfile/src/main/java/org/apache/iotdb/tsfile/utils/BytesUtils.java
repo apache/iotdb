@@ -917,4 +917,8 @@ public class BytesUtils {
     short s = (short) (s0 | s1);
     return s;
   }
+
+  public static Binary valueOf(String value) {
+    return new Binary(stringToBytes(value));
+  }
 }
