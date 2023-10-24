@@ -624,6 +624,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
       try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
         pipeMetaKeeper.processTakeSnapshot(fileOutputStream);
+        fileOutputStream.getFD().sync();
       }
       return true;
     } finally {
