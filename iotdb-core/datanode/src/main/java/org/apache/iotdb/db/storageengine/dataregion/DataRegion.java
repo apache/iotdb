@@ -2205,7 +2205,7 @@ public class DataRegion implements IDataRegionForQuery {
           tsfileToBeInserted, newTsFileResource, newFilePartitionId, deleteOriginFile);
 
       PipeInsertionDataNodeListener.getInstance()
-          .listenToTsFile(dataRegionId, newTsFileResource, isGeneratedByPipe);
+          .listenToTsFile(dataRegionId, newTsFileResource, true, isGeneratedByPipe);
 
       FileMetrics.getInstance()
           .addTsFile(
