@@ -113,6 +113,12 @@ public class TsFileSplitter {
                 ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
                     == TsFileConstant.TIME_COLUMN_MASK);
             IChunkMetadata chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
+            // When loading TsFile with Chunk in data zone but no matched ChunkMetadata
+            // at the end of file, this Chunk needs to be skipped.
+            if (chunkMetadata == null) {
+              reader.readChunk(-1, header.getDataSize());
+              break;
+            }
             TTimePartitionSlot timePartitionSlot =
                 TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime());
             ChunkData chunkData =
