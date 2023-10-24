@@ -115,19 +115,13 @@ public abstract class AbstractMetricService {
 
   /** Load metric manager according to configuration. */
   private void loadManager() {
-    LOGGER.info("Load metricManager, type: {}", METRIC_CONFIG.getMetricFrameType());
     ServiceLoader<AbstractMetricManager> metricManagers =
         ServiceLoader.load(AbstractMetricManager.class);
     int size = 0;
     for (AbstractMetricManager mf : metricManagers) {
       size++;
-      if (mf.getClass()
-          .getName()
-          .toLowerCase()
-          .contains(METRIC_CONFIG.getMetricFrameType().name().toLowerCase())) {
-        metricManager = mf;
-        break;
-      }
+      metricManager = mf;
+      break;
     }
 
     // if no more implementations, we use nothingManager.
@@ -153,14 +147,9 @@ public abstract class AbstractMetricService {
         case JMX:
           ServiceLoader<JmxReporter> reporters = ServiceLoader.load(JmxReporter.class);
           for (JmxReporter jmxReporter : reporters) {
-            if (jmxReporter
-                .getClass()
-                .getName()
-                .toLowerCase()
-                .contains(METRIC_CONFIG.getMetricFrameType().name().toLowerCase())) {
-              jmxReporter.setMetricManager(metricManager);
-              reporter = jmxReporter;
-            }
+            jmxReporter.setMetricManager(metricManager);
+            reporter = jmxReporter;
+            break;
           }
           break;
         case PROMETHEUS:

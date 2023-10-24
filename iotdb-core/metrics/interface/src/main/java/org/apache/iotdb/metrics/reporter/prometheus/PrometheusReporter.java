@@ -140,10 +140,6 @@ public class PrometheusReporter implements Reporter {
           prometheusTextWriter.writeSample(
               name, addTags(metricInfo.getTags(), "rate", "m1"), rate.getOneMinuteRate());
           prometheusTextWriter.writeSample(
-              name, addTags(metricInfo.getTags(), "rate", "m5"), rate.getFiveMinuteRate());
-          prometheusTextWriter.writeSample(
-              name, addTags(metricInfo.getTags(), "rate", "m15"), rate.getFifteenMinuteRate());
-          prometheusTextWriter.writeSample(
               name, addTags(metricInfo.getTags(), "rate", "mean"), rate.getMeanRate());
         } else if (metric instanceof Timer) {
           Timer timer = (Timer) metric;

@@ -21,7 +21,6 @@ package org.apache.iotdb.metrics.config;
 
 import org.apache.iotdb.metrics.config.MetricConfig.IoTDBReporterConfig;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
-import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
@@ -52,8 +51,7 @@ public class MetricConfigDescriptor {
     MetricConfig newMetricConfig = generateFromProperties(properties);
     ReloadLevel reloadLevel = ReloadLevel.NOTHING;
     if (!metricConfig.equals(newMetricConfig)) {
-      if (!metricConfig.getMetricFrameType().equals(newMetricConfig.getMetricFrameType())
-          || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
+      if (!metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
           || !metricConfig
               .getAsyncCollectPeriodInSecond()
               .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {
@@ -87,11 +85,6 @@ public class MetricConfigDescriptor {
                     .collect(Collectors.toSet())),
             properties);
     loadConfig.setMetricReporterList(reporterList);
-
-    loadConfig.setMetricFrameType(
-        MetricFrameType.valueOf(
-            getProperty(
-                "metric_frame_type", String.valueOf(loadConfig.getMetricFrameType()), properties)));
 
     loadConfig.setMetricLevel(
         MetricLevel.valueOf(

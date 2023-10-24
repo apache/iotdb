@@ -63,22 +63,6 @@ public class DropwizardRate implements Rate {
   }
 
   @Override
-  public double getFiveMinuteRate() {
-    if (meter != null) {
-      return meter.getFiveMinuteRate();
-    }
-    return timer.getFiveMinuteRate();
-  }
-
-  @Override
-  public double getFifteenMinuteRate() {
-    if (meter != null) {
-      return meter.getFifteenMinuteRate();
-    }
-    return timer.getFifteenMinuteRate();
-  }
-
-  @Override
   public void mark() {
     if (meter != null) {
       meter.mark();

@@ -38,16 +38,6 @@ public class DoNothingRate implements Rate, DoNothingMetric {
   }
 
   @Override
-  public double getFiveMinuteRate() {
-    return 0;
-  }
-
-  @Override
-  public double getFifteenMinuteRate() {
-    return 0;
-  }
-
-  @Override
   public void mark() {
     // do nothing
   }

@@ -21,7 +21,6 @@ package org.apache.iotdb.metrics.config;
 
 import org.apache.iotdb.metrics.config.MetricConfig.IoTDBReporterConfig;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
-import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.junit.Test;
@@ -54,7 +53,7 @@ public class MetricConfigTest {
     MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
     assertEquals(3, metricConfig.getMetricReporterList().size());
-    assertEquals(MetricFrameType.DROPWIZARD, metricConfig.getMetricFrameType());
+    //    assertEquals(MetricFrameType.DROPWIZARD, metricConfig.getMetricFrameType());
     assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusReporterPort());
@@ -93,7 +92,7 @@ public class MetricConfigTest {
     MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
     assertEquals(3, metricConfig.getMetricReporterList().size());
-    assertEquals(MetricFrameType.DROPWIZARD, metricConfig.getMetricFrameType());
+    //    assertEquals(MetricFrameType.DROPWIZARD, metricConfig.getMetricFrameType());
     assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusReporterPort());

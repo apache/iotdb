@@ -31,8 +31,8 @@
     <name>IoTDB: Core: Metrics</name>
     <description>Metrics interfaces for IoTDB</description>
     <modules>
+        <module>core</module>
         <module>interface</module>
-        <module>metrics-core</module>
         <module>dropwizard-metrics</module>
     </modules>
     <properties>
