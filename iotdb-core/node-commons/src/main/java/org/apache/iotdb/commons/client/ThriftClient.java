@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.net.ConnectException;
 import java.net.SocketException;
 
 /**
@@ -109,6 +110,8 @@ public interface ThriftClient {
             && (cause.getMessage().contains("Socket is closed by peer")
                 || cause.getMessage().contains("Read call frame size failed")))
         || (cause instanceof IOException
-            && cause.getMessage().contains("Connection reset by peer"));
+            && (cause.getMessage().contains("Connection reset by peer")
+                || cause.getMessage().contains("Broken pipe")))
+        || (cause instanceof ConnectException && cause.getMessage().contains("Connection refused"));
   }
 }
