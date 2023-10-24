@@ -1695,7 +1695,7 @@ public class IoTDBDescriptor {
 
   private void initMemoryAllocate(Properties properties) {
     String memoryAllocateProportion =
-        properties.getProperty("storage_query_schema_consensus_pipe_free_memory_proportion");
+        properties.getProperty("storage_query_schema_consensus_free_memory_proportion");
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -1712,8 +1712,11 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
         conf.setAllocateMemoryForConsensus(
             maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
-        conf.setAllocateMemoryForPipe(
-            maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum);
+        // if pipe proportion is set, use it, otherwise use the default value
+        if (proportions.length >= 6) {
+          conf.setAllocateMemoryForPipe(
+              maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum);
+        }
       }
     }
 
