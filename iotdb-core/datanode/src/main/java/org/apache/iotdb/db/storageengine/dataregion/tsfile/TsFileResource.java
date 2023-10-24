@@ -730,6 +730,16 @@ public class TsFileResource {
   private boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
     long startTime = getFileStartTime();
     long endTime = isClosed() || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
+    if (startTime > endTime) {
+      // startTime > endTime indicates that there is something wrong with this TsFile. Return false
+      // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
+      LOGGER.warn(
+          "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
+          startTime,
+          this,
+          endTime);
+      return false;
+    }
 
     if (!isAlive(endTime, ttl)) {
       if (debug) {
@@ -760,6 +770,16 @@ public class TsFileResource {
 
     long startTime = getStartTime(deviceId);
     long endTime = isClosed() || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
+    if (startTime > endTime) {
+      // startTime > endTime indicates that there is something wrong with this TsFile. Return false
+      // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
+      LOGGER.warn(
+          "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
+          startTime,
+          this,
+          endTime);
+      return false;
+    }
 
     if (timeFilter != null) {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
