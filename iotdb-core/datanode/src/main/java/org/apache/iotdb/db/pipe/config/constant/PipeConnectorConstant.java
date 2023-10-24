@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.config.constant;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.io.File;
 
@@ -74,20 +74,10 @@ public class PipeConnectorConstant {
   public static final int CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE = 8443;
 
   public static final String CONNECTOR_OPC_UA_SECURITY_DIR_KEY = "connector.opcua.security.dir";
-  public static final String CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE;
-
-  static {
-    // Check if a config-directory was specified first.
-    String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
-    // If it wasn't, check if a home directory was provided (This usually contains a config)
-    if (urlString == null) {
-      urlString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-      if (urlString != null) {
-        urlString = urlString + File.separatorChar + "conf";
-      }
-    }
-    CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE = urlString + File.separatorChar + "opc_security";
-  }
+  public static final String CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE =
+      IoTDBDescriptor.getInstance().getConfDir() != null
+          ? IoTDBDescriptor.getInstance().getConfDir() + File.separatorChar + "opc_security"
+          : null;
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
