@@ -87,6 +87,7 @@ public class PipeWALInsertNodeCacheHitRateMetrics implements IMetricSet {
   }
 
   public void deregister(Integer dataRegionId) {
+    // TODO: waiting called by WALInsertNodeCache
     synchronized (this) {
       if (!cacheMap.containsKey(dataRegionId)) {
         LOGGER.warn(
