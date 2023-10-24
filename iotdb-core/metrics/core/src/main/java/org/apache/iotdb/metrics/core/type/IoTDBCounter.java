@@ -24,14 +24,10 @@ import org.apache.iotdb.metrics.type.Counter;
 import java.util.concurrent.atomic.LongAdder;
 
 public class IoTDBCounter implements Counter {
-  private LongAdder count;
+  private final LongAdder count;
   // Here we retain the micrometer counter variable in order to use its naming system within
   // micrometer.
   io.micrometer.core.instrument.Counter counter;
-
-  public IoTDBCounter() {
-    this.count = new LongAdder();
-  }
 
   public IoTDBCounter(io.micrometer.core.instrument.Counter counter) {
     this.counter = counter;
