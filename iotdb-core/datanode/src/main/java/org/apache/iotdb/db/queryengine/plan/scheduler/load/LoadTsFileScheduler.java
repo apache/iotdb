@@ -130,8 +130,6 @@ public class LoadTsFileScheduler implements IScheduler {
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
       tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getPlanNodeTree());
     }
-
-    MetricService.getInstance().addMetricSet(LoadMetrics.getInstance());
   }
 
   @Override
