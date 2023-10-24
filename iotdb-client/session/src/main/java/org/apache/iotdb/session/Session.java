@@ -387,8 +387,10 @@ public class Session implements ISession {
   public Session(Builder builder) {
     if (builder.nodeUrls != null && builder.nodeUrls.size() > 0) {
       this.nodeUrls = builder.nodeUrls;
+      this.enableRedirection = true;
     } else {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
+      this.enableRedirection = builder.enableRedirection;
     }
     this.username = builder.username;
     this.password = builder.pw;
@@ -396,7 +398,6 @@ public class Session implements ISession {
     this.zoneId = builder.zoneId;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
-    this.enableRedirection = builder.enableRedirection;
     this.version = builder.version;
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
@@ -3563,9 +3564,6 @@ public class Session implements ISession {
             "You should specify either nodeUrls or (host + rpcPort), but not both");
       }
       Session newSession = new Session(this);
-      if (nodeUrls != null) {
-        newSession.setEnableQueryRedirection(true);
-      }
       return newSession;
     }
   }

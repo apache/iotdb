@@ -97,6 +97,16 @@ public class Cli extends AbstractCli {
     serve();
   }
 
+  private static void constructProperties() {
+    if (useSsl != null && Boolean.parseBoolean(useSsl)) {
+      info.setProperty("use_ssl", useSsl);
+      info.setProperty("trust_store", trustStore);
+      info.setProperty("trust_store_pwd", trustStorePwd);
+    }
+    info.setProperty("user", username);
+    info.setProperty("password", password);
+  }
+
   private static boolean parseCommandLine(Options options, String[] newArgs, HelpFormatter hf) {
     try {
       CommandLineParser parser = new DefaultParser();
@@ -136,6 +146,7 @@ public class Cli extends AbstractCli {
       trustStore = commandLine.getOptionValue(TRUST_STORE_ARGS);
       trustStorePwd = commandLine.getOptionValue(TRUST_STORE_PWD_ARGS);
       password = commandLine.getOptionValue(PW_ARGS);
+      constructProperties();
       if (hasExecuteSQL && password != null) {
         executeSql();
       }
@@ -150,14 +161,6 @@ public class Cli extends AbstractCli {
   }
 
   private static void executeSql() throws TException {
-
-    if (useSsl != null && Boolean.parseBoolean(useSsl)) {
-      info.setProperty("use_ssl", useSsl);
-      info.setProperty("trust_store", trustStore);
-      info.setProperty("trust_store_pwd", trustStorePwd);
-    }
-    info.setProperty("user", username);
-    info.setProperty("password", password);
     try (IoTDBConnection connection =
         (IoTDBConnection)
             DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
@@ -174,13 +177,6 @@ public class Cli extends AbstractCli {
   }
 
   private static void receiveCommands(LineReader reader) throws TException {
-    if (useSsl != null && Boolean.parseBoolean(useSsl)) {
-      info.setProperty("use_ssl", useSsl);
-      info.setProperty("trust_store", trustStore);
-      info.setProperty("trust_store_pwd", trustStorePwd);
-    }
-    info.setProperty("user", username);
-    info.setProperty("password", password);
     try (IoTDBConnection connection =
         (IoTDBConnection)
             DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {

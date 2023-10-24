@@ -470,43 +470,12 @@ public class SessionPool implements ISessionPool {
 
   private Session constructNewSession() {
     Session session;
-    if (nodeUrls == null && useSSL) {
+    if (nodeUrls == null) {
       // Construct custom Session
       session =
           new Session.Builder()
               .host(host)
               .port(port)
-              .username(user)
-              .password(password)
-              .fetchSize(fetchSize)
-              .zoneId(zoneId)
-              .thriftDefaultBufferSize(thriftDefaultBufferSize)
-              .thriftMaxFrameSize(thriftMaxFrameSize)
-              .enableRedirection(enableRedirection)
-              .version(version)
-              .useSSL(useSSL)
-              .trustStore(trustStore)
-              .trustStorePwd(trustStorePwd)
-              .build();
-    } else if (nodeUrls == null && !useSSL) {
-      session =
-          new Session.Builder()
-              .host(host)
-              .port(port)
-              .username(user)
-              .password(password)
-              .fetchSize(fetchSize)
-              .zoneId(zoneId)
-              .thriftDefaultBufferSize(thriftDefaultBufferSize)
-              .thriftMaxFrameSize(thriftMaxFrameSize)
-              .enableRedirection(enableRedirection)
-              .version(version)
-              .build();
-
-    } else if (nodeUrls != null && useSSL) {
-      session =
-          new Session.Builder()
-              .nodeUrls(nodeUrls)
               .username(user)
               .password(password)
               .fetchSize(fetchSize)
@@ -532,6 +501,9 @@ public class SessionPool implements ISessionPool {
               .thriftMaxFrameSize(thriftMaxFrameSize)
               .enableRedirection(enableRedirection)
               .version(version)
+              .useSSL(useSSL)
+              .trustStore(trustStore)
+              .trustStorePwd(trustStorePwd)
               .build();
     }
     session.setEnableQueryRedirection(enableQueryRedirection);
