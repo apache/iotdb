@@ -938,12 +938,12 @@ public class IoTDBSyntaxConventionIdentifierIT {
       for (String templateName : templateNames) {
         String createTemplateSql =
             String.format(
-                "create schema template %s (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
+                "create device template %s (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
                 templateName);
         statement.execute(createTemplateSql);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW SCHEMA TEMPLATES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICE TEMPLATES")) {
         Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
         while (resultSet.next()) {
           Assert.assertTrue(expectedResult.contains(resultSet.getString("TemplateName")));
@@ -963,7 +963,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
         Statement statement = connection.createStatement()) {
       try {
         statement.execute(
-            "create schema template `a`` "
+            "create device template `a`` "
                 + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
         fail();
       } catch (Exception ignored) {
@@ -971,7 +971,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       try {
         statement.execute(
-            "create schema template 111 "
+            "create device template 111 "
                 + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
         fail();
       } catch (Exception ignored) {
@@ -979,7 +979,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       try {
         statement.execute(
-            "create schema template `a "
+            "create device template `a "
                 + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
         fail();
       } catch (Exception ignored) {
@@ -987,7 +987,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       try {
         statement.execute(
-            "create schema template 'a' "
+            "create device template 'a' "
                 + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
         fail();
       } catch (Exception ignored) {
@@ -995,7 +995,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       try {
         statement.execute(
-            "create schema template \"a\" "
+            "create device template \"a\" "
                 + "(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
         fail();
       } catch (Exception ignored) {

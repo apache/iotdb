@@ -54,7 +54,7 @@ public class WALInsertNodeCacheTest {
   private static final String databasePath = "root.test_sg";
   private static final String devicePath = databasePath + ".test_d";
   private static final String dataRegionId = "1";
-  private static final WALInsertNodeCache cache = WALInsertNodeCache.getInstance();
+  private static final WALInsertNodeCache cache = WALInsertNodeCache.getInstance(1);
   private WALMode prevMode;
   private boolean prevIsClusterMode;
   private WALNode walNode;
@@ -160,8 +160,8 @@ public class WALInsertNodeCacheTest {
   @Test
   public void testBatchLoad() throws Exception {
     // Enable batch load
-    boolean oldIsBatchLoadEnabled = WALInsertNodeCache.getInstance().isBatchLoadEnabled();
-    WALInsertNodeCache.getInstance().setIsBatchLoadEnabled(true);
+    boolean oldIsBatchLoadEnabled = WALInsertNodeCache.getInstance(1).isBatchLoadEnabled();
+    WALInsertNodeCache.getInstance(1).setIsBatchLoadEnabled(true);
     try {
       // write memTable1
       IMemTable memTable1 = new PrimitiveMemTable(databasePath, dataRegionId);
@@ -189,7 +189,7 @@ public class WALInsertNodeCacheTest {
       assertEquals(node1, cache.getInsertNode(position1));
       assertTrue(cache.contains(position1));
       assertEquals(
-          WALInsertNodeCache.getInstance().isBatchLoadEnabled(), cache.contains(position2));
+          WALInsertNodeCache.getInstance(1).isBatchLoadEnabled(), cache.contains(position2));
       assertFalse(cache.contains(position3));
       // check batch load none
       cache.removeMemTable(memTable1.getMemTableId());
@@ -199,7 +199,7 @@ public class WALInsertNodeCacheTest {
       assertFalse(cache.contains(position2));
       assertFalse(cache.contains(position3));
     } finally {
-      WALInsertNodeCache.getInstance().setIsBatchLoadEnabled(oldIsBatchLoadEnabled);
+      WALInsertNodeCache.getInstance(1).setIsBatchLoadEnabled(oldIsBatchLoadEnabled);
     }
   }
 

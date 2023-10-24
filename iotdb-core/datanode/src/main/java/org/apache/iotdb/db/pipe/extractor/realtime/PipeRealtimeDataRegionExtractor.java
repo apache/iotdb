@@ -157,4 +157,16 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         + '\''
         + '}';
   }
+
+  public int getTabletInsertionEventCount() {
+    return pendingQueue.getTabletInsertionEventCount();
+  }
+
+  public int getTsFileInsertionEventCount() {
+    return pendingQueue.getTsFileInsertionEventCount();
+  }
+
+  public int getPipeHeartbeatEventCount() {
+    return pendingQueue.getPipeHeartbeatEventCount();
+  }
 }

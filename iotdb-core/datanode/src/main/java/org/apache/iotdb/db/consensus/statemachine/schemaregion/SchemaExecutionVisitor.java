@@ -366,7 +366,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       } catch (TemplateIsInUseException e) {
         logger.info(
             String.format(
-                "Schema template has already been activated on path %s, there's no need to activate again.",
+                "Device Template has already been activated on path %s, there's no need to activate again.",
                 entry.getKey()));
       } catch (MetadataException e) {
         logger.error(e.getMessage(), e);

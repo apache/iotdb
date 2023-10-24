@@ -54,12 +54,12 @@ public class NodeGroupContext {
   }
 
   private TRegionReplicaSet getMostlyUsedDataRegion(PlanNode root) {
-    Map<TRegionReplicaSet, Long> regionCount = new HashMap<>();
-    countRegionOfSourceNodes(root, regionCount);
-    if (regionCount.isEmpty()) {
+    Map<TRegionReplicaSet, Long> regionCountMap = new HashMap<>();
+    countRegionOfSourceNodes(root, regionCountMap);
+    if (regionCountMap.isEmpty()) {
       return DataPartition.NOT_ASSIGNED;
     }
-    return Collections.max(regionCount.entrySet(), Map.Entry.comparingByValue()).getKey();
+    return Collections.max(regionCountMap.entrySet(), Map.Entry.comparingByValue()).getKey();
   }
 
   private void countRegionOfSourceNodes(PlanNode root, Map<TRegionReplicaSet, Long> result) {
