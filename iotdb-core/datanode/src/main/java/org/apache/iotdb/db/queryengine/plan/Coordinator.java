@@ -158,7 +158,9 @@ public class Coordinator {
         queryContext.setTimeOut(Long.MAX_VALUE);
       }
       execution.start();
-
+      LOGGER.warn(
+          "========= Consume time in Coordinator.execute: {}ms",
+          System.currentTimeMillis() - startTime);
       return execution.getStatus();
     }
   }
