@@ -80,12 +80,14 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
     pipeName = environment.getPipeName();
     dataRegionId = String.valueOf(environment.getRegionId());
-    String databaseName =
-        StorageEngine.getInstance()
-            .getDataRegion(new DataRegionId(environment.getRegionId()))
-            .getDatabaseName();
-    if (pattern.length() <= databaseName.length() && databaseName.startsWith(pattern)) {
-      patternCoversDbName = true;
+    DataRegionId regionId = new DataRegionId(environment.getRegionId());
+    if (StorageEngine.getInstance().getDataRegion(regionId) != null) {
+      String databaseName = StorageEngine.getInstance().getDataRegion(regionId).getDatabaseName();
+      if (databaseName != null
+          && pattern.length() <= databaseName.length()
+          && databaseName.startsWith(pattern)) {
+        patternCoversDbName = true;
+      }
     }
     pipeTaskMeta = environment.getPipeTaskMeta();
   }

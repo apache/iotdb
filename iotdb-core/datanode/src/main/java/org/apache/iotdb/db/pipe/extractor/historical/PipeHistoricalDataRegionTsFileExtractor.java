@@ -97,10 +97,14 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     }
 
     pattern = parameters.getStringOrDefault(EXTRACTOR_PATTERN_KEY, EXTRACTOR_PATTERN_DEFAULT_VALUE);
-    String databaseName =
-        StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId)).getDatabaseName();
-    if (pattern.length() <= databaseName.length() && databaseName.startsWith(pattern)) {
-      patternCoversDbName = true;
+    DataRegionId regionId = new DataRegionId(environment.getRegionId());
+    if (StorageEngine.getInstance().getDataRegion(regionId) != null) {
+      String databaseName = StorageEngine.getInstance().getDataRegion(regionId).getDatabaseName();
+      if (databaseName != null
+          && pattern.length() <= databaseName.length()
+          && databaseName.startsWith(pattern)) {
+        patternCoversDbName = true;
+      }
     }
 
     // User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
