@@ -23,6 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -33,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.L
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -67,6 +71,7 @@ public class LoadTsFileManager {
   private static final String MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED =
       "%s TsFileWriterManager has been closed.";
   private static final String MESSAGE_DELETE_FAIL = "failed to delete {}.";
+  private static final String METRIC_POINT_IN = "pointsIn";
 
   private final File loadDir;
 
@@ -127,6 +132,19 @@ public class LoadTsFileManager {
         ChunkData chunkData = (ChunkData) tsFileData;
         writerManager.write(
             new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
+
+        MetricService.getInstance()
+            .count(
+                chunkData.getWritePointCount(),
+                Metric.QUANTITY.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                METRIC_POINT_IN,
+                Tag.DATABASE.toString(),
+                dataRegion.getDatabaseName(),
+                Tag.REGION.toString(),
+                dataRegion.getDataRegionId());
+
       } else {
         writerManager.writeDeletion(tsFileData);
       }

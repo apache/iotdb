@@ -108,6 +108,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private final PlanFragmentId fragmentId;
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
+
   private static final String METRIC_POINT_IN = "pointsIn";
 
   public LoadTsFileScheduler(
@@ -427,8 +428,6 @@ public class LoadTsFileScheduler implements IScheduler {
             return false;
           }
 
-          markMetric(pieceNode, sortedReplicaSet);
-
           dataSize -= pieceNode.getDataSize();
           replicaSet2Piece.put(
               sortedReplicaSet,
@@ -492,27 +491,8 @@ public class LoadTsFileScheduler implements IScheduler {
               singleTsFileNode.getTsFileResource().getTsFile());
           return false;
         }
-
-        markMetric(entry.getValue(), entry.getKey());
       }
       return true;
-    }
-
-    private void markMetric(LoadTsFilePieceNode pieceNode, TRegionReplicaSet regionReplicaSet) {
-      int replicaNum = regionReplicaSet.getDataNodeLocations().size();
-      int regionId = regionReplicaSet.getRegionId().getId();
-
-      MetricService.getInstance()
-          .count(
-              pieceNode.getWritePointTotalCount() * replicaNum,
-              Metric.QUANTITY.toString(),
-              MetricLevel.CORE,
-              Tag.NAME.toString(),
-              METRIC_POINT_IN,
-              Tag.DATABASE.toString(),
-              singleTsFileNode.getDatabase(),
-              Tag.REGION.toString(),
-              Integer.toString(regionId));
     }
   }
 

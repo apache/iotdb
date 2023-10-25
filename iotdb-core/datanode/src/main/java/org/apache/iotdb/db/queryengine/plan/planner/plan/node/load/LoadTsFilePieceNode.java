@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.queryengine.execution.load.ChunkData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -81,16 +80,6 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   public File getTsFile() {
     return tsFile;
-  }
-
-  public long getWritePointTotalCount() {
-    long totalCount = 0;
-    for (TsFileData tsFileData : tsFileDataList) {
-      if (!tsFileData.isModification() && tsFileData instanceof ChunkData) {
-        totalCount += ((ChunkData) tsFileData).getWritePointCount();
-      }
-    }
-    return totalCount;
   }
 
   @Override

@@ -72,16 +72,7 @@ public class AlignedChunkData implements ChunkData {
 
   private AlignedChunkWriterImpl chunkWriter;
   private List<Chunk> chunkList;
-
-  // Does not serialize/deserialize and is only used in analysis nodes.
   private long writePointCount;
-
-  public AlignedChunkData(
-      String device, ChunkHeader chunkHeader, TTimePartitionSlot timePartitionSlot) {
-    // writePointCount is used in load dispatch phase, and deserialize phase in receive node does
-    // not need it, so set the count to 0
-    this(device, chunkHeader, timePartitionSlot, 0);
-  }
 
   public AlignedChunkData(
       String device,
@@ -112,6 +103,7 @@ public class AlignedChunkData implements ChunkData {
     dataSize += deviceLength; // device
     dataSize += Integer.BYTES; // chunkHeaderListSize
     dataSize += chunkHeaderList.get(0).getSerializedSize(); // timeChunkHeader
+    dataSize += writePointCount; // writePointCount
   }
 
   @Override
@@ -157,7 +149,6 @@ public class AlignedChunkData implements ChunkData {
     if (needDecodeChunk) {
       dataSize += Integer.BYTES; // pageNumber
     }
-
     this.writePointCount += writePointCount;
   }
 
@@ -187,6 +178,7 @@ public class AlignedChunkData implements ChunkData {
         ReadWriteIOUtils.write(pageNumber, stream);
       }
     }
+    ReadWriteIOUtils.write(writePointCount, stream);
   }
 
   @Override
@@ -423,9 +415,10 @@ public class AlignedChunkData implements ChunkData {
         pageNumbers.add(ReadWriteIOUtils.readInt(stream));
       }
     }
+    long writePointCount = ReadWriteIOUtils.readLong(stream);
 
     AlignedChunkData chunkData =
-        new AlignedChunkData(device, chunkHeaderList.get(0), timePartitionSlot);
+        new AlignedChunkData(device, chunkHeaderList.get(0), timePartitionSlot, writePointCount);
     chunkData.needDecodeChunk = needDecodeChunk;
     chunkData.chunkHeaderList = chunkHeaderList;
     chunkData.pageNumbers = pageNumbers;
@@ -453,6 +446,8 @@ public class AlignedChunkData implements ChunkData {
         + dataSize
         + ", needDecodeChunk="
         + needDecodeChunk
+        + ", writePointCount="
+        + writePointCount
         + '}';
   }
 }

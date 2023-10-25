@@ -57,16 +57,7 @@ public class NonAlignedChunkData implements ChunkData {
 
   private ChunkWriterImpl chunkWriter;
   private Chunk chunk;
-
-  // Does not serialize/deserialize and is only used in analysis nodes.
   private final long writePointCount;
-
-  public NonAlignedChunkData(
-      String device, ChunkHeader chunkHeader, TTimePartitionSlot timePartitionSlot) {
-    // writePointCount is used in load dispatch phase, and deserialize phase in receive node does
-    // not need it, so set the count to 0
-    this(device, chunkHeader, timePartitionSlot, 0);
-  }
 
   public NonAlignedChunkData(
       String device,
@@ -93,6 +84,7 @@ public class NonAlignedChunkData implements ChunkData {
     dataSize += ReadWriteForEncodingUtils.varIntSize(deviceLength);
     dataSize += deviceLength; // device
     dataSize += chunkHeader.getSerializedSize(); // timeChunkHeader
+    dataSize += writePointCount; // writePointCount
   }
 
   @Override
@@ -146,6 +138,7 @@ public class NonAlignedChunkData implements ChunkData {
     if (needDecodeChunk) {
       ReadWriteIOUtils.write(pageNumber, stream);
     }
+    ReadWriteIOUtils.write(writePointCount, stream);
   }
 
   @Override
@@ -287,8 +280,10 @@ public class NonAlignedChunkData implements ChunkData {
     if (needDecodeChunk) {
       pageNumber = ReadWriteIOUtils.readInt(stream);
     }
+    long writePointCount = ReadWriteIOUtils.readLong(stream);
 
-    NonAlignedChunkData chunkData = new NonAlignedChunkData(device, chunkHeader, timePartitionSlot);
+    NonAlignedChunkData chunkData =
+        new NonAlignedChunkData(device, chunkHeader, timePartitionSlot, writePointCount);
     chunkData.needDecodeChunk = needDecodeChunk;
     chunkData.pageNumber = pageNumber;
     chunkData.deserializeTsFileData(stream);
@@ -315,6 +310,8 @@ public class NonAlignedChunkData implements ChunkData {
         + chunkHeader
         + ", needDecodeChunk="
         + needDecodeChunk
+        + ", writePointCount="
+        + writePointCount
         + '}';
   }
 }
