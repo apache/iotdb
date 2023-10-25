@@ -77,8 +77,7 @@ public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
       deregister(dataRegionId);
     }
     if (!cacheMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from wal insert node cache hit rate metrics, cache map not empty");
+      LOGGER.warn("Failed to unbind from wal insert node cache metrics, cache map not empty");
     }
   }
 
@@ -110,7 +109,7 @@ public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
     synchronized (this) {
       if (!cacheMap.containsKey(dataRegionId)) {
         LOGGER.warn(
-            "Failed to deregister wal insert node cache hit rate metrics, WALInsertNodeCache({}) does not exist",
+            "Failed to deregister wal insert node cache metrics, WALInsertNodeCache({}) does not exist",
             dataRegionId);
         return;
       }

@@ -119,14 +119,11 @@ public enum Metric {
   PIPE_CONNECTOR_HEARTBEAT_TRANSFER("pipe_connector_heartbeat_transfer"),
   PIPE_HEARTBEAT_EVENT("pipe_heartbeat_event"),
   PIPE_WAL_INSERT_NODE_CACHE_HIT_RATE("pipe_wal_insert_node_cache_hit_rate"),
-  PIPE_TSFILE_EPOCH_EMPTY_STATE_COUNT("pipe_tsfile_epoch_empty_state_count"),
-  PIPE_TSFILE_EPOCH_TABLET_STATE_COUNT("pipe_tsfile_epoch_tablet_state_count"),
-  PIPE_TSFILE_EPOCH_TSFILE_STATE_COUNT("pipe_tsfile_epoch_tsfile_state_count"),
-  PIPE_TSFILE_EPOCH_BOTH_STATE_COUNT("pipe_tsfile_epoch_both_state_count"),
+  PIPE_EXTRACTOR_TSFILE_EPOCH_STATE("pipe_extractor_tsfile_epoch_state"),
   PIPE_MEM_COST("pipe_mem_cost"),
   PIPE_MEM_USAGE("pipe_mem_usage"),
-  PINNED_WAL_COUNT("pinned_wal_count"),
-  LINKED_TSFILE_COUNT("linked_tsfile_count"),
+  PIPE_PINNED_MEMTABLE_COUNT("pipe_pinned_memtable_count"),
+  PIPE_LINKED_TSFILE_COUNT("pipe_linked_tsfile_count"),
   ;
 
   final String value;

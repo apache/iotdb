@@ -22,10 +22,8 @@ package org.apache.iotdb.db.pipe.metric;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -52,9 +50,6 @@ public class PipeExtractorMetrics implements IMetricSet {
 
   private final Map<String, Rate> pipeHeartbeatRateMap = new ConcurrentHashMap<>();
 
-  private final Map<String, Map<TsFileEpoch.State, Gauge>> tsFileEpochStateMap =
-      new ConcurrentHashMap<>();
-
   private AbstractMetricService metricService;
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
@@ -72,10 +67,10 @@ public class PipeExtractorMetrics implements IMetricSet {
   private void createMetrics(String taskID) {
     createAutoGauge(taskID);
     createRate(taskID);
-    createGauge(taskID);
   }
 
   private void createAutoGauge(String taskID) {
+    // pending event count
     metricService.createAutoGauge(
         Metric.UNPROCESSED_HISTORICAL_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
@@ -104,6 +99,14 @@ public class PipeExtractorMetrics implements IMetricSet {
         IoTDBDataRegionExtractor::getPipeHeartbeatEventCount,
         Tag.NAME.toString(),
         taskID);
+    // tsfile epoch state
+    metricService.createAutoGauge(
+        Metric.PIPE_EXTRACTOR_TSFILE_EPOCH_STATE.toString(),
+        MetricLevel.IMPORTANT,
+        extractorMap.get(taskID),
+        IoTDBDataRegionExtractor::getRealtimeExtractorRecentProcessedTsFileEpochState,
+        Tag.NAME.toString(),
+        taskID);
   }
 
   private void createRate(String taskID) {
@@ -130,43 +133,6 @@ public class PipeExtractorMetrics implements IMetricSet {
             taskID));
   }
 
-  private void createGauge(String taskID) {
-    tsFileEpochStateMap.put(
-        taskID,
-        new HashMap<TsFileEpoch.State, Gauge>() {
-          {
-            put(
-                TsFileEpoch.State.EMPTY,
-                metricService.getOrCreateGauge(
-                    Metric.PIPE_TSFILE_EPOCH_EMPTY_STATE_COUNT.toString(),
-                    MetricLevel.IMPORTANT,
-                    Tag.NAME.toString(),
-                    taskID));
-            put(
-                TsFileEpoch.State.USING_TABLET,
-                metricService.getOrCreateGauge(
-                    Metric.PIPE_TSFILE_EPOCH_TABLET_STATE_COUNT.toString(),
-                    MetricLevel.IMPORTANT,
-                    Tag.NAME.toString(),
-                    taskID));
-            put(
-                TsFileEpoch.State.USING_TSFILE,
-                metricService.getOrCreateGauge(
-                    Metric.PIPE_TSFILE_EPOCH_TSFILE_STATE_COUNT.toString(),
-                    MetricLevel.IMPORTANT,
-                    Tag.NAME.toString(),
-                    taskID));
-            put(
-                TsFileEpoch.State.USING_BOTH,
-                metricService.getOrCreateGauge(
-                    Metric.PIPE_TSFILE_EPOCH_BOTH_STATE_COUNT.toString(),
-                    MetricLevel.IMPORTANT,
-                    Tag.NAME.toString(),
-                    taskID));
-          }
-        });
-  }
-
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
@@ -181,10 +147,10 @@ public class PipeExtractorMetrics implements IMetricSet {
   private void removeMetrics(String taskID) {
     removeAutoGauge(taskID);
     removeRate(taskID);
-    removeGauge(taskID);
   }
 
   private void removeAutoGauge(String taskID) {
+    // pending event count
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNPROCESSED_HISTORICAL_TSFILE_COUNT.toString(),
@@ -203,6 +169,12 @@ public class PipeExtractorMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNPROCESSED_HEARTBEAT_COUNT.toString(),
+        Tag.NAME.toString(),
+        taskID);
+    // tsfile epoch state
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_EXTRACTOR_TSFILE_EPOCH_STATE.toString(),
         Tag.NAME.toString(),
         taskID);
   }
@@ -226,30 +198,6 @@ public class PipeExtractorMetrics implements IMetricSet {
     tabletRateMap.remove(taskID);
     tsFileRateMap.remove(taskID);
     pipeHeartbeatRateMap.remove(taskID);
-  }
-
-  private void removeGauge(String taskID) {
-    metricService.remove(
-        MetricType.GAUGE,
-        Metric.PIPE_TSFILE_EPOCH_EMPTY_STATE_COUNT.toString(),
-        Tag.NAME.toString(),
-        taskID);
-    metricService.remove(
-        MetricType.GAUGE,
-        Metric.PIPE_TSFILE_EPOCH_TABLET_STATE_COUNT.toString(),
-        Tag.NAME.toString(),
-        taskID);
-    metricService.remove(
-        MetricType.GAUGE,
-        Metric.PIPE_TSFILE_EPOCH_TSFILE_STATE_COUNT.toString(),
-        Tag.NAME.toString(),
-        taskID);
-    metricService.remove(
-        MetricType.GAUGE,
-        Metric.PIPE_TSFILE_EPOCH_BOTH_STATE_COUNT.toString(),
-        Tag.NAME.toString(),
-        taskID);
-    tsFileEpochStateMap.remove(taskID);
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
@@ -310,28 +258,6 @@ public class PipeExtractorMetrics implements IMetricSet {
       return;
     }
     rate.mark();
-  }
-
-  public void increaseTsFileEpochStateCount(String taskID, TsFileEpoch.State state) {
-    Map<TsFileEpoch.State, Gauge> stateToGauge = tsFileEpochStateMap.get(taskID);
-    if (stateToGauge == null) {
-      LOGGER.warn(
-          "Failed to increase tsfile epoch state count, PipeRealtimeDataRegionExtractor({}) does not exist",
-          taskID);
-      return;
-    }
-    stateToGauge.get(state).incr(1);
-  }
-
-  public void decreaseTsFileEpochStateCount(String taskID, TsFileEpoch.State state) {
-    Map<TsFileEpoch.State, Gauge> stateToGauge = tsFileEpochStateMap.get(taskID);
-    if (stateToGauge == null) {
-      LOGGER.warn(
-          "Failed to decrease tsfile epoch state count, PipeRealtimeDataRegionExtractor({}) does not exist",
-          taskID);
-      return;
-    }
-    stateToGauge.get(state).decr(1);
   }
 
   //////////////////////////// singleton ////////////////////////////

@@ -46,12 +46,12 @@ public class PipeResourceMetrics implements IMetricSet {
         PipeResourceManager.memory(),
         PipeMemoryManager::getMemoryUsage);
     metricService.createAutoGauge(
-        Metric.PINNED_WAL_COUNT.toString(),
+        Metric.PIPE_PINNED_MEMTABLE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         PipeResourceManager.wal(),
         PipeWALResourceManager::getPinnedWalCount);
     metricService.createAutoGauge(
-        Metric.LINKED_TSFILE_COUNT.toString(),
+        Metric.PIPE_LINKED_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         PipeResourceManager.tsfile(),
         PipeTsFileResourceManager::getLinkedTsfileCount);
@@ -61,8 +61,8 @@ public class PipeResourceMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_MEM_COST.toString());
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_MEM_USAGE.toString());
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.PINNED_WAL_COUNT.toString());
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.LINKED_TSFILE_COUNT.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PINNED_MEMTABLE_COUNT.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_COUNT.toString());
   }
 
   //////////////////////////// singleton ////////////////////////////

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.extractor.realtime.epoch;
 
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -39,13 +38,7 @@ public class TsFileEpoch {
 
   public TsFileEpoch.State getState(PipeRealtimeDataRegionExtractor extractor) {
     return dataRegionExtractor2State
-        .computeIfAbsent(
-            extractor,
-            o -> {
-              PipeExtractorMetrics.getInstance()
-                  .increaseTsFileEpochStateCount(extractor.getTaskID(), State.EMPTY);
-              return new AtomicReference<>(State.EMPTY);
-            })
+        .computeIfAbsent(extractor, o -> new AtomicReference<>(State.EMPTY))
         .get();
   }
 
@@ -53,20 +46,14 @@ public class TsFileEpoch {
       PipeRealtimeDataRegionExtractor extractor, TsFileEpochStateMigrator visitor) {
     AtomicReference<State> state =
         dataRegionExtractor2State.computeIfAbsent(
-            extractor,
-            o -> {
-              PipeExtractorMetrics.getInstance()
-                  .increaseTsFileEpochStateCount(extractor.getTaskID(), State.EMPTY);
-              return new AtomicReference<>(State.EMPTY);
-            });
-    state.getAndUpdate(
-        oldState -> {
-          State newState = visitor.migrate(oldState);
-          PipeExtractorMetrics.getInstance()
-              .decreaseTsFileEpochStateCount(extractor.getTaskID(), oldState);
-          PipeExtractorMetrics.getInstance()
-              .increaseTsFileEpochStateCount(extractor.getTaskID(), newState);
-          return newState;
+            extractor, o -> new AtomicReference<>(State.EMPTY));
+    state.getAndUpdate(visitor::migrate);
+  }
+
+  public void setExtractorsRecentProcessedTsFileEpochState() {
+    dataRegionExtractor2State.forEach(
+        (extractor, state) -> {
+          extractor.setRecentProcessedTsFileEpochState(state.get());
         });
   }
 
@@ -84,7 +71,7 @@ public class TsFileEpoch {
   public enum State {
     EMPTY,
     USING_TABLET,
+    USING_BOTH,
     USING_TSFILE,
-    USING_BOTH
   }
 }
