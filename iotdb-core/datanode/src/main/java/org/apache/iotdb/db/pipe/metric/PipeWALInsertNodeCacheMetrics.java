@@ -19,8 +19,7 @@ import java.util.Objects;
 
 public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeWALInsertNodeCacheMetrics.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeWALInsertNodeCacheMetrics.class);
 
   private AbstractMetricService metricService;
 
