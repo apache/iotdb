@@ -125,6 +125,8 @@ public enum Metric {
   PIPE_TSFILE_EPOCH_BOTH_STATE_COUNT("pipe_tsfile_epoch_both_state_count"),
   PIPE_MEM_COST("pipe_mem_cost"),
   PIPE_MEM_USAGE("pipe_mem_usage"),
+  PINNED_WAL_COUNT("pinned_wal_count"),
+  LINKED_TSFILE_COUNT("linked_tsfile_count"),
   ;
 
   final String value;
