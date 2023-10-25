@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.In
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -90,6 +91,140 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     candidateCompactionTaskQueue.put(task);
     Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
     Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true).get(0));
+    Assert.assertEquals(seqResource2, tsFileManager.getTsFileList(true).get(2));
+    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(1);
+    long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
+    Assert.assertEquals(2, timestamp);
+    Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
+  }
+
+  @Test
+  public void test2() throws IOException, InterruptedException {
+    TsFileResource seqResource1 = generateSingleNonAlignedSeriesFileWithDevices("1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(10, 20)}, true);
+    seqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(30, 34)}, false);
+    unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    RewriteCrossSpaceCompactionSelector selector
+        = new RewriteCrossSpaceCompactionSelector(
+        COMPACTION_TEST_SG,
+        "0",
+        0,
+        tsFileManager
+    );
+    seqResources.add(seqResource1);
+    unseqResources.add(unseqResource1);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    List<CrossCompactionTaskResource> tasks = selector.selectInsertionCrossSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0), tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
+    Assert.assertEquals(1, tasks.size());
+    InsertionCrossSpaceCompactionTask task = new InsertionCrossSpaceCompactionTask(new Phaser(1), 0, tsFileManager, (InsertionCrossCompactionTaskResource) tasks.get(0), 0);
+    task.setSourceFilesToCompactionCandidate();
+    candidateCompactionTaskQueue.put(task);
+    Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true).get(0));
+    Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
+    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(1);
+    long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
+    Assert.assertEquals(2, timestamp);
+  }
+
+  @Test
+  public void test3() throws IOException, InterruptedException {
+    TsFileResource seqResource1 = generateSingleNonAlignedSeriesFileWithDevices("1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(10, 20)}, true);
+    seqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+    unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    RewriteCrossSpaceCompactionSelector selector
+        = new RewriteCrossSpaceCompactionSelector(
+        COMPACTION_TEST_SG,
+        "0",
+        0,
+        tsFileManager
+    );
+    seqResources.add(seqResource1);
+    unseqResources.add(unseqResource1);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    List<CrossCompactionTaskResource> tasks = selector.selectInsertionCrossSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0), tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
+    Assert.assertEquals(1, tasks.size());
+    InsertionCrossSpaceCompactionTask task = new InsertionCrossSpaceCompactionTask(new Phaser(1), 0, tsFileManager, (InsertionCrossCompactionTaskResource) tasks.get(0), 0);
+    task.setSourceFilesToCompactionCandidate();
+    candidateCompactionTaskQueue.put(task);
+    Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true).get(1));
+    Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
+    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
+    long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
+    Assert.assertEquals(0, timestamp);
+  }
+
+  @Test
+  public void test4() throws IOException, InterruptedException {
+    TsFileResource seqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(10, 20)}, true);
+    seqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+    TsFileResource seqResource2 = generateSingleNonAlignedSeriesFileWithDevices("6-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(40, 50)}, true);
+    seqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
+    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("3-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(30, 34)}, false);
+    unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    RewriteCrossSpaceCompactionSelector selector
+        = new RewriteCrossSpaceCompactionSelector(
+        COMPACTION_TEST_SG,
+        "0",
+        0,
+        tsFileManager
+    );
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+    unseqResources.add(unseqResource1);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    List<CrossCompactionTaskResource> tasks = selector.selectInsertionCrossSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0), tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
+    Assert.assertEquals(1, tasks.size());
+    InsertionCrossSpaceCompactionTask task = new InsertionCrossSpaceCompactionTask(new Phaser(1), 0, tsFileManager, (InsertionCrossCompactionTaskResource) tasks.get(0), 0);
+    task.setSourceFilesToCompactionCandidate();
+    candidateCompactionTaskQueue.put(task);
+    Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
+    Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true).get(0));
+    Assert.assertEquals(seqResource2, tsFileManager.getTsFileList(true).get(2));
+    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(1);
+    long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
+    Assert.assertEquals(3, timestamp);
+    Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
+  }
+
+  @Test
+  public void test5() throws IOException, InterruptedException {
+    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+    unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    RewriteCrossSpaceCompactionSelector selector
+        = new RewriteCrossSpaceCompactionSelector(
+        COMPACTION_TEST_SG,
+        "0",
+        0,
+        tsFileManager
+    );
+    unseqResources.add(unseqResource1);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    List<CrossCompactionTaskResource> tasks = selector.selectInsertionCrossSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0), tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
+    Assert.assertEquals(1, tasks.size());
+    InsertionCrossSpaceCompactionTask task = new InsertionCrossSpaceCompactionTask(new Phaser(1), 0, tsFileManager, (InsertionCrossCompactionTaskResource) tasks.get(0), 0);
+    task.setSourceFilesToCompactionCandidate();
+    candidateCompactionTaskQueue.put(task);
+    Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
+    Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
+    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
+    long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
+    Assert.assertEquals(1, timestamp);
   }
 
   public TsFileResource generateSingleNonAlignedSeriesFileWithDevices(String fileName, String[] devices, TimeRange[] timeRanges, boolean seq) throws IOException {
@@ -107,5 +242,7 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     writer1.close();
     return seqResource1;
   }
+
+
 
 }

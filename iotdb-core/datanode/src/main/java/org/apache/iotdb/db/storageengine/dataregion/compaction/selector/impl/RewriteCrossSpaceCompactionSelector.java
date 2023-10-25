@@ -115,6 +115,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   @SuppressWarnings({"squid:S1163", "squid:S1143"})
   public CrossCompactionTaskResource selectOneTaskResources(CrossSpaceCompactionCandidate candidate)
       throws MergeException {
+    if (candidate.getSeqFiles().isEmpty() || candidate.getUnseqFiles().isEmpty()) {
+      return new CrossCompactionTaskResource();
+    }
     try {
       LOGGER.debug(
           "Selecting cross compaction task resources from {} seqFile, {} unseqFiles",
@@ -135,6 +138,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
   public InsertionCrossCompactionTaskResource selectOneInsertionTask(
       CrossSpaceCompactionCandidate candidate) throws MergeException {
+    if (candidate.getUnseqFileCandidates().isEmpty()) {
+      return new InsertionCrossCompactionTaskResource();
+    }
     InsertionCrossSpaceCompactionSelector insertionCrossSpaceCompactionSelector =
         new InsertionCrossSpaceCompactionSelector(candidate);
     try {
@@ -150,7 +156,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     } catch (IOException e) {
       throw new MergeException(e);
     }
-    return null;
+    return new InsertionCrossCompactionTaskResource();
   }
 
   private boolean isAllFileCandidateValid(List<TsFileResourceCandidate> tsFileResourceCandidates) {
@@ -315,10 +321,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       List<TsFileResource> sequenceFileList,
       List<TsFileResource> unsequenceFileList,
       boolean isInsertionTask) {
-    if (!canSubmitCrossTask(sequenceFileList, unsequenceFileList)) {
-      return Collections.emptyList();
-    }
-
     // TODO: (xingtanzjr) need to confirm what this ttl is used for
     long startTime = System.currentTimeMillis();
     long ttlLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
