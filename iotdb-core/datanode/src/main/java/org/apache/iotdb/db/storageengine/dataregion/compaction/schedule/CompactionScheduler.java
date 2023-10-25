@@ -149,14 +149,21 @@ public class CompactionScheduler {
         new RewriteCrossSpaceCompactionSelector(
             logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
 
-    List<CrossCompactionTaskResource> selectedTasks = selector.selectInsertionCrossSpaceTask(
-        tsFileManager.getOrCreateSequenceListByTimePartition(timePartition),
-        tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
+    List<CrossCompactionTaskResource> selectedTasks =
+        selector.selectInsertionCrossSpaceTask(
+            tsFileManager.getOrCreateSequenceListByTimePartition(timePartition),
+            tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
     if (selectedTasks.isEmpty()) {
       return 0;
     }
 
-    InsertionCrossSpaceCompactionTask task = new InsertionCrossSpaceCompactionTask(insertionTaskPhaser, timePartition, tsFileManager, (InsertionCrossCompactionTaskResource) selectedTasks.get(0), tsFileManager.getNextCompactionTaskId());
+    InsertionCrossSpaceCompactionTask task =
+        new InsertionCrossSpaceCompactionTask(
+            insertionTaskPhaser,
+            timePartition,
+            tsFileManager,
+            (InsertionCrossCompactionTaskResource) selectedTasks.get(0),
+            tsFileManager.getNextCompactionTaskId());
     if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
       insertionTaskPhaser.register();
       return 1;
