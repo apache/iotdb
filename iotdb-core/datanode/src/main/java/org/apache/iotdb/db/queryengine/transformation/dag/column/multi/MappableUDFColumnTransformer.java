@@ -25,18 +25,11 @@ import org.apache.iotdb.tsfile.access.Column;
 import org.apache.iotdb.tsfile.access.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class MappableUDFColumnTransformer extends ColumnTransformer {
 
   private final ColumnTransformer[] inputColumnTransformers;
 
   private final UDTFExecutor executor;
-
-  private final Logger logger = LoggerFactory.getLogger(MappableUDFColumnTransformer.class);
-
-  private long totalTime = 0L;
 
   public MappableUDFColumnTransformer(
       Type returnType, ColumnTransformer[] inputColumnTransformers, UDTFExecutor executor) {
@@ -61,10 +54,7 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
     int count = inputColumnTransformers[0].getColumnCachePositionCount();
     ColumnBuilder builder = returnType.createColumnBuilder(count);
     // executor UDF and cache result
-    long begin = System.nanoTime();
     executor.execute(columns, builder);
-    long end = System.nanoTime();
-    totalTime += (end - begin);
     initializeColumnCache(builder.build());
   }
 
@@ -79,7 +69,6 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
 
   @Override
   public void close() {
-    logger.info("UDF total execution time: " + totalTime);
     // finalize executor
     executor.beforeDestroy();
   }
