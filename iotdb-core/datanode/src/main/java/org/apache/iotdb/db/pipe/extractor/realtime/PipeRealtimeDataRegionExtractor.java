@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnviro
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch.State;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -35,7 +36,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -57,7 +57,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   // This state keeps track of the status of the TsFileEpoch of the most recently processed
   // PipeRealtimeEvent by this extractor. It is used to provide information to metrics framework.
-  private AtomicReference<TsFileEpoch.State> recentProcessedTsFileEpochState;
+  private final AtomicReference<TsFileEpoch.State> recentProcessedTsFileEpochState =
+      new AtomicReference<>(State.EMPTY);
 
   protected PipeRealtimeDataRegionExtractor() {
     // Do nothing
@@ -182,8 +183,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   }
 
   public int getRecentProcessedTsFileEpochState() {
-    return Objects.nonNull(recentProcessedTsFileEpochState)
-        ? recentProcessedTsFileEpochState.get().ordinal()
-        : 0;
+    return recentProcessedTsFileEpochState.get().ordinal();
   }
 }
