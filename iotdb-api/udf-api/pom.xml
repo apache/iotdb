@@ -31,14 +31,8 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>tsfile</artifactId>
-            <version>${project.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>javax.servlet</groupId>
-                    <artifactId>servlet-api</artifactId>
-                </exclusion>
-            </exclusions>
+            <artifactId>common-api</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
     <profiles>
