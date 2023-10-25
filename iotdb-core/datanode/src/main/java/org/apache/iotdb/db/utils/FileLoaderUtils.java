@@ -290,7 +290,7 @@ public class FileLoaderUtils {
             new AlignedTimeSeriesMetadata(timeColumn, Collections.emptyList());
         alignedTimeSeriesMetadata.setChunkMetadataLoader(
             new DiskAlignedChunkMetadataLoader(
-                resource, alignedPath, context, filter, queryAllSensors, Collections.emptyList()));
+                resource, context, filter, queryAllSensors, Collections.emptyList()));
       } else {
         List<TimeseriesMetadata> valueTimeSeriesMetadataList =
             new ArrayList<>(valueMeasurementList.size());
@@ -315,7 +315,7 @@ public class FileLoaderUtils {
 
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
               new DiskAlignedChunkMetadataLoader(
-                  resource, alignedPath, context, filter, queryAllSensors, pathModifications));
+                  resource, context, filter, queryAllSensors, pathModifications));
         }
       }
     }
@@ -339,6 +339,8 @@ public class FileLoaderUtils {
         valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
         res.add(pathModifications);
         modified = (modified || !pathModifications.isEmpty());
+      } else {
+        res.add(Collections.emptyList());
       }
     }
     alignedTimeSeriesMetadata.getTimeseriesMetadata().setModified(modified);

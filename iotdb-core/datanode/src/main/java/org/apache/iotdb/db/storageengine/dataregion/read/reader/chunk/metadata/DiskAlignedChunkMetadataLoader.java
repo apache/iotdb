@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 
-import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -46,7 +45,6 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOA
 public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
   private final TsFileResource resource;
-  private final AlignedPath seriesPath;
   private final QueryContext context;
   // time filter or value filter, only used to check time range
   private final Filter filter;
@@ -66,13 +64,11 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
   public DiskAlignedChunkMetadataLoader(
       TsFileResource resource,
-      AlignedPath seriesPath,
       QueryContext context,
       Filter filter,
       boolean queryAllSensors,
       List<List<Modification>> pathModifications) {
     this.resource = resource;
-    this.seriesPath = seriesPath;
     this.context = context;
     this.filter = filter;
     this.queryAllSensors = queryAllSensors;
