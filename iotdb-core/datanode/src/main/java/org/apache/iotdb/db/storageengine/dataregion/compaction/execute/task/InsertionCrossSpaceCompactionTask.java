@@ -76,6 +76,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     }
     this.unseqFileToInsert = taskResource.toInsertUnSeqFile;
     this.timestamp = taskResource.targetFileTimestamp;
+    createSummary();
   }
 
   public InsertionCrossSpaceCompactionTask(
@@ -108,21 +109,12 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   protected boolean doCompaction() {
-
-    // 1. 日志记录任务相关的文件
-    // 2. TsFileManager 中移动到顺序区(不能使用 keepOrderInsert，因为还没有改名，此时排序插入会出错, 可以直接使用 insertBefore 或
-    // insertAfter )
-    // 3. 源 TsFileResource 加写锁
-    // 4. rename 源乱序 TsFileResource 到目标位置
-    // 5. 释放写锁
-
-    // log
     recoverMemoryStatus = true;
     boolean isSuccess = true;
     if (!tsFileManager.isAllowCompaction()) {
       return true;
     }
-    File logFile =
+    logFile =
         new File(
             unseqFileToInsert.getTsFilePath()
                 + CompactionLogger.INSERTION_COMPACTION_LOG_NAME_SUFFIX);
@@ -170,7 +162,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   private File generateTargetFile() throws IOException {
-    String path = unseqFileToInsert.getTsFile().getParentFile().getAbsolutePath();
+    String path = unseqFileToInsert.getTsFile().getParentFile().getPath();
     path = path.replace("unsequence", "sequence");
     TsFileNameGenerator.TsFileName tsFileName =
         TsFileNameGenerator.getTsFileName(unseqFileToInsert.getTsFile().getName());
@@ -187,12 +179,12 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     File targetTsFile = targetFile.getTsFile();
     Files.createLink(targetTsFile.toPath(), sourceTsFile.toPath());
     Files.createLink(
-        new File(targetTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
-        new File(sourceTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+        new File(targetTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
+        new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
     if (unseqFileToInsert.getModFile().exists()) {
       Files.createLink(
-          new File(targetTsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).toPath(),
-          new File(sourceTsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).toPath());
+          new File(targetTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath(),
+          new File(sourceTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath());
     }
   }
 
@@ -200,9 +192,19 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(this.logFile);
     logAnalyzer.analyze();
     List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
-    unseqFileToInsert = new TsFileResource(sourceFileIdentifiers.get(0).getFileFromDataDirs());
+    File sourceTsFile = sourceFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
+    if (sourceTsFile != null) {
+      unseqFileToInsert =
+          new TsFileResource(
+              sourceFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists());
+    }
     List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
-    targetFile = new TsFileResource(targetFileIdentifiers.get(0).getFileFromDataDirs());
+    File targetTsFile = targetFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
+    if (targetTsFile != null) {
+      targetFile =
+          new TsFileResource(
+              targetFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists());
+    }
   }
 
   @Override
@@ -210,16 +212,23 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     try {
       if (needRecoverTaskInfoFromLogFile) {
         recoverTaskInfoFromLogFile();
-        if (shouldRollback()) {
-          rollback();
-        } else {
-          // That finishTask() is revoked means
-          finishTask();
-        }
       }
-    } catch (IOException e) {
+      if (!canRecover()) {
+        throw new CompactionRecoverException("Can not recover InsertionCrossSpaceCompactionTask");
+      }
+      if (shouldRollback()) {
+        rollback();
+      } else {
+        // That finishTask() is revoked means
+        finishTask();
+      }
+    } catch (Exception e) {
       handleRecoverException(e);
     }
+  }
+
+  private boolean canRecover() {
+    return unseqFileToInsert != null || targetFile != null;
   }
 
   private boolean shouldRollback() {
@@ -235,6 +244,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           Collections.singletonList(targetFile), Collections.singletonList(unseqFileToInsert));
     }
     deleteCompactionModsFile(Collections.singletonList(unseqFileToInsert));
+    if (targetFile.tsFileExists()) {
+      FileMetrics.getInstance().deleteTsFile(true, Collections.singletonList(targetFile));
+    }
     // delete target file
     if (targetFile != null && !deleteTsFileOnDisk(targetFile)) {
       throw new CompactionRecoverException(
@@ -245,13 +257,13 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   private void finishTask() throws IOException {
     // 检查目标文件是否存在
 
+    if (recoverMemoryStatus && unseqFileToInsert.tsFileExists()) {
+      FileMetrics.getInstance().deleteTsFile(false, Collections.singletonList(unseqFileToInsert));
+    }
     if (!deleteTsFileOnDisk(unseqFileToInsert)) {
       throw new CompactionRecoverException("source files cannot be deleted successfully");
     }
 
-    if (recoverMemoryStatus) {
-      FileMetrics.getInstance().deleteTsFile(false, Collections.singletonList(unseqFileToInsert));
-    }
     deleteCompactionModsFile(Collections.singletonList(unseqFileToInsert));
   }
 
@@ -274,7 +286,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  protected void createSummary() {}
+  protected void createSummary() {
+    this.summary = new CompactionTaskSummary();
+  }
 
   private void releaseAllLocks() {
     for (TsFileResource tsFileResource : holdWriteLockList) {

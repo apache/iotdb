@@ -399,13 +399,13 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       }
       if (seqFiles.isEmpty()) {
         result.toInsertUnSeqFile = unseqFiles.get(0).resource;
+        result.targetFileTimestamp = 1;
         return result;
       }
       for (TsFileResourceCandidate unseqFile : unseqFiles) {
         result = selectCurrentUnSeqFile(unseqFile);
         if (result != null) {
           result.toInsertUnSeqFile = unseqFile.resource;
-          result.targetFileTimestamp = 1;
           break;
         }
       }

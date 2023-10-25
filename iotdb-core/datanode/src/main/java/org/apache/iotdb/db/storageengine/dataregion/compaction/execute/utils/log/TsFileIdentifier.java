@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.lo
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import java.io.File;
@@ -169,6 +171,30 @@ public class TsFileIdentifier {
     for (String dataDir : dataDirs) {
       File file = FSFactoryProducer.getFSFactory().getFile(dataDir, partialFileString);
       if (file.exists()) {
+        return file;
+      }
+    }
+    return null;
+  }
+
+  public File getFileFromDataDirsIfAnyAdjuvantFileExists() {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    String partialFileString =
+        (sequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
+            + File.separator
+            + logicalStorageGroupName
+            + File.separator
+            + dataRegionId
+            + File.separator
+            + timePartitionId
+            + File.separator
+            + filename;
+    for (String dataDir : dataDirs) {
+      File file = FSFactoryProducer.getFSFactory().getFile(dataDir, partialFileString);
+      if (file.exists()
+          || new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
+          || new File(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists()
+          || new File(file.getAbsolutePath() + ModificationFile.COMPACTION_FILE_SUFFIX).exists()) {
         return file;
       }
     }

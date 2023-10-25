@@ -609,6 +609,18 @@ public class AbstractCompactionTest {
     return resource;
   }
 
+  protected TsFileResource createEmptyFileAndResourceWithName(String fileName, boolean isSeq, int innerCompactionCnt) {
+    String filePath;
+    if (isSeq) {
+      filePath = SEQ_DIRS.getPath() + File.separator + fileName;
+    } else {
+      filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
+    }
+    TsFileResource resource = new TsFileResource(new File(filePath));
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+    return resource;
+  }
+
   protected void setDataType(TSDataType dataType) {
     this.dataType = dataType;
   }
