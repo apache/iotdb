@@ -31,6 +31,8 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 public class PipeResourceMetrics implements IMetricSet {
 
+  //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
+
   @Override
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
