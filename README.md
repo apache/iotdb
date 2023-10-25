@@ -268,7 +268,7 @@ git checkout rel/x.x
 
 ### Build IoTDB from source
 
-Under the root path of iotdb:
+Under the iotdb/iotdb-client path:
 
 ```
 > mvn clean package -pl distribution -am -DskipTests
@@ -279,7 +279,7 @@ After being built, the IoTDB distribution is located at the folder: "distributio
 
 ### Only build cli
 
-Under the root path of iotdb:
+Under the iotdb/iotdb-client path:
 
 ```
 > mvn clean package -pl cli -am -DskipTests
