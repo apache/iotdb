@@ -427,7 +427,7 @@ public class LoadTsFileScheduler implements IScheduler {
             return false;
           }
 
-          markMetric(pieceNode, Integer.toString(sortedReplicaSet.getRegionId().getId()));
+          markMetric(pieceNode, sortedReplicaSet);
 
           dataSize -= pieceNode.getDataSize();
           replicaSet2Piece.put(
@@ -493,15 +493,18 @@ public class LoadTsFileScheduler implements IScheduler {
           return false;
         }
 
-        markMetric(entry.getValue(), Integer.toString(entry.getKey().getRegionId().getId()));
+        markMetric(entry.getValue(), entry.getKey());
       }
       return true;
     }
 
-    private void markMetric(LoadTsFilePieceNode pieceNode, String regionId) {
+    private void markMetric(LoadTsFilePieceNode pieceNode, TRegionReplicaSet regionReplicaSet) {
+      int replicaNum = regionReplicaSet.getDataNodeLocations().size();
+      int regionId = regionReplicaSet.getRegionId().getId();
+
       MetricService.getInstance()
           .count(
-              pieceNode.getWritePointTotalCount(),
+              pieceNode.getWritePointTotalCount() * replicaNum,
               Metric.QUANTITY.toString(),
               MetricLevel.CORE,
               Tag.NAME.toString(),
@@ -509,7 +512,7 @@ public class LoadTsFileScheduler implements IScheduler {
               Tag.DATABASE.toString(),
               singleTsFileNode.getDatabase(),
               Tag.REGION.toString(),
-              regionId);
+              Integer.toString(regionId));
     }
   }
 

@@ -174,7 +174,7 @@ public class LoadTsfileAnalyzer {
   private void analyzeSingleTsFile(File tsFile) throws IOException, AuthException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // can be reused when constructing tsfile resource
-      Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata =
+      final Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           reader.getAllTimeseriesMetadata(true);
       if (device2TimeseriesMetadata.isEmpty()) {
         LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
@@ -212,13 +212,14 @@ public class LoadTsfileAnalyzer {
       TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
       loadTsFileStatement.addTsFileResource(tsFileResource);
-      loadTsFileStatement.getDatabase2WritePointCountPairList(database2WritePointCountPair);
+      loadTsFileStatement.addDatabase2WritePointCountPairList(database2WritePointCountPair);
     }
   }
 
   private Pair<String, Long> getDatabase2WritePointCountPair(
       Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata,
-      int databasePrefixNodesLength) {
+      int databasePrefixNodesLength)
+      throws IOException {
     // 1. get database
     try {
       String device = device2TimeseriesMetadata.keySet().iterator().next();
@@ -238,7 +239,7 @@ public class LoadTsfileAnalyzer {
       return new Pair<>(database, writePointCount);
 
     } catch (IllegalPathException e) {
-      throw new RuntimeException(e);
+      throw new IOException(e);
     }
   }
 

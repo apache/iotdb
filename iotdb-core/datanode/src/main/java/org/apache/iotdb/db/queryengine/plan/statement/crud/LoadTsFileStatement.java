@@ -157,11 +157,11 @@ public class LoadTsFileStatement extends Statement {
     return resources;
   }
 
-  public List<Pair<String, Long>> getDatabase2WritePointCountPairList() {
+  public List<Pair<String, Long>> addDatabase2WritePointCountPairList() {
     return database2WritePointCountPairList;
   }
 
-  public void getDatabase2WritePointCountPairList(
+  public void addDatabase2WritePointCountPairList(
       Pair<String, Long> database2WritePointCountPairList) {
     this.database2WritePointCountPairList.add(database2WritePointCountPairList);
   }

@@ -93,7 +93,7 @@ public class LoadTsFileNode extends WritePlanNode {
 
     for (int i = 0; i < resources.size(); i++) {
       Pair<String, Long> database2WritePointCountPair =
-          statement.getDatabase2WritePointCountPairList().get(i);
+          statement.addDatabase2WritePointCountPairList().get(i);
       res.add(
           new LoadSingleTsFileNode(
               getPlanNodeId(),

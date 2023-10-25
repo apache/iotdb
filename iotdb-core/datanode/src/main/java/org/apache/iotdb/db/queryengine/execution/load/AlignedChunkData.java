@@ -72,7 +72,16 @@ public class AlignedChunkData implements ChunkData {
 
   private AlignedChunkWriterImpl chunkWriter;
   private List<Chunk> chunkList;
+
+  // Does not serialize/deserialize and is only used in analysis nodes.
   private long writePointCount;
+
+  public AlignedChunkData(
+      String device, ChunkHeader chunkHeader, TTimePartitionSlot timePartitionSlot) {
+    // writePointCount is used in load dispatch phase, and deserialize phase in receive node does
+    // not need it, so set the count to 0
+    this(device, chunkHeader, timePartitionSlot, 0);
+  }
 
   public AlignedChunkData(
       String device,
@@ -103,7 +112,6 @@ public class AlignedChunkData implements ChunkData {
     dataSize += deviceLength; // device
     dataSize += Integer.BYTES; // chunkHeaderListSize
     dataSize += chunkHeaderList.get(0).getSerializedSize(); // timeChunkHeader
-    dataSize += Long.BYTES; // writePointCount
   }
 
   @Override
@@ -417,7 +425,7 @@ public class AlignedChunkData implements ChunkData {
     }
 
     AlignedChunkData chunkData =
-        new AlignedChunkData(device, chunkHeaderList.get(0), timePartitionSlot, 0);
+        new AlignedChunkData(device, chunkHeaderList.get(0), timePartitionSlot);
     chunkData.needDecodeChunk = needDecodeChunk;
     chunkData.chunkHeaderList = chunkHeaderList;
     chunkData.pageNumbers = pageNumbers;
