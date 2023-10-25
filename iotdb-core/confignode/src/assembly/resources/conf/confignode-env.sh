@@ -277,5 +277,5 @@ CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -XX:MaxDirectMemorySize=${OFF_HEAP_MEM
 CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFER_SIZE}"
 
 echo "ConfigNode on heap memory size = ${ON_HEAP_MEMORY}B, off heap memory size = ${OFF_HEAP_MEMORY}B"
-echo "If you want to change this configuration, please check conf/confignode-env.sh(Unix or OS X, if you use Windows, check conf/confignode-env.bat)."
+echo "If you want to change this configuration, please check conf/confignode-env.sh."
 
