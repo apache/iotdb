@@ -57,6 +57,9 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   // it's only exact while using limit & offset push down
   private final boolean queryAllSensors;
 
+  // all sub sensors' modifications
+  private final List<List<Modification>> pathModifications;
+
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
@@ -66,12 +69,14 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       AlignedPath seriesPath,
       QueryContext context,
       Filter filter,
-      boolean queryAllSensors) {
+      boolean queryAllSensors,
+      List<List<Modification>> pathModifications) {
     this.resource = resource;
     this.seriesPath = seriesPath;
     this.context = context;
     this.filter = filter;
     this.queryAllSensors = queryAllSensors;
+    this.pathModifications = pathModifications;
   }
 
   @Override
@@ -82,9 +87,6 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
           ((AlignedTimeSeriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
 
       final long t2 = System.nanoTime();
-      // get all sub sensors' modifications
-      List<List<Modification>> pathModifications =
-          context.getPathModifications(resource.getModFile(), seriesPath);
 
       if (context.isDebug()) {
         DEBUG_LOGGER.info(
