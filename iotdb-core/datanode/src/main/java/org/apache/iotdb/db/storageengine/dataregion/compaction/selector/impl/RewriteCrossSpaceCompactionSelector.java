@@ -138,8 +138,12 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     InsertionCrossSpaceCompactionSelector insertionCrossSpaceCompactionSelector =
         new InsertionCrossSpaceCompactionSelector(candidate);
     try {
+      LOGGER.debug(
+          "Selecting insertion cross compaction task resources from {} seqFile, {} unseqFiles",
+          candidate.getSeqFiles().size(),
+          candidate.getUnseqFiles().size());
       InsertionCrossCompactionTaskResource result =
-          insertionCrossSpaceCompactionSelector.executeXXXXTaskResourceSelection();
+          insertionCrossSpaceCompactionSelector.executeInsertionCrossSpaceCompactionTaskSelection();
       if (result != null && result.isValid()) {
         return result;
       }
@@ -387,7 +391,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       unseqFiles = candidate.getUnseqFileCandidates();
     }
 
-    private InsertionCrossCompactionTaskResource executeXXXXTaskResourceSelection()
+    private InsertionCrossCompactionTaskResource executeInsertionCrossSpaceCompactionTaskSelection()
         throws IOException {
       InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
       if (unseqFiles.isEmpty()) {
@@ -467,9 +471,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
                 TsFileNameGenerator.getTsFileName(next.resource.getTsFile().getName()).getTime();
             if (nextTimestamp - prevTimestamp > 1) {
               result.prevSeqFile = prev.resource;
-              prev.markAsSelected();
               result.nextSeqFile = next.resource;
-              next.markAsSelected();
               result.targetFileTimestamp = prevTimestamp + 1;
               break;
             }
@@ -493,7 +495,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         }
         result.nextSeqFile = next.resource;
         result.targetFileTimestamp = nextTimestamp - 1;
-        seqFiles.get(0).markAsSelected();
       }
       if (result.prevSeqFile == null && result.nextSeqFile == null) {
         return null;
