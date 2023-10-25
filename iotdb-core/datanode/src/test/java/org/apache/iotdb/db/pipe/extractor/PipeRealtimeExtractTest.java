@@ -88,7 +88,7 @@ public class PipeRealtimeExtractTest {
         new File(
             tmpDir.getPath()
                 + File.separator
-                + IoTDBConstant.SEQUENCE_FLODER_NAME
+                + IoTDBConstant.SEQUENCE_FOLDER_NAME
                 + File.separator
                 + "root.sg");
   }

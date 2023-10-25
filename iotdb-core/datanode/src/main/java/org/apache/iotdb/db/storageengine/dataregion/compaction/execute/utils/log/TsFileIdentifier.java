@@ -93,7 +93,7 @@ public class TsFileIdentifier {
         splittedPath[length - LOGICAL_SG_OFFSET_IN_PATH],
         splittedPath[length - DATA_REGION_OFFSET_IN_PATH],
         splittedPath[length - TIME_PARTITION_OFFSET_IN_PATH],
-        splittedPath[length - SEQUENCE_OFFSET_IN_PATH].equals(IoTDBConstant.SEQUENCE_FLODER_NAME),
+        splittedPath[length - SEQUENCE_OFFSET_IN_PATH].equals(IoTDBConstant.SEQUENCE_FOLDER_NAME),
         splittedPath[length - FILE_NAME_OFFSET_IN_PATH]);
   }
 
@@ -157,7 +157,7 @@ public class TsFileIdentifier {
   public File getFileFromDataDirs() {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     String partialFileString =
-        (sequence ? IoTDBConstant.SEQUENCE_FLODER_NAME : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
+        (sequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
             + File.separator
             + logicalStorageGroupName
             + File.separator
@@ -184,7 +184,7 @@ public class TsFileIdentifier {
   }
 
   public String getFilePath() {
-    return (sequence ? IoTDBConstant.SEQUENCE_FLODER_NAME : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
+    return (sequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
         + File.separator
         + logicalStorageGroupName
         + File.separator

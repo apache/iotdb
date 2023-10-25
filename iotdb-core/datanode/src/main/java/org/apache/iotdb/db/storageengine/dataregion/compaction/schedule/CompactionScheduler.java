@@ -164,11 +164,12 @@ public class CompactionScheduler {
             tsFileManager,
             (InsertionCrossCompactionTaskResource) selectedTasks.get(0),
             tsFileManager.getNextCompactionTaskId());
-    if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
-      insertionTaskPhaser.register();
-      return 1;
+    insertionTaskPhaser.register();
+    if (!CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
+      insertionTaskPhaser.arrive();
+      return 0;
     }
-    return 0;
+    return 1;
   }
 
   private static int tryToSubmitCrossSpaceCompactionTask(

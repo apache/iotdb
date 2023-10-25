@@ -359,7 +359,15 @@ public class TsFileResource {
   }
 
   public boolean resourceFileExists() {
-    return fsFactory.getFile(file + RESOURCE_SUFFIX).exists();
+    return file != null && fsFactory.getFile(file + RESOURCE_SUFFIX).exists();
+  }
+
+  public boolean tsFileExists() {
+    return file != null && file.exists();
+  }
+
+  public boolean modFileExists() {
+    return getModFile().exists();
   }
 
   public List<IChunkMetadata> getChunkMetadataList(PartialPath seriesPath) {
@@ -878,7 +886,7 @@ public class TsFileResource {
    *     be created.
    */
   public TsFileResource createHardlink() {
-    if (!file.exists()) {
+    if (file == null || !file.exists()) {
       return null;
     }
 

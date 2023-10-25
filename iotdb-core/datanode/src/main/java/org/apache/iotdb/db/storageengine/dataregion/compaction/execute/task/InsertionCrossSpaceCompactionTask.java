@@ -128,8 +128,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
                 + CompactionLogger.INSERTION_COMPACTION_LOG_NAME_SUFFIX);
     try (SimpleCompactionLogger logger = new SimpleCompactionLogger(logFile)) {
       targetFile = new TsFileResource(generateTargetFile());
+      targetFile.setStatus(TsFileResourceStatus.NORMAL);
 
-      logger.logSourceFiles(Collections.singletonList(unseqFileToInsert));
+      logger.logSourceFile(unseqFileToInsert);
       logger.logTargetFile(targetFile);
       logger.force();
 
@@ -145,16 +146,13 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
           Collections.singletonList(unseqFileToInsert), false);
 
-      if (!targetFile.isDeleted()) {
-        FileMetrics.getInstance()
-            .addTsFile(
-                targetFile.getDatabaseName(),
-                targetFile.getDataRegionId(),
-                targetFile.getTsFileSize(),
-                true,
-                targetFile.getTsFile().getName());
-        targetFile.setStatus(TsFileResourceStatus.NORMAL);
-      }
+      FileMetrics.getInstance()
+          .addTsFile(
+              targetFile.getDatabaseName(),
+              targetFile.getDataRegionId(),
+              targetFile.getTsFileSize(),
+              true,
+              targetFile.getTsFile().getName());
 
     } catch (Exception e) {
       isSuccess = false;
@@ -168,7 +166,6 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         printLogWhenException(LOGGER, e);
       }
     }
-
     return isSuccess;
   }
 
@@ -226,12 +223,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   private boolean shouldRollback() {
-    if (!unseqFileToInsert.resourceFileExists()
-        || !unseqFileToInsert.getTsFile().exists()
-        || !unseqFileToInsert.getModFile().exists()) {
-      return false;
-    }
-    return true;
+    return unseqFileToInsert.resourceFileExists()
+        && unseqFileToInsert.tsFileExists()
+        && unseqFileToInsert.modFileExists();
   }
 
   private void rollback() throws IOException {
@@ -249,11 +243,14 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   private void finishTask() throws IOException {
+    // 检查目标文件是否存在
+
     if (!deleteTsFileOnDisk(unseqFileToInsert)) {
       throw new CompactionRecoverException("source files cannot be deleted successfully");
     }
+
     if (recoverMemoryStatus) {
-      FileMetrics.getInstance().deleteTsFile(true, Collections.singletonList(unseqFileToInsert));
+      FileMetrics.getInstance().deleteTsFile(false, Collections.singletonList(unseqFileToInsert));
     }
     deleteCompactionModsFile(Collections.singletonList(unseqFileToInsert));
   }
