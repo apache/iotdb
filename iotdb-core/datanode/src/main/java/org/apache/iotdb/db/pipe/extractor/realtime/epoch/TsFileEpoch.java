@@ -44,10 +44,9 @@ public class TsFileEpoch {
 
   public void migrateState(
       PipeRealtimeDataRegionExtractor extractor, TsFileEpochStateMigrator visitor) {
-    AtomicReference<State> state =
-        dataRegionExtractor2State.computeIfAbsent(
-            extractor, o -> new AtomicReference<>(State.EMPTY));
-    state.getAndUpdate(visitor::migrate);
+    dataRegionExtractor2State
+        .computeIfAbsent(extractor, o -> new AtomicReference<>(State.EMPTY))
+        .getAndUpdate(visitor::migrate);
   }
 
   public void setExtractorsRecentProcessedTsFileEpochState() {
