@@ -34,6 +34,7 @@ import io.moquette.interception.InterceptHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -62,7 +63,11 @@ public class MQTTService implements IService {
     handlers.add(new MPPPublishHandler(iotDBConfig));
     IAuthenticator authenticator = new BrokerAuthenticator();
 
-    server.startServer(config, handlers, null, authenticator, null);
+    try {
+      server.startServer(config, handlers, null, authenticator, null);
+    } catch (IOException e) {
+      throw new RuntimeException("Exception while starting server", e);
+    }
 
     LOG.info(
         "Start MQTT service successfully, listening on ip {} port {}",

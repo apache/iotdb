@@ -72,7 +72,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
@@ -294,6 +293,9 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SingleDeviceViewOperator singleDeviceViewOperator2 =
           new SingleDeviceViewOperator(
               driverContext.getOperatorContexts().get(7),
@@ -320,6 +322,10 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SingleDeviceViewOperator singleDeviceViewOperator3 =
           new SingleDeviceViewOperator(
               driverContext.getOperatorContexts().get(9),
@@ -372,7 +378,7 @@ public class MergeSortOperatorTest {
           assertTrue(tsBlock.getColumn(5).isNull(i));
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           // make sure the device column is by asc
-          assertEquals(checkDevice, 0);
+          assertEquals(0, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
           assertTrue(tsBlock.getColumn(1).isNull(i));
@@ -380,7 +386,7 @@ public class MergeSortOperatorTest {
           assertTrue(tsBlock.getColumn(5).isNull(i));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(3).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
+          assertEquals(1, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
           assertTrue(tsBlock.getColumn(1).isNull(i));
@@ -388,7 +394,7 @@ public class MergeSortOperatorTest {
           assertTrue(tsBlock.getColumn(3).isNull(i));
           assertEquals(tsBlock.getColumn(4).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(5).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 2);
+          assertEquals(2, checkDevice);
           checkDevice = 0;
         } else {
           fail();
@@ -396,7 +402,7 @@ public class MergeSortOperatorTest {
       }
     }
 
-    assertEquals(count, 1500);
+    assertEquals(1500, count);
   }
 
   @Test
@@ -419,7 +425,7 @@ public class MergeSortOperatorTest {
           assertTrue(tsBlock.getColumn(3).isNull(i));
           assertEquals(tsBlock.getColumn(4).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(5).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 0);
+          assertEquals(0, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
           assertTrue(tsBlock.getColumn(1).isNull(i));
@@ -427,7 +433,7 @@ public class MergeSortOperatorTest {
           assertTrue(tsBlock.getColumn(5).isNull(i));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(3).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
+          assertEquals(1, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
           assertTrue(tsBlock.getColumn(2).isNull(i));
@@ -436,7 +442,7 @@ public class MergeSortOperatorTest {
           assertTrue(tsBlock.getColumn(5).isNull(i));
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           // make sure the device column is by desc
-          assertEquals(checkDevice, 2);
+          assertEquals(2, checkDevice);
           checkDevice = 0;
         } else {
           fail();
@@ -444,7 +450,7 @@ public class MergeSortOperatorTest {
       }
     }
 
-    assertEquals(count, 1500);
+    assertEquals(1500, count);
   }
 
   @Test
@@ -467,7 +473,7 @@ public class MergeSortOperatorTest {
           assertTrue(tsBlock.getColumn(3).isNull(i));
           assertEquals(tsBlock.getColumn(4).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(5).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 0);
+          assertEquals(0, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
           assertTrue(tsBlock.getColumn(1).isNull(i));
@@ -475,7 +481,7 @@ public class MergeSortOperatorTest {
           assertTrue(tsBlock.getColumn(5).isNull(i));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(3).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
+          assertEquals(1, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
           assertTrue(tsBlock.getColumn(2).isNull(i));
@@ -484,7 +490,7 @@ public class MergeSortOperatorTest {
           assertTrue(tsBlock.getColumn(5).isNull(i));
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           // make sure the device column is by desc
-          assertEquals(checkDevice, 2);
+          assertEquals(2, checkDevice);
           checkDevice = 0;
         } else {
           fail();
@@ -492,7 +498,7 @@ public class MergeSortOperatorTest {
       }
     }
 
-    assertEquals(count, 1500);
+    assertEquals(1500, count);
   }
 
   @Test
@@ -516,7 +522,7 @@ public class MergeSortOperatorTest {
           assertTrue(tsBlock.getColumn(5).isNull(i));
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           // make sure the device column is by asc
-          assertEquals(checkDevice, 0);
+          assertEquals(0, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
           assertTrue(tsBlock.getColumn(1).isNull(i));
@@ -524,7 +530,7 @@ public class MergeSortOperatorTest {
           assertTrue(tsBlock.getColumn(5).isNull(i));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(3).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
+          assertEquals(1, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
           assertTrue(tsBlock.getColumn(1).isNull(i));
@@ -532,7 +538,7 @@ public class MergeSortOperatorTest {
           assertTrue(tsBlock.getColumn(3).isNull(i));
           assertEquals(tsBlock.getColumn(4).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(5).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 2);
+          assertEquals(2, checkDevice);
           checkDevice = 0;
         } else {
           fail();
@@ -540,7 +546,7 @@ public class MergeSortOperatorTest {
       }
     }
 
-    assertEquals(count, 1500);
+    assertEquals(1500, count);
   }
 
   // ------------------------------------------------------------------------------------------------
@@ -730,6 +736,9 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       RowBasedTimeJoinOperator timeJoinOperator2 =
           new RowBasedTimeJoinOperator(
@@ -749,6 +758,9 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       RowBasedTimeJoinOperator timeJoinOperator3 =
           new RowBasedTimeJoinOperator(
@@ -768,6 +780,10 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
       SingleDeviceViewOperator singleDeviceViewOperator1 =
           new SingleDeviceViewOperator(
               driverContext.getOperatorContexts().get(10),
@@ -866,22 +882,22 @@ public class MergeSortOperatorTest {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertTrue(tsBlock.getColumn(2).isNull(i));
           // make sure the device column is by asc
-          assertEquals(checkDevice, 0);
+          assertEquals(0, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
+          assertEquals(1, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 2);
+          assertEquals(2, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 3);
+          assertEquals(3, checkDevice);
           checkDevice = 0;
         } else {
           fail();
@@ -889,7 +905,7 @@ public class MergeSortOperatorTest {
       }
     }
 
-    assertEquals(count, 2000);
+    assertEquals(2000, count);
   }
 
   @Test
@@ -910,23 +926,23 @@ public class MergeSortOperatorTest {
         if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 0);
+          assertEquals(0, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
+          assertEquals(1, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 2);
+          assertEquals(2, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertTrue(tsBlock.getColumn(2).isNull(i));
           // make sure the device column is by desc
-          assertEquals(checkDevice, 3);
+          assertEquals(3, checkDevice);
           checkDevice = 0;
         } else {
           fail();
@@ -934,7 +950,7 @@ public class MergeSortOperatorTest {
       }
     }
 
-    assertEquals(count, 2000);
+    assertEquals(2000, count);
   }
 
   @Test
@@ -954,23 +970,23 @@ public class MergeSortOperatorTest {
         if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 0);
+          assertEquals(0, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
+          assertEquals(1, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 2);
+          assertEquals(2, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE0)) {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertTrue(tsBlock.getColumn(2).isNull(i));
           // make sure the device column is by desc
-          assertEquals(checkDevice, 3);
+          assertEquals(3, checkDevice);
           checkDevice = 0;
         } else {
           fail();
@@ -978,7 +994,7 @@ public class MergeSortOperatorTest {
       }
     }
 
-    assertEquals(count, 2000);
+    assertEquals(2000, count);
   }
 
   @Test
@@ -999,22 +1015,22 @@ public class MergeSortOperatorTest {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertTrue(tsBlock.getColumn(2).isNull(i));
           // make sure the device column is by asc
-          assertEquals(checkDevice, 0);
+          assertEquals(0, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE1)) {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 1);
+          assertEquals(1, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE2)) {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 2);
+          assertEquals(2, checkDevice);
           checkDevice++;
         } else if (Objects.equals(tsBlock.getColumn(0).getBinary(i).toString(), DEVICE3)) {
           assertEquals(tsBlock.getColumn(1).getInt(i), getValue(lastTime));
           assertEquals(tsBlock.getColumn(2).getInt(i), getValue(lastTime));
-          assertEquals(checkDevice, 3);
+          assertEquals(3, checkDevice);
           checkDevice = 0;
         } else {
           fail();
@@ -1022,8 +1038,9 @@ public class MergeSortOperatorTest {
       }
     }
 
-    assertEquals(count, 2000);
+    assertEquals(2000, count);
   }
+
   // ------------------------------------------------------------------------------------------------
   //                                   order by device
   // ------------------------------------------------------------------------------------------------
@@ -1200,6 +1217,9 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       RowBasedTimeJoinOperator timeJoinOperator2 =
           new RowBasedTimeJoinOperator(
@@ -1219,6 +1239,9 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       RowBasedTimeJoinOperator timeJoinOperator3 =
           new RowBasedTimeJoinOperator(
@@ -1238,6 +1261,9 @@ public class MergeSortOperatorTest {
                           ? new AscTimeComparator()
                           : new DescTimeComparator())),
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator3
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       List<String> devices = new ArrayList<>(Arrays.asList(DEVICE0, DEVICE1, DEVICE2, DEVICE3));
       if (deviceOrdering == Ordering.DESC) Collections.reverse(devices);
@@ -1342,7 +1368,7 @@ public class MergeSortOperatorTest {
       }
     }
 
-    assertEquals(count, 2000);
+    assertEquals(2000, count);
   }
 
   @Test
@@ -1395,7 +1421,7 @@ public class MergeSortOperatorTest {
       }
     }
 
-    assertEquals(count, 2000);
+    assertEquals(2000, count);
   }
 
   @Test
@@ -1448,7 +1474,7 @@ public class MergeSortOperatorTest {
         }
       }
     }
-    assertEquals(count, 2000);
+    assertEquals(2000, count);
   }
 
   @Test
@@ -1500,7 +1526,7 @@ public class MergeSortOperatorTest {
         }
       }
     }
-    assertEquals(count, 2000);
+    assertEquals(2000, count);
   }
 
   // ------------------------------------------------------------------------------------------------
@@ -1627,7 +1653,6 @@ public class MergeSortOperatorTest {
 
   @Mock Operator childOperator1 = Mockito.mock(Operator.class);
   @Mock Operator childOperator2 = Mockito.mock(Operator.class);
-  @Mock ListenableFuture<?> listenableFuture = Mockito.mock(ListenableFuture.class);
 
   private TsBlock[] constructOutput(long[] time) {
     TsBlockBuilder tsBlockBuilder1 =
@@ -1636,8 +1661,8 @@ public class MergeSortOperatorTest {
     ColumnBuilder[] columnBuilders = tsBlockBuilder1.getValueColumnBuilders();
     for (int i = 0; i < time.length / 2; i++) {
       timeColumnBuilder.writeLong(time[i]);
-      for (int j = 0; j < columnBuilders.length; j++) {
-        columnBuilders[j].writeLong(time[i]);
+      for (ColumnBuilder columnBuilder : columnBuilders) {
+        columnBuilder.writeLong(time[i]);
       }
       tsBlockBuilder1.declarePosition();
     }
@@ -1648,8 +1673,8 @@ public class MergeSortOperatorTest {
     ColumnBuilder[] columnBuilders2 = tsBlockBuilder2.getValueColumnBuilders();
     for (int i = time.length / 2; i < time.length; i++) {
       timeColumnBuilder.writeLong(time[i]);
-      for (int j = 0; j < columnBuilders2.length; j++) {
-        columnBuilders2[j].writeLong(time[i]);
+      for (ColumnBuilder columnBuilder : columnBuilders2) {
+        columnBuilder.writeLong(time[i]);
       }
       tsBlockBuilder2.declarePosition();
     }
@@ -1674,54 +1699,46 @@ public class MergeSortOperatorTest {
     when(mockFuture.isDone()).thenReturn(true);
     when(childOperator1.nextWithTimer())
         .thenAnswer(
-            new Answer<TsBlock>() {
-              @Override
-              public TsBlock answer(InvocationOnMock invocationOnMock) throws Throwable {
-                int count = count1.getAndIncrement();
-                if (count == 0) {
-                  return tsBlocks1[0];
-                } else if (count == 1) {
-                  return tsBlocks1[1];
-                } else {
-                  return null;
-                }
-              }
-            });
+            (Answer<TsBlock>)
+                invocationOnMock -> {
+                  int count = count1.getAndIncrement();
+                  if (count == 0) {
+                    return tsBlocks1[0];
+                  } else if (count == 1) {
+                    return tsBlocks1[1];
+                  } else {
+                    return null;
+                  }
+                });
     when(childOperator2.nextWithTimer())
         .thenAnswer(
-            new Answer<TsBlock>() {
-              @Override
-              public TsBlock answer(InvocationOnMock invocationOnMock) throws Throwable {
-                int count = count2.getAndIncrement();
-                if (count == 0) {
-                  return tsBlocks2[0];
-                } else if (count == 1) {
-                  return tsBlocks2[1];
-                } else {
-                  return null;
-                }
-              }
-            });
+            (Answer<TsBlock>)
+                invocationOnMock -> {
+                  int count = count2.getAndIncrement();
+                  if (count == 0) {
+                    return tsBlocks2[0];
+                  } else if (count == 1) {
+                    return tsBlocks2[1];
+                  } else {
+                    return null;
+                  }
+                });
 
     when(childOperator1.hasNextWithTimer())
         .thenAnswer(
-            new Answer<Boolean>() {
-              @Override
-              public Boolean answer(InvocationOnMock invocationOnMock) throws Throwable {
-                int count = count1.get();
-                return count < 2;
-              }
-            });
+            (Answer<Boolean>)
+                invocationOnMock -> {
+                  int count = count1.get();
+                  return count < 2;
+                });
 
     when(childOperator2.hasNextWithTimer())
         .thenAnswer(
-            new Answer<Boolean>() {
-              @Override
-              public Boolean answer(InvocationOnMock invocationOnMock) throws Throwable {
-                int count = count2.get();
-                return count < 2;
-              }
-            });
+            (Answer<Boolean>)
+                invocationOnMock -> {
+                  int count = count2.get();
+                  return count < 2;
+                });
 
     QueryId queryId = new QueryId("stub_query");
     ExecutorService instanceNotificationExecutor =

@@ -44,8 +44,8 @@ public class TsFileMetrics implements IMetricSet {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileMetrics.class);
   private final AtomicReference<AbstractMetricService> metricService = new AtomicReference<>();
   private final AtomicBoolean hasRemainData = new AtomicBoolean(false);
-  private static final String SEQUENCE = "sequence";
-  private static final String UNSEQUENCE = "unsequence";
+  private static final String SEQUENCE = "seq";
+  private static final String UNSEQUENCE = "unseq";
   private static final String LEVEL = "level";
   private static final String FILE_GLOBAL_COUNT = "file_global_count";
   private static final String FILE_GLOBAL_SIZE = "file_global_size";

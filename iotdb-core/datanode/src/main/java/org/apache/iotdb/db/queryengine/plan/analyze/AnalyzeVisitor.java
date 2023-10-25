@@ -2450,7 +2450,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       throw new RuntimeException(
           new TemplateIncompatibleException(
               String.format(
-                  "Cannot alter template timeseries [%s] since schema template [%s] already set on path [%s].",
+                  "Cannot alter template timeseries [%s] since device template [%s] already set on path [%s].",
                   alterTimeSeriesStatement.getPath().getFullPath(),
                   templateInfo.left.getName(),
                   templateInfo.right)));
@@ -3084,26 +3084,26 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private GroupByFilter initGroupByFilter(GroupByTimeComponent groupByTimeComponent) {
+    long startTime =
+        groupByTimeComponent.isLeftCRightO()
+            ? groupByTimeComponent.getStartTime()
+            : groupByTimeComponent.getStartTime() + 1;
+    long endTime =
+        groupByTimeComponent.isLeftCRightO()
+            ? groupByTimeComponent.getEndTime()
+            : groupByTimeComponent.getEndTime() + 1;
     if (groupByTimeComponent.isIntervalByMonth() || groupByTimeComponent.isSlidingStepByMonth()) {
       return new GroupByMonthFilter(
           groupByTimeComponent.getInterval(),
           groupByTimeComponent.getSlidingStep(),
-          groupByTimeComponent.getStartTime(),
-          groupByTimeComponent.getEndTime(),
+          startTime,
+          endTime,
           groupByTimeComponent.getFixedIntervalInMonth(),
           groupByTimeComponent.getFixedSlidingStepInMonth(),
           groupByTimeComponent.isSlidingStepByMonth(),
           groupByTimeComponent.isIntervalByMonth(),
           TimeZone.getTimeZone("+00:00"));
     } else {
-      long startTime =
-          groupByTimeComponent.isLeftCRightO()
-              ? groupByTimeComponent.getStartTime()
-              : groupByTimeComponent.getStartTime() + 1;
-      long endTime =
-          groupByTimeComponent.isLeftCRightO()
-              ? groupByTimeComponent.getEndTime()
-              : groupByTimeComponent.getEndTime() + 1;
       return new GroupByFilter(
           groupByTimeComponent.getInterval(),
           groupByTimeComponent.getSlidingStep(),

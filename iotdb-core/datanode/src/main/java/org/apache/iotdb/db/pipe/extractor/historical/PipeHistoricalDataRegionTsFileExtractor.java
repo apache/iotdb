@@ -284,6 +284,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         new PipeTsFileInsertionEvent(
             resource,
             false,
+            false,
             pipeTaskMeta,
             pattern,
             historicalDataExtractionStartTime,
@@ -302,6 +303,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   public synchronized boolean hasConsumedAll() {
     return pendingQueue != null && pendingQueue.isEmpty();
+  }
+
+  @Override
+  public int getPendingQueueSize() {
+    return pendingQueue != null ? pendingQueue.size() : 0;
   }
 
   @Override

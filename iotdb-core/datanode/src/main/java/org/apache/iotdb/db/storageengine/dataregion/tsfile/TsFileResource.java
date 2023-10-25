@@ -52,10 +52,11 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -230,42 +231,50 @@ public class TsFileResource {
   }
 
   public synchronized void serialize() throws IOException {
-    try (OutputStream outputStream =
-        fsFactory.getBufferedOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX)) {
-      ReadWriteIOUtils.write(VERSION_NUMBER, outputStream);
-      timeIndex.serialize(outputStream);
-
-      ReadWriteIOUtils.write(maxPlanIndex, outputStream);
-      ReadWriteIOUtils.write(minPlanIndex, outputStream);
-
-      if (modFile != null && modFile.exists()) {
-        String modFileName = new File(modFile.getFilePath()).getName();
-        ReadWriteIOUtils.write(modFileName, outputStream);
-      } else {
-        // make the first "inputStream.available() > 0" in deserialize() happy.
-        //
-        // if modFile not exist, write null (-1). the first "inputStream.available() > 0" in
-        // deserialize() and deserializeFromOldFile() detect -1 and deserialize modFileName as null
-        // and skip the modFile deserialize.
-        //
-        // this make sure the first and the second "inputStream.available() > 0" in deserialize()
-        // will always be called... which is a bit ugly but allows the following variable
-        // maxProgressIndex to be deserialized correctly.
-        ReadWriteIOUtils.write((String) null, outputStream);
-      }
-
-      if (maxProgressIndex != null) {
-        ReadWriteIOUtils.write(true, outputStream);
-        maxProgressIndex.serialize(outputStream);
-      } else {
-        ReadWriteIOUtils.write(false, outputStream);
-      }
+    FileOutputStream fileOutputStream = new FileOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
+    BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
+    try {
+      serializeTo(outputStream);
+    } finally {
+      outputStream.flush();
+      fileOutputStream.getFD().sync();
+      outputStream.close();
     }
-
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
     File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
     fsFactory.deleteIfExists(dest);
     fsFactory.moveFile(src, dest);
+  }
+
+  private void serializeTo(BufferedOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(VERSION_NUMBER, outputStream);
+    timeIndex.serialize(outputStream);
+
+    ReadWriteIOUtils.write(maxPlanIndex, outputStream);
+    ReadWriteIOUtils.write(minPlanIndex, outputStream);
+
+    if (modFile != null && modFile.exists()) {
+      String modFileName = new File(modFile.getFilePath()).getName();
+      ReadWriteIOUtils.write(modFileName, outputStream);
+    } else {
+      // make the first "inputStream.available() > 0" in deserialize() happy.
+      //
+      // if modFile not exist, write null (-1). the first "inputStream.available() > 0" in
+      // deserialize() and deserializeFromOldFile() detect -1 and deserialize modFileName as null
+      // and skip the modFile deserialize.
+      //
+      // this make sure the first and the second "inputStream.available() > 0" in deserialize()
+      // will always be called... which is a bit ugly but allows the following variable
+      // maxProgressIndex to be deserialized correctly.
+      ReadWriteIOUtils.write((String) null, outputStream);
+    }
+
+    if (maxProgressIndex != null) {
+      TsFileResourceBlockType.PROGRESS_INDEX.serialize(outputStream);
+      maxProgressIndex.serialize(outputStream);
+    } else {
+      TsFileResourceBlockType.EMPTY_BLOCK.serialize(outputStream);
+    }
   }
 
   /** deserialize from disk */
@@ -285,53 +294,10 @@ public class TsFileResource {
         }
       }
 
-      if (inputStream.available() > 0) {
-        final boolean hasMaxProgressIndex = ReadWriteIOUtils.readBool(inputStream);
-        if (hasMaxProgressIndex) {
-          maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
-        }
-      }
-    }
-  }
-
-  /** deserialize tsfile resource from old file */
-  public void deserializeFromOldFile() throws IOException {
-    try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
-      // deserialize old TsfileResource
-      int size = ReadWriteIOUtils.readInt(inputStream);
-      Map<String, Integer> deviceMap = new HashMap<>();
-      long[] startTimesArray = new long[size];
-      long[] endTimesArray = new long[size];
-      for (int i = 0; i < size; i++) {
-        String path = ReadWriteIOUtils.readString(inputStream);
-        long time = ReadWriteIOUtils.readLong(inputStream);
-        deviceMap.put(path.intern(), i);
-        startTimesArray[i] = time;
-      }
-      size = ReadWriteIOUtils.readInt(inputStream);
-      for (int i = 0; i < size; i++) {
-        ReadWriteIOUtils.readString(inputStream); // String path
-        long time = ReadWriteIOUtils.readLong(inputStream);
-        endTimesArray[i] = time;
-      }
-      timeIndex = new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
-      if (inputStream.available() > 0) {
-        int versionSize = ReadWriteIOUtils.readInt(inputStream);
-        for (int i = 0; i < versionSize; i++) {
-          // historicalVersions
-          ReadWriteIOUtils.readLong(inputStream);
-        }
-      }
-      if (inputStream.available() > 0) {
-        String modFileName = ReadWriteIOUtils.readString(inputStream);
-        if (modFileName != null) {
-          File modF = new File(file.getParentFile(), modFileName);
-          modFile = new ModificationFile(modF.getPath());
-        }
-      }
-      if (inputStream.available() > 0) {
-        final boolean hasMaxProgressIndex = ReadWriteIOUtils.readBool(inputStream);
-        if (hasMaxProgressIndex) {
+      while (inputStream.available() > 0) {
+        final TsFileResourceBlockType blockType =
+            TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
+        if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
           maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
         }
       }

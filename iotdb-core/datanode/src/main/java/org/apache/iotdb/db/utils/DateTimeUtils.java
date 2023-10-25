@@ -524,26 +524,36 @@ public class DateTimeUtils {
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
    */
   public static long convertDurationStrToLong(String duration) {
-    return convertDurationStrToLong(-1, duration);
+    return convertDurationStrToLong(-1, duration, false);
   }
 
-  public static long convertDurationStrToLong(String duration, String timestampPrecision) {
-    return convertDurationStrToLong(-1, duration, timestampPrecision);
+  public static long convertDurationStrToLong(String duration, boolean convertYearToMonth) {
+    return convertDurationStrToLong(-1, duration, convertYearToMonth);
   }
 
-  public static long convertDurationStrToLong(long currentTime, String duration) {
+  public static long convertDurationStrToLong(
+      String duration, String timestampPrecision, boolean convertYearToMonth) {
+    return convertDurationStrToLong(-1, duration, timestampPrecision, convertYearToMonth);
+  }
+
+  public static long convertDurationStrToLong(
+      long currentTime, String duration, boolean convertYearToMonth) {
     return convertDurationStrToLong(
-        currentTime, duration, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+        currentTime,
+        duration,
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+        convertYearToMonth);
   }
 
   /**
    * convert duration string to time value.
    *
    * @param duration represent duration string like: 12d8m9ns, 1y1mo, etc.
+   * @param convertYearToMonth if we need convert year to month. eg: 1y -> 12mo
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
    */
   public static long convertDurationStrToLong(
-      long currentTime, String duration, String timestampPrecision) {
+      long currentTime, String duration, String timestampPrecision, boolean convertYearToMonth) {
     long total = 0;
     long temp = 0;
     for (int i = 0; i < duration.length(); i++) {
@@ -558,12 +568,14 @@ public class DateTimeUtils {
           i++;
           unit += duration.charAt(i);
         }
+        unit = unit.toLowerCase();
+        if (convertYearToMonth && unit.equals("y")) {
+          temp *= 12;
+          unit = "mo";
+        }
         total +=
             DateTimeUtils.convertDurationStrToLong(
-                currentTime == -1 ? -1 : currentTime + total,
-                temp,
-                unit.toLowerCase(),
-                timestampPrecision);
+                currentTime == -1 ? -1 : currentTime + total, temp, unit, timestampPrecision);
         temp = 0;
       }
     }

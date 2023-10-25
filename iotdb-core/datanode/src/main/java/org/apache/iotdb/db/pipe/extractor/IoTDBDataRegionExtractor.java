@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.extractor;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.extractor.historical.PipeHistoricalDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.historical.PipeHistoricalDataRegionTsFileExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
@@ -28,17 +29,21 @@ import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionFakeExt
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionLogExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionTsFileExtractor;
+import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -59,6 +64,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   private PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
 
+  private String taskID;
   private int dataRegionId;
 
   public IoTDBDataRegionExtractor() {
@@ -145,9 +151,15 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
       throws Exception {
     dataRegionId =
         ((PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment()).getRegionId();
+    String pipeName = configuration.getRuntimeEnvironment().getPipeName();
+    long creationTime = configuration.getRuntimeEnvironment().getCreationTime();
+    taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
 
     historicalExtractor.customize(parameters, configuration);
     realtimeExtractor.customize(parameters, configuration);
+
+    // register metric after generating taskID
+    PipeExtractorMetrics.getInstance().register(this);
   }
 
   @Override
@@ -216,14 +228,46 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
   @Override
   public Event supply() throws Exception {
-    return historicalExtractor.hasConsumedAll()
-        ? realtimeExtractor.supply()
-        : historicalExtractor.supply();
+    Event event =
+        historicalExtractor.hasConsumedAll()
+            ? realtimeExtractor.supply()
+            : historicalExtractor.supply();
+    if (Objects.nonNull(event)) {
+      if (event instanceof TabletInsertionEvent) {
+        PipeExtractorMetrics.getInstance().getTabletRate(taskID).mark();
+      } else if (event instanceof TsFileInsertionEvent) {
+        PipeExtractorMetrics.getInstance().getTsFileRate(taskID).mark();
+      } else if (event instanceof PipeHeartbeatEvent) {
+        PipeExtractorMetrics.getInstance().getPipeHeartbeatRate(taskID).mark();
+      }
+    }
+    return event;
   }
 
   @Override
   public void close() throws Exception {
     historicalExtractor.close();
     realtimeExtractor.close();
+    PipeExtractorMetrics.getInstance().deregister(taskID);
+  }
+
+  public String getTaskID() {
+    return taskID;
+  }
+
+  public int getHistoricalTsFileInsertionEventCount() {
+    return hasBeenStarted.get() ? historicalExtractor.getPendingQueueSize() : 0;
+  }
+
+  public int getTabletInsertionEventCount() {
+    return hasBeenStarted.get() ? realtimeExtractor.getTabletInsertionEventCount() : 0;
+  }
+
+  public int getRealtimeTsFileInsertionEventCount() {
+    return hasBeenStarted.get() ? realtimeExtractor.getTsFileInsertionEventCount() : 0;
+  }
+
+  public int getPipeHeartbeatEventCount() {
+    return hasBeenStarted.get() ? realtimeExtractor.getPipeHeartbeatEventCount() : 0;
   }
 }

@@ -267,7 +267,7 @@ public class RatisConfig {
       private TimeDuration timeoutMax = TimeDuration.valueOf(4, TimeUnit.SECONDS);
       private TimeDuration requestTimeout = TimeDuration.valueOf(20, TimeUnit.SECONDS);
       private TimeDuration sleepTime = TimeDuration.valueOf(1, TimeUnit.SECONDS);
-      private TimeDuration slownessTimeout = TimeDuration.valueOf(10, TimeUnit.MINUTES);
+      private TimeDuration slownessTimeout = TimeDuration.valueOf(3, TimeUnit.DAYS);
 
       private TimeDuration firstElectionTimeoutMin =
           TimeDuration.valueOf(50, TimeUnit.MILLISECONDS);
@@ -939,18 +939,22 @@ public class RatisConfig {
     private final int retryTimesMax;
     private final long retryWaitMillis;
 
-    private final long triggerSnapshotTime;
-    private final long triggerSnapshotFileSize;
+    private final long checkAndTakeSnapshotInterval;
+    private final long raftLogSizeMaxThreshold;
+
+    private final long forceSnapshotInterval;
 
     public Impl(
         int retryTimesMax,
         long retryWaitMillis,
-        long triggerSnapshotTime,
-        long triggerSnapshotFileSize) {
+        long checkAndTakeSnapshotInterval,
+        long raftLogSizeMaxThreshold,
+        long forceSnapshotInterval) {
       this.retryTimesMax = retryTimesMax;
       this.retryWaitMillis = retryWaitMillis;
-      this.triggerSnapshotTime = triggerSnapshotTime;
-      this.triggerSnapshotFileSize = triggerSnapshotFileSize;
+      this.checkAndTakeSnapshotInterval = checkAndTakeSnapshotInterval;
+      this.raftLogSizeMaxThreshold = raftLogSizeMaxThreshold;
+      this.forceSnapshotInterval = forceSnapshotInterval;
     }
 
     public int getRetryTimesMax() {
@@ -961,12 +965,16 @@ public class RatisConfig {
       return retryWaitMillis;
     }
 
-    public long getTriggerSnapshotTime() {
-      return triggerSnapshotTime;
+    public long getCheckAndTakeSnapshotInterval() {
+      return checkAndTakeSnapshotInterval;
     }
 
-    public long getTriggerSnapshotFileSize() {
-      return triggerSnapshotFileSize;
+    public long getRaftLogSizeMaxThreshold() {
+      return raftLogSizeMaxThreshold;
+    }
+
+    public long getForceSnapshotInterval() {
+      return forceSnapshotInterval;
     }
 
     public static Impl.Builder newBuilder() {
@@ -979,13 +987,19 @@ public class RatisConfig {
       private long retryWaitMillis = 500;
 
       // 120s
-      private long triggerSnapshotTime = 120;
+      private long checkAndTakeSnapshotInterval = 120;
       // 20GB
-      private long triggerSnapshotFileSize = 20L << 30;
+      private long raftLogSizeMaxThreshold = 20L << 30;
+      // -1L means no force, measured in seconds
+      private long forceSnapshotInterval = -1;
 
       public Impl build() {
         return new Impl(
-            retryTimesMax, retryWaitMillis, triggerSnapshotTime, triggerSnapshotFileSize);
+            retryTimesMax,
+            retryWaitMillis,
+            checkAndTakeSnapshotInterval,
+            raftLogSizeMaxThreshold,
+            forceSnapshotInterval);
       }
 
       public Impl.Builder setRetryTimesMax(int retryTimesMax) {
@@ -998,13 +1012,18 @@ public class RatisConfig {
         return this;
       }
 
-      public Impl.Builder setTriggerSnapshotTime(long triggerSnapshotTime) {
-        this.triggerSnapshotTime = triggerSnapshotTime;
+      public Impl.Builder setCheckAndTakeSnapshotInterval(long checkAndTakeSnapshotInterval) {
+        this.checkAndTakeSnapshotInterval = checkAndTakeSnapshotInterval;
         return this;
       }
 
-      public Impl.Builder setTriggerSnapshotFileSize(long triggerSnapshotFileSize) {
-        this.triggerSnapshotFileSize = triggerSnapshotFileSize;
+      public Impl.Builder setRaftLogSizeMaxThreshold(long raftLogSizeMaxThreshold) {
+        this.raftLogSizeMaxThreshold = raftLogSizeMaxThreshold;
+        return this;
+      }
+
+      public Impl.Builder setForceSnapshotInterval(long forceSnapshotInterval) {
+        this.forceSnapshotInterval = forceSnapshotInterval;
         return this;
       }
     }

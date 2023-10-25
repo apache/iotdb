@@ -147,8 +147,7 @@ public class WALNode implements IWALNode {
   private WALFlushListener log(WALEntry walEntry) {
     buffer.write(walEntry);
     // set handler for pipe
-    walEntry.getWalFlushListener().getWalEntryHandler().setMemTableId(walEntry.getMemTableId());
-    walEntry.getWalFlushListener().getWalEntryHandler().setWalNode(this);
+    walEntry.getWalFlushListener().getWalEntryHandler().setWalNode(this, walEntry.getMemTableId());
     return walEntry.getWalFlushListener();
   }
 
@@ -930,6 +929,10 @@ public class WALNode implements IWALNode {
     return buffer.getFileNum();
   }
 
+  public int getRegionId(long memtableId) {
+    return checkpointManager.getRegionId(memtableId);
+  }
+
   @TestOnly
   long getCurrentLogVersion() {
     return buffer.getCurrentWALFileVersion();
@@ -938,5 +941,10 @@ public class WALNode implements IWALNode {
   @TestOnly
   CheckpointManager getCheckpointManager() {
     return checkpointManager;
+  }
+
+  @TestOnly
+  public void setBufferSize(int size) {
+    buffer.setBufferSize(size);
   }
 }

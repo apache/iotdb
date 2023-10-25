@@ -32,6 +32,7 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.Locale;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
@@ -60,7 +61,10 @@ public class IoTDBGroupByLevelQueryIT {
       for (int i = 1; i <= 10; i++) {
         statement.execute(
             String.format(
-                "insert into root.sg2.d1(time, s1) aligned values(%d,%f)", i, (double) i));
+                Locale.ENGLISH,
+                "insert into root.sg2.d1(time, s1) aligned values(%d,%f)",
+                i,
+                (double) i));
       }
       for (int i = 11; i <= 20; i++) {
         statement.execute(
@@ -73,8 +77,12 @@ public class IoTDBGroupByLevelQueryIT {
       for (int i = 31; i <= 40; i++) {
         statement.execute(
             String.format(
+                Locale.ENGLISH,
                 "insert into root.sg2.d1(time, s1, s2, s3) aligned values(%d,%f,%d,%d)",
-                i, (double) i, i, i));
+                i,
+                (double) i,
+                i,
+                i));
       }
     } catch (Exception e) {
       e.printStackTrace();

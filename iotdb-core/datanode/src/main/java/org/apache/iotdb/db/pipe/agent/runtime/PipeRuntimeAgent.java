@@ -59,7 +59,7 @@ public class PipeRuntimeAgent implements IService {
     PipeHardlinkFileDirStartupCleaner.clean();
 
     // clean receiver file dir
-    PipeAgent.receiver().cleanPipeReceiverDir();
+    PipeAgent.receiver().cleanPipeReceiverDirs();
 
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
     simpleConsensusProgressIndexAssigner.start();

@@ -141,7 +141,7 @@ public class ColumnHeaderConstant {
   public static final String SCHEMA_REGION_NUM = "SchemaRegionNum";
   public static final String DATA_REGION_NUM = "DataRegionNum";
 
-  // column names for show schema template statement
+  // column names for show device template statement
   public static final String TEMPLATE_NAME = "TemplateName";
 
   // column names for show pipe sink

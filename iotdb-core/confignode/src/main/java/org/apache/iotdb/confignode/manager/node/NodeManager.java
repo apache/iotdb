@@ -210,6 +210,11 @@ public class NodeManager {
     ratisConfig.setSchemaRegionRatisLogMax(conf.getSchemaRegionRatisLogMax());
     ratisConfig.setDataRegionRatisLogMax(conf.getDataRegionRatisLogMax());
 
+    ratisConfig.setSchemaRegionPeriodicSnapshotInterval(
+        conf.getSchemaRegionRatisPeriodicSnapshotInterval());
+    ratisConfig.setDataRegionPeriodicSnapshotInterval(
+        conf.getDataRegionRatisPeriodicSnapshotInterval());
+
     dataSet.setRatisConfig(ratisConfig);
   }
 
@@ -281,7 +286,7 @@ public class NodeManager {
     }
 
     // Bind DataNode metrics
-    PartitionMetrics.bindDataNodePartitionMetrics(
+    PartitionMetrics.bindDataNodePartitionMetricsWhenUpdate(
         MetricService.getInstance(), configManager, dataNodeId);
 
     // Adjust the maximum RegionGroup number of each StorageGroup

@@ -1621,12 +1621,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (tempY > 0) {
       duration = duration.replace(tempY + "y", "");
-      if (!duration.contains("mo")) {
+      if (tempMo > 0) {
+        duration = duration.replace(tempMo + "mo", (tempY * 12 + tempMo) + "mo");
+      } else {
         duration = duration.concat(tempY * 12 + "mo");
       }
-    }
-    if (tempMo > 0) {
-      duration = duration.replace(tempMo + "mo", (tempY * 12 + tempMo) + "mo");
     }
 
     if (isParsingTimeInterval) {
@@ -1634,7 +1633,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       groupByTimeComponent.setFixedSlidingStepInMonth((tempY * 12 + tempMo) * 30 * 86_400_000L);
     }
-
     return duration;
   }
 
@@ -3095,9 +3093,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     time = parseDateFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
-        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
       } else {
-        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
       }
     }
     return time;
@@ -3108,9 +3106,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     time = parseDateFormat(ctx.getChild(0).getText(), currentTime);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
-        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
       } else {
-        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
       }
     }
     return time;
@@ -3376,7 +3374,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new ShowConfigNodesStatement();
   }
 
-  // schema template
+  // device template
 
   @Override
   public Statement visitCreateSchemaTemplate(IoTDBSqlParser.CreateSchemaTemplateContext ctx) {
@@ -3462,7 +3460,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       List<TSEncoding> encodings,
       List<CompressionType> compressors) {
     if (ctx.aliasNodeName() != null) {
-      throw new SemanticException("Schema template: alias is not supported yet.");
+      throw new SemanticException("Device Template: alias is not supported yet.");
     }
 
     TSDataType dataType = parseDataTypeAttribute(ctx);
@@ -3519,15 +3517,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (props.size() > 0) {
-      throw new SemanticException("Schema template: property is not supported yet.");
+      throw new SemanticException("Device Template: property is not supported yet.");
     }
 
     if (ctx.tagClause() != null) {
-      throw new SemanticException("Schema template: tag is not supported yet.");
+      throw new SemanticException("Device Template: tag is not supported yet.");
     }
 
     if (ctx.attributeClause() != null) {
-      throw new SemanticException("Schema template: attribute is not supported yet.");
+      throw new SemanticException("Device Template: attribute is not supported yet.");
     }
   }
 

@@ -43,4 +43,7 @@ public interface ModificationWriter {
 
   /** Release resources like streams. */
   void close() throws IOException;
+
+  /** Make sure that the data in the buffer is flushed to disk */
+  void force() throws IOException;
 }

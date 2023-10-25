@@ -177,6 +177,8 @@ public class AbstractCompactionTest {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     BloomFilterCache.getInstance().clear();
+    tsFileManager.getOrCreateSequenceListByTimePartition(0);
+    tsFileManager.getOrCreateUnsequenceListByTimePartition(0);
   }
 
   /**
@@ -414,6 +416,7 @@ public class AbstractCompactionTest {
     if (UNSEQ_DIRS.exists()) {
       FileUtils.deleteDirectory(UNSEQ_DIRS);
     }
+    tsFileManager.clear();
   }
 
   private void removeFiles() throws IOException {

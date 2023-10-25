@@ -22,40 +22,47 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionExceptionHandler;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.CompactionValidator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   protected List<TsFileResource> selectedSequenceFiles;
   protected List<TsFileResource> selectedUnsequenceFiles;
-  protected TsFileResourceList seqTsFileResourceList;
-  protected TsFileResourceList unseqTsFileResourceList;
   private File logFile;
   protected List<TsFileResource> targetTsfileResourceList;
+  private List<TsFileResource> emptyTargetTsFileResourceList;
   protected List<TsFileResource> holdWriteLockList = new ArrayList<>();
   protected double selectedSeqFileSize = 0;
   protected double selectedUnseqFileSize = 0;
+
+  protected boolean needRecoverTaskInfoFromLogFile;
 
   @SuppressWarnings("squid:S107")
   public CrossSpaceCompactionTask(
@@ -74,10 +81,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         serialId);
     this.selectedSequenceFiles = selectedSequenceFiles;
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
-    this.seqTsFileResourceList =
-        tsFileManager.getOrCreateSequenceListByTimePartition(timePartition);
-    this.unseqTsFileResourceList =
-        tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition);
+    this.emptyTargetTsFileResourceList = new ArrayList<>();
     this.performer = performer;
     this.hashCode = this.toString().hashCode();
     this.memoryCost = memoryCost;
@@ -86,9 +90,44 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     createSummary();
   }
 
+  public CrossSpaceCompactionTask(
+      String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
+    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, CompactionTaskType.NORMAL);
+    this.logFile = logFile;
+    this.needRecoverTaskInfoFromLogFile = true;
+  }
+
+  private void recoverTaskInfoFromLogFile() throws IOException {
+    CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(this.logFile);
+    logAnalyzer.analyze();
+    List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
+    this.selectedSequenceFiles = new ArrayList<>();
+    sourceFileIdentifiers.stream()
+        .filter(TsFileIdentifier::isSequence)
+        .forEach(f -> this.selectedSequenceFiles.add(new TsFileResource(f.getFileFromDataDirs())));
+    sourceFileIdentifiers.stream()
+        .filter(f -> !f.isSequence())
+        .forEach(
+            f -> this.selectedUnsequenceFiles.add(new TsFileResource(f.getFileFromDataDirs())));
+
+    List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
+    List<TsFileIdentifier> deletedTargetFileIdentifiers = logAnalyzer.getDeletedTargetFileInfos();
+    for (TsFileIdentifier f : targetFileIdentifiers) {
+      File targetFileOnDisk = getRealTargetFile(f, IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX);
+      // The targetFileOnDisk may be null, but it won't impact the task recover stage
+      TsFileResource targetTsFile = new TsFileResource(targetFileOnDisk);
+      this.targetTsfileResourceList.add(targetTsFile);
+      if (deletedTargetFileIdentifiers.contains(f)) {
+        this.emptyTargetTsFileResourceList.add(targetTsFile);
+      }
+    }
+    this.taskStage = logAnalyzer.getTaskStage();
+  }
+
   @Override
   @SuppressWarnings({"squid:S6541", "squid:S3776", "squid:S2142"})
   public boolean doCompaction() {
+    recoverMemoryStatus = true;
     boolean isSuccess = true;
     try {
       if (!tsFileManager.isAllowCompaction()) {
@@ -140,11 +179,12 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
                   + targetTsfileResourceList.get(0).getTsFile().getName()
                   + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
 
-      try (CompactionLogger compactionLogger = new CompactionLogger(logFile)) {
+      try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
         // print the path of the temporary file first for priority check during recovery
-        compactionLogger.logFiles(selectedSequenceFiles, CompactionLogger.STR_SOURCE_FILES);
-        compactionLogger.logFiles(selectedUnsequenceFiles, CompactionLogger.STR_SOURCE_FILES);
-        compactionLogger.logFiles(targetTsfileResourceList, CompactionLogger.STR_TARGET_FILES);
+        compactionLogger.logSourceFiles(selectedSequenceFiles);
+        compactionLogger.logSourceFiles(selectedUnsequenceFiles);
+        compactionLogger.logTargetFiles(targetTsfileResourceList);
+        compactionLogger.force();
 
         performer.setSourceFiles(selectedSequenceFiles, selectedUnsequenceFiles);
         performer.setTargetFiles(targetTsfileResourceList);
@@ -169,7 +209,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         // find empty target files and add log
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (targetResource.isDeleted()) {
-            compactionLogger.logFile(targetResource, CompactionLogger.STR_DELETED_TARGET_FILES);
+            emptyTargetTsFileResourceList.add(targetResource);
+            compactionLogger.logEmptyTargetFile(targetResource);
+            compactionLogger.force();
           }
         }
 
@@ -243,39 +285,83 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
                 (selectedSeqFileSize + selectedUnseqFileSize) / 1024.0d / 1024.0d / costTime),
             summary);
       }
-      if (logFile.exists()) {
-        FileUtils.delete(logFile);
-      }
+      Files.deleteIfExists(logFile.toPath());
     } catch (Exception e) {
       isSuccess = false;
-      // catch throwable to handle OOM errors
-      if (!(e instanceof InterruptedException)) {
-        LOGGER.error(
-            "{}-{} [Compaction] Meet errors in cross space compaction.",
-            storageGroupName,
-            dataRegionId,
-            e);
-      } else {
-        LOGGER.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
-        // clean the interrupted flag
-        Thread.interrupted();
-      }
-
-      // handle exception
-      CompactionExceptionHandler.handleException(
-          storageGroupName + "-" + dataRegionId,
-          logFile,
-          targetTsfileResourceList,
-          selectedSequenceFiles,
-          selectedUnsequenceFiles,
-          tsFileManager,
-          timePartition,
-          false,
-          true);
+      printLogWhenException(LOGGER, e);
+      recover();
     } finally {
       releaseAllLocks();
     }
     return isSuccess;
+  }
+
+  public void recover() {
+    try {
+      if (needRecoverTaskInfoFromLogFile) {
+        recoverTaskInfoFromLogFile();
+      }
+      if (shouldRollback()) {
+        rollback();
+      } else {
+        // That finishTask() is revoked means
+        finishTask();
+      }
+    } catch (Exception e) {
+      handleRecoverException(e);
+    }
+  }
+
+  private boolean shouldRollback() {
+    return checkAllSourceFileExists(selectedSequenceFiles)
+        && checkAllSourceFileExists(selectedUnsequenceFiles);
+  }
+
+  private void rollback() throws IOException {
+    // if the task has started,
+    if (recoverMemoryStatus) {
+      replaceTsFileInMemory(
+          targetTsfileResourceList,
+          Stream.concat(selectedSequenceFiles.stream(), selectedUnsequenceFiles.stream())
+              .collect(Collectors.toList()));
+    }
+    deleteCompactionModsFile(selectedSequenceFiles);
+    deleteCompactionModsFile(selectedUnsequenceFiles);
+    // delete target file
+    if (targetTsfileResourceList != null && !deleteTsFilesOnDisk(targetTsfileResourceList)) {
+      throw new CompactionRecoverException("failed to delete target file %s");
+    }
+  }
+
+  private void finishTask() throws IOException {
+    for (TsFileResource target : targetTsfileResourceList) {
+      if (target.isDeleted() || emptyTargetTsFileResourceList.contains(target)) {
+        // it means the target file is empty after compaction
+        if (target.remove()) {
+          throw new CompactionRecoverException(
+              String.format("failed to delete empty target file %s", target));
+        }
+      } else {
+        File targetFile = target.getTsFile();
+        if (targetFile == null || !TsFileUtils.isTsFileComplete(target.getTsFile())) {
+          throw new CompactionRecoverException(
+              String.format("Target file is not completed. %s", targetFile));
+        }
+        if (recoverMemoryStatus) {
+          target.setStatus(TsFileResourceStatus.NORMAL);
+        }
+      }
+    }
+    if (!deleteTsFilesOnDisk(selectedSequenceFiles)
+        || !deleteTsFilesOnDisk(selectedUnsequenceFiles)) {
+      throw new CompactionRecoverException("source files cannot be deleted successfully");
+    }
+    if (recoverMemoryStatus) {
+      FileMetrics.getInstance().deleteTsFile(true, selectedSequenceFiles);
+      FileMetrics.getInstance().deleteTsFile(true, selectedUnsequenceFiles);
+    }
+    deleteCompactionModsFile(selectedSequenceFiles);
+    deleteCompactionModsFile(selectedUnsequenceFiles);
   }
 
   @Override

@@ -25,15 +25,10 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.util.Properties;
 
 public class CommonDescriptor {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(CommonDescriptor.class);
 
   private final CommonConfig config = new CommonConfig();
 
@@ -62,7 +57,7 @@ public class CommonDescriptor {
     config.setProcedureWalFolder(systemDir + File.separator + "procedure");
   }
 
-  public void loadCommonProps(Properties properties) {
+  public void loadCommonProps(Properties properties) throws BadNodeUrlException {
     config.setAuthorizerProvider(
         properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()).trim());
     // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
@@ -216,13 +211,8 @@ public class CommonDescriptor {
             NodeUrlUtils.convertTEndPointUrl(config.getTargetMLNodeEndPoint()));
 
     loadPipeProps(properties);
-    try {
-      config.setTargetMLNodeEndPoint(NodeUrlUtils.parseTEndPointUrl(endPointUrl));
-    } catch (BadNodeUrlException e) {
-      LOGGER.warn(
-          "Illegal target MLNode endpoint url format in config file: {}, use default configuration.",
-          endPointUrl);
-    }
+
+    config.setTargetMLNodeEndPoint(NodeUrlUtils.parseTEndPointUrl(endPointUrl));
 
     config.setSchemaEngineMode(
         properties.getProperty("schema_engine_mode", String.valueOf(config.getSchemaEngineMode())));
@@ -311,11 +301,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_extractor_matcher_cache_size",
                 String.valueOf(config.getPipeExtractorMatcherCacheSize()))));
-    config.setPipeExtractorPendingQueueTsFileLimit(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_extractor_pending_queue_tsfile_limit",
-                String.valueOf(config.getPipeExtractorPendingQueueTsFileLimit()))));
 
     config.setPipeConnectorTimeoutMs(
         Long.parseLong(
@@ -398,13 +383,31 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_air_gap_receiver_port",
                 Integer.toString(config.getPipeAirGapReceiverPort()))));
+
+    config.setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
+                String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
+
+    config.setPipeMemoryAllocateMaxRetries(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_memory_allocate_max_retries",
+                String.valueOf(config.getPipeMemoryAllocateMaxRetries()))));
+
+    config.setPipeMemoryAllocateRetryIntervalInMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_memory_allocate_retry_interval_in_ms",
+                String.valueOf(config.getPipeMemoryAllocateRetryIntervalInMs()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
+    config.setTimestampPrecision(globalConfig.timestampPrecision);
     config.setTimePartitionInterval(
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
             globalConfig.timePartitionInterval, config.getTimestampPrecision()));
-    config.setTimestampPrecision(globalConfig.timestampPrecision);
     config.setSchemaEngineMode(globalConfig.schemaEngineMode);
     config.setTagAttributeTotalSize(globalConfig.tagAttributeTotalSize);
     config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());

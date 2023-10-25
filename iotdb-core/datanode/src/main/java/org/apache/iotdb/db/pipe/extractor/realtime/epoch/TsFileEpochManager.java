@@ -53,9 +53,11 @@ public class TsFileEpochManager {
           return new TsFileEpoch(path);
         });
 
+    final TsFileEpoch epoch = filePath2Epoch.remove(filePath);
+    LOGGER.info("All data in TsFileEpoch {} was extracted", epoch);
     return new PipeRealtimeEvent(
         event,
-        filePath2Epoch.remove(filePath),
+        epoch,
         resource.getDevices().stream()
             .collect(Collectors.toMap(device -> device, device -> EMPTY_MEASUREMENT_ARRAY)),
         event.getPattern());

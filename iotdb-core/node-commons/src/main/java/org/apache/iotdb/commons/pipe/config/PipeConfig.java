@@ -81,10 +81,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeExtractorMatcherCacheSize();
   }
 
-  public int getPipeExtractorPendingQueueTsFileLimit() {
-    return COMMON_CONFIG.getPipeExtractorPendingQueueTsFileLimit();
-  }
-
   /////////////////////////////// Connector ///////////////////////////////
 
   public long getPipeConnectorTimeoutMs() {
@@ -155,6 +151,22 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAirGapReceiverPort();
   }
 
+  /////////////////////////////// Hybrid Mode ///////////////////////////////
+
+  public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
+    return COMMON_CONFIG.getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
+  }
+
+  /////////////////////////////// Memory ///////////////////////////////
+
+  public int getPipeMemoryAllocateMaxRetries() {
+    return COMMON_CONFIG.getPipeMemoryAllocateMaxRetries();
+  }
+
+  public long getPipeMemoryAllocateRetryIntervalInMs() {
+    return COMMON_CONFIG.getPipeMemoryAllocateRetryIntervalInMs();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
@@ -182,8 +194,6 @@ public class PipeConfig {
         "PipeExtractorAssignerDisruptorRingBufferSize: {}",
         getPipeExtractorAssignerDisruptorRingBufferSize());
     LOGGER.info("PipeExtractorMatcherCacheSize: {}", getPipeExtractorMatcherCacheSize());
-    LOGGER.info(
-        "PipeExtractorPendingQueueTsFileLimit: {}", getPipeExtractorPendingQueueTsFileLimit());
 
     LOGGER.info("PipeConnectorTimeoutMs: {}", getPipeConnectorTimeoutMs());
     LOGGER.info("PipeConnectorReadFileBufferSize: {}", getPipeConnectorReadFileBufferSize());
@@ -211,6 +221,14 @@ public class PipeConfig {
 
     LOGGER.info("PipeAirGapReceiverEnabled: {}", getPipeAirGapReceiverEnabled());
     LOGGER.info("PipeAirGapReceiverPort: {}", getPipeAirGapReceiverPort());
+
+    LOGGER.info(
+        "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
+        getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
+
+    LOGGER.info("PipeMemoryAllocateMaxRetries: {}", getPipeMemoryAllocateMaxRetries());
+    LOGGER.info(
+        "PipeMemoryAllocateRetryIntervalInMs: {}", getPipeMemoryAllocateRetryIntervalInMs());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

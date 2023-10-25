@@ -110,4 +110,8 @@ public class MergeSortHeap {
       heap[childIndex] = child;
     }
   }
+
+  public int getHeapSize() {
+    return this.heapSize;
+  }
 }

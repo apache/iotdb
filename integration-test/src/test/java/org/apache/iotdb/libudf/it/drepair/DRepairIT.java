@@ -34,6 +34,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Locale;
 
 import static org.junit.Assert.fail;
 
@@ -111,6 +112,7 @@ public class DRepairIT {
       for (int i = 1; i <= ITERATION_TIMES; ++i) {
         statement.execute(
             String.format(
+                Locale.ENGLISH,
                 "insert into root.vehicle.d3(timestamp,s1) values(%d,%f)",
                 (long) i * DELTA_T,
                 i / (double) ITERATION_TIMES * (y - x) + (Math.random() - 0.5) * (y - x)));
