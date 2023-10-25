@@ -31,7 +31,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointTyp
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -655,31 +654,6 @@ public class WritingMetrics implements IMetricSet {
   }
   // endregion
 
-  // load metrics
-  private Counter loadWriteCounter;
-
-  public void bindLoadMetrics(AbstractMetricService metricService) {
-    loadWriteCounter =
-        metricService.getOrCreateCounter(
-            Metric.LOAD_WRITE_POINT_COUNTER.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            Metric.LOAD_WRITE_POINT_COUNTER.toString());
-  }
-
-  public void unbindLoadMetrics(AbstractMetricService metricService) {
-    loadWriteCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
-    metricService.remove(
-        MetricType.COUNTER,
-        Metric.LOAD_WRITE_POINT_COUNTER.toString(),
-        Tag.NAME.toString(),
-        Metric.LOAD_WRITE_POINT_COUNTER.toString());
-  }
-
-  public Counter getLoadWriteCounter() {
-    return loadWriteCounter;
-  }
-
   @Override
   public void bindTo(AbstractMetricService metricService) {
     bindFlushMetrics(metricService);
@@ -687,7 +661,6 @@ public class WritingMetrics implements IMetricSet {
     bindWALMetrics(metricService);
     bindWALCostMetrics(metricService);
     bindDataRegionMetrics();
-    bindLoadMetrics(metricService);
   }
 
   @Override
@@ -697,7 +670,6 @@ public class WritingMetrics implements IMetricSet {
     unbindWALMetrics(metricService);
     unbindWALCostMetrics(metricService);
     unbindDataRegionMetrics();
-    unbindLoadMetrics(metricService);
   }
 
   public static WritingMetrics getInstance() {

@@ -47,7 +47,6 @@ public class LoadTsFileStatement extends Statement {
 
   private final List<File> tsFiles;
   private final List<TsFileResource> resources;
-  //  private final List<Map<String, Long>> tsFilesDevice2WritePointCountMapList;
   private final List<Pair<String, Long>> database2WritePointCountPairList;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {

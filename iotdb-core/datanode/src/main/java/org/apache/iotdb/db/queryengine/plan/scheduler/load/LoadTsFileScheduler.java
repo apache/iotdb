@@ -50,7 +50,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsF
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
-import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -349,8 +348,6 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     // add metrics
-    WritingMetrics.getInstance().getLoadWriteCounter().inc(node.getWritePointCount());
-
     MetricService.getInstance()
         .count(
             node.getWritePointCount(),
@@ -502,7 +499,6 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     private void markMetric(LoadTsFilePieceNode pieceNode, String regionId) {
-      WritingMetrics.getInstance().getLoadWriteCounter().inc(pieceNode.getWritePointTotalCount());
       MetricService.getInstance()
           .count(
               pieceNode.getWritePointTotalCount(),
