@@ -189,7 +189,7 @@ public class CommonConfig {
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
 
-  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 1;
+  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
 
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
   private int pipeMemoryAllocateMaxRetries = 10;
