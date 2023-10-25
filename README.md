@@ -268,7 +268,7 @@ git checkout rel/x.x
 
 ### Build IoTDB from source
 
-Under the iotdb/iotdb-client path:
+Under the root path of iotdb:
 
 ```
 > mvn clean package -pl distribution -am -DskipTests
