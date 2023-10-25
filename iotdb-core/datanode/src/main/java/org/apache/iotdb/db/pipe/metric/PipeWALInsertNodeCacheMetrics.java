@@ -17,10 +17,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public class PipeWALInsertNodeCacheHitRateMetrics implements IMetricSet {
+public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeWALInsertNodeCacheHitRateMetrics.class);
+      LoggerFactory.getLogger(PipeWALInsertNodeCacheMetrics.class);
 
   private AbstractMetricService metricService;
 
@@ -105,21 +105,21 @@ public class PipeWALInsertNodeCacheHitRateMetrics implements IMetricSet {
 
   //////////////////////////// singleton ////////////////////////////
 
-  private static class PipeWALInsertNodeCacheHitRateMetricsHolder {
+  private static class PipeWALInsertNodeCacheMetricsHolder {
 
-    private static final PipeWALInsertNodeCacheHitRateMetrics INSTANCE =
-        new PipeWALInsertNodeCacheHitRateMetrics();
+    private static final PipeWALInsertNodeCacheMetrics INSTANCE =
+        new PipeWALInsertNodeCacheMetrics();
 
-    private PipeWALInsertNodeCacheHitRateMetricsHolder() {
+    private PipeWALInsertNodeCacheMetricsHolder() {
       // empty constructor
     }
   }
 
-  public static PipeWALInsertNodeCacheHitRateMetrics getInstance() {
-    return PipeWALInsertNodeCacheHitRateMetrics.PipeWALInsertNodeCacheHitRateMetricsHolder.INSTANCE;
+  public static PipeWALInsertNodeCacheMetrics getInstance() {
+    return PipeWALInsertNodeCacheMetricsHolder.INSTANCE;
   }
 
-  private PipeWALInsertNodeCacheHitRateMetrics() {
+  private PipeWALInsertNodeCacheMetrics() {
     // empty constructor
   }
 }
