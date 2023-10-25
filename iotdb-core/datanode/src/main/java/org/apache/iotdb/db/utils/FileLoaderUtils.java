@@ -108,7 +108,7 @@ public class FileLoaderUtils {
       }
     }
     resource.setStatus(TsFileResourceStatus.NORMAL);
-    PipeAgent.runtime().assignRecoverProgressIndexForTsFileRecovery(resource);
+    PipeAgent.runtime().assignProgressIndexForTsFileLoad(resource);
     return resource;
   }
 
