@@ -119,6 +119,10 @@ public enum Metric {
   PIPE_CONNECTOR_HEARTBEAT_TRANSFER("pipe_connector_heartbeat_transfer"),
   PIPE_HEARTBEAT_EVENT("pipe_heartbeat_event"),
   PIPE_WAL_INSERT_NODE_CACHE_HIT_RATE("pipe_wal_insert_node_cache_hit_rate"),
+  PIPE_TSFILE_EPOCH_EMPTY_STATE_COUNT("pipe_tsfile_epoch_empty_state_count"),
+  PIPE_TSFILE_EPOCH_TABLET_STATE_COUNT("pipe_tsfile_epoch_tablet_state_count"),
+  PIPE_TSFILE_EPOCH_TSFILE_STATE_COUNT("pipe_tsfile_epoch_tsfile_state_count"),
+  PIPE_TSFILE_EPOCH_BOTH_STATE_COUNT("pipe_tsfile_epoch_both_state_count"),
   ;
 
   final String value;

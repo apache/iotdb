@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.realtime.epoch;
 
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -38,15 +39,32 @@ public class TsFileEpoch {
 
   public TsFileEpoch.State getState(PipeRealtimeDataRegionExtractor extractor) {
     return dataRegionExtractor2State
-        .computeIfAbsent(extractor, o -> new AtomicReference<>(State.EMPTY))
+        .computeIfAbsent(
+            extractor,
+            o -> {
+              PipeExtractorMetrics.getInstance()
+                  .increaseTsFileEpochStateCount(extractor.getTaskID(), State.EMPTY);
+              return new AtomicReference<>(State.EMPTY);
+            })
         .get();
   }
 
   public void migrateState(
       PipeRealtimeDataRegionExtractor extractor, TsFileEpochStateMigrator visitor) {
-    dataRegionExtractor2State
-        .computeIfAbsent(extractor, o -> new AtomicReference<>(State.EMPTY))
-        .getAndUpdate(visitor::migrate);
+    AtomicReference<State> state =
+        dataRegionExtractor2State.computeIfAbsent(
+            extractor,
+            o -> {
+              PipeExtractorMetrics.getInstance()
+                  .increaseTsFileEpochStateCount(extractor.getTaskID(), State.EMPTY);
+              return new AtomicReference<>(State.EMPTY);
+            });
+    State oldState = state.get();
+    State newState = state.getAndUpdate(visitor::migrate);
+    PipeExtractorMetrics.getInstance()
+        .decreaseTsFileEpochStateCount(extractor.getTaskID(), oldState);
+    PipeExtractorMetrics.getInstance()
+        .increaseTsFileEpochStateCount(extractor.getTaskID(), newState);
   }
 
   @Override
