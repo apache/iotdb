@@ -191,6 +191,9 @@ public class CommonConfig {
 
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 1;
 
+  private long pipeMemoryAllocateRetryIntervalMs = 1000;
+  private int pipeMemoryAllocateMaxRetries = 10;
+
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
 
@@ -730,6 +733,22 @@ public class CommonConfig {
   public void setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
       int pipeExtractorPendingQueueTsfileLimit) {
     this.pipeMaxAllowedPendingTsFileEpochPerDataRegion = pipeExtractorPendingQueueTsfileLimit;
+  }
+
+  public int getPipeMemoryAllocateMaxRetries() {
+    return pipeMemoryAllocateMaxRetries;
+  }
+
+  public void setPipeMemoryAllocateMaxRetries(int pipeMemoryAllocateMaxRetries) {
+    this.pipeMemoryAllocateMaxRetries = pipeMemoryAllocateMaxRetries;
+  }
+
+  public long getPipeMemoryAllocateRetryIntervalInMs() {
+    return pipeMemoryAllocateRetryIntervalMs;
+  }
+
+  public void setPipeMemoryAllocateRetryIntervalInMs(long pipeMemoryAllocateRetryIntervalMs) {
+    this.pipeMemoryAllocateRetryIntervalMs = pipeMemoryAllocateRetryIntervalMs;
   }
 
   public String getSchemaEngineMode() {

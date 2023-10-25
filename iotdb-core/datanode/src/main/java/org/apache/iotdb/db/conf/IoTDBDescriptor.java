@@ -1712,6 +1712,11 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
         conf.setAllocateMemoryForConsensus(
             maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
+        // if pipe proportion is set, use it, otherwise use the default value
+        if (proportions.length >= 6) {
+          conf.setAllocateMemoryForPipe(
+              maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum);
+        }
       }
     }
 
@@ -1719,6 +1724,7 @@ public class IoTDBDescriptor {
     logger.info("initial allocateMemoryForWrite = {}", conf.getAllocateMemoryForStorageEngine());
     logger.info("initial allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
     logger.info("initial allocateMemoryForConsensus = {}", conf.getAllocateMemoryForConsensus());
+    logger.info("initial allocateMemoryForPipe = {}", conf.getAllocateMemoryForPipe());
 
     initSchemaMemoryAllocate(properties);
     initStorageEngineAllocate(properties);
