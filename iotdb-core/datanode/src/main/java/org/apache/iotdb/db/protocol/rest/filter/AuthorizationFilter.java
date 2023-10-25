@@ -19,29 +19,38 @@ package org.apache.iotdb.db.protocol.rest.filter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
+import org.apache.iotdb.db.protocol.session.RestClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.servlet.annotation.WebFilter;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
+import javax.ws.rs.container.ContainerResponseContext;
+import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.ext.Provider;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.Base64;
+import java.util.UUID;
 
 @WebFilter("/*")
 @Provider
-public class AuthorizationFilter implements ContainerRequestFilter {
+public class AuthorizationFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
   private final UserCache userCache = UserCache.getInstance();
   IoTDBRestServiceConfig config = IoTDBRestServiceDescriptor.getInstance().getConfig();
+
+  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   public AuthorizationFilter() throws AuthException {
     // do nothing
@@ -49,6 +58,7 @@ public class AuthorizationFilter implements ContainerRequestFilter {
 
   @Override
   public void filter(ContainerRequestContext containerRequestContext) throws IOException {
+
     if ("OPTIONS".equals(containerRequestContext.getMethod())
         || "ping".equals(containerRequestContext.getUriInfo().getPath())
         || (config.isEnableSwagger()
@@ -84,7 +94,17 @@ public class AuthorizationFilter implements ContainerRequestFilter {
         userCache.setUser(authorizationHeader, user);
       }
     }
-
+    String sessionid = UUID.randomUUID().toString();
+    if (SESSION_MANAGER.getCurrSession() == null) {
+      RestClientSession restClientSession = new RestClientSession(sessionid);
+      restClientSession.setUsername(user.getUsername());
+      SESSION_MANAGER.registerSession(restClientSession);
+      SESSION_MANAGER.supplySession(
+          SESSION_MANAGER.getCurrSession(),
+          user.getUsername(),
+          ZoneId.systemDefault().getId(),
+          IoTDBConstant.ClientVersion.V_1_0);
+    }
     BasicSecurityContext basicSecurityContext =
         new BasicSecurityContext(
             user, IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableHttps());
@@ -129,5 +149,14 @@ public class AuthorizationFilter implements ContainerRequestFilter {
       return null;
     }
     return user;
+  }
+
+  @Override
+  public void filter(
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext)
+      throws IOException {
+    if (SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()) != null) {
+      SESSION_MANAGER.removeCurrSession();
+    }
   }
 }

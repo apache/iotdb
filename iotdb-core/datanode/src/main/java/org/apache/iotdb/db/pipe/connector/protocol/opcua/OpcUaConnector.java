@@ -56,6 +56,8 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_SECURITY_DIR_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY;
 
@@ -94,6 +96,9 @@ public class OpcUaConnector implements PipeConnector {
     String password =
         parameters.getStringOrDefault(
             CONNECTOR_IOTDB_PASSWORD_KEY, CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
+    String securityDir =
+        parameters.getStringOrDefault(
+            CONNECTOR_OPC_UA_SECURITY_DIR_KEY, CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE);
 
     synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
       serverKey = httpsBindPort + ":" + tcpBindPort;
@@ -110,6 +115,7 @@ public class OpcUaConnector implements PipeConnector {
                               .setHttpsBindPort(httpsBindPort)
                               .setUser(user)
                               .setPassword(password)
+                              .setSecurityDir(securityDir)
                               .build();
                       newServer.startup();
                       return new Pair<>(new AtomicInteger(0), newServer);

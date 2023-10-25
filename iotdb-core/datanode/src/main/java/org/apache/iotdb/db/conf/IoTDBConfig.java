@@ -145,6 +145,9 @@ public class IoTDBConfig {
   /** Memory allocated for the consensus layer */
   private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
 
+  /** Memory allocated for the pipe */
+  private long allocateMemoryForPipe = Runtime.getRuntime().maxMemory() / 10;
+
   /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
 
@@ -1897,6 +1900,14 @@ public class IoTDBConfig {
     this.allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
     this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
     this.allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
+  }
+
+  public long getAllocateMemoryForPipe() {
+    return allocateMemoryForPipe;
+  }
+
+  public void setAllocateMemoryForPipe(long allocateMemoryForPipe) {
+    this.allocateMemoryForPipe = allocateMemoryForPipe;
   }
 
   public long getAllocateMemoryForFree() {
