@@ -59,12 +59,15 @@ public class TsFileEpoch {
                   .increaseTsFileEpochStateCount(extractor.getTaskID(), State.EMPTY);
               return new AtomicReference<>(State.EMPTY);
             });
-    State oldState = state.get();
-    State newState = state.getAndUpdate(visitor::migrate);
-    PipeExtractorMetrics.getInstance()
-        .decreaseTsFileEpochStateCount(extractor.getTaskID(), oldState);
-    PipeExtractorMetrics.getInstance()
-        .increaseTsFileEpochStateCount(extractor.getTaskID(), newState);
+    state.getAndUpdate(
+        oldState -> {
+          State newState = visitor.migrate(oldState);
+          PipeExtractorMetrics.getInstance()
+              .decreaseTsFileEpochStateCount(extractor.getTaskID(), oldState);
+          PipeExtractorMetrics.getInstance()
+              .increaseTsFileEpochStateCount(extractor.getTaskID(), newState);
+          return newState;
+        });
   }
 
   @Override
