@@ -177,6 +177,7 @@ public class LoadTsfileAnalyzer {
       Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           reader.getAllTimeseriesMetadata(true);
       if (device2TimeseriesMetadata.isEmpty()) {
+        LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
         return;
       }
 
@@ -220,11 +221,6 @@ public class LoadTsfileAnalyzer {
       int databasePrefixNodesLength) {
     // 1. get database
     try {
-      if (device2TimeseriesMetadata.isEmpty()) {
-        LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
-        return null;
-      }
-
       String device = device2TimeseriesMetadata.keySet().iterator().next();
       final PartialPath devicePath = new PartialPath(device);
       final String[] devicePrefixNodes = devicePath.getNodes();

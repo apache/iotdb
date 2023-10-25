@@ -198,7 +198,6 @@ public class NonAlignedChunkData implements ChunkData {
     }
   }
 
-  // only used after dispatching tsfile OnePieceNode
   public long getWritePointCount() {
     return writePointCount;
   }

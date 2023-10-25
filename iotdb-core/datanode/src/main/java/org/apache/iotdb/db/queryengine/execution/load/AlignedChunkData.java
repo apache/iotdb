@@ -153,7 +153,6 @@ public class AlignedChunkData implements ChunkData {
     this.writePointCount += writePointCount;
   }
 
-  // only used after dispatching tsfile OnePieceNode
   public long getWritePointCount() {
     return writePointCount;
   }

@@ -84,17 +84,13 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   }
 
   public long getWritePointTotalCount() {
-    return getEachTsFileDataWritePointCount().stream().mapToLong(Long::longValue).sum();
-  }
-
-  public List<Long> getEachTsFileDataWritePointCount() {
-    List<Long> countList = new ArrayList<>();
+    long totalCount = 0;
     for (TsFileData tsFileData : tsFileDataList) {
       if (!tsFileData.isModification() && tsFileData instanceof ChunkData) {
-        countList.add(((ChunkData) tsFileData).getWritePointCount());
+        totalCount += ((ChunkData) tsFileData).getWritePointCount();
       }
     }
-    return countList;
+    return totalCount;
   }
 
   @Override
