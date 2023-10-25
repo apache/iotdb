@@ -42,7 +42,6 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
 import org.apache.iotdb.db.queryengine.execution.load.ChunkData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
-import org.apache.iotdb.db.queryengine.metric.LoadMetrics;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -51,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsF
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -349,21 +349,19 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     // add metrics
-    LoadMetrics.getInstance().getLoadWriteCounter().inc(node.getWritePointTotalCount());
+    WritingMetrics.getInstance().getLoadWriteCounter().inc(node.getWritePointCount());
 
-    for (Map.Entry<String, Long> entry : node.getDevice2WritePointCountMap().entrySet()) {
-      MetricService.getInstance()
-          .count(
-              entry.getValue(),
-              Metric.QUANTITY.toString(),
-              MetricLevel.CORE,
-              Tag.NAME.toString(),
-              METRIC_POINT_IN,
-              Tag.DATABASE.toString(),
-              entry.getKey(),
-              Tag.REGION.toString(),
-              Integer.toString(node.getLocalRegionReplicaSet().getRegionId().getId()));
-    }
+    MetricService.getInstance()
+        .count(
+            node.getWritePointCount(),
+            Metric.QUANTITY.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            METRIC_POINT_IN,
+            Tag.DATABASE.toString(),
+            node.getDatabase(),
+            Tag.REGION.toString(),
+            Integer.toString(node.getLocalRegionReplicaSet().getRegionId().getId()));
     return true;
   }
 
@@ -490,8 +488,7 @@ public class LoadTsFileScheduler implements IScheduler {
       routeChunkData();
 
       for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
-        LoadTsFilePieceNode pieceNode = entry.getValue();
-        if (!scheduler.dispatchOnePieceNode(pieceNode, entry.getKey())) {
+        if (!scheduler.dispatchOnePieceNode(entry.getValue(), entry.getKey())) {
           logger.warn(
               "Dispatch piece node {} of TsFile {} error.",
               entry.getValue(),
@@ -499,30 +496,24 @@ public class LoadTsFileScheduler implements IScheduler {
           return false;
         }
 
-        markMetric(pieceNode, Integer.toString(entry.getKey().getRegionId().getId()));
+        markMetric(entry.getValue(), Integer.toString(entry.getKey().getRegionId().getId()));
       }
       return true;
     }
 
     private void markMetric(LoadTsFilePieceNode pieceNode, String regionId) {
-      LoadMetrics.getInstance().getLoadWriteCounter().inc(pieceNode.getWritePointTotalCount());
-
-      List<TsFileData> tsFileDataList = pieceNode.getAllTsFileData();
-      for (int i = 0; i < tsFileDataList.size(); i++) {
-        if (!tsFileDataList.get(i).isModification() && tsFileDataList.get(i) instanceof ChunkData) {
-          MetricService.getInstance()
-              .count(
-                  pieceNode.getEachTsFileDataWritePointCount().get(i),
-                  Metric.QUANTITY.toString(),
-                  MetricLevel.CORE,
-                  Tag.NAME.toString(),
-                  METRIC_POINT_IN,
-                  Tag.DATABASE.toString(),
-                  ((ChunkData) tsFileDataList.get(i)).getDevice(),
-                  Tag.REGION.toString(),
-                  regionId);
-        }
-      }
+      WritingMetrics.getInstance().getLoadWriteCounter().inc(pieceNode.getWritePointTotalCount());
+      MetricService.getInstance()
+          .count(
+              pieceNode.getWritePointTotalCount(),
+              Metric.QUANTITY.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              METRIC_POINT_IN,
+              Tag.DATABASE.toString(),
+              singleTsFileNode.getDatabase(),
+              Tag.REGION.toString(),
+              regionId);
     }
   }
 

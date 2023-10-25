@@ -180,7 +180,6 @@ public class AlignedChunkData implements ChunkData {
         ReadWriteIOUtils.write(pageNumber, stream);
       }
     }
-    ReadWriteIOUtils.write(writePointCount, stream);
   }
 
   @Override

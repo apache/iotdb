@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -35,7 +36,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 public class LoadTsFileStatement extends Statement {
 
@@ -47,7 +47,8 @@ public class LoadTsFileStatement extends Statement {
 
   private final List<File> tsFiles;
   private final List<TsFileResource> resources;
-  private final List<Map<String, Long>> tsFilesDevice2WritePointCountMapList;
+  //  private final List<Map<String, Long>> tsFilesDevice2WritePointCountMapList;
+  private final List<Pair<String, Long>> database2WritePointCountPairList;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath);
@@ -57,7 +58,7 @@ public class LoadTsFileStatement extends Statement {
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
-    this.tsFilesDevice2WritePointCountMapList = new ArrayList<>();
+    this.database2WritePointCountPairList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
 
     if (file.isFile()) {
@@ -82,7 +83,7 @@ public class LoadTsFileStatement extends Statement {
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
-    this.tsFilesDevice2WritePointCountMapList = new ArrayList<>();
+    this.database2WritePointCountPairList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
   }
 
@@ -157,12 +158,13 @@ public class LoadTsFileStatement extends Statement {
     return resources;
   }
 
-  public List<Map<String, Long>> getTsFilesDevice2WritePointCountMapList() {
-    return tsFilesDevice2WritePointCountMapList;
+  public List<Pair<String, Long>> getDatabase2WritePointCountPairList() {
+    return database2WritePointCountPairList;
   }
 
-  public void addDevice2WritePointCountMap(Map<String, Long> device2WritePointCountMap) {
-    this.tsFilesDevice2WritePointCountMapList.add(device2WritePointCountMap);
+  public void getDatabase2WritePointCountPairList(
+      Pair<String, Long> database2WritePointCountPairList) {
+    this.database2WritePointCountPairList.add(database2WritePointCountPairList);
   }
 
   @Override

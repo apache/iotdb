@@ -174,13 +174,15 @@ public class LoadTsfileAnalyzer {
   private void analyzeSingleTsFile(File tsFile) throws IOException, AuthException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // can be reused when constructing tsfile resource
-      Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata = null;
+      Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata =
+          reader.getAllTimeseriesMetadata(true);
+      if (device2TimeseriesMetadata.isEmpty()) {
+        return;
+      }
 
       // auto create or verify schema
       if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
           || loadTsFileStatement.isVerifySchema()) {
-        // cache timeseries metadata for the next step
-        device2TimeseriesMetadata = reader.getAllTimeseriesMetadata(true);
 
         final TimeSeriesIterator timeSeriesIterator =
             new TimeSeriesIterator(tsFile, device2TimeseriesMetadata);
@@ -194,9 +196,6 @@ public class LoadTsfileAnalyzer {
       // construct tsfile resource
       final TsFileResource tsFileResource = new TsFileResource(tsFile);
       if (!tsFileResource.resourceFileExists()) {
-        if (device2TimeseriesMetadata == null) {
-          device2TimeseriesMetadata = reader.getAllTimeseriesMetadata(true);
-        }
         // it will be serialized in LoadSingleTsFileNode
         FileLoaderUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
         tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
@@ -205,32 +204,46 @@ public class LoadTsfileAnalyzer {
         tsFileResource.deserialize();
       }
 
-      if (device2TimeseriesMetadata == null) {
-        device2TimeseriesMetadata = reader.getAllTimeseriesMetadata(false);
-      }
-
-      final Map<String, Long> device2CountMap =
-          getDevice2WritePointCountMap(device2TimeseriesMetadata);
+      final Pair<String, Long> database2WritePointCountPair =
+          getDatabase2WritePointCountPair(
+              device2TimeseriesMetadata, loadTsFileStatement.getDatabaseLevel() + 1);
 
       TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
       loadTsFileStatement.addTsFileResource(tsFileResource);
-      loadTsFileStatement.addDevice2WritePointCountMap(device2CountMap);
+      loadTsFileStatement.getDatabase2WritePointCountPairList(database2WritePointCountPair);
     }
   }
 
-  private Map<String, Long> getDevice2WritePointCountMap(
-      Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata) {
-    Map<String, Long> device2WritePointCountMap = new HashMap<>();
+  private Pair<String, Long> getDatabase2WritePointCountPair(
+      Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata,
+      int databasePrefixNodesLength) {
+    // 1. get database
+    try {
+      if (device2TimeseriesMetadata.isEmpty()) {
+        LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
+        return null;
+      }
 
-    device2TimeseriesMetadata.forEach(
-        (device, timeseriesMetadataList) ->
-            device2WritePointCountMap.put(
-                device,
-                timeseriesMetadataList.stream()
-                    .mapToLong(timeseriesMetadata -> timeseriesMetadata.getStatistics().getCount())
-                    .sum()));
-    return device2WritePointCountMap;
+      String device = device2TimeseriesMetadata.keySet().iterator().next();
+      final PartialPath devicePath = new PartialPath(device);
+      final String[] devicePrefixNodes = devicePath.getNodes();
+      final String[] databasePrefixNodes = new String[databasePrefixNodesLength];
+      System.arraycopy(devicePrefixNodes, 0, databasePrefixNodes, 0, databasePrefixNodesLength);
+      String database = new PartialPath(databasePrefixNodes).getFullPath();
+
+      // 2. get total writePointCount
+      final long writePointCount =
+          device2TimeseriesMetadata.values().stream()
+              .flatMap(List::stream)
+              .mapToLong(t -> t.getStatistics().getCount())
+              .sum();
+
+      return new Pair<>(database, writePointCount);
+
+    } catch (IllegalPathException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private static final class TimeSeriesIterator

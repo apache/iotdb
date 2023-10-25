@@ -47,7 +47,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -59,7 +58,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private TsFileResource resource;
   private boolean needDecodeTsFile;
   private boolean deleteAfterLoad;
-  private final Map<String, Long> device2WritePointCountMap;
+  private final Long writePointCount;
+  private final String database;
 
   private TRegionReplicaSet localRegionReplicaSet;
 
@@ -67,12 +67,14 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       PlanNodeId id,
       TsFileResource resource,
       boolean deleteAfterLoad,
-      Map<String, Long> device2WritePointCountMap) {
+      Long writePointCount,
+      String database) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
     this.deleteAfterLoad = deleteAfterLoad;
-    this.device2WritePointCountMap = device2WritePointCountMap;
+    this.writePointCount = writePointCount;
+    this.database = database;
   }
 
   public boolean isTsFileEmpty() {
@@ -141,12 +143,12 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     return deleteAfterLoad;
   }
 
-  public long getWritePointTotalCount() {
-    return device2WritePointCountMap.values().stream().mapToLong(Long::longValue).sum();
+  public long getWritePointCount() {
+    return writePointCount;
   }
 
-  public Map<String, Long> getDevice2WritePointCountMap() {
-    return device2WritePointCountMap;
+  public String getDatabase() {
+    return database;
   }
 
   /**

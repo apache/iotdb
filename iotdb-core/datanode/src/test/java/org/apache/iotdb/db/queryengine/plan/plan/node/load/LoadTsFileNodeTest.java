@@ -33,7 +33,6 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 
 public class LoadTsFileNodeTest {
 
@@ -41,7 +40,7 @@ public class LoadTsFileNodeTest {
   public void testLoadSingleTsFileNode() {
     TsFileResource resource = new TsFileResource(new File("1"));
     LoadSingleTsFileNode node =
-        new LoadSingleTsFileNode(new PlanNodeId(""), resource, true, new HashMap<>());
+        new LoadSingleTsFileNode(new PlanNodeId(""), resource, true, 0L, "database");
     Assert.assertTrue(node.isDeleteAfterLoad());
     Assert.assertEquals(resource, node.getTsFileResource());
     Assert.assertNull(node.getLocalRegionReplicaSet());
