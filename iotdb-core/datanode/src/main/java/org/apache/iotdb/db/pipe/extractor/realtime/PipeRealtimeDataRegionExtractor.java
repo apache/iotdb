@@ -57,6 +57,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
 
+  private String taskID;
+
   protected PipeRealtimeDataRegionExtractor() {
     // Do nothing
   }
@@ -95,6 +97,13 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         parameters.getBooleanOrDefault(
             PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
             PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+
+    // Metrics related to TsFileEpoch are managed in PipeExtractorMetrics. These metrics are
+    // indexed by the taskID of IoTDBDataRegionExtractor. To avoid PipeRealtimeDataRegionExtractor
+    // holding a reference to IoTDBDataRegionExtractor, the taskID should be constructed to
+    // match that of IoTDBDataRegionExtractor.
+    long creationTime = configuration.getRuntimeEnvironment().getCreationTime();
+    taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
   }
 
   @Override
@@ -189,5 +198,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public int getPipeHeartbeatEventCount() {
     return pendingQueue.getPipeHeartbeatEventCount();
+  }
+
+  public String getTaskID() {
+    return taskID;
   }
 }

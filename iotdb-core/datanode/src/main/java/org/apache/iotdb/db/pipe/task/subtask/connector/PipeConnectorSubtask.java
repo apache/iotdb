@@ -118,10 +118,10 @@ public class PipeConnectorSubtask extends PipeSubtask {
     try {
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
-        PipeConnectorMetrics.getInstance().getTabletRate(taskID).mark();
+        PipeConnectorMetrics.getInstance().markTabletEvent(taskID);
       } else if (event instanceof TsFileInsertionEvent) {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
-        PipeConnectorMetrics.getInstance().getTsFileRate(taskID).mark();
+        PipeConnectorMetrics.getInstance().markTsFileEvent(taskID);
       } else if (event instanceof PipeHeartbeatEvent) {
         try {
           outputPipeConnector.heartbeat();
@@ -132,7 +132,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
               e);
         }
         ((PipeHeartbeatEvent) event).onTransferred();
-        PipeConnectorMetrics.getInstance().getPipeHeartbeatRate(taskID).mark();
+        PipeConnectorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
       } else {
         outputPipeConnector.transfer(event);
       }

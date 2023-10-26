@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.metric.PipeWALInsertNodeCacheMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -44,6 +45,7 @@ import java.nio.channels.FileChannel;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -61,7 +63,7 @@ public class WALInsertNodeCache {
 
   private volatile boolean hasPipeRunning = false;
 
-  private WALInsertNodeCache() {
+  private WALInsertNodeCache(Integer dataRegionId) {
     // TODO: try allocate memory 2 * config.getWalFileSizeThresholdInByte() for the cache
     // If allocate memory failed, disable batch load
     isBatchLoadEnabled = true;
@@ -72,6 +74,7 @@ public class WALInsertNodeCache {
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
                     (position, pair) -> position.getSize())
             .build(new WALInsertNodeCacheLoader());
+    PipeWALInsertNodeCacheMetrics.getInstance().register(this, dataRegionId);
   }
 
   /////////////////////////// Getter & Setter ///////////////////////////
@@ -155,6 +158,10 @@ public class WALInsertNodeCache {
     if (hasPipeRunning) {
       lruCache.put(walEntryPosition, new Pair<>(null, insertNode));
     }
+  }
+
+  public double getCacheHitRate() {
+    return Objects.nonNull(lruCache) ? lruCache.stats().hitRate() : 0;
   }
 
   /////////////////////////// MemTable ///////////////////////////
@@ -252,7 +259,7 @@ public class WALInsertNodeCache {
     private static final Map<Integer, WALInsertNodeCache> INSTANCE_MAP = new ConcurrentHashMap<>();
 
     public static WALInsertNodeCache getOrCreateInstance(Integer key) {
-      return INSTANCE_MAP.computeIfAbsent(key, k -> new WALInsertNodeCache());
+      return INSTANCE_MAP.computeIfAbsent(key, k -> new WALInsertNodeCache(key));
     }
 
     private InstanceHolder() {

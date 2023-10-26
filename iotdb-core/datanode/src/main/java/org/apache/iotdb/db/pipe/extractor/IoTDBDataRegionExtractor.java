@@ -234,11 +234,11 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
             : historicalExtractor.supply();
     if (Objects.nonNull(event)) {
       if (event instanceof TabletInsertionEvent) {
-        PipeExtractorMetrics.getInstance().getTabletRate(taskID).mark();
+        PipeExtractorMetrics.getInstance().markTabletEvent(taskID);
       } else if (event instanceof TsFileInsertionEvent) {
-        PipeExtractorMetrics.getInstance().getTsFileRate(taskID).mark();
+        PipeExtractorMetrics.getInstance().markTsFileEvent(taskID);
       } else if (event instanceof PipeHeartbeatEvent) {
-        PipeExtractorMetrics.getInstance().getPipeHeartbeatRate(taskID).mark();
+        PipeExtractorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
       }
     }
     return event;
