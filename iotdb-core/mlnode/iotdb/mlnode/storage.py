@@ -51,6 +51,7 @@ class ModelStorage(object):
                    model_id: str,
                    trial_id: str) -> str:
         model_dir_path = os.path.join(self.__model_dir, f'{model_id}')
+        logger.debug(f"save model {model_config} to {model_dir_path}")
         self.lock.acquire()
         if not os.path.exists(model_dir_path):
             os.makedirs(model_dir_path)
@@ -76,6 +77,7 @@ class ModelStorage(object):
             jit_model: a ScriptModule contains model architecture and parameters, which can be deployed cross-platform
             model_config: a dict contains model attributes
         """
+        logger.debug(f"load model from {file_path}")
         file_path = os.path.join(self.__model_dir, file_path)
         if file_path in self.__model_cache:
             return self.__model_cache[file_path]
@@ -90,6 +92,7 @@ class ModelStorage(object):
                 return jit_model, model_config
 
     def delete_model(self, model_id: str) -> None:
+        logger.debug(f"delete model {model_id}")
         model_dir_path = os.path.join(self.__model_dir, f'{model_id}')
         if os.path.exists(model_dir_path):
             for file_name in os.listdir(model_dir_path):
@@ -97,6 +100,7 @@ class ModelStorage(object):
             shutil.rmtree(model_dir_path)
 
     def delete_trial(self, model_id: str, trial_id: str) -> None:
+        logger.debug(f"delete trial {trial_id} of model {model_id}")
         model_file_path = os.path.join(self.__model_dir, f'{model_id}', f'{trial_id}.pt')
         self.__remove_from_cache(model_file_path)
         if os.path.exists(model_file_path):

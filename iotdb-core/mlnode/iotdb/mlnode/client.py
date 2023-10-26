@@ -66,7 +66,7 @@ class DataNodeClient(object):
             try:
                 transport.open()
             except TTransport.TTransportException as e:
-                logger.exception("TTransportException!", exc_info=e)
+                logger.error("TTransportException!", exc_info=e)
                 raise e
 
         protocol = TBinaryProtocol.TBinaryProtocol(transport)
@@ -95,7 +95,7 @@ class DataNodeClient(object):
                 raise RuntimeError(
                     f'Fetched empty data with sql: {query_body}')
         except Exception as e:
-            logger.warn(
+            logger.warning(
                 f'Fail to fetch data with sql: {query_body}')
             raise e
         query_id = resp.queryId
@@ -114,7 +114,7 @@ class DataNodeClient(object):
                                                        resp.tsDataset))
                 has_more_data = resp.hasMoreData
             except Exception as e:
-                logger.warn(
+                logger.warning(
                     f'Fail to fetch more data with query id: {query_id}')
                 raise e
         return data
@@ -135,7 +135,7 @@ class DataNodeClient(object):
             status = self.__client.recordModelMetrics(req)
             verify_success(status, "An error occurs when calling record_model_metrics()")
         except TTransport.TException as e:
-            logger.exception(e.message)
+            logger.error(e.message)
 
 
 class ConfigNodeClient(object):
@@ -163,7 +163,7 @@ class ConfigNodeClient(object):
                 self.__connect(self.__config_leader)
                 return
             except TException:
-                logger.warn("The current node {} may have been down, try next node", self.__config_leader)
+                logger.warning("The current node {} may have been down, try next node", self.__config_leader)
                 self.__config_leader = None
 
         if self.__transport is not None:
@@ -178,7 +178,7 @@ class ConfigNodeClient(object):
                 self.__connect(try_endpoint)
                 return
             except TException:
-                logger.warn("The current node {} may have been down, try next node", try_endpoint)
+                logger.warning("The current node {} may have been down, try next node", try_endpoint)
 
             try_host_num = try_host_num + 1
 
@@ -192,7 +192,7 @@ class ConfigNodeClient(object):
             try:
                 transport.open()
             except TTransport.TTransportException as e:
-                logger.exception("TTransportException!", exc_info=e)
+                logger.error("TTransportException!", exc_info=e)
 
         protocol = TBinaryProtocol.TBinaryProtocol(transport)
         self.__client = IConfigNodeRPCService.Client(protocol)
@@ -237,7 +237,7 @@ class ConfigNodeClient(object):
                     verify_success(status, "An error occurs when calling update_model_state()")
                     return
             except TTransport.TException:
-                logger.warn("Failed to connect to ConfigNode {} from MLNode when executing update_model_info()",
+                logger.warning("Failed to connect to ConfigNode {} from MLNode when executing update_model_info()",
                             self.__config_leader)
                 self.__config_leader = None
             self.__wait_and_reconnect()
@@ -263,7 +263,7 @@ class ConfigNodeClient(object):
                     verify_success(status, "An error occurs when calling update_model_info()")
                     return
             except TTransport.TException:
-                logger.warn("Failed to connect to ConfigNode {} from MLNode when executing update_model_info()",
+                logger.warning("Failed to connect to ConfigNode {} from MLNode when executing update_model_info()",
                             self.__config_leader)
                 self.__config_leader = None
             self.__wait_and_reconnect()
