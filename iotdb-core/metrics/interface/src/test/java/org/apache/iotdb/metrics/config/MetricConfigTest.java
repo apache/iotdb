@@ -53,7 +53,6 @@ public class MetricConfigTest {
     MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
     assertEquals(3, metricConfig.getMetricReporterList().size());
-    //    assertEquals(MetricFrameType.DROPWIZARD, metricConfig.getMetricFrameType());
     assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusReporterPort());
@@ -92,7 +91,6 @@ public class MetricConfigTest {
     MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
     assertEquals(3, metricConfig.getMetricReporterList().size());
-    //    assertEquals(MetricFrameType.DROPWIZARD, metricConfig.getMetricFrameType());
     assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusReporterPort());

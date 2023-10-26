@@ -22,9 +22,10 @@ package org.apache.iotdb.metrics;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
+import org.apache.iotdb.metrics.core.IoTDBMetricManager;
+import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.reporter.JmxReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
@@ -49,7 +50,6 @@ import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.ToDoubleFunction;
@@ -69,10 +69,10 @@ public abstract class AbstractMetricService {
 
   /** The list of metric sets. */
   protected Set<IMetricSet> metricSets = new HashSet<>();
-  /** The name of default metric manager */
-  private static final String METRIC_MANAGER_NAME = "IoTDBMetricManager";
-  /** The name of default jmx reporter */
-  private static final String JMX_REPORTER_NAME = "IoTDBJmxReporter";
+  //  /** The name of default metric manager */
+  //  private static final String METRIC_MANAGER_NAME = "IoTDBMetricManager";
+  //  /** The name of default jmx reporter */
+  //  private static final String JMX_REPORTER_NAME = "IoTDBJmxReporter";
 
   protected AbstractMetricService() {
     // empty constructor
@@ -119,25 +119,7 @@ public abstract class AbstractMetricService {
 
   /** Load metric manager according to configuration. */
   private void loadManager() {
-    ServiceLoader<AbstractMetricManager> metricManagers =
-        ServiceLoader.load(AbstractMetricManager.class);
-    int size = 0;
-    for (AbstractMetricManager mf : metricManagers) {
-      size++;
-      if (mf.getClass().getName().toLowerCase().contains(METRIC_MANAGER_NAME.toLowerCase())) {
-        metricManager = mf;
-        break;
-      }
-    }
-
-    // if no more implementations, we use nothingManager.
-    if (size == 0 || metricManager == null) {
-      LOGGER.info("No MetricManager available, defaulting to DoNothingMetricManager");
-      metricManager = new DoNothingMetricManager();
-    } else if (size > 1) {
-      LOGGER.info(
-          "Detect more than one MetricManager, will use {}", metricManager.getClass().getName());
-    }
+    metricManager = new IoTDBMetricManager();
   }
 
   /** Load metric reporters according to configuration. */
@@ -151,18 +133,7 @@ public abstract class AbstractMetricService {
       Reporter reporter = null;
       switch (reporterType) {
         case JMX:
-          ServiceLoader<JmxReporter> reporters = ServiceLoader.load(JmxReporter.class);
-          for (JmxReporter jmxReporter : reporters) {
-            if (jmxReporter
-                .getClass()
-                .getName()
-                .toLowerCase()
-                .contains(JMX_REPORTER_NAME.toLowerCase())) {
-              jmxReporter.setMetricManager(metricManager);
-              reporter = jmxReporter;
-              break;
-            }
-          }
+          reporter = new IoTDBJmxReporter();
           break;
         case PROMETHEUS:
           reporter = new PrometheusReporter(metricManager);

@@ -37,7 +37,8 @@ import java.util.Objects;
 public class MetricConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricConfig.class);
   /** The list of reporters provide metrics for external tool. */
-  private List<ReporterType> metricReporterList = Collections.emptyList();
+  private List<ReporterType> metricReporterList =
+      Collections.singletonList(ReporterType.PROMETHEUS);
 
   /** The level of metric service. */
   private MetricLevel metricLevel = MetricLevel.CORE;

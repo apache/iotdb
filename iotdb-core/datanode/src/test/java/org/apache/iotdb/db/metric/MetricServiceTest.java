@@ -33,14 +33,18 @@ import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import org.junit.Test;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class MetricServiceTest {
 
@@ -50,31 +54,26 @@ public class MetricServiceTest {
       MetricConfigDescriptor.getInstance().getMetricConfig();
   private static AbstractMetricService metricService = new DoNothingMetricService();
 
-  //  @Test
-  //  public void testMetricService() {
-  //    for (MetricFrameType type : MetricFrameType.values()) {
-  //      // init metric service
-  //      metricConfig.setMetricFrameType(type);
-  //      metricConfig.setMetricLevel(MetricLevel.IMPORTANT);
-  //      metricService = new DoNothingMetricService();
-  //      metricService.startService();
-  //
-  //      // test metric service
-  //      assertTrue(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.CORE));
-  //      assertTrue(
-  //          metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.IMPORTANT));
-  //
-  // assertFalse(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.NORMAL));
-  //      assertFalse(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.ALL));
-  //
-  //      testNormalSituation();
-  //
-  //      testOtherSituation();
-  //
-  //      // stop metric module
-  //      metricService.stopService();
-  //    }
-  //  }
+  @Test
+  public void testMetricService() {
+    metricConfig.setMetricLevel(MetricLevel.IMPORTANT);
+    metricService = new DoNothingMetricService();
+    metricService.startService();
+
+    // test metric service
+    assertTrue(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.CORE));
+    assertTrue(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.IMPORTANT));
+
+    assertFalse(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.NORMAL));
+    assertFalse(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.ALL));
+
+    testNormalSituation();
+
+    testOtherSituation();
+
+    // stop metric module
+    metricService.stopService();
+  }
 
   private void testNormalSituation() {
     // test counter
