@@ -25,7 +25,6 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
@@ -36,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -234,6 +234,42 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
   @Test
   public void testInsertionCompactionSchedule() throws IOException {
+    TsFileResource seqResource1 = generateSingleNonAlignedSeriesFileWithDevices("1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, true);
+    seqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+    TsFileResource seqResource2 = generateSingleNonAlignedSeriesFileWithDevices("8-8-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(100, 400)}, true);
+    seqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(10, 40)}, false);
+    unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    TsFileResource unseqResource2 = generateSingleNonAlignedSeriesFileWithDevices("3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(60, 90)}, false);
+    unseqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
+    TsFileResource unseqResource3 = generateSingleNonAlignedSeriesFileWithDevices("4-4-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(110, 1400)}, false);
+    unseqResource3.setStatusForTest(TsFileResourceStatus.NORMAL);
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+    unseqResources.add(unseqResource1);
+    unseqResources.add(unseqResource2);
+    unseqResources.add(unseqResource3);
+
+    DataRegionForCompactionTest dataRegion = createDataRegion();
+    TsFileManager tsFileManager = dataRegion.getTsFileManager();
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    Assert.assertEquals(2, dataRegion.executeInsertionCompaction());
+    Assert.assertEquals(4, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+
+    TsFileResource targetFile1 = tsFileManager.getTsFileList(true).get(1);
+    long timestamp = TsFileNameGenerator.getTsFileName(targetFile1.getTsFile().getName()).getTime();
+    Assert.assertEquals(2, timestamp);
+    TsFileResource targetFile2 = tsFileManager.getTsFileList(true).get(2);
+    timestamp = TsFileNameGenerator.getTsFileName(targetFile2.getTsFile().getName()).getTime();
+    Assert.assertEquals(3, timestamp);
+  }
+
+  @Test
+  public void testInsertionCompactionScheduleWithEmptySeqSpace() throws IOException {
     TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
@@ -250,9 +286,89 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     Assert.assertEquals(3, dataRegion.executeInsertionCompaction());
-
-
     Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
+
+    TsFileResource targetFile1 = tsFileManager.getTsFileList(true).get(0);
+    long timestamp = TsFileNameGenerator.getTsFileName(targetFile1.getTsFile().getName()).getTime();
+    Assert.assertEquals(1, timestamp);
+    TsFileResource targetFile2 = tsFileManager.getTsFileList(true).get(1);
+    timestamp = TsFileNameGenerator.getTsFileName(targetFile2.getTsFile().getName()).getTime();
+    Assert.assertEquals(2, timestamp);
+    TsFileResource targetFile3 = tsFileManager.getTsFileList(true).get(2);
+    timestamp = TsFileNameGenerator.getTsFileName(targetFile3.getTsFile().getName()).getTime();
+    Assert.assertEquals(3, timestamp);
+  }
+
+  @Test
+  public void testInsertionCompactionScheduleWithEmptySeqSpace2() throws IOException {
+    TsFileResource unseqResource0 = generateSingleNonAlignedSeriesFileWithDevices("1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(3, 14)}, false);
+    unseqResource0.setStatusForTest(TsFileResourceStatus.NORMAL);
+    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+    unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    TsFileResource unseqResource2 = generateSingleNonAlignedSeriesFileWithDevices("3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(6, 9)}, false);
+    unseqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
+    TsFileResource unseqResource3 = generateSingleNonAlignedSeriesFileWithDevices("4-4-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(11, 14)}, false);
+    unseqResource3.setStatusForTest(TsFileResourceStatus.NORMAL);
+    TsFileResource unseqResource5 = generateSingleNonAlignedSeriesFileWithDevices("5-5-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(21, 24)}, false);
+    unseqResource5.setStatusForTest(TsFileResourceStatus.NORMAL);
+    unseqResources.add(unseqResource0);
+    unseqResources.add(unseqResource1);
+    unseqResources.add(unseqResource2);
+    unseqResources.add(unseqResource3);
+    unseqResources.add(unseqResource5);
+
+    DataRegionForCompactionTest dataRegion = createDataRegion();
+    TsFileManager tsFileManager = dataRegion.getTsFileManager();
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    Assert.assertEquals(2, dataRegion.executeInsertionCompaction());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
+
+    TsFileResource targetFile1 = tsFileManager.getTsFileList(true).get(0);
+    long timestamp = TsFileNameGenerator.getTsFileName(targetFile1.getTsFile().getName()).getTime();
+    Assert.assertEquals(1, timestamp);
+    TsFileResource targetFile2 = tsFileManager.getTsFileList(true).get(1);
+    timestamp = TsFileNameGenerator.getTsFileName(targetFile2.getTsFile().getName()).getTime();
+    Assert.assertEquals(2, timestamp);
+  }
+
+  @Test
+  public void testInsertionCompactionScheduleWithMultiTimePartitions() throws IOException {
+    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+    unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    TsFileResource unseqResource2 = generateSingleNonAlignedSeriesFileWithDevices("3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(6, 9)}, false);
+    unseqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
+    TsFileResource unseqResource3 = generateSingleNonAlignedSeriesFileWithDevices("4-4-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1698301490306L, 1698301490406L)}, false);
+    unseqResource3.setStatusForTest(TsFileResourceStatus.NORMAL);
+    unseqResources.add(unseqResource1);
+    unseqResources.add(unseqResource2);
+    unseqResources.add(unseqResource3);
+
+    DataRegionForCompactionTest dataRegion = createDataRegion();
+    TsFileManager tsFileManager = dataRegion.getTsFileManager();
+    TsFileResourceManager.getInstance().registerSealedTsFileResource(unseqResource1);
+    TsFileResourceManager.getInstance().registerSealedTsFileResource(unseqResource2);
+    TsFileResourceManager.getInstance().registerSealedTsFileResource(unseqResource3);
+    tsFileManager.getOrCreateUnsequenceListByTimePartition(0).keepOrderInsert(unseqResource1);
+    tsFileManager.getOrCreateUnsequenceListByTimePartition(0).keepOrderInsert(unseqResource2);
+    tsFileManager.getOrCreateUnsequenceListByTimePartition(2808).keepOrderInsert(unseqResource3);
+
+    Assert.assertEquals(3, dataRegion.executeInsertionCompaction());
+    Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(2, tsFileManager.getOrCreateSequenceListByTimePartition(0).size());
+    Assert.assertEquals(1, tsFileManager.getOrCreateSequenceListByTimePartition(2808).size());
+
+    TsFileResource targetFile1 = tsFileManager.getOrCreateSequenceListByTimePartition(0).get(0);
+    long timestamp = TsFileNameGenerator.getTsFileName(targetFile1.getTsFile().getName()).getTime();
+    Assert.assertEquals(1, timestamp);
+    TsFileResource targetFile2 = tsFileManager.getOrCreateSequenceListByTimePartition(0).get(1);
+    timestamp = TsFileNameGenerator.getTsFileName(targetFile2.getTsFile().getName()).getTime();
+    Assert.assertEquals(2, timestamp);
+    TsFileResource targetFile3 = tsFileManager.getOrCreateSequenceListByTimePartition(2808).get(0);
+    timestamp = TsFileNameGenerator.getTsFileName(targetFile3.getTsFile().getName()).getTime();
+    Assert.assertEquals(1, timestamp);
   }
 
   public TsFileResource generateSingleNonAlignedSeriesFileWithDevices(String fileName, String[] devices, TimeRange[] timeRanges, boolean seq) throws IOException {
