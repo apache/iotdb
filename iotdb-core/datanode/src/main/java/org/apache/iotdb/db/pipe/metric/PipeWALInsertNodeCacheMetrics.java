@@ -32,27 +32,26 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeWALInsertNodeCacheMetrics.class);
 
-  private AbstractMetricService metricService;
+  private volatile AbstractMetricService metricService;
 
-  private final Map<Integer, WALInsertNodeCache> cacheMap = new HashMap<>();
+  private final Map<Integer, WALInsertNodeCache> cacheMap = new ConcurrentHashMap<>();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
     this.metricService = metricService;
-    synchronized (this) {
-      for (Integer dataRegionId : cacheMap.keySet()) {
-        createMetrics(dataRegionId);
-      }
+    ImmutableSet<Integer> dataRegionIds = ImmutableSet.copyOf(cacheMap.keySet());
+    for (Integer dataRegionId : dataRegionIds) {
+      createMetrics(dataRegionId);
     }
   }
 
@@ -96,28 +95,24 @@ public class PipeWALInsertNodeCacheMetrics implements IMetricSet {
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
   public void register(@NonNull WALInsertNodeCache walInsertNodeCache, Integer dataRegionId) {
-    synchronized (this) {
-      cacheMap.putIfAbsent(dataRegionId, walInsertNodeCache);
-      if (Objects.nonNull(metricService)) {
-        createMetrics(dataRegionId);
-      }
+    cacheMap.putIfAbsent(dataRegionId, walInsertNodeCache);
+    if (Objects.nonNull(metricService)) {
+      createMetrics(dataRegionId);
     }
   }
 
   public void deregister(Integer dataRegionId) {
     // TODO: waiting called by WALInsertNodeCache
-    synchronized (this) {
-      if (!cacheMap.containsKey(dataRegionId)) {
-        LOGGER.warn(
-            "Failed to deregister wal insert node cache metrics, WALInsertNodeCache({}) does not exist",
-            dataRegionId);
-        return;
-      }
-      if (Objects.nonNull(metricService)) {
-        removeMetrics(dataRegionId);
-      }
-      cacheMap.remove(dataRegionId);
+    if (!cacheMap.containsKey(dataRegionId)) {
+      LOGGER.warn(
+          "Failed to deregister wal insert node cache metrics, WALInsertNodeCache({}) does not exist",
+          dataRegionId);
+      return;
     }
+    if (Objects.nonNull(metricService)) {
+      removeMetrics(dataRegionId);
+    }
+    cacheMap.remove(dataRegionId);
   }
 
   //////////////////////////// singleton ////////////////////////////
