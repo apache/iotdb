@@ -564,17 +564,6 @@ public class DataRegion implements IDataRegionForQuery {
     } else {
       logger.info("The data region {}[{}] is recovered successfully", databaseName, dataRegionId);
     }
-
-    while (!StorageEngine.getInstance().isAllSgReady()) {
-      try {
-        TimeUnit.MILLISECONDS.sleep(1000);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        return;
-      }
-    }
-    // recover and start timed compaction thread
-    initCompaction();
   }
 
   private void updateLastFlushTime(TsFileResource resource, boolean isSeq) {
@@ -591,7 +580,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private void initCompaction() {
+  public void initCompaction() {
     if (!config.isEnableSeqSpaceCompaction()
         && !config.isEnableUnseqSpaceCompaction()
         && !config.isEnableCrossSpaceCompaction()) {
