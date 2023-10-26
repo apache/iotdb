@@ -272,6 +272,8 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   }
 
   public int getRealtimeExtractorRecentProcessedTsFileEpochState() {
-    return realtimeExtractor.getRecentProcessedTsFileEpochState();
+    return Objects.nonNull(realtimeExtractor)
+        ? realtimeExtractor.getRecentProcessedTsFileEpochState()
+        : 0;
   }
 }
