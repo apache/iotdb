@@ -33,7 +33,6 @@
     <modules>
         <module>core</module>
         <module>interface</module>
-        <module>dropwizard-metrics</module>
     </modules>
     <properties>
         <metrics.test.skip>false</metrics.test.skip>
