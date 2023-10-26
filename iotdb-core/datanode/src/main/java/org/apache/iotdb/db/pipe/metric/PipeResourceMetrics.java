@@ -35,6 +35,7 @@ public class PipeResourceMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
+    // pipe memory related
     metricService.createAutoGauge(
         Metric.PIPE_MEM_COST.toString(),
         MetricLevel.IMPORTANT,
@@ -45,6 +46,7 @@ public class PipeResourceMetrics implements IMetricSet {
         MetricLevel.IMPORTANT,
         PipeResourceManager.memory(),
         PipeMemoryManager::getMemoryUsage);
+    // resource reference count
     metricService.createAutoGauge(
         Metric.PIPE_PINNED_MEMTABLE_COUNT.toString(),
         MetricLevel.IMPORTANT,
@@ -59,8 +61,10 @@ public class PipeResourceMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
+    // pipe memory related
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_MEM_COST.toString());
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_MEM_USAGE.toString());
+    // resource reference count
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PINNED_MEMTABLE_COUNT.toString());
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_COUNT.toString());
   }
