@@ -67,6 +67,7 @@ import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
@@ -2053,7 +2054,10 @@ public class DataRegion implements IDataRegionForQuery {
     closeQueryLock.writeLock().lock();
     try {
       tsFileProcessor.close();
-      if (tsFileProcessor.isEmpty() || tsFileProcessor.getTsFileResource().isEmpty()) {
+      if (tsFileProcessor.isEmpty()
+          || !TsFileValidator.getInstance(config.getWriteTsFileValidationLevel())
+              .validateTsFile(tsFileProcessor.getTsFileResource())
+          || tsFileProcessor.getTsFileResource().isEmpty()) {
         try {
           fsFactory.deleteIfExists(tsFileProcessor.getTsFileResource().getTsFile());
           tsFileManager.remove(tsFileProcessor.getTsFileResource(), tsFileProcessor.isSequence());
@@ -2183,6 +2187,14 @@ public class DataRegion implements IDataRegionForQuery {
       throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
+
+    if (!TsFileValidator.getInstance(
+            IoTDBDescriptor.getInstance().getConfig().getRewriteTsFileValidationLevel())
+        .validateTsFile(newTsFileResource)) {
+      throw new LoadFileException(
+          "tsfile validate failed, " + newTsFileResource.getTsFile().getName());
+    }
+
     writeLock("loadNewTsFile");
     try {
       newTsFileResource.setSeq(false);

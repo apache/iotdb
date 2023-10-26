@@ -19,33 +19,44 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionValidationLevel;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.IOException;
 import java.util.List;
 
-public interface CompactionValidator {
-  boolean validateCompaction(
+@SuppressWarnings("squid:S6548")
+public class ResourceAndTsfileTsFileValidator implements TsFileValidator {
+
+  private ResourceAndTsfileTsFileValidator() {}
+
+  public static ResourceAndTsfileTsFileValidator getInstance() {
+    return ResourceAndTsfileCompactionValidatorHolder.INSTANCE;
+  }
+
+  @Override
+  public boolean validateTsFile(
       TsFileManager manager,
       List<TsFileResource> targetTsFileList,
       String storageGroupName,
       long timePartition,
-      boolean isInnerUnSequenceSpaceTask)
-      throws IOException;
-
-  static CompactionValidator getInstance() {
-    CompactionValidationLevel level =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionValidationLevel();
-    switch (level) {
-      case NONE:
-        return NoneCompactionValidator.getInstance();
-      case RESOURCE_ONLY:
-        return ResourceOnlyCompactionValidator.getInstance();
-      default:
-        return ResourceAndTsfileCompactionValidator.getInstance();
+      boolean isValidateResource)
+      throws IOException {
+    if (isValidateResource) {
+      return CompactionUtils.validateTsFiles(targetTsFileList);
     }
+    return CompactionUtils.validateTsFileResources(manager, storageGroupName, timePartition)
+        && CompactionUtils.validateTsFiles(targetTsFileList);
+  }
+
+  @Override
+  public boolean validateTsFile(TsFileResource tsFileResource) {
+    return CompactionUtils.validateSingleTsFiles(tsFileResource);
+  }
+
+  private static class ResourceAndTsfileCompactionValidatorHolder {
+    private static final ResourceAndTsfileTsFileValidator INSTANCE =
+        new ResourceAndTsfileTsFileValidator();
   }
 }

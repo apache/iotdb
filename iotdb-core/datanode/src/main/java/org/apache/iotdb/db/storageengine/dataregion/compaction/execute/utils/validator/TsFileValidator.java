@@ -19,38 +19,36 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.TsFileValidationLevel;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.IOException;
 import java.util.List;
 
-@SuppressWarnings("squid:S6548")
-public class ResourceOnlyCompactionValidator implements CompactionValidator {
-
-  private ResourceOnlyCompactionValidator() {}
-
-  public static ResourceOnlyCompactionValidator getInstance() {
-    return ResourceOnlyCompactionValidatorHolder.INSTANCE;
-  }
-
-  @Override
-  public boolean validateCompaction(
+public interface TsFileValidator {
+  boolean validateTsFile(
       TsFileManager manager,
       List<TsFileResource> targetTsFileList,
       String storageGroupName,
       long timePartition,
-      boolean isInnerUnSequenceSpaceTask)
-      throws IOException {
-    if (isInnerUnSequenceSpaceTask) {
-      return true;
-    }
-    return CompactionUtils.validateTsFileResources(manager, storageGroupName, timePartition);
-  }
+      boolean isValidateResource)
+      throws IOException;
 
-  private static class ResourceOnlyCompactionValidatorHolder {
-    private static final ResourceOnlyCompactionValidator INSTANCE =
-        new ResourceOnlyCompactionValidator();
+  boolean validateTsFile(TsFileResource tsFileResource);
+
+  static TsFileValidator getInstance(TsFileValidationLevel level) {
+    switch (level) {
+      case NONE:
+        return NoneTsFileValidator.getInstance();
+      case RESOURCE_ONLY:
+        return ResourceOnlyTsFileValidator.getInstance();
+      case TSFILE_INTEGRITY:
+        return ResourceAndTsfileTsFileValidator.getInstance();
+      case TSFILE_DATA_CORRECTNESS:
+        return ResourceAndTsFileDataCorrectnessValidator.getInstance();
+      default:
+        throw new RuntimeException("Unsupported validation type");
+    }
   }
 }

@@ -27,31 +27,34 @@ import java.io.IOException;
 import java.util.List;
 
 @SuppressWarnings("squid:S6548")
-public class ResourceAndTsfileCompactionValidator implements CompactionValidator {
+public class ResourceOnlyTsFileValidator implements TsFileValidator {
 
-  private ResourceAndTsfileCompactionValidator() {}
+  private ResourceOnlyTsFileValidator() {}
 
-  public static ResourceAndTsfileCompactionValidator getInstance() {
-    return ResourceAndTsfileCompactionValidatorHolder.INSTANCE;
+  public static ResourceOnlyTsFileValidator getInstance() {
+    return ResourceOnlyCompactionValidatorHolder.INSTANCE;
   }
 
   @Override
-  public boolean validateCompaction(
+  public boolean validateTsFile(
       TsFileManager manager,
       List<TsFileResource> targetTsFileList,
       String storageGroupName,
       long timePartition,
-      boolean isInnerUnSequenceSpaceTask)
+      boolean isValidateResource)
       throws IOException {
-    if (isInnerUnSequenceSpaceTask) {
-      return CompactionUtils.validateTsFiles(targetTsFileList);
+    if (isValidateResource) {
+      return true;
     }
-    return CompactionUtils.validateTsFileResources(manager, storageGroupName, timePartition)
-        && CompactionUtils.validateTsFiles(targetTsFileList);
+    return CompactionUtils.validateTsFileResources(manager, storageGroupName, timePartition);
   }
 
-  private static class ResourceAndTsfileCompactionValidatorHolder {
-    private static final ResourceAndTsfileCompactionValidator INSTANCE =
-        new ResourceAndTsfileCompactionValidator();
+  @Override
+  public boolean validateTsFile(TsFileResource tsFileResource) {
+    return true;
+  }
+
+  private static class ResourceOnlyCompactionValidatorHolder {
+    private static final ResourceOnlyTsFileValidator INSTANCE = new ResourceOnlyTsFileValidator();
   }
 }

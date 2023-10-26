@@ -34,7 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.CompactionValidator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
@@ -244,8 +244,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           compactionLogger.force();
         }
 
-        CompactionValidator validator = CompactionValidator.getInstance();
-        if (!validator.validateCompaction(
+        TsFileValidator validator =
+            TsFileValidator.getInstance(
+                IoTDBDescriptor.getInstance().getConfig().getRewriteTsFileValidationLevel());
+        if (!validator.validateTsFile(
             tsFileManager, targetTsFileList, storageGroupName, timePartition, !sequence)) {
           LOGGER.error(
               "Failed to pass compaction validation, source files is: {}, target files is {}",

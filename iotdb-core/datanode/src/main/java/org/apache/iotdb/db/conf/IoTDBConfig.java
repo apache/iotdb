@@ -29,7 +29,7 @@ import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionValidationLevel;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.TsFileValidationLevel;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -534,8 +534,8 @@ public class IoTDBConfig {
    */
   private int subCompactionTaskNum = 4;
 
-  private CompactionValidationLevel compactionValidationLevel =
-      CompactionValidationLevel.RESOURCE_ONLY;
+  private TsFileValidationLevel rewriteTsFileValidationLevel = TsFileValidationLevel.RESOURCE_ONLY;
+  private TsFileValidationLevel writeTsFileValidationLevel = TsFileValidationLevel.RESOURCE_ONLY;
 
   /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
@@ -3686,12 +3686,20 @@ public class IoTDBConfig {
     this.schemaRatisLogMax = schemaRatisLogMax;
   }
 
-  public CompactionValidationLevel getCompactionValidationLevel() {
-    return this.compactionValidationLevel;
+  public TsFileValidationLevel getRewriteTsFileValidationLevel() {
+    return this.rewriteTsFileValidationLevel;
   }
 
-  public void setCompactionValidationLevel(CompactionValidationLevel level) {
-    this.compactionValidationLevel = level;
+  public void setRewriteTsFileValidationLevel(TsFileValidationLevel level) {
+    this.rewriteTsFileValidationLevel = level;
+  }
+
+  public TsFileValidationLevel getWriteTsFileValidationLevel() {
+    return writeTsFileValidationLevel;
+  }
+
+  public void setWriteTsFileValidationLevel(TsFileValidationLevel writeTsFileValidationLevel) {
+    this.writeTsFileValidationLevel = writeTsFileValidationLevel;
   }
 
   public int getCandidateCompactionTaskQueueSize() {

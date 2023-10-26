@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionValidationLevel;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.TsFileValidationLevel;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
@@ -68,7 +68,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     super.setUp();
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setCompactionValidationLevel(CompactionValidationLevel.RESOURCE_AND_TSFILE);
+        .setRewriteTsFileValidationLevel(TsFileValidationLevel.TSFILE_INTEGRITY);
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(10);
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);

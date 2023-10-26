@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.constant;
 
-public enum CompactionValidationLevel {
+public enum TsFileValidationLevel {
   NONE,
   RESOURCE_ONLY,
-  RESOURCE_AND_TSFILE
+  TSFILE_INTEGRITY,
+  TSFILE_DATA_CORRECTNESS
 }

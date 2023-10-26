@@ -25,25 +25,30 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import java.util.List;
 
 @SuppressWarnings("squid:S6548")
-public class NoneCompactionValidator implements CompactionValidator {
+public class NoneTsFileValidator implements TsFileValidator {
 
-  private NoneCompactionValidator() {}
+  private NoneTsFileValidator() {}
 
-  public static NoneCompactionValidator getInstance() {
+  public static NoneTsFileValidator getInstance() {
     return NoneCompactionValidatorHolder.INSTANCE;
   }
 
   @Override
-  public boolean validateCompaction(
+  public boolean validateTsFile(
       TsFileManager manager,
       List<TsFileResource> targetTsFileList,
       String storageGroupName,
       long timePartition,
-      boolean isInnerUnSequenceSpaceTask) {
+      boolean isValidateResource) {
+    return true;
+  }
+
+  @Override
+  public boolean validateTsFile(TsFileResource tsFileResource) {
     return true;
   }
 
   private static class NoneCompactionValidatorHolder {
-    private static final NoneCompactionValidator INSTANCE = new NoneCompactionValidator();
+    private static final NoneTsFileValidator INSTANCE = new NoneTsFileValidator();
   }
 }
