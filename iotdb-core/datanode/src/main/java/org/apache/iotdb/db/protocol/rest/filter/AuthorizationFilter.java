@@ -155,7 +155,8 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
   public void filter(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext)
       throws IOException {
-    if (SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()) != null) {
+    if (SESSION_MANAGER.getCurrSession() != null
+        && SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()) != null) {
       SESSION_MANAGER.removeCurrSession();
     }
   }
