@@ -75,10 +75,10 @@ public class CompactionLogger implements AutoCloseable {
       return timePartitionDir.listFiles(
           (dir, name) -> {
             if (isInnerSpace) {
-              return name.endsWith(INNER_COMPACTION_LOG_NAME_SUFFIX)
-                  || name.endsWith(INSERTION_COMPACTION_LOG_NAME_SUFFIX);
+              return name.endsWith(INNER_COMPACTION_LOG_NAME_SUFFIX);
             } else {
-              return name.endsWith(CROSS_COMPACTION_LOG_NAME_SUFFIX);
+              return name.endsWith(CROSS_COMPACTION_LOG_NAME_SUFFIX)
+                  || name.endsWith(INSERTION_COMPACTION_LOG_NAME_SUFFIX);
             }
           });
     } else {

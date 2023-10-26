@@ -557,6 +557,81 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     Assert.assertEquals(seqResource3, task.prevSeqFile);
     Assert.assertNull(task.nextSeqFile);
   }
+  @Test
+  public void testInsertLast1()
+      throws IOException, MergeException {
+    String d1 = "root.testsg.d1";
+    String d2 = "root.testsg.d2";
+    TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
+    seqResource1.updateStartTime(d1, 10);
+    seqResource1.updateEndTime(d1, 20);
+    seqResource1.updateStartTime(d2, 20);
+    seqResource1.updateEndTime(d2, 30);
+    TsFileResource seqResource2 = createTsFileResource("3-3-0-0.tsfile", true);
+    seqResource2.updateStartTime(d1, 30);
+    seqResource2.updateEndTime(d1, 40);
+    seqResource2.updateStartTime(d2, 40);
+    seqResource2.updateEndTime(d2, 50);
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+    TsFileResource unseqResource1 = createTsFileResource("4-4-1-0.tsfile", false);
+    unseqResource1.updateStartTime(d1, 42);
+    unseqResource1.updateEndTime(d1, 45);
+    unseqResource1.updateStartTime(d2, 31);
+    unseqResource1.updateEndTime(d2, 37);
+    unseqResources.add(unseqResource1);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+    InsertionCrossCompactionTaskResource result =
+        selector.selectOneInsertionTask(
+            new CrossSpaceCompactionCandidate(seqResources, unseqResources));
+    Assert.assertFalse(result.isValid());
+  }
+
+  @Test
+  public void testInsertLast2()
+      throws IOException, MergeException {
+    String d1 = "root.testsg.d1";
+    String d2 = "root.testsg.d2";
+    TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
+    seqResource1.updateStartTime(d1, 10);
+    seqResource1.updateEndTime(d1, 20);
+    seqResource1.updateStartTime(d2, 20);
+    seqResource1.updateEndTime(d2, 30);
+    TsFileResource seqResource2 = createTsFileResource("3-3-0-0.tsfile", true);
+    seqResource2.updateStartTime(d1, 30);
+    seqResource2.updateEndTime(d1, 40);
+    seqResource2.updateStartTime(d2, 40);
+    seqResource2.updateEndTime(d2, 50);
+    TsFileResource seqResource3 = createTsFileResource("5-5-0-0.tsfile", true);
+    seqResource3.updateStartTime(d1, 50);
+    seqResource3.updateEndTime(d1, 60);
+    seqResource3.updateStartTime(d2, 60);
+    seqResource3.updateEndTime(d2, 70);
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+    seqResources.add(seqResource3);
+    TsFileResource unseqResource1 = createTsFileResource("4-4-1-0.tsfile", false);
+    unseqResource1.updateStartTime(d1, 42);
+    unseqResource1.updateEndTime(d1, 45);
+    unseqResource1.updateStartTime(d2, 31);
+    unseqResource1.updateEndTime(d2, 37);
+    unseqResources.add(unseqResource1);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+    InsertionCrossCompactionTaskResource result =
+        selector.selectOneInsertionTask(
+            new CrossSpaceCompactionCandidate(seqResources, unseqResources));
+    Assert.assertFalse(result.isValid());
+  }
 
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevices3()

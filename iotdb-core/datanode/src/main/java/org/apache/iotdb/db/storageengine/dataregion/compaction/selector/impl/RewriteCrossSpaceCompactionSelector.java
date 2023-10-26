@@ -422,7 +422,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     private InsertionCrossCompactionTaskResource selectCurrentUnSeqFile(
         TsFileResourceCandidate unseqFile) throws IOException {
       int previousSeqFileIndex = 0;
-      int nextSeqFileIndex = seqFiles.size() - 1;
+      int nextSeqFileIndex = seqFiles.size();
 
       boolean hasPreviousSeqFile = false;
       for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
@@ -463,6 +463,17 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
       // select position to insert
       if (hasPreviousSeqFile) {
+        if (nextSeqFileIndex == seqFiles.size()
+            && previousSeqFileIndex == seqFiles.size() - 1) {
+          TsFileResourceCandidate prev = seqFiles.get(previousSeqFileIndex);
+          long prevTimestamp =
+              TsFileNameGenerator.getTsFileName(prev.resource.getTsFile().getName()).getTime();
+          if (prev.isValidCandidate) {
+            result.prevSeqFile = prev.resource;
+            result.targetFileTimestamp = prevTimestamp + 1;
+          }
+          return result;
+        }
         for (int i = previousSeqFileIndex; i < nextSeqFileIndex; i++) {
           TsFileResourceCandidate prev = seqFiles.get(i);
           TsFileResourceCandidate next = seqFiles.get(i + 1);
@@ -479,16 +490,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
             }
           }
         }
-        if (previousSeqFileIndex == nextSeqFileIndex
-            && previousSeqFileIndex == seqFiles.size() - 1) {
-          TsFileResourceCandidate prev = seqFiles.get(previousSeqFileIndex);
-          long prevTimestamp =
-              TsFileNameGenerator.getTsFileName(prev.resource.getTsFile().getName()).getTime();
-          if (prev.isValidCandidate) {
-            result.prevSeqFile = prev.resource;
-            result.targetFileTimestamp = prevTimestamp + 1;
-          }
-        }
+
       } else {
         TsFileResourceCandidate next = seqFiles.get(0);
         long nextTimestamp =

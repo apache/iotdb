@@ -241,9 +241,19 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   private boolean shouldRollback() {
-    return unseqFileToInsert.resourceFileExists()
-        && unseqFileToInsert.tsFileExists()
-        && unseqFileToInsert.modFileExists();
+    if (unseqFileToInsert == null) {
+      return false;
+    }
+    if (targetFile == null) {
+      return true;
+    }
+    if (!targetFile.resourceFileExists() || !targetFile.tsFileExists()) {
+      return true;
+    }
+    if (unseqFileToInsert.modFileExists() && !targetFile.modFileExists()) {
+      return true;
+    }
+    return false;
   }
 
   private void rollback() throws IOException {
