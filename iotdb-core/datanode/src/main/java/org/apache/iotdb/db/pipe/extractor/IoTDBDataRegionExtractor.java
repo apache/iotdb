@@ -270,10 +270,4 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   public int getPipeHeartbeatEventCount() {
     return hasBeenStarted.get() ? realtimeExtractor.getPipeHeartbeatEventCount() : 0;
   }
-
-  public int getRealtimeExtractorRecentProcessedTsFileEpochState() {
-    return Objects.nonNull(realtimeExtractor)
-        ? realtimeExtractor.getRecentProcessedTsFileEpochState()
-        : 0;
-  }
 }
