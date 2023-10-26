@@ -74,6 +74,10 @@
             <groupId>jakarta.servlet</groupId>
             <artifactId>jakarta.servlet-api</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.glassfish.jersey.inject</groupId>
+            <artifactId>jersey-hk2</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -203,7 +207,7 @@
                 <configuration>
                     <usedDependencies combine.children="append">
                         <!-- We just need this dependency to prevent the compiler from freaking out on unused imports -->
-                        <usedDependency>org.glassfish.jersey.media:jersey-media-multipart</usedDependency>
+                        <usedDependency>org.glassfish.jersey.media:jersey-media-multipart:jersey-hk2</usedDependency>
                     </usedDependencies>
                 </configuration>
             </plugin>
