@@ -479,7 +479,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
             }
           }
         }
-        if (previousSeqFileIndex == nextSeqFileIndex) {
+        if (previousSeqFileIndex == nextSeqFileIndex
+            && previousSeqFileIndex == seqFiles.size() - 1) {
           TsFileResourceCandidate prev = seqFiles.get(previousSeqFileIndex);
           long prevTimestamp =
               TsFileNameGenerator.getTsFileName(prev.resource.getTsFile().getName()).getTime();

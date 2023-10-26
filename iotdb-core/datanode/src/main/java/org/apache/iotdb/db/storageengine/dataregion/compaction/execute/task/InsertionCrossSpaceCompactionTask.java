@@ -114,13 +114,21 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     if (!tsFileManager.isAllowCompaction()) {
       return true;
     }
-    logFile =
-        new File(
-            unseqFileToInsert.getTsFilePath()
-                + CompactionLogger.INSERTION_COMPACTION_LOG_NAME_SUFFIX);
-    try (SimpleCompactionLogger logger = new SimpleCompactionLogger(logFile)) {
+    try {
       targetFile = new TsFileResource(generateTargetFile());
       targetFile.setStatus(TsFileResourceStatus.NORMAL);
+    } catch (IOException e) {
+      LOGGER.error(
+          "{}-{} [InsertionCrossSpaceCompactionTask] failed to generate target file name, source unseq file is {}",
+          storageGroupName,
+          dataRegionId,
+          unseqFileToInsert);
+      return false;
+    }
+    logFile =
+        new File(
+            targetFile.getTsFilePath() + CompactionLogger.INSERTION_COMPACTION_LOG_NAME_SUFFIX);
+    try (SimpleCompactionLogger logger = new SimpleCompactionLogger(logFile)) {
 
       logger.logSourceFile(unseqFileToInsert);
       logger.logTargetFile(targetFile);
@@ -209,7 +217,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  protected void recover() {
+  public void recover() {
     try {
       if (needRecoverTaskInfoFromLogFile) {
         recoverTaskInfoFromLogFile();

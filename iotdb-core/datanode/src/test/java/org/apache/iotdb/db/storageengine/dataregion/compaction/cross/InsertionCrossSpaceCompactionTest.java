@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
@@ -41,14 +42,13 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Phaser;
 
@@ -59,7 +59,8 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
   private final CompactionWorker worker = new CompactionWorker(0, candidateCompactionTaskQueue);
 
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException, InterruptedException {
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
   }
 
@@ -70,28 +71,38 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
   @Test
   public void test1() throws IOException, InterruptedException {
-    TsFileResource seqResource1 = generateSingleNonAlignedSeriesFileWithDevices("1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(10, 20)}, true);
+    TsFileResource seqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(10, 20)}, true);
     seqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
-    TsFileResource seqResource2 = generateSingleNonAlignedSeriesFileWithDevices("3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(40, 50)}, true);
+    TsFileResource seqResource2 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(40, 50)}, true);
     seqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
-    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(30, 34)}, false);
+    TsFileResource unseqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(30, 34)}, false);
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
-    RewriteCrossSpaceCompactionSelector selector
-        = new RewriteCrossSpaceCompactionSelector(
-        COMPACTION_TEST_SG,
-        "0",
-        0,
-        tsFileManager
-    );
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
     seqResources.add(seqResource1);
     seqResources.add(seqResource2);
     unseqResources.add(unseqResource1);
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    List<CrossCompactionTaskResource> tasks = selector.selectInsertionCrossSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0), tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
+    List<CrossCompactionTaskResource> tasks =
+        selector.selectInsertionCrossSpaceTask(
+            tsFileManager.getOrCreateSequenceListByTimePartition(0),
+            tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
     Assert.assertEquals(1, tasks.size());
-    InsertionCrossSpaceCompactionTask task = new InsertionCrossSpaceCompactionTask(new Phaser(1), 0, tsFileManager, (InsertionCrossCompactionTaskResource) tasks.get(0), 0);
+    InsertionCrossSpaceCompactionTask task =
+        new InsertionCrossSpaceCompactionTask(
+            new Phaser(1),
+            0,
+            tsFileManager,
+            (InsertionCrossCompactionTaskResource) tasks.get(0),
+            0);
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
     Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
@@ -105,26 +116,40 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
+  public void testRecover() {
+    new CompactionRecoverManager(tsFileManager, COMPACTION_TEST_SG, "0")
+        .recoverCrossSpaceCompaction();
+  }
+
+  @Test
   public void test2() throws IOException, InterruptedException {
-    TsFileResource seqResource1 = generateSingleNonAlignedSeriesFileWithDevices("1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(10, 20)}, true);
+    TsFileResource seqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(10, 20)}, true);
     seqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
-    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(30, 34)}, false);
+    TsFileResource unseqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(30, 34)}, false);
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
-    RewriteCrossSpaceCompactionSelector selector
-        = new RewriteCrossSpaceCompactionSelector(
-        COMPACTION_TEST_SG,
-        "0",
-        0,
-        tsFileManager
-    );
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
     seqResources.add(seqResource1);
     unseqResources.add(unseqResource1);
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    List<CrossCompactionTaskResource> tasks = selector.selectInsertionCrossSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0), tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
+    List<CrossCompactionTaskResource> tasks =
+        selector.selectInsertionCrossSpaceTask(
+            tsFileManager.getOrCreateSequenceListByTimePartition(0),
+            tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
     Assert.assertEquals(1, tasks.size());
-    InsertionCrossSpaceCompactionTask task = new InsertionCrossSpaceCompactionTask(new Phaser(1), 0, tsFileManager, (InsertionCrossCompactionTaskResource) tasks.get(0), 0);
+    InsertionCrossSpaceCompactionTask task =
+        new InsertionCrossSpaceCompactionTask(
+            new Phaser(1),
+            0,
+            tsFileManager,
+            (InsertionCrossCompactionTaskResource) tasks.get(0),
+            0);
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
     Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
@@ -138,25 +163,33 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
   @Test
   public void test3() throws IOException, InterruptedException {
-    TsFileResource seqResource1 = generateSingleNonAlignedSeriesFileWithDevices("1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(10, 20)}, true);
+    TsFileResource seqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(10, 20)}, true);
     seqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
-    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+    TsFileResource unseqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
-    RewriteCrossSpaceCompactionSelector selector
-        = new RewriteCrossSpaceCompactionSelector(
-        COMPACTION_TEST_SG,
-        "0",
-        0,
-        tsFileManager
-    );
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
     seqResources.add(seqResource1);
     unseqResources.add(unseqResource1);
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    List<CrossCompactionTaskResource> tasks = selector.selectInsertionCrossSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0), tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
+    List<CrossCompactionTaskResource> tasks =
+        selector.selectInsertionCrossSpaceTask(
+            tsFileManager.getOrCreateSequenceListByTimePartition(0),
+            tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
     Assert.assertEquals(1, tasks.size());
-    InsertionCrossSpaceCompactionTask task = new InsertionCrossSpaceCompactionTask(new Phaser(1), 0, tsFileManager, (InsertionCrossCompactionTaskResource) tasks.get(0), 0);
+    InsertionCrossSpaceCompactionTask task =
+        new InsertionCrossSpaceCompactionTask(
+            new Phaser(1),
+            0,
+            tsFileManager,
+            (InsertionCrossCompactionTaskResource) tasks.get(0),
+            0);
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
     Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
@@ -170,28 +203,38 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
   @Test
   public void test4() throws IOException, InterruptedException {
-    TsFileResource seqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(10, 20)}, true);
+    TsFileResource seqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "2-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(10, 20)}, true);
     seqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
-    TsFileResource seqResource2 = generateSingleNonAlignedSeriesFileWithDevices("6-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(40, 50)}, true);
+    TsFileResource seqResource2 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "6-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(40, 50)}, true);
     seqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
-    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("3-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(30, 34)}, false);
+    TsFileResource unseqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "3-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(30, 34)}, false);
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
-    RewriteCrossSpaceCompactionSelector selector
-        = new RewriteCrossSpaceCompactionSelector(
-        COMPACTION_TEST_SG,
-        "0",
-        0,
-        tsFileManager
-    );
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
     seqResources.add(seqResource1);
     seqResources.add(seqResource2);
     unseqResources.add(unseqResource1);
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    List<CrossCompactionTaskResource> tasks = selector.selectInsertionCrossSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0), tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
+    List<CrossCompactionTaskResource> tasks =
+        selector.selectInsertionCrossSpaceTask(
+            tsFileManager.getOrCreateSequenceListByTimePartition(0),
+            tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
     Assert.assertEquals(1, tasks.size());
-    InsertionCrossSpaceCompactionTask task = new InsertionCrossSpaceCompactionTask(new Phaser(1), 0, tsFileManager, (InsertionCrossCompactionTaskResource) tasks.get(0), 0);
+    InsertionCrossSpaceCompactionTask task =
+        new InsertionCrossSpaceCompactionTask(
+            new Phaser(1),
+            0,
+            tsFileManager,
+            (InsertionCrossCompactionTaskResource) tasks.get(0),
+            0);
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
     Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
@@ -206,22 +249,28 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
   @Test
   public void test5() throws IOException, InterruptedException {
-    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+    TsFileResource unseqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
-    RewriteCrossSpaceCompactionSelector selector
-        = new RewriteCrossSpaceCompactionSelector(
-        COMPACTION_TEST_SG,
-        "0",
-        0,
-        tsFileManager
-    );
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
     unseqResources.add(unseqResource1);
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    List<CrossCompactionTaskResource> tasks = selector.selectInsertionCrossSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0), tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
+    List<CrossCompactionTaskResource> tasks =
+        selector.selectInsertionCrossSpaceTask(
+            tsFileManager.getOrCreateSequenceListByTimePartition(0),
+            tsFileManager.getOrCreateUnsequenceListByTimePartition(0));
     Assert.assertEquals(1, tasks.size());
-    InsertionCrossSpaceCompactionTask task = new InsertionCrossSpaceCompactionTask(new Phaser(1), 0, tsFileManager, (InsertionCrossCompactionTaskResource) tasks.get(0), 0);
+    InsertionCrossSpaceCompactionTask task =
+        new InsertionCrossSpaceCompactionTask(
+            new Phaser(1),
+            0,
+            tsFileManager,
+            (InsertionCrossCompactionTaskResource) tasks.get(0),
+            0);
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
     Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
@@ -234,17 +283,30 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
   @Test
   public void testInsertionCompactionSchedule() throws IOException {
-    TsFileResource seqResource1 = generateSingleNonAlignedSeriesFileWithDevices("1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, true);
+    TsFileResource seqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, true);
     seqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
-    TsFileResource seqResource2 = generateSingleNonAlignedSeriesFileWithDevices("8-8-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(100, 400)}, true);
+    TsFileResource seqResource2 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "8-8-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(100, 400)}, true);
     seqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
 
-    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(10, 40)}, false);
+    TsFileResource unseqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(10, 40)}, false);
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
-    TsFileResource unseqResource2 = generateSingleNonAlignedSeriesFileWithDevices("3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(60, 90)}, false);
+    TsFileResource unseqResource2 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(60, 90)}, false);
     unseqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
-    TsFileResource unseqResource3 = generateSingleNonAlignedSeriesFileWithDevices("4-4-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(110, 1400)}, false);
+    TsFileResource unseqResource3 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "4-4-0-0.tsfile",
+            new String[] {"d1"},
+            new TimeRange[] {new TimeRange(110, 1400)},
+            false);
     unseqResource3.setStatusForTest(TsFileResourceStatus.NORMAL);
     seqResources.add(seqResource1);
     seqResources.add(seqResource2);
@@ -270,12 +332,18 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
   @Test
   public void testInsertionCompactionScheduleWithEmptySeqSpace() throws IOException {
-    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+    TsFileResource unseqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
-    TsFileResource unseqResource2 = generateSingleNonAlignedSeriesFileWithDevices("3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(6, 9)}, false);
+    TsFileResource unseqResource2 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(6, 9)}, false);
     unseqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
-    TsFileResource unseqResource3 = generateSingleNonAlignedSeriesFileWithDevices("4-4-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(11, 14)}, false);
+    TsFileResource unseqResource3 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "4-4-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(11, 14)}, false);
     unseqResource3.setStatusForTest(TsFileResourceStatus.NORMAL);
     unseqResources.add(unseqResource1);
     unseqResources.add(unseqResource2);
@@ -301,16 +369,26 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
   @Test
   public void testInsertionCompactionScheduleWithEmptySeqSpace2() throws IOException {
-    TsFileResource unseqResource0 = generateSingleNonAlignedSeriesFileWithDevices("1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(3, 14)}, false);
+    TsFileResource unseqResource0 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "1-1-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(3, 14)}, false);
     unseqResource0.setStatusForTest(TsFileResourceStatus.NORMAL);
-    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+    TsFileResource unseqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
-    TsFileResource unseqResource2 = generateSingleNonAlignedSeriesFileWithDevices("3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(6, 9)}, false);
+    TsFileResource unseqResource2 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(6, 9)}, false);
     unseqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
-    TsFileResource unseqResource3 = generateSingleNonAlignedSeriesFileWithDevices("4-4-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(11, 14)}, false);
+    TsFileResource unseqResource3 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "4-4-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(11, 14)}, false);
     unseqResource3.setStatusForTest(TsFileResourceStatus.NORMAL);
-    TsFileResource unseqResource5 = generateSingleNonAlignedSeriesFileWithDevices("5-5-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(21, 24)}, false);
+    TsFileResource unseqResource5 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "5-5-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(21, 24)}, false);
     unseqResource5.setStatusForTest(TsFileResourceStatus.NORMAL);
     unseqResources.add(unseqResource0);
     unseqResources.add(unseqResource1);
@@ -335,12 +413,21 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
   @Test
   public void testInsertionCompactionScheduleWithMultiTimePartitions() throws IOException {
-    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+    TsFileResource unseqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
-    TsFileResource unseqResource2 = generateSingleNonAlignedSeriesFileWithDevices("3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(6, 9)}, false);
+    TsFileResource unseqResource2 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(6, 9)}, false);
     unseqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
-    TsFileResource unseqResource3 = generateSingleNonAlignedSeriesFileWithDevices("4-4-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1698301490306L, 1698301490406L)}, false);
+    TsFileResource unseqResource3 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "4-4-0-0.tsfile",
+            new String[] {"d1"},
+            new TimeRange[] {new TimeRange(1698301490306L, 1698301490406L)},
+            false);
     unseqResource3.setStatusForTest(TsFileResourceStatus.NORMAL);
     unseqResources.add(unseqResource1);
     unseqResources.add(unseqResource2);
@@ -371,7 +458,8 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     Assert.assertEquals(1, timestamp);
   }
 
-  public TsFileResource generateSingleNonAlignedSeriesFileWithDevices(String fileName, String[] devices, TimeRange[] timeRanges, boolean seq) throws IOException {
+  public TsFileResource generateSingleNonAlignedSeriesFileWithDevices(
+      String fileName, String[] devices, TimeRange[] timeRanges, boolean seq) throws IOException {
     TsFileResource seqResource1 = createEmptyFileAndResourceWithName(fileName, seq, 0);
     CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
     for (int i = 0; i < devices.length; i++) {
@@ -379,7 +467,7 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
       TimeRange timeRange = timeRanges[i];
       writer1.startChunkGroup(device);
       writer1.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1", new TimeRange[] { timeRange }, TSEncoding.PLAIN, CompressionType.LZ4);
+          "s1", new TimeRange[] {timeRange}, TSEncoding.PLAIN, CompressionType.LZ4);
       writer1.endChunkGroup();
     }
     writer1.endFile();

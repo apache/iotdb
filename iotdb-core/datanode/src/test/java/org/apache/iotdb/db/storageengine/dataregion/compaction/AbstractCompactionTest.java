@@ -609,7 +609,8 @@ public class AbstractCompactionTest {
     return resource;
   }
 
-  protected TsFileResource createEmptyFileAndResourceWithName(String fileName, boolean isSeq, int innerCompactionCnt) {
+  protected TsFileResource createEmptyFileAndResourceWithName(
+      String fileName, boolean isSeq, int innerCompactionCnt) {
     String filePath;
     if (isSeq) {
       filePath = SEQ_DIRS.getPath() + File.separator + fileName;

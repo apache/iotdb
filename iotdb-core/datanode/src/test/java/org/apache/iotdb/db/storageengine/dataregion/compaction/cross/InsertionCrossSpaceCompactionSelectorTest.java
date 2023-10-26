@@ -182,7 +182,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
-    Assert.assertNull(result);
+    Assert.assertFalse(result.isValid());
   }
 
   @Test
@@ -339,7 +339,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
-    Assert.assertNull(result);
+    Assert.assertFalse(result.isValid());
   }
 
   @Test
@@ -366,7 +366,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
-    Assert.assertNull(result);
+    Assert.assertFalse(result.isValid());
   }
 
   @Test
@@ -398,7 +398,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
-    Assert.assertNull(result);
+    Assert.assertFalse(result.isValid());
   }
 
   @Test
@@ -430,7 +430,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
-    Assert.assertNull(result);
+    Assert.assertFalse(result.isValid());
   }
 
   @Test
@@ -779,7 +779,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
-    Assert.assertNull(task);
+    Assert.assertFalse(task.isValid());
   }
 
   private TsFileResource createTsFileResource(String name, boolean seq) {
