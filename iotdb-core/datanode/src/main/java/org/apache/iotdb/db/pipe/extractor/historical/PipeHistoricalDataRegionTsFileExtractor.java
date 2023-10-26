@@ -50,6 +50,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_SLOPPY_TIME_RANGE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
@@ -74,6 +75,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private long historicalDataExtractionEndTime; // Event time
 
   private long historicalDataExtractionTimeLowerBound; // Arrival time
+
+  private boolean sloppyTimeRange; // true to disable time range filter after extraction
 
   private Queue<TsFileResource> pendingQueue;
 
@@ -162,6 +165,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         }
       }
     }
+
+    sloppyTimeRange = parameters.getBooleanOrDefault(EXTRACTOR_HISTORY_SLOPPY_TIME_RANGE, false);
   }
 
   private void flushDataRegionAllTsFiles() {
@@ -300,7 +305,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             pattern,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime,
-            !isTsFileResourceCoveredByTimeRange(resource));
+            !sloppyTimeRange && !isTsFileResourceCoveredByTimeRange(resource));
     if (isDbNameCoveredByPattern) {
       event.skipParsingPattern();
     }
@@ -323,7 +328,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public int getPendingQueueSize() {
-    return pendingQueue.size();
+    return pendingQueue != null ? pendingQueue.size() : 0;
   }
 
   @Override

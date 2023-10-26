@@ -389,6 +389,18 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
                 String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
+
+    config.setPipeMemoryAllocateMaxRetries(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_memory_allocate_max_retries",
+                String.valueOf(config.getPipeMemoryAllocateMaxRetries()))));
+
+    config.setPipeMemoryAllocateRetryIntervalInMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_memory_allocate_retry_interval_in_ms",
+                String.valueOf(config.getPipeMemoryAllocateRetryIntervalInMs()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

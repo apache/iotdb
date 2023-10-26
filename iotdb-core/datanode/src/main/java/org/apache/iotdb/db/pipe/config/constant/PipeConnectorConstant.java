@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.pipe.config.constant;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
+import java.io.File;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
@@ -69,6 +72,12 @@ public class PipeConnectorConstant {
 
   public static final String CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY = "connector.opcua.https.port";
   public static final int CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE = 8443;
+
+  public static final String CONNECTOR_OPC_UA_SECURITY_DIR_KEY = "connector.opcua.security.dir";
+  public static final String CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE =
+      IoTDBDescriptor.getInstance().getConfDir() != null
+          ? IoTDBDescriptor.getInstance().getConfDir() + File.separatorChar + "opc_security"
+          : System.getProperty("user.home") + File.separatorChar + "iotdb_opc_security";
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
