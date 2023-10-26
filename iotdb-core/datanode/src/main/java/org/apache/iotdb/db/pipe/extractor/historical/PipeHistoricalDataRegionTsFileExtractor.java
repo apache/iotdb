@@ -69,6 +69,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private int dataRegionId;
 
   private String pattern;
+  private boolean isDbNameCoveredByPattern = false;
 
   private long historicalDataExtractionStartTime; // Event time
   private long historicalDataExtractionEndTime; // Event time
@@ -99,6 +100,16 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     }
 
     pattern = parameters.getStringOrDefault(EXTRACTOR_PATTERN_KEY, EXTRACTOR_PATTERN_DEFAULT_VALUE);
+    final DataRegion dataRegion =
+        StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
+    if (dataRegion != null) {
+      final String databaseName = dataRegion.getDatabaseName();
+      if (databaseName != null
+          && pattern.length() <= databaseName.length()
+          && databaseName.startsWith(pattern)) {
+        isDbNameCoveredByPattern = true;
+      }
+    }
 
     // User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
     // enabling the historical data extraction, which may affect the realtime data extraction.
@@ -295,6 +306,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime,
             !sloppyTimeRange && !isTsFileResourceCoveredByTimeRange(resource));
+    if (isDbNameCoveredByPattern) {
+      event.skipParsingPattern();
+    }
+
     event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
     try {
       PipeResourceManager.tsfile().unpinTsFileResource(resource);
@@ -303,6 +318,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
           "Pipe: failed to unpin TsFileResource after creating event, original path: {}",
           resource.getTsFilePath());
     }
+
     return event;
   }
 

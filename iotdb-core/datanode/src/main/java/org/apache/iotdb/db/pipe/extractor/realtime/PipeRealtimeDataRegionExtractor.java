@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.extractor.realtime;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
@@ -26,6 +27,8 @@ import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -38,12 +41,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
-  protected String pattern;
-  protected boolean isForwardingPipeRequests;
-
   protected String pipeName;
   protected String dataRegionId;
   protected PipeTaskMeta pipeTaskMeta;
+
+  protected String pattern;
+  private boolean isDbNameCoveredByPattern = false;
+
+  protected boolean isForwardingPipeRequests;
 
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
@@ -64,20 +69,32 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
+    final PipeTaskExtractorRuntimeEnvironment environment =
+        (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
+
+    pipeName = environment.getPipeName();
+    dataRegionId = String.valueOf(environment.getRegionId());
+    pipeTaskMeta = environment.getPipeTaskMeta();
+
     pattern =
         parameters.getStringOrDefault(
             PipeExtractorConstant.EXTRACTOR_PATTERN_KEY,
             PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
+    final DataRegion dataRegion =
+        StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
+    if (dataRegion != null) {
+      final String databaseName = dataRegion.getDatabaseName();
+      if (databaseName != null
+          && pattern.length() <= databaseName.length()
+          && databaseName.startsWith(pattern)) {
+        isDbNameCoveredByPattern = true;
+      }
+    }
+
     isForwardingPipeRequests =
         parameters.getBooleanOrDefault(
             PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
             PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
-
-    final PipeTaskExtractorRuntimeEnvironment environment =
-        (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
-    pipeName = environment.getPipeName();
-    dataRegionId = String.valueOf(environment.getRegionId());
-    pipeTaskMeta = environment.getPipeTaskMeta();
   }
 
   @Override
@@ -115,6 +132,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   /** @param event the event from the storage engine */
   public final void extract(PipeRealtimeEvent event) {
+    if (isDbNameCoveredByPattern) {
+      event.skipParsingPattern();
+    }
+
     doExtract(event);
 
     synchronized (isClosed) {
