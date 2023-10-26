@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 
+import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 
@@ -42,6 +45,11 @@ public class ConfigNodeHeartbeatHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onError(Exception e) {
-    // Do nothing
+    if (ThriftClient.isConnectionBroken(e)) {
+      cache.forceUpdateNodeCache(
+          NodeType.ConfigNode,
+          nodeId,
+          NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+    }
   }
 }
