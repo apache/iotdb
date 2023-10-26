@@ -64,6 +64,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,7 +77,7 @@ public class CompactionUtils {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final String SYSTEM = "system";
-  private static final String VALIDATE_FAILED = "validate failed, ";
+  private static final String VALIDATE_FAILED = "validate failed,";
 
   private CompactionUtils() {}
 
@@ -499,18 +500,18 @@ public class CompactionUtils {
 
   public static boolean validateSingleTsFileDataCorrectness(TsFileResource resource) {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
-      reader.readHeadMagic();
-      reader.readTailMagic();
+      if (!validateMagicString(reader)) {
+        return false;
+      }
 
-      reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
-      List<long[]> timeBatch = new ArrayList<>();
-      Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
-      getChunkMetadata(reader, offset2ChunkMetadata);
-
-      if (offset2ChunkMetadata.isEmpty()) {
+      Map<Long, IChunkMetadata> chunkMetadataMap = getChunkMetadata(reader);
+      if (chunkMetadataMap.isEmpty()) {
         logger.error("{} there is no data in the file", VALIDATE_FAILED);
         return false;
       }
+
+      List<long[]> alignedTimeBatch = new ArrayList<>();
+      reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
       int pageIndex = 0;
       byte marker;
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
@@ -523,105 +524,76 @@ public class CompactionUtils {
           case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
             long chunkOffset = reader.position();
             ChunkHeader header = reader.readChunkHeader(marker);
-            if (header.getDataSize() == 0) {
-              // empty value chunk
+            IChunkMetadata chunkMetadata = chunkMetadataMap.get(chunkOffset - Byte.BYTES);
+            if (!chunkMetadata.getMeasurementUid().equals(header.getMeasurementID())) {
+              logger.error(
+                  "{} chunk start offset is inconsistent with the value in the metadata.",
+                  VALIDATE_FAILED);
+              return false;
+            }
+
+            // empty value chunk
+            int dataSize = header.getDataSize();
+            if (dataSize == 0) {
               break;
             }
+
+            boolean isHasStatistic = (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER;
             Decoder defaultTimeDecoder =
                 Decoder.getDecoderByType(
                     TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
                     TSDataType.INT64);
             Decoder valueDecoder =
                 Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
-            int dataSize = header.getDataSize();
+
             pageIndex = 0;
+
             if (header.getDataType() == TSDataType.VECTOR) {
-              timeBatch.clear();
+              alignedTimeBatch.clear();
             }
+            LinkedList<Long> lastNoAlignedPageTimeStamps = new LinkedList<>();
             while (dataSize > 0) {
-              valueDecoder.reset();
-              PageHeader pageHeader =
-                  reader.readPageHeader(
-                      header.getDataType(),
-                      (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
+              PageHeader pageHeader = reader.readPageHeader(header.getDataType(), isHasStatistic);
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
 
-              IChunkMetadata chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
-              if (!chunkMetadata.getMeasurementUid().equals(header.getMeasurementID())) {
-                logger.error(
-                    "{} chunk start offset is inconsistent with the value in the metadata.",
-                    VALIDATE_FAILED);
-                return false;
-              }
               if ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
                   == TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk
                 TimePageReader timePageReader =
                     new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
                 long[] pageTimestamps = timePageReader.getNextTimeBatch();
-                for (int i = 0; i < pageTimestamps.length - 1; i++) {
-                  if (pageTimestamps[i + 1] <= pageTimestamps[i]) {
-                    logger.error(
-                        "{} the timestamp in the page is repeated or not incremental.",
-                        VALIDATE_FAILED);
-                    return false;
-                  }
-                }
                 long pageHeaderStartTime =
-                    pageHeader.getStatistics() == null
-                        ? chunkMetadata.getStartTime()
-                        : pageHeader.getStartTime();
-
+                    isHasStatistic ? pageHeader.getStartTime() : chunkMetadata.getStartTime();
                 long pageHeaderEndTime =
-                    pageHeader.getStatistics() == null
-                        ? chunkMetadata.getEndTime()
-                        : pageHeader.getEndTime();
-                if (pageHeaderStartTime != pageTimestamps[0]) {
-                  logger.error(
-                      "{} the start time in page is different from that in page header.",
-                      VALIDATE_FAILED);
+                    isHasStatistic ? pageHeader.getEndTime() : chunkMetadata.getEndTime();
+                if (!validateTimeFrame(
+                    alignedTimeBatch, pageTimestamps, pageHeaderStartTime, pageHeaderEndTime)) {
                   return false;
                 }
-                if (pageHeaderEndTime != pageTimestamps[pageTimestamps.length - 1]) {
-                  logger.error(
-                      "{} the end time in page is different from that in page header.",
-                      VALIDATE_FAILED);
-                  return false;
-                }
-
-                if (timeBatch.size() > 1) {
-                  long[] penultimatePageTimes = timeBatch.get(timeBatch.size() - 2);
-                  long[] lastPageTimes = timeBatch.get(timeBatch.size() - 1);
-                  if (lastPageTimes[0] <= penultimatePageTimes[penultimatePageTimes.length - 1]) {
-                    logger.error("{} time ranges overlap between pages.", VALIDATE_FAILED);
-                    return false;
-                  }
-                }
-
-                timeBatch.add(pageTimestamps);
+                alignedTimeBatch.add(pageTimestamps);
               } else if ((header.getChunkType() & TsFileConstant.VALUE_COLUMN_MASK)
                   == TsFileConstant.VALUE_COLUMN_MASK) { // Value Chunk
                 ValuePageReader valuePageReader =
                     new ValuePageReader(pageHeader, pageData, header.getDataType(), valueDecoder);
-                TsPrimitiveType[] valueBatch =
-                    valuePageReader.nextValueBatch(timeBatch.get(pageIndex));
+                valuePageReader.nextValueBatch(alignedTimeBatch.get(pageIndex));
               } else { // NonAligned Chunk
                 PageReader pageReader =
                     new PageReader(
                         pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
                 BatchData batchData = pageReader.getAllSatisfiedPageData();
                 long pageHeaderStartTime =
-                    pageHeader.getStatistics() == null
-                        ? chunkMetadata.getStartTime()
-                        : pageHeader.getStartTime();
+                    isHasStatistic ? pageHeader.getStartTime() : chunkMetadata.getStartTime();
                 long pageHeaderEndTime =
-                    pageHeader.getStatistics() == null
-                        ? chunkMetadata.getEndTime()
-                        : pageHeader.getEndTime();
-
+                    isHasStatistic ? pageHeader.getEndTime() : chunkMetadata.getEndTime();
                 long pageStartTime = Long.MAX_VALUE;
                 long previousTime = Long.MIN_VALUE;
+
                 while (batchData.hasCurrent()) {
                   long currentTime = batchData.currentTime();
+                  if (!lastNoAlignedPageTimeStamps.isEmpty()
+                      && currentTime <= lastNoAlignedPageTimeStamps.getLast()) {
+                    logger.error("{} time ranges overlap between pages.", VALIDATE_FAILED);
+                    return false;
+                  }
                   if (currentTime <= previousTime) {
                     logger.error(
                         "{} the timestamp in the page is repeated or not incremental.",
@@ -630,6 +602,7 @@ public class CompactionUtils {
                   }
                   pageStartTime = Math.min(pageStartTime, currentTime);
                   previousTime = currentTime;
+                  lastNoAlignedPageTimeStamps.add(currentTime);
                   batchData.next();
                 }
                 if (pageHeaderStartTime != pageStartTime) {
@@ -669,9 +642,52 @@ public class CompactionUtils {
     return true;
   }
 
-  public static void getChunkMetadata(
-      TsFileSequenceReader reader, Map<Long, IChunkMetadata> offset2ChunkMetadata)
+  private static boolean validateTimeFrame(
+      List<long[]> timeBatch,
+      long[] pageTimestamps,
+      long pageHeaderStartTime,
+      long pageHeaderEndTime) {
+    if (pageHeaderStartTime != pageTimestamps[0]) {
+      logger.error(
+          "{} the start time in page is different from that in page header.", VALIDATE_FAILED);
+      return false;
+    }
+    if (pageHeaderEndTime != pageTimestamps[pageTimestamps.length - 1]) {
+      logger.error(
+          "{} the end time in page is different from that in page header.", VALIDATE_FAILED);
+      return false;
+    }
+    for (int i = 0; i < pageTimestamps.length - 1; i++) {
+      if (pageTimestamps[i + 1] <= pageTimestamps[i]) {
+        logger.error(
+            "{} the timestamp in the page is repeated or not incremental.", VALIDATE_FAILED);
+        return false;
+      }
+    }
+
+    if (timeBatch.size() >= 1) {
+      long[] lastPageTimes = timeBatch.get(timeBatch.size() - 1);
+      if (lastPageTimes[lastPageTimes.length - 1] >= pageTimestamps[0]) {
+        logger.error("{} time ranges overlap between pages.", VALIDATE_FAILED);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean validateMagicString(TsFileSequenceReader reader) throws IOException {
+    String headMagic = reader.readHeadMagic();
+    String tailMagic = reader.readTailMagic();
+    if (!headMagic.equals(TSFileConfig.MAGIC_STRING) || !headMagic.equals(tailMagic)) {
+      logger.error("{} illegal tsfile", VALIDATE_FAILED);
+      return false;
+    }
+    return true;
+  }
+
+  public static Map<Long, IChunkMetadata> getChunkMetadata(TsFileSequenceReader reader)
       throws IOException {
+    Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
     Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
     for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
       for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
@@ -680,6 +696,7 @@ public class CompactionUtils {
         }
       }
     }
+    return offset2ChunkMetadata;
   }
 
   public static boolean validateTsFilesCorrectness(List<TsFileResource> tsFileResourceList) {

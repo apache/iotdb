@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -39,6 +40,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -367,5 +369,126 @@ public class TsFileGeneratorUtils {
       }
     }
     return dataTypes;
+  }
+
+  public static TsFileResource generateSingleNonAlignedSeriesFile(
+      String device,
+      String measurement,
+      TimeRange[] chunkTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      String filePath)
+      throws IOException {
+    TsFileResource seqResource1 = new TsFileResource(new File(filePath));
+
+    CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
+    writer1.startChunkGroup(device);
+    writer1.generateSimpleNonAlignedSeriesToCurrentDevice(
+        measurement, chunkTimeRanges, encoding, compressionType);
+    writer1.endChunkGroup();
+    writer1.endFile();
+    writer1.close();
+    return seqResource1;
+  }
+
+  public static TsFileResource generateSingleNonAlignedSeriesFile(
+      String device,
+      String measurement,
+      TimeRange[][] chunkTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      String filePath)
+      throws IOException {
+    TsFileResource seqResource1 = new TsFileResource(new File(filePath));
+
+    CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
+    writer1.startChunkGroup(device);
+    writer1.generateSimpleNonAlignedSeriesToCurrentDevice(
+        measurement, chunkTimeRanges, encoding, compressionType);
+    writer1.endChunkGroup();
+    writer1.endFile();
+    writer1.close();
+    return seqResource1;
+  }
+
+  public static TsFileResource generateSingleNonAlignedSeriesFile(
+      String device,
+      String measurement,
+      TimeRange[][][] chunkTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      boolean isSeq,
+      String filePath)
+      throws IOException {
+    TsFileResource seqResource1 = new TsFileResource(new File(filePath));
+
+    CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
+    writer1.startChunkGroup(device);
+    writer1.generateSimpleNonAlignedSeriesToCurrentDevice(
+        measurement, chunkTimeRanges, encoding, compressionType);
+    writer1.endChunkGroup();
+    writer1.endFile();
+    writer1.close();
+    return seqResource1;
+  }
+
+  public static TsFileResource generateSingleAlignedSeriesFile(
+      String device,
+      List<String> measurement,
+      TimeRange[] chunkTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      String filePath)
+      throws IOException {
+    TsFileResource seqResource1 = new TsFileResource(new File(filePath));
+
+    CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
+    writer1.startChunkGroup(device);
+    writer1.generateSimpleAlignedSeriesToCurrentDevice(
+        measurement, chunkTimeRanges, encoding, compressionType);
+    writer1.endChunkGroup();
+    writer1.endFile();
+    writer1.close();
+    return seqResource1;
+  }
+
+  public static TsFileResource generateSingleAlignedSeriesFile(
+      String device,
+      List<String> measurement,
+      TimeRange[][] chunkTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      String filePath)
+      throws IOException {
+    TsFileResource seqResource1 = new TsFileResource(new File(filePath));
+
+    CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
+    writer1.startChunkGroup(device);
+    writer1.generateSimpleAlignedSeriesToCurrentDevice(
+        measurement, chunkTimeRanges, encoding, compressionType);
+    writer1.endChunkGroup();
+    writer1.endFile();
+    writer1.close();
+    return seqResource1;
+  }
+
+  public static TsFileResource generateSingleAlignedSeriesFile(
+      String device,
+      List<String> measurement,
+      TimeRange[][][] chunkTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      String filePath)
+      throws IOException {
+    TsFileResource seqResource1 = new TsFileResource(new File(filePath));
+
+    CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
+    writer1.startChunkGroup(device);
+    writer1.generateSimpleAlignedSeriesToCurrentDevice(
+        measurement, chunkTimeRanges, encoding, compressionType);
+    writer1.endChunkGroup();
+    writer1.endFile();
+    writer1.close();
+    return seqResource1;
   }
 }

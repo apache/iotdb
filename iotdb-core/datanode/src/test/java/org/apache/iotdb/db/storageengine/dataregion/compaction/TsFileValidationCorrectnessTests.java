@@ -1,0 +1,302 @@
+package org.apache.iotdb.db.storageengine.dataregion.compaction;
+
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.TsFileValidationLevel;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.TsFileValidator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
+import org.apache.commons.io.FileUtils;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
+
+public class TsFileValidationCorrectnessTests {
+  final String dir = TestConstant.OUTPUT_DATA_DIR + "test-validation";
+
+  @Before
+  public void setUp() throws IOException {
+    FileUtils.forceMkdir(new File(dir));
+  }
+
+  @After
+  public void tearDown() throws IOException {
+    File[] files = new File(dir).listFiles();
+    if (files != null) {
+      for (File f : files) {
+        FileUtils.delete(f);
+      }
+    }
+
+    FileUtils.forceDelete(new File(dir));
+  }
+  // 1. empty tsfile
+  @Test
+  public void testTsFileHasNoData() throws IOException {
+    TsFileResource tsFileResource =
+        new TsFileResource(new File(dir + File.separator + "test1.tsfile"));
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
+      writer.endFile();
+    }
+    boolean success =
+        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
+            .validateTsFile(tsFileResource);
+    Assert.assertFalse(success);
+  }
+
+  @Test
+  public void testAlignedTsFileHasOnePageData() throws IOException {
+    String path = dir + File.separator + "test2.tsfile";
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
+    TsFileGeneratorUtils.generateSingleAlignedSeriesFile(
+        "d1",
+        Collections.singletonList("s1"),
+        new TimeRange[] {new TimeRange(1, 100)},
+        TSEncoding.PLAIN,
+        CompressionType.SNAPPY,
+        path);
+    boolean success =
+        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
+            .validateTsFile(tsFileResource);
+    Assert.assertTrue(success);
+  }
+
+  @Test
+  public void testAlignedTsFileHasManyPage() throws IOException {
+    String path = dir + File.separator + "test3.tsfile";
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
+    TsFileGeneratorUtils.generateSingleAlignedSeriesFile(
+        "d1",
+        Collections.singletonList("s1"),
+        new TimeRange[] {new TimeRange(1, 100), new TimeRange(22, 110)},
+        TSEncoding.PLAIN,
+        CompressionType.SNAPPY,
+        path);
+    boolean success =
+        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
+            .validateTsFile(tsFileResource);
+    Assert.assertTrue(success);
+  }
+
+  @Test
+  public void testAlignedTimestampRepeatedOrNotIncremented() throws IOException {
+    String path = dir + File.separator + "test4.tsfile";
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
+      writer.startChunkGroup("d1");
+      VectorMeasurementSchema vectorMeasurementSchema =
+          new VectorMeasurementSchema(
+              "d1", new String[] {"s1"}, new TSDataType[] {TSDataType.INT32});
+      AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(vectorMeasurementSchema);
+      chunkWriter.getTimeChunkWriter().write(1);
+      chunkWriter.getTimeChunkWriter().write(2);
+      chunkWriter.getTimeChunkWriter().write(2);
+      chunkWriter.getTimeChunkWriter().write(3);
+      chunkWriter.sealCurrentPage();
+      chunkWriter.writeToFileWriter(writer.getFileWriter());
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    boolean success =
+        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
+            .validateTsFile(tsFileResource);
+    Assert.assertFalse(success);
+  }
+
+  @Test
+  public void testAlignedTimestampHasOverlapBetweenPages() throws IOException {
+    String path = dir + File.separator + "test4.tsfile";
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
+      writer.startChunkGroup("d1");
+      VectorMeasurementSchema vectorMeasurementSchema =
+          new VectorMeasurementSchema(
+              "d1", new String[] {"s1"}, new TSDataType[] {TSDataType.INT32});
+      AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(vectorMeasurementSchema);
+      chunkWriter.getTimeChunkWriter().write(1);
+      chunkWriter.getTimeChunkWriter().write(2);
+      chunkWriter.getTimeChunkWriter().write(3);
+      chunkWriter.sealCurrentPage();
+      chunkWriter.getTimeChunkWriter().write(3);
+      chunkWriter.getTimeChunkWriter().write(4);
+      chunkWriter.getTimeChunkWriter().write(5);
+      chunkWriter.sealCurrentPage();
+      chunkWriter.writeToFileWriter(writer.getFileWriter());
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    boolean success =
+        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
+            .validateTsFile(tsFileResource);
+    Assert.assertFalse(success);
+  }
+
+  @Test
+  public void testAlignedTimestampTimeChunkOffsetEqualsMetadata() throws IOException {
+    String path = dir + File.separator + "test4.tsfile";
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
+      writer.startChunkGroup("d1");
+      VectorMeasurementSchema vectorMeasurementSchema =
+          new VectorMeasurementSchema(
+              "d1", new String[] {"s1"}, new TSDataType[] {TSDataType.INT32});
+      AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(vectorMeasurementSchema);
+      chunkWriter.getTimeChunkWriter().write(1);
+      chunkWriter.getTimeChunkWriter().write(2);
+      chunkWriter.getTimeChunkWriter().write(3);
+      chunkWriter.getValueChunkWriterByIndex(0).getPageWriter().write(1, 1, false);
+      chunkWriter.getValueChunkWriterByIndex(0).getPageWriter().write(2, 1, false);
+      chunkWriter.getValueChunkWriterByIndex(0).getPageWriter().write(3, 1, false);
+      chunkWriter.sealCurrentPage();
+      chunkWriter.writeToFileWriter(writer.getFileWriter());
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    boolean success =
+        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
+            .validateTsFile(tsFileResource);
+    Assert.assertTrue(success);
+  }
+
+  // aligned
+  // 2. normal tsfile with one page
+  // 3. normal tsfile with many pages
+  // 4. the timestamp is repeated or not incremented on a page
+  // 5. the timestamp has overlap between many pages
+
+  // 6. time chunk offset is the same as metadata
+  // 7. value chunk offset is the same as metadata
+  // 8. start and end time are the same as page header or chunk header
+
+  // noAligned
+  // 9. normal tsfile with one page
+  // 10. normal tsfile with many pages
+  // 11. the timestamp is repeated or not incremented on a page
+  // 12. the timestamp has overlap between many pages
+  // 13. time chunk offset is the same as metadata
+  // 14. value chunk offset is the same as metadata
+  // 15. start and end time are the same as page header or chunk header
+  // 16. normal noAligned tsfile with one page
+
+  @Test
+  public void testNonAlignedTsFileHasOnePageData() throws IOException {
+    String path = dir + File.separator + "test2.tsfile";
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
+    TsFileGeneratorUtils.generateSingleNonAlignedSeriesFile(
+        "d1",
+        "s1",
+        new TimeRange[] {new TimeRange(1, 100)},
+        TSEncoding.PLAIN,
+        CompressionType.SNAPPY,
+        path);
+    boolean success =
+        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
+            .validateTsFile(tsFileResource);
+    Assert.assertTrue(success);
+  }
+
+  @Test
+  public void testNonAlignedTsFileHasManyPage() throws IOException {
+    String path = dir + File.separator + "test3.tsfile";
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
+    TsFileGeneratorUtils.generateSingleNonAlignedSeriesFile(
+        "d1",
+        "s1",
+        new TimeRange[] {new TimeRange(1, 100), new TimeRange(22, 110)},
+        TSEncoding.PLAIN,
+        CompressionType.SNAPPY,
+        path);
+    boolean success =
+        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
+            .validateTsFile(tsFileResource);
+    Assert.assertTrue(success);
+  }
+
+  @Test
+  public void testNonAlignedTimestampRepeatedOrNotIncremented() throws IOException {
+    String path = dir + File.separator + "test4.tsfile";
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
+      writer.startChunkGroup("d1");
+      ChunkWriterImpl chunkWriter =
+          new ChunkWriterImpl(new MeasurementSchema("s1", TSDataType.INT32));
+      chunkWriter.getPageWriter().write(1, 2);
+      chunkWriter.getPageWriter().write(2, 2);
+      chunkWriter.getPageWriter().write(2, 2);
+      chunkWriter.getPageWriter().write(3, 2);
+      chunkWriter.sealCurrentPage();
+      chunkWriter.writeToFileWriter(writer.getFileWriter());
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    boolean success =
+        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
+            .validateTsFile(tsFileResource);
+    Assert.assertFalse(success);
+  }
+
+  @Test
+  public void testNonAlignedTimestampHasOverlapBetweenPages() throws IOException {
+    String path = dir + File.separator + "test4.tsfile";
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
+      writer.startChunkGroup("d1");
+      ChunkWriterImpl chunkWriter =
+          new ChunkWriterImpl(new MeasurementSchema("s1", TSDataType.INT32));
+      chunkWriter.getPageWriter().write(1, 2);
+      chunkWriter.getPageWriter().write(2, 2);
+      chunkWriter.getPageWriter().write(3, 2);
+      chunkWriter.sealCurrentPage();
+      chunkWriter.getPageWriter().write(3, 4);
+      chunkWriter.getPageWriter().write(4, 4);
+      chunkWriter.writeToFileWriter(writer.getFileWriter());
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    boolean success =
+        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
+            .validateTsFile(tsFileResource);
+    Assert.assertFalse(success);
+  }
+
+  @Test
+  public void testNonAlignedTimestampTimeChunkOffsetEqualsMetadata() throws IOException {
+    String path = dir + File.separator + "test4.tsfile";
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
+      writer.startChunkGroup("d1");
+      VectorMeasurementSchema vectorMeasurementSchema =
+          new VectorMeasurementSchema(
+              "d1", new String[] {"s1"}, new TSDataType[] {TSDataType.INT32});
+      AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(vectorMeasurementSchema);
+      chunkWriter.getTimeChunkWriter().write(1);
+      chunkWriter.getTimeChunkWriter().write(2);
+      chunkWriter.getTimeChunkWriter().write(3);
+      chunkWriter.getValueChunkWriterByIndex(0).getPageWriter().write(1, 1, false);
+      chunkWriter.getValueChunkWriterByIndex(0).getPageWriter().write(2, 1, false);
+      chunkWriter.getValueChunkWriterByIndex(0).getPageWriter().write(3, 1, false);
+      chunkWriter.sealCurrentPage();
+      chunkWriter.writeToFileWriter(writer.getFileWriter());
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    boolean success =
+        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
+            .validateTsFile(tsFileResource);
+    Assert.assertTrue(success);
+  }
+}
