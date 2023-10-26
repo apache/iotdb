@@ -2120,6 +2120,7 @@ public class DataRegion implements IDataRegionForQuery {
               CompactionScheduler.scheduleInsertionCompaction(
                   tsFileManager, timePartition, insertionTaskPhaser);
         }
+        trySubmitCount += currentSubmitCount;
         insertionTaskPhaser.arriveAndAwaitAdvance();
         if (currentSubmitCount != 0) {
           continue;

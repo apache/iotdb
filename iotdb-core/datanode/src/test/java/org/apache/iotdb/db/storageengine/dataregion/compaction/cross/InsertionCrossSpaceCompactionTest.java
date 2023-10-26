@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.Rew
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -242,32 +244,15 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     unseqResources.add(unseqResource1);
     unseqResources.add(unseqResource2);
     unseqResources.add(unseqResource3);
+
+    DataRegionForCompactionTest dataRegion = createDataRegion();
+    TsFileManager tsFileManager = dataRegion.getTsFileManager();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+    Assert.assertEquals(3, dataRegion.executeInsertionCompaction());
 
-    int trySubmitCount = 0;
-    try {
-      List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
-      timePartitions.sort(Comparator.reverseOrder());
-      while (true) {
-        int currentSubmitCount = 0;
-        Phaser insertionTaskPhaser = new Phaser(1);
-        for (long timePartition : timePartitions) {
-          currentSubmitCount +=
-              CompactionScheduler.scheduleInsertionCompaction(
-                  tsFileManager, timePartition, insertionTaskPhaser);
-        }
-        trySubmitCount += currentSubmitCount;
-        insertionTaskPhaser.arriveAndAwaitAdvance();
-        if (currentSubmitCount != 0) {
-          continue;
-        }
-        break;
-      }
-    } catch (Throwable e) {
-      Assert.fail();
-    }
-    Assert.assertEquals(3, trySubmitCount);
+
+    Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
   }
 
   public TsFileResource generateSingleNonAlignedSeriesFileWithDevices(String fileName, String[] devices, TimeRange[] timeRanges, boolean seq) throws IOException {
@@ -286,6 +271,19 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     return seqResource1;
   }
 
+  private DataRegionForCompactionTest createDataRegion() {
+    return new DataRegionForCompactionTest(COMPACTION_TEST_SG, "0");
+  }
 
+  private static class DataRegionForCompactionTest extends DataRegion {
 
+    public DataRegionForCompactionTest(String databaseName, String id) {
+      super(databaseName, id);
+    }
+
+    @Override
+    public int executeInsertionCompaction() {
+      return super.executeInsertionCompaction();
+    }
+  }
 }
