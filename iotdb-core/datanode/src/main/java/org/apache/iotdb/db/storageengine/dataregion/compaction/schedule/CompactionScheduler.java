@@ -140,7 +140,7 @@ public class CompactionScheduler {
       TsFileManager tsFileManager, long timePartition, Phaser insertionTaskPhaser)
       throws InterruptedException {
     // 在提交一个任务的时候调用这个方法
-    if (!config.isEnableCrossSpaceCompaction()) {
+    if (!config.isEnableInsertionCrossSpaceCompaction()) {
       return 0;
     }
     String logicalStorageGroupName = tsFileManager.getStorageGroupName();

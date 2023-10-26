@@ -584,7 +584,8 @@ public class DataRegion implements IDataRegionForQuery {
   private void initCompaction() {
     if (!config.isEnableSeqSpaceCompaction()
         && !config.isEnableUnseqSpaceCompaction()
-        && !config.isEnableCrossSpaceCompaction()) {
+        && !config.isEnableCrossSpaceCompaction()
+        && !config.isEnableInsertionCrossSpaceCompaction()) {
       return;
     }
     timedCompactionScheduleTask =
@@ -2091,7 +2092,10 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   protected int executeCompaction() {
-    int trySubmitCount = executeInsertionCompaction();
+    int trySubmitCount = 0;
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction()) {
+      trySubmitCount += executeInsertionCompaction();
+    }
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
     try {

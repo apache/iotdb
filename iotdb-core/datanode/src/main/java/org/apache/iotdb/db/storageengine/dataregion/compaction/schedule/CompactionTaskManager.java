@@ -94,7 +94,8 @@ public class CompactionTaskManager implements IService {
         && IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0
         && (config.isEnableSeqSpaceCompaction()
             || config.isEnableUnseqSpaceCompaction()
-            || config.isEnableCrossSpaceCompaction())) {
+            || config.isEnableCrossSpaceCompaction()
+            || config.isEnableInsertionCrossSpaceCompaction())) {
       initThreadPool();
       candidateCompactionTaskQueue.regsitPollLastHook(
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);

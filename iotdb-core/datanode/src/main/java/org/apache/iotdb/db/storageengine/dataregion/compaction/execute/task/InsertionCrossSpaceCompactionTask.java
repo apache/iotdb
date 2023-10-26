@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
@@ -113,7 +114,8 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   protected boolean doCompaction() {
     recoverMemoryStatus = true;
     boolean isSuccess = true;
-    if (!tsFileManager.isAllowCompaction()) {
+    if (!tsFileManager.isAllowCompaction()
+        || !IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction()) {
       return true;
     }
     try {
@@ -145,11 +147,16 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
       CompactionValidator validator = CompactionValidator.getInstance();
       if (!validator.validateCompaction(
-          tsFileManager, Collections.singletonList(targetFile), storageGroupName, timePartition, false)) {
+          tsFileManager,
+          Collections.singletonList(targetFile),
+          storageGroupName,
+          timePartition,
+          false)) {
         LOGGER.error(
             "Failed to pass compaction validation, source un seq files is: {}, target files is {}",
             unseqFileToInsert,
             targetFile);
+        IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(false);
         throw new CompactionValidationFailedException("Failed to pass compaction validation");
       }
 

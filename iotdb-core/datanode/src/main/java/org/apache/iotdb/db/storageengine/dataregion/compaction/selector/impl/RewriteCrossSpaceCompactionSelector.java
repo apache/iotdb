@@ -463,8 +463,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
       // select position to insert
       if (hasPreviousSeqFile) {
-        if (nextSeqFileIndex == seqFiles.size()
-            && previousSeqFileIndex == seqFiles.size() - 1) {
+        if (nextSeqFileIndex == seqFiles.size() && previousSeqFileIndex == seqFiles.size() - 1) {
           TsFileResourceCandidate prev = seqFiles.get(previousSeqFileIndex);
           long prevTimestamp =
               TsFileNameGenerator.getTsFileName(prev.resource.getTsFile().getName()).getTime();

@@ -557,9 +557,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     Assert.assertEquals(seqResource3, task.prevSeqFile);
     Assert.assertNull(task.nextSeqFile);
   }
+
   @Test
-  public void testInsertLast1()
-      throws IOException, MergeException {
+  public void testInsertLast1() throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     String d2 = "root.testsg.d2";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
@@ -593,8 +593,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testInsertLast2()
-      throws IOException, MergeException {
+  public void testInsertLast2() throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     String d2 = "root.testsg.d2";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
@@ -634,8 +633,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
-  public void testInsertFirst()
-      throws IOException, MergeException {
+  public void testInsertFirst() throws IOException, MergeException {
     String d1 = "root.testsg.d1";
     String d2 = "root.testsg.d2";
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
