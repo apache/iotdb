@@ -76,7 +76,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     this.needParseTime = needParseTime;
 
     if (needParseTime) {
-      this.isPatternAndTimeParsed = false;
+      isTimeParsed = false;
     }
 
     this.resource = resource;
