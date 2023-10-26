@@ -21,11 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.CompactionValidator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -141,6 +143,16 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       replaceTsFileInMemory(
           Collections.singletonList(unseqFileToInsert), Collections.singletonList(targetFile));
 
+      CompactionValidator validator = CompactionValidator.getInstance();
+      if (!validator.validateCompaction(
+          tsFileManager, Collections.singletonList(targetFile), storageGroupName, timePartition, false)) {
+        LOGGER.error(
+            "Failed to pass compaction validation, source un seq files is: {}, target files is {}",
+            unseqFileToInsert,
+            targetFile);
+        throw new CompactionValidationFailedException("Failed to pass compaction validation");
+      }
+
       lockWrite(Collections.singletonList(unseqFileToInsert));
       CompactionUtils.deleteCompactionModsFile(selectedSeqFiles, selectedUnseqFiles);
       CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
@@ -233,6 +245,12 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       }
     } catch (Exception e) {
       handleRecoverException(e);
+    } finally {
+      try {
+        Files.deleteIfExists(logFile.toPath());
+      } catch (IOException e) {
+        printLogWhenException(LOGGER, e);
+      }
     }
   }
 

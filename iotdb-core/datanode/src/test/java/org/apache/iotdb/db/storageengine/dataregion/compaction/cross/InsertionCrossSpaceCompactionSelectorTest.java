@@ -634,6 +634,35 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
+  public void testInsertFirst()
+      throws IOException, MergeException {
+    String d1 = "root.testsg.d1";
+    String d2 = "root.testsg.d2";
+    TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
+    seqResource1.updateStartTime(d1, 10);
+    seqResource1.updateEndTime(d1, 20);
+    seqResource1.updateStartTime(d2, 20);
+    seqResource1.updateEndTime(d2, 30);
+    seqResources.add(seqResource1);
+    TsFileResource unseqResource1 = createTsFileResource("4-4-1-0.tsfile", false);
+    unseqResource1.updateStartTime(d1, 30);
+    unseqResource1.updateEndTime(d1, 40);
+    unseqResource1.updateStartTime(d2, 10);
+    unseqResource1.updateEndTime(d2, 15);
+    unseqResources.add(unseqResource1);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+    InsertionCrossCompactionTaskResource result =
+        selector.selectOneInsertionTask(
+            new CrossSpaceCompactionCandidate(seqResources, unseqResources));
+    Assert.assertFalse(result.isValid());
+  }
+
+  @Test
   public void testInsertionCompactionWithManySeqFilesManyDevices3()
       throws IOException, MergeException {
     String d1 = "root.testsg.d1";

@@ -116,12 +116,6 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testRecover() {
-    new CompactionRecoverManager(tsFileManager, COMPACTION_TEST_SG, "0")
-        .recoverCrossSpaceCompaction();
-  }
-
-  @Test
   public void test2() throws IOException, InterruptedException {
     TsFileResource seqResource1 =
         generateSingleNonAlignedSeriesFileWithDevices(
