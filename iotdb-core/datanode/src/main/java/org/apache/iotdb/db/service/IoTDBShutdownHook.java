@@ -68,9 +68,7 @@ public class IoTDBShutdownHook extends Thread {
     WALManager.getInstance().waitAllWALFlushed();
 
     // flush data to Tsfile and remove WAL log files
-    if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      StorageEngine.getInstance().syncCloseAllProcessor();
-    }
+    StorageEngine.getInstance().syncCloseAllProcessor();
     WALManager.getInstance().deleteOutdatedWALFiles();
 
     // We did this work because the RatisConsensus recovery mechanism is different from other
