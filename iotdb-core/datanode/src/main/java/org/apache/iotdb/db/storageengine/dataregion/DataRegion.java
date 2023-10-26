@@ -559,14 +559,22 @@ public class DataRegion implements IDataRegionForQuery {
       throw new DataRegionException(e);
     }
 
-    // recover and start timed compaction thread
-    initCompaction();
-
     if (StorageEngine.getInstance().isAllSgReady()) {
       logger.info("The data region {}[{}] is created successfully", databaseName, dataRegionId);
     } else {
       logger.info("The data region {}[{}] is recovered successfully", databaseName, dataRegionId);
     }
+
+    while (!StorageEngine.getInstance().isAllSgReady()) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(1000);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return;
+      }
+    }
+    // recover and start timed compaction thread
+    initCompaction();
   }
 
   private void updateLastFlushTime(TsFileResource resource, boolean isSeq) {
