@@ -78,12 +78,13 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
 
   @Override
   public void onError(Exception exception) {
+    ++retryCount;
     if (logger.isWarnEnabled()) {
       logger.warn(
           "Can not send {} to peer for {} times {} because {}",
           batch,
           thread.getPeer(),
-          ++retryCount,
+          retryCount,
           ExceptionUtils.getRootCause(exception).toString());
     }
     sleepCorrespondingTimeAndRetryAsynchronous();
