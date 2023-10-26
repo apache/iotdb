@@ -45,6 +45,7 @@ public abstract class EnrichedEvent implements Event {
   protected final PipeTaskMeta pipeTaskMeta;
 
   private final String pattern;
+
   protected boolean isPatternParsed;
   protected boolean isTimeParsed = true;
 

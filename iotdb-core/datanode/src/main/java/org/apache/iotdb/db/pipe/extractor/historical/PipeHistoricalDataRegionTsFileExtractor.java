@@ -68,7 +68,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private int dataRegionId;
 
   private String pattern;
-  private boolean patternCoversDbName = false;
+  private boolean isDbNameCoveredByPattern = false;
 
   private long historicalDataExtractionStartTime; // Event time
   private long historicalDataExtractionEndTime; // Event time
@@ -97,13 +97,14 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     }
 
     pattern = parameters.getStringOrDefault(EXTRACTOR_PATTERN_KEY, EXTRACTOR_PATTERN_DEFAULT_VALUE);
-    DataRegionId regionId = new DataRegionId(environment.getRegionId());
-    if (StorageEngine.getInstance().getDataRegion(regionId) != null) {
-      String databaseName = StorageEngine.getInstance().getDataRegion(regionId).getDatabaseName();
+    final DataRegion dataRegion =
+        StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
+    if (dataRegion != null) {
+      final String databaseName = dataRegion.getDatabaseName();
       if (databaseName != null
           && pattern.length() <= databaseName.length()
           && databaseName.startsWith(pattern)) {
-        patternCoversDbName = true;
+        isDbNameCoveredByPattern = true;
       }
     }
 
@@ -300,6 +301,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime,
             !isTsFileResourceCoveredByTimeRange(resource));
+    if (isDbNameCoveredByPattern) {
+      event.skipParsingPattern();
+    }
+
     event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
     try {
       PipeResourceManager.tsfile().unpinTsFileResource(resource);
@@ -308,9 +313,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
           "Pipe: failed to unpin TsFileResource after creating event, original path: {}",
           resource.getTsFilePath());
     }
-    if (patternCoversDbName) {
-      event.skipParsingPattern();
-    }
+
     return event;
   }
 
