@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
@@ -44,6 +45,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Phaser;
 
@@ -225,6 +228,46 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
     Assert.assertEquals(1, timestamp);
+  }
+
+  @Test
+  public void testInsertionCompactionSchedule() throws IOException {
+    TsFileResource unseqResource1 = generateSingleNonAlignedSeriesFileWithDevices("2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+    unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    TsFileResource unseqResource2 = generateSingleNonAlignedSeriesFileWithDevices("3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(6, 9)}, false);
+    unseqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
+    TsFileResource unseqResource3 = generateSingleNonAlignedSeriesFileWithDevices("4-4-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(11, 14)}, false);
+    unseqResource3.setStatusForTest(TsFileResourceStatus.NORMAL);
+    unseqResources.add(unseqResource1);
+    unseqResources.add(unseqResource2);
+    unseqResources.add(unseqResource3);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    int trySubmitCount = 0;
+    try {
+      List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
+      timePartitions.sort(Comparator.reverseOrder());
+      while (true) {
+        int currentSubmitCount = 0;
+        Phaser insertionTaskPhaser = new Phaser(1);
+        for (long timePartition : timePartitions) {
+          currentSubmitCount +=
+              CompactionScheduler.scheduleInsertionCompaction(
+                  tsFileManager, timePartition, insertionTaskPhaser);
+        }
+        trySubmitCount += currentSubmitCount;
+        insertionTaskPhaser.arriveAndAwaitAdvance();
+        if (currentSubmitCount != 0) {
+          continue;
+        }
+        break;
+      }
+    } catch (Throwable e) {
+      Assert.fail();
+    }
+    Assert.assertEquals(3, trySubmitCount);
   }
 
   public TsFileResource generateSingleNonAlignedSeriesFileWithDevices(String fileName, String[] devices, TimeRange[] timeRanges, boolean seq) throws IOException {

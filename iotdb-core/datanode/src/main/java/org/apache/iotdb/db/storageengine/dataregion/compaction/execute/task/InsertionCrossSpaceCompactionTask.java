@@ -186,6 +186,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           new File(targetTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath(),
           new File(sourceTsFile.getPath() + ModificationFile.FILE_SUFFIX).toPath());
     }
+    targetFile.deserialize();
   }
 
   private void recoverTaskInfoFromLogFile() throws IOException {
