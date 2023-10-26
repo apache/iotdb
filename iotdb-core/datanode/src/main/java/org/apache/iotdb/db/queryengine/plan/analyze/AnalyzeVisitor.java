@@ -211,10 +211,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final Expression DEVICE_EXPRESSION =
+  protected static final Expression DEVICE_EXPRESSION =
       TimeSeriesOperand.constructColumnHeaderExpression(DEVICE, TSDataType.TEXT);
 
-  private static final Expression END_TIME_EXPRESSION =
+  protected static final Expression END_TIME_EXPRESSION =
       TimeSeriesOperand.constructColumnHeaderExpression(ENDTIME, TSDataType.INT64);
 
   private final List<String> lastQueryColumnNames =
@@ -251,6 +251,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setLastLevelUseWildcard(queryStatement.isLastLevelUseWildcard());
+
+    long startTime = System.currentTimeMillis();
     try {
       // check for semantic errors
       queryStatement.semanticCheck();
@@ -260,6 +262,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
 
       ISchemaTree schemaTree = analyzeSchema(queryStatement, analysis, context);
+
+      logger.warn("----- Analyze analyzeSchema cost: {}ms", System.currentTimeMillis() - startTime);
+      startTime = System.currentTimeMillis();
+
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
         return finishQuery(queryStatement, analysis);
@@ -279,6 +285,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         // fe 线程管理
         //
         List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
+        logger.warn("----- Analyze analyzeFrom cost: {}ms", System.currentTimeMillis() - startTime);
+        startTime = System.currentTimeMillis();
 
         if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
           // remove the device which won't appear in resultSet after limit/offset
@@ -286,7 +294,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
 
         analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceList);
-        outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree, deviceList);
+        logger.warn(
+            "----- Analyze analyzeDeviceToWhere cost: {}ms",
+            System.currentTimeMillis() - startTime);
+        startTime = System.currentTimeMillis();
+
+        outputExpressions =
+            TemplatedDeviceAnalyze.analyzeSelect(analysis, queryStatement, schemaTree, deviceList);
+
+        logger.warn(
+            "----- Analyze analyzeSelect cost: {}ms", System.currentTimeMillis() - startTime);
+        startTime = System.currentTimeMillis();
+
         if (deviceList.isEmpty()) {
           return finishQuery(queryStatement, analysis);
         }
@@ -299,9 +318,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeDeviceToAggregation(analysis, queryStatement);
         analyzeDeviceToSourceTransform(analysis, queryStatement);
         analyzeDeviceToSource(analysis, queryStatement);
+        logger.warn(
+            "----- Analyze analyzeDeviceToSource cost: {}ms",
+            System.currentTimeMillis() - startTime);
+        startTime = System.currentTimeMillis();
 
         analyzeDeviceViewOutput(analysis, queryStatement);
         analyzeDeviceViewInput(analysis, queryStatement);
+
+        logger.warn(
+            "----- Analyze analyzeDeviceView cost: {}ms", System.currentTimeMillis() - startTime);
+        startTime = System.currentTimeMillis();
 
         analyzeInto(analysis, queryStatement, deviceList, outputExpressions);
       } else {
@@ -352,7 +379,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // fetch partition information
       analyzeDataPartition(analysis, queryStatement, schemaTree);
-
+      logger.warn(
+          "----- Analyze analyzeOutput+analyzeDataPartition cost: {}ms",
+          System.currentTimeMillis() - startTime);
+      startTime = System.currentTimeMillis();
     } catch (StatementAnalyzeException e) {
       throw new StatementAnalyzeException(
           "Meet error when analyzing the query statement: " + e.getMessage());
@@ -633,12 +663,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Set<PartialPath> deviceSet = new HashSet<>();
     for (PartialPath devicePattern : devicePatternList) {
       // get all matched devices
+      // TODO isPrefixMatch可否设置为false? analyzeFrom能否直接返回schemaTree的全部devices?
       deviceSet.addAll(
-          schemaTree.getMatchedDevices(devicePattern).stream()
+          schemaTree.getMatchedDevices(devicePattern, false).stream()
               .map(DeviceSchemaInfo::getDevicePath)
               .collect(Collectors.toList()));
     }
 
+    // TODO 是否一定要排序?  最终的sourceNodeList已经会排序?
     return queryStatement.getResultDeviceOrder() == Ordering.ASC
         ? deviceSet.stream().sorted().collect(Collectors.toList())
         : deviceSet.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
@@ -649,7 +681,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      List<PartialPath> deviceSet) {
+      List<PartialPath> deviceList) {
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
     Map<String, Set<Expression>> deviceToSelectExpressions = new HashMap<>();
     ColumnPaginationController paginationController =
@@ -663,7 +695,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // use LinkedHashMap for order-preserving
       Map<Expression, Map<String, Expression>> measurementToDeviceSelectExpressions =
           new LinkedHashMap<>();
-      for (PartialPath device : deviceSet) {
+      for (PartialPath device : deviceList) {
         List<Expression> selectExpressionsOfOneDevice =
             concatDeviceAndBindSchemaForExpression(selectExpression, device, schemaTree);
         if (selectExpressionsOfOneDevice.isEmpty()) {
@@ -718,12 +750,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // remove devices without measurements to compute
     Set<PartialPath> noMeasurementDevices = new HashSet<>();
-    for (PartialPath device : deviceSet) {
+    for (PartialPath device : deviceList) {
       if (!deviceToSelectExpressions.containsKey(device.getFullPath())) {
         noMeasurementDevices.add(device);
       }
     }
-    deviceSet.removeAll(noMeasurementDevices);
+    deviceList.removeAll(noMeasurementDevices);
 
     // when the select expression of any device is empty,
     // the where expression map also need remove this device
@@ -745,7 +777,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return outputExpressions;
   }
 
-  private void updateMeasurementToDeviceSelectExpressions(
+  protected static void updateMeasurementToDeviceSelectExpressions(
       Analysis analysis,
       Map<Expression, Map<String, Expression>> measurementToDeviceSelectExpressions,
       PartialPath device,
@@ -759,7 +791,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private void updateDeviceToSelectExpressions(
+  protected static void updateDeviceToSelectExpressions(
       Analysis analysis,
       Map<String, Set<Expression>> deviceToSelectExpressions,
       Map<String, Expression> deviceToSelectExpressionsOfOneMeasurement) {
@@ -777,7 +809,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private String analyzeAlias(
+  protected static String analyzeAlias(
       String resultColumnAlias,
       Expression rawExpression,
       Expression normalizedExpression,
@@ -1623,7 +1655,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     queryStatement.updateSortItems(orderByExpressions);
   }
 
-  private TSDataType analyzeExpressionType(Analysis analysis, Expression expression) {
+  private static TSDataType analyzeExpressionType(Analysis analysis, Expression expression) {
     return analyzeExpression(analysis, expression);
   }
 
@@ -2162,7 +2194,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
    * <p>an inconsistent example: select s0 from root.sg1.d1, root.sg1.d2 align by device, return
    * false while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
    */
-  private void checkDataTypeConsistencyInAlignByDevice(
+  protected static void checkDataTypeConsistencyInAlignByDevice(
       Analysis analysis, List<Expression> expressions) {
     TSDataType checkedDataType = analysis.getType(expressions.get(0));
     for (Expression expression : expressions) {
@@ -2183,7 +2215,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private void checkAliasUniqueness(
+  protected static void checkAliasUniqueness(
       String alias, Map<Expression, Map<String, Expression>> measurementToDeviceSelectExpressions) {
     if (alias != null && measurementToDeviceSelectExpressions.keySet().size() > 1) {
       throw new SemanticException(
