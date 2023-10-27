@@ -112,7 +112,17 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   protected boolean doCompaction() {
+    long startTime = System.currentTimeMillis();
     recoverMemoryStatus = true;
+    LOGGER.info(
+        "{}-{} [Compaction] InsertionCrossSpaceCompaction task starts with unseq file {}, "
+            + "target file name timestamp is {}, "
+            + "file size is {} MB.",
+        storageGroupName,
+        dataRegionId,
+        unseqFileToInsert,
+        timestamp,
+        unseqFileToInsert.getTsFileSize() / 1024 / 1024);
     boolean isSuccess = true;
     if (!tsFileManager.isAllowCompaction()
         || !IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction()) {
@@ -173,6 +183,16 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
               true,
               targetFile.getTsFile().getName());
 
+      double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
+      LOGGER.info(
+          "{}-{} [Compaction] InsertionCrossSpaceCompaction task finishes successfully, "
+              + "target file is {},"
+              + "time cost is {} s.",
+          storageGroupName,
+          dataRegionId,
+          targetFile,
+          String.format("%.2f", costTime)
+      );
     } catch (Exception e) {
       isSuccess = false;
       printLogWhenException(LOGGER, e);

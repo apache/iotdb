@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
@@ -61,10 +62,12 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
+    IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(true);
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(false);
     super.tearDown();
   }
 
