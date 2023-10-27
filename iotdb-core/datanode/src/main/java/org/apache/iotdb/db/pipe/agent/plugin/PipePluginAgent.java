@@ -218,13 +218,16 @@ public class PipePluginAgent {
   }
 
   public PipeConnector reflectConnector(PipeParameters connectorParameters) {
-    if (!connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_KEY)) {
+    if (!connectorParameters.hasAnyAttributes(
+        PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY)) {
       throw new PipeException(
           "Failed to reflect PipeConnector instance because "
               + "'connector' is not specified in the parameters.");
     }
     return (PipeConnector)
-        reflect(connectorParameters.getString(PipeConnectorConstant.CONNECTOR_KEY));
+        reflect(
+            connectorParameters.getString(
+                PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY));
   }
 
   private PipePlugin reflect(String pluginName) {

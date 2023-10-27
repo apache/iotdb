@@ -58,6 +58,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
@@ -67,6 +68,11 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_IP_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_PORT_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SYNC_CONNECTOR_VERSION_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_USER_KEY;
 
 public class IoTDBLegacyPipeConnector implements PipeConnector {
 
@@ -91,26 +97,41 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    validator
-        .validateRequiredAttribute(CONNECTOR_IOTDB_IP_KEY)
-        .validateRequiredAttribute(CONNECTOR_IOTDB_PORT_KEY);
+    final PipeParameters parameters = validator.getParameters();
+    validator.validate(
+        args ->
+            ((boolean) args[0] && (boolean) args[1]) || ((boolean) args[2] && (boolean) args[3]),
+        String.format(
+            "Either %s:%s or %s:%s must be specified",
+            CONNECTOR_IOTDB_IP_KEY,
+            CONNECTOR_IOTDB_PORT_KEY,
+            SINK_IOTDB_IP_KEY,
+            SINK_IOTDB_PORT_KEY),
+        parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY),
+        parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY),
+        parameters.hasAttribute(SINK_IOTDB_IP_KEY),
+        parameters.hasAttribute(SINK_IOTDB_PORT_KEY));
   }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    ipAddress = parameters.getString(CONNECTOR_IOTDB_IP_KEY);
-    port = parameters.getInt(CONNECTOR_IOTDB_PORT_KEY);
+    ipAddress = parameters.getString(CONNECTOR_IOTDB_IP_KEY, SINK_IOTDB_IP_KEY);
+    port = parameters.getInt(CONNECTOR_IOTDB_PORT_KEY, SINK_IOTDB_PORT_KEY);
 
     user =
-        parameters.getStringOrDefault(CONNECTOR_IOTDB_USER_KEY, CONNECTOR_IOTDB_USER_DEFAULT_VALUE);
+        parameters.getStringOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_USER_KEY, SINK_IOTDB_USER_KEY),
+            CONNECTOR_IOTDB_USER_DEFAULT_VALUE);
     password =
         parameters.getStringOrDefault(
-            CONNECTOR_IOTDB_PASSWORD_KEY, CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
+            Arrays.asList(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY),
+            CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
 
     syncConnectorVersion =
         parameters.getStringOrDefault(
-            CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_KEY,
+            Arrays.asList(
+                CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_KEY, SINK_IOTDB_SYNC_CONNECTOR_VERSION_KEY),
             CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_DEFAULT_VALUE);
 
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
