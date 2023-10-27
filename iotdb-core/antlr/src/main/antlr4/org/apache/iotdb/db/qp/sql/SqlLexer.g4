@@ -690,12 +690,20 @@ SHOW
     : S H O W
     ;
 
+SINK
+    : S I N K
+    ;
+
 SLIMIT
     : S L I M I T
     ;
 
 SOFFSET
     : S O F F S E T
+    ;
+
+SOURCE
+    : S O U R C E
     ;
 
 SPACE
