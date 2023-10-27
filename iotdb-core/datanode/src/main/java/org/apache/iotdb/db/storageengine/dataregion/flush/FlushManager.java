@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.Future;
 
 @SuppressWarnings("squid:S6548")
 public class FlushManager implements FlushManagerMBean, IService {
@@ -120,7 +121,7 @@ public class FlushManager implements FlushManagerMBean, IService {
    * @param tsFileProcessor tsFileProcessor to be flushed
    */
   @SuppressWarnings("squid:S2445")
-  public void registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
+  public Future<?> registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
     synchronized (tsFileProcessor) {
       if (tsFileProcessor.isManagedByFlushManager()) {
         LOGGER.debug(
@@ -138,7 +139,7 @@ public class FlushManager implements FlushManagerMBean, IService {
                 tsFileProcessorQueue.size());
           }
           tsFileProcessor.setManagedByFlushManager(true);
-          flushPool.submit(new FlushThread());
+          return flushPool.submit(new FlushThread());
         } else {
           if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(
@@ -148,6 +149,7 @@ public class FlushManager implements FlushManagerMBean, IService {
         }
       }
     }
+    return null;
   }
 
   private FlushManager() {}
