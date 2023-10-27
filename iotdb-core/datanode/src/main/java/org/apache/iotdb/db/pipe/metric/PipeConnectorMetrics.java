@@ -187,7 +187,7 @@ public class PipeConnectorMetrics implements IMetricSet {
   public void deregister(String taskID) {
     synchronized (this) {
       if (!connectorMap.containsKey(taskID)) {
-        LOGGER.info(
+        LOGGER.warn(
             "Failed to deregister pipe connector metrics, PipeConnectorSubtask({}) does not exist",
             taskID);
         return;
@@ -199,16 +199,37 @@ public class PipeConnectorMetrics implements IMetricSet {
     }
   }
 
-  public Rate getTabletRate(String taskID) {
-    return tabletRateMap.get(taskID);
+  public void markTabletEvent(String taskID) {
+    Rate rate = tabletRateMap.get(taskID);
+    if (rate == null) {
+      LOGGER.warn(
+          "Failed to mark pipe connector tablet event, PipeConnectorSubtask({}) does not exist",
+          taskID);
+      return;
+    }
+    rate.mark();
   }
 
-  public Rate getTsFileRate(String taskID) {
-    return tsFileRateMap.get(taskID);
+  public void markTsFileEvent(String taskID) {
+    Rate rate = tsFileRateMap.get(taskID);
+    if (rate == null) {
+      LOGGER.warn(
+          "Failed to mark pipe connector tsfile event, PipeConnectorSubtask({}) does not exist",
+          taskID);
+      return;
+    }
+    rate.mark();
   }
 
-  public Rate getPipeHeartbeatRate(String taskID) {
-    return pipeHeartbeatRateMap.get(taskID);
+  public void markPipeHeartbeatEvent(String taskID) {
+    Rate rate = pipeHeartbeatRateMap.get(taskID);
+    if (rate == null) {
+      LOGGER.warn(
+          "Failed to mark pipe connector heartbeat event, PipeConnectorSubtask({}) does not exist",
+          taskID);
+      return;
+    }
+    rate.mark();
   }
 
   //////////////////////////// singleton ////////////////////////////

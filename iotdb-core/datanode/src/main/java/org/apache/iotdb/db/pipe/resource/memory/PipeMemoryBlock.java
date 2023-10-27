@@ -15,21 +15,36 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.db.pipe.resource.memory;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 
-public class SeriesOverflowException extends MetadataException {
+public class PipeMemoryBlock implements AutoCloseable {
 
-  public SeriesOverflowException(long memoryUsage, long seriesNum) {
-    super(
-        String.format(
-            "Too many timeseries in memory without device template(current memory: %s, series num: %s). To optimize memory, DEVICE TEMPLATE is more recommended when devices have same time series.",
-            memoryUsage, seriesNum),
-        TSStatusCode.SERIES_OVERFLOW.getStatusCode());
+  private final long memoryUsageInBytes;
+
+  private volatile boolean isReleased = false;
+
+  public PipeMemoryBlock(long memoryUsageInBytes) {
+    this.memoryUsageInBytes = memoryUsageInBytes;
+  }
+
+  long getMemoryUsageInBytes() {
+    return memoryUsageInBytes;
+  }
+
+  boolean isReleased() {
+    return isReleased;
+  }
+
+  void markAsReleased() {
+    isReleased = true;
+  }
+
+  @Override
+  public void close() throws Exception {
+    PipeResourceManager.memory().release(this);
   }
 }

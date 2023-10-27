@@ -609,11 +609,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
     databaseReadWriteLock.readLock().lock();
     try {
-      try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
-          BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
+      FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
+      BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
+      try {
         // Take snapshot for MTree
         mTree.serialize(outputStream);
         outputStream.flush();
+      } finally {
+        outputStream.flush();
+        fileOutputStream.getFD().sync();
+        outputStream.close();
       }
 
       return tmpFile.renameTo(snapshotFile);

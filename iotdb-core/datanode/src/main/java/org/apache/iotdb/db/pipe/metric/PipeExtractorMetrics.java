@@ -22,8 +22,10 @@ package org.apache.iotdb.db.pipe.metric;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -42,6 +44,8 @@ public class PipeExtractorMetrics implements IMetricSet {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeExtractorMetrics.class);
 
+  private AbstractMetricService metricService;
+
   private final Map<String, IoTDBDataRegionExtractor> extractorMap = new HashMap<>();
 
   private final Map<String, Rate> tabletRateMap = new ConcurrentHashMap<>();
@@ -50,7 +54,7 @@ public class PipeExtractorMetrics implements IMetricSet {
 
   private final Map<String, Rate> pipeHeartbeatRateMap = new ConcurrentHashMap<>();
 
-  private AbstractMetricService metricService;
+  private final Map<String, Gauge> recentProcessedTsFileEpochStateMap = new ConcurrentHashMap<>();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -67,9 +71,11 @@ public class PipeExtractorMetrics implements IMetricSet {
   private void createMetrics(String taskID) {
     createAutoGauge(taskID);
     createRate(taskID);
+    createGauge(taskID);
   }
 
   private void createAutoGauge(String taskID) {
+    // pending event count
     metricService.createAutoGauge(
         Metric.UNPROCESSED_HISTORICAL_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
@@ -124,6 +130,16 @@ public class PipeExtractorMetrics implements IMetricSet {
             taskID));
   }
 
+  private void createGauge(String taskID) {
+    recentProcessedTsFileEpochStateMap.put(
+        taskID,
+        metricService.getOrCreateGauge(
+            Metric.PIPE_EXTRACTOR_TSFILE_EPOCH_STATE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            taskID));
+  }
+
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
@@ -138,9 +154,11 @@ public class PipeExtractorMetrics implements IMetricSet {
   private void removeMetrics(String taskID) {
     removeAutoGauge(taskID);
     removeRate(taskID);
+    removeGauge(taskID);
   }
 
   private void removeAutoGauge(String taskID) {
+    // pending event count
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNPROCESSED_HISTORICAL_TSFILE_COUNT.toString(),
@@ -184,6 +202,14 @@ public class PipeExtractorMetrics implements IMetricSet {
     pipeHeartbeatRateMap.remove(taskID);
   }
 
+  private void removeGauge(String taskID) {
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.PIPE_EXTRACTOR_TSFILE_EPOCH_STATE.toString(),
+        Tag.NAME.toString(),
+        taskID);
+  }
+
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
   public void register(@NonNull IoTDBDataRegionExtractor extractor) {
@@ -199,7 +225,7 @@ public class PipeExtractorMetrics implements IMetricSet {
   public void deregister(String taskID) {
     synchronized (this) {
       if (!extractorMap.containsKey(taskID)) {
-        LOGGER.info(
+        LOGGER.warn(
             "Failed to deregister pipe extractor metrics, IoTDBDataRegionExtractor({}) does not exist",
             taskID);
         return;
@@ -211,16 +237,48 @@ public class PipeExtractorMetrics implements IMetricSet {
     }
   }
 
-  public Rate getTabletRate(String taskID) {
-    return tabletRateMap.get(taskID);
+  public void markTabletEvent(String taskID) {
+    Rate rate = tabletRateMap.get(taskID);
+    if (rate == null) {
+      LOGGER.warn(
+          "Failed to mark pipe extractor tablet event, IoTDBDataRegionExtractor({}) does not exist",
+          taskID);
+      return;
+    }
+    rate.mark();
   }
 
-  public Rate getTsFileRate(String taskID) {
-    return tsFileRateMap.get(taskID);
+  public void markTsFileEvent(String taskID) {
+    Rate rate = tsFileRateMap.get(taskID);
+    if (rate == null) {
+      LOGGER.warn(
+          "Failed to mark pipe extractor tsfile event, IoTDBDataRegionExtractor({}) does not exist",
+          taskID);
+      return;
+    }
+    rate.mark();
   }
 
-  public Rate getPipeHeartbeatRate(String taskID) {
-    return pipeHeartbeatRateMap.get(taskID);
+  public void markPipeHeartbeatEvent(String taskID) {
+    Rate rate = pipeHeartbeatRateMap.get(taskID);
+    if (rate == null) {
+      LOGGER.warn(
+          "Failed to mark pipe extractor heartbeat event, IoTDBDataRegionExtractor({}) does not exist",
+          taskID);
+      return;
+    }
+    rate.mark();
+  }
+
+  public void setRecentProcessedTsFileEpochState(String taskID, TsFileEpoch.State state) {
+    Gauge gauge = recentProcessedTsFileEpochStateMap.get(taskID);
+    if (gauge == null) {
+      LOGGER.warn(
+          "Failed to set recent processed tsfile epoch state, PipeRealtimeDataRegionExtractor({}) does not exist",
+          taskID);
+      return;
+    }
+    gauge.set(state.getId());
   }
 
   //////////////////////////// singleton ////////////////////////////

@@ -201,6 +201,9 @@ public class UDFInfo implements SnapshotProcessor {
 
       udfTable.serializeUDFTable(fileOutputStream);
 
+      // fsync
+      fileOutputStream.getFD().sync();
+
       return true;
     } finally {
       releaseUDFTableLock();

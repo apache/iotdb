@@ -74,6 +74,9 @@ public class FragmentInstance implements IConsensusRequest {
 
   private boolean isHighestPriority;
 
+  // indicate which index we are retrying
+  private transient int nextRetryIndex = 0;
+
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
@@ -268,6 +271,14 @@ public class FragmentInstance implements IConsensusRequest {
   }
 
   public TDataNodeLocation getHostDataNode() {
+    return hostDataNode;
+  }
+
+  public TDataNodeLocation getNextRetriedHostDataNode() {
+    nextRetryIndex =
+        (nextRetryIndex + 1) % executorType.getRegionReplicaSet().getDataNodeLocations().size();
+    this.hostDataNode =
+        executorType.getRegionReplicaSet().getDataNodeLocations().get(nextRetryIndex);
     return hostDataNode;
   }
 
