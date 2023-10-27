@@ -406,12 +406,11 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       }
       for (TsFileResourceCandidate unseqFile : unseqFiles) {
         result = selectCurrentUnSeqFile(unseqFile);
-        if (result != null) {
-          result.toInsertUnSeqFile = unseqFile.resource;
+        if (result.isValid()) {
           break;
         }
       }
-      if (result == null) {
+      if (!result.isValid()) {
         return null;
       }
       TsFileResourceCandidate firstUnseqFile = unseqFiles.get(0);
@@ -423,6 +422,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         TsFileResourceCandidate unseqFile) throws IOException {
       int previousSeqFileIndex = 0;
       int nextSeqFileIndex = seqFiles.size();
+      InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
 
       boolean hasPreviousSeqFile = false;
       for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
@@ -444,7 +444,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           // overlap
           if (startTimeOfUnSeqDevice <= endTimeOfSeqDevice
               && endTimeOfUnSeqDevice >= startTimeOfSeqDevice) {
-            return null;
+            return result;
           }
 
           // 乱序文件在顺序文件之后
@@ -460,7 +460,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         }
       }
 
-      InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
       // select position to insert
       if (hasPreviousSeqFile) {
         if (nextSeqFileIndex == seqFiles.size() && previousSeqFileIndex == seqFiles.size() - 1) {
@@ -470,10 +469,13 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           if (prev.isValidCandidate) {
             result.prevSeqFile = prev.resource;
             result.targetFileTimestamp = prevTimestamp + 1;
+            result.toInsertUnSeqFile = unseqFile.resource;
           }
           return result;
         }
-        for (int i = previousSeqFileIndex; i < nextSeqFileIndex; i++) {
+        for (int i = previousSeqFileIndex;
+            i < Math.min(nextSeqFileIndex, seqFiles.size() - 1);
+            i++) {
           TsFileResourceCandidate prev = seqFiles.get(i);
           TsFileResourceCandidate next = seqFiles.get(i + 1);
           if (prev.isValidCandidate && next.isValidCandidate) {
@@ -485,6 +487,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
               result.prevSeqFile = prev.resource;
               result.nextSeqFile = next.resource;
               result.targetFileTimestamp = prevTimestamp + 1;
+              result.toInsertUnSeqFile = unseqFile.resource;
               break;
             }
           }
@@ -495,13 +498,11 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         long nextTimestamp =
             TsFileNameGenerator.getTsFileName(next.resource.getTsFile().getName()).getTime();
         if (nextTimestamp < 1) {
-          return null;
+          return result;
         }
         result.nextSeqFile = next.resource;
         result.targetFileTimestamp = nextTimestamp - 1;
-      }
-      if (result.prevSeqFile == null && result.nextSeqFile == null) {
-        return null;
+        result.toInsertUnSeqFile = unseqFile.resource;
       }
       return result;
     }
