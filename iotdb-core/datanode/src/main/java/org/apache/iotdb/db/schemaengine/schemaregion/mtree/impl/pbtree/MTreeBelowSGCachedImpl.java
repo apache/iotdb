@@ -920,12 +920,6 @@ public class MTreeBelowSGCachedImpl {
             }
           }
 
-          if (device.isDevice() && device.getAsDeviceMNode().isAligned()) {
-            throw new AlignedTimeseriesException(
-                "timeseries under this device is aligned, please use createAlignedTimeseries or change device.",
-                device.getFullPath());
-          }
-
           IDeviceMNode<ICachedMNode> entityMNode;
           if (device.isDevice()) {
             entityMNode = device.getAsDeviceMNode();

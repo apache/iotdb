@@ -195,7 +195,7 @@ public class CommonConfig {
   private int pipeMemoryAllocateMaxRetries = 10;
 
   /** Whether to use persistent schema mode. */
-  private String schemaEngineMode = "PBTree";
+  private String schemaEngineMode = "Memory";
 
   /** Whether to enable Last cache. */
   private boolean lastCacheEnable = true;
