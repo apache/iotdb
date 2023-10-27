@@ -191,8 +191,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           storageGroupName,
           dataRegionId,
           targetFile,
-          String.format("%.2f", costTime)
-      );
+          String.format("%.2f", costTime));
     } catch (Exception e) {
       isSuccess = false;
       printLogWhenException(LOGGER, e);
