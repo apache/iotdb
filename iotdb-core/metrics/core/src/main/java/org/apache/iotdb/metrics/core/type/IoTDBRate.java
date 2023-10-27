@@ -41,7 +41,7 @@ public class IoTDBRate implements Rate {
 
   public IoTDBRate(AtomicLong atomicLong) {
     this.atomicLong = atomicLong;
-    this.meter = new Meter(IoTDBMovingAverage.getInstance(), Clock.defaultClock());
+    this.meter = new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
   }
 
   @Override

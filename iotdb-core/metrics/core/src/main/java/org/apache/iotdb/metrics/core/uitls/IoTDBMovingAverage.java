@@ -48,18 +48,6 @@ public class IoTDBMovingAverage implements MovingAverages {
     this.lastTick = new AtomicLong(this.clock.getTick());
   }
 
-  private static class IoTDBMovingAverageHolder {
-    private static final IoTDBMovingAverage INSTANCE = new IoTDBMovingAverage();
-
-    private IoTDBMovingAverageHolder() {
-      // empty constructor
-    }
-  }
-
-  public static IoTDBMovingAverage getInstance() {
-    return IoTDBMovingAverageHolder.INSTANCE;
-  }
-
   @Override
   public void update(long n) {
     m1Rate.update(n);
