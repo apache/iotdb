@@ -402,20 +402,19 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       if (seqFiles.isEmpty()) {
         result.toInsertUnSeqFile = unseqFiles.get(0).resource;
         result.targetFileTimestamp = 1;
-        return result;
-      }
-      for (TsFileResourceCandidate unseqFile : unseqFiles) {
-        result = selectCurrentUnSeqFile(unseqFile);
-        if (result != null) {
-          result.toInsertUnSeqFile = unseqFile.resource;
-          break;
+      } else {
+        for (TsFileResourceCandidate unseqFile : unseqFiles) {
+          result = selectCurrentUnSeqFile(unseqFile);
+          if (result != null) {
+            result.toInsertUnSeqFile = unseqFile.resource;
+            break;
+          }
         }
       }
-      if (result == null) {
-        return null;
+      if (result != null) {
+        TsFileResourceCandidate firstUnseqFile = unseqFiles.get(0);
+        result.firstUnSeqFileInParitition = firstUnseqFile.resource;
       }
-      TsFileResourceCandidate firstUnseqFile = unseqFiles.get(0);
-      result.firstUnSeqFileInParitition = firstUnseqFile.resource;
       return result;
     }
 
