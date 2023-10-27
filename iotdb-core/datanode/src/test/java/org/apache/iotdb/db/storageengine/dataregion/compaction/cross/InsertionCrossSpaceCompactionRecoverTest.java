@@ -218,8 +218,6 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
         new File(
             targetFile.getTsFilePath() + CompactionLogger.INSERTION_COMPACTION_LOG_NAME_SUFFIX);
 
-    CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResource1, true);
-
     try (SimpleCompactionLogger logger = new SimpleCompactionLogger(logFile)) {
       logger.logSourceFile(taskResource.toInsertUnSeqFile);
       logger.logTargetFile(targetFile);
@@ -249,7 +247,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
 
     Assert.assertTrue(targetFile.tsFileExists());
     Assert.assertTrue(targetFile.resourceFileExists());
-    Assert.assertTrue(targetFile.modFileExists());
+    Assert.assertFalse(targetFile.modFileExists());
   }
 
   @Test
