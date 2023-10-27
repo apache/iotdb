@@ -207,7 +207,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     return isSuccess;
   }
 
-  private File generateTargetFile() throws IOException {
+  public File generateTargetFile() throws IOException {
     String path = unseqFileToInsert.getTsFile().getParentFile().getPath();
     path = path.replace("unsequence", "sequence");
     TsFileNameGenerator.TsFileName tsFileName =
@@ -285,16 +285,11 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   private boolean shouldRollback() {
-    if (unseqFileToInsert == null) {
-      return false;
-    }
-    if (targetFile == null) {
-      return true;
-    }
-    if (!targetFile.resourceFileExists() || !targetFile.tsFileExists()) {
-      return true;
-    }
-    if (unseqFileToInsert.modFileExists() && !targetFile.modFileExists()) {
+    // if target file or its responding file does not exist, then return true
+    if (targetFile == null
+        || !targetFile.tsFileExists()
+        || !targetFile.resourceFileExists()
+        || (unseqFileToInsert.modFileExists() && !targetFile.modFileExists())) {
       return true;
     }
     return false;
