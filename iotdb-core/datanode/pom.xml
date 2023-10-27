@@ -528,6 +528,8 @@
                         <!-- We need these dependencies as they provide the metric managers used in tests -->
                         <usedDependency>org.apache.iotdb:dropwizard-metrics</usedDependency>
                         <usedDependency>org.apache.iotdb:micrometer-metrics</usedDependency>
+                        <!-- This dependency is required at runtime, when esnabling the rest service -->
+                        <usedDependency>org.glassfish.jersey.inject:jersey-hk2</usedDependency>
                     </usedDependencies>
                 </configuration>
             </plugin>
