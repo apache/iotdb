@@ -269,6 +269,7 @@ public class CompactionRecoverTask {
             fullStorageGroupName,
             targetFileIdentifier.getFilePath());
         CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+        CommonDescriptor.getInstance().getConfig().setStatusReason("CompactionRecoveryFailed");
         return false;
       }
     }
