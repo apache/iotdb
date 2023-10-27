@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.enums.TSDataType
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.iotdb.tsfile.read.common.Field
 import org.apache.iotdb.tsfile.utils.Binary
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.GenericInternalRow
@@ -136,7 +137,7 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     val doubleField = new Field(TSDataType.DOUBLE)
     doubleField.setDoubleV(0.618d)
     val stringField = new Field(TSDataType.TEXT)
-    stringField.setBinaryV(new Binary("pass"))
+    stringField.setBinaryV(new Binary("pass", TSFileConfig.STRING_CHARSET))
 
     Assert.assertEquals(WideConverter.toSqlValue(boolField), true)
     Assert.assertEquals(WideConverter.toSqlValue(intField), 32)
