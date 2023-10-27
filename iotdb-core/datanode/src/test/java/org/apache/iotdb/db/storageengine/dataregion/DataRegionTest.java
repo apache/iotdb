@@ -58,6 +58,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -303,7 +304,7 @@ public class DataRegionTest {
   }
 
   @Test
-  public void testIoTDBTabletWriteAndSyncClose()
+  public void testEmptyTabletWriteAndSyncClose()
       throws QueryProcessException, IllegalPathException, WriteProcessException {
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -320,11 +321,14 @@ public class DataRegionTest {
     Object[] columns = new Object[2];
     columns[0] = new int[100];
     columns[1] = new long[100];
+    BitMap[] bitMaps = new BitMap[2];
+    bitMaps[0] = new BitMap(100);
+    bitMaps[1] = new BitMap(100);
 
     for (int r = 0; r < 100; r++) {
       times[r] = r;
-      ((int[]) columns[0])[r] = 1;
-      ((long[]) columns[1])[r] = 1;
+      bitMaps[0].mark(r);
+      bitMaps[1].mark(r);
     }
 
     InsertTabletNode insertTabletNode1 =
@@ -336,7 +340,7 @@ public class DataRegionTest {
             dataTypes,
             measurementSchemas,
             times,
-            null,
+            bitMaps,
             columns,
             times.length);
 
@@ -345,8 +349,8 @@ public class DataRegionTest {
 
     for (int r = 50; r < 149; r++) {
       times[r - 50] = r;
-      ((int[]) columns[0])[r - 50] = 1;
-      ((long[]) columns[1])[r - 50] = 1;
+      bitMaps[0].mark(r - 50);
+      bitMaps[1].mark(r - 50);
     }
 
     InsertTabletNode insertTabletNode2 =
@@ -358,7 +362,7 @@ public class DataRegionTest {
             dataTypes,
             measurementSchemas,
             times,
-            null,
+            bitMaps,
             columns,
             times.length);
 
@@ -373,8 +377,8 @@ public class DataRegionTest {
             context,
             null);
 
-    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(1, queryDataSource.getUnseqResources().size());
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }

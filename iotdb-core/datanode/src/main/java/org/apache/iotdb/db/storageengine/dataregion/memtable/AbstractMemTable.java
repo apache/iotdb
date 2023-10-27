@@ -662,8 +662,9 @@ public abstract class AbstractMemTable implements IMemTable {
     for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
       // When insert null values in to IWritableMemChunkGroup, the maxTime will not be updated.
       // In this scenario, the maxTime will be Long.MIN_VALUE. We shouldn't return this device.
-      if (entry.getValue().getMaxTime() != Long.MIN_VALUE) {
-        latestTimeForEachDevice.put(entry.getKey().toStringID(), entry.getValue().getMaxTime());
+      long maxTime = entry.getValue().getMaxTime();
+      if (maxTime != Long.MIN_VALUE) {
+        latestTimeForEachDevice.put(entry.getKey().toStringID(), maxTime);
       }
     }
     return latestTimeForEachDevice;
