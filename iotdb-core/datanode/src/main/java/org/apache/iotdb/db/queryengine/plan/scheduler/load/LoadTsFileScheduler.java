@@ -26,6 +26,8 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.StorageExecutor;
@@ -50,6 +52,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsF
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
+import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -108,8 +112,6 @@ public class LoadTsFileScheduler implements IScheduler {
   private final PlanFragmentId fragmentId;
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
-
-  private static final String METRIC_POINT_IN = "pointsIn";
 
   public LoadTsFileScheduler(
       DistributedQueryPlan distributedQueryPlan,
@@ -349,17 +351,23 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     // add metrics
+    DataRegion dataRegion =
+        StorageEngine.getInstance()
+            .getDataRegion(
+                (DataRegionId)
+                    ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                        node.getLocalRegionReplicaSet().getRegionId()));
     MetricService.getInstance()
         .count(
             node.getWritePointCount(),
             Metric.QUANTITY.toString(),
             MetricLevel.CORE,
             Tag.NAME.toString(),
-            METRIC_POINT_IN,
+            Metric.POINTS_IN.toString(),
             Tag.DATABASE.toString(),
-            node.getDatabase(),
+            dataRegion.getDatabaseName(),
             Tag.REGION.toString(),
-            Integer.toString(node.getLocalRegionReplicaSet().getRegionId().getId()));
+            dataRegion.getDataRegionId());
     return true;
   }
 

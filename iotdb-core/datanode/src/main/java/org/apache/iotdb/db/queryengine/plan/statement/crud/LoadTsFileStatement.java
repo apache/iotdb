@@ -28,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -47,7 +46,7 @@ public class LoadTsFileStatement extends Statement {
 
   private final List<File> tsFiles;
   private final List<TsFileResource> resources;
-  private final List<Pair<String, Long>> database2WritePointCountPairList;
+  private final List<Long> writePointCountList;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath);
@@ -57,7 +56,7 @@ public class LoadTsFileStatement extends Statement {
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
-    this.database2WritePointCountPairList = new ArrayList<>();
+    this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
 
     if (file.isFile()) {
@@ -82,7 +81,7 @@ public class LoadTsFileStatement extends Statement {
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
-    this.database2WritePointCountPairList = new ArrayList<>();
+    this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
   }
 
@@ -157,13 +156,12 @@ public class LoadTsFileStatement extends Statement {
     return resources;
   }
 
-  public List<Pair<String, Long>> addDatabase2WritePointCountPairList() {
-    return database2WritePointCountPairList;
+  public void addWritePointCount(long writePointCount) {
+    writePointCountList.add(writePointCount);
   }
 
-  public void addDatabase2WritePointCountPairList(
-      Pair<String, Long> database2WritePointCountPairList) {
-    this.database2WritePointCountPairList.add(database2WritePointCountPairList);
+  public long getWritePointCount(int resourceIndex) {
+    return writePointCountList.get(resourceIndex);
   }
 
   @Override

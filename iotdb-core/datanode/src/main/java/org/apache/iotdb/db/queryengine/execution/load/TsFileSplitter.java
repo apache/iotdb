@@ -116,8 +116,7 @@ public class TsFileSplitter {
             TTimePartitionSlot timePartitionSlot =
                 TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime());
             ChunkData chunkData =
-                ChunkData.createChunkData(
-                    isAligned, curDevice, header, timePartitionSlot, chunkMetadata);
+                ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
 
             if (!needDecodeChunk(chunkMetadata)) {
               chunkData.setNotDecode();
@@ -165,8 +164,7 @@ public class TsFileSplitter {
                   }
                   timePartitionSlot = pageTimePartitionSlot;
                   chunkData =
-                      ChunkData.createChunkData(
-                          isAligned, curDevice, header, timePartitionSlot, chunkMetadata);
+                      ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
                 }
                 if (isAligned) {
                   pageIndex2ChunkData
@@ -206,8 +204,7 @@ public class TsFileSplitter {
                         timePartitionSlot.getStartTime()
                             + TimePartitionUtils.getTimePartitionInterval();
                     chunkData =
-                        ChunkData.createChunkData(
-                            isAligned, curDevice, header, timePartitionSlot, chunkMetadata);
+                        ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
                   }
                   satisfiedLength += 1;
                 }
@@ -240,7 +237,7 @@ public class TsFileSplitter {
 
             if (!isTimeChunkNeedDecode) {
               AlignedChunkData alignedChunkData = pageIndex2ChunkData.get(1).get(0);
-              alignedChunkData.addValueChunk(header, chunkMetadata.getStatistics().getCount());
+              alignedChunkData.addValueChunk(header);
               alignedChunkData.writeEntireChunk(
                   reader.readChunk(-1, header.getDataSize()), chunkMetadata);
               break;
@@ -259,7 +256,7 @@ public class TsFileSplitter {
               List<AlignedChunkData> alignedChunkDataList = pageIndex2ChunkData.get(pageIndex);
               for (AlignedChunkData alignedChunkData : alignedChunkDataList) {
                 if (!allChunkData.contains(alignedChunkData)) {
-                  alignedChunkData.addValueChunk(header, chunkMetadata.getStatistics().getCount());
+                  alignedChunkData.addValueChunk(header);
                   allChunkData.add(alignedChunkData);
                 }
               }
@@ -435,7 +432,7 @@ public class TsFileSplitter {
     for (Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
       for (AlignedChunkData alignedChunkData : entry.getValue()) {
         if (!allChunkData.contains(alignedChunkData)) {
-          alignedChunkData.addValueChunk(header, chunkMetadata.getStatistics().getCount());
+          alignedChunkData.addValueChunk(header);
           if (!isTimeChunkNeedDecode) {
             alignedChunkData.writeEntireChunk(ByteBuffer.allocate(0), chunkMetadata);
           }

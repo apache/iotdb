@@ -71,7 +71,6 @@ public class LoadTsFileManager {
   private static final String MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED =
       "%s TsFileWriterManager has been closed.";
   private static final String MESSAGE_DELETE_FAIL = "failed to delete {}.";
-  private static final String METRIC_POINT_IN = "pointsIn";
 
   private final File loadDir;
 
@@ -132,19 +131,6 @@ public class LoadTsFileManager {
         ChunkData chunkData = (ChunkData) tsFileData;
         writerManager.write(
             new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
-
-        MetricService.getInstance()
-            .count(
-                chunkData.getWritePointCount(),
-                Metric.QUANTITY.toString(),
-                MetricLevel.CORE,
-                Tag.NAME.toString(),
-                METRIC_POINT_IN,
-                Tag.DATABASE.toString(),
-                dataRegion.getDatabaseName(),
-                Tag.REGION.toString(),
-                dataRegion.getDataRegionId());
-
       } else {
         writerManager.writeDeletion(tsFileData);
       }
@@ -278,10 +264,21 @@ public class LoadTsFileManager {
           writer.endChunkGroup();
         }
         writer.endFile();
-        entry
-            .getKey()
-            .getDataRegion()
-            .loadNewTsFile(generateResource(writer), true, isGeneratedByPipe);
+
+        DataRegion dataRegion = entry.getKey().getDataRegion();
+        dataRegion.loadNewTsFile(generateResource(writer), true, isGeneratedByPipe);
+
+        MetricService.getInstance()
+            .count(
+                getTsFileWritePointCount(writer),
+                Metric.QUANTITY.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                Metric.POINTS_IN.toString(),
+                Tag.DATABASE.toString(),
+                dataRegion.getDatabaseName(),
+                Tag.REGION.toString(),
+                dataRegion.getDataRegionId());
       }
     }
 
@@ -289,6 +286,13 @@ public class LoadTsFileManager {
       TsFileResource tsFileResource = FileLoaderUtils.generateTsFileResource(writer);
       tsFileResource.serialize();
       return tsFileResource;
+    }
+
+    private long getTsFileWritePointCount(TsFileIOWriter writer) {
+      return writer.getChunkGroupMetadataList().stream()
+          .flatMap(chunkGroupMetadata -> chunkGroupMetadata.getChunkMetadataList().stream())
+          .mapToLong(chunkMetadata -> chunkMetadata.getStatistics().getCount())
+          .sum();
     }
 
     private void close() {

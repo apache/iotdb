@@ -205,42 +205,19 @@ public class LoadTsfileAnalyzer {
         tsFileResource.deserialize();
       }
 
-      final Pair<String, Long> database2WritePointCountPair =
-          getDatabase2WritePointCountPair(
-              device2TimeseriesMetadata, loadTsFileStatement.getDatabaseLevel() + 1);
-
       TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+
       loadTsFileStatement.addTsFileResource(tsFileResource);
-      loadTsFileStatement.addDatabase2WritePointCountPairList(database2WritePointCountPair);
+      loadTsFileStatement.addWritePointCount(getWritePointCount(device2TimeseriesMetadata));
     }
   }
 
-  private Pair<String, Long> getDatabase2WritePointCountPair(
-      Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata,
-      int databasePrefixNodesLength)
-      throws IOException {
-    // 1. get database
-    try {
-      String device = device2TimeseriesMetadata.keySet().iterator().next();
-      final PartialPath devicePath = new PartialPath(device);
-      final String[] devicePrefixNodes = devicePath.getNodes();
-      final String[] databasePrefixNodes = new String[databasePrefixNodesLength];
-      System.arraycopy(devicePrefixNodes, 0, databasePrefixNodes, 0, databasePrefixNodesLength);
-      String database = new PartialPath(databasePrefixNodes).getFullPath();
-
-      // 2. get total writePointCount
-      final long writePointCount =
-          device2TimeseriesMetadata.values().stream()
-              .flatMap(List::stream)
-              .mapToLong(t -> t.getStatistics().getCount())
-              .sum();
-
-      return new Pair<>(database, writePointCount);
-
-    } catch (IllegalPathException e) {
-      throw new IOException(e);
-    }
+  private long getWritePointCount(Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata) {
+    return device2TimeseriesMetadata.values().stream()
+        .flatMap(List::stream)
+        .mapToLong(t -> t.getStatistics().getCount())
+        .sum();
   }
 
   private static final class TimeSeriesIterator

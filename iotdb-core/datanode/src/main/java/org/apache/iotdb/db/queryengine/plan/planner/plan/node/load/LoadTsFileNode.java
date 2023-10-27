@@ -27,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -92,15 +91,12 @@ public class LoadTsFileNode extends WritePlanNode {
     LoadTsFileStatement statement = (LoadTsFileStatement) analysis.getStatement();
 
     for (int i = 0; i < resources.size(); i++) {
-      Pair<String, Long> database2WritePointCountPair =
-          statement.addDatabase2WritePointCountPairList().get(i);
       res.add(
           new LoadSingleTsFileNode(
               getPlanNodeId(),
               resources.get(i),
               statement.isDeleteAfterLoad(),
-              database2WritePointCountPair.getRight(),
-              database2WritePointCountPair.getLeft()));
+              statement.getWritePointCount(i)));
     }
     return res;
   }

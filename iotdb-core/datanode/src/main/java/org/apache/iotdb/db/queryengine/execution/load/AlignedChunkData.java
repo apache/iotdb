@@ -72,13 +72,9 @@ public class AlignedChunkData implements ChunkData {
 
   private AlignedChunkWriterImpl chunkWriter;
   private List<Chunk> chunkList;
-  private long writePointCount;
 
   public AlignedChunkData(
-      String device,
-      ChunkHeader chunkHeader,
-      TTimePartitionSlot timePartitionSlot,
-      long writePointCount) {
+      String device, ChunkHeader chunkHeader, TTimePartitionSlot timePartitionSlot) {
     this.dataSize = 0;
     this.device = device;
     this.chunkHeaderList = new ArrayList<>();
@@ -88,7 +84,6 @@ public class AlignedChunkData implements ChunkData {
     this.satisfiedLengthQueue = new LinkedList<>();
     this.byteStream = new PublicBAOS();
     this.stream = new DataOutputStream(byteStream);
-    this.writePointCount = writePointCount;
 
     chunkHeaderList.add(chunkHeader);
     pageNumbers.add(0);
@@ -103,7 +98,6 @@ public class AlignedChunkData implements ChunkData {
     dataSize += deviceLength; // device
     dataSize += Integer.BYTES; // chunkHeaderListSize
     dataSize += chunkHeaderList.get(0).getSerializedSize(); // timeChunkHeader
-    dataSize += writePointCount; // writePointCount
   }
 
   @Override
@@ -142,18 +136,13 @@ public class AlignedChunkData implements ChunkData {
     }
   }
 
-  public void addValueChunk(ChunkHeader chunkHeader, long writePointCount) {
+  public void addValueChunk(ChunkHeader chunkHeader) {
     this.chunkHeaderList.add(chunkHeader);
     this.pageNumbers.add(0);
     dataSize += chunkHeader.getSerializedSize();
     if (needDecodeChunk) {
       dataSize += Integer.BYTES; // pageNumber
     }
-    this.writePointCount += writePointCount;
-  }
-
-  public long getWritePointCount() {
-    return writePointCount;
   }
 
   @Override
@@ -178,7 +167,6 @@ public class AlignedChunkData implements ChunkData {
         ReadWriteIOUtils.write(pageNumber, stream);
       }
     }
-    ReadWriteIOUtils.write(writePointCount, stream);
   }
 
   @Override
@@ -415,10 +403,9 @@ public class AlignedChunkData implements ChunkData {
         pageNumbers.add(ReadWriteIOUtils.readInt(stream));
       }
     }
-    long writePointCount = ReadWriteIOUtils.readLong(stream);
 
     AlignedChunkData chunkData =
-        new AlignedChunkData(device, chunkHeaderList.get(0), timePartitionSlot, writePointCount);
+        new AlignedChunkData(device, chunkHeaderList.get(0), timePartitionSlot);
     chunkData.needDecodeChunk = needDecodeChunk;
     chunkData.chunkHeaderList = chunkHeaderList;
     chunkData.pageNumbers = pageNumbers;
@@ -446,8 +433,6 @@ public class AlignedChunkData implements ChunkData {
         + dataSize
         + ", needDecodeChunk="
         + needDecodeChunk
-        + ", writePointCount="
-        + writePointCount
         + '}';
   }
 }

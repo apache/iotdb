@@ -45,8 +45,6 @@ public interface ChunkData extends TsFileData {
 
   void writeDecodePage(long[] times, Object[] values, int satisfiedLength) throws IOException;
 
-  long getWritePointCount();
-
   @Override
   default boolean isModification() {
     return false;
@@ -63,12 +61,9 @@ public interface ChunkData extends TsFileData {
       boolean isAligned,
       String device,
       ChunkHeader chunkHeader,
-      TTimePartitionSlot timePartitionSlot,
-      IChunkMetadata chunkMetadata) {
+      TTimePartitionSlot timePartitionSlot) {
     return isAligned
-        ? new AlignedChunkData(
-            device, chunkHeader, timePartitionSlot, chunkMetadata.getStatistics().getCount())
-        : new NonAlignedChunkData(
-            device, chunkHeader, timePartitionSlot, chunkMetadata.getStatistics().getCount());
+        ? new AlignedChunkData(device, chunkHeader, timePartitionSlot)
+        : new NonAlignedChunkData(device, chunkHeader, timePartitionSlot);
   }
 }
