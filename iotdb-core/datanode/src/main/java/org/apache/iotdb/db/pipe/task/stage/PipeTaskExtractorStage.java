@@ -33,6 +33,8 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import java.util.Arrays;
+
 public class PipeTaskExtractorStage extends PipeTaskStage {
 
   private final PipeExtractor pipeExtractor;
@@ -46,7 +48,8 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
     pipeExtractor =
         extractorParameters
                 .getStringOrDefault(
-                    PipeExtractorConstant.EXTRACTOR_KEY,
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
                     BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
                 .equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
             ? new IoTDBDataRegionExtractor()

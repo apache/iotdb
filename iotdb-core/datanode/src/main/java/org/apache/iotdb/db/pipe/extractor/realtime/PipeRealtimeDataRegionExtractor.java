@@ -36,8 +36,12 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
@@ -78,7 +82,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
     pattern =
         parameters.getStringOrDefault(
-            PipeExtractorConstant.EXTRACTOR_PATTERN_KEY,
+            Arrays.asList(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
             PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
@@ -93,7 +97,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
     isForwardingPipeRequests =
         parameters.getBooleanOrDefault(
-            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+                PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
             PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
   }
 

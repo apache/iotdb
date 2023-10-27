@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipePluginAgent {
@@ -203,7 +204,8 @@ public class PipePluginAgent {
     return (PipeExtractor)
         reflect(
             extractorParameters.getStringOrDefault(
-                PipeExtractorConstant.EXTRACTOR_KEY,
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
   }
 
