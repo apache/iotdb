@@ -470,7 +470,7 @@ public class IoTDBDescriptor {
                 "compaction_submission_interval_in_ms",
                 Long.toString(conf.getCompactionSubmissionIntervalInMs()))));
 
-    conf.setEnableCrossSpaceCompaction(
+    conf.setEnableInsertionCrossSpaceCompaction(
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_insertion_cross_space_compaction",
