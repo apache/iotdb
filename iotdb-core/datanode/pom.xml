@@ -519,6 +519,7 @@
                         <!-- For some reason this plugin missed it being used for a constant import -->
                         <ignoredDependency>org.apache.iotdb:isession</ignoredDependency>
                         <ignoredDependency>org.glassfish.jersey.inject:jersey-hk2</ignoredDependency>
+                        <ignoredDependency>com.fasterxml.jackson.core:jackson-databind</ignoredDependency>
                     </ignoredDependencies>
                     <usedDependencies>
                         <!-- These are used at runtime in tests -->
