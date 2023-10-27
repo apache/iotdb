@@ -150,9 +150,9 @@ public class ColumnHeaderConstant {
   // column names for show pipe
   public static final String ID = "ID";
   public static final String CREATION_TIME = "CreationTime";
-  public static final String PIPE_EXTRACTOR = "PipeExtractor";
+  public static final String PIPE_EXTRACTOR = "PipeSource";
   public static final String PIPE_PROCESSOR = "PipeProcessor";
-  public static final String PIPE_CONNECTOR = "PipeConnector";
+  public static final String PIPE_CONNECTOR = "PipeSink";
   public static final String EXCEPTION_MESSAGE = "ExceptionMessage";
 
   // column names for select into
