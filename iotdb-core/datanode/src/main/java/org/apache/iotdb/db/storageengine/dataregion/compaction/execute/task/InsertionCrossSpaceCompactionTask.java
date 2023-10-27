@@ -191,8 +191,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           storageGroupName,
           dataRegionId,
           targetFile,
-          String.format("%.2f", costTime)
-      );
+          String.format("%.2f", costTime));
     } catch (Exception e) {
       isSuccess = false;
       printLogWhenException(LOGGER, e);
@@ -218,7 +217,11 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         String.format(
             "%d-%d-%d-%d.tsfile",
             tsFileName.getTime(), tsFileName.getVersion(), tsFileName.getInnerCompactionCnt(), 0);
-    return new File(path + File.separator + fileNameStr);
+    File targetTsFile = new File(path + File.separator + fileNameStr);
+    if (!targetTsFile.getParentFile().exists()) {
+      targetTsFile.getParentFile().mkdirs();
+    }
+    return targetTsFile;
   }
 
   private void prepareTargetFiles() throws IOException {
