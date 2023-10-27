@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -50,7 +51,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_SLOPPY_TIME_RANGE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
@@ -166,7 +167,20 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       }
     }
 
-    sloppyTimeRange = parameters.getBooleanOrDefault(EXTRACTOR_HISTORY_SLOPPY_TIME_RANGE, false);
+    sloppyTimeRange =
+        Arrays.stream(parameters.getStringOrDefault(EXTRACTOR_HISTORY_LOOSE_RANGE, "").split(","))
+            .map(String::trim)
+            .map(String::toLowerCase)
+            .collect(Collectors.toSet())
+            .contains("time");
+
+    LOGGER.info(
+        "historical data extraction time range, start time {}({}), end time {}({}), sloppy time range {}",
+        DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
+        historicalDataExtractionStartTime,
+        DateTimeUtils.convertLongToDate(historicalDataExtractionEndTime),
+        historicalDataExtractionEndTime,
+        sloppyTimeRange);
   }
 
   private void flushDataRegionAllTsFiles() {

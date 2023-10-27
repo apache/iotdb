@@ -33,8 +33,7 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_HISTORY_ENABLE_KEY = "extractor.history.enable";
   public static final String EXTRACTOR_HISTORY_START_TIME = "extractor.history.start-time";
   public static final String EXTRACTOR_HISTORY_END_TIME = "extractor.history.end-time";
-  public static final String EXTRACTOR_HISTORY_SLOPPY_TIME_RANGE =
-      "extractor.history.sloppy-time-range";
+  public static final String EXTRACTOR_HISTORY_LOOSE_RANGE = "extractor.history.loose-range";
 
   public static final String EXTRACTOR_REALTIME_ENABLE = "extractor.realtime.enable";
   public static final String EXTRACTOR_REALTIME_MODE = "extractor.realtime.mode";
