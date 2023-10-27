@@ -303,6 +303,84 @@ public class DataRegionTest {
   }
 
   @Test
+  public void testIoTDBTabletWriteAndSyncClose()
+      throws QueryProcessException, IllegalPathException, WriteProcessException {
+    String[] measurements = new String[2];
+    measurements[0] = "s0";
+    measurements[1] = "s1";
+    TSDataType[] dataTypes = new TSDataType[2];
+    dataTypes[0] = TSDataType.INT32;
+    dataTypes[1] = TSDataType.INT64;
+
+    MeasurementSchema[] measurementSchemas = new MeasurementSchema[2];
+    measurementSchemas[0] = new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN);
+    measurementSchemas[1] = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
+
+    long[] times = new long[100];
+    Object[] columns = new Object[2];
+    columns[0] = new int[100];
+    columns[1] = new long[100];
+
+    for (int r = 0; r < 100; r++) {
+      times[r] = r;
+      ((int[]) columns[0])[r] = 1;
+      ((long[]) columns[1])[r] = 1;
+    }
+
+    InsertTabletNode insertTabletNode1 =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.vehicle.d0"),
+            false,
+            measurements,
+            dataTypes,
+            measurementSchemas,
+            times,
+            null,
+            columns,
+            times.length);
+
+    dataRegion.insertTablet(insertTabletNode1);
+    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+
+    for (int r = 50; r < 149; r++) {
+      times[r - 50] = r;
+      ((int[]) columns[0])[r - 50] = 1;
+      ((long[]) columns[1])[r - 50] = 1;
+    }
+
+    InsertTabletNode insertTabletNode2 =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.vehicle.d0"),
+            false,
+            measurements,
+            dataTypes,
+            measurementSchemas,
+            times,
+            null,
+            columns,
+            times.length);
+
+    dataRegion.insertTablet(insertTabletNode2);
+    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    QueryDataSource queryDataSource =
+        dataRegion.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null);
+
+    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(1, queryDataSource.getUnseqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+  }
+
+  @Test
   public void testSeqAndUnSeqSyncClose()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
     for (int j = 21; j <= 30; j++) {

@@ -660,7 +660,11 @@ public abstract class AbstractMemTable implements IMemTable {
   public Map<String, Long> getMaxTime() {
     Map<String, Long> latestTimeForEachDevice = new HashMap<>();
     for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
-      latestTimeForEachDevice.put(entry.getKey().toStringID(), entry.getValue().getMaxTime());
+      // When insert null values in to IWritableMemChunkGroup, the maxTime will not be updated.
+      // In this scenario, the maxTime will be Long.MIN_VALUE. We shouldn't return this device.
+      if (entry.getValue().getMaxTime() != Long.MIN_VALUE) {
+        latestTimeForEachDevice.put(entry.getKey().toStringID(), entry.getValue().getMaxTime());
+      }
     }
     return latestTimeForEachDevice;
   }
