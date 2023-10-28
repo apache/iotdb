@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.metrics.core.type;
 
+import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter.AbstractJmxTimerBean;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.type.Timer;
 
 import java.util.concurrent.TimeUnit;
 
-public class IoTDBTimer implements Timer {
+public class IoTDBTimer extends AbstractJmxTimerBean implements Timer {
 
   io.micrometer.core.instrument.Timer timer;
 
@@ -44,6 +45,41 @@ public class IoTDBTimer implements Timer {
 
   @Override
   public long getCount() {
+    return this.count();
+  }
+
+  @Override
+  public double getSum() {
+    return this.takeSnapshot().getSum();
+  }
+
+  @Override
+  public double getMax() {
+    return this.takeSnapshot().getMax();
+  }
+
+  @Override
+  public double getMean() {
+    return this.takeSnapshot().getMean();
+  }
+
+  @Override
+  public int getSize() {
+    return this.takeSnapshot().size();
+  }
+
+  @Override
+  public double get50thPercentile() {
+    return this.takeSnapshot().getValue(0.5);
+  }
+
+  @Override
+  public double get99thPercentile() {
+    return this.takeSnapshot().getValue(0.99);
+  }
+
+  @Override
+  public long count() {
     return timer.count();
   }
 }

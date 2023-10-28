@@ -136,11 +136,11 @@ public class PrometheusReporter implements Reporter {
           prometheusTextWriter.writeHelp(name);
           prometheusTextWriter.writeType(name, metricInfo.getMetaInfo().getType());
           Rate rate = (Rate) metric;
-          prometheusTextWriter.writeSample(name, metricInfo.getTags(), rate.getCount());
+          prometheusTextWriter.writeSample(name, metricInfo.getTags(), rate.count());
           prometheusTextWriter.writeSample(
-              name, addTags(metricInfo.getTags(), "rate", "m1"), rate.getOneMinuteRate());
+              name, addTags(metricInfo.getTags(), "rate", "m1"), rate.oneMinuteRate());
           prometheusTextWriter.writeSample(
-              name, addTags(metricInfo.getTags(), "rate", "mean"), rate.getMeanRate());
+              name, addTags(metricInfo.getTags(), "rate", "mean"), rate.meanRate());
         } else if (metric instanceof Timer) {
           Timer timer = (Timer) metric;
           HistogramSnapshot snapshot = timer.takeSnapshot();
@@ -150,7 +150,7 @@ public class PrometheusReporter implements Reporter {
               metricInfo.getTags(),
               metricType,
               snapshot,
-              timer.getCount(),
+              timer.count(),
               prometheusTextWriter);
         }
       }

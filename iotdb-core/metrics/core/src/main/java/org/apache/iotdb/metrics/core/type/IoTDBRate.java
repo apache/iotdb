@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.core.type;
 
+import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter.AbstractJmxRateBean;
 import org.apache.iotdb.metrics.core.uitls.IoTDBMovingAverage;
 import org.apache.iotdb.metrics.type.Rate;
 
@@ -35,7 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>Now, we only record a gauge for the rate record in micrometer, and we use dropwizard meter to
  * calculate the meter.
  */
-public class IoTDBRate implements Rate {
+public class IoTDBRate extends AbstractJmxRateBean implements Rate {
   AtomicLong atomicLong;
   Meter meter;
 
@@ -46,16 +47,31 @@ public class IoTDBRate implements Rate {
 
   @Override
   public long getCount() {
-    return meter.getCount();
-  }
-
-  @Override
-  public double getOneMinuteRate() {
-    return meter.getOneMinuteRate();
+    return this.count();
   }
 
   @Override
   public double getMeanRate() {
+    return this.meanRate();
+  }
+
+  @Override
+  public double getOneMinuteRate() {
+    return this.oneMinuteRate();
+  }
+
+  @Override
+  public long count() {
+    return meter.getCount();
+  }
+
+  @Override
+  public double oneMinuteRate() {
+    return meter.getOneMinuteRate();
+  }
+
+  @Override
+  public double meanRate() {
     return meter.getMeanRate();
   }
 

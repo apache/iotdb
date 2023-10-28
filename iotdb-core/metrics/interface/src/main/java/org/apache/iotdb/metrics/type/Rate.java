@@ -24,13 +24,13 @@ import java.util.Map;
 public interface Rate extends IMetric {
 
   /** Get the value of rate. */
-  long getCount();
+  long count();
 
   /** Get one minute rate. */
-  double getOneMinuteRate();
+  double oneMinuteRate();
 
   /** Get mean rate. */
-  double getMeanRate();
+  double meanRate();
 
   /** Mark in rate. */
   void mark();
@@ -40,8 +40,8 @@ public interface Rate extends IMetric {
 
   @Override
   default void constructValueMap(Map<String, Object> result) {
-    result.put("count", getCount());
-    result.put("mean", getMeanRate());
-    result.put("m1", getOneMinuteRate());
+    result.put("count", count());
+    result.put("mean", meanRate());
+    result.put("m1", oneMinuteRate());
   }
 }
