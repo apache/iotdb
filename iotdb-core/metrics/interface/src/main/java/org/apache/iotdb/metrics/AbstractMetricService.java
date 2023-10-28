@@ -22,15 +22,10 @@ package org.apache.iotdb.metrics;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.core.IoTDBMetricManager;
-import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
-import org.apache.iotdb.metrics.reporter.iotdb.IoTDBSessionReporter;
-import org.apache.iotdb.metrics.reporter.prometheus.PrometheusReporter;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
@@ -118,39 +113,10 @@ public abstract class AbstractMetricService {
   }
 
   /** Load metric manager according to configuration. */
-  private void loadManager() {
-    metricManager = new IoTDBMetricManager();
-  }
+  protected abstract void loadManager();
 
   /** Load metric reporters according to configuration. */
-  protected void loadReporter() {
-    LOGGER.info("Load metric reporters, type: {}", METRIC_CONFIG.getMetricReporterList());
-    compositeReporter.clearReporter();
-    if (METRIC_CONFIG.getMetricReporterList() == null) {
-      return;
-    }
-    for (ReporterType reporterType : METRIC_CONFIG.getMetricReporterList()) {
-      Reporter reporter = null;
-      switch (reporterType) {
-        case JMX:
-          reporter = new IoTDBJmxReporter();
-          break;
-        case PROMETHEUS:
-          reporter = new PrometheusReporter(metricManager);
-          break;
-        case IOTDB:
-          reporter = new IoTDBSessionReporter(metricManager);
-          break;
-        default:
-          break;
-      }
-      if (reporter == null) {
-        LOGGER.warn("Failed to load reporter which type is {}", reporterType);
-        continue;
-      }
-      compositeReporter.addReporter(reporter);
-    }
-  }
+  protected abstract void loadReporter();
 
   /**
    * Reload internal reporter.
