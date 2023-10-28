@@ -21,6 +21,8 @@ package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.Counter;
 
+import javax.management.ObjectName;
+
 public class DoNothingCounter implements Counter, DoNothingMetric {
   @Override
   public void inc() {
@@ -35,5 +37,10 @@ public class DoNothingCounter implements Counter, DoNothingMetric {
   @Override
   public long count() {
     return 0;
+  }
+
+  @Override
+  public void setObjectName(ObjectName objectName) {
+    // do nothing
   }
 }

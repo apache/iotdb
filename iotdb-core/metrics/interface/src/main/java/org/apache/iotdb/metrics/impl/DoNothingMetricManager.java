@@ -42,7 +42,7 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   public static final DoNothingTimer DO_NOTHING_TIMER = new DoNothingTimer();
 
   @Override
-  public Counter createCounter(MetricInfo metricInfo) {
+  public Counter createCounter() {
     return DO_NOTHING_COUNTER;
   }
 

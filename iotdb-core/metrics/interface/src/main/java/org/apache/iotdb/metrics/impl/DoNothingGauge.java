@@ -21,6 +21,8 @@ package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.Gauge;
 
+import javax.management.ObjectName;
+
 public class DoNothingGauge implements Gauge, DoNothingMetric {
   @Override
   public long value() {
@@ -39,6 +41,11 @@ public class DoNothingGauge implements Gauge, DoNothingMetric {
 
   @Override
   public void set(long value) {
+    // do nothing
+  }
+
+  @Override
+  public void setObjectName(ObjectName objectName) {
     // do nothing
   }
 }

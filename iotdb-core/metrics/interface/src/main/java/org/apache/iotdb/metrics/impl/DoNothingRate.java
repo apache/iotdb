@@ -21,19 +21,21 @@ package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.Rate;
 
+import javax.management.ObjectName;
+
 public class DoNothingRate implements Rate, DoNothingMetric {
   @Override
-  public long getCount() {
+  public long count() {
     return 0;
   }
 
   @Override
-  public double getOneMinuteRate() {
+  public double oneMinuteRate() {
     return 0;
   }
 
   @Override
-  public double getMeanRate() {
+  public double meanRate() {
     return 0;
   }
 
@@ -44,6 +46,11 @@ public class DoNothingRate implements Rate, DoNothingMetric {
 
   @Override
   public void mark(long n) {
+    // do nothing
+  }
+
+  @Override
+  public void setObjectName(ObjectName objectName) {
     // do nothing
   }
 }

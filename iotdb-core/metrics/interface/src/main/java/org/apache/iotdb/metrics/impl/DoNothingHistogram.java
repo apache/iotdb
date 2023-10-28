@@ -22,6 +22,8 @@ package org.apache.iotdb.metrics.impl;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
+import javax.management.ObjectName;
+
 public class DoNothingHistogram implements Histogram, DoNothingMetric {
 
   @Override
@@ -37,5 +39,10 @@ public class DoNothingHistogram implements Histogram, DoNothingMetric {
   @Override
   public HistogramSnapshot takeSnapshot() {
     return new DoNothingHistogramSnapshot();
+  }
+
+  @Override
+  public void setObjectName(ObjectName objectName) {
+    // do nothing
   }
 }
