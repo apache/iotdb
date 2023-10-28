@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.core.type;
 
+import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter.AbstractJmxGaugeBean;
 import org.apache.iotdb.metrics.type.AutoGauge;
 
 import io.micrometer.core.instrument.Tags;
@@ -26,7 +27,7 @@ import io.micrometer.core.instrument.Tags;
 import java.lang.ref.WeakReference;
 import java.util.function.ToDoubleFunction;
 
-public class IoTDBAutoGauge<T> implements AutoGauge {
+public class IoTDBAutoGauge<T> extends AbstractJmxGaugeBean implements AutoGauge {
   private final WeakReference<T> refObject;
   private final ToDoubleFunction<T> mapper;
 
@@ -39,6 +40,11 @@ public class IoTDBAutoGauge<T> implements AutoGauge {
     this.refObject =
         new WeakReference<>(meterRegistry.gauge(metricName, Tags.of(tags), object, mapper));
     this.mapper = mapper;
+  }
+
+  @Override
+  public Number getValue() {
+    return this.value();
   }
 
   @Override

@@ -19,14 +19,45 @@
 
 package org.apache.iotdb.metrics.core.type;
 
+import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter.AbstractJmxHistogramBean;
 import org.apache.iotdb.metrics.type.Histogram;
 
-public class IoTDBHistogram implements Histogram {
+public class IoTDBHistogram extends AbstractJmxHistogramBean implements Histogram {
 
   io.micrometer.core.instrument.DistributionSummary distributionSummary;
 
   public IoTDBHistogram(io.micrometer.core.instrument.DistributionSummary distributionSummary) {
     this.distributionSummary = distributionSummary;
+  }
+
+  @Override
+  public long getCount() {
+    return this.count();
+  }
+
+  @Override
+  public double getMax() {
+    return this.takeSnapshot().getMax();
+  }
+
+  @Override
+  public double getMean() {
+    return this.takeSnapshot().getMean();
+  }
+
+  @Override
+  public int getSize() {
+    return this.takeSnapshot().size();
+  }
+
+  @Override
+  public double get50thPercentile() {
+    return this.takeSnapshot().getValue(0.5);
+  }
+
+  @Override
+  public double get99thPercentile() {
+    return this.takeSnapshot().getValue(0.99);
   }
 
   @Override

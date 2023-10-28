@@ -19,19 +19,21 @@
 
 package org.apache.iotdb.metrics.core.type;
 
+import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter.AbstractJmxCounterBean;
 import org.apache.iotdb.metrics.type.Counter;
 
 import java.util.concurrent.atomic.LongAdder;
 
-public class IoTDBCounter implements Counter {
+public class IoTDBCounter extends AbstractJmxCounterBean implements Counter {
   private final LongAdder count;
-  // Here we retain the micrometer counter variable in order to use its naming system within
-  // micrometer.
-  io.micrometer.core.instrument.Counter counter;
 
-  public IoTDBCounter(io.micrometer.core.instrument.Counter counter) {
-    this.counter = counter;
+  public IoTDBCounter() {
     this.count = new LongAdder();
+  }
+
+  @Override
+  public long getCount() {
+    return this.count();
   }
 
   @Override

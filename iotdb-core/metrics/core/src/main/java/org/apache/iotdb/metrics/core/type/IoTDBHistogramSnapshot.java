@@ -21,6 +21,8 @@ package org.apache.iotdb.metrics.core.type;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
+import javax.management.ObjectName;
+
 public class IoTDBHistogramSnapshot implements HistogramSnapshot {
 
   io.micrometer.core.instrument.DistributionSummary distributionSummary;
@@ -66,5 +68,10 @@ public class IoTDBHistogramSnapshot implements HistogramSnapshot {
   @Override
   public double getMean() {
     return this.histogramSnapshot.mean();
+  }
+
+  @Override
+  public void setObjectName(ObjectName objectName) {
+    // empty body
   }
 }

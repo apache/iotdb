@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.core.uitls;
 
+import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter.AbstractJmxGaugeBean;
 import org.apache.iotdb.metrics.type.AutoGauge;
 
 import com.codahale.metrics.Clock;
@@ -33,7 +34,7 @@ import java.util.function.ToDoubleFunction;
  * Gauges with cache, which have better performance in some read-intensive and calculation-intensive
  * scenarios. Can be served as an additional option.
  */
-public class IoTDBCachedGauge<T> implements AutoGauge {
+public class IoTDBCachedGauge<T> extends AbstractJmxGaugeBean implements AutoGauge {
   /** The timer of metric system */
   private final Clock clock;
   /** The time to reload cache */
@@ -67,8 +68,13 @@ public class IoTDBCachedGauge<T> implements AutoGauge {
   }
 
   @Override
+  public Number getValue() {
+    return this.value();
+  }
+
+  @Override
   public double value() {
-    return getValue();
+    return getGaugeValue();
   }
 
   private double loadValue() {
@@ -78,7 +84,7 @@ public class IoTDBCachedGauge<T> implements AutoGauge {
     return mapper.applyAsDouble(refObj.get());
   }
 
-  public double getValue() {
+  public double getGaugeValue() {
     Double currentValue = this.value.get();
     // if cache expires or is not loaded, we update the cache with calculate function
     if (shouldLoad() || currentValue == null) {
