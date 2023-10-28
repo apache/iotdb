@@ -928,7 +928,6 @@ PRIVILEGE_VALUE
     | USE_CQ
     | USE_PIPE
     | EXTEND_TEMPLATE
-    | AUDIT
     | MANAGE_DATABASE
     | MAINTAIN
     ;
@@ -975,10 +974,6 @@ USE_PIPE
 
 EXTEND_TEMPLATE
     : E X T E N D '_' T E M P L A T E
-    ;
-
-AUDIT
-    : A U D I T
     ;
 
 MANAGE_DATABASE
