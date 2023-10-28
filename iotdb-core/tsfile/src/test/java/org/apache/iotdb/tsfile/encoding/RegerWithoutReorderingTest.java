@@ -373,6 +373,7 @@ public class RegerWithoutReorderingTest {
 
         // delta to Regression
         for (int j = 1; j < block_size; j++) {
+
             int epsilon_r =
                     (ts_block[j][0]
                             - (int) (theta0_r + theta1_r * (float) ts_block[j - 1][0]));
@@ -659,13 +660,14 @@ public class RegerWithoutReorderingTest {
 
 
         pos_encode = encodeRLEBitWidth2Bytes(bit_width_segments, pos_encode, encoded_result);
+//        System.out.println("encodeRLEBitWidth2Bytes pos_encode:"+pos_encode);
         for (int segment_i = 0; segment_i < segment_n; segment_i++) {
             int bit_width_time = bit_width_segments[segment_i][0];
             int bit_width_value = bit_width_segments[segment_i][1];
             pos_encode = bitPacking(delta_segments, 0, segment_i * segment_size + 1, segment_size, bit_width_time, pos_encode, encoded_result);
             pos_encode = bitPacking(delta_segments, 1, segment_i * segment_size + 1, segment_size, bit_width_value, pos_encode, encoded_result);
         }
-
+//        System.out.println("value pos_encode:"+pos_encode);
         return pos_encode;
     }
 
@@ -677,8 +679,8 @@ public class RegerWithoutReorderingTest {
         if (supply_length == 0){
             ts_block = new int[block_size][2];
             for (int j = 0; j < block_size; j++) {
-                data[j + i * block_size][0] -= min_time;
-                ts_block[j][0] = data[j + i * block_size][0];
+//                data[j + i * block_size][0] -= min_time;
+                ts_block[j][0] = (data[j + i * block_size][0]-min_time);
                 ts_block[j][1] = data[j + i * block_size][1];
             }
         }
@@ -686,8 +688,8 @@ public class RegerWithoutReorderingTest {
             ts_block = new int[supply_length][2];
             int end = data.length - i * block_size;
             for (int j = 0; j < end; j++) {
-                data[j + i * block_size][0] -= min_time;
-                ts_block[j][0] = data[j + i * block_size][0];
+//                data[j + i * block_size][0] -= min_time;
+                ts_block[j][0] = (data[j + i * block_size][0]-min_time);
                 ts_block[j][1] = data[j + i * block_size][1];
             }
             for (int j = end; j < supply_length; j++) {
@@ -734,6 +736,7 @@ public class RegerWithoutReorderingTest {
 
         for (int i = 0; i < block_num; i++) {
             encode_pos = REGERBlockEncoder(data, i, block_size, 0, segment_size, encode_pos, encoded_result);
+//            System.out.println(encode_pos);
         }
 
 
@@ -945,6 +948,7 @@ public class RegerWithoutReorderingTest {
         output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
 //        dataset_block_size.add(128);
         output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
+//        dataset_block_size.set(9,8192);
 //        dataset_block_size.add(64);
         output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
 //        dataset_block_size.add(64);
@@ -952,12 +956,12 @@ public class RegerWithoutReorderingTest {
 //        dataset_block_size.add(256);
 
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-//        for (int file_i = 2; file_i < 3; file_i++) {
+//        for (int file_i = 9; file_i < 10; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
 
-        File file = new File(inputPath);
+            File file = new File(inputPath);
             File[] tempList = file.listFiles();
 
             CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
@@ -1097,7 +1101,7 @@ public class RegerWithoutReorderingTest {
 //        dataset_block_size.add(512);
 
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-//        for (int file_i = 6; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 9; file_i < 10; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
@@ -1145,6 +1149,7 @@ public class RegerWithoutReorderingTest {
                     data2_arr[i][1] = data.get(i).get(1);
                 }
                 System.out.println(data2_arr[0][0]);
+//                for (int block_size_exp = 13; block_size_exp >= 12; block_size_exp--) {
                 for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
                     int block_size = (int) Math.pow(2, block_size_exp);
                     System.out.println(block_size);

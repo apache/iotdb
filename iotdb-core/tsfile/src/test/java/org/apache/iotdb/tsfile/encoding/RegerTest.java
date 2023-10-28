@@ -2531,8 +2531,8 @@ public class RegerTest {
         int[][] ts_block_reorder = new int[block_size][2];
         int[][] ts_block_partition = new int[block_size][2];
         for (int j = 0; j < block_size; j++) {
-            data[j + i * block_size][0] -= min_time;
-            ts_block[j][0] = data[j + i * block_size][0];
+//            data[j + i * block_size][0] -= min_time;
+            ts_block[j][0] = (data[j + i * block_size][0]-min_time);
             ts_block[j][1] = data[j + i * block_size][1];
             ts_block_reorder[j][0] = data[j + i * block_size][0];
             ts_block_reorder[j][1] = data[j + i * block_size][1];
@@ -2710,8 +2710,8 @@ public class RegerTest {
             ts_block = new int[block_size][2];
             ts_block_partition = new int[block_size][2];
             for (int j = 0; j < block_size; j++) {
-                data[j + i * block_size][0] -= min_time;
-                ts_block[j][0] = data[j + i * block_size][0];
+//                data[j + i * block_size][0] -= min_time;
+                ts_block[j][0] = (data[j + i * block_size][0]-min_time);
                 ts_block[j][1] = data[j + i * block_size][1];
 //      ts_block_reorder[j][0] = data[j + i * block_size][0];
 //      ts_block_reorder[j][1] = data[j + i * block_size][1];
@@ -2722,8 +2722,8 @@ public class RegerTest {
             ts_block_partition = new int[supply_length][2];
             int end = data.length - i * block_size;
             for (int j = 0; j < end; j++) {
-                data[j + i * block_size][0] -= min_time;
-                ts_block[j][0] = data[j + i * block_size][0];
+//                data[j + i * block_size][0] -= min_time;
+                ts_block[j][0] = (data[j + i * block_size][0]-min_time);
                 ts_block[j][1] = data[j + i * block_size][1];
             }
             for (int j = end; j < supply_length; j++) {
@@ -3667,7 +3667,7 @@ public class RegerTest {
                     long decodeTime = 0;
                     double ratio = 0;
                     double compressed_size = 0;
-                    int repeatTime2 = 1;
+                    int repeatTime2 = 10;
                     long s = System.nanoTime();
                     int length = 0;
                     for (int repeat = 0; repeat < repeatTime2; repeat++)
@@ -3851,7 +3851,7 @@ public class RegerTest {
                     long decodeTime = 0;
                     double ratio = 0;
                     double compressed_size = 0;
-                    int repeatTime2 = 1;
+                    int repeatTime2 = 10;
                     long s = System.nanoTime();
                     int length = 0;
                     for (int repeat = 0; repeat < repeatTime2; repeat++)
