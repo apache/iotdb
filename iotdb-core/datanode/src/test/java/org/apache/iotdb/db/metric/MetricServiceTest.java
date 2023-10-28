@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metric;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.DoNothingMetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;
@@ -57,7 +58,7 @@ public class MetricServiceTest {
   @Test
   public void testMetricService() {
     metricConfig.setMetricLevel(MetricLevel.IMPORTANT);
-    metricService = new DoNothingMetricService();
+    metricService = MetricService.getInstance();
     metricService.startService();
 
     // test metric service
@@ -154,9 +155,9 @@ public class MetricServiceTest {
     Rate rate1 = metricService.getOrCreateRate("rate1", MetricLevel.IMPORTANT, "tag", "value");
     assertNotNull(rate1);
     metricService.rate(10, "rate1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(10, rate1.getCount());
+    assertEquals(10, rate1.count());
     metricService.rate(20, "rate1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(30, rate1.getCount());
+    assertEquals(30, rate1.count());
     Rate rate2 = metricService.getOrCreateRate("rate1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(rate1, rate2);
     rate2 = metricService.getOrCreateRate("rate2", MetricLevel.IMPORTANT);
@@ -222,7 +223,7 @@ public class MetricServiceTest {
     metricService.timer(6, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.timer(8, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.timer(10, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(5, timer1.getCount());
+    assertEquals(5, timer1.count());
     Timer timer2 = metricService.getOrCreateTimer("timer1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(timer1, timer2);
     timer2 = metricService.getOrCreateTimer("timer2", MetricLevel.IMPORTANT);
