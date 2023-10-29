@@ -37,19 +37,31 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.cumulative.CumulativeDistributionSummary;
+import io.micrometer.core.instrument.cumulative.CumulativeTimer;
 import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
+import io.micrometer.core.instrument.distribution.pause.NoPauseDetector;
+import io.micrometer.core.instrument.distribution.pause.PauseDetector;
 import io.micrometer.core.instrument.simple.SimpleConfig;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.ToDoubleFunction;
 
 public class IoTDBMetricManager extends AbstractMetricManager {
 
-  io.micrometer.core.instrument.MeterRegistry meterRegistry;
+  /** The clock which is used in Metric system */
+  private final Clock clock = Clock.SYSTEM;
+  /** The Micrometer framework config */
+  private final SimpleConfig config = SimpleConfig.DEFAULT;
+  /** The default histogram config which is used to create IoTDBTimer and IoTDBHistogram */
+  private final DistributionStatisticConfig defaultHistogramConfig =
+      DistributionStatisticConfig.builder()
+          .expiry(config.step())
+          .build()
+          .merge(DistributionStatisticConfig.DEFAULT);
 
   private IoTDBMetricManager() {
-    meterRegistry = new SimpleMeterRegistry();
+    // empty body
   }
 
   @Override
@@ -68,13 +80,6 @@ public class IoTDBMetricManager extends AbstractMetricManager {
 
   @Override
   public Histogram createHistogram(MetricInfo metricInfo) {
-    // create default config
-    DistributionStatisticConfig defaultHistogramConfig =
-        DistributionStatisticConfig.builder()
-            .expiry(SimpleConfig.DEFAULT.step())
-            .build()
-            .merge(DistributionStatisticConfig.DEFAULT);
-
     // merge default config with IoTDB's config
     DistributionStatisticConfig distributionStatisticConfig =
         DistributionStatisticConfig.builder()
@@ -85,11 +90,11 @@ public class IoTDBMetricManager extends AbstractMetricManager {
     // set expiry
     DistributionStatisticConfig merged =
         distributionStatisticConfig.merge(
-            DistributionStatisticConfig.builder().expiry(SimpleConfig.DEFAULT.step()).build());
+            DistributionStatisticConfig.builder().expiry(config.step()).build());
 
     // create distributionSummary
     io.micrometer.core.instrument.DistributionSummary distributionSummary =
-        new CumulativeDistributionSummary(null, Clock.SYSTEM, merged, 1.0, false);
+        new CumulativeDistributionSummary(null, clock, merged, 1.0, false);
 
     return new IoTDBHistogram(distributionSummary);
   }
@@ -101,11 +106,23 @@ public class IoTDBMetricManager extends AbstractMetricManager {
 
   @Override
   public Timer createTimer(MetricInfo metricInfo) {
+    // set pauseDetector
+    PauseDetector pauseDetector = new NoPauseDetector();
+
+    // merge default config with IoTDB's config
+    DistributionStatisticConfig distributionStatisticConfig =
+        DistributionStatisticConfig.builder()
+            .percentiles(0.5, 0.99)
+            .build()
+            .merge(defaultHistogramConfig);
+
+    // set expiry
+    DistributionStatisticConfig merged =
+        distributionStatisticConfig.merge(
+            DistributionStatisticConfig.builder().expiry(config.step()).build());
+
     io.micrometer.core.instrument.Timer timer =
-        io.micrometer.core.instrument.Timer.builder(metricInfo.getName())
-            .tags(metricInfo.getTagsInArray())
-            .publishPercentiles(0.5, 0.99)
-            .register(meterRegistry);
+        new CumulativeTimer(null, clock, merged, pauseDetector, TimeUnit.SECONDS, false);
     return new IoTDBTimer(timer);
   }
 
