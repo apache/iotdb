@@ -54,6 +54,10 @@ public class TsFileEpochManager {
         });
 
     final TsFileEpoch epoch = filePath2Epoch.remove(filePath);
+    // When all data corresponding to this TsFileEpoch have been extracted, update the state
+    // of the extractors processing this TsFileEpoch.
+    epoch.setExtractorsRecentProcessedTsFileEpochState();
+
     LOGGER.info("All data in TsFileEpoch {} was extracted", epoch);
     return new PipeRealtimeEvent(
         event,

@@ -260,6 +260,16 @@
             <artifactId>jetty-servlet</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.glassfish.jersey.inject</groupId>
+            <artifactId>jersey-hk2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
         </dependency>
@@ -311,11 +321,6 @@
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpcore</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -515,8 +520,10 @@
                         <!-- These are used at runtime in tests -->
                         <usedDependency>io.jsonwebtoken:jjwt-impl</usedDependency>
                         <usedDependency>io.jsonwebtoken:jjwt-jackson</usedDependency>
-                        <!-- We need these dependencies as they provide the metric managers used in tests -->
+                        <!-- We need this dependency as it provides the metric managers used in tests -->
                         <usedDependency>org.apache.iotdb:metrics-core</usedDependency>
+                        <!-- This dependency is required at runtime, when esnabling the rest service -->
+                        <usedDependency>org.glassfish.jersey.inject:jersey-hk2</usedDependency>
                     </usedDependencies>
                 </configuration>
             </plugin>

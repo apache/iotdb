@@ -315,7 +315,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         }
         return AuthorityChecker.getOptTSStatus(
             AuthorityChecker.checkGrantOption(userName, privilegeList, nodeNameList),
-            "Has no permission to execute"
+            "Has no permission to execute "
                 + authorType
                 + ", please ensure you have these privileges and the grant option is TRUE when granted");
 

@@ -37,6 +37,7 @@ import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -215,28 +216,29 @@ public class LocalFileUserAccessor implements IUserAccessor {
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
 
-    try (BufferedOutputStream outputStream =
-        new BufferedOutputStream(Files.newOutputStream(userProfile.toPath()))) {
-      try {
-        // for IOTDB 1.2, the username's length will be stored as a negative number.
-        byte[] strBuffer = user.getName().getBytes(STRING_ENCODING);
-        IOUtils.writeInt(outputStream, -1 * strBuffer.length, encodingBufferLocal);
-        outputStream.write(strBuffer);
-        IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
-        IOUtils.writeInt(outputStream, user.getAllSysPrivileges(), encodingBufferLocal);
+    FileOutputStream fileOutputStream = new FileOutputStream(userProfile);
+    BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
+    try {
+      // for IOTDB 1.2, the username's length will be stored as a negative number.
+      byte[] strBuffer = user.getName().getBytes(STRING_ENCODING);
+      IOUtils.writeInt(outputStream, -1 * strBuffer.length, encodingBufferLocal);
+      outputStream.write(strBuffer);
+      IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
+      IOUtils.writeInt(outputStream, user.getAllSysPrivileges(), encodingBufferLocal);
 
-        int privilegeNum = user.getPathPrivilegeList().size();
-        for (int i = 0; i < privilegeNum; i++) {
-          PathPrivilege pathPrivilege = user.getPathPrivilegeList().get(i);
-          IOUtils.writePathPrivilege(
-              outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
-        }
-
-        outputStream.flush();
-      } catch (Exception e) {
-        throw new IOException(e);
+      int privilegeNum = user.getPathPrivilegeList().size();
+      for (int i = 0; i < privilegeNum; i++) {
+        PathPrivilege pathPrivilege = user.getPathPrivilegeList().get(i);
+        IOUtils.writePathPrivilege(
+            outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
       }
+
+    } catch (Exception e) {
+      throw new IOException(e);
     } finally {
+      outputStream.flush();
+      fileOutputStream.getFD().sync();
+      outputStream.close();
       encodingBufferLocal.remove();
     }
 
@@ -248,19 +250,20 @@ public class LocalFileUserAccessor implements IUserAccessor {
                 + ROLE_SUFFIX
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
-    try (BufferedOutputStream roleOutputStream =
-        new BufferedOutputStream(Files.newOutputStream(roleProfile.toPath()))) {
-      try {
-        int userNum = user.getRoleList().size();
-        for (int i = 0; i < userNum; i++) {
-          IOUtils.writeString(
-              roleOutputStream, user.getRoleList().get(i), STRING_ENCODING, encodingBufferLocal);
-        }
-        roleOutputStream.flush();
-      } catch (Exception e) {
-        throw new IOException(e);
+    fileOutputStream = new FileOutputStream(roleProfile);
+    outputStream = new BufferedOutputStream(fileOutputStream);
+    try {
+      int userNum = user.getRoleList().size();
+      for (int i = 0; i < userNum; i++) {
+        IOUtils.writeString(
+            outputStream, user.getRoleList().get(i), STRING_ENCODING, encodingBufferLocal);
       }
+    } catch (Exception e) {
+      throw new IOException(e);
     } finally {
+      outputStream.flush();
+      fileOutputStream.getFD().sync();
+      outputStream.close();
       encodingBufferLocal.remove();
     }
 
