@@ -605,9 +605,10 @@ public class LoadTsfileAnalyzer {
           }
 
           // check encoding
-          if (!tsFileSchema.getEncodingType().equals(iotdbSchema.getEncodingType())) {
+          if (LOGGER.isDebugEnabled()
+              && !tsFileSchema.getEncodingType().equals(iotdbSchema.getEncodingType())) {
             // we allow a measurement to have different encodings in different chunks
-            LOGGER.warn(
+            LOGGER.debug(
                 "Encoding type not match, measurement: {}{}{}, "
                     + "TsFile encoding: {}, IoTDB encoding: {}",
                 device,

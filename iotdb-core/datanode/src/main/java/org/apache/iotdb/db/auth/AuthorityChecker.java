@@ -232,7 +232,7 @@ public class AuthorityChecker {
       builder = new TsBlockBuilder(types);
       TUserResp user = authResp.getPermissionInfo().getUserInfo();
       if (user != null) {
-        appendPriBuilder("", "", user.getSysPriSet(), user.getSysPriSetGrantOpt(), builder);
+        appendPriBuilder("", "root.**", user.getSysPriSet(), user.getSysPriSetGrantOpt(), builder);
         for (TPathPrivilege path : user.getPrivilegeList()) {
           appendPriBuilder("", path.getPath(), path.getPriSet(), path.getPriGrantOpt(), builder);
         }
@@ -242,7 +242,11 @@ public class AuthorityChecker {
       while (it.hasNext()) {
         TRoleResp role = it.next().getValue();
         appendPriBuilder(
-            role.getRoleName(), "", role.getSysPriSet(), role.getSysPriSetGrantOpt(), builder);
+            role.getRoleName(),
+            "root.**",
+            role.getSysPriSet(),
+            role.getSysPriSetGrantOpt(),
+            builder);
         for (TPathPrivilege path : role.getPrivilegeList()) {
           appendPriBuilder(
               role.getRoleName(), path.getPath(), path.getPriSet(), path.getPriGrantOpt(), builder);

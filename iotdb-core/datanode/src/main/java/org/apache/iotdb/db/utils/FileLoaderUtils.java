@@ -149,8 +149,11 @@ public class FileLoaderUtils {
                     resource.getTimeIndexType() != 1,
                     context.isDebug());
         if (timeSeriesMetadata != null) {
+          List<Modification> pathModifications =
+              context.getPathModifications(resource.getModFile(), seriesPath);
+          timeSeriesMetadata.setModified(!pathModifications.isEmpty());
           timeSeriesMetadata.setChunkMetadataLoader(
-              new DiskChunkMetadataLoader(resource, seriesPath, context, filter));
+              new DiskChunkMetadataLoader(resource, context, filter, pathModifications));
         }
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
@@ -165,9 +168,6 @@ public class FileLoaderUtils {
       if (timeSeriesMetadata != null) {
         long t2 = System.nanoTime();
         try {
-          List<Modification> pathModifications =
-              context.getPathModifications(resource.getModFile(), seriesPath);
-          timeSeriesMetadata.setModified(!pathModifications.isEmpty());
           if (timeSeriesMetadata.getStatistics().getStartTime()
               > timeSeriesMetadata.getStatistics().getEndTime()) {
             return null;
@@ -224,6 +224,7 @@ public class FileLoaderUtils {
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
               new MemAlignedChunkMetadataLoader(
                   resource, alignedPath, context, filter, queryAllSensors));
+          // mem's modification already done in generating chunkmetadata
         }
       }
 
@@ -240,9 +241,6 @@ public class FileLoaderUtils {
                   alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime())) {
             return null;
           }
-
-          // set modifications to each aligned path
-          setModifications(resource, alignedTimeSeriesMetadata, alignedPath, context);
         } finally {
           SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
               TIMESERIES_METADATA_MODIFICATION_ALIGNED, System.nanoTime() - t2);
@@ -292,7 +290,7 @@ public class FileLoaderUtils {
             new AlignedTimeSeriesMetadata(timeColumn, Collections.emptyList());
         alignedTimeSeriesMetadata.setChunkMetadataLoader(
             new DiskAlignedChunkMetadataLoader(
-                resource, alignedPath, context, filter, queryAllSensors));
+                resource, context, filter, queryAllSensors, Collections.emptyList()));
       } else {
         List<TimeseriesMetadata> valueTimeSeriesMetadataList =
             new ArrayList<>(valueMeasurementList.size());
@@ -309,24 +307,29 @@ public class FileLoaderUtils {
           valueTimeSeriesMetadataList.add(valueColumn);
         }
         if (exist) {
+          // set modifications to each aligned path
           alignedTimeSeriesMetadata =
               new AlignedTimeSeriesMetadata(timeColumn, valueTimeSeriesMetadataList);
+          List<List<Modification>> pathModifications =
+              setModifications(resource, alignedTimeSeriesMetadata, alignedPath, context);
+
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
               new DiskAlignedChunkMetadataLoader(
-                  resource, alignedPath, context, filter, queryAllSensors));
+                  resource, context, filter, queryAllSensors, pathModifications));
         }
       }
     }
     return alignedTimeSeriesMetadata;
   }
 
-  private static void setModifications(
+  private static List<List<Modification>> setModifications(
       TsFileResource resource,
       AlignedTimeSeriesMetadata alignedTimeSeriesMetadata,
       AlignedPath alignedPath,
       QueryContext context) {
     List<TimeseriesMetadata> valueTimeSeriesMetadataList =
         alignedTimeSeriesMetadata.getValueTimeseriesMetadataList();
+    List<List<Modification>> res = new ArrayList<>();
     boolean modified = false;
     for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
       if (valueTimeSeriesMetadataList.get(i) != null) {
@@ -334,10 +337,14 @@ public class FileLoaderUtils {
             context.getPathModifications(
                 resource.getModFile(), alignedPath.getPathWithMeasurement(i));
         valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
+        res.add(pathModifications);
         modified = (modified || !pathModifications.isEmpty());
+      } else {
+        res.add(Collections.emptyList());
       }
     }
     alignedTimeSeriesMetadata.getTimeseriesMetadata().setModified(modified);
+    return res;
   }
 
   /**

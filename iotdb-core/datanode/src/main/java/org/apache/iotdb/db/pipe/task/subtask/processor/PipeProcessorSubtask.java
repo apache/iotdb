@@ -106,14 +106,14 @@ public class PipeProcessorSubtask extends PipeSubtask {
       if (!isClosed.get()) {
         if (event instanceof TabletInsertionEvent) {
           pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
-          PipeProcessorMetrics.getInstance().getTabletRate(taskID).mark();
+          PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
         } else if (event instanceof TsFileInsertionEvent) {
           pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
-          PipeProcessorMetrics.getInstance().getTsFileRate(taskID).mark();
+          PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
         } else if (event instanceof PipeHeartbeatEvent) {
           pipeProcessor.process(event, outputEventCollector);
           ((PipeHeartbeatEvent) event).onProcessed();
-          PipeProcessorMetrics.getInstance().getPipeHeartbeatRate(taskID).mark();
+          PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
         } else {
           pipeProcessor.process(event, outputEventCollector);
         }

@@ -5587,12 +5587,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     deleteTimeseriesInMManager(seriesPaths);
 
-    for (TsFileResource resource : seqResources) {
-      resource.setTimeIndexType((byte) 2);
-    }
-    for (TsFileResource resource : unseqResources) {
-      resource.setTimeIndexType((byte) 2);
-    }
+    seqResources.forEach(TsFileResource::degradeTimeIndex);
+    unseqResources.forEach(TsFileResource::degradeTimeIndex);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;

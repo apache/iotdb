@@ -521,7 +521,7 @@ createPipe
     ;
 
 extractorAttributesClause
-    : WITH EXTRACTOR
+    : WITH (EXTRACTOR | SOURCE)
         LR_BRACKET
         (extractorAttributeClause COMMA)* extractorAttributeClause?
         RR_BRACKET
@@ -543,7 +543,7 @@ processorAttributeClause
     ;
 
 connectorAttributesClause
-    : WITH CONNECTOR
+    : WITH (CONNECTOR | SINK)
         LR_BRACKET
         (connectorAttributeClause COMMA)* connectorAttributeClause?
         RR_BRACKET
