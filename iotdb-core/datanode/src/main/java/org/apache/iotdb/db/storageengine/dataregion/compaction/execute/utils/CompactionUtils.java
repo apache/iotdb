@@ -500,7 +500,8 @@ public class CompactionUtils {
 
   public static boolean validateSingleTsFileDataCorrectness(TsFileResource resource) {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
-      if (!validateMagicString(reader)) {
+      if (!reader.isComplete()) {
+        logger.error("{} {} illegal tsfile", resource.getTsFilePath(), VALIDATE_FAILED);
         return false;
       }
 
@@ -566,7 +567,11 @@ public class CompactionUtils {
                 long pageHeaderEndTime =
                     isHasStatistic ? pageHeader.getEndTime() : chunkMetadata.getEndTime();
                 if (!validateTimeFrame(
-                    alignedTimeBatch, pageTimestamps, pageHeaderStartTime, pageHeaderEndTime)) {
+                    alignedTimeBatch,
+                    pageTimestamps,
+                    pageHeaderStartTime,
+                    pageHeaderEndTime,
+                    resource)) {
                   return false;
                 }
                 alignedTimeBatch.add(pageTimestamps);
@@ -591,12 +596,16 @@ public class CompactionUtils {
                   long currentTime = batchData.currentTime();
                   if (!lastNoAlignedPageTimeStamps.isEmpty()
                       && currentTime <= lastNoAlignedPageTimeStamps.getLast()) {
-                    logger.error("{} time ranges overlap between pages.", VALIDATE_FAILED);
+                    logger.error(
+                        "{} {} time ranges overlap between pages.",
+                        resource.getTsFilePath(),
+                        VALIDATE_FAILED);
                     return false;
                   }
                   if (currentTime <= previousTime) {
                     logger.error(
-                        "{} the timestamp in the page is repeated or not incremental.",
+                        "{} {} the timestamp in the page is repeated or not incremental.",
+                        resource.getTsFilePath(),
                         VALIDATE_FAILED);
                     return false;
                   }
@@ -607,13 +616,15 @@ public class CompactionUtils {
                 }
                 if (pageHeaderStartTime != pageStartTime) {
                   logger.error(
-                      "{} the start time in page is different from that in page header.",
+                      "{} {} the start time in page is different from that in page header.",
+                      resource.getTsFilePath(),
                       VALIDATE_FAILED);
                   return false;
                 }
                 if (pageHeaderEndTime != previousTime) {
                   logger.error(
-                      "{} the end time in page is different from that in page header.",
+                      "{} {} the end time in page is different from that in page header.",
+                      resource.getTsFilePath(),
                       VALIDATE_FAILED);
                   return false;
                 }
@@ -646,21 +657,28 @@ public class CompactionUtils {
       List<long[]> timeBatch,
       long[] pageTimestamps,
       long pageHeaderStartTime,
-      long pageHeaderEndTime) {
+      long pageHeaderEndTime,
+      TsFileResource tsFileResource) {
     if (pageHeaderStartTime != pageTimestamps[0]) {
       logger.error(
-          "{} the start time in page is different from that in page header.", VALIDATE_FAILED);
+          "{} {} the start time in page is different from that in page header.",
+          tsFileResource.getTsFilePath(),
+          VALIDATE_FAILED);
       return false;
     }
     if (pageHeaderEndTime != pageTimestamps[pageTimestamps.length - 1]) {
       logger.error(
-          "{} the end time in page is different from that in page header.", VALIDATE_FAILED);
+          "{} {} the end time in page is different from that in page header.",
+          tsFileResource.getTsFilePath(),
+          VALIDATE_FAILED);
       return false;
     }
     for (int i = 0; i < pageTimestamps.length - 1; i++) {
       if (pageTimestamps[i + 1] <= pageTimestamps[i]) {
         logger.error(
-            "{} the timestamp in the page is repeated or not incremental.", VALIDATE_FAILED);
+            "{} {} the timestamp in the page is repeated or not incremental.",
+            tsFileResource.getTsFilePath(),
+            VALIDATE_FAILED);
         return false;
       }
     }
@@ -668,19 +686,12 @@ public class CompactionUtils {
     if (timeBatch.size() >= 1) {
       long[] lastPageTimes = timeBatch.get(timeBatch.size() - 1);
       if (lastPageTimes[lastPageTimes.length - 1] >= pageTimestamps[0]) {
-        logger.error("{} time ranges overlap between pages.", VALIDATE_FAILED);
+        logger.error(
+            "{} {} time ranges overlap between pages.",
+            tsFileResource.getTsFilePath(),
+            VALIDATE_FAILED);
         return false;
       }
-    }
-    return true;
-  }
-
-  private static boolean validateMagicString(TsFileSequenceReader reader) throws IOException {
-    String headMagic = reader.readHeadMagic();
-    String tailMagic = reader.readTailMagic();
-    if (!headMagic.equals(TSFileConfig.MAGIC_STRING) || !headMagic.equals(tailMagic)) {
-      logger.error("{} illegal tsfile", VALIDATE_FAILED);
-      return false;
     }
     return true;
   }
