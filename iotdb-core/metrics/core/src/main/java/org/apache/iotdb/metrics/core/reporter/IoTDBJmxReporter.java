@@ -169,7 +169,7 @@ public class IoTDBJmxReporter implements JmxReporter {
         new IoTDBJmxReporter(
             IoTDBMetricManager.getInstance(),
             ManagementFactory.getPlatformMBeanServer(),
-            IoTDBMetricObjNameFactory.getInstance());;
+            IoTDBMetricObjNameFactory.getInstance());
 
     private IoTDBJmxReporterHolder() {
       // empty constructor
