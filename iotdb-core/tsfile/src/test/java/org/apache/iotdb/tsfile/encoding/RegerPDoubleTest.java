@@ -18,7 +18,7 @@ import java.util.Stack;
 
 import static java.lang.Math.abs;
 
-public class RegerPFloatTest {
+public class RegerPDoubleTest {
 
 
     public static int min3(int a, int b, int c) {
@@ -253,11 +253,11 @@ public class RegerPFloatTest {
         return decode_pos;
     }
 
-    public static void float2bytes(float f, int pos_encode, byte[] encode_result) {
-        int fbit = Float.floatToIntBits(f);
-        byte[] b = new byte[4];
-        for (int i = 0; i < 4; i++) {
-            b[i] = (byte) (fbit >> (24 - i * 8));
+    public static void double2bytes(double f, int pos_encode, byte[] encode_result) {
+        long fbit = Double.doubleToLongBits(f);
+        byte[] b = new byte[8];
+        for (int i = 0; i < 8; i++) {
+            b[i] = (byte) (fbit >> (56 - i * 8));
         }
         int len = b.length;
 
@@ -270,29 +270,6 @@ public class RegerPFloatTest {
         }
     }
 
-    public static float bytes2float(ArrayList<Byte> b, int index) {
-        int l;
-        l = b.get(index);
-        l &= 0xff;
-        l |= ((long) b.get(index + 1) << 8);
-        l &= 0xffff;
-        l |= ((long) b.get(index + 2) << 16);
-        l &= 0xffffff;
-        l |= ((long) b.get(index + 3) << 24);
-        return Float.intBitsToFloat(l);
-    }
-
-    public static float bytes2float(byte[] b, int index) {
-        int l;
-        l = b[index];
-        l &= 0xff;
-        l |= ((long) b[index + 1] << 8);
-        l &= 0xffff;
-        l |= ((long) b[index + 2] << 16);
-        l &= 0xffffff;
-        l |= ((long) b[index + 3] << 24);
-        return Float.intBitsToFloat(l);
-    }
 
 
     public static byte[] int2Bytes(int integer) {
@@ -310,23 +287,7 @@ public class RegerPFloatTest {
         return bytes;
     }
 
-    public static byte[] float2bytes(float f) {
-        int fbit = Float.floatToIntBits(f);
-        byte[] b = new byte[4];
-        for (int i = 0; i < 4; i++) {
-            b[i] = (byte) (fbit >> (24 - i * 8));
-        }
-        int len = b.length;
-        byte[] dest = new byte[len];
-        System.arraycopy(b, 0, dest, 0, len);
-        byte temp;
-        for (int i = 0; i < len / 2; ++i) {
-            temp = dest[i];
-            dest[i] = dest[len - i - 1];
-            dest[len - i - 1] = temp;
-        }
-        return dest;
-    }
+
 
     public static byte[] bitPacking(ArrayList<ArrayList<Integer>> numbers, int index, int start, int block_num, int bit_width) {
         block_num = block_num / 8;
@@ -479,66 +440,9 @@ public class RegerPFloatTest {
         result.add(t0);
     }
 
-    public static void terminate(
-            ArrayList<ArrayList<Integer>> ts_block, ArrayList<Float> coefficient, int p) {
-        int length = ts_block.size();
-        assert length > p;
-        int size = length - p;
-
-
-        double[] param;
-        try {
-            OLSMultipleLinearRegression ols1 = new OLSMultipleLinearRegression();
-            double[][] X1 = new double[size][p];
-            double[] Y1 = new double[size];
-            for (int i = 0; i < size; i++) {
-                X1[i] = new double[p];
-                for (int j = 0; j < p; j++) {
-                    X1[i][j] = ts_block.get(i + j).get(0);
-                }
-                Y1[i] = ts_block.get(i + p).get(0);
-            }
-            ols1.newSampleData(Y1, X1);
-            param = ols1.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
-            //System.out.println(Arrays.toString(param));
-        } catch (Exception e) {
-            param = new double[p + 1];
-            for (int i = 0; i <= p; i++) {
-                param[i] = 0;
-            }
-        }
-
-
-        double[] param2;
-        try {
-            OLSMultipleLinearRegression ols2 = new OLSMultipleLinearRegression();
-            double[][] X2 = new double[size][p];
-            double[] Y2 = new double[size];
-            for (int i = 0; i < size; i++) {
-                X2[i] = new double[p];
-                for (int j = 0; j < p; j++) {
-                    X2[i][j] = ts_block.get(i + j).get(1);
-                }
-                Y2[i] = ts_block.get(i + p).get(1);
-            }
-            ols2.newSampleData(Y2, X2);
-            param2 = ols2.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
-            //System.out.println(Arrays.toString(param2));
-        } catch (Exception exception) {
-            param2 = new double[p + 1];
-            for (int i = 0; i <= p; i++) {
-                param2[i] = 0;
-            }
-        }
-
-        for (int i = 0; i <= p; i++) {
-            coefficient.add((float) param[i]);
-            coefficient.add((float) param2[i]);
-        }
-    }
 
     public static void terminate(
-            int[][] ts_block, float[] coefficient, int p) {
+            int[][] ts_block, double[] coefficient, int p) {
         int length = ts_block.length;
         assert length > p;
         int size = length - p;
@@ -590,8 +494,8 @@ public class RegerPFloatTest {
         }
 
         for (int i = 0; i <= p; i++) {
-            coefficient[2 * i] = (float) param[i];
-            coefficient[2 * i + 1] = (float) param2[i];
+            coefficient[2 * i] =  param[i];
+            coefficient[2 * i + 1] =  param2[i];
         }
     }
 
@@ -706,180 +610,6 @@ public class RegerPFloatTest {
         return isMoveable;
     }
 
-    private static ArrayList<ArrayList<Integer>> getEncodeBitsRegressionP(
-            ArrayList<ArrayList<Integer>> ts_block,
-            int block_size,
-            ArrayList<Integer> raw_length,
-            ArrayList<Float> coefficient,
-            int p) {
-        int timestamp_delta_min = Integer.MAX_VALUE;
-        int value_delta_min = Integer.MAX_VALUE;
-        int max_timestamp = Integer.MIN_VALUE;
-        int max_timestamp_i = -1;
-        int max_value = Integer.MIN_VALUE;
-        int max_value_i = -1;
-        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
-        coefficient.clear();
-
-        terminate(ts_block, coefficient, p);
-
-        ArrayList<Integer> tmp0 = new ArrayList<>();
-        tmp0.add(ts_block.get(0).get(0));
-        tmp0.add(ts_block.get(0).get(1));
-        ts_block_delta.add(tmp0);
-        // regression residual
-        for (int j = 1; j < p; j++) {
-            float epsilon_r = (float) ((float) ts_block.get(j).get(0) - coefficient.get(0));
-            float epsilon_v = (float) ((float) ts_block.get(j).get(1) - coefficient.get(1));
-            for (int pi = 1; pi <= j; pi++) {
-                epsilon_r -= (float) (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
-                epsilon_v -= (float) (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
-            }
-
-
-            ArrayList<Integer> tmp = new ArrayList<>();
-            tmp.add((int) epsilon_r);
-            tmp.add((int) epsilon_v);
-            ts_block_delta.add(tmp);
-        }
-
-        // regression residual
-        for (int j = p; j < block_size; j++) {
-            float epsilon_r = (float) ts_block.get(j).get(0) - coefficient.get(0);
-            float epsilon_v = (float) ts_block.get(j).get(1) - coefficient.get(1);
-            for (int pi = 1; pi <= p; pi++) {
-                epsilon_r -= coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0);
-                epsilon_v -= coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1);
-            }
-
-            if (epsilon_r < timestamp_delta_min) {
-                timestamp_delta_min = (int) epsilon_r;
-            }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = (int) epsilon_v;
-            }
-            if (epsilon_r > max_timestamp) {
-                max_timestamp = (int) epsilon_r;
-            }
-            if (epsilon_v > max_value) {
-                max_value = (int) epsilon_v;
-            }
-            ArrayList<Integer> tmp = new ArrayList<>();
-            tmp.add((int) epsilon_r);
-            tmp.add((int) epsilon_v);
-            ts_block_delta.add(tmp);
-        }
-        int length = 0;
-        for (int j = block_size - 1; j >= p; j--) {
-            float epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
-            float epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
-            length += getBitWith((int) epsilon_r);
-            length += getBitWith((int) epsilon_v);
-            ArrayList<Integer> tmp = new ArrayList<>();
-            tmp.add((int) epsilon_r);
-            tmp.add((int) epsilon_v);
-            ts_block_delta.set(j, tmp);
-        }
-        int max_bit_width_interval = getBitWith(max_timestamp - timestamp_delta_min);
-        int max_bit_width_value = getBitWith(max_value - value_delta_min);
-//        int length = (max_bit_width_interval + max_bit_width_value) * (block_size - 1);
-        raw_length.clear();
-
-        raw_length.add(length);
-        raw_length.add(max_bit_width_interval);
-        raw_length.add(max_bit_width_value);
-
-        raw_length.add(timestamp_delta_min);
-        raw_length.add(value_delta_min);
-
-        return ts_block_delta;
-    }
-
-    private static ArrayList<ArrayList<Integer>> getEncodeBitsRegressionPNoTrain(
-            ArrayList<ArrayList<Integer>> ts_block,
-            int block_size,
-            ArrayList<Integer> raw_length,
-            ArrayList<Float> coefficient,
-            int p) {
-        int timestamp_delta_min = Integer.MAX_VALUE;
-        int value_delta_min = Integer.MAX_VALUE;
-        int max_timestamp = Integer.MIN_VALUE;
-        int max_timestamp_i = -1;
-        int max_value = Integer.MIN_VALUE;
-        int max_value_i = -1;
-        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
-
-        ArrayList<Integer> tmp0 = new ArrayList<>();
-        tmp0.add(ts_block.get(0).get(0));
-        tmp0.add(ts_block.get(0).get(1));
-        ts_block_delta.add(tmp0);
-        // regression residual
-        for (int j = 1; j < p; j++) {
-            float epsilon_r = (float) ((float) ts_block.get(j).get(0) - coefficient.get(0));
-            float epsilon_v = (float) ((float) ts_block.get(j).get(1) - coefficient.get(1));
-            for (int pi = 1; pi <= j; pi++) {
-                epsilon_r -= (float) (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
-                epsilon_v -= (float) (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
-            }
-
-
-            ArrayList<Integer> tmp = new ArrayList<>();
-            tmp.add((int) epsilon_r);
-            tmp.add((int) epsilon_v);
-            ts_block_delta.add(tmp);
-        }
-
-        // regression residual
-        for (int j = p; j < block_size; j++) {
-            float epsilon_r = (float) ts_block.get(j).get(0) - coefficient.get(0);
-            float epsilon_v = (float) ts_block.get(j).get(1) - coefficient.get(1);
-            for (int pi = 1; pi <= p; pi++) {
-                epsilon_r -= coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0);
-                epsilon_v -= coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1);
-            }
-
-            if (epsilon_r < timestamp_delta_min) {
-                timestamp_delta_min = (int) epsilon_r;
-            }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = (int) epsilon_v;
-            }
-            if (epsilon_r > max_timestamp) {
-                max_timestamp = (int) epsilon_r;
-            }
-            if (epsilon_v > max_value) {
-                max_value = (int) epsilon_v;
-            }
-            ArrayList<Integer> tmp = new ArrayList<>();
-            tmp.add((int) epsilon_r);
-            tmp.add((int) epsilon_v);
-            ts_block_delta.add(tmp);
-        }
-        int length = 0;
-        for (int j = block_size - 1; j >= p; j--) {
-            float epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
-            float epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
-            length += getBitWith((int) epsilon_r);
-            length += getBitWith((int) epsilon_v);
-            ArrayList<Integer> tmp = new ArrayList<>();
-            tmp.add((int) epsilon_r);
-            tmp.add((int) epsilon_v);
-            ts_block_delta.set(j, tmp);
-        }
-        int max_bit_width_interval = getBitWith(max_timestamp - timestamp_delta_min);
-        int max_bit_width_value = getBitWith(max_value - value_delta_min);
-
-        raw_length.clear();
-
-        raw_length.add(length);
-        raw_length.add(max_bit_width_interval);
-        raw_length.add(max_bit_width_value);
-
-        raw_length.add(timestamp_delta_min);
-        raw_length.add(value_delta_min);
-
-        return ts_block_delta;
-    }
 
     private static int getIstarClose(int alpha, ArrayList<Integer> j_star_list, int[][] new_length_list, int[] raw_length) {
         int min_i = 0;
@@ -905,7 +635,7 @@ public class RegerPFloatTest {
             int alpha,
             int block_size,
             int[] raw_length,
-            float[] theta,
+            double[] theta,
             int p) {
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
@@ -925,11 +655,11 @@ public class RegerPFloatTest {
             return j_star;
         }
         for (int j = 1; j < p; j++) {
-            float epsilon_r = (float) ((float) ts_block[j][0] - theta[0]);
-            float epsilon_v = (float) ((float) ts_block[j][1] - theta[1]);
+            double epsilon_r =  ((double) ts_block[j][0] - theta[0]);
+            double epsilon_v = ((double) ts_block[j][1] - theta[1]);
             for (int pi = 1; pi <= j; pi++) {
-                epsilon_r -= (float) (theta[2 * pi] * (float) ts_block[j - pi][0]);
-                epsilon_v -= (float) (theta[2 * pi + 1] * (float) ts_block[j - pi][1]);
+                epsilon_r -=  (theta[2 * pi] * (double) ts_block[j - pi][0]);
+                epsilon_v -=  (theta[2 * pi + 1] * (double) ts_block[j - pi][1]);
             }
 
             if (epsilon_r < timestamp_delta_min) {
@@ -942,12 +672,12 @@ public class RegerPFloatTest {
 
         // regression residual
         for (int j = p; j < block_size; j++) {
-            float epsilon_r = (float) ts_block[j][0] - theta[0];
-            float epsilon_v = (float) ts_block[j][1] - theta[1];
+            double epsilon_r = (double) ts_block[j][0] - theta[0];
+            double epsilon_v = (double) ts_block[j][1] - theta[1];
 //            System.out.println("p="+p);
             for (int pi = 1; pi < p; pi++) {
-                epsilon_r -= (theta[2 * pi] * (float) ts_block[j - pi][0]);
-                epsilon_v -= (theta[2 * pi + 1] * (float) ts_block[j - pi][1]);
+                epsilon_r -= (theta[2 * pi] * (double) ts_block[j - pi][0]);
+                epsilon_v -= (theta[2 * pi + 1] * (double) ts_block[j - pi][1]);
             }
             if (j != alpha && ((int) epsilon_r == max_timestamp || (int) epsilon_v == max_value)) {
                 max_index.add(j);
@@ -1198,7 +928,7 @@ public class RegerPFloatTest {
             int[][] ts_block,
             int alpha,
             int j_star,
-            float[] theta,
+            double[] theta,
             int p) {
         int[][] tmp_ts_block = ts_block.clone();
         int block_size = ts_block.length;
@@ -1214,28 +944,14 @@ public class RegerPFloatTest {
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
         int[][] ts_block_delta = new int[block_size - p][2];
-//        for (int j = 1; j < p; j++) {
-//            float epsilon_r = (float) ((float) ts_block[j][0] - theta[0]);
-//            float epsilon_v = (float) ((float) ts_block[j][1] - theta[1]);
-//            for (int pi = 1; pi <= j; pi++) {
-//                epsilon_r -= (float) (theta[2 * pi] * (float) ts_block[j - pi][0]);
-//                epsilon_v -= (float) (theta[2 * pi + 1] * (float) ts_block[j - pi][1]);
-//            }
-//
-//            if (epsilon_r < timestamp_delta_min) {
-//                timestamp_delta_min = (int) epsilon_r;
-//            }
-//            if (epsilon_v < value_delta_min) {
-//                value_delta_min = (int) epsilon_v;
-//            }
-//        }
+
         // regression residual
         for (int j = p; j < block_size; j++) {
-            float epsilon_r = (float) ts_block[j][0] - theta[0];
-            float epsilon_v = (float) ts_block[j][1] - theta[1];
+            double epsilon_r = (double) ts_block[j][0] - theta[0];
+            double epsilon_v = (double) ts_block[j][1] - theta[1];
             for (int pi = 1; pi < p; pi++) {
-                epsilon_r -= theta[2 * pi] * (float) ts_block[j - pi][0];
-                epsilon_v -= theta[2 * pi + 1] * (float) ts_block[j - pi][1];
+                epsilon_r -= theta[2 * pi] * (double) ts_block[j - pi][0];
+                epsilon_v -= theta[2 * pi + 1] * (double) ts_block[j - pi][1];
             }
             ts_block_delta[j - p][0] = (int) epsilon_r;
             ts_block_delta[j - p][1] = (int) epsilon_v;
@@ -1262,7 +978,7 @@ public class RegerPFloatTest {
             int[][] ts_block,
             int alpha,
             int j_star,
-            float[] theta,
+            double[] theta,
             int p) {
         int[][] tmp_ts_block = ts_block.clone();
         int block_size = ts_block.length;
@@ -1280,11 +996,11 @@ public class RegerPFloatTest {
 
         // regression residual
         for (int j = p; j < block_size; j++) {
-            float epsilon_r = (float) ts_block[j][0] - theta[0];
-            float epsilon_v = (float) ts_block[j][1] - theta[1];
+            double epsilon_r = (double) ts_block[j][0] - theta[0];
+            double epsilon_v = (double) ts_block[j][1] - theta[1];
             for (int pi = 1; pi < p; pi++) {
-                epsilon_r -= theta[2 * pi] * (float) ts_block[j - pi][0];
-                epsilon_v -= theta[2 * pi + 1] * (float) ts_block[j - pi][1];
+                epsilon_r -= theta[2 * pi] * (double) ts_block[j - pi][0];
+                epsilon_v -= theta[2 * pi + 1] * (double) ts_block[j - pi][1];
             }
             ts_block_delta[j - p][0] = (int) epsilon_r;
             ts_block_delta[j - p][1] = (int) epsilon_v;
@@ -1311,7 +1027,7 @@ public class RegerPFloatTest {
             int[][] ts_block,
             int alpha,
             int j_star,
-            float[] theta,
+            double[] theta,
             int p) {
         int[][] tmp_ts_block = ts_block.clone();
         int block_size = ts_block.length;
@@ -1330,11 +1046,11 @@ public class RegerPFloatTest {
 
         // regression residual
         for (int j = p; j < block_size; j++) {
-            float epsilon_r = (float) ts_block[j][0] - theta[0];
-            float epsilon_v = (float) ts_block[j][1] - theta[1];
+            double epsilon_r = (double) ts_block[j][0] - theta[0];
+            double epsilon_v = (double) ts_block[j][1] - theta[1];
             for (int pi = 1; pi < p; pi++) {
-                epsilon_r -= theta[2 * pi] * (float) ts_block[j - pi][0];
-                epsilon_v -= theta[2 * pi + 1] * (float) ts_block[j - pi][1];
+                epsilon_r -= theta[2 * pi] * (double) ts_block[j - pi][0];
+                epsilon_v -= theta[2 * pi + 1] * (double) ts_block[j - pi][1];
             }
             ts_block_delta[j - p][0] = (int) epsilon_r;
             ts_block_delta[j - p][1] = (int) epsilon_v;
@@ -1361,7 +1077,7 @@ public class RegerPFloatTest {
             int[][] ts_block,
             int alpha,
             int j_star,
-            float[] theta,
+            double[] theta,
             int p) {
         int[][] tmp_ts_block = ts_block.clone();
         int block_size = ts_block.length;
@@ -1380,11 +1096,11 @@ public class RegerPFloatTest {
 
         // regression residual
         for (int j = p; j < block_size; j++) {
-            float epsilon_r = (float) ts_block[j][0] - theta[0];
-            float epsilon_v = (float) ts_block[j][1] - theta[1];
+            double epsilon_r = (double) ts_block[j][0] - theta[0];
+            double epsilon_v = (double) ts_block[j][1] - theta[1];
             for (int pi = 1; pi < p; pi++) {
-                epsilon_r -= theta[2 * pi] * (float) ts_block[j - pi][0];
-                epsilon_v -= theta[2 * pi + 1] * (float) ts_block[j - pi][1];
+                epsilon_r -= theta[2 * pi] * (double) ts_block[j - pi][0];
+                epsilon_v -= theta[2 * pi + 1] * (double) ts_block[j - pi][1];
             }
             ts_block_delta[j - p][0] = (int) epsilon_r;
             ts_block_delta[j - p][1] = (int) epsilon_v;
@@ -1410,7 +1126,7 @@ public class RegerPFloatTest {
     private static int[] adjustCase5(
             int[][] ts_block,
             int alpha,
-            float[] theta,
+            double[] theta,
             int p) {
         int[][] tmp_ts_block = ts_block.clone();
         int block_size = ts_block.length;
@@ -1427,11 +1143,11 @@ public class RegerPFloatTest {
 
         // regression residual
         for (int j = p; j < block_size; j++) {
-            float epsilon_r = (float) ts_block[j][0] - theta[0];
-            float epsilon_v = (float) ts_block[j][1] - theta[1];
+            double epsilon_r = (double) ts_block[j][0] - theta[0];
+            double epsilon_v = (double) ts_block[j][1] - theta[1];
             for (int pi = 1; pi < p; pi++) {
-                epsilon_r -= theta[2 * pi] * (float) ts_block[j - pi][0];
-                epsilon_v -= theta[2 * pi + 1] * (float) ts_block[j - pi][1];
+                epsilon_r -= theta[2 * pi] * (double) ts_block[j - pi][0];
+                epsilon_v -= theta[2 * pi + 1] * (double) ts_block[j - pi][1];
             }
             ts_block_delta[j - p][0] = (int) epsilon_r;
             ts_block_delta[j - p][1] = (int) epsilon_v;
@@ -1472,117 +1188,6 @@ public class RegerPFloatTest {
     }
 
 
-    public static int getIStarP(
-            ArrayList<ArrayList<Integer>> ts_block,
-            int block_size,
-            ArrayList<Integer> raw_length,
-            ArrayList<Float> coefficient,
-            int p) {
-        int timestamp_delta_min = Integer.MAX_VALUE;
-        int value_delta_min = Integer.MAX_VALUE;
-        int timestamp_delta_max = Integer.MIN_VALUE;
-        int value_delta_max = Integer.MIN_VALUE;
-        int timestamp_delta_max_index = -1;
-        int value_delta_max_index = -1;
-
-        int i_star = 0;
-
-        // regression residual
-        for (int j = 1; j < p; j++) {
-            float epsilon_r = (float) ((float) ts_block.get(j).get(0) - coefficient.get(0));
-            float epsilon_v = (float) ((float) ts_block.get(j).get(1) - coefficient.get(1));
-            for (int pi = 1; pi <= j; pi++) {
-                epsilon_r -= (float) (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
-                epsilon_v -= (float) (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
-            }
-
-            if (epsilon_r < timestamp_delta_min) {
-                timestamp_delta_min = (int) epsilon_r;
-            }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = (int) epsilon_v;
-            }
-            if (epsilon_r > timestamp_delta_max) {
-                timestamp_delta_max = (int) epsilon_r;
-            }
-            if (epsilon_v > value_delta_max) {
-                value_delta_max = (int) epsilon_v;
-            }
-        }
-
-        // regression residual
-        for (int j = p; j < block_size; j++) {
-            float epsilon_r = (float) ((float) ts_block.get(j).get(0) - coefficient.get(0));
-            float epsilon_v = (float) ((float) ts_block.get(j).get(1) - coefficient.get(1));
-            for (int pi = 1; pi <= p; pi++) {
-                epsilon_r -= (float) (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
-                epsilon_v -= (float) (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
-            }
-
-            if (epsilon_r < timestamp_delta_min) {
-                timestamp_delta_min = (int) epsilon_r;
-            }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = (int) epsilon_v;
-            }
-            if (epsilon_r > timestamp_delta_max) {
-                timestamp_delta_max = (int) epsilon_r;
-            }
-            if (epsilon_v > value_delta_max) {
-                value_delta_max = (int) epsilon_v;
-            }
-        }
-        timestamp_delta_max -= timestamp_delta_min;
-        value_delta_max -= value_delta_min;
-        if (value_delta_max <= timestamp_delta_max) i_star = timestamp_delta_max_index;
-        else i_star = value_delta_max_index;
-        return i_star;
-    }
-
-    public static ArrayList<Byte> encode2Bytes(
-            ArrayList<ArrayList<Integer>> ts_block_delta,
-            ArrayList<Integer> raw_length,
-            ArrayList<Float> coefficient,
-            ArrayList<Integer> result2,
-            int p) {
-        ArrayList<Byte> encoded_result = new ArrayList<>();
-
-        // encode interval0 and value0
-        for (int i = 0; i < p; i++) {
-            byte[] interval0_byte = int2Bytes(ts_block_delta.get(i).get(0));
-            for (byte b : interval0_byte) encoded_result.add(b);
-            byte[] value0_byte = int2Bytes(ts_block_delta.get(i).get(1));
-            for (byte b : value0_byte) encoded_result.add(b);
-        }
-        // encode theta
-        byte[] theta0_r_byte = float2bytes(coefficient.get(0) + (float) raw_length.get(3));
-        for (byte b : theta0_r_byte) encoded_result.add(b);
-        byte[] theta0_v_byte = float2bytes(coefficient.get(1) + (float) raw_length.get(4));
-        for (byte b : theta0_v_byte) encoded_result.add(b);
-
-
-        for (int i = 2; i < coefficient.size(); i++) {
-            byte[] theta_byte = float2bytes(coefficient.get(i));
-            for (byte b : theta_byte) encoded_result.add(b);
-        }
-
-        byte[] max_bit_width_interval_byte = bitWidth2Bytes(raw_length.get(1));
-        for (byte b : max_bit_width_interval_byte) encoded_result.add(b);
-        byte[] timestamp_bytes = bitPacking(ts_block_delta, 0, p, ts_block_delta.size() - p, raw_length.get(1));
-        for (byte b : timestamp_bytes) encoded_result.add(b);
-
-
-        // encode value
-        byte[] max_bit_width_value_byte = bitWidth2Bytes(raw_length.get(2));
-        for (byte b : max_bit_width_value_byte) encoded_result.add(b);
-        byte[] value_bytes = bitPacking(ts_block_delta, 1, p, ts_block_delta.size() - p, raw_length.get(2));
-        for (byte b : value_bytes) encoded_result.add(b);
-
-        byte[] td_common_byte = int2Bytes(result2.get(0));
-        for (byte b : td_common_byte) encoded_result.add(b);
-
-        return encoded_result;
-    }
 
     public static ArrayList<Byte> encodeRLEBitWidth2Bytes(
             ArrayList<ArrayList<Integer>> bit_width_segments) {
@@ -1834,7 +1439,7 @@ public class RegerPFloatTest {
         return pos_encode;
     }
 
-    private static int encodeSegment2Bytes(int[][] delta_segments, int[][] bit_width_segments, int[] raw_length, int segment_size, int p, float[] theta, int pos_encode, byte[] encoded_result) {
+    private static int encodeSegment2Bytes(int[][] delta_segments, int[][] bit_width_segments, int[] raw_length, int segment_size, int p, double[] theta, int pos_encode, byte[] encoded_result) {
 
         int block_size = delta_segments.length;
         int segment_n = (block_size-p) / segment_size;
@@ -1842,17 +1447,15 @@ public class RegerPFloatTest {
         pos_encode += 4;
         int2Bytes(delta_segments[0][1], pos_encode, encoded_result);
         pos_encode += 4;
-        float2bytes(theta[0] + raw_length[3], pos_encode, encoded_result);
+        double2bytes(theta[0] + raw_length[3], pos_encode, encoded_result);
         pos_encode += 4;
-//        float2bytes(theta[1], pos_encode, encoded_result);
-//        pos_encode += 4;
-        float2bytes(theta[1] + raw_length[4], pos_encode, encoded_result);
+
+        double2bytes(theta[1] + raw_length[4], pos_encode, encoded_result);
         pos_encode += 4;
-//        float2bytes(theta[3], pos_encode, encoded_result);
-//        pos_encode += 4;
+
 
         for (int i = 2; i < theta.length; i++) {
-            float2bytes(theta[i], pos_encode, encoded_result);
+            double2bytes(theta[i], pos_encode, encoded_result);
             pos_encode += 4;
         }
 //        System.out.println(delta_segments[0][0]);
@@ -1878,13 +1481,13 @@ public class RegerPFloatTest {
             int[][] ts_block,
             int block_size,
             int[] raw_length,
-            float[] theta,
+            double[] theta,
             int segment_size,
             int p) {
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
         int[][] ts_block_delta = new int[ts_block.length][2];
-//        theta = new float[4];
+
 
         terminate(ts_block, theta, p);
 
@@ -1893,22 +1496,22 @@ public class RegerPFloatTest {
         ts_block_delta[0][1] = ts_block[0][1];
 
         for (int j = 1; j < p; j++) {
-            float epsilon_r = (float) ((float) ts_block[j][0] - theta[0]);
-            float epsilon_v = (float) ((float) ts_block[j][1] - theta[1]);
+            double epsilon_r = ((double) ts_block[j][0] - theta[0]);
+            double epsilon_v =  ((double) ts_block[j][1] - theta[1]);
             for (int pi = 1; pi <= j; pi++) {
-                epsilon_r -= (float) (theta[2 * pi] * (float) ts_block[j - pi][0]);
-                epsilon_v -= (float) (theta[2 * pi + 1] * (float) ts_block[j - pi][1]);
+                epsilon_r -= (theta[2 * pi] * (double) ts_block[j - pi][0]);
+                epsilon_v -= (theta[2 * pi + 1] * (double) ts_block[j - pi][1]);
             }
             ts_block_delta[j][0] = (int) epsilon_r;
             ts_block_delta[j][1] = (int) epsilon_v;
         }
 
         for (int j = p; j < block_size; j++) {
-            float epsilon_r = (float) ts_block[j][0] - theta[0];
-            float epsilon_v = (float) ts_block[j][1] - theta[1];
+            double epsilon_r = (double) ts_block[j][0] - theta[0];
+            double epsilon_v = (double) ts_block[j][1] - theta[1];
             for (int pi = 1; pi < p; pi++) {
-                epsilon_r -= theta[2 * pi] * (float) ts_block[j - pi][0];
-                epsilon_v -= theta[2 * pi + 1] * (float) ts_block[j - pi][1];
+                epsilon_r -= theta[2 * pi] * (double) ts_block[j - pi][0];
+                epsilon_v -= theta[2 * pi + 1] * (double) ts_block[j - pi][1];
             }
 
             if (epsilon_r < timestamp_delta_min) {
@@ -1964,34 +1567,33 @@ public class RegerPFloatTest {
             int[][] ts_block,
             int block_size,
             int[] raw_length,
-            float[] theta,
+            double[] theta,
             int segment_size,
             int p) {
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
         int[][] ts_block_delta = new int[ts_block.length][2];
-//        theta = new float[4];
 
         ts_block_delta[0][0] = ts_block[0][0];
         ts_block_delta[0][1] = ts_block[0][1];
 
         for (int j = 1; j < p; j++) {
-            float epsilon_r = (float) ((float) ts_block[j][0] - theta[0]);
-            float epsilon_v = (float) ((float) ts_block[j][1] - theta[1]);
+            double epsilon_r =  ((double) ts_block[j][0] - theta[0]);
+            double epsilon_v =  ((double) ts_block[j][1] - theta[1]);
             for (int pi = 1; pi <= j; pi++) {
-                epsilon_r -= (float) (theta[2 * pi] * (float) ts_block[j - pi][0]);
-                epsilon_v -= (float) (theta[2 * pi + 1] * (float) ts_block[j - pi][1]);
+                epsilon_r -= (theta[2 * pi] * (double) ts_block[j - pi][0]);
+                epsilon_v -=  (theta[2 * pi + 1] * (double) ts_block[j - pi][1]);
             }
             ts_block_delta[j][0] = (int) epsilon_r;
             ts_block_delta[j][1] = (int) epsilon_v;
         }
 
         for (int j = p; j < block_size; j++) {
-            float epsilon_r = (float) ts_block[j][0] - theta[0];
-            float epsilon_v = (float) ts_block[j][1] - theta[1];
+            double epsilon_r = (double) ts_block[j][0] - theta[0];
+            double epsilon_v = (double) ts_block[j][1] - theta[1];
             for (int pi = 1; pi < p; pi++) {
-                epsilon_r -= theta[2 * pi] * (float) ts_block[j - pi][0];
-                epsilon_v -= theta[2 * pi + 1] * (float) ts_block[j - pi][1];
+                epsilon_r -= theta[2 * pi] * (double) ts_block[j - pi][0];
+                epsilon_v -= theta[2 * pi + 1] * (double) ts_block[j - pi][1];
             }
 
             if (epsilon_r < timestamp_delta_min) {
@@ -2037,7 +1639,7 @@ public class RegerPFloatTest {
         return ts_block_delta;
     }
 
-    private static int numberOfEncodeSegment2Bytes(int[][] delta_segments, int[][] bit_width_segments, int[] raw_length, int segment_size, int p, float[] theta) {
+    private static int numberOfEncodeSegment2Bytes(int[][] delta_segments, int[][] bit_width_segments, int[] raw_length, int segment_size, int p, double[] theta) {
         ArrayList<Byte> encoded_result = new ArrayList<>();
         int block_size = delta_segments.length;
         int segment_n = (block_size-p) / segment_size;
@@ -2058,7 +1660,7 @@ public class RegerPFloatTest {
     }
 
     public static int[] getIStar(
-            int[][] ts_block, ArrayList<Integer> min_index, int block_size, int index, float[] theta, int p, int k) {
+            int[][] ts_block, ArrayList<Integer> min_index, int block_size, int index, double[] theta, int p, int k) {
 
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
@@ -2070,11 +1672,11 @@ public class RegerPFloatTest {
 
         // regression residual
         for (int j = 1; j < p; j++) {
-            float epsilon_r = (float) ((float) ts_block[j][0] - theta[0]);
-            float epsilon_v = (float) ((float) ts_block[j][1] - theta[1]);
+            double epsilon_r = ((double) ts_block[j][0] - theta[0]);
+            double epsilon_v =  ((double) ts_block[j][1] - theta[1]);
             for (int pi = 1; pi <= j; pi++) {
-                epsilon_r -= (float) (theta[2 * pi] * (float) ts_block[j - pi][0]);
-                epsilon_v -= (float) (theta[2 * pi + 1] * (float) ts_block[j - pi][1]);
+                epsilon_r -= (theta[2 * pi] * (double) ts_block[j - pi][0]);
+                epsilon_v -= (theta[2 * pi + 1] * (double) ts_block[j - pi][1]);
             }
 
             if (epsilon_r < timestamp_delta_min) {
@@ -2093,12 +1695,12 @@ public class RegerPFloatTest {
             }
         }
         for (int j = p; j < block_size; j++) {
-            float epsilon_r = (float) ((float) ts_block[j][0] - theta[0]);
-            float epsilon_v = (float) ((float) ts_block[j][1] - theta[1]);
+            double epsilon_r =  ((double) ts_block[j][0] - theta[0]);
+            double epsilon_v =  ((double) ts_block[j][1] - theta[1]);
 
             for (int pi = 1; pi < p; pi++) {
-                epsilon_r -= (float) (theta[2 * pi] * (float) ts_block[j - pi][0]);
-                epsilon_v -= (float) (theta[2 * pi + 1] * (float) ts_block[j - pi][1]);
+                epsilon_r -=  (theta[2 * pi] * (double) ts_block[j - pi][0]);
+                epsilon_v -=  (theta[2 * pi + 1] * (double) ts_block[j - pi][1]);
             }
             if (epsilon_r < timestamp_delta_min) {
                 timestamp_delta_min = (int) epsilon_r;
@@ -2137,7 +1739,7 @@ public class RegerPFloatTest {
             int[][] ts_block,
             ArrayList<Integer> min_index,
             int block_size,
-            float[] theta,
+            double[] theta,
             int p,
             int k) {
         int timestamp_delta_min = Integer.MAX_VALUE;
@@ -2152,11 +1754,11 @@ public class RegerPFloatTest {
         int[][] ts_block_delta_value = new int[block_size - 1][2];
         // regression residual
         for (int j = 1; j < p; j++) {
-            float epsilon_r = (float) ((float) ts_block[j][0] - theta[0]);
-            float epsilon_v = (float) ((float) ts_block[j][1] - theta[1]);
+            double epsilon_r = ((double) ts_block[j][0] - theta[0]);
+            double epsilon_v =  ((double) ts_block[j][1] - theta[1]);
             for (int pi = 1; pi <= j; pi++) {
-                epsilon_r -= (float) (theta[2 * pi] * (float) ts_block[j - pi][0]);
-                epsilon_v -= (float) (theta[2 * pi + 1] * (float) ts_block[j - pi][1]);
+                epsilon_r -= (double) (theta[2 * pi] * (double) ts_block[j - pi][0]);
+                epsilon_v -= (double) (theta[2 * pi + 1] * (double) ts_block[j - pi][1]);
             }
 
             if (epsilon_r < timestamp_delta_min) {
@@ -2172,12 +1774,12 @@ public class RegerPFloatTest {
             ts_block_delta_value[j - 1][1] = (int) epsilon_v;
         }
         for (int j = p; j < block_size; j++) {
-            float epsilon_r = (float) ((float) ts_block[j][0] - theta[0]);
-            float epsilon_v = (float) ((float) ts_block[j][1] - theta[1]);
+            double epsilon_r =  ((double) ts_block[j][0] - theta[0]);
+            double epsilon_v =  ((double) ts_block[j][1] - theta[1]);
 
             for (int pi = 1; pi <= p; pi++) {
-                epsilon_r -= (float) (theta[2 * pi] * (float) ts_block[j - pi][0]);
-                epsilon_v -= (float) (theta[2 * pi + 1] * (float) ts_block[j - pi][1]);
+                epsilon_r -=  (theta[2 * pi] * (double) ts_block[j - pi][0]);
+                epsilon_v -=  (theta[2 * pi + 1] * (double) ts_block[j - pi][1]);
             }
             if (epsilon_r < timestamp_delta_min) {
                 timestamp_delta_min = (int) epsilon_r;
@@ -2246,7 +1848,7 @@ public class RegerPFloatTest {
 
         // raw-order
         int[] raw_length = new int[5]; // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-        float[] theta = new float[2 * p + 2];
+        double[] theta = new double[2 * p + 2];
         int[][] ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length, theta, segment_size, p);
         int[][] bit_width_segments_partition = segmentBitPacking(ts_block_delta, block_size, segment_size);
         raw_length[0] = numberOfEncodeSegment2Bytes(ts_block_delta, bit_width_segments_partition, raw_length, segment_size, p, theta);
@@ -2258,7 +1860,7 @@ public class RegerPFloatTest {
         });
 //    quickSort(ts_block, 0, 0, block_size - 1);
         int[] time_length = new int[5];// length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-        float[] theta_time = new float[2 * p + 2];
+        double[] theta_time = new double[2 * p + 2];
         int[][] ts_block_delta_time = getEncodeBitsRegression(ts_block, block_size, time_length, theta_time, segment_size, p);
         int[][] bit_width_segments_time = segmentBitPacking(ts_block_delta_time, block_size, segment_size);
         time_length[0] = numberOfEncodeSegment2Bytes(ts_block_delta_time, bit_width_segments_time, time_length, segment_size,p, theta_time);
@@ -2273,7 +1875,7 @@ public class RegerPFloatTest {
 //    quickSort(ts_block, 1, 0, block_size - 1);
 
         int[] reorder_length = new int[5];
-        float[] theta_reorder = new float[2 * p + 2];
+        double[] theta_reorder = new double[2 * p + 2];
         int[][] ts_block_delta_reorder = getEncodeBitsRegression(ts_block, block_size, reorder_length, theta_reorder, segment_size, p);
         int[][] bit_width_segments_value = segmentBitPacking(ts_block_delta_reorder, block_size, segment_size);
         reorder_length[0] = numberOfEncodeSegment2Bytes(ts_block_delta_reorder, bit_width_segments_value, reorder_length, segment_size, p, theta_reorder);
@@ -2441,11 +2043,11 @@ public class RegerPFloatTest {
 //        System.out.println(Arrays.deepToString(ts_block));
 
         int[] reorder_length = new int[5];
-        float[] theta_reorder = new float[2*p+2];
+        double[] theta_reorder = new double[2*p+2];
         int[] time_length = new int[5];// length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-        float[] theta_time = new float[2*p+2];
+        double[] theta_time = new double[2*p+2];
         int[] raw_length = new int[5]; // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-        float[] theta = new float[2*p+2];
+        double[] theta = new double[2*p+2];
         int[][] ts_block_delta_reorder = new int[block_size][2];
         int[][] bit_width_segments_value;
         int[][] ts_block_delta_time = new int[block_size][2];
@@ -2766,20 +2368,20 @@ public class RegerPFloatTest {
             }
 
             int[] raw_length = new int[5];
-            float[] theta = new float[2*p+2];
+            double[] theta = new double[2*p+2];
             int[][] ts_block_delta = getEncodeBitsRegression(ts_block_time, block_size, raw_length, theta, segment_size, p);
             int[][] bit_width_segments = segmentBitPacking(ts_block_delta, block_size, segment_size);
             length_time += numberOfEncodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, p, theta);
 
 
             int[] raw_length_value = new int[5];
-            float[] theta_value = new float[2*p+2];
+            double[] theta_value = new double[2*p+2];
             int[][] ts_block_delta_value = getEncodeBitsRegression(ts_block_value, block_size, raw_length_value, theta_value, segment_size, p);
             int[][] bit_width_segments_value = segmentBitPacking(ts_block_delta_value, block_size, segment_size);
             length_value += numberOfEncodeSegment2Bytes(ts_block_delta_value, bit_width_segments_value, raw_length_value, segment_size, p, theta_value);
 
             int[] raw_length_partition = new int[5];
-            float[] theta_partition = new float[2*p+2];
+            double[] theta_partition = new double[2*p+2];
             int[][] ts_block_delta_partition = getEncodeBitsRegression(ts_block_partition, block_size, raw_length_partition, theta_partition, segment_size, p);
             int[][] bit_width_segments_partition = segmentBitPacking(ts_block_delta_partition, block_size, segment_size);
             length_partition += numberOfEncodeSegment2Bytes(ts_block_delta_partition, bit_width_segments_partition, raw_length_partition, segment_size, p, theta_partition);
@@ -2836,52 +2438,6 @@ public class RegerPFloatTest {
         return encode_pos;
     }
 
-    private static ArrayList<Byte> encodeSegment2Bytes(ArrayList<ArrayList<Integer>> delta_segments,
-                                                       ArrayList<ArrayList<Integer>> bit_width_segments,
-                                                       ArrayList<Integer> raw_length, int segment_size, ArrayList<Float> coefficient, ArrayList<Integer> result2, int p) {
-        ArrayList<Byte> encoded_result = new ArrayList<>();
-        int block_size = delta_segments.size();
-        int segment_n = (block_size - p) / segment_size;
-        // encode theta
-
-
-        // encode interval0 and value0
-        for (int i = 0; i < p; i++) {
-            byte[] interval0_byte = int2Bytes(delta_segments.get(i).get(0));
-            for (byte b : interval0_byte) encoded_result.add(b);
-            byte[] value0_byte = int2Bytes(delta_segments.get(i).get(1));
-            for (byte b : value0_byte) encoded_result.add(b);
-        }
-
-        // encode theta
-        byte[] theta0_r_byte = float2bytes(coefficient.get(0) + (float) raw_length.get(3));
-        for (byte b : theta0_r_byte) encoded_result.add(b);
-        byte[] theta0_v_byte = float2bytes(coefficient.get(1) + (float) raw_length.get(4));
-        for (byte b : theta0_v_byte) encoded_result.add(b);
-
-
-        for (int i = 2; i < coefficient.size(); i++) {
-            byte[] theta_byte = float2bytes(coefficient.get(i));
-            for (byte b : theta_byte) encoded_result.add(b);
-        }
-
-        encoded_result.addAll(encodeRLEBitWidth2Bytes(bit_width_segments));
-        for (int segment_i = 0; segment_i < segment_n; segment_i++) {
-            int bit_width_time = bit_width_segments.get(segment_i).get(0);
-            int bit_width_value = bit_width_segments.get(segment_i).get(1);
-
-            byte[] timestamp_bytes = bitPacking(delta_segments, 0, segment_i * segment_size + 1, segment_size, bit_width_time);
-            for (byte b : timestamp_bytes) encoded_result.add(b);
-            byte[] value_bytes = bitPacking(delta_segments, 1, segment_i * segment_size + 1, segment_size, bit_width_value);
-            for (byte b : value_bytes) encoded_result.add(b);
-        }
-
-        byte[] td_common_byte = int2Bytes(result2.get(0));
-        for (byte b : td_common_byte) encoded_result.add(b);
-
-        return encoded_result;
-    }
-
 
     public static double bytes2Double(ArrayList<Byte> encoded, int start, int num) {
         if (num > 8) {
@@ -2895,17 +2451,6 @@ public class RegerPFloatTest {
         return Double.longBitsToDouble(value);
     }
 
-    public static float byte2float2(ArrayList<Byte> b, int index) {
-        int l;
-        l = b.get(index);
-        l &= 0xff;
-        l |= ((long) b.get(index + 1) << 8);
-        l &= 0xffff;
-        l |= ((long) b.get(index + 2) << 16);
-        l &= 0xffffff;
-        l |= ((long) b.get(index + 3) << 24);
-        return Float.intBitsToFloat(l);
-    }
 
     public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
         int value = 0;
@@ -2941,10 +2486,10 @@ public class RegerPFloatTest {
     }
 
     @Test
-    public void REGERPFloat() throws IOException {
+    public void REGERPDouble() throws IOException {
 
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
-        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/p_float/";
+        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/p_double/";
         String input_parent_dir = parent_dir + "trans_data/";
 
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -3110,7 +2655,7 @@ public class RegerPFloatTest {
 
                     String[] record = {
                             f.toString(),
-                            "REGER-32-FLOAT",
+                            "REGER-32-DOUBLE",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data.size()),
@@ -3128,10 +2673,10 @@ public class RegerPFloatTest {
         }
     }
     @Test
-    public void REGERPFloatVaryP() throws IOException {
+    public void REGERPDoubleVaryP() throws IOException {
 
         String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
-        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/p_float_vary_p/";
+        String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/p_double_vary_p/";
         String input_parent_dir = parent_dir + "trans_data/";
 
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -3296,7 +2841,7 @@ public class RegerPFloatTest {
 
                     String[] record = {
                             f.toString(),
-                            "REGER-32-FLOAT",
+                            "REGER-32-DOUBLE",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data.size()),
