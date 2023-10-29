@@ -43,12 +43,12 @@ public class IoTDBMetricObjNameFactory implements ObjectNameFactory {
   }
 
   /**
-   * TODO：注释
+   * Create objectName for a certain metric.
    *
-   * @param type
-   * @param domain
-   * @param name
-   * @return
+   * @param type metric type
+   * @param domain metric domain
+   * @param name metric name
+   * @return metric's objectName
    */
   @Override
   public ObjectName createName(String type, String domain, String name) {
@@ -82,7 +82,7 @@ public class IoTDBMetricObjNameFactory implements ObjectNameFactory {
       try {
         return new ObjectName(domain, "name", ObjectName.quote(name));
       } catch (MalformedObjectNameException e1) {
-        LOGGER.warn("Unable to register {} {}", type, name, e1);
+        LOGGER.warn("IoTDB Metric: Unable to register {} {}", type, name, e1);
         throw new RuntimeException(e1);
       }
     }

@@ -63,8 +63,8 @@ public abstract class AbstractMetricManager {
   /**
    * Notify IoTDB JmxReporter to register metric in JMX
    *
-   * @param metric
-   * @param metricInfo
+   * @param metric the created metric
+   * @param metricInfo the created metric info
    */
   private void notifyReporterOnAdd(IMetric metric, MetricInfo metricInfo) {
     // if the reporter type is not JMX
@@ -78,8 +78,8 @@ public abstract class AbstractMetricManager {
   /**
    * Notify IoTDB JmxReporter to remove metric in JMX
    *
-   * @param metric
-   * @param metricInfo
+   * @param metric the removed metric
+   * @param metricInfo the removed metric info
    */
   private void notifyReporterOnRemove(IMetric metric, MetricInfo metricInfo) {
     // if the reporter type is not JMX
@@ -438,6 +438,7 @@ public abstract class AbstractMetricManager {
     MetricInfo metricInfo = new MetricInfo(type, name, tags);
     if (metrics.containsKey(metricInfo)) {
       if (type == metricInfo.getMetaInfo().getType()) {
+        notifyReporterOnRemove(metrics.get(metricInfo), metricInfo);
         nameToMetaInfo.remove(metricInfo.getName());
         metrics.remove(metricInfo);
         removeMetric(type, metricInfo);

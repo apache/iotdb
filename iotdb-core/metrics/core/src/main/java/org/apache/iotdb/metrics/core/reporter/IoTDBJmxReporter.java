@@ -28,13 +28,9 @@ import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import com.codahale.metrics.jmx.ObjectNameFactory;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.jmx.JmxMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.management.InstanceAlreadyExistsException;
 import javax.management.InstanceNotFoundException;
 import javax.management.JMException;
 import javax.management.MBeanRegistrationException;
@@ -43,21 +39,20 @@ import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 public class IoTDBJmxReporter implements JmxReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBJmxReporter.class);
+  /** Domain name of IoTDB Metrics */
   private static final String DOMAIN = "org.apache.iotdb.metrics";
-
+  /** The metricManager of IoTDB */
   private final AbstractMetricManager metricManager;
-
-  private final MBeanServer mBeanServer;
-
+  /** The objectNameFactory used to create objectName for metrics */
   private final ObjectNameFactory objectNameFactory;
-
+  /** The map that stores all registered metrics */
   private final Map<ObjectName, ObjectName> registered;
+  /** The JMX MBeanServer */
+  private final MBeanServer mBeanServer;
 
   @SuppressWarnings("UnusedDeclaration")
   public interface JmxGaugeMBean {
@@ -185,16 +180,17 @@ public class IoTDBJmxReporter implements JmxReporter {
     }
   }
 
-  private void registerMBean(Object mBean, ObjectName objectName)
-      throws InstanceAlreadyExistsException, JMException {
-    ObjectInstance objectInstance = mBeanServer.registerMBean(mBean, objectName);
-    if (objectInstance != null) {
-      // the websphere mbeanserver rewrites the objectname to include
-      // cell, node & server info
-      // make sure we capture the new objectName for unregistration
-      registered.put(objectName, objectInstance.getObjectName());
-    } else {
-      registered.put(objectName, objectName);
+  private void registerMBean(Object mBean, ObjectName objectName) throws JMException {
+    if (!mBeanServer.isRegistered(objectName)) {
+      ObjectInstance objectInstance = mBeanServer.registerMBean(mBean, objectName);
+      if (objectInstance != null) {
+        // the websphere mbeanserver rewrites the objectname to include
+        // cell, node & server info
+        // make sure we capture the new objectName for unregistration
+        registered.put(objectName, objectInstance.getObjectName());
+      } else {
+        registered.put(objectName, objectName);
+      }
     }
   }
 
@@ -202,9 +198,13 @@ public class IoTDBJmxReporter implements JmxReporter {
       throws InstanceNotFoundException, MBeanRegistrationException {
     ObjectName storedObjectName = registered.remove(originalObjectName);
     if (storedObjectName != null) {
-      mBeanServer.unregisterMBean(storedObjectName);
+      if (mBeanServer.isRegistered(storedObjectName)) {
+        mBeanServer.unregisterMBean(storedObjectName);
+      }
     } else {
-      mBeanServer.unregisterMBean(originalObjectName);
+      if (mBeanServer.isRegistered(originalObjectName)) {
+        mBeanServer.unregisterMBean(originalObjectName);
+      }
     }
   }
 
@@ -215,10 +215,8 @@ public class IoTDBJmxReporter implements JmxReporter {
       final ObjectName objectName = createName(metricName, metricInfo);
       metric.setObjectName(objectName);
       registerMBean(metric, objectName);
-    } catch (InstanceAlreadyExistsException e) {
-      LOGGER.debug("Unable to register " + metricName, e);
-    } catch (JMException e) {
-      LOGGER.warn("Unable to register " + metricName, e);
+    } catch (Exception e) {
+      LOGGER.warn("IoTDB Metric: Unable to register " + metricName, e);
     }
   }
 
@@ -229,27 +227,22 @@ public class IoTDBJmxReporter implements JmxReporter {
       final ObjectName objectName = createName(metricName, metricInfo);
       unregisterMBean(objectName);
     } catch (InstanceNotFoundException e) {
-      LOGGER.debug("Unable to unregister timer", e);
+      LOGGER.debug("IoTDB Metric: Unable to unregister: ", e);
     } catch (MBeanRegistrationException e) {
-      LOGGER.warn("Unable to unregister timer", e);
+      LOGGER.warn("IoTDB Metric: Unable to unregister: ", e);
     }
   }
 
   private ObjectName createName(String type, MetricInfo metricInfo) {
-    String name = null;
+    String name = metricInfo.getName();
     return objectNameFactory.createName(type, DOMAIN, name);
   }
 
-  void unregisterAll() {
+  void unregisterAll() throws InstanceNotFoundException, MBeanRegistrationException {
     for (ObjectName name : registered.keySet()) {
-      try {
-        unregisterMBean(name);
-      } catch (InstanceNotFoundException e) {
-        LOGGER.debug("Unable to unregister metric", e);
-      } catch (MBeanRegistrationException e) {
-        LOGGER.warn("Unable to unregister metric", e);
-      }
+      unregisterMBean(name);
     }
+    // clear registered
     registered.clear();
   }
 
@@ -282,17 +275,7 @@ public class IoTDBJmxReporter implements JmxReporter {
   @Override
   public boolean stop() {
     try {
-      Set<MeterRegistry> meterRegistrySet =
-          Metrics.globalRegistry.getRegistries().stream()
-              .filter(JmxMeterRegistry.class::isInstance)
-              .collect(Collectors.toSet());
-      for (MeterRegistry meterRegistry : meterRegistrySet) {
-        if (!meterRegistry.isClosed()) {
-          ((JmxMeterRegistry) meterRegistry).stop();
-          meterRegistry.close();
-          Metrics.removeRegistry(meterRegistry);
-        }
-      }
+      unregisterAll();
     } catch (Exception e) {
       LOGGER.warn("IoTDB Metric: JmxReporter failed to stop, because ", e);
       return false;
