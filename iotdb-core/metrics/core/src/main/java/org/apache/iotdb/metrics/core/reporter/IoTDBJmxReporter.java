@@ -54,132 +54,6 @@ public class IoTDBJmxReporter implements JmxReporter {
   /** The JMX MBeanServer */
   private final MBeanServer mBeanServer;
 
-  @SuppressWarnings("UnusedDeclaration")
-  public interface JmxGaugeMBean {
-    ObjectName objectName();
-
-    Number getValue();
-  }
-
-  public abstract static class AbstractJmxGaugeBean implements JmxGaugeMBean {
-    private ObjectName objectName;
-
-    public void setObjectName(ObjectName objectName) {
-      this.objectName = objectName;
-    }
-
-    @Override
-    public ObjectName objectName() {
-      return objectName;
-    }
-  }
-
-  @SuppressWarnings("UnusedDeclaration")
-  public interface JmxCounterMBean {
-    ObjectName objectName();
-
-    long getCount();
-  }
-
-  public abstract static class AbstractJmxCounterBean implements JmxCounterMBean {
-    private ObjectName objectName;
-
-    public void setObjectName(ObjectName objectName) {
-      this.objectName = objectName;
-    }
-
-    @Override
-    public ObjectName objectName() {
-      return objectName;
-    }
-  }
-
-  @SuppressWarnings("UnusedDeclaration")
-  public interface JmxHistogramMBean {
-    ObjectName objectName();
-
-    long getCount();
-
-    double getMax();
-
-    double getMean();
-
-    int getSize();
-
-    double get50thPercentile();
-
-    double get99thPercentile();
-  }
-
-  public abstract static class AbstractJmxHistogramBean implements JmxHistogramMBean {
-    private ObjectName objectName;
-
-    public void setObjectName(ObjectName objectName) {
-      this.objectName = objectName;
-    }
-
-    @Override
-    public ObjectName objectName() {
-      return objectName;
-    }
-  }
-
-  @SuppressWarnings("UnusedDeclaration")
-  public interface JmxRateMBean {
-    ObjectName objectName();
-
-    long getCount();
-
-    double getMeanRate();
-
-    double getOneMinuteRate();
-  }
-
-  public abstract static class AbstractJmxRateBean implements JmxRateMBean {
-    private ObjectName objectName;
-
-    public void setObjectName(ObjectName objectName) {
-      this.objectName = objectName;
-    }
-
-    @Override
-    public ObjectName objectName() {
-      return objectName;
-    }
-  }
-
-  @SuppressWarnings("UnusedDeclaration")
-  public interface JmxTimerMBean {
-    ObjectName objectName();
-
-    long getCount();
-
-    double getSum();
-
-    double getMax();
-
-    double getMean();
-
-    int getSize();
-
-    double get50thPercentile();
-
-    double get99thPercentile();
-  }
-
-  public abstract static class AbstractJmxTimerBean implements JmxTimerMBean {
-    private ObjectName objectName;
-
-    public void setObjectName(ObjectName objectName) {
-      this.objectName = objectName;
-    }
-
-    @Override
-    public ObjectName objectName() {
-      return objectName;
-    }
-  }
-
   private void registerMBean(Object mBean, ObjectName objectName) throws JMException {
     if (!mBeanServer.isRegistered(objectName)) {
       ObjectInstance objectInstance = mBeanServer.registerMBean(mBean, objectName);
@@ -209,7 +83,7 @@ public class IoTDBJmxReporter implements JmxReporter {
   }
 
   @Override
-  public void onMetricCreate(IMetric metric, MetricInfo metricInfo) {
+  public void registerMetric(IMetric metric, MetricInfo metricInfo) {
     String metricName = metric.getClass().getSimpleName();
     try {
       final ObjectName objectName = createName(metricName, metricInfo);
@@ -221,7 +95,7 @@ public class IoTDBJmxReporter implements JmxReporter {
   }
 
   @Override
-  public void onMetricRemove(IMetric metric, MetricInfo metricInfo) {
+  public void unregisterMetric(IMetric metric, MetricInfo metricInfo) {
     String metricName = metric.getClass().getSimpleName();
     try {
       final ObjectName objectName = createName(metricName, metricInfo);
@@ -263,7 +137,8 @@ public class IoTDBJmxReporter implements JmxReporter {
         LOGGER.warn("IoTDB Metric: JmxReporter already start!");
         return false;
       }
-
+      // register all existed metrics into JmxReporter
+      metricManager.getAllMetrics().forEach((key, value) -> registerMetric(value, key));
     } catch (Exception e) {
       LOGGER.warn("IoTDB Metric: JmxReporter failed to start, because ", e);
       return false;

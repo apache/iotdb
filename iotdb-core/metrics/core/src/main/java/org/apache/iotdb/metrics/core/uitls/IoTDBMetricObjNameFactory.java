@@ -20,8 +20,6 @@
 package org.apache.iotdb.metrics.core.uitls;
 
 import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter;
-import org.apache.iotdb.metrics.utils.MetricInfo;
-import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.codahale.metrics.jmx.ObjectNameFactory;
 import org.slf4j.Logger;
@@ -30,11 +28,8 @@ import org.slf4j.LoggerFactory;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import java.util.Hashtable;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 public class IoTDBMetricObjNameFactory implements ObjectNameFactory {
-  private static final String TAG_SEPARATOR = ".";
   private static final char[] QUOTABLE_CHARS = new char[] {',', '=', ':', '"'};
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBJmxReporter.class);
 
@@ -103,54 +98,6 @@ public class IoTDBMetricObjNameFactory implements ObjectNameFactory {
       }
     }
     return false;
-  }
-
-  /**
-   * Transform flat string and metric type to metricInfo.
-   *
-   * @param metricType the type of metric
-   * @param flatString the flat string of metricInfo
-   */
-  public static MetricInfo transformFromString(MetricType metricType, String flatString) {
-    MetricInfo metricInfo;
-    String name;
-    int firstIndex = flatString.indexOf("{");
-    int lastIndex = flatString.indexOf("}");
-    if (firstIndex == -1 || lastIndex == -1) {
-      name = flatString.replaceAll("[^a-zA-Z0-9:_\\]\\[]", "_");
-      metricInfo = new MetricInfo(metricType, name);
-    } else {
-      name = flatString.substring(0, firstIndex).replaceAll("[^a-zA-Z0-9:_\\]\\[]", "_");
-      String tagsPart = flatString.substring(firstIndex + 1, lastIndex);
-      if (0 == tagsPart.length()) {
-        metricInfo = new MetricInfo(metricType, name);
-      } else {
-        metricInfo = new MetricInfo(metricType, name, tagsPart.split("\\."));
-      }
-    }
-    return metricInfo;
-  }
-
-  /**
-   * Transform metricInfo to flat string.
-   *
-   * @param metricInfo the info of metric
-   */
-  public static String toFlatString(MetricInfo metricInfo) {
-    String name = metricInfo.getName();
-    Map<String, String> tags = metricInfo.getTags();
-    return name.replace("{", "").replace("}", "")
-        + "{"
-        + tags.entrySet().stream()
-            .map(
-                t ->
-                    t.getKey().replace(TAG_SEPARATOR, "")
-                        + TAG_SEPARATOR
-                        + t.getValue().replace(TAG_SEPARATOR, ""))
-            .collect(Collectors.joining(TAG_SEPARATOR))
-            .replace("{", "")
-            .replace("}", "")
-        + "}";
   }
 
   private static class IoTDBMetricObjNameFactoryHolder {

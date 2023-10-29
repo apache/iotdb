@@ -29,6 +29,7 @@ import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
 import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.reporter.JmxReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
@@ -67,6 +68,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
       switch (reporterType) {
         case JMX:
           reporter = IoTDBJmxReporter.getInstance();
+          metricManager.setBindJmxReporter((JmxReporter) reporter);
           break;
         case PROMETHEUS:
           reporter = new PrometheusReporter(metricManager);

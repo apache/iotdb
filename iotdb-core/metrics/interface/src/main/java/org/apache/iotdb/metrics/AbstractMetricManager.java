@@ -72,7 +72,7 @@ public abstract class AbstractMetricManager {
       return;
     }
     // register the new metric
-    bindJmxReporter.onMetricCreate(metric, metricInfo);
+    bindJmxReporter.registerMetric(metric, metricInfo);
   }
 
   /**
@@ -87,7 +87,7 @@ public abstract class AbstractMetricManager {
       return;
     }
     // register the new metric
-    bindJmxReporter.onMetricRemove(metric, metricInfo);
+    bindJmxReporter.unregisterMetric(metric, metricInfo);
   }
 
   /**
@@ -456,6 +456,10 @@ public abstract class AbstractMetricManager {
   /** Is metric service enabled in specific level. */
   public boolean isEnableMetricInGivenLevel(MetricLevel metricLevel) {
     return MetricLevel.higherOrEqual(metricLevel, METRIC_CONFIG.getMetricLevel());
+  }
+
+  public void setBindJmxReporter(JmxReporter reporter) {
+    this.bindJmxReporter = reporter;
   }
 
   /** Stop and clear metric manager. */

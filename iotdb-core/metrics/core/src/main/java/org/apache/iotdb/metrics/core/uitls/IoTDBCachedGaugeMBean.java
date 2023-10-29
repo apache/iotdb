@@ -17,37 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.core.type;
+package org.apache.iotdb.metrics.core.uitls;
 
-import org.apache.iotdb.metrics.core.type.IoTDBCounterMBean.AbstractJmxCounterBean;
-import org.apache.iotdb.metrics.type.Counter;
+import javax.management.ObjectName;
 
-import java.util.concurrent.atomic.LongAdder;
+public interface IoTDBCachedGaugeMBean {
+  ObjectName objectName();
 
-public class IoTDBCounter extends AbstractJmxCounterBean implements Counter, IoTDBCounterMBean {
-  private final LongAdder count;
+  Number getValue();
 
-  public IoTDBCounter() {
-    this.count = new LongAdder();
-  }
+  abstract class AbstractJmxCachedGaugeMBean implements IoTDBCachedGaugeMBean {
+    private ObjectName objectName;
 
-  @Override
-  public long getCount() {
-    return this.count();
-  }
+    public void setObjectName(ObjectName objectName) {
+      this.objectName = objectName;
+    }
 
-  @Override
-  public void inc() {
-    this.count.add(1L);
-  }
-
-  @Override
-  public void inc(long n) {
-    this.count.add(n);
-  }
-
-  @Override
-  public long count() {
-    return this.count.sum();
+    @Override
+    public ObjectName objectName() {
+      return objectName;
+    }
   }
 }

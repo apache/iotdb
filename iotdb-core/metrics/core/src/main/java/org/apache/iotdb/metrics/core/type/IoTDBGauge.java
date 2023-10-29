@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.metrics.core.type;
 
-import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter.AbstractJmxGaugeBean;
+import org.apache.iotdb.metrics.core.type.IoTDBGaugeMBean.AbstractJmxGaugeMBean;
 import org.apache.iotdb.metrics.type.Gauge;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class IoTDBGauge extends AbstractJmxGaugeBean implements Gauge {
+public class IoTDBGauge extends AbstractJmxGaugeMBean implements Gauge, IoTDBGaugeMBean {
   private final AtomicLong atomicLong;
 
   public IoTDBGauge() {

@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.metrics.core.type;
 
-import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter.AbstractJmxTimerBean;
+import org.apache.iotdb.metrics.core.type.IoTDBTimerMBean.AbstractJmxTimerBean;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.type.Timer;
 
 import java.util.concurrent.TimeUnit;
 
-public class IoTDBTimer extends AbstractJmxTimerBean implements Timer {
+public class IoTDBTimer extends AbstractJmxTimerBean implements Timer, IoTDBTimerMBean {
 
   io.micrometer.core.instrument.Timer timer;
 

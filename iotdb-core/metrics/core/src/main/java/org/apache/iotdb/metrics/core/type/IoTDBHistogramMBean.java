@@ -19,35 +19,33 @@
 
 package org.apache.iotdb.metrics.core.type;
 
-import org.apache.iotdb.metrics.core.type.IoTDBCounterMBean.AbstractJmxCounterBean;
-import org.apache.iotdb.metrics.type.Counter;
+import javax.management.ObjectName;
 
-import java.util.concurrent.atomic.LongAdder;
+public interface IoTDBHistogramMBean {
+  ObjectName objectName();
 
-public class IoTDBCounter extends AbstractJmxCounterBean implements Counter, IoTDBCounterMBean {
-  private final LongAdder count;
+  long getCount();
 
-  public IoTDBCounter() {
-    this.count = new LongAdder();
-  }
+  double getMax();
 
-  @Override
-  public long getCount() {
-    return this.count();
-  }
+  double getMean();
 
-  @Override
-  public void inc() {
-    this.count.add(1L);
-  }
+  int getSize();
 
-  @Override
-  public void inc(long n) {
-    this.count.add(n);
-  }
+  double get50thPercentile();
 
-  @Override
-  public long count() {
-    return this.count.sum();
+  double get99thPercentile();
+
+  abstract class AbstractJmxHistogramBean implements IoTDBHistogramMBean {
+    private ObjectName objectName;
+
+    public void setObjectName(ObjectName objectName) {
+      this.objectName = objectName;
+    }
+
+    @Override
+    public ObjectName objectName() {
+      return objectName;
+    }
   }
 }

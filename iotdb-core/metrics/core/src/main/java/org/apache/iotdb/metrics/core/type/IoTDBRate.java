@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.metrics.core.type;
 
-import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter.AbstractJmxRateBean;
+import org.apache.iotdb.metrics.core.type.IoTDBRateMBean.AbstractJmxRateBean;
 import org.apache.iotdb.metrics.core.uitls.IoTDBMovingAverage;
 import org.apache.iotdb.metrics.type.Rate;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.Meter;
-
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * could not publish to other metrics system exclude jmx and csv, because micrometer assumes that
@@ -36,7 +34,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>Now, we only record a gauge for the rate record in micrometer, and we use dropwizard meter to
  * calculate the meter.
  */
-public class IoTDBRate extends AbstractJmxRateBean implements Rate {
+public class IoTDBRate extends AbstractJmxRateBean implements Rate, IoTDBRateMBean {
   Meter meter;
 
   public IoTDBRate() {

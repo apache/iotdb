@@ -19,35 +19,27 @@
 
 package org.apache.iotdb.metrics.core.type;
 
-import org.apache.iotdb.metrics.core.type.IoTDBCounterMBean.AbstractJmxCounterBean;
-import org.apache.iotdb.metrics.type.Counter;
+import javax.management.ObjectName;
 
-import java.util.concurrent.atomic.LongAdder;
+public interface IoTDBRateMBean {
+  ObjectName objectName();
 
-public class IoTDBCounter extends AbstractJmxCounterBean implements Counter, IoTDBCounterMBean {
-  private final LongAdder count;
+  long getCount();
 
-  public IoTDBCounter() {
-    this.count = new LongAdder();
-  }
+  double getMeanRate();
 
-  @Override
-  public long getCount() {
-    return this.count();
-  }
+  double getOneMinuteRate();
 
-  @Override
-  public void inc() {
-    this.count.add(1L);
-  }
+  abstract class AbstractJmxRateBean implements IoTDBRateMBean {
+    private ObjectName objectName;
 
-  @Override
-  public void inc(long n) {
-    this.count.add(n);
-  }
+    public void setObjectName(ObjectName objectName) {
+      this.objectName = objectName;
+    }
 
-  @Override
-  public long count() {
-    return this.count.sum();
+    @Override
+    public ObjectName objectName() {
+      return objectName;
+    }
   }
 }

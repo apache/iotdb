@@ -24,7 +24,7 @@ import org.apache.iotdb.metrics.utils.MetricInfo;
 
 public interface JmxReporter extends Reporter {
   /** Set metric manager into reporter. */
-  void onMetricCreate(IMetric metric, MetricInfo metricInfo);
+  void registerMetric(IMetric metric, MetricInfo metricInfo);
 
-  void onMetricRemove(IMetric metric, MetricInfo metricInfo);
+  void unregisterMetric(IMetric metric, MetricInfo metricInfo);
 }
