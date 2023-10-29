@@ -35,15 +35,15 @@ import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.cumulative.CumulativeDistributionSummary;
+import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
+import io.micrometer.core.instrument.simple.SimpleConfig;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import java.util.Objects;
 import java.util.function.ToDoubleFunction;
 
-/** Metric manager based on micrometer. More details in https://micrometer.io/. */
-@SuppressWarnings("common-java:DuplicatedBlocks")
 public class IoTDBMetricManager extends AbstractMetricManager {
 
   io.micrometer.core.instrument.MeterRegistry meterRegistry;
@@ -68,11 +68,29 @@ public class IoTDBMetricManager extends AbstractMetricManager {
 
   @Override
   public Histogram createHistogram(MetricInfo metricInfo) {
+    // create default config
+    DistributionStatisticConfig defaultHistogramConfig =
+        DistributionStatisticConfig.builder()
+            .expiry(SimpleConfig.DEFAULT.step())
+            .build()
+            .merge(DistributionStatisticConfig.DEFAULT);
+
+    // merge default config with IoTDB's config
+    DistributionStatisticConfig distributionStatisticConfig =
+        DistributionStatisticConfig.builder()
+            .percentiles(0.5, 0.99)
+            .build()
+            .merge(defaultHistogramConfig);
+
+    // set expiry
+    DistributionStatisticConfig merged =
+        distributionStatisticConfig.merge(
+            DistributionStatisticConfig.builder().expiry(SimpleConfig.DEFAULT.step()).build());
+
+    // create distributionSummary
     io.micrometer.core.instrument.DistributionSummary distributionSummary =
-        io.micrometer.core.instrument.DistributionSummary.builder(metricInfo.getName())
-            .tags(metricInfo.getTagsInArray())
-            .publishPercentiles(0.5, 0.99)
-            .register(meterRegistry);
+        new CumulativeDistributionSummary(null, Clock.SYSTEM, merged, 1.0, false);
+
     return new IoTDBHistogram(distributionSummary);
   }
 
@@ -93,34 +111,12 @@ public class IoTDBMetricManager extends AbstractMetricManager {
 
   @Override
   protected void removeMetric(MetricType type, MetricInfo metricInfo) {
-    Meter.Type meterType = transformType(type);
-    Meter.Id id =
-        new Meter.Id(
-            metricInfo.getName(), Tags.of(metricInfo.getTagsInArray()), null, null, meterType);
-    meterRegistry.remove(id);
+    // empty body
   }
 
   @Override
   public boolean stopFramework() {
-    meterRegistry.clear();
     return true;
-  }
-
-  private Meter.Type transformType(MetricType type) {
-    switch (type) {
-      case COUNTER:
-        return Meter.Type.COUNTER;
-      case AUTO_GAUGE:
-      case GAUGE:
-      case RATE:
-        return Meter.Type.GAUGE;
-      case HISTOGRAM:
-        return Meter.Type.DISTRIBUTION_SUMMARY;
-      case TIMER:
-        return Meter.Type.TIMER;
-      default:
-        return Meter.Type.OTHER;
-    }
   }
 
   @Override
@@ -131,11 +127,7 @@ public class IoTDBMetricManager extends AbstractMetricManager {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    if (!super.equals(o)) {
-      return false;
-    }
-    IoTDBMetricManager that = (IoTDBMetricManager) o;
-    return Objects.equals(meterRegistry, that.meterRegistry);
+    return super.equals(o);
   }
 
   @Override
