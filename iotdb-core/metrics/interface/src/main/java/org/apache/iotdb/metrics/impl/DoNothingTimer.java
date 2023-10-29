@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.type.Timer;
 
 import javax.management.ObjectName;
+
 import java.util.concurrent.TimeUnit;
 
 public class DoNothingTimer implements Timer, DoNothingMetric {

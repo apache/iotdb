@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.type;
 
 import javax.management.ObjectName;
+
 import java.util.Map;
 
 public interface IMetric {
