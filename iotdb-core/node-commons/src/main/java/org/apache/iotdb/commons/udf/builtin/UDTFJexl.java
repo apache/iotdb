@@ -54,14 +54,14 @@ public class UDTFJexl implements UDTF {
     inputSeriesNumber = validator.getParameters().getChildExpressionsSize();
     for (int i = 0; i < inputSeriesNumber; i++) {
       validator.validateInputSeriesDataType(
-              i, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE, Type.TEXT, Type.BOOLEAN);
+          i, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE, Type.TEXT, Type.BOOLEAN);
     }
     validator.validateRequiredAttribute("expr");
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
-          throws UDFInputSeriesDataTypeNotValidException, UDFOutputSeriesDataTypeNotValidException,
+      throws UDFInputSeriesDataTypeNotValidException, UDFOutputSeriesDataTypeNotValidException,
           MetadataException {
     String expr = parameters.getString("expr");
     JexlEngine jexl = new JexlBuilder().create();
@@ -95,22 +95,22 @@ public class UDTFJexl implements UDTF {
           break;
         default:
           throw new UDFInputSeriesDataTypeNotValidException(
-                  0,
-                  UDFDataTypeTransformer.transformToUDFDataType(inputDataType[0]),
-                  Type.INT32,
-                  Type.INT64,
-                  Type.FLOAT,
-                  Type.DOUBLE,
-                  Type.TEXT,
-                  Type.BOOLEAN);
+              0,
+              UDFDataTypeTransformer.transformToUDFDataType(inputDataType[0]),
+              Type.INT32,
+              Type.INT64,
+              Type.FLOAT,
+              Type.DOUBLE,
+              Type.TEXT,
+              Type.BOOLEAN);
       }
     } else {
       evaluator = new EvaluatorMulInput();
     }
 
     configurations
-            .setAccessStrategy(new RowByRowAccessStrategy())
-            .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(outputDataType));
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(outputDataType));
   }
 
   // 23, 23L, 23f, 23d, "string", true are hard codes for probing
@@ -148,7 +148,7 @@ public class UDTFJexl implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector)
-          throws IOException, UDFOutputSeriesDataTypeNotValidException,
+      throws IOException, UDFOutputSeriesDataTypeNotValidException,
           UDFInputSeriesDataTypeNotValidException {
     switch (outputDataType) {
       case DOUBLE:
@@ -168,20 +168,20 @@ public class UDTFJexl implements UDTF {
 
   private interface Evaluator {
     void evaluateDouble(Row row, PointCollector collector)
-            throws IOException, UDFInputSeriesDataTypeNotValidException;
+        throws IOException, UDFInputSeriesDataTypeNotValidException;
 
     void evaluateText(Row row, PointCollector collector)
-            throws IOException, UDFInputSeriesDataTypeNotValidException;
+        throws IOException, UDFInputSeriesDataTypeNotValidException;
 
     void evaluateBoolean(Row row, PointCollector collector)
-            throws IOException, UDFInputSeriesDataTypeNotValidException;
+        throws IOException, UDFInputSeriesDataTypeNotValidException;
   }
 
   private class EvaluatorIntInput implements Evaluator {
     @Override
     public void evaluateDouble(Row row, PointCollector collector) throws IOException {
       collector.putDouble(
-              row.getTime(), ((Number) script.execute(null, row.getInt(0))).doubleValue());
+          row.getTime(), ((Number) script.execute(null, row.getInt(0))).doubleValue());
     }
 
     @Override
@@ -199,7 +199,7 @@ public class UDTFJexl implements UDTF {
     @Override
     public void evaluateDouble(Row row, PointCollector collector) throws IOException {
       collector.putDouble(
-              row.getTime(), ((Number) script.execute(null, row.getLong(0))).doubleValue());
+          row.getTime(), ((Number) script.execute(null, row.getLong(0))).doubleValue());
     }
 
     @Override
@@ -217,7 +217,7 @@ public class UDTFJexl implements UDTF {
     @Override
     public void evaluateDouble(Row row, PointCollector collector) throws IOException {
       collector.putDouble(
-              row.getTime(), ((Number) script.execute(null, row.getFloat(0))).doubleValue());
+          row.getTime(), ((Number) script.execute(null, row.getFloat(0))).doubleValue());
     }
 
     @Override
@@ -235,7 +235,7 @@ public class UDTFJexl implements UDTF {
     @Override
     public void evaluateDouble(Row row, PointCollector collector) throws IOException {
       collector.putDouble(
-              row.getTime(), ((Number) script.execute(null, row.getDouble(0))).doubleValue());
+          row.getTime(), ((Number) script.execute(null, row.getDouble(0))).doubleValue());
     }
 
     @Override
@@ -253,7 +253,7 @@ public class UDTFJexl implements UDTF {
     @Override
     public void evaluateDouble(Row row, PointCollector collector) throws IOException {
       collector.putDouble(
-              row.getTime(), ((Number) script.execute(null, row.getString(0))).doubleValue());
+          row.getTime(), ((Number) script.execute(null, row.getString(0))).doubleValue());
     }
 
     @Override
@@ -271,7 +271,7 @@ public class UDTFJexl implements UDTF {
     @Override
     public void evaluateDouble(Row row, PointCollector collector) throws IOException {
       collector.putDouble(
-              row.getTime(), ((Number) script.execute(null, row.getBoolean(0))).doubleValue());
+          row.getTime(), ((Number) script.execute(null, row.getBoolean(0))).doubleValue());
     }
 
     @Override
@@ -291,21 +291,21 @@ public class UDTFJexl implements UDTF {
 
     @Override
     public void evaluateDouble(Row row, PointCollector collector)
-            throws IOException, UDFInputSeriesDataTypeNotValidException {
+        throws IOException, UDFInputSeriesDataTypeNotValidException {
       getValues(row);
       collector.putDouble(row.getTime(), ((Number) script.execute(null, values)).doubleValue());
     }
 
     @Override
     public void evaluateText(Row row, PointCollector collector)
-            throws IOException, UDFInputSeriesDataTypeNotValidException {
+        throws IOException, UDFInputSeriesDataTypeNotValidException {
       getValues(row);
       collector.putString(row.getTime(), (String) script.execute(null, values));
     }
 
     @Override
     public void evaluateBoolean(Row row, PointCollector collector)
-            throws IOException, UDFInputSeriesDataTypeNotValidException {
+        throws IOException, UDFInputSeriesDataTypeNotValidException {
       getValues(row);
       collector.putBoolean(row.getTime(), (Boolean) script.execute(null, values));
     }
@@ -333,14 +333,14 @@ public class UDTFJexl implements UDTF {
             break;
           default:
             throw new UDFInputSeriesDataTypeNotValidException(
-                    i,
-                    UDFDataTypeTransformer.transformToUDFDataType(inputDataType[i]),
-                    Type.INT32,
-                    Type.INT64,
-                    Type.FLOAT,
-                    Type.DOUBLE,
-                    Type.TEXT,
-                    Type.BOOLEAN);
+                i,
+                UDFDataTypeTransformer.transformToUDFDataType(inputDataType[i]),
+                Type.INT32,
+                Type.INT64,
+                Type.FLOAT,
+                Type.DOUBLE,
+                Type.TEXT,
+                Type.BOOLEAN);
         }
       }
     }
