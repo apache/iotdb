@@ -37,11 +37,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * calculate the meter.
  */
 public class IoTDBRate extends AbstractJmxRateBean implements Rate {
-  AtomicLong atomicLong;
   Meter meter;
 
-  public IoTDBRate(AtomicLong atomicLong) {
-    this.atomicLong = atomicLong;
+  public IoTDBRate() {
     this.meter = new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
   }
 
@@ -77,13 +75,11 @@ public class IoTDBRate extends AbstractJmxRateBean implements Rate {
 
   @Override
   public void mark() {
-    atomicLong.set(1);
     meter.mark();
   }
 
   @Override
   public void mark(long n) {
-    atomicLong.set(n);
     meter.mark(n);
   }
 }

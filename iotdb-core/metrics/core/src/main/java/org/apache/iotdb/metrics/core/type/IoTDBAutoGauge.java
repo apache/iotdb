@@ -22,8 +22,6 @@ package org.apache.iotdb.metrics.core.type;
 import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter.AbstractJmxGaugeBean;
 import org.apache.iotdb.metrics.type.AutoGauge;
 
-import io.micrometer.core.instrument.Tags;
-
 import java.lang.ref.WeakReference;
 import java.util.function.ToDoubleFunction;
 
@@ -31,14 +29,8 @@ public class IoTDBAutoGauge<T> extends AbstractJmxGaugeBean implements AutoGauge
   private final WeakReference<T> refObject;
   private final ToDoubleFunction<T> mapper;
 
-  public IoTDBAutoGauge(
-      io.micrometer.core.instrument.MeterRegistry meterRegistry,
-      String metricName,
-      T object,
-      ToDoubleFunction<T> mapper,
-      String... tags) {
-    this.refObject =
-        new WeakReference<>(meterRegistry.gauge(metricName, Tags.of(tags), object, mapper));
+  public IoTDBAutoGauge(T object, ToDoubleFunction<T> mapper) {
+    this.refObject = new WeakReference<>(object);
     this.mapper = mapper;
   }
 

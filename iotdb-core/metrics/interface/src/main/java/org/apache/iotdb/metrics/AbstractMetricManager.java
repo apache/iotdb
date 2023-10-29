@@ -61,7 +61,7 @@ public abstract class AbstractMetricManager {
   }
 
   /**
-   * 通知 JmxReporter 去注册
+   * Notify IoTDB JmxReporter to register metric in JMX
    *
    * @param metric
    * @param metricInfo
@@ -76,7 +76,8 @@ public abstract class AbstractMetricManager {
   }
 
   /**
-   * 通知 JmxReporter 去移除；TODO
+   * Notify IoTDB JmxReporter to remove metric in JMX
+   *
    * @param metric
    * @param metricInfo
    */
@@ -137,7 +138,7 @@ public abstract class AbstractMetricManager {
       return DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.AUTO_GAUGE, name, tags);
-    AutoGauge gauge = createAutoGauge(metricInfo, obj, mapper);
+    AutoGauge gauge = createAutoGauge(obj, mapper);
     nameToMetaInfo.put(name, metricInfo.getMetaInfo());
     metrics.put(metricInfo, gauge);
     notifyReporterOnAdd(gauge, metricInfo);
@@ -150,8 +151,7 @@ public abstract class AbstractMetricManager {
    * @param obj which will be monitored automatically
    * @param mapper use which to map the obj to a double value
    */
-  protected abstract <T> AutoGauge createAutoGauge(
-      MetricInfo metricInfo, T obj, ToDoubleFunction<T> mapper);
+  protected abstract <T> AutoGauge createAutoGauge(T obj, ToDoubleFunction<T> mapper);
 
   /**
    * Get autoGauge.
@@ -191,7 +191,7 @@ public abstract class AbstractMetricManager {
         metrics.computeIfAbsent(
             metricInfo,
             key -> {
-              Gauge gauge = createGauge(metricInfo);
+              Gauge gauge = createGauge();
               nameToMetaInfo.put(name, metricInfo.getMetaInfo());
               notifyReporterOnAdd(gauge, metricInfo);
               return gauge;
@@ -202,12 +202,8 @@ public abstract class AbstractMetricManager {
     throw new IllegalArgumentException(metricInfo + ALREADY_EXISTS);
   }
 
-  /**
-   * Create gauge according to metric framework.
-   *
-   * @param metricInfo the metricInfo of gauge
-   */
-  protected abstract Gauge createGauge(MetricInfo metricInfo);
+  /** Create gauge according to metric framework. */
+  protected abstract Gauge createGauge();
 
   /**
    * Get rate. return if exists, create if not.
@@ -226,7 +222,7 @@ public abstract class AbstractMetricManager {
         metrics.computeIfAbsent(
             metricInfo,
             key -> {
-              Rate rate = createRate(metricInfo);
+              Rate rate = createRate();
               nameToMetaInfo.put(name, metricInfo.getMetaInfo());
               notifyReporterOnAdd(rate, metricInfo);
               return rate;
@@ -237,12 +233,8 @@ public abstract class AbstractMetricManager {
     throw new IllegalArgumentException(metricInfo + ALREADY_EXISTS);
   }
 
-  /**
-   * Create rate according to metric framework.
-   *
-   * @param metricInfo the metricInfo of rate
-   */
-  protected abstract Rate createRate(MetricInfo metricInfo);
+  /** Create rate according to metric framework. */
+  protected abstract Rate createRate();
 
   /**
    * Get histogram. return if exists, create if not.

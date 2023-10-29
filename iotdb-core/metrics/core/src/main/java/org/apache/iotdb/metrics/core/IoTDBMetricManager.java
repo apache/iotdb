@@ -40,7 +40,6 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToDoubleFunction;
 
 /** Metric manager based on micrometer. More details in https://micrometer.io/. */
@@ -49,25 +48,22 @@ public class IoTDBMetricManager extends AbstractMetricManager {
 
   io.micrometer.core.instrument.MeterRegistry meterRegistry;
 
-  public IoTDBMetricManager() {
+  private IoTDBMetricManager() {
     meterRegistry = new SimpleMeterRegistry();
   }
 
   @Override
-  public Counter createCounter(MetricInfo metricInfo) {
-    return new IoTDBCounter(
-        meterRegistry.counter(metricInfo.getName(), metricInfo.getTagsInArray()));
+  public Counter createCounter() {
+    return new IoTDBCounter();
+  }
+
+  public <T> AutoGauge createAutoGauge(T obj, ToDoubleFunction<T> mapper) {
+    return new IoTDBAutoGauge<>(obj, mapper);
   }
 
   @Override
-  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToDoubleFunction<T> mapper) {
-    return new IoTDBAutoGauge<>(
-        meterRegistry, metricInfo.getName(), obj, mapper, metricInfo.getTagsInArray());
-  }
-
-  @Override
-  public Gauge createGauge(MetricInfo metricInfo) {
-    return new IoTDBGauge(meterRegistry, metricInfo.getName(), metricInfo.getTagsInArray());
+  public Gauge createGauge() {
+    return new IoTDBGauge();
   }
 
   @Override
@@ -81,10 +77,8 @@ public class IoTDBMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public Rate createRate(MetricInfo metricInfo) {
-    return new IoTDBRate(
-        meterRegistry.gauge(
-            metricInfo.getName(), Tags.of(metricInfo.getTagsInArray()), new AtomicLong(0)));
+  public Rate createRate() {
+    return new IoTDBRate();
   }
 
   @Override
@@ -146,6 +140,18 @@ public class IoTDBMetricManager extends AbstractMetricManager {
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), meterRegistry);
+    return Objects.hash(super.hashCode());
+  }
+
+  private static class IoTDBMetricManagerHolder {
+    private static final IoTDBMetricManager INSTANCE = new IoTDBMetricManager();
+
+    private IoTDBMetricManagerHolder() {
+      // empty constructor
+    }
+  }
+
+  public static IoTDBMetricManager getInstance() {
+    return IoTDBMetricManagerHolder.INSTANCE;
   }
 }

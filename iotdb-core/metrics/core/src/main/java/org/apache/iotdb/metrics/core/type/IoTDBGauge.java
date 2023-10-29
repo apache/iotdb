@@ -22,18 +22,13 @@ package org.apache.iotdb.metrics.core.type;
 import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter.AbstractJmxGaugeBean;
 import org.apache.iotdb.metrics.type.Gauge;
 
-import io.micrometer.core.instrument.Tags;
-
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IoTDBGauge extends AbstractJmxGaugeBean implements Gauge {
   private final AtomicLong atomicLong;
 
-  public IoTDBGauge(
-      io.micrometer.core.instrument.MeterRegistry meterRegistry,
-      String metricName,
-      String... tags) {
-    atomicLong = meterRegistry.gauge(metricName, Tags.of(tags), new AtomicLong(0));
+  public IoTDBGauge() {
+    atomicLong = new AtomicLong(0);
   }
 
   @Override

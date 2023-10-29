@@ -47,12 +47,12 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public <T> AutoGauge createAutoGauge(MetricInfo metricInfo, T obj, ToDoubleFunction<T> mapper) {
+  public <T> AutoGauge createAutoGauge(T obj, ToDoubleFunction<T> mapper) {
     return DO_NOTHING_AUTO_GAUGE;
   }
 
   @Override
-  public Gauge createGauge(MetricInfo metricInfo) {
+  public Gauge createGauge() {
     return DO_NOTHING_GAUGE;
   }
 
@@ -62,7 +62,7 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public Rate createRate(MetricInfo metricInfo) {
+  public Rate createRate() {
     return DO_NOTHING_RATE;
   }
 
