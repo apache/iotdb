@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.metrics.core.type;
 
-import org.apache.iotdb.metrics.core.type.IoTDBAutoGaugeMBean.AbstractJmxAutoGaugeMBean;
+import org.apache.iotdb.metrics.core.type.IoTDBAutoGaugeMBean.AbstractJmxAutoGaugeBean;
 import org.apache.iotdb.metrics.type.AutoGauge;
 
 import java.lang.ref.WeakReference;
 import java.util.function.ToDoubleFunction;
 
-public class IoTDBAutoGauge<T> extends AbstractJmxAutoGaugeMBean
+public class IoTDBAutoGauge<T> extends AbstractJmxAutoGaugeBean
     implements AutoGauge, IoTDBAutoGaugeMBean {
   private final WeakReference<T> refObject;
   private final ToDoubleFunction<T> mapper;
