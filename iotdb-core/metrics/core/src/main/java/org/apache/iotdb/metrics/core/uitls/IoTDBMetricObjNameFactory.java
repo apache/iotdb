@@ -21,7 +21,6 @@ package org.apache.iotdb.metrics.core.uitls;
 
 import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter;
 
-import com.codahale.metrics.jmx.ObjectNameFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,14 +37,6 @@ public class IoTDBMetricObjNameFactory implements ObjectNameFactory {
     // util class
   }
 
-  /**
-   * Create objectName for a certain metric.
-   *
-   * @param type metric type
-   * @param domain metric domain
-   * @param name metric name
-   * @return metric's objectName
-   */
   @Override
   public ObjectName createName(String type, String domain, String name) {
     try {
