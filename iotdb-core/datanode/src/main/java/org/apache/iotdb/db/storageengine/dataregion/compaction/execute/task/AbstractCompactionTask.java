@@ -136,7 +136,7 @@ public abstract class AbstractCompactionTask {
     } else {
       logger.error(
           "{}-{} [Compaction] Meet errors {}.",
-          compactionTaskPriorityType,
+          getCompactionTaskType(),
           storageGroupName,
           dataRegionId,
           e);
@@ -371,12 +371,12 @@ public abstract class AbstractCompactionTask {
   }
 
   public CompactionTaskType getCompactionTaskType() {
-    if (crossTask) {
+    if (this instanceof CrossSpaceCompactionTask) {
       return CompactionTaskType.CROSS;
-    } else if (innerSeqTask) {
-      return CompactionTaskType.INNER_SEQ;
     } else if (this instanceof InsertionCrossSpaceCompactionTask) {
       return CompactionTaskType.INSERTION;
+    } else if (innerSeqTask) {
+      return CompactionTaskType.INNER_SEQ;
     } else {
       return CompactionTaskType.INNER_UNSEQ;
     }
