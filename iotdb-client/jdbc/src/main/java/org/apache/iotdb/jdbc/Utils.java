@@ -86,6 +86,18 @@ public class Utils {
       params.setTimeZone(info.getProperty(Config.TIME_ZONE));
     }
 
+    if (info.containsKey(Config.USE_SSL)) {
+      params.setUseSSL(Boolean.parseBoolean(info.getProperty(Config.USE_SSL)));
+    }
+
+    if (info.containsKey(Config.TRUST_STORE)) {
+      params.setTrustStore(info.getProperty(Config.TRUST_STORE));
+    }
+
+    if (info.containsKey(Config.TRUST_STORE_PWD)) {
+      params.setTrustStorePwd(info.getProperty(Config.TRUST_STORE_PWD));
+    }
+
     return params;
   }
 
@@ -118,6 +130,9 @@ public class Utils {
             return false;
           }
           break;
+        case Config.USE_SSL:
+        case Config.TRUST_STORE:
+        case Config.TRUST_STORE_PWD:
         case Config.VERSION:
         case Config.NETWORK_TIMEOUT:
           info.put(key, value);
