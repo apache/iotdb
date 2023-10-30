@@ -92,13 +92,14 @@ class ForecastFixedParamTrainingTask(_BasicTrainingTask):
             dataset=dataset)
 
     def __call__(self):
+        logger.debug(f'FixedParamTrainingTask: {self.model_id}')
         try:
             self.configNode_client.update_model_state(self.model_id, TrainingState.RUNNING)
             self.pid_info[self.model_id] = os.getpid()
             self.trial.start()
             self.configNode_client.update_model_state(self.model_id, TrainingState.FINISHED, self.trial.trial_id)
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             self.configNode_client.update_model_state(self.model_id, TrainingState.FAILED, self.trial.trial_id)
             raise e
 
@@ -155,6 +156,7 @@ class ForecastAutoTuningTrainingTask(_BasicTrainingTask):
 
     def __call__(self):
         self.pid_info[self.model_id] = os.getpid()
+        logger.debug(f'AutoTuningTrainingTask: {self.model_id} - pid: {os.getpid()}')
         try:
             self.configNode_client.update_model_state(self.model_id, TrainingState.RUNNING)
             self.study.optimize(ForestingTrainingObjective(
@@ -168,7 +170,7 @@ class ForecastAutoTuningTrainingTask(_BasicTrainingTask):
             best_trial_id = TRIAL_ID_PREFIX + str(self.study.best_trial._trial_id)
             self.configNode_client.update_model_state(self.model_id, TrainingState.FINISHED, best_trial_id)
         except Exception as e:
-            logger.warn(e)
+            logger.warning(e)
             self.configNode_client.update_model_state(self.model_id, TrainingState.FAILED)
             raise e
 
@@ -210,7 +212,7 @@ class ForecastingInferenceTask(_BasicInferenceTask):
         self.model, self.model_configs = model_storage.load_model(self.model_path)
         self.model_pred_len = self.model_configs[OptionsKey.PREDICT_LENGTH.name()]
         self.model_input_len = self.model_configs[OptionsKey.INPUT_LENGTH.name()]
-
+        logger.debug(f'InferenceTask: {self.model_path} - model_configs: {self.model_configs}')
         data, time_stamp = self.data
         _, c = data.shape
 
@@ -239,6 +241,7 @@ class ForecastingInferenceTask(_BasicInferenceTask):
         data: L x C, DataFrame, suppose no batch dim
         time_stamp: L x 1, DataFrame
         """
+        logger.debug(f'data_align: data shape: {data.shape} - data_stamp shape {data_stamp.shape}')
         data_stamp = pd.DataFrame(data_stamp)
         assert len(data.shape) == 2, 'expect inference data to have two dimensions'
         assert len(data_stamp.shape) == 2, 'expect inference timestamps to be shaped as [L, 1]'
@@ -258,6 +261,7 @@ class ForecastingInferenceTask(_BasicInferenceTask):
         return data, data_stamp
 
     def generate_future_mark(self, time_stamp: pd.DataFrame, future_len: int) -> pd.DatetimeIndex:
+        logger.debug(f'generate_future_mark: time_stamp shape: {time_stamp.shape} - future_len: {future_len}')
         time_deltas = time_stamp.diff().dropna()
         mean_timedelta = time_deltas.mean()[0]
         extrapolated_timestamp = pd.date_range(time_stamp.values[-1][0] + mean_timedelta, periods=future_len,

@@ -57,7 +57,7 @@ def get_status(status_code: TSStatusCode, message: str = None) -> TSStatus:
 
 def verify_success(status: TSStatus, err_msg: str) -> None:
     if status.code != TSStatusCode.SUCCESS_STATUS.get_status_code():
-        logger.warn(err_msg + ", error status is ", status)
+        logger.warning(err_msg + ", error status is ", status)
         raise RuntimeError(str(status.code) + ": " + status.message)
 
 

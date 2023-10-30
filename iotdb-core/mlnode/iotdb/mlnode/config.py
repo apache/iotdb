@@ -156,9 +156,9 @@ class MLNodeDescriptor(object):
             if file_configs.mn_target_data_node is not None:
                 self.__config.set_mn_target_data_node(file_configs.mn_target_data_node)
         except BadNodeUrlError:
-            logger.warn("Cannot load MLNode conf file, use default configuration.")
+            logger.warning("Cannot load MLNode conf file, use default configuration.")
         except Exception as e:
-            logger.warn("Cannot load MLNode conf file, use default configuration. {}".format(e))
+            logger.warning("Cannot load MLNode conf file, use default configuration. {}".format(e))
 
     def get_config(self) -> MLNodeConfig:
         return self.__config
