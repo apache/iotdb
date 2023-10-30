@@ -402,10 +402,12 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       }
       if (seqFiles.isEmpty()) {
         result.toInsertUnSeqFile = unseqFiles.get(0).resource;
+        // ensure the target position is the head of seq space
         result.targetFileTimestamp =
             Math.min(System.currentTimeMillis(), getTimestampInFileName(unseqFiles.get(0)));
       } else {
         for (TsFileResourceCandidate unseqFile : unseqFiles) {
+          // skip unseq file which is overlapped with files in seq space
           if (!unseqFile.resource.isInsertionCompactionTaskCandidate()) {
             continue;
           }
@@ -415,6 +417,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           }
         }
       }
+      // select the first unseq file to exclude other CrossSpaceCompactionTask
+      // or InsertionCrossSpaceCompactionTask in current time partition
       TsFileResourceCandidate firstUnseqFile = unseqFiles.get(0);
       result.firstUnSeqFileInParitition = firstUnseqFile.resource;
       return result;
@@ -474,6 +478,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           }
           return result;
         }
+        // insert the TsFileResource between 'prev' and 'next' in seq space
         for (int i = previousSeqFileIndex;
             i < Math.min(nextSeqFileIndex, seqFiles.size() - 1);
             i++) {
@@ -493,6 +498,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         }
 
       } else {
+        // insert the TsFileResource to the head of seq space
         TsFileResourceCandidate next = seqFiles.get(0);
         long nextTimestamp = getTimestampInFileName(next);
         if (nextTimestamp < 1) {
