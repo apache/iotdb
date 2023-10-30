@@ -146,6 +146,8 @@ public class Role {
         return PrivilegeType.EXTEND_TEMPLATE.ordinal();
       case 8:
         return PrivilegeType.MAINTAIN.ordinal();
+      case 9:
+        return PrivilegeType.USE_MODEL.ordinal();
       default:
         return -1;
     }
@@ -172,6 +174,8 @@ public class Role {
         return 7;
       case MAINTAIN:
         return 8;
+      case USE_MODEL:
+        return 9;
       default:
         return -1;
     }

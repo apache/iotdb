@@ -934,6 +934,7 @@ PRIVILEGE_VALUE
     | USE_TRIGGER
     | USE_UDF
     | USE_CQ
+    | USE_MODEL
     | USE_PIPE
     | EXTEND_TEMPLATE
     | MANAGE_DATABASE
@@ -966,6 +967,10 @@ MANAGE_ROLE
 
 USE_TRIGGER
     : U S E '_' T R I G G E R
+    ;
+
+USE_MODEL
+    : U S E '_' M O D E L
     ;
 
 USE_UDF
