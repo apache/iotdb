@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
@@ -67,6 +68,7 @@ public class TemplatedDeviceAnalyze {
 
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
     Map<String, Set<Expression>> deviceToSelectExpressions = new HashMap<>();
+
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
@@ -137,6 +139,7 @@ public class TemplatedDeviceAnalyze {
     outputExpressions.forEach(pair -> selectExpressions.add(pair.getLeft()));
     analysis.setSelectExpressions(selectExpressions);
     analysis.setDeviceToSelectExpressions(deviceToSelectExpressions);
+
 
     return outputExpressions;
   }
