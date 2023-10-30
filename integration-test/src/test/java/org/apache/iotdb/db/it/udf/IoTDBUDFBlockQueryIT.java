@@ -110,13 +110,13 @@ public class IoTDBUDFBlockQueryIT {
         ResultSet resultSet = statement.executeQuery(sql)) {
 
       int columnCount = resultSet.getMetaData().getColumnCount();
-      assertEquals(2, columnCount);
+      assertEquals(3, columnCount);
 
       for (int i = 0; i < ITERATION_TIMES; i++) {
         resultSet.next();
         double expected = 2 * i;
         for (int j = 0; j < 2; j++) {
-          String actualString = resultSet.getString(i + 1);
+          String actualString = resultSet.getString(j + 2);
           // Regard both INT32 and DOUBLE as double for simplicity
           double actual = Double.parseDouble(actualString);
           assertEquals(expected, actual, E);
@@ -136,13 +136,13 @@ public class IoTDBUDFBlockQueryIT {
         ResultSet resultSet = statement.executeQuery(sql)) {
 
       int columnCount = resultSet.getMetaData().getColumnCount();
-      assertEquals(2, columnCount);
+      assertEquals(3, columnCount);
 
       for (int i = 0; i < ITERATION_TIMES; i++) {
         resultSet.next();
         double expected = 2 * i;
         for (int j = 0; j < 2; j++) {
-          String actualString = resultSet.getString(i + 1);
+          String actualString = resultSet.getString(j + 2);
           // Regard both INT32 and DOUBLE as double for simplicity
           double actual = Double.parseDouble(actualString);
           assertEquals(expected, actual, E);

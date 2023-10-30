@@ -39,7 +39,7 @@ public class ExchangeOperator implements SourceOperator {
   private ListenableFuture<?> isBlocked = NOT_BLOCKED;
 
   private long maxReturnSize =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();;
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private SettableFuture<Void> blockedDependencyDriver = null;
 
