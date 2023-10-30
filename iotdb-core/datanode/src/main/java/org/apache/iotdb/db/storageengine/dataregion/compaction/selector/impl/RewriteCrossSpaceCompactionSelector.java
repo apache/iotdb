@@ -150,7 +150,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           candidate.getUnseqFiles().size());
       InsertionCrossCompactionTaskResource result =
           insertionCrossSpaceCompactionSelector.executeInsertionCrossSpaceCompactionTaskSelection();
-      if (result != null && result.isValid()) {
+      if (result.isValid()) {
         return result;
       }
     } catch (IOException e) {
@@ -402,7 +402,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       }
       if (seqFiles.isEmpty()) {
         result.toInsertUnSeqFile = unseqFiles.get(0).resource;
-        result.targetFileTimestamp = 1;
+        result.targetFileTimestamp =
+            Math.min(System.currentTimeMillis(), getTimestampInFileName(unseqFiles.get(0)));
       } else {
         for (TsFileResourceCandidate unseqFile : unseqFiles) {
           if (!unseqFile.resource.isInsertionCompactionTaskCandidate()) {
@@ -412,9 +413,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           if (result.isValid()) {
             break;
           }
-        }
-        if (!result.isValid()) {
-          return null;
         }
       }
       TsFileResourceCandidate firstUnseqFile = unseqFiles.get(0);
@@ -464,10 +462,11 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
       // select position to insert
       if (hasPreviousSeqFile) {
-        if (nextSeqFileIndex == seqFiles.size() && previousSeqFileIndex == seqFiles.size() - 1) {
+        boolean insertLastInSeqSpace =
+            nextSeqFileIndex == seqFiles.size() && previousSeqFileIndex == seqFiles.size() - 1;
+        if (insertLastInSeqSpace) {
           TsFileResourceCandidate prev = seqFiles.get(previousSeqFileIndex);
-          long prevTimestamp =
-              TsFileNameGenerator.getTsFileName(prev.resource.getTsFile().getName()).getTime();
+          long prevTimestamp = getTimestampInFileName(prev);
           if (prev.isValidCandidate) {
             result.prevSeqFile = prev.resource;
             result.targetFileTimestamp = prevTimestamp + 1;
@@ -481,10 +480,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           TsFileResourceCandidate prev = seqFiles.get(i);
           TsFileResourceCandidate next = seqFiles.get(i + 1);
           if (prev.isValidCandidate && next.isValidCandidate) {
-            long prevTimestamp =
-                TsFileNameGenerator.getTsFileName(prev.resource.getTsFile().getName()).getTime();
-            long nextTimestamp =
-                TsFileNameGenerator.getTsFileName(next.resource.getTsFile().getName()).getTime();
+            long prevTimestamp = getTimestampInFileName(prev);
+            long nextTimestamp = getTimestampInFileName(next);
             if (nextTimestamp - prevTimestamp > 1) {
               result.prevSeqFile = prev.resource;
               result.nextSeqFile = next.resource;
@@ -497,8 +494,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
       } else {
         TsFileResourceCandidate next = seqFiles.get(0);
-        long nextTimestamp =
-            TsFileNameGenerator.getTsFileName(next.resource.getTsFile().getName()).getTime();
+        long nextTimestamp = getTimestampInFileName(next);
         if (nextTimestamp < 1) {
           return result;
         }
@@ -507,6 +503,13 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         result.toInsertUnSeqFile = unseqFile.resource;
       }
       return result;
+    }
+
+    private long getTimestampInFileName(TsFileResourceCandidate tsFileResourceCandidate)
+        throws IOException {
+      return TsFileNameGenerator.getTsFileName(
+              tsFileResourceCandidate.resource.getTsFile().getName())
+          .getTime();
     }
   }
 }

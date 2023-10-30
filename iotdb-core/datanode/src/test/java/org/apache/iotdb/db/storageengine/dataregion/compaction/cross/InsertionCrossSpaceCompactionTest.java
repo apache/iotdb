@@ -274,7 +274,7 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
-    Assert.assertEquals(1, timestamp);
+    Assert.assertEquals(2, timestamp);
   }
 
   @Test
@@ -354,13 +354,13 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
     TsFileResource targetFile1 = tsFileManager.getTsFileList(true).get(0);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile1.getTsFile().getName()).getTime();
-    Assert.assertEquals(1, timestamp);
+    Assert.assertEquals(2, timestamp);
     TsFileResource targetFile2 = tsFileManager.getTsFileList(true).get(1);
     timestamp = TsFileNameGenerator.getTsFileName(targetFile2.getTsFile().getName()).getTime();
-    Assert.assertEquals(2, timestamp);
+    Assert.assertEquals(3, timestamp);
     TsFileResource targetFile3 = tsFileManager.getTsFileList(true).get(2);
     timestamp = TsFileNameGenerator.getTsFileName(targetFile3.getTsFile().getName()).getTime();
-    Assert.assertEquals(3, timestamp);
+    Assert.assertEquals(4, timestamp);
   }
 
   @Test
@@ -445,13 +445,13 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
     TsFileResource targetFile1 = tsFileManager.getOrCreateSequenceListByTimePartition(0).get(0);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile1.getTsFile().getName()).getTime();
-    Assert.assertEquals(1, timestamp);
+    Assert.assertEquals(2, timestamp);
     TsFileResource targetFile2 = tsFileManager.getOrCreateSequenceListByTimePartition(0).get(1);
     timestamp = TsFileNameGenerator.getTsFileName(targetFile2.getTsFile().getName()).getTime();
-    Assert.assertEquals(2, timestamp);
+    Assert.assertEquals(3, timestamp);
     TsFileResource targetFile3 = tsFileManager.getOrCreateSequenceListByTimePartition(2808).get(0);
     timestamp = TsFileNameGenerator.getTsFileName(targetFile3.getTsFile().getName()).getTime();
-    Assert.assertEquals(1, timestamp);
+    Assert.assertEquals(4, timestamp);
   }
 
   public TsFileResource generateSingleNonAlignedSeriesFileWithDevices(
