@@ -434,14 +434,6 @@ MIGRATE
     : M I G R A T E
     ;
 
-MODEL
-    : M O D E L
-    ;
-
-MODELS
-    : M O D E L S
-    ;
-
 NAN
     : N A N
     ;

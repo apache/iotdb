@@ -132,8 +132,6 @@ keyWords
     | MERGE
     | METADATA
     | MIGRATE
-    | MODEL
-    | MODELS
     | NAN
     | NODEID
     | NODES
