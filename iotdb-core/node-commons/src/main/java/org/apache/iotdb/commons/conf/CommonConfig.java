@@ -208,6 +208,10 @@ public class CommonConfig {
 
   private long datanodeTokenTimeoutMS = 180 * 1000; // 3 minutes
 
+  // timeseries and device limit
+  private long seriesLimitThreshold = -1;
+  private long deviceLimitThreshold = -1;
+
   CommonConfig() {
     // Empty constructor
   }
@@ -797,5 +801,21 @@ public class CommonConfig {
 
   public void setDatanodeTokenTimeoutMS(long timeoutMS) {
     this.datanodeTokenTimeoutMS = timeoutMS;
+  }
+
+  public long getSeriesLimitThreshold() {
+    return seriesLimitThreshold;
+  }
+
+  public void setSeriesLimitThreshold(long seriesLimitThreshold) {
+    this.seriesLimitThreshold = seriesLimitThreshold;
+  }
+
+  public long getDeviceLimitThreshold() {
+    return deviceLimitThreshold;
+  }
+
+  public void setDeviceLimitThreshold(long deviceLimitThreshold) {
+    this.deviceLimitThreshold = deviceLimitThreshold;
   }
 }

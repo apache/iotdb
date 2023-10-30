@@ -243,6 +243,16 @@ public class CommonDescriptor {
             properties.getProperty(
                 "model_inference_execution_thread_count",
                 String.valueOf(config.getModelInferenceExecutionThreadCount()))));
+    config.setSeriesLimitThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "cluster_timeseries_limit_threshold",
+                String.valueOf(config.getSeriesLimitThreshold()))));
+    config.setDeviceLimitThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "cluster_device_limit_threshold",
+                String.valueOf(config.getDeviceLimitThreshold()))));
   }
 
   private void loadPipeProps(Properties properties) {

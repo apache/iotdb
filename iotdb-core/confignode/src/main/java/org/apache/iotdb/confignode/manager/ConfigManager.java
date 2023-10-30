@@ -291,7 +291,11 @@ public class ConfigManager implements IManager {
     // Build the manager module
     this.nodeManager = new NodeManager(this, nodeInfo);
     this.clusterSchemaManager =
-        new ClusterSchemaManager(this, clusterSchemaInfo, new ClusterSchemaQuotaStatistics());
+        new ClusterSchemaManager(
+            this,
+            clusterSchemaInfo,
+            new ClusterSchemaQuotaStatistics(
+                COMMON_CONF.getSeriesLimitThreshold(), COMMON_CONF.getDeviceLimitThreshold()));
     this.partitionManager = new PartitionManager(this, partitionInfo);
     this.permissionManager = new PermissionManager(this, authorInfo);
     this.procedureManager = new ProcedureManager(this, procedureInfo);

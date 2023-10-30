@@ -41,6 +41,7 @@
         <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
+        <module>integration-test</module>
     </modules>
     <properties>
         <!-- This was the last version to support Java 8 -->
