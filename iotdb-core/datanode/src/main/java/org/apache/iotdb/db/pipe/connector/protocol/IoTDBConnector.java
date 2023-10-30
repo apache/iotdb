@@ -81,6 +81,18 @@ public abstract class IoTDBConnector implements PipeConnector {
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
+    nodeUrls.clear();
+    nodeUrls.addAll(parseNodeUrls(parameters));
+    LOGGER.info("IoTDBConnector nodeUrls: {}", nodeUrls);
+
+    isTabletBatchModeEnabled =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, SINK_IOTDB_BATCH_MODE_ENABLE_KEY),
+            CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
+    LOGGER.info("IoTDBConnector isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
+  }
+
+  protected Set<TEndPoint> parseNodeUrls(PipeParameters parameters) {
     final Set<TEndPoint> givenNodeUrls = new HashSet<>(nodeUrls);
 
     if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)
@@ -110,14 +122,6 @@ public abstract class IoTDBConnector implements PipeConnector {
               Arrays.asList(parameters.getString(SINK_IOTDB_NODE_URLS_KEY).split(","))));
     }
 
-    nodeUrls.clear();
-    nodeUrls.addAll(givenNodeUrls);
-    LOGGER.info("IoTDBConnector nodeUrls: {}", nodeUrls);
-
-    isTabletBatchModeEnabled =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, SINK_IOTDB_BATCH_MODE_ENABLE_KEY),
-            CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
-    LOGGER.info("IoTDBConnector isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
+    return givenNodeUrls;
   }
 }

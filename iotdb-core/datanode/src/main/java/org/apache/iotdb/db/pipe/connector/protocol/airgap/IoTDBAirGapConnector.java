@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
@@ -37,12 +39,14 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import org.slf4j.Logger;
@@ -56,6 +60,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.zip.CRC32;
 
@@ -80,6 +85,29 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   private boolean eLanguageEnable;
 
   private long currentClientIndex = 0;
+
+  @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    super.validate(validator);
+    final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    final PipeConfig pipeConf = PipeConfig.getInstance();
+
+    validator.validate(
+        arg ->
+            !(pipeConf.getPipeAirGapReceiverEnabled()
+                && parseNodeUrls(((PipeParameters) arg))
+                    .containsAll(
+                        SessionUtils.parseSeedNodeUrls(
+                            Collections.singletonList(
+                                conf.getRpcAddress() + pipeConf.getPipeAirGapReceiverPort())))),
+        String.format(
+            "The pipe destinations %s cannot contain one of the dataNodes' air gap receiver endpoint %s",
+            parseNodeUrls(validator.getParameters()),
+            SessionUtils.parseSeedNodeUrls(
+                Collections.singletonList(
+                    conf.getRpcAddress() + pipeConf.getPipeAirGapReceiverPort()))),
+        validator.getParameters());
+  }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
