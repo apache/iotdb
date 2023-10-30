@@ -170,6 +170,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -669,7 +670,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)}));
 
     GroupByTimeParameter groupByTimeParameter =
-        new GroupByTimeParameter(startTime, endTme, interval, interval, true);
+        new GroupByTimeParameter(
+            startTime, endTme, new TimeDuration(0, interval), new TimeDuration(0, interval), true);
 
     IMeasurementSchema measurementSchema = new MeasurementSchema(measurement, dataType);
     AbstractSeriesAggregationScanOperator operator;

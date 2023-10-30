@@ -738,40 +738,39 @@ public class DateTimeUtils {
 
   public static final long MS_TO_MONTH = 30 * 86400_000L;
 
-  /**
-   * add natural months based on the startTime to avoid edge cases, ie 2/28
-   *
-   * @param startTime current start time
-   * @param numMonths numMonths is updated in hasNextWithoutConstraint()
-   * @return nextStartTime
-   */
-  public static long calcIntervalByMonth(long startTime, long numMonths) {
-    Calendar calendar = Calendar.getInstance();
-    calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
-    calendar.setTimeInMillis(startTime);
-    boolean isLastDayOfMonth =
-        calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
-    calendar.add(Calendar.MONTH, (int) (numMonths));
-    if (isLastDayOfMonth) {
-      calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
-    }
-    return calendar.getTimeInMillis();
+  public static long calcPositiveIntervalByMonth(
+      long startTime, TimeDuration duration, long times) {
+    return TimeDuration.calcPositiveIntervalByMonth(
+        startTime,
+        duration,
+        times,
+        SessionManager.getInstance().getSessionTimeZone(),
+        TimestampPrecisionUtils.currPrecision);
+  }
+
+  public static long calcNegativeIntervalByMonth(long startTime, TimeDuration duration) {
+    return TimeDuration.calcNegativeIntervalByMonth(
+        startTime,
+        duration,
+        SessionManager.getInstance().getSessionTimeZone(),
+        TimestampPrecisionUtils.currPrecision);
   }
 
   /**
-   * Storage the duration into two parts: month part and current precision part. e.g. ms precision:
-   * '1y1mo1ms' -> monthDuration = 13, currPrecisionDuration = 1; ns precision: '1y1mo1ms' ->
-   * monthDuration = 13, currPrecisionDuration = 1000_0000;
+   * Storage the duration into two parts: month part and non-month part, the non-month part's
+   * precision is depended on current time precision. e.g. ms precision: '1y1mo1ms' -> monthDuration
+   * = 13, nonMonthDuration = 1, ns precision: '1y1mo1ms' -> monthDuration = 13, nonMonthDuration =
+   * 1000_000.
    *
    * @param duration the input duration string
-   * @return the TimeDuration instance contains month part and ns part
+   * @return the TimeDuration instance contains month part and non-month part
    */
   public static TimeDuration constructTimeDuration(String duration) {
     duration = duration.toLowerCase();
     String currTimePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
     int temp = 0;
     int monthDuration = 0;
-    long currPrecisionDuration = 0;
+    long nonMonthDuration = 0;
     for (int i = 0; i < duration.length(); i++) {
       char ch = duration.charAt(i);
       if (Character.isDigit(ch)) {
@@ -794,11 +793,11 @@ public class DateTimeUtils {
           temp = 0;
           continue;
         }
-        currPrecisionDuration +=
+        nonMonthDuration +=
             DateTimeUtils.convertDurationStrToLong(-1, temp, unit, currTimePrecision);
         temp = 0;
       }
     }
-    return new TimeDuration(monthDuration, currPrecisionDuration);
+    return new TimeDuration(monthDuration, nonMonthDuration);
   }
 }

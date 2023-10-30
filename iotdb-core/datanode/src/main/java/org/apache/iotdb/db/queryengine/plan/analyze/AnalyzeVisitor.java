@@ -143,6 +143,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1859,7 +1860,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
-    if ((groupByTimeComponent.isIntervalByMonth() || groupByTimeComponent.isSlidingStepByMonth())
+    if ((groupByTimeComponent.getInterval().containsMonth()
+            || groupByTimeComponent.getSlidingStep().containsMonth())
         && queryStatement.getResultTimeOrder() == Ordering.DESC) {
       throw new SemanticException("Group by month doesn't support order by time desc now.");
     }
@@ -3092,19 +3094,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         groupByTimeComponent.isLeftCRightO()
             ? groupByTimeComponent.getEndTime()
             : groupByTimeComponent.getEndTime() + 1;
-    if (groupByTimeComponent.isIntervalByMonth() || groupByTimeComponent.isSlidingStepByMonth()) {
+    if (groupByTimeComponent.getInterval().containsMonth()
+        || groupByTimeComponent.getSlidingStep().containsMonth()) {
       return new GroupByMonthFilter(
           groupByTimeComponent.getInterval(),
           groupByTimeComponent.getSlidingStep(),
           startTime,
           endTime,
-          groupByTimeComponent.isSlidingStepByMonth(),
-          groupByTimeComponent.isIntervalByMonth(),
-          TimeZone.getTimeZone("+00:00"));
+          TimeZone.getTimeZone("+00:00"),
+          TimestampPrecisionUtils.currPrecision);
     } else {
       return new GroupByFilter(
-          groupByTimeComponent.getInterval(),
-          groupByTimeComponent.getSlidingStep(),
+          groupByTimeComponent.getInterval().nonMonthDuration,
+          groupByTimeComponent.getSlidingStep().nonMonthDuration,
           startTime,
           endTime);
     }

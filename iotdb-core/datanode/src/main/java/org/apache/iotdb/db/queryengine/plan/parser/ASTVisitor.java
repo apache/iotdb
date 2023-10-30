@@ -944,7 +944,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             "CQ: At least one of the parameters `every_interval` and `group_by_interval` needs to be specified.");
       }
 
-      long interval = queryStatement.getGroupByTimeComponent().getInterval();
+      long interval =
+          queryStatement
+              .getGroupByTimeComponent()
+              .getInterval()
+              .getTotalDuration(TimestampPrecisionUtils.currPrecision);
       statement.setEveryInterval(interval);
       statement.setStartTimeOffset(interval);
     }
@@ -967,7 +971,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         throw new SemanticException(
             "CQ: At least one of the parameters `every_interval` and `group_by_interval` needs to be specified.");
       }
-      statement.setEveryInterval(queryStatement.getGroupByTimeComponent().getInterval());
+      statement.setEveryInterval(
+          queryStatement
+              .getGroupByTimeComponent()
+              .getInterval()
+              .getTotalDuration(TimestampPrecisionUtils.currPrecision));
     }
 
     if (ctx.BOUNDARY() != null) {
@@ -1535,22 +1543,27 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     // Parse time interval
-    groupByTimeComponent.setInterval(
-        parseTimeIntervalOrSlidingStep(ctx.interval.getText(), true, groupByTimeComponent));
-    if (groupByTimeComponent.getInterval() <= 0) {
+    groupByTimeComponent.setInterval(DateTimeUtils.constructTimeDuration(ctx.interval.getText()));
+    groupByTimeComponent.setOriginalInterval(ctx.interval.getText());
+    if (groupByTimeComponent.getInterval().monthDuration == 0
+        && groupByTimeComponent.getInterval().nonMonthDuration == 0) {
       throw new SemanticException(
           "The second parameter time interval should be a positive integer.");
     }
 
     // parse sliding step
     if (ctx.step != null) {
-      groupByTimeComponent.setSlidingStep(
-          parseTimeIntervalOrSlidingStep(ctx.step.getText(), false, groupByTimeComponent));
+      groupByTimeComponent.setSlidingStep(DateTimeUtils.constructTimeDuration(ctx.step.getText()));
+      groupByTimeComponent.setOriginalInterval(ctx.step.getText());
     } else {
       groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
-      groupByTimeComponent.setSlidingStepByMonth(groupByTimeComponent.isIntervalByMonth());
+      groupByTimeComponent.setOriginalInterval(groupByTimeComponent.getOriginalInterval());
     }
-
+    if (groupByTimeComponent.getSlidingStep().monthDuration == 0
+        && groupByTimeComponent.getSlidingStep().nonMonthDuration == 0) {
+      throw new SemanticException(
+          "The third parameter time slidingStep should be a positive integer.");
+    }
     return groupByTimeComponent;
   }
 
@@ -1569,24 +1582,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (startTime >= endTime) {
       throw new SemanticException("Start time should be smaller than endTime in GroupBy");
     }
-  }
-
-  /**
-   * parse time interval or sliding step in group by query.
-   *
-   * @param duration represent duration string like: 12d8m9ns, 1y1d, etc.
-   * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
-   */
-  private long parseTimeIntervalOrSlidingStep(
-      String duration, boolean isParsingTimeInterval, GroupByTimeComponent groupByTimeComponent) {
-    if (duration.toLowerCase().contains("y") || duration.toLowerCase().contains("mo")) {
-      if (isParsingTimeInterval) {
-        groupByTimeComponent.setIntervalByMonth(true);
-      } else {
-        groupByTimeComponent.setSlidingStepByMonth(true);
-      }
-    }
-    return DateTimeUtils.convertDurationStrToLong(duration, true);
   }
 
   private GroupByComponent parseGroupByClause(

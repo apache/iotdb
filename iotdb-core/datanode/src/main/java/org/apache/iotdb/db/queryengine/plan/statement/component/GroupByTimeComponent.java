@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.component;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 /** This class maintains information of {@code GROUP BY} clause. */
 public class GroupByTimeComponent extends StatementNode {
@@ -30,14 +30,14 @@ public class GroupByTimeComponent extends StatementNode {
   private long endTime;
 
   // time interval
-  private long interval;
+  private TimeDuration interval;
 
   // sliding step
-  private long slidingStep;
+  private TimeDuration slidingStep;
 
-  // if it is expressed by natural month. eg, 1mo
-  private boolean isIntervalByMonth = false;
-  private boolean isSlidingStepByMonth = false;
+  private String originalInterval;
+
+  private String originalSlidingStep;
 
   // if it is left close and right open interval
   private boolean leftCRightO = true;
@@ -54,11 +54,11 @@ public class GroupByTimeComponent extends StatementNode {
     this.leftCRightO = leftCRightO;
   }
 
-  public long getInterval() {
+  public TimeDuration getInterval() {
     return interval;
   }
 
-  public void setInterval(long interval) {
+  public void setInterval(TimeDuration interval) {
     this.interval = interval;
   }
 
@@ -78,28 +78,28 @@ public class GroupByTimeComponent extends StatementNode {
     this.endTime = endTime;
   }
 
-  public long getSlidingStep() {
+  public TimeDuration getSlidingStep() {
     return slidingStep;
   }
 
-  public void setSlidingStep(long slidingStep) {
+  public void setSlidingStep(TimeDuration slidingStep) {
     this.slidingStep = slidingStep;
   }
 
-  public boolean isSlidingStepByMonth() {
-    return isSlidingStepByMonth;
+  public String getOriginalInterval() {
+    return originalInterval;
   }
 
-  public void setSlidingStepByMonth(boolean isSlidingStepByMonth) {
-    this.isSlidingStepByMonth = isSlidingStepByMonth;
+  public void setOriginalInterval(String originalInterval) {
+    this.originalInterval = originalInterval;
   }
 
-  public boolean isIntervalByMonth() {
-    return isIntervalByMonth;
+  public String getOriginalSlidingStep() {
+    return originalSlidingStep;
   }
 
-  public void setIntervalByMonth(boolean isIntervalByMonth) {
-    this.isIntervalByMonth = isIntervalByMonth;
+  public void setOriginalSlidingStep(String originalSlidingStep) {
+    this.originalSlidingStep = originalSlidingStep;
   }
 
   public String toSQLString() {
@@ -126,20 +126,10 @@ public class GroupByTimeComponent extends StatementNode {
       }
       sqlBuilder.append(',').append(' ');
     }
-    String intervalStr =
-        interval
-            + (isIntervalByMonth
-                ? "mo"
-                : CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-    String slidingStepStr =
-        slidingStep
-            + (isSlidingStepByMonth
-                ? "mo"
-                : CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-    sqlBuilder.append(intervalStr);
-    if (!slidingStepStr.equals(intervalStr)) {
+    sqlBuilder.append(originalInterval);
+    if (!originalSlidingStep.equals(originalInterval)) {
       sqlBuilder.append(',').append(' ');
-      sqlBuilder.append(slidingStepStr);
+      sqlBuilder.append(originalSlidingStep);
     }
     sqlBuilder.append(')');
     return sqlBuilder.toString();

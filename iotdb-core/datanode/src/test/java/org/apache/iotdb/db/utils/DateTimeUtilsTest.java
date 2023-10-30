@@ -240,26 +240,26 @@ public class DateTimeUtilsTest {
   public void testConstructTimeDuration() {
     TimeDuration timeDuration = DateTimeUtils.constructTimeDuration("1y1d1ns");
     Assert.assertEquals(12, timeDuration.monthDuration);
-    Assert.assertEquals(86400_000L, timeDuration.currPrecisionDuration);
+    Assert.assertEquals(86400_000L, timeDuration.nonMonthDuration);
 
     timeDuration = DateTimeUtils.constructTimeDuration("1y1mo1d1ms1ns");
     Assert.assertEquals(13, timeDuration.monthDuration);
-    Assert.assertEquals(86400_001L, timeDuration.currPrecisionDuration);
+    Assert.assertEquals(86400_001L, timeDuration.nonMonthDuration);
 
     timeDuration = DateTimeUtils.constructTimeDuration("1d1ns");
     Assert.assertEquals(0, timeDuration.monthDuration);
-    Assert.assertEquals(86400_000L, timeDuration.currPrecisionDuration);
+    Assert.assertEquals(86400_000L, timeDuration.nonMonthDuration);
 
     timeDuration = DateTimeUtils.constructTimeDuration("1y");
     Assert.assertEquals(12, timeDuration.monthDuration);
-    Assert.assertEquals(0, timeDuration.currPrecisionDuration);
+    Assert.assertEquals(0, timeDuration.nonMonthDuration);
 
     timeDuration = DateTimeUtils.constructTimeDuration("1mo");
     Assert.assertEquals(1, timeDuration.monthDuration);
-    Assert.assertEquals(0, timeDuration.currPrecisionDuration);
+    Assert.assertEquals(0, timeDuration.nonMonthDuration);
 
     timeDuration = DateTimeUtils.constructTimeDuration("1y1mo");
     Assert.assertEquals(13, timeDuration.monthDuration);
-    Assert.assertEquals(0, timeDuration.currPrecisionDuration);
+    Assert.assertEquals(0, timeDuration.nonMonthDuration);
   }
 }

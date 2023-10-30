@@ -75,8 +75,6 @@ public class AggregationUtil {
           groupByTimeParameter.getInterval(),
           groupByTimeParameter.getSlidingStep(),
           ascending,
-          groupByTimeParameter.isIntervalByMonth(),
-          groupByTimeParameter.isSlidingStepByMonth(),
           groupByTimeParameter.isLeftCRightO(),
           outputPartialTimeWindow);
     }
