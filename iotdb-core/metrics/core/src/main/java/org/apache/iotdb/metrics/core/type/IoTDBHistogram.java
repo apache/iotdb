@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.metrics.core.type;
 
-import org.apache.iotdb.metrics.core.type.IoTDBHistogramMBean.AbstractJmxHistogramBean;
 import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
-public class IoTDBHistogram extends AbstractJmxHistogramBean
-    implements Histogram, IoTDBHistogramMBean {
+public class IoTDBHistogram extends AbstractMetricMBean implements Histogram, IoTDBHistogramMBean {
 
   io.micrometer.core.instrument.DistributionSummary distributionSummary;
 

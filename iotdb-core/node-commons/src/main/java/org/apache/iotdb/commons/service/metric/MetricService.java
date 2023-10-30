@@ -63,12 +63,14 @@ public class MetricService extends AbstractMetricService implements MetricServic
     if (METRIC_CONFIG.getMetricReporterList() == null) {
       return;
     }
+    boolean hasJmxReporter = false;
     for (ReporterType reporterType : METRIC_CONFIG.getMetricReporterList()) {
       Reporter reporter = null;
       switch (reporterType) {
         case JMX:
           reporter = IoTDBJmxReporter.getInstance();
           metricManager.setBindJmxReporter((JmxReporter) reporter);
+          hasJmxReporter = true;
           break;
         case PROMETHEUS:
           reporter = new PrometheusReporter(metricManager);
@@ -84,6 +86,10 @@ public class MetricService extends AbstractMetricService implements MetricServic
         continue;
       }
       compositeReporter.addReporter(reporter);
+    }
+    if (!hasJmxReporter) {
+      // in hot-loading scenario, we need to ensure that JmxReporter is null
+      metricManager.setBindJmxReporter(null);
     }
   }
 

@@ -35,17 +35,4 @@ public interface IoTDBHistogramMBean {
   double get50thPercentile();
 
   double get99thPercentile();
-
-  abstract class AbstractJmxHistogramBean implements IoTDBHistogramMBean {
-    private ObjectName objectName;
-
-    public void setObjectName(ObjectName objectName) {
-      this.objectName = objectName;
-    }
-
-    @Override
-    public ObjectName objectName() {
-      return objectName;
-    }
-  }
 }

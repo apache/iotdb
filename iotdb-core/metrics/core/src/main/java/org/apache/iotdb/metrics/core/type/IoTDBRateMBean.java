@@ -29,17 +29,4 @@ public interface IoTDBRateMBean {
   double getMeanRate();
 
   double getOneMinuteRate();
-
-  abstract class AbstractJmxRateBean implements IoTDBRateMBean {
-    private ObjectName objectName;
-
-    public void setObjectName(ObjectName objectName) {
-      this.objectName = objectName;
-    }
-
-    @Override
-    public ObjectName objectName() {
-      return objectName;
-    }
-  }
 }

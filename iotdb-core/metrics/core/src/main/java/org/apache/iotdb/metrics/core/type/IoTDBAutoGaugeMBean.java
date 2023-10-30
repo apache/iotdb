@@ -25,17 +25,4 @@ public interface IoTDBAutoGaugeMBean {
   ObjectName objectName();
 
   double getValue();
-
-  abstract class AbstractJmxAutoGaugeBean implements IoTDBAutoGaugeMBean {
-    private ObjectName objectName;
-
-    public void setObjectName(ObjectName objectName) {
-      this.objectName = objectName;
-    }
-
-    @Override
-    public ObjectName objectName() {
-      return objectName;
-    }
-  }
 }

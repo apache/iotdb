@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.metrics.core.type;
 
-import org.apache.iotdb.metrics.core.type.IoTDBRateMBean.AbstractJmxRateBean;
 import org.apache.iotdb.metrics.core.uitls.IoTDBMovingAverage;
 import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.Meter;
@@ -34,7 +34,7 @@ import com.codahale.metrics.Meter;
  * <p>Now, we only record a gauge for the rate record in micrometer, and we use dropwizard meter to
  * calculate the meter.
  */
-public class IoTDBRate extends AbstractJmxRateBean implements Rate, IoTDBRateMBean {
+public class IoTDBRate extends AbstractMetricMBean implements Rate, IoTDBRateMBean {
   Meter meter;
 
   public IoTDBRate() {

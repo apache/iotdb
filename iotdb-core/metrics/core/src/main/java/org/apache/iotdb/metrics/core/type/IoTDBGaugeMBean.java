@@ -25,17 +25,4 @@ public interface IoTDBGaugeMBean {
   ObjectName objectName();
 
   long getValue();
-
-  abstract class AbstractJmxGaugeMBean implements IoTDBGaugeMBean {
-    private ObjectName objectName;
-
-    public void setObjectName(ObjectName objectName) {
-      this.objectName = objectName;
-    }
-
-    @Override
-    public ObjectName objectName() {
-      return objectName;
-    }
-  }
 }

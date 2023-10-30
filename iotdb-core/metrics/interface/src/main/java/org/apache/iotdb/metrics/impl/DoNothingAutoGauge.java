@@ -20,17 +20,13 @@
 package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.AutoGauge;
+import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
 import javax.management.ObjectName;
 
-public class DoNothingAutoGauge implements AutoGauge {
+public class DoNothingAutoGauge extends AbstractMetricMBean implements AutoGauge, DoNothingMetric {
   @Override
   public double getValue() {
     return 0d;
-  }
-
-  @Override
-  public void setObjectName(ObjectName objectName) {
-    // do nothing
   }
 }

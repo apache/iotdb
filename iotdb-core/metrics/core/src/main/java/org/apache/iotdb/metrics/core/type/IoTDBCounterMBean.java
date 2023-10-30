@@ -25,17 +25,4 @@ public interface IoTDBCounterMBean {
   ObjectName objectName();
 
   long getCount();
-
-  abstract class AbstractJmxCounterBean implements IoTDBCounterMBean {
-    private ObjectName objectName;
-
-    public void setObjectName(ObjectName objectName) {
-      this.objectName = objectName;
-    }
-
-    @Override
-    public ObjectName objectName() {
-      return objectName;
-    }
-  }
 }

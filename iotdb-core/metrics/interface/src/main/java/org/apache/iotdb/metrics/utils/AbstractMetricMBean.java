@@ -17,12 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.core.uitls;
+package org.apache.iotdb.metrics.utils;
 
 import javax.management.ObjectName;
 
-public interface IoTDBCachedGaugeMBean {
-  ObjectName objectName();
+/**
+ * Abstract Metric JmxMBean class, designed for reusing some functions for metric type classes.
+ */
+public abstract class AbstractMetricMBean {
+    private ObjectName objectName;
 
-  double getValue();
+    public void setObjectName(ObjectName objectName) {
+        this.objectName = objectName;
+    }
+
+    public ObjectName objectName() {
+        return objectName;
+    }
 }

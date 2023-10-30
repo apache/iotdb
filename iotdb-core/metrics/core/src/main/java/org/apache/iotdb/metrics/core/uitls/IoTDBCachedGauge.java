@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.core.uitls;
 
-import org.apache.iotdb.metrics.core.uitls.IoTDBCachedGaugeMBean.AbstractJmxCachedGaugeMBean;
+import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 import org.apache.iotdb.metrics.type.AutoGauge;
 
 import com.codahale.metrics.Clock;
@@ -36,7 +36,7 @@ import java.util.function.ToDoubleFunction;
  *
  * <p>This file is modified from com.codahale.metrics.CachedGauge<T>, it should be bug free.
  */
-public class IoTDBCachedGauge<T> extends AbstractJmxCachedGaugeMBean
+public class IoTDBCachedGauge<T> extends AbstractMetricMBean
     implements AutoGauge, IoTDBCachedGaugeMBean {
   /** The timer of metric system */
   private final Clock clock;

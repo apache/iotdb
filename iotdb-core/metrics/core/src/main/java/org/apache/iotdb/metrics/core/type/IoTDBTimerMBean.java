@@ -37,17 +37,4 @@ public interface IoTDBTimerMBean {
   double get50thPercentile();
 
   double get99thPercentile();
-
-  abstract class AbstractJmxTimerBean implements IoTDBTimerMBean {
-    private ObjectName objectName;
-
-    public void setObjectName(ObjectName objectName) {
-      this.objectName = objectName;
-    }
-
-    @Override
-    public ObjectName objectName() {
-      return objectName;
-    }
-  }
 }

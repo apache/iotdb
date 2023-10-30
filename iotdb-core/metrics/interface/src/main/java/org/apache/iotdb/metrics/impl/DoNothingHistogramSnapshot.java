@@ -20,10 +20,11 @@
 package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
+import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
 import javax.management.ObjectName;
 
-public class DoNothingHistogramSnapshot implements HistogramSnapshot, DoNothingMetric {
+public class DoNothingHistogramSnapshot extends AbstractMetricMBean implements HistogramSnapshot, DoNothingMetric {
   @Override
   public double getValue(double quantile) {
     return 0;
@@ -47,10 +48,5 @@ public class DoNothingHistogramSnapshot implements HistogramSnapshot, DoNothingM
   @Override
   public double getMean() {
     return 0;
-  }
-
-  @Override
-  public void setObjectName(ObjectName objectName) {
-    // do nothing
   }
 }

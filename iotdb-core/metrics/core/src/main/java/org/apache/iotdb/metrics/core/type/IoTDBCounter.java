@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.metrics.core.type;
 
-import org.apache.iotdb.metrics.core.type.IoTDBCounterMBean.AbstractJmxCounterBean;
 import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
 import java.util.concurrent.atomic.LongAdder;
 
-public class IoTDBCounter extends AbstractJmxCounterBean implements Counter, IoTDBCounterMBean {
+public class IoTDBCounter extends AbstractMetricMBean implements Counter, IoTDBCounterMBean {
   private final LongAdder count;
 
   public IoTDBCounter() {
