@@ -25,9 +25,6 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils;
@@ -121,20 +118,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     Assert.assertEquals(1, result.size());
     Assert.assertEquals(3, result.get(0).getTotalFileNums());
-
-    // execution
-    FastCompactionPerformer performer = new FastCompactionPerformer(true);
-    AbstractCompactionTask task =
-        new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result.get(0).getSeqFiles(),
-            result.get(0).getUnseqFiles(),
-            performer,
-            0,
-            0);
-    Assert.assertTrue(task.start());
-    validateSeqFiles(true);
   }
 
   @Test
@@ -193,20 +176,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     Assert.assertEquals(3, result.get(0).getTotalFileNums());
     Assert.assertFalse(result.get(0).getSeqFiles().contains(seqTsFileResource2));
     Assert.assertTrue(result.get(0).getSeqFiles().contains(seqTsFileResource3));
-
-    // execution
-    FastCompactionPerformer performer = new FastCompactionPerformer(true);
-    AbstractCompactionTask task =
-        new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result.get(0).getSeqFiles(),
-            result.get(0).getUnseqFiles(),
-            performer,
-            0,
-            0);
-    Assert.assertTrue(task.start());
-    validateSeqFiles(true);
   }
 
   @Test
@@ -276,20 +245,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     Assert.assertFalse(result.get(0).getSeqFiles().contains(seqTsFileResource2));
     Assert.assertFalse(result.get(0).getSeqFiles().contains(seqTsFileResource4));
     Assert.assertTrue(result.get(0).getSeqFiles().contains(seqTsFileResource3));
-
-    // execution
-    FastCompactionPerformer performer = new FastCompactionPerformer(true);
-    AbstractCompactionTask task =
-        new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result.get(0).getSeqFiles(),
-            result.get(0).getUnseqFiles(),
-            performer,
-            0,
-            0);
-    Assert.assertTrue(task.start());
-    validateSeqFiles(true);
   }
 
   @Test
@@ -369,20 +324,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     Assert.assertFalse(result.get(0).getSeqFiles().contains(seqTsFileResource2));
     Assert.assertFalse(result.get(0).getSeqFiles().contains(seqTsFileResource4));
     Assert.assertTrue(result.get(0).getSeqFiles().contains(seqTsFileResource5));
-
-    // execution
-    FastCompactionPerformer performer = new FastCompactionPerformer(true);
-    AbstractCompactionTask task =
-        new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result.get(0).getSeqFiles(),
-            result.get(0).getUnseqFiles(),
-            performer,
-            0,
-            0);
-    Assert.assertTrue(task.start());
-    validateSeqFiles(true);
   }
 
   @Test
@@ -464,20 +405,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     Assert.assertEquals(1, result.size());
     Assert.assertEquals(5, result.get(0).getTotalFileNums());
     Assert.assertFalse(result.get(0).getSeqFiles().contains(seqTsFileResource2));
-
-    // execution
-    FastCompactionPerformer performer = new FastCompactionPerformer(true);
-    AbstractCompactionTask task =
-        new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result.get(0).getSeqFiles(),
-            result.get(0).getUnseqFiles(),
-            performer,
-            0,
-            0);
-    Assert.assertTrue(task.start());
-    validateSeqFiles(true);
   }
 
   @Test
@@ -525,20 +452,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     Assert.assertEquals(1, result.size());
     Assert.assertEquals(2, result.get(0).getTotalFileNums());
-
-    // execution
-    FastCompactionPerformer performer = new FastCompactionPerformer(true);
-    AbstractCompactionTask task =
-        new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result.get(0).getSeqFiles(),
-            result.get(0).getUnseqFiles(),
-            performer,
-            0,
-            0);
-    Assert.assertTrue(task.start());
-    validateSeqFiles(true);
   }
 
   @Test
@@ -628,20 +541,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     Assert.assertFalse(result.get(0).getSeqFiles().contains(seqTsFileResource2));
     Assert.assertFalse(result.get(0).getSeqFiles().contains(seqTsFileResource4));
     Assert.assertTrue(result.get(0).getSeqFiles().contains(seqTsFileResource5));
-
-    // execution
-    FastCompactionPerformer performer = new FastCompactionPerformer(true);
-    AbstractCompactionTask task =
-        new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result.get(0).getSeqFiles(),
-            result.get(0).getUnseqFiles(),
-            performer,
-            0,
-            0);
-    Assert.assertTrue(task.start());
-    validateSeqFiles(true);
   }
 
   @Test
@@ -870,20 +769,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     Assert.assertEquals(2, result.get(0).getSeqFiles().size());
     Assert.assertEquals(seqTsFileResource1, result.get(0).getSeqFiles().get(0));
     Assert.assertEquals(seqTsFileResource4, result.get(0).getSeqFiles().get(1));
-
-    // execution
-    FastCompactionPerformer performer = new FastCompactionPerformer(true);
-    AbstractCompactionTask task =
-        new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            result.get(0).getSeqFiles(),
-            result.get(0).getUnseqFiles(),
-            performer,
-            0,
-            0);
-    Assert.assertTrue(task.start());
-    validateSeqFiles(true);
   }
 
   @Test

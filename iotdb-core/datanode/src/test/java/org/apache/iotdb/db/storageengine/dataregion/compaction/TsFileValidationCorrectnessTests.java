@@ -85,6 +85,9 @@ public class TsFileValidationCorrectnessTests {
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
         path);
+    tsFileResource.updateStartTime("d1", 1);
+    tsFileResource.updateEndTime("d1", 100);
+    tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
   }
@@ -100,6 +103,9 @@ public class TsFileValidationCorrectnessTests {
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
         path);
+    tsFileResource.updateStartTime("d1", 1);
+    tsFileResource.updateEndTime("d1", 110);
+    tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
   }
@@ -129,7 +135,7 @@ public class TsFileValidationCorrectnessTests {
 
   @Test
   public void testAlignedTimestampHasOverlapBetweenPages() throws IOException {
-    String path = dir + File.separator + "test4.tsfile";
+    String path = dir + File.separator + "test5.tsfile";
     TsFileResource tsFileResource = new TsFileResource(new File(path));
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
       writer.startChunkGroup("d1");
@@ -155,7 +161,7 @@ public class TsFileValidationCorrectnessTests {
 
   @Test
   public void testAlignedTimestampTimeChunkOffsetEqualsMetadata() throws IOException {
-    String path = dir + File.separator + "test4.tsfile";
+    String path = dir + File.separator + "test6.tsfile";
     TsFileResource tsFileResource = new TsFileResource(new File(path));
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
       writer.startChunkGroup("d1");
@@ -174,13 +180,16 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
+    tsFileResource.updateStartTime("d1", 1);
+    tsFileResource.updateEndTime("d1", 3);
+    tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
   }
 
   @Test
   public void testNonAlignedTsFileHasOnePageData() throws IOException {
-    String path = dir + File.separator + "test2.tsfile";
+    String path = dir + File.separator + "test7.tsfile";
     TsFileResource tsFileResource = new TsFileResource(new File(path));
     TsFileGeneratorUtils.generateSingleNonAlignedSeriesFile(
         "d1",
@@ -189,13 +198,16 @@ public class TsFileValidationCorrectnessTests {
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
         path);
+    tsFileResource.updateStartTime("d1", 1);
+    tsFileResource.updateEndTime("d1", 100);
+    tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
   }
 
   @Test
   public void testNonAlignedTsFileHasManyPage() throws IOException {
-    String path = dir + File.separator + "test3.tsfile";
+    String path = dir + File.separator + "test8.tsfile";
     TsFileResource tsFileResource = new TsFileResource(new File(path));
     TsFileGeneratorUtils.generateSingleNonAlignedSeriesFile(
         "d1",
@@ -204,13 +216,16 @@ public class TsFileValidationCorrectnessTests {
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
         path);
+    tsFileResource.updateStartTime("d1", 1);
+    tsFileResource.updateEndTime("d1", 110);
+    tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
   }
 
   @Test
   public void testNonAlignedTimestampRepeatedOrNotIncremented() throws IOException {
-    String path = dir + File.separator + "test4.tsfile";
+    String path = dir + File.separator + "test9.tsfile";
     TsFileResource tsFileResource = new TsFileResource(new File(path));
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
       writer.startChunkGroup("d1");
@@ -231,7 +246,7 @@ public class TsFileValidationCorrectnessTests {
 
   @Test
   public void testNonAlignedTimestampHasOverlapBetweenPages() throws IOException {
-    String path = dir + File.separator + "test4.tsfile";
+    String path = dir + File.separator + "test10.tsfile";
     TsFileResource tsFileResource = new TsFileResource(new File(path));
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
       writer.startChunkGroup("d1");
@@ -253,7 +268,7 @@ public class TsFileValidationCorrectnessTests {
 
   @Test
   public void testNonAlignedTimestampTimeChunkOffsetEqualsMetadata() throws IOException {
-    String path = dir + File.separator + "test4.tsfile";
+    String path = dir + File.separator + "test11.tsfile";
     TsFileResource tsFileResource = new TsFileResource(new File(path));
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
       writer.startChunkGroup("d1");
@@ -272,6 +287,9 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
+    tsFileResource.updateStartTime("d1", 1);
+    tsFileResource.updateEndTime("d1", 3);
+    tsFileResource.serialize();
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
   }

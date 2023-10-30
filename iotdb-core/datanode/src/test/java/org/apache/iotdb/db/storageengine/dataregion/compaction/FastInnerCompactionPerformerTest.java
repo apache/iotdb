@@ -949,7 +949,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
             0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
-    Assert.assertTrue(task.start());
+    Assert.assertFalse(task.start());
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(true);

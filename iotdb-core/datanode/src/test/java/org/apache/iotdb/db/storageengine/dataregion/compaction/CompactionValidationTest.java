@@ -37,13 +37,11 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class CompactionValidationTest {
@@ -136,24 +134,18 @@ public class CompactionValidationTest {
   public void testSingleCompleteFile() {
     String path = dir + File.separator + "test.tsfile";
     writeOneFile(path);
-    TsFileResource mockTsFile = Mockito.mock(TsFileResource.class);
-    Mockito.when(mockTsFile.getTsFilePath()).thenReturn(path);
-    Assert.assertTrue(
-        TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(
-            Collections.singletonList(mockTsFile)));
+    TsFileResource mockTsFile = new TsFileResource(new File(path));
+    Assert.assertTrue(TsFileResourceUtils.validateTsFileDataCorrectness(mockTsFile));
   }
 
   @Test
   public void testMultiCompleteFile() {
-    List<TsFileResource> resources = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       String path = dir + File.separator + "test" + i + ".tsfile";
       writeOneFile(path);
-      TsFileResource mockTsFile = Mockito.mock(TsFileResource.class);
-      Mockito.when(mockTsFile.getTsFilePath()).thenReturn(path);
-      resources.add(mockTsFile);
+      TsFileResource mockTsFile = new TsFileResource(new File(path));
+      Assert.assertTrue(TsFileResourceUtils.validateTsFileDataCorrectness(mockTsFile));
     }
-    Assert.assertTrue(TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(resources));
   }
 
   @Test
@@ -164,16 +156,12 @@ public class CompactionValidationTest {
     randomAccessFile.seek(1024);
     randomAccessFile.write(new byte[] {1, 2, 3, 4, 5, 6, 7, 8});
     randomAccessFile.close();
-    TsFileResource mockTsFile = Mockito.mock(TsFileResource.class);
-    Mockito.when(mockTsFile.getTsFilePath()).thenReturn(path);
-    Assert.assertFalse(
-        TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(
-            Collections.singletonList(mockTsFile)));
+    TsFileResource mockTsFile = new TsFileResource(new File(path));
+    Assert.assertFalse(TsFileResourceUtils.validateTsFileDataCorrectness(mockTsFile));
   }
 
   @Test
   public void testMultiUncompletedFiles() throws IOException {
-    List<TsFileResource> resources = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       String path = dir + File.separator + "test" + i + ".tsfile";
       writeOneFile(path);
@@ -181,16 +169,13 @@ public class CompactionValidationTest {
       randomAccessFile.seek(1024);
       randomAccessFile.write(new byte[] {1, 2, 3, 4, 5, 6, 7, 8});
       randomAccessFile.close();
-      TsFileResource mockTsFile = Mockito.mock(TsFileResource.class);
-      Mockito.when(mockTsFile.getTsFilePath()).thenReturn(path);
-      resources.add(mockTsFile);
+      TsFileResource mockTsFile = new TsFileResource(new File(path));
+      Assert.assertFalse(TsFileResourceUtils.validateTsFileDataCorrectness(mockTsFile));
     }
-    Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(resources));
   }
 
   @Test // broken in chunk
   public void testOneUncompletedInMultiCompletedFiles1() throws IOException {
-    List<TsFileResource> resources = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       String path = dir + File.separator + "test" + i + ".tsfile";
       writeOneFile(path);
@@ -200,16 +185,13 @@ public class CompactionValidationTest {
         randomAccessFile.write(new byte[] {1, 2, 3, 4, 5, 6, 7, 8});
         randomAccessFile.close();
       }
-      TsFileResource mockTsFile = Mockito.mock(TsFileResource.class);
-      Mockito.when(mockTsFile.getTsFilePath()).thenReturn(path);
-      resources.add(mockTsFile);
+      TsFileResource mockTsFile = new TsFileResource(new File(path));
+      TsFileResourceUtils.validateTsFileDataCorrectness(mockTsFile);
     }
-    Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(resources));
   }
 
   @Test // broken in metadata
   public void testOneUncompletedInMultiCompletedFiles2() throws IOException {
-    List<TsFileResource> resources = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       String path = dir + File.separator + "test" + i + ".tsfile";
       writeOneFile(path);
@@ -219,10 +201,8 @@ public class CompactionValidationTest {
         randomAccessFile.write(new byte[] {1, 2, 3, 4, 5, 6, 7, 8});
         randomAccessFile.close();
       }
-      TsFileResource mockTsFile = Mockito.mock(TsFileResource.class);
-      Mockito.when(mockTsFile.getTsFilePath()).thenReturn(path);
-      resources.add(mockTsFile);
+      TsFileResource mockTsFile = new TsFileResource(new File(path));
+      TsFileResourceUtils.validateTsFileDataCorrectness(mockTsFile);
     }
-    Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(resources));
   }
 }

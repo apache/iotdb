@@ -65,6 +65,10 @@ public class TsFileResourceUtils {
       } else {
         timeIndex = (DeviceTimeIndex) resource.getTimeIndex();
       }
+      if (timeIndex == null) {
+        logger.error("{} {} time index is null", resource.getTsFilePath(), VALIDATE_FAILED);
+        return false;
+      }
       Set<String> devices = timeIndex.getDevices();
       if (devices.isEmpty()) {
         logger.error("{} {} empty resource", resource.getTsFilePath(), VALIDATE_FAILED);
@@ -164,6 +168,7 @@ public class TsFileResourceUtils {
             }
             LinkedList<Long> lastNoAlignedPageTimeStamps = new LinkedList<>();
             while (dataSize > 0) {
+              valueDecoder.reset();
               PageHeader pageHeader = reader.readPageHeader(header.getDataType(), isHasStatistic);
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
 
@@ -246,7 +251,12 @@ public class TsFileResourceUtils {
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
-            logger.info(chunkGroupHeader.getDeviceID());
+            if (chunkGroupHeader.getDeviceID() == null
+                || chunkGroupHeader.getDeviceID().isEmpty()) {
+              logger.error(
+                  "{} {} device id is null or empty.", resource.getTsFilePath(), VALIDATE_FAILED);
+              return false;
+            }
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
             reader.readPlanIndex();
@@ -320,7 +330,7 @@ public class TsFileResourceUtils {
     return offset2ChunkMetadata;
   }
 
-  public static boolean validateTsFileResourcesIsHasOverlap(List<TsFileResource> resources) {
+  public static boolean validateTsFileResourcesHasNoOverlap(List<TsFileResource> resources) {
     try {
       // deviceID -> <TsFileResource, last end time>
       Map<String, Pair<TsFileResource, Long>> lastEndTimeMap = new HashMap<>();
@@ -331,6 +341,9 @@ public class TsFileResourceUtils {
           timeIndex = resource.buildDeviceTimeIndex();
         } else {
           timeIndex = (DeviceTimeIndex) resource.getTimeIndex();
+        }
+        if (timeIndex == null) {
+          return false;
         }
         Set<String> devices = timeIndex.getDevices();
         for (String device : devices) {
@@ -359,7 +372,7 @@ public class TsFileResourceUtils {
       }
       return true;
     } catch (IOException e) {
-      return false;
+      return true;
     }
   }
 }

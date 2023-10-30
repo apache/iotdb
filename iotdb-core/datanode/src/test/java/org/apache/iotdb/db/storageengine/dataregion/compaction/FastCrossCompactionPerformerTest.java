@@ -3935,7 +3935,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     targetResources.get(3).degradeTimeIndex();
     targetResources.get(2).degradeTimeIndex();
     Assert.assertTrue(
-        TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(
+        TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
             tsFileManager.getOrCreateSequenceListByTimePartition(0).getArrayList()));
 
     List<String> deviceIdList = new ArrayList<>();

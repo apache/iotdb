@@ -43,8 +43,8 @@ public class TsFileResourceAndDataValidator implements TsFileValidator {
   }
 
   @Override
-  public boolean validateTsFilesIsHasOverlap(List<TsFileResource> resourceList) {
-    return TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(resourceList);
+  public boolean validateTsFilesIsHasNoOverlap(List<TsFileResource> resourceList) {
+    return TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(resourceList);
   }
 
   public static TsFileResourceAndDataValidator getInstance() {

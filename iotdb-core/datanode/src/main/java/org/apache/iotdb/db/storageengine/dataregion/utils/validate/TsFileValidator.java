@@ -33,7 +33,7 @@ public interface TsFileValidator {
   boolean validateTsFiles(List<TsFileResource> resourceList);
 
   /** */
-  boolean validateTsFilesIsHasOverlap(List<TsFileResource> resourceList);
+  boolean validateTsFilesIsHasNoOverlap(List<TsFileResource> resourceList);
 
   static TsFileValidator getInstance() {
     boolean enableTsFileValidation =

@@ -2155,7 +2155,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
     // meet overlap files
     Assert.assertFalse(
-        TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(
+        TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
             tsFileManager.getOrCreateSequenceListByTimePartition(0).getArrayList()));
 
     tsFileManager.getTsFileList(true).get(0).deserialize();
@@ -2163,7 +2163,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     tsFileManager.getTsFileList(true).get(0).degradeTimeIndex();
     tsFileManager.getTsFileList(true).get(1).degradeTimeIndex();
     Assert.assertTrue(
-        TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(
+        TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
             tsFileManager.getOrCreateSequenceListByTimePartition(0).getArrayList()));
 
     // seq file 4,5 and 6 are being compacted by inner space compaction
@@ -2176,7 +2176,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     InnerSpaceCompactionTask innerSpaceCompactionTask =
         new InnerSpaceCompactionTask(0, tsFileManager, sourceFiles, true, performer, 0);
     Assert.assertTrue(
-        TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(
+        TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
             tsFileManager.getOrCreateSequenceListByTimePartition(0).getArrayList()));
     innerSpaceCompactionTask.start();
     validateSeqFiles(true);

@@ -246,7 +246,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
         TsFileValidator validator = TsFileValidator.getInstance();
         if (!validator.validateTsFiles(targetTsFileList)
-            || validator.validateTsFilesIsHasOverlap(
+            || !validator.validateTsFilesIsHasNoOverlap(
                 tsFileManager
                     .getOrCreateSequenceListByTimePartition(timePartition)
                     .getArrayList())) {
