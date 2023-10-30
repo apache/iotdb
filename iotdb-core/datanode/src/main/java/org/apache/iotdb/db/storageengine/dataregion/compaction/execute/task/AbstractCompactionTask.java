@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -68,7 +69,7 @@ public abstract class AbstractCompactionTask {
   protected long memoryCost = 0L;
 
   protected boolean recoverMemoryStatus;
-  protected CompactionTaskType compactionTaskType;
+  protected CompactionTaskPriorityType compactionTaskPriorityType;
 
   protected AbstractCompactionTask(
       String storageGroupName,
@@ -82,7 +83,7 @@ public abstract class AbstractCompactionTask {
         timePartition,
         tsFileManager,
         serialId,
-        CompactionTaskType.NORMAL);
+        CompactionTaskPriorityType.NORMAL);
   }
 
   protected AbstractCompactionTask(
@@ -91,13 +92,13 @@ public abstract class AbstractCompactionTask {
       long timePartition,
       TsFileManager tsFileManager,
       long serialId,
-      CompactionTaskType compactionTaskType) {
+      CompactionTaskPriorityType compactionTaskPriorityType) {
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.serialId = serialId;
-    this.compactionTaskType = compactionTaskType;
+    this.compactionTaskPriorityType = compactionTaskPriorityType;
   }
 
   protected abstract List<TsFileResource> getAllSourceTsFiles();
@@ -135,7 +136,7 @@ public abstract class AbstractCompactionTask {
     } else {
       logger.error(
           "{}-{} [Compaction] Meet errors {}.",
-          compactionTaskType,
+          compactionTaskPriorityType,
           storageGroupName,
           dataRegionId,
           e);
@@ -151,7 +152,7 @@ public abstract class AbstractCompactionTask {
       summary.finish(isSuccess);
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
       CompactionMetrics.getInstance()
-          .recordTaskFinishOrAbort(crossTask, innerSeqTask, summary.getTimeCost());
+          .recordTaskFinishOrAbort(getCompactionTaskType(), summary.getTimeCost());
     }
     return isSuccess;
   }
@@ -358,14 +359,26 @@ public abstract class AbstractCompactionTask {
     return innerSeqTask;
   }
 
-  public CompactionTaskType getCompactionTaskType() {
-    return compactionTaskType;
+  public CompactionTaskPriorityType getCompactionTaskPriorityType() {
+    return compactionTaskPriorityType;
   }
 
   public boolean isDiskSpaceCheckPassed() {
-    if (compactionTaskType == CompactionTaskType.MOD_SETTLE) {
+    if (compactionTaskPriorityType == CompactionTaskPriorityType.MOD_SETTLE) {
       return true;
     }
     return CompactionUtils.isDiskHasSpace();
+  }
+
+  public CompactionTaskType getCompactionTaskType() {
+    if (crossTask) {
+      return CompactionTaskType.CROSS;
+    } else if (innerSeqTask) {
+      return CompactionTaskType.INNER_SEQ;
+    } else if (this instanceof InsertionCrossSpaceCompactionTask) {
+      return CompactionTaskType.INSERTION;
+    } else {
+      return CompactionTaskType.INNER_UNSEQ;
+    }
   }
 }

@@ -84,7 +84,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   public InsertionCrossSpaceCompactionTask(
       String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
-    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, CompactionTaskType.NORMAL);
+    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, CompactionTaskPriorityType.NORMAL);
     this.logFile = logFile;
     this.needRecoverTaskInfoFromLogFile = true;
   }

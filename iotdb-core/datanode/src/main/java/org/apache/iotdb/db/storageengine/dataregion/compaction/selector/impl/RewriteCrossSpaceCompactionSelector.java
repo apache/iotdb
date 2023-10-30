@@ -340,10 +340,11 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       if (!taskResources.isValid()) {
         if (!hasPrintedLog) {
           LOGGER.info(
-              "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. "
+              "{} [{}] Total source files: {} seqFiles, {} unseqFiles. "
                   + "Candidate source files: {} seqFiles, {} unseqFiles. "
                   + "Cannot select any files because they do not meet the conditions "
                   + "or may be occupied by other compaction threads.",
+              isInsertionTask ? "InsertionCrossSpaceCompaction" : "CrossSpaceCompaction",
               sgDataRegionId,
               sequenceFileList.size(),
               unsequenceFileList.size(),

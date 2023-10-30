@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
-public enum CompactionTaskType {
+public enum CompactionTaskPriorityType {
   /** default compaction task type */
   NORMAL,
 

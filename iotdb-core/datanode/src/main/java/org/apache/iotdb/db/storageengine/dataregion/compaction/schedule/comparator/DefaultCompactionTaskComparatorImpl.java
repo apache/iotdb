@@ -22,7 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.compara
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskPriorityType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
@@ -76,8 +76,8 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
 
     // if compactionTaskType of o1 and o2 are different
     // we prefer to execute task type with MOD_SETTLE
-    if (o1.getCompactionTaskType() != o2.getCompactionTaskType()) {
-      return o1.getCompactionTaskType() == CompactionTaskType.MOD_SETTLE ? -1 : 1;
+    if (o1.getCompactionTaskPriorityType() != o2.getCompactionTaskPriorityType()) {
+      return o1.getCompactionTaskPriorityType() == CompactionTaskPriorityType.MOD_SETTLE ? -1 : 1;
     }
 
     // if max mods file size of o1 and o2 are different
