@@ -493,9 +493,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   private List<String> render(PlanNode node, List<String> nodeBoxString, GraphContext context) {
     Box box = new Box(nodeBoxString);
     List<List<String>> children = new ArrayList<>();
-    for (PlanNode child : node.getChildren()) {
-      children.add(child.accept(this, context));
-    }
+    node.getChildren().forEach(child -> children.add(child.accept(this, context)));
     box.calculateBoxParams(children);
 
     box.lines.add(printBoxEdge(box, true));
@@ -528,6 +526,24 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       return box.lines;
     }
 
+    addConnectionLine(box, children);
+
+    for (int i = 0; i < getChildrenLineCount(children); i++) {
+      StringBuilder line = new StringBuilder();
+      for (int j = 0; j < children.size(); j++) {
+        line.append(getLine(children, j, i, box.childExtraSpace));
+        if (j != children.size() - 1) {
+          for (int m = 0; m < BOX_MARGIN; m++) {
+            line.append(INDENT);
+          }
+        }
+      }
+      box.lines.add(line.toString());
+    }
+    return box.lines;
+  }
+
+  private void addConnectionLine(Box box, List<List<String>> children) {
     // Print Connection Line
     if (children.size() == 1) {
       for (int i = 0; i < CONNECTION_LINE_HEIGHT; i++) {
@@ -570,20 +586,6 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
         box.lines.add(nextLine.toString());
       }
     }
-
-    for (int i = 0; i < getChildrenLineCount(children); i++) {
-      StringBuilder line = new StringBuilder();
-      for (int j = 0; j < children.size(); j++) {
-        line.append(getLine(children, j, i));
-        if (j != children.size() - 1) {
-          for (int m = 0; m < BOX_MARGIN; m++) {
-            line.append(INDENT);
-          }
-        }
-      }
-      box.lines.add(line.toString());
-    }
-    return box.lines;
   }
 
   private String printBoxEdge(Box box, boolean isTopEdge) {
@@ -604,9 +606,17 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     return line.toString();
   }
 
-  private String getLine(List<List<String>> children, int child, int line) {
+  private String getLine(List<List<String>> children, int child, int line, int extraSpace) {
     if (line < children.get(child).size()) {
-      return children.get(child).get(line);
+      StringBuilder ret = new StringBuilder();
+      for (int i = 0; i < extraSpace; i++) {
+        ret.append(INDENT);
+      }
+      ret.append(children.get(child).get(line));
+      for (int i = 0; i < extraSpace; i++) {
+        ret.append(INDENT);
+      }
+      return ret.toString();
     }
     return genEmptyLine(children.get(child).get(0).length());
   }
@@ -638,13 +648,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   private static class Box {
-    private List<String> boxString;
-    private int boxWidth;
+    private final List<String> boxString;
+    private final int boxWidth;
     private int lineWidth;
-    private List<String> lines;
+    private final List<String> lines;
     private int startPosition;
     private int endPosition;
     private int midPosition;
+    private int childExtraSpace;
 
     public Box(List<String> boxString) {
       this.boxString = boxString;
@@ -660,21 +671,6 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       return width + 2;
     }
 
-    public String getLine(int idx) {
-      if (idx < lines.size()) {
-        return lines.get(idx);
-      }
-      return genEmptyLine(lineWidth);
-    }
-
-    private String genEmptyLine(int lineWidth) {
-      StringBuilder line = new StringBuilder();
-      for (int i = 0; i < lineWidth; i++) {
-        line.append(INDENT);
-      }
-      return line.toString();
-    }
-
     public void calculateBoxParams(List<List<String>> childBoxStrings) {
       int childrenWidth = 0;
       for (List<String> childBoxString : childBoxStrings) {
@@ -686,6 +682,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       this.startPosition = (this.lineWidth - this.boxWidth) / 2;
       this.endPosition = this.startPosition + this.boxWidth - 1;
       this.midPosition = this.lineWidth / 2;
+
+      // fix the situation that current line width is longer than width of children
+      int extraSpace = this.lineWidth - childrenWidth;
+      if (extraSpace > 0) {
+        this.childExtraSpace = extraSpace / 2;
+      }
     }
   }
 
@@ -697,8 +699,6 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
 
   public static void print(PlanNode node) {
     List<String> lines = getGraph(node);
-    for (String line : lines) {
-      System.out.println(line);
-    }
+    lines.forEach(System.out::println);
   }
 }
