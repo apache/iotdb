@@ -24,6 +24,7 @@ import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -51,33 +52,73 @@ public class PipeParameters {
     return attributes.containsKey(key);
   }
 
-  public String getString(String key) {
-    return attributes.get(key);
+  public boolean hasAnyAttributes(String... keys) {
+    for (final String key : keys) {
+      if (attributes.containsKey(key)) {
+        return true;
+      }
+    }
+    return false;
   }
 
-  public Boolean getBoolean(String key) {
-    String value = attributes.get(key);
-    return value == null ? null : Boolean.parseBoolean(value);
+  public String getString(String... keys) {
+    for (final String key : keys) {
+      final String value = attributes.get(key);
+      if (value != null) {
+        return value;
+      }
+    }
+    return null;
   }
 
-  public Integer getInt(String key) {
-    String value = attributes.get(key);
-    return value == null ? null : Integer.parseInt(value);
+  public Boolean getBoolean(String... keys) {
+    for (final String key : keys) {
+      final String value = attributes.get(key);
+      if (value != null) {
+        return Boolean.parseBoolean(value);
+      }
+    }
+    return null;
   }
 
-  public Long getLong(String key) {
-    String value = attributes.get(key);
-    return value == null ? null : Long.parseLong(value);
+  public Integer getInt(String... keys) {
+    for (final String key : keys) {
+      final String value = attributes.get(key);
+      if (value != null) {
+        return Integer.parseInt(value);
+      }
+    }
+    return null;
   }
 
-  public Float getFloat(String key) {
-    String value = attributes.get(key);
-    return value == null ? null : Float.parseFloat(value);
+  public Long getLong(String... keys) {
+    for (final String key : keys) {
+      final String value = attributes.get(key);
+      if (value != null) {
+        return Long.parseLong(value);
+      }
+    }
+    return null;
   }
 
-  public Double getDouble(String key) {
-    String value = attributes.get(key);
-    return value == null ? null : Double.parseDouble(value);
+  public Float getFloat(String... keys) {
+    for (final String key : keys) {
+      final String value = attributes.get(key);
+      if (value != null) {
+        return Float.parseFloat(value);
+      }
+    }
+    return null;
+  }
+
+  public Double getDouble(String... keys) {
+    for (final String key : keys) {
+      final String value = attributes.get(key);
+      if (value != null) {
+        return Double.parseDouble(value);
+      }
+    }
+    return null;
   }
 
   public String getStringOrDefault(String key, String defaultValue) {
@@ -108,6 +149,66 @@ public class PipeParameters {
   public double getDoubleOrDefault(String key, double defaultValue) {
     String value = attributes.get(key);
     return value == null ? defaultValue : Double.parseDouble(value);
+  }
+
+  public String getStringOrDefault(List<String> keys, String defaultValue) {
+    for (final String key : keys) {
+      final String value = attributes.get(key);
+      if (value != null) {
+        return value;
+      }
+    }
+    return defaultValue;
+  }
+
+  public boolean getBooleanOrDefault(List<String> keys, boolean defaultValue) {
+    for (final String key : keys) {
+      final String value = attributes.get(key);
+      if (value != null) {
+        return Boolean.parseBoolean(value);
+      }
+    }
+    return defaultValue;
+  }
+
+  public int getIntOrDefault(List<String> keys, int defaultValue) {
+    for (final String key : keys) {
+      final String value = attributes.get(key);
+      if (value != null) {
+        return Integer.parseInt(value);
+      }
+    }
+    return defaultValue;
+  }
+
+  public long getLongOrDefault(List<String> keys, long defaultValue) {
+    for (final String key : keys) {
+      final String value = attributes.get(key);
+      if (value != null) {
+        return Long.parseLong(value);
+      }
+    }
+    return defaultValue;
+  }
+
+  public float getFloatOrDefault(List<String> keys, float defaultValue) {
+    for (final String key : keys) {
+      final String value = attributes.get(key);
+      if (value != null) {
+        return Float.parseFloat(value);
+      }
+    }
+    return defaultValue;
+  }
+
+  public double getDoubleOrDefault(List<String> keys, double defaultValue) {
+    for (final String key : keys) {
+      final String value = attributes.get(key);
+      if (value != null) {
+        return Double.parseDouble(value);
+      }
+    }
+    return defaultValue;
   }
 
   @Override

@@ -243,7 +243,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         }
 
         // set recover progress index for pipe
-        PipeAgent.runtime().assignUpdateProgressIndexForTsFileRecovery(tsFileResource);
+        PipeAgent.runtime().assignProgressIndexForTsFileRecovery(tsFileResource);
 
         // if we put following codes in the 'if' clause above, this file can be continued writing
         // into it

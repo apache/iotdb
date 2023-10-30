@@ -99,7 +99,7 @@ public abstract class AbstractMemTable implements IMemTable {
   private String database;
   private String dataRegionId;
 
-  private static final String METRIC_POINT_IN = "pointsIn";
+  private static final String METRIC_POINT_IN = Metric.POINTS_IN.toString();
 
   protected AbstractMemTable() {
     this.database = null;
@@ -660,7 +660,12 @@ public abstract class AbstractMemTable implements IMemTable {
   public Map<String, Long> getMaxTime() {
     Map<String, Long> latestTimeForEachDevice = new HashMap<>();
     for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
-      latestTimeForEachDevice.put(entry.getKey().toStringID(), entry.getValue().getMaxTime());
+      // When insert null values in to IWritableMemChunkGroup, the maxTime will not be updated.
+      // In this scenario, the maxTime will be Long.MIN_VALUE. We shouldn't return this device.
+      long maxTime = entry.getValue().getMaxTime();
+      if (maxTime != Long.MIN_VALUE) {
+        latestTimeForEachDevice.put(entry.getKey().toStringID(), maxTime);
+      }
     }
     return latestTimeForEachDevice;
   }

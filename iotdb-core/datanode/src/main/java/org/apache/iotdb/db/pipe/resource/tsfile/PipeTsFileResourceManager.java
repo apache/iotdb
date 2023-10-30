@@ -187,4 +187,8 @@ public class PipeTsFileResourceManager {
   public synchronized void unpinTsFileResource(TsFileResource resource) throws IOException {
     decreaseFileReference(getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()));
   }
+
+  public int getLinkedTsfileCount() {
+    return hardlinkOrCopiedFileToReferenceMap.size();
+  }
 }

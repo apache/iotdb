@@ -35,8 +35,7 @@ public enum PrivilegeType {
   USE_PIPE,
   EXTEND_TEMPLATE,
   MANAGE_DATABASE,
-  MAINTAIN,
-  AUDIT;
+  MAINTAIN;
 
   private static final int PRIVILEGE_COUNT = values().length;
 

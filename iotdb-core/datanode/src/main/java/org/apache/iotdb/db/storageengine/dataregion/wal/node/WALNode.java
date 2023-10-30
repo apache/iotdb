@@ -64,9 +64,9 @@ import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -147,8 +147,7 @@ public class WALNode implements IWALNode {
   private WALFlushListener log(WALEntry walEntry) {
     buffer.write(walEntry);
     // set handler for pipe
-    walEntry.getWalFlushListener().getWalEntryHandler().setMemTableId(walEntry.getMemTableId());
-    walEntry.getWalFlushListener().getWalEntryHandler().setWalNode(this);
+    walEntry.getWalFlushListener().getWalEntryHandler().setWalNode(this, walEntry.getMemTableId());
     return walEntry.getWalFlushListener();
   }
 
@@ -611,9 +610,9 @@ public class WALNode implements IWALNode {
     /** true means filesToSearch and currentFileIndex are outdated, call updateFilesToSearch */
     private boolean needUpdatingFilesToSearch = true;
     /** batch store insert nodes */
-    private final List<IndexedConsensusRequest> insertNodes = new LinkedList<>();
+    private final LinkedList<IndexedConsensusRequest> insertNodes = new LinkedList<>();
     /** iterator of insertNodes */
-    private Iterator<IndexedConsensusRequest> itr = null;
+    private ListIterator<IndexedConsensusRequest> itr = null;
 
     public PlanNodeIterator(long startIndex) {
       this.nextSearchIndex = startIndex;
@@ -775,7 +774,7 @@ public class WALNode implements IWALNode {
 
       // update iterator
       if (!insertNodes.isEmpty()) {
-        itr = insertNodes.iterator();
+        itr = insertNodes.listIterator();
         return true;
       }
       return false;
@@ -833,6 +832,21 @@ public class WALNode implements IWALNode {
             targetIndex,
             targetIndex);
       }
+
+      if (itr != null
+          && itr.hasNext()
+          && insertNodes.get(itr.nextIndex()).getSearchIndex() <= targetIndex
+          && targetIndex <= insertNodes.getLast().getSearchIndex()) {
+        while (itr.hasNext()) {
+          IndexedConsensusRequest request = itr.next();
+          if (targetIndex == request.getSearchIndex()) {
+            itr.previous();
+            nextSearchIndex = targetIndex;
+            return;
+          }
+        }
+      }
+
       reset();
       nextSearchIndex = targetIndex;
     }

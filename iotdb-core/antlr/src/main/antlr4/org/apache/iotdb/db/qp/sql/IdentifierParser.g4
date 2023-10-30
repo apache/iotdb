@@ -198,8 +198,10 @@ keyWords
     | SETTLE
     | SGLEVEL
     | SHOW
+    | SINK
     | SLIMIT
     | SOFFSET
+    | SOURCE
     | SPACE
     | STORAGE
     | START

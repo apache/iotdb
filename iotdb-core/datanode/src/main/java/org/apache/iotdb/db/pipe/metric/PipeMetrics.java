@@ -33,6 +33,8 @@ public class PipeMetrics implements IMetricSet {
     PipeProcessorMetrics.getInstance().bindTo(metricService);
     PipeConnectorMetrics.getInstance().bindTo(metricService);
     PipeHeartbeatEventMetrics.getInstance().bindTo(metricService);
+    PipeWALInsertNodeCacheMetrics.getInstance().bindTo(metricService);
+    PipeResourceMetrics.getInstance().bindTo(metricService);
   }
 
   @Override
@@ -42,6 +44,8 @@ public class PipeMetrics implements IMetricSet {
     PipeProcessorMetrics.getInstance().unbindFrom(metricService);
     PipeConnectorMetrics.getInstance().unbindFrom(metricService);
     PipeHeartbeatEventMetrics.getInstance().unbindFrom(metricService);
+    PipeWALInsertNodeCacheMetrics.getInstance().unbindFrom(metricService);
+    PipeResourceMetrics.getInstance().unbindFrom(metricService);
   }
 
   //////////////////////////// singleton ////////////////////////////

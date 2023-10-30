@@ -76,8 +76,8 @@ public class RatisConsensusTest {
                   .build())
           .setImpl(
               RatisConfig.Impl.newBuilder()
-                  .setTriggerSnapshotFileSize(1)
-                  .setTriggerSnapshotTime(4)
+                  .setRaftLogSizeMaxThreshold(1)
+                  .setCheckAndTakeSnapshotInterval(4)
                   .build())
           .build();
 
