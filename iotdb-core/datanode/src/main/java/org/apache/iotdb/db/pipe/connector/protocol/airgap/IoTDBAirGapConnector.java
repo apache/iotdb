@@ -240,6 +240,11 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       return;
     }
 
+    if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
+      LOGGER.warn("Pipe found a temporary TsFile which shouldn't be transferred. Skipping.");
+      return;
+    }
+
     if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
       try {
         for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
@@ -307,9 +312,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   }
 
   private void doTransfer(Socket socket, PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
-      throws PipeException, InterruptedException, IOException {
-    pipeTsFileInsertionEvent.waitForTsFileClose();
-
+      throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
 
     // 1. Transfer file piece by piece
