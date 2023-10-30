@@ -45,7 +45,7 @@ import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOperator {
   private static final long DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
-          TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
   private static final long MAX_SIZE = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
   protected PlanNodeId sourceId;
