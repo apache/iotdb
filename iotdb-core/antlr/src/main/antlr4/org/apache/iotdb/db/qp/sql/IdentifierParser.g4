@@ -225,7 +225,6 @@ keyWords
     | TOLERANCE
     | TOP
     | TRACING
-    | TRIALS
     | TRIGGER
     | TRIGGERS
     | TRUE

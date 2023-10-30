@@ -798,10 +798,6 @@ TRACING
     : T R A C I N G
     ;
 
-TRIALS
-    : T R I A L S
-    ;
-
 TRIGGER
     : T R I G G E R
     ;
