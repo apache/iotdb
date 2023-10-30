@@ -239,7 +239,7 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     Assert.assertEquals(seqResource2, tsFileManager.getTsFileList(true).get(2));
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(1);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile.getTsFile().getName()).getTime();
-    Assert.assertEquals(3, timestamp);
+    Assert.assertEquals(4, timestamp);
     Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
   }
 
@@ -320,10 +320,10 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
     TsFileResource targetFile1 = tsFileManager.getTsFileList(true).get(1);
     long timestamp = TsFileNameGenerator.getTsFileName(targetFile1.getTsFile().getName()).getTime();
-    Assert.assertEquals(2, timestamp);
+    Assert.assertEquals(4, timestamp);
     TsFileResource targetFile2 = tsFileManager.getTsFileList(true).get(2);
     timestamp = TsFileNameGenerator.getTsFileName(targetFile2.getTsFile().getName()).getTime();
-    Assert.assertEquals(3, timestamp);
+    Assert.assertEquals(6, timestamp);
   }
 
   @Test

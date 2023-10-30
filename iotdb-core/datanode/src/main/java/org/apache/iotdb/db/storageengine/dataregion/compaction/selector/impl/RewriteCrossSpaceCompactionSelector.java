@@ -490,7 +490,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
             if (nextTimestamp - prevTimestamp > 1) {
               result.prevSeqFile = prev.resource;
               result.nextSeqFile = next.resource;
-              result.targetFileTimestamp = prevTimestamp + 1;
+              result.targetFileTimestamp = prevTimestamp + Math.max(1, (nextTimestamp - prevTimestamp) / 2);
               result.toInsertUnSeqFile = unseqFile.resource;
               break;
             }
@@ -505,7 +505,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           return result;
         }
         result.nextSeqFile = next.resource;
-        result.targetFileTimestamp = nextTimestamp - 1;
+        result.targetFileTimestamp = nextTimestamp / 2;
         result.toInsertUnSeqFile = unseqFile.resource;
       }
       return result;
