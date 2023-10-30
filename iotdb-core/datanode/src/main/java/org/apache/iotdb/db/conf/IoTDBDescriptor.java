@@ -1632,6 +1632,12 @@ public class IoTDBDescriptor {
                   "enable_query_memory_estimation",
                   Boolean.toString(conf.isEnableQueryMemoryEstimation()))));
 
+      conf.setWriteTsFileValidationLevel(
+          TsFileValidationLevel.valueOf(
+              properties.getProperty(
+                  "write_tsfile_validation_level",
+                  conf.getRewriteTsFileValidationLevel().toString())));
+
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
       loadWALHotModifiedProps(properties);
