@@ -155,8 +155,7 @@ public class TsFileResource {
 
   private ProgressIndex maxProgressIndex;
 
-  // 选择时通过这个属性快速跳过一个乱序文件的判断
-  private boolean isInsertionCompactionTaskCandidate;
+  private boolean isInsertionCompactionTaskCandidate = true;
 
   public TsFileResource() {}
 
@@ -1207,5 +1206,13 @@ public class TsFileResource {
 
   public String getDataRegionId() {
     return file.getParentFile().getParentFile().getName();
+  }
+
+  public boolean isInsertionCompactionTaskCandidate() {
+    return !isSeq && isInsertionCompactionTaskCandidate;
+  }
+
+  public void setInsertionCompactionTaskCandidate(boolean insertionCompactionTaskCandidate) {
+    isInsertionCompactionTaskCandidate = insertionCompactionTaskCandidate;
   }
 }

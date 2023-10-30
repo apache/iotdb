@@ -405,6 +405,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         result.targetFileTimestamp = 1;
       } else {
         for (TsFileResourceCandidate unseqFile : unseqFiles) {
+          if (!unseqFile.resource.isInsertionCompactionTaskCandidate()) {
+            continue;
+          }
           result = selectCurrentUnSeqFile(unseqFile);
           if (result.isValid()) {
             break;
@@ -445,18 +448,16 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           // overlap
           if (startTimeOfUnSeqDevice <= endTimeOfSeqDevice
               && endTimeOfUnSeqDevice >= startTimeOfSeqDevice) {
+            unseqFile.resource.setInsertionCompactionTaskCandidate(false);
             return result;
           }
 
-          // 乱序文件在顺序文件之后
           if (startTimeOfUnSeqDevice > endTimeOfSeqDevice) {
             previousSeqFileIndex = Math.max(previousSeqFileIndex, i);
             hasPreviousSeqFile = true;
             continue;
           }
-          // 乱序文件在顺序文件之前
           nextSeqFileIndex = Math.min(nextSeqFileIndex, i);
-          // 后续不可能出现其他情况
           break;
         }
       }

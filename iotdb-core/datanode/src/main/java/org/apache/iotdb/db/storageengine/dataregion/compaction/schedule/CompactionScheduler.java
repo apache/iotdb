@@ -139,7 +139,6 @@ public class CompactionScheduler {
   private static int tryToSubmitInsertionCompactionTask(
       TsFileManager tsFileManager, long timePartition, Phaser insertionTaskPhaser)
       throws InterruptedException {
-    // 在提交一个任务的时候调用这个方法
     if (!config.isEnableInsertionCrossSpaceCompaction()) {
       return 0;
     }

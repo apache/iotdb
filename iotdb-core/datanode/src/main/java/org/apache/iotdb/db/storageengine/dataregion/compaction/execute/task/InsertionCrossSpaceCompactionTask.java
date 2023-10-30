@@ -150,8 +150,6 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
       prepareTargetFiles();
 
-      // todo: overlap validation
-
       replaceTsFileInMemory(
           Collections.singletonList(unseqFileToInsert), Collections.singletonList(targetFile));
 
@@ -317,8 +315,6 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   private void finishTask() throws IOException {
-    // 检查目标文件是否存在
-
     if (recoverMemoryStatus && unseqFileToInsert.tsFileExists()) {
       FileMetrics.getInstance().deleteTsFile(false, Collections.singletonList(unseqFileToInsert));
     }
