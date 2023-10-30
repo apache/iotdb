@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -39,6 +41,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   private final EnrichedEvent sourceEvent;
   private boolean needToReport;
+  private PipeMemoryBlock block;
 
   private TabletInsertionDataContainer dataContainer;
 
@@ -77,6 +80,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
+    block = PipeResourceManager.memory().forceAllocateForTablet(tablet);
     return true;
   }
 
@@ -90,6 +94,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     if (needToReport) {
       super.reportProgress();
     }
+    block.close();
   }
 
   @Override

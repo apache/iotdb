@@ -191,25 +191,32 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    Tablet tablet;
-    boolean isAligned;
+    final Tablet tablet;
+    final boolean isAligned;
 
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       tablet = ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
       isAligned = ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).isAligned();
+
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
       tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
       isAligned = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).isAligned();
+
     } else {
       throw new NotImplementedException(
           "IoTDBLegacyPipeConnector only support "
               + "PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
     }
 
-    try (PipeMemoryBlock block = PipeResourceManager.memory().forceAllocateForTablet(tablet)) {
+    try (final PipeMemoryBlock block =
+        PipeResourceManager.memory().forceAllocateForTablet(tablet)) {
       doTransfer(tablet, isAligned);
     } catch (PipeRuntimeOutOfMemoryException e) {
-      LOGGER.warn("PipeMemoryManager out of memory.");
+      LOGGER.error(
+          "IoTDBLegacyPipeConnector: Transfer tabletInsertionEvent {} error.Failed to allocate memory for tabletInsertionEvent {}MB.",
+          tabletInsertionEvent,
+          PipeResourceManager.memory().calculateTabletSizeInBytes(tablet) / 1024 / 1024,
+          e);
       throw e;
     }
   }
@@ -221,7 +228,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
           "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.");
     }
 
-    try (PipeMemoryBlock block =
+    try (final PipeMemoryBlock block =
         PipeResourceManager.memory()
             .forceAllocate(PipeConfig.getInstance().getPipeConnectorReadFileBufferSize())) {
       doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
@@ -231,7 +238,11 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
               "Network error when transfer tsFile insertion event: %s.", tsFileInsertionEvent),
           e);
     } catch (PipeRuntimeOutOfMemoryException e) {
-      LOGGER.warn("PipeMemoryManager out of memory.");
+      LOGGER.error(
+          "IoTDBLegacyPipeConnector: Transfer tsFileInsertionEvent {} error.Failed to allocate memory for tsFileInsertionEvent {}MB.",
+          tsFileInsertionEvent,
+          PipeConfig.getInstance().getPipeConnectorReadFileBufferSize(),
+          e);
       throw e;
     }
   }

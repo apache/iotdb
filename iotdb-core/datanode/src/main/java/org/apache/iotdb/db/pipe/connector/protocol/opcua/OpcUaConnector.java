@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
@@ -163,7 +164,7 @@ public class OpcUaConnector implements PipeConnector {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftSyncConnector only support "
+          "OpcUaConnector only support "
               + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Ignore {}.",
           tabletInsertionEvent);
@@ -175,8 +176,16 @@ public class OpcUaConnector implements PipeConnector {
             ? ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet()
             : ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
 
-    try (PipeMemoryBlock block = PipeResourceManager.memory().forceAllocateForTablet(tablet)) {
+    try (final PipeMemoryBlock block =
+        PipeResourceManager.memory().forceAllocateForTablet(tablet)) {
       transferTablet(server, tablet);
+    } catch (PipeRuntimeOutOfMemoryException e) {
+      LOGGER.error(
+          "OpcUaConnector: Transfer tabletInsertionEvent {} error.Failed to allocate memory for tablet {}MB.",
+          tabletInsertionEvent,
+          PipeResourceManager.memory().calculateTabletSizeInBytes(tablet) / 1024 / 1024,
+          e);
+      throw e;
     }
   }
 
