@@ -49,6 +49,10 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   private final Object allowToCreateNewSeriesLock = new Object();
 
+  // In memory mode, we need log to warn users that the memory capacity has been reached.
+  // In pbtree mode, we only need related log for debug.
+  protected volatile boolean needLog = true;
+
   @Override
   public boolean isAllowToCreateNewSeries() {
     return allowToCreateNewSeries;
@@ -74,7 +78,11 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
     if (memoryUsage.get() >= memoryCapacity) {
       synchronized (allowToCreateNewSeriesLock) {
         if (allowToCreateNewSeries && memoryUsage.get() >= memoryCapacity) {
-          logger.warn("Current series memory {} is too large...", memoryUsage);
+          if (needLog) {
+            logger.warn("Current series memory {} is too large...", memoryUsage);
+          } else {
+            logger.debug("Current series memory {} is too large...", memoryUsage);
+          }
           allowToCreateNewSeries = false;
         }
       }
@@ -86,10 +94,17 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
     if (memoryUsage.get() < memoryCapacity) {
       synchronized (allowToCreateNewSeriesLock) {
         if (!allowToCreateNewSeries && memoryUsage.get() < memoryCapacity) {
-          logger.info(
-              "Current series memory {} come back to normal level, total series number is {}.",
-              memoryUsage,
-              totalSeriesNumber);
+          if (needLog) {
+            logger.info(
+                "Current series memory {} come back to normal level, total series number is {}.",
+                memoryUsage,
+                totalSeriesNumber);
+          } else {
+            logger.debug(
+                "Current series memory {} come back to normal level, total series number is {}.",
+                memoryUsage,
+                totalSeriesNumber);
+          }
           allowToCreateNewSeries = true;
         }
       }
