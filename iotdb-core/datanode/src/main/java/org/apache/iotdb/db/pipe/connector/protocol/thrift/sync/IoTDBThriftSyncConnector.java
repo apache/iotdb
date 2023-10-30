@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -50,7 +51,6 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -61,8 +61,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
@@ -85,19 +85,13 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   public void validate(PipeParameterValidator validator) throws Exception {
     super.validate(validator);
     final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
 
     validator.validate(
-        arg ->
-            !parseNodeUrls(((PipeParameters) arg))
-                .containsAll(
-                    SessionUtils.parseSeedNodeUrls(
-                        Collections.singletonList(conf.getRpcAddress() + conf.getRpcPort()))),
+        empty -> givenNodeUrls.contains(new TEndPoint(conf.getRpcAddress(), conf.getRpcPort())),
         String.format(
             "The pipe destinations %s cannot contain one of the dataNodes' thrift receiver endpoint %s",
-            parseNodeUrls(validator.getParameters()),
-            SessionUtils.parseSeedNodeUrls(
-                Collections.singletonList(conf.getRpcAddress() + conf.getRpcPort()))),
-        validator.getParameters());
+            givenNodeUrls, new TEndPoint(conf.getRpcAddress(), conf.getRpcPort())));
   }
 
   @Override

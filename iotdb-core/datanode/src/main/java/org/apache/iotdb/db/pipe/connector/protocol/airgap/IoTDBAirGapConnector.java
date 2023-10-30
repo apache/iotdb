@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -46,7 +47,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import org.slf4j.Logger;
@@ -60,8 +60,8 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.zip.CRC32;
 
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
@@ -91,22 +91,17 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     super.validate(validator);
     final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     final PipeConfig pipeConf = PipeConfig.getInstance();
+    Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
 
     validator.validate(
-        arg ->
+        empty ->
             !(pipeConf.getPipeAirGapReceiverEnabled()
-                && parseNodeUrls(((PipeParameters) arg))
-                    .containsAll(
-                        SessionUtils.parseSeedNodeUrls(
-                            Collections.singletonList(
-                                conf.getRpcAddress() + pipeConf.getPipeAirGapReceiverPort())))),
+                && givenNodeUrls.contains(
+                    new TEndPoint(conf.getRpcAddress(), pipeConf.getPipeAirGapReceiverPort()))),
         String.format(
             "The pipe destinations %s cannot contain one of the dataNodes' air gap receiver endpoint %s",
-            parseNodeUrls(validator.getParameters()),
-            SessionUtils.parseSeedNodeUrls(
-                Collections.singletonList(
-                    conf.getRpcAddress() + pipeConf.getPipeAirGapReceiverPort()))),
-        validator.getParameters());
+            givenNodeUrls,
+            new TEndPoint(conf.getRpcAddress(), pipeConf.getPipeAirGapReceiverPort())));
   }
 
   @Override
