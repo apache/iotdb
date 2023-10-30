@@ -21,17 +21,15 @@ package org.apache.iotdb.metrics.utils;
 
 import javax.management.ObjectName;
 
-/**
- * Abstract Metric JmxMBean class, designed for reusing some functions for metric type classes.
- */
+/** Abstract Metric JmxMBean class, designed for reusing some functions for metric type classes. */
 public abstract class AbstractMetricMBean {
-    private ObjectName objectName;
+  private ObjectName objectName;
 
-    public void setObjectName(ObjectName objectName) {
-        this.objectName = objectName;
-    }
+  public void setObjectName(ObjectName objectName) {
+    this.objectName = objectName;
+  }
 
-    public ObjectName objectName() {
-        return objectName;
-    }
+  public ObjectName objectName() {
+    return objectName;
+  }
 }

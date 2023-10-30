@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.metrics.core.uitls;
 
-import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 import org.apache.iotdb.metrics.type.AutoGauge;
+import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
 import com.codahale.metrics.Clock;
 

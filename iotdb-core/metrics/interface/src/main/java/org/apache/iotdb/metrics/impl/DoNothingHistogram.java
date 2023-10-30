@@ -23,8 +23,6 @@ import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
-import javax.management.ObjectName;
-
 public class DoNothingHistogram extends AbstractMetricMBean implements Histogram, DoNothingMetric {
 
   @Override
