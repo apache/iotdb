@@ -263,7 +263,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
     for (DriverTask task : submittedTasks) {
       registerTaskToQueryMap(queryId, task);
     }
-    timeoutQueue.push(submittedTasks.get(submittedTasks.size() - 1));
+    scheduler.enforceTimeLimit(submittedTasks.get(submittedTasks.size() - 1));
     for (DriverTask task : submittedTasks) {
       submitTaskToReadyQueue(task);
     }
@@ -551,6 +551,11 @@ public class DriverScheduler implements IDriverScheduler, IService {
       // tasks) which will try to get the lock of SynchronizedSet.
       // Thread B locks the SynchronizedSet first and then tries to lock the task.
       clearDriverTask(task);
+    }
+
+    @Override
+    public void enforceTimeLimit(DriverTask task) {
+      timeoutQueue.push(task);
     }
 
     @Override

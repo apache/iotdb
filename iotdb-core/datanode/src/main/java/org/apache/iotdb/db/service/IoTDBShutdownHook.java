@@ -71,7 +71,7 @@ public class IoTDBShutdownHook extends Thread {
     if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     }
-    WALManager.getInstance().deleteOutdatedWALFiles();
+    WALManager.getInstance().deleteOutdatedFilesInWALNodes();
 
     // We did this work because the RatisConsensus recovery mechanism is different from other
     // consensus algorithms, which will replace the underlying storage engine based on its

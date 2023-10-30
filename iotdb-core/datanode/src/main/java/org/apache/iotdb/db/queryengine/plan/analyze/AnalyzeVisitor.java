@@ -2452,7 +2452,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       throw new RuntimeException(
           new TemplateIncompatibleException(
               String.format(
-                  "Cannot alter template timeseries [%s] since schema template [%s] already set on path [%s].",
+                  "Cannot alter template timeseries [%s] since device template [%s] already set on path [%s].",
                   alterTimeSeriesStatement.getPath().getFullPath(),
                   templateInfo.left.getName(),
                   templateInfo.right)));

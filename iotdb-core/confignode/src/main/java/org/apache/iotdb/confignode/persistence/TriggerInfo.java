@@ -254,6 +254,8 @@ public class TriggerInfo implements SnapshotProcessor {
 
       triggerTable.serializeTriggerTable(fileOutputStream);
 
+      // fsync
+      fileOutputStream.getFD().sync();
       return true;
     } finally {
       releaseTriggerTableLock();

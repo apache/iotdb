@@ -78,12 +78,14 @@ public class OpcUaServerBuilder {
   private int httpsBindPort;
   private String user;
   private String password;
+  private Path securityDir;
 
   public OpcUaServerBuilder() {
     tcpBindPort = PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
     httpsBindPort = PipeConnectorConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
     user = PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
     password = PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
+    securityDir = Paths.get(PipeConnectorConstant.CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE);
   }
 
   public OpcUaServerBuilder setTcpBindPort(int tcpBindPort) {
@@ -106,22 +108,26 @@ public class OpcUaServerBuilder {
     return this;
   }
 
+  public OpcUaServerBuilder setSecurityDir(String securityDir) {
+    this.securityDir = Paths.get(securityDir);
+    return this;
+  }
+
   public OpcUaServer build() throws Exception {
-    Path securityTempDir = Paths.get(System.getProperty("java.io.tmpdir"), "iotdb", "security");
-    Files.createDirectories(securityTempDir);
-    if (!Files.exists(securityTempDir)) {
-      throw new PipeException("Unable to create security temp dir: " + securityTempDir);
+    Files.createDirectories(securityDir);
+    if (!Files.exists(securityDir)) {
+      throw new PipeException("Unable to create security dir: " + securityDir);
     }
 
-    File pkiDir = securityTempDir.resolve("pki").toFile();
+    File pkiDir = securityDir.resolve("pki").toFile();
 
     LoggerFactory.getLogger(OpcUaServerBuilder.class)
-        .info("Security dir: {}", securityTempDir.toAbsolutePath());
+        .info("Security dir: {}", securityDir.toAbsolutePath());
     LoggerFactory.getLogger(OpcUaServerBuilder.class)
         .info("Security pki dir: {}", pkiDir.getAbsolutePath());
 
     OpcUaKeyStoreLoader loader =
-        new OpcUaKeyStoreLoader().load(securityTempDir, password.toCharArray());
+        new OpcUaKeyStoreLoader().load(securityDir, password.toCharArray());
 
     DefaultCertificateManager certificateManager =
         new DefaultCertificateManager(loader.getServerKeyPair(), loader.getServerCertificate());

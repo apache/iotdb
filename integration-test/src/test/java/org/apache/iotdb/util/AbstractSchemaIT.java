@@ -94,10 +94,10 @@ public abstract class AbstractSchemaIT {
         // If database is null, it will throw exception. Do nothing.
       }
       // delete all template
-      try (ResultSet resultSet = statement.executeQuery("SHOW SCHEMA TEMPLATES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICE TEMPLATES")) {
         while (resultSet.next()) {
           statement.execute(
-              "DROP SCHEMA TEMPLATE " + resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME));
+              "DROP DEVICE TEMPLATE " + resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME));
         }
       }
     }

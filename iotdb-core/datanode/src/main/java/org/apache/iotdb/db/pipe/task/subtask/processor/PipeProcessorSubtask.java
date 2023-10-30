@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.task.subtask.processor;
 
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
+import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
@@ -57,6 +58,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
+    PipeProcessorMetrics.getInstance().register(this);
   }
 
   @Override
@@ -104,11 +106,14 @@ public class PipeProcessorSubtask extends PipeSubtask {
       if (!isClosed.get()) {
         if (event instanceof TabletInsertionEvent) {
           pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+          PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
         } else if (event instanceof TsFileInsertionEvent) {
           pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+          PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
         } else if (event instanceof PipeHeartbeatEvent) {
           pipeProcessor.process(event, outputEventCollector);
           ((PipeHeartbeatEvent) event).onProcessed();
+          PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
         } else {
           pipeProcessor.process(event, outputEventCollector);
         }
@@ -140,6 +145,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
 
   @Override
   public void close() {
+    PipeProcessorMetrics.getInstance().deregister(taskID);
     try {
       isClosed.set(true);
 
@@ -172,5 +178,17 @@ public class PipeProcessorSubtask extends PipeSubtask {
   @Override
   public int hashCode() {
     return taskID.hashCode();
+  }
+
+  public int getTabletInsertionEventCount() {
+    return outputEventCollector.getTabletInsertionEventCount();
+  }
+
+  public int getTsFileInsertionEventCount() {
+    return outputEventCollector.getTsFileInsertionEventCount();
+  }
+
+  public int getPipeHeartbeatEventCount() {
+    return outputEventCollector.getPipeHeartbeatEventCount();
   }
 }

@@ -71,6 +71,9 @@ public class StartClientScriptIT extends AbstractScript {
 
   @Override
   protected void testOnWindows() throws IOException {
+    final String homePath =
+        libPath.substring(0, libPath.lastIndexOf(File.separator + "lib" + File.separator + "*"));
+
     final String[] output = {
       "Error: Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."
     };
@@ -90,7 +93,7 @@ public class StartClientScriptIT extends AbstractScript {
             "&",
             "exit",
             "%^errorlevel%");
-    builder.environment().put("CLASSPATH", libPath);
+    builder.environment().put("IOTDB_HOME", homePath);
     testOutput(builder, output, 1);
 
     final String[] output2 = {"Msg: The statement is executed successfully."};
@@ -108,7 +111,7 @@ public class StartClientScriptIT extends AbstractScript {
             "&",
             "exit",
             "%^errorlevel%");
-    builder2.environment().put("CLASSPATH", libPath);
+    builder2.environment().put("IOTDB_HOME", homePath);
     testOutput(builder2, output2, 0);
   }
 
@@ -119,7 +122,7 @@ public class StartClientScriptIT extends AbstractScript {
     };
     ProcessBuilder builder =
         new ProcessBuilder(
-            "sh",
+            "bash",
             sbinPath + File.separator + "start-cli.sh",
             "-h",
             ip,
@@ -135,7 +138,7 @@ public class StartClientScriptIT extends AbstractScript {
     final String[] output2 = {"Msg: The statement is executed successfully."};
     ProcessBuilder builder2 =
         new ProcessBuilder(
-            "sh",
+            "bash",
             sbinPath + File.separator + "start-cli.sh",
             "-h",
             ip,

@@ -117,6 +117,9 @@ public class Session implements ISession {
   protected String username;
   protected String password;
   protected int fetchSize;
+  protected boolean useSSL;
+  protected String trustStore;
+  protected String trustStorePwd;
   /**
    * Timeout of query can be set by users. A negative number means using the default configuration
    * of server. And value 0 will disable the function of query timeout.
@@ -379,6 +382,26 @@ public class Session implements ISession {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableRedirection = enableRedirection;
     this.version = version;
+  }
+
+  public Session(Builder builder) {
+    if (builder.nodeUrls != null && builder.nodeUrls.size() > 0) {
+      this.nodeUrls = builder.nodeUrls;
+      this.enableRedirection = true;
+    } else {
+      this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
+      this.enableRedirection = builder.enableRedirection;
+    }
+    this.username = builder.username;
+    this.password = builder.pw;
+    this.fetchSize = builder.fetchSize;
+    this.zoneId = builder.zoneId;
+    this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    this.version = builder.version;
+    this.useSSL = builder.useSSL;
+    this.trustStore = builder.trustStore;
+    this.trustStorePwd = builder.trustStorePwd;
   }
 
   @Override
@@ -3033,7 +3056,7 @@ public class Session implements ISession {
     if (len != dataTypes.size() || len != encodings.size() || len != compressors.size()) {
       throw new StatementExecutionException(
           "Different length of measurements, datatypes, encodings "
-              + "or compressors when create schema tempalte.");
+              + "or compressors when create device template.");
     }
     for (int idx = 0; idx < measurements.size(); idx++) {
       MeasurementNode mNode =
@@ -3325,7 +3348,7 @@ public class Session implements ISession {
   }
 
   /**
-   * Create timeseries represented by schema template under given device paths.
+   * Create timeseries represented by device template under given device paths.
    *
    * @param devicePathList the target device paths used for timeseries creation
    */
@@ -3453,6 +3476,25 @@ public class Session implements ISession {
     private Version version = SessionConfig.DEFAULT_VERSION;
     private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
+    private boolean useSSL = false;
+    private String trustStore;
+    private String trustStorePwd;
+
+    public Builder useSSL(boolean useSSL) {
+      this.useSSL = useSSL;
+      return this;
+    }
+
+    public Builder trustStore(String keyStore) {
+      this.trustStore = keyStore;
+      return this;
+    }
+
+    public Builder trustStorePwd(String keyStorePwd) {
+      this.trustStorePwd = keyStorePwd;
+      return this;
+    }
+
     private List<String> nodeUrls = null;
 
     public Builder host(String host) {
@@ -3521,34 +3563,8 @@ public class Session implements ISession {
         throw new IllegalArgumentException(
             "You should specify either nodeUrls or (host + rpcPort), but not both");
       }
-
-      if (nodeUrls != null) {
-        Session newSession =
-            new Session(
-                nodeUrls,
-                username,
-                pw,
-                fetchSize,
-                zoneId,
-                thriftDefaultBufferSize,
-                thriftMaxFrameSize,
-                enableRedirection,
-                version);
-        newSession.setEnableQueryRedirection(true);
-        return newSession;
-      }
-
-      return new Session(
-          host,
-          rpcPort,
-          username,
-          pw,
-          fetchSize,
-          zoneId,
-          thriftDefaultBufferSize,
-          thriftMaxFrameSize,
-          enableRedirection,
-          version);
+      Session newSession = new Session(this);
+      return newSession;
     }
   }
 }

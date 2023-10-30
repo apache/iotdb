@@ -184,7 +184,9 @@ public class ConsensusManager {
                                       .build())
                               .setImpl(
                                   RatisConfig.Impl.newBuilder()
-                                      .setTriggerSnapshotFileSize(CONF.getConfigNodeRatisLogMax())
+                                      .setRaftLogSizeMaxThreshold(CONF.getConfigNodeRatisLogMax())
+                                      .setForceSnapshotInterval(
+                                          CONF.getConfigNodeRatisPeriodicSnapshotInterval())
                                       .build())
                               .setRead(
                                   RatisConfig.Read.newBuilder()

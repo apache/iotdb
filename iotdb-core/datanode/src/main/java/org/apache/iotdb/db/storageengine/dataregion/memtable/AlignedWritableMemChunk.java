@@ -358,12 +358,14 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     }
 
     List<TSDataType> dataTypes = list.getTsDataTypes();
+    Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
+
     for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
       for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
         // Pair of Time and Index
-        Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
-        if (Objects.nonNull(timeDuplicateInfo)) {
-          lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
+        if (Objects.nonNull(timeDuplicateInfo)
+            && lastValidPointIndexForTimeDupCheck[columnIndex] == null) {
+          lastValidPointIndexForTimeDupCheck[columnIndex] = new Pair<>(Long.MIN_VALUE, null);
         }
         for (int sortedRowIndex = pageRange.get(pageNum * 2);
             sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
@@ -374,8 +376,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           long time = list.getTime(sortedRowIndex);
           if (Objects.nonNull(timeDuplicateInfo)) {
             if (!list.isNullValue(list.getValueIndex(sortedRowIndex), columnIndex)) {
-              lastValidPointIndexForTimeDupCheck.left = time;
-              lastValidPointIndexForTimeDupCheck.right = list.getValueIndex(sortedRowIndex);
+              lastValidPointIndexForTimeDupCheck[columnIndex].left = time;
+              lastValidPointIndexForTimeDupCheck[columnIndex].right =
+                  list.getValueIndex(sortedRowIndex);
             }
             if (timeDuplicateInfo[sortedRowIndex]) {
               if (!list.isNullValue(sortedRowIndex, columnIndex)) {
@@ -402,9 +405,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           // write(T:3,V:null)
 
           int originRowIndex;
-          if (Objects.nonNull(lastValidPointIndexForTimeDupCheck)
-              && (time == lastValidPointIndexForTimeDupCheck.left)) {
-            originRowIndex = lastValidPointIndexForTimeDupCheck.right;
+          if (Objects.nonNull(lastValidPointIndexForTimeDupCheck[columnIndex])
+              && (time == lastValidPointIndexForTimeDupCheck[columnIndex].left)) {
+            originRowIndex = lastValidPointIndexForTimeDupCheck[columnIndex].right;
           } else {
             originRowIndex = list.getValueIndex(sortedRowIndex);
           }
