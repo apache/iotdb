@@ -25,7 +25,7 @@ import javax.management.ObjectName;
 
 public class DoNothingGauge implements Gauge, DoNothingMetric {
   @Override
-  public long value() {
+  public long getValue() {
     return 0;
   }
 

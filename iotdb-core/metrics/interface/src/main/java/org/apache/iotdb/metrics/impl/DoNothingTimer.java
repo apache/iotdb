@@ -38,7 +38,7 @@ public class DoNothingTimer implements Timer, DoNothingMetric {
   }
 
   @Override
-  public long count() {
+  public long getCount() {
     return 0;
   }
 

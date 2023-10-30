@@ -46,7 +46,7 @@ public interface Timer extends IMetric {
   HistogramSnapshot takeSnapshot();
 
   /** Get the count */
-  long count();
+  long getCount();
 
   @Override
   default void constructValueMap(Map<String, Object> result) {

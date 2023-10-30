@@ -33,6 +33,8 @@ import java.util.function.ToDoubleFunction;
 /**
  * Gauges with cache, which have better performance in some read-intensive and calculation-intensive
  * scenarios. Can be served as an additional option.
+ *
+ * <p>This file is modified from com.codahale.metrics.CachedGauge<T>, it should be bug free.
  */
 public class IoTDBCachedGauge<T> extends AbstractJmxCachedGaugeMBean
     implements AutoGauge, IoTDBCachedGaugeMBean {
@@ -69,12 +71,7 @@ public class IoTDBCachedGauge<T> extends AbstractJmxCachedGaugeMBean
   }
 
   @Override
-  public Number getValue() {
-    return this.value();
-  }
-
-  @Override
-  public double value() {
+  public double getValue() {
     return getGaugeValue();
   }
 

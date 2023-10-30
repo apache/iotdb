@@ -82,9 +82,9 @@ public class MetricServiceTest {
         metricService.getOrCreateCounter("counter1", MetricLevel.IMPORTANT, "tag", "value");
     assertNotNull(counter1);
     metricService.count(10, "counter1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(10, counter1.count());
+    assertEquals(10, counter1.getCount());
     metricService.count(20, "counter1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(30, counter1.count());
+    assertEquals(30, counter1.getCount());
     Counter counter2 =
         metricService.getOrCreateCounter("counter1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(counter1, counter2);
@@ -111,7 +111,7 @@ public class MetricServiceTest {
     Gauge gauge1 = metricService.getOrCreateGauge("gauge1", MetricLevel.IMPORTANT, "tag", "value");
     assertNotNull(gauge1);
     metricService.gauge(10, "gauge1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(10, gauge1.value());
+    assertEquals(10, gauge1.getValue());
     Gauge gauge2 = metricService.getOrCreateGauge("gauge1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(gauge1, gauge2);
     gauge2 = metricService.getOrCreateGauge("gauge2", MetricLevel.IMPORTANT);
@@ -138,13 +138,13 @@ public class MetricServiceTest {
     AutoGauge autoGauge =
         metricService.createAutoGauge(
             "autoGauge", MetricLevel.IMPORTANT, list, List::size, "tag", "value");
-    assertEquals(0d, autoGauge.value(), DELTA);
+    assertEquals(0d, autoGauge.getValue(), DELTA);
     list.add(1);
-    assertEquals(1d, autoGauge.value(), DELTA);
+    assertEquals(1d, autoGauge.getValue(), DELTA);
     list.clear();
-    assertEquals(0d, autoGauge.value(), DELTA);
+    assertEquals(0d, autoGauge.getValue(), DELTA);
     list.add(1);
-    assertEquals(1d, autoGauge.value(), DELTA);
+    assertEquals(1d, autoGauge.getValue(), DELTA);
     assertEquals(4, metricService.getMetricsByType(MetricType.GAUGE).size());
     assertEquals(1, metricService.getMetricsByType(MetricType.AUTO_GAUGE).size());
     metricService.remove(MetricType.AUTO_GAUGE, "autoGauge", "tag", "value");
@@ -155,9 +155,9 @@ public class MetricServiceTest {
     Rate rate1 = metricService.getOrCreateRate("rate1", MetricLevel.IMPORTANT, "tag", "value");
     assertNotNull(rate1);
     metricService.rate(10, "rate1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(10, rate1.count());
+    assertEquals(10, rate1.getCount());
     metricService.rate(20, "rate1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(30, rate1.count());
+    assertEquals(30, rate1.getCount());
     Rate rate2 = metricService.getOrCreateRate("rate1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(rate1, rate2);
     rate2 = metricService.getOrCreateRate("rate2", MetricLevel.IMPORTANT);
@@ -188,7 +188,7 @@ public class MetricServiceTest {
     metricService.histogram(30, "histogram1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.histogram(40, "histogram1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.histogram(50, "histogram1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(5, histogram1.count());
+    assertEquals(5, histogram1.getCount());
     assertEquals(150.0D, histogram1.takeSnapshot().getSum(), 0.00001);
     assertEquals(50.0D, histogram1.takeSnapshot().getMax(), 0.00001);
     Histogram histogram2 =
@@ -223,7 +223,7 @@ public class MetricServiceTest {
     metricService.timer(6, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.timer(8, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.timer(10, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(5, timer1.count());
+    assertEquals(5, timer1.getCount());
     Timer timer2 = metricService.getOrCreateTimer("timer1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(timer1, timer2);
     timer2 = metricService.getOrCreateTimer("timer2", MetricLevel.IMPORTANT);

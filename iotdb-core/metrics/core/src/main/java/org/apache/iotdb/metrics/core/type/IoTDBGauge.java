@@ -32,12 +32,7 @@ public class IoTDBGauge extends AbstractJmxGaugeMBean implements Gauge, IoTDBGau
   }
 
   @Override
-  public Number getValue() {
-    return this.value();
-  }
-
-  @Override
-  public long value() {
+  public long getValue() {
     return atomicLong.get();
   }
 

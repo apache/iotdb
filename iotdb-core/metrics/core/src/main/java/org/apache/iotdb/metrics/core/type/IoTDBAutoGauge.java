@@ -36,12 +36,7 @@ public class IoTDBAutoGauge<T> extends AbstractJmxAutoGaugeBean
   }
 
   @Override
-  public Number getValue() {
-    return this.value();
-  }
-
-  @Override
-  public double value() {
+  public double getValue() {
     if (refObject.get() == null) {
       return 0d;
     }

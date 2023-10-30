@@ -44,11 +44,6 @@ public class IoTDBTimer extends AbstractJmxTimerBean implements Timer, IoTDBTime
   }
 
   @Override
-  public long getCount() {
-    return this.count();
-  }
-
-  @Override
   public double getSum() {
     return this.takeSnapshot().getSum();
   }
@@ -79,7 +74,7 @@ public class IoTDBTimer extends AbstractJmxTimerBean implements Timer, IoTDBTime
   }
 
   @Override
-  public long count() {
+  public long getCount() {
     return timer.count();
   }
 }

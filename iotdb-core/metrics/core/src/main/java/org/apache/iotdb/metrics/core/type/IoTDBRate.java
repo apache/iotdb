@@ -43,31 +43,16 @@ public class IoTDBRate extends AbstractJmxRateBean implements Rate, IoTDBRateMBe
 
   @Override
   public long getCount() {
-    return this.count();
-  }
-
-  @Override
-  public double getMeanRate() {
-    return this.meanRate();
-  }
-
-  @Override
-  public double getOneMinuteRate() {
-    return this.oneMinuteRate();
-  }
-
-  @Override
-  public long count() {
     return meter.getCount();
   }
 
   @Override
-  public double oneMinuteRate() {
+  public double getOneMinuteRate() {
     return meter.getOneMinuteRate();
   }
 
   @Override
-  public double meanRate() {
+  public double getMeanRate() {
     return meter.getMeanRate();
   }
 

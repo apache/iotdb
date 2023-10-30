@@ -32,7 +32,7 @@ public class DoNothingHistogram implements Histogram, DoNothingMetric {
   }
 
   @Override
-  public long count() {
+  public long getCount() {
     return 0;
   }
 

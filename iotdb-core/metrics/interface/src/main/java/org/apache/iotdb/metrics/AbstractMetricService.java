@@ -61,13 +61,8 @@ public abstract class AbstractMetricService {
   protected CompositeReporter compositeReporter = new CompositeReporter();
   /** The internal reporter of metric service. */
   protected IoTDBInternalReporter internalReporter = new IoTDBInternalMemoryReporter();
-
   /** The list of metric sets. */
   protected Set<IMetricSet> metricSets = new HashSet<>();
-  //  /** The name of default metric manager */
-  //  private static final String METRIC_MANAGER_NAME = "IoTDBMetricManager";
-  //  /** The name of default jmx reporter */
-  //  private static final String JMX_REPORTER_NAME = "IoTDBJmxReporter";
 
   protected AbstractMetricService() {
     // empty constructor

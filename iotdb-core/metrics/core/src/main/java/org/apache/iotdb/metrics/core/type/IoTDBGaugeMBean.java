@@ -24,7 +24,7 @@ import javax.management.ObjectName;
 public interface IoTDBGaugeMBean {
   ObjectName objectName();
 
-  Number getValue();
+  long getValue();
 
   abstract class AbstractJmxGaugeMBean implements IoTDBGaugeMBean {
     private ObjectName objectName;

@@ -25,17 +25,17 @@ import javax.management.ObjectName;
 
 public class DoNothingRate implements Rate, DoNothingMetric {
   @Override
-  public long count() {
+  public long getCount() {
     return 0;
   }
 
   @Override
-  public double oneMinuteRate() {
+  public double getOneMinuteRate() {
     return 0;
   }
 
   @Override
-  public double meanRate() {
+  public double getMeanRate() {
     return 0;
   }
 

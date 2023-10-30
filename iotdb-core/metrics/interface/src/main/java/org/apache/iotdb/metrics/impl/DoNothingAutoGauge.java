@@ -25,7 +25,7 @@ import javax.management.ObjectName;
 
 public class DoNothingAutoGauge implements AutoGauge {
   @Override
-  public double value() {
+  public double getValue() {
     return 0d;
   }
 

@@ -35,7 +35,7 @@ public class DoNothingCounter implements Counter, DoNothingMetric {
   }
 
   @Override
-  public long count() {
+  public long getCount() {
     return 0;
   }
 

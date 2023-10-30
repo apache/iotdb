@@ -32,11 +32,6 @@ public class IoTDBHistogram extends AbstractJmxHistogramBean
   }
 
   @Override
-  public long getCount() {
-    return this.count();
-  }
-
-  @Override
   public double getMax() {
     return this.takeSnapshot().getMax();
   }
@@ -67,7 +62,7 @@ public class IoTDBHistogram extends AbstractJmxHistogramBean
   }
 
   @Override
-  public long count() {
+  public long getCount() {
     return distributionSummary.count();
   }
 

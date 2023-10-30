@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.ToDoubleFunction;
@@ -67,12 +68,9 @@ public abstract class AbstractMetricManager {
    * @param metricInfo the created metric info
    */
   private void notifyReporterOnAdd(IMetric metric, MetricInfo metricInfo) {
-    // if the reporter type is not JMX
-    if (bindJmxReporter == null) {
-      return;
-    }
-    // register the new metric
-    bindJmxReporter.registerMetric(metric, metricInfo);
+    // if the reporter type is JMX, register the new metric
+    Optional.ofNullable(bindJmxReporter)
+        .ifPresent(x -> bindJmxReporter.registerMetric(metric, metricInfo));
   }
 
   /**
@@ -82,12 +80,9 @@ public abstract class AbstractMetricManager {
    * @param metricInfo the removed metric info
    */
   private void notifyReporterOnRemove(IMetric metric, MetricInfo metricInfo) {
-    // if the reporter type is not JMX
-    if (bindJmxReporter == null) {
-      return;
-    }
-    // register the new metric
-    bindJmxReporter.unregisterMetric(metric, metricInfo);
+    // if the reporter type is JMX, unregister the new metric
+    Optional.ofNullable(bindJmxReporter)
+        .ifPresent(x -> bindJmxReporter.unregisterMetric(metric, metricInfo));
   }
 
   /**

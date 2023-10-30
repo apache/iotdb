@@ -32,11 +32,6 @@ public class IoTDBCounter extends AbstractJmxCounterBean implements Counter, IoT
   }
 
   @Override
-  public long getCount() {
-    return this.count();
-  }
-
-  @Override
   public void inc() {
     this.count.add(1L);
   }
@@ -47,7 +42,7 @@ public class IoTDBCounter extends AbstractJmxCounterBean implements Counter, IoT
   }
 
   @Override
-  public long count() {
+  public long getCount() {
     return this.count.sum();
   }
 }
