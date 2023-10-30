@@ -184,7 +184,7 @@ public enum PlanNodeType {
   PIPE_ENRICHED_INSERT((short) 79),
 
   // NodeId 80 is used by IoTDB-ML which shouldn't be used.
-  INFERENCE((short) 80),
+
   LAST_QUERY_TRANSFORM((short) 81),
   TOP_K((short) 82);
 
