@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnectorClient;
@@ -32,6 +33,8 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -188,14 +191,26 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    Tablet tablet;
+    boolean isAligned;
+
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+      tablet = ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
+      isAligned = ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).isAligned();
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+      tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
+      isAligned = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).isAligned();
     } else {
       throw new NotImplementedException(
           "IoTDBLegacyPipeConnector only support "
               + "PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
+    }
+
+    try (PipeMemoryBlock block = PipeResourceManager.memory().forceAllocateForTablet(tablet)) {
+      doTransfer(tablet, isAligned);
+    } catch (PipeRuntimeOutOfMemoryException e) {
+      LOGGER.warn("PipeMemoryManager out of memory.");
+      throw e;
     }
   }
 
@@ -206,13 +221,18 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
           "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.");
     }
 
-    try {
+    try (PipeMemoryBlock block =
+        PipeResourceManager.memory()
+            .forceAllocate(PipeConfig.getInstance().getPipeConnectorReadFileBufferSize())) {
       doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer tsFile insertion event: %s.", tsFileInsertionEvent),
           e);
+    } catch (PipeRuntimeOutOfMemoryException e) {
+      LOGGER.warn("PipeMemoryManager out of memory.");
+      throw e;
     }
   }
 
@@ -223,20 +243,9 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     }
   }
 
-  private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
+  private void doTransfer(Tablet tablet, boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {
-    final Tablet tablet = pipeInsertNodeInsertionEvent.convertToTablet();
-    if (pipeInsertNodeInsertionEvent.isAligned()) {
-      sessionPool.insertAlignedTablet(tablet);
-    } else {
-      sessionPool.insertTablet(tablet);
-    }
-  }
-
-  private void doTransfer(PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
-      throws PipeException, IoTDBConnectionException, StatementExecutionException {
-    final Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
-    if (pipeTabletInsertionEvent.isAligned()) {
+    if (isAligned) {
       sessionPool.insertAlignedTablet(tablet);
     } else {
       sessionPool.insertTablet(tablet);

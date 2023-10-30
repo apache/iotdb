@@ -401,6 +401,24 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_memory_allocate_retry_interval_in_ms",
                 String.valueOf(config.getPipeMemoryAllocateRetryIntervalInMs()))));
+
+    config.setPipeMemoryAllocateEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_memory_allocate_enabled",
+                String.valueOf(config.getPipeMemoryAllocateEnabled()))));
+
+    config.setPipeMemoryAllocateMinSize(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_memory_allocate_min_size",
+                String.valueOf(config.getPipeMemoryAllocateMinSize()))));
+
+    config.setPipeMemoryAllocateForTsFileSequenceReader(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_memory_allocate_for_tsfile_sequence_reader",
+                String.valueOf(config.getPipeMemoryAllocateForTsFileSequenceReader()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

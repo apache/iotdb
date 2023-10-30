@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
@@ -40,6 +41,8 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -53,6 +56,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -175,29 +179,74 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
             (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
-        final TPipeTransferReq pipeTransferReq =
-            pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
-                ? PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                    pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-                : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
-                    pipeInsertNodeTabletInsertionEvent.getInsertNode());
-        final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
-            new PipeTransferTabletInsertNodeEventHandler(
-                requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
 
-        transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
+        final TPipeTransferReq pipeTransferReq;
+        PipeMemoryBlock block = null;
+
+        try {
+          if (pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null) {
+            block =
+                PipeResourceManager.memory()
+                    .forceAllocate(pipeInsertNodeTabletInsertionEvent.getByteBuffer().remaining());
+            pipeTransferReq =
+                PipeTransferTabletBinaryReq.toTPipeTransferReq(
+                    pipeInsertNodeTabletInsertionEvent.getByteBuffer());
+
+            // pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() != null
+          } else {
+            block =
+                PipeResourceManager.memory()
+                    .forceAllocate(
+                        pipeInsertNodeTabletInsertionEvent
+                            .getInsertNode()
+                            .serializeToByteBuffer()
+                            .remaining());
+            pipeTransferReq =
+                PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
+                    pipeInsertNodeTabletInsertionEvent.getInsertNode());
+          }
+
+          final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
+              new PipeTransferTabletInsertNodeEventHandler(
+                  requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
+
+          transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
+        } catch (PipeRuntimeOutOfMemoryException e) {
+          LOGGER.warn(
+              "Failed to allocate memory for insert node {} (requestCommitId={}).",
+              pipeInsertNodeTabletInsertionEvent.getInsertNode(),
+              requestCommitId,
+              e);
+          throw e;
+        } finally {
+          if (block != null) {
+            block.close();
+          }
+        }
+
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
         final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
             (PipeRawTabletInsertionEvent) tabletInsertionEvent;
-        final PipeTransferTabletRawReq pipeTransferTabletRawReq =
-            PipeTransferTabletRawReq.toTPipeTransferReq(
-                pipeRawTabletInsertionEvent.convertToTablet(),
-                pipeRawTabletInsertionEvent.isAligned());
-        final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
-            new PipeTransferTabletRawEventHandler(
-                requestCommitId, pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
+        Tablet tablet = pipeRawTabletInsertionEvent.convertToTablet();
 
-        transfer(requestCommitId, pipeTransferTabletReqHandler);
+        try (PipeMemoryBlock block = PipeResourceManager.memory().forceAllocateForTablet(tablet)) {
+
+          final PipeTransferTabletRawReq pipeTransferTabletRawReq =
+              PipeTransferTabletRawReq.toTPipeTransferReq(
+                  tablet, pipeRawTabletInsertionEvent.isAligned());
+          final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
+              new PipeTransferTabletRawEventHandler(
+                  requestCommitId, pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
+
+          transfer(requestCommitId, pipeTransferTabletReqHandler);
+        } catch (PipeRuntimeOutOfMemoryException e) {
+          LOGGER.warn(
+              "Failed to allocate memory for raw tablet {} (requestCommitId={}).",
+              pipeRawTabletInsertionEvent.convertToTablet(),
+              requestCommitId,
+              e);
+          throw e;
+        }
       }
     }
   }

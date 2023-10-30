@@ -77,6 +77,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeExtractorAssignerDisruptorRingBufferSize();
   }
 
+  public long getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes() {
+    return COMMON_CONFIG.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes();
+  }
+
   public int getPipeExtractorMatcherCacheSize() {
     return COMMON_CONFIG.getPipeExtractorMatcherCacheSize();
   }
@@ -159,12 +163,24 @@ public class PipeConfig {
 
   /////////////////////////////// Memory ///////////////////////////////
 
+  public boolean getPipeMemoryAllocateEnabled() {
+    return COMMON_CONFIG.getPipeMemoryAllocateEnabled();
+  }
+
   public int getPipeMemoryAllocateMaxRetries() {
     return COMMON_CONFIG.getPipeMemoryAllocateMaxRetries();
   }
 
   public long getPipeMemoryAllocateRetryIntervalInMs() {
     return COMMON_CONFIG.getPipeMemoryAllocateRetryIntervalInMs();
+  }
+
+  public long getPipeMemoryAllocateMinSize() {
+    return COMMON_CONFIG.getPipeMemoryAllocateMinSize();
+  }
+
+  public long getPipeMemoryAllocateForTsFileSequenceReader() {
+    return COMMON_CONFIG.getPipeMemoryAllocateForTsFileSequenceReader();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -226,9 +242,14 @@ public class PipeConfig {
         "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
         getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
 
+    LOGGER.info("PipeMemoryAllocateEnabled: {}", getPipeMemoryAllocateEnabled());
     LOGGER.info("PipeMemoryAllocateMaxRetries: {}", getPipeMemoryAllocateMaxRetries());
     LOGGER.info(
         "PipeMemoryAllocateRetryIntervalInMs: {}", getPipeMemoryAllocateRetryIntervalInMs());
+    LOGGER.info("PipeMemoryAllocateMinSize: {}", getPipeMemoryAllocateMinSize());
+    LOGGER.info(
+        "PipeMemoryAllocateForTsFileSequenceReader: {}",
+        getPipeMemoryAllocateForTsFileSequenceReader());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

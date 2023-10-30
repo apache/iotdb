@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
@@ -37,6 +38,8 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -47,6 +50,7 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -290,14 +294,44 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       IoTDBThriftSyncConnectorClient client,
       PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, TException, WALPipeException {
-    final TPipeTransferResp resp =
-        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
-            ? client.pipeTransfer(
+    final TPipeTransferResp resp;
+    if (pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null) {
+      try (PipeMemoryBlock block =
+          PipeResourceManager.memory()
+              .forceAllocate(pipeInsertNodeTabletInsertionEvent.getByteBuffer().remaining())) {
+        resp =
+            client.pipeTransfer(
                 PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                    pipeInsertNodeTabletInsertionEvent.getByteBuffer()))
-            : client.pipeTransfer(
+                    pipeInsertNodeTabletInsertionEvent.getByteBuffer()));
+      } catch (PipeRuntimeOutOfMemoryException e) {
+        LOGGER.warn(
+            "Failed to allocate memory for PipeInsertNodeTabletInsertionEvent {}, because {}.",
+            pipeInsertNodeTabletInsertionEvent,
+            e.getMessage());
+        throw e;
+      }
+
+      // pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() != null
+    } else {
+      try (PipeMemoryBlock block =
+          PipeResourceManager.memory()
+              .forceAllocate(
+                  pipeInsertNodeTabletInsertionEvent
+                      .getInsertNode()
+                      .serializeToByteBuffer()
+                      .remaining())) {
+        resp =
+            client.pipeTransfer(
                 PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
                     pipeInsertNodeTabletInsertionEvent.getInsertNode()));
+      } catch (PipeRuntimeOutOfMemoryException e) {
+        LOGGER.warn(
+            "Failed to allocate memory for PipeInsertNodeTabletInsertionEvent {}, because {}.",
+            pipeInsertNodeTabletInsertionEvent,
+            e.getMessage());
+        throw e;
+      }
+    }
 
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
@@ -311,11 +345,22 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       IoTDBThriftSyncConnectorClient client,
       PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, TException, IOException {
-    final TPipeTransferResp resp =
-        client.pipeTransfer(
-            PipeTransferTabletRawReq.toTPipeTransferReq(
-                pipeRawTabletInsertionEvent.convertToTablet(),
-                pipeRawTabletInsertionEvent.isAligned()));
+
+    final TPipeTransferResp resp;
+    final Tablet tablet = pipeRawTabletInsertionEvent.convertToTablet();
+    try (PipeMemoryBlock block = PipeResourceManager.memory().forceAllocateForTablet(tablet)) {
+      resp =
+          client.pipeTransfer(
+              PipeTransferTabletRawReq.toTPipeTransferReq(
+                  tablet, pipeRawTabletInsertionEvent.isAligned()));
+
+    } catch (PipeRuntimeOutOfMemoryException e) {
+      LOGGER.warn(
+          "Failed to allocate memory for PipeRawTabletInsertionEvent {}, because {}.",
+          pipeRawTabletInsertionEvent,
+          e.getMessage());
+      throw e;
+    }
 
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
@@ -343,15 +388,26 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
           break;
         }
 
-        final PipeTransferFilePieceResp resp =
-            PipeTransferFilePieceResp.fromTPipeTransferResp(
-                client.pipeTransfer(
-                    PipeTransferFilePieceReq.toTPipeTransferReq(
-                        tsFile.getName(),
-                        position,
-                        readLength == readFileBufferSize
-                            ? readBuffer
-                            : Arrays.copyOfRange(readBuffer, 0, readLength))));
+        final PipeTransferFilePieceResp resp;
+        try (PipeMemoryBlock ignored =
+            PipeResourceManager.memory().forceAllocate(readFileBufferSize)) {
+          resp =
+              PipeTransferFilePieceResp.fromTPipeTransferResp(
+                  client.pipeTransfer(
+                      PipeTransferFilePieceReq.toTPipeTransferReq(
+                          tsFile.getName(),
+                          position,
+                          readLength == readFileBufferSize
+                              ? readBuffer
+                              : Arrays.copyOfRange(readBuffer, 0, readLength))));
+        } catch (PipeRuntimeOutOfMemoryException e) {
+          LOGGER.warn(
+              "Failed to allocate memory for PipeTsFileInsertionEvent {}, because {}.",
+              pipeTsFileInsertionEvent,
+              e.getMessage());
+          throw e;
+        }
+
         position += readLength;
 
         // This case only happens when the connection is broken, and the connector is reconnected

@@ -31,6 +31,7 @@ public enum PipeRuntimeExceptionType {
   NON_CRITICAL_EXCEPTION((short) 1),
   CRITICAL_EXCEPTION((short) 2),
   CONNECTOR_CRITICAL_EXCEPTION((short) 3),
+  OUT_OF_MEMORY_EXCEPTION((short) 4),
   ;
 
   private final short type;
@@ -61,6 +62,8 @@ public enum PipeRuntimeExceptionType {
         return PipeRuntimeCriticalException.deserializeFrom(version, byteBuffer);
       case 3:
         return PipeRuntimeConnectorCriticalException.deserializeFrom(version, byteBuffer);
+      case 4:
+        return PipeRuntimeOutOfMemoryException.deserializeFrom(version, byteBuffer);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported PipeRuntimeException type %s.", type));
@@ -77,6 +80,8 @@ public enum PipeRuntimeExceptionType {
         return PipeRuntimeCriticalException.deserializeFrom(version, stream);
       case 3:
         return PipeRuntimeConnectorCriticalException.deserializeFrom(version, stream);
+      case 4:
+        return PipeRuntimeOutOfMemoryException.deserializeFrom(version, stream);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported PipeRuntimeException type %s.", type));

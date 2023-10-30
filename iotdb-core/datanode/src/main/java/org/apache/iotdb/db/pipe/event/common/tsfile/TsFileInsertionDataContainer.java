@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -65,6 +68,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final Map<String, Boolean> deviceIsAlignedMap;
   private final Map<String, TSDataType> measurementDataTypeMap;
 
+  private final PipeMemoryBlock block;
+
   public TsFileInsertionDataContainer(File tsFile, String pattern, long startTime, long endTime)
       throws IOException {
     this(tsFile, pattern, startTime, endTime, null, null);
@@ -90,6 +95,10 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     this.sourceEvent = sourceEvent;
 
     try {
+      block =
+          PipeResourceManager.memory()
+              .tryAllocate(PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReader());
+
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), true, true);
       tsFileReader = new TsFileReader(tsFileSequenceReader);
 
@@ -229,5 +238,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     } catch (IOException e) {
       LOGGER.warn("Failed to close TsFileSequenceReader", e);
     }
+
+    block.close();
   }
 }

@@ -25,6 +25,8 @@ import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.metric.PipeEventCounter;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.EventHandler;
@@ -42,13 +44,22 @@ public class DisruptorQueue {
   private final Disruptor<EventContainer> disruptor;
   private final RingBuffer<EventContainer> ringBuffer;
 
+  private final PipeMemoryBlock block;
+
   private final PipeEventCounter eventCounter = new PipeEventCounter();
 
   public DisruptorQueue(EventHandler<PipeRealtimeEvent> eventHandler) {
+    PipeConfig config = PipeConfig.getInstance();
+    final long ringBufferEntrySizeInBytes =
+        config.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes();
+    final int ringBufferSize = config.getPipeExtractorAssignerDisruptorRingBufferSize();
+
+    block = PipeResourceManager.memory().tryAllocate(ringBufferSize * ringBufferEntrySizeInBytes);
+
     disruptor =
         new Disruptor<>(
             EventContainer::new,
-            PipeConfig.getInstance().getPipeExtractorAssignerDisruptorRingBufferSize(),
+            Math.toIntExact(block.getMemoryUsageInBytes() / ringBufferEntrySizeInBytes),
             THREAD_FACTORY,
             ProducerType.MULTI,
             new BlockingWaitStrategy());
@@ -74,6 +85,7 @@ public class DisruptorQueue {
 
   public void clear() {
     disruptor.halt();
+    block.close();
   }
 
   private static class EventContainer {

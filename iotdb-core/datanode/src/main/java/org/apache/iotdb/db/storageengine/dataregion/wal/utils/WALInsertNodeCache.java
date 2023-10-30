@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.PipeWALInsertNodeCacheMetrics;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -63,13 +66,19 @@ public class WALInsertNodeCache {
 
   private volatile boolean hasPipeRunning = false;
 
+  private final PipeMemoryBlock block;
+
   private WALInsertNodeCache(Integer dataRegionId) {
-    // TODO: try allocate memory 2 * config.getWalFileSizeThresholdInByte() for the cache
     // If allocate memory failed, disable batch load
     isBatchLoadEnabled = true;
+
+    block = PipeResourceManager.memory().tryAllocate(2 * CONFIG.getWalFileSizeThresholdInByte());
+    isBatchLoadEnabled =
+        block.getMemoryUsageInBytes() != PipeConfig.getInstance().getPipeMemoryAllocateMinSize();
+
     lruCache =
         Caffeine.newBuilder()
-            .maximumWeight(2 * CONFIG.getWalFileSizeThresholdInByte())
+            .maximumWeight(block.getMemoryUsageInBytes())
             .weigher(
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
                     (position, pair) -> position.getSize())
@@ -287,6 +296,7 @@ public class WALInsertNodeCache {
   @TestOnly
   public void clear() {
     lruCache.invalidateAll();
+    block.close();
     memTablesNeedSearch.clear();
   }
 }
