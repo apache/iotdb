@@ -95,7 +95,7 @@ public class TsFileResourceUtils {
               Long.MIN_VALUE);
           return false;
         }
-        if (startTime >= endTime) {
+        if (startTime > endTime) {
           logger.error(
               "{} {} the start time of {} is greater than end time",
               resource.getTsFilePath(),
