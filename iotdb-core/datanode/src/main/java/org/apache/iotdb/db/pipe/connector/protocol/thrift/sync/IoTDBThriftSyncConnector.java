@@ -84,17 +84,18 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     super.validate(validator);
-    final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
     Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
 
     validator.validate(
         empty ->
-            !(givenNodeUrls.contains(new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()))
-                || givenNodeUrls.contains(new TEndPoint("127.0.0.1", conf.getRpcPort()))
-                || givenNodeUrls.contains(new TEndPoint("0.0.0.0", conf.getRpcPort()))),
+            !(givenNodeUrls.contains(
+                    new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort()))
+                || givenNodeUrls.contains(new TEndPoint("127.0.0.1", ioTDBConfig.getRpcPort()))
+                || givenNodeUrls.contains(new TEndPoint("0.0.0.0", ioTDBConfig.getRpcPort()))),
         String.format(
             "The pipe destinations %s cannot point to one of the dataNodes' thrift receiver endpoint %s",
-            givenNodeUrls, new TEndPoint(conf.getRpcAddress(), conf.getRpcPort())));
+            givenNodeUrls, new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort())));
   }
 
   @Override

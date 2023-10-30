@@ -103,7 +103,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
-    final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
     Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
 
     validator
@@ -123,12 +123,14 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
             parameters.hasAttribute(SINK_IOTDB_PORT_KEY))
         .validate(
             empty ->
-                !(givenNodeUrls.contains(new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()))
-                    || givenNodeUrls.contains(new TEndPoint("127.0.0.1", conf.getRpcPort()))
-                    || givenNodeUrls.contains(new TEndPoint("0.0.0.0", conf.getRpcPort()))),
+                !(givenNodeUrls.contains(
+                        new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort()))
+                    || givenNodeUrls.contains(new TEndPoint("127.0.0.1", ioTDBConfig.getRpcPort()))
+                    || givenNodeUrls.contains(new TEndPoint("0.0.0.0", ioTDBConfig.getRpcPort()))),
             String.format(
                 "The pipe destinations %s cannot point to one of the dataNodes' legacy receiver endpoint %s",
-                givenNodeUrls, new TEndPoint(conf.getRpcAddress(), conf.getRpcPort())));
+                givenNodeUrls,
+                new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort())));
   }
 
   private Set<TEndPoint> parseNodeUrls(PipeParameters parameters) {
