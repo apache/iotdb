@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Future;
 
@@ -149,7 +150,7 @@ public class FlushManager implements FlushManagerMBean, IService {
         }
       }
     }
-    return null;
+    return CompletableFuture.completedFuture(null);
   }
 
   private FlushManager() {}

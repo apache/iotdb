@@ -83,6 +83,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
@@ -884,7 +885,7 @@ public class TsFileProcessor {
       }
 
       if (shouldClose) {
-        return null;
+        return CompletableFuture.completedFuture(null);
       }
       // when a flush thread serves this TsFileProcessor (because the processor is submitted by
       // registerTsFileProcessor()), the thread will seal the corresponding TsFile and
@@ -923,7 +924,7 @@ public class TsFileProcessor {
             FLUSH_QUERY_WRITE_RELEASE, storageGroupName, tsFileResource.getTsFile().getName());
       }
     }
-    return null;
+    return CompletableFuture.completedFuture(null);
   }
 
   /**

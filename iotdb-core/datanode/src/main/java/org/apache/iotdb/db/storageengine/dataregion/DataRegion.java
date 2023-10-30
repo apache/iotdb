@@ -134,6 +134,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -1371,7 +1372,7 @@ public class DataRegion implements IDataRegionForQuery {
     if (closingSequenceTsFileProcessor.contains(tsFileProcessor)
         || closingUnSequenceTsFileProcessor.contains(tsFileProcessor)
         || tsFileProcessor.alreadyMarkedClosing()) {
-      return null;
+      return CompletableFuture.completedFuture(null);
     }
     logger.info(
         "Async close tsfile: {}",
@@ -1594,7 +1595,7 @@ public class DataRegion implements IDataRegionForQuery {
   public void syncCloseAllWorkingTsFileProcessors() {
     synchronized (closeStorageGroupCondition) {
       try {
-        List<Future<?>> futures = asyncCloseAllWorkingTsFileProcessors();
+        List<Future<?>> tsFileProcessorsClosingFutures = asyncCloseAllWorkingTsFileProcessors();
         long startTime = System.currentTimeMillis();
         while (!closingSequenceTsFileProcessor.isEmpty()
             || !closingUnSequenceTsFileProcessor.isEmpty()) {
@@ -1606,7 +1607,7 @@ public class DataRegion implements IDataRegionForQuery {
                 (System.currentTimeMillis() - startTime) / 1000);
           }
         }
-        for (Future<?> f : futures) {
+        for (Future<?> f : tsFileProcessorsClosingFutures) {
           if (f != null) {
             f.get();
           }

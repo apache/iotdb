@@ -26,6 +26,7 @@ import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -77,13 +78,13 @@ public class SessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    //    try {
-    ////      session.createDatabase("root.sg1");
-    //    } catch (StatementExecutionException e) {
-    //      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-    //        throw e;
-    //      }
-    //    }
+    try {
+      session.createDatabase("root.sg1");
+    } catch (StatementExecutionException e) {
+      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+        throw e;
+      }
+    }
 
     //     createTemplate();
     createTimeseries();
@@ -400,7 +401,7 @@ public class SessionExample {
     // Method 1 to add tablet data
     long timestamp = System.currentTimeMillis();
 
-    for (long row = 0; row < 10000000; row++) {
+    for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       for (int s = 0; s < 3; s++) {
