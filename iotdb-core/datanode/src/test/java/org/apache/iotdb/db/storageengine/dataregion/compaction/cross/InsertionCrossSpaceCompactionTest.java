@@ -49,6 +49,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Phaser;
 
@@ -481,9 +482,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
       super(databaseName, id);
     }
 
-    @Override
     public int executeInsertionCompaction() {
-      return super.executeInsertionCompaction();
+      return super.executeInsertionCompaction(
+          new ArrayList<>(this.getTsFileManager().getTimePartitions()));
     }
   }
 }

@@ -2089,15 +2089,16 @@ public class DataRegion implements IDataRegionForQuery {
 
   protected int executeCompaction() {
     int trySubmitCount = 0;
+    List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
+    // sort the time partition from largest to smallest
+    timePartitions.sort(Comparator.reverseOrder());
+
     if (IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction()) {
-      trySubmitCount += executeInsertionCompaction();
+      trySubmitCount += executeInsertionCompaction(timePartitions);
     }
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
     try {
-      List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
-      // sort the time partition from largest to smallest
-      timePartitions.sort(Comparator.reverseOrder());
       for (long timePartition : timePartitions) {
         trySubmitCount += CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
       }
@@ -2107,11 +2108,9 @@ public class DataRegion implements IDataRegionForQuery {
     return trySubmitCount;
   }
 
-  protected int executeInsertionCompaction() {
+  protected int executeInsertionCompaction(List<Long> timePartitions) {
     int trySubmitCount = 0;
     try {
-      List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
-      timePartitions.sort(Comparator.reverseOrder());
       while (true) {
         int currentSubmitCount = 0;
         Phaser insertionTaskPhaser = new Phaser(1);
