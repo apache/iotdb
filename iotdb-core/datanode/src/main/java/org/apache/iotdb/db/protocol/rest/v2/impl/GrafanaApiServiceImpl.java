@@ -113,7 +113,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
           COORDINATOR.execute(
               statement,
               queryId,
-              null,
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               sql.getSql(),
               partitionFetcher,
               schemaFetcher,
@@ -180,7 +180,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
           COORDINATOR.execute(
               statement,
               queryId,
-              null,
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               sql,
               partitionFetcher,
               schemaFetcher,
@@ -241,7 +241,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
             COORDINATOR.execute(
                 statement,
                 queryId,
-                null,
+                SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
                 sql,
                 partitionFetcher,
                 schemaFetcher,

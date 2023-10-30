@@ -2053,7 +2053,7 @@ public class DataRegion implements IDataRegionForQuery {
     closeQueryLock.writeLock().lock();
     try {
       tsFileProcessor.close();
-      if (tsFileProcessor.isEmpty()) {
+      if (tsFileProcessor.isEmpty() || tsFileProcessor.getTsFileResource().isEmpty()) {
         try {
           fsFactory.deleteIfExists(tsFileProcessor.getTsFileResource().getTsFile());
           tsFileManager.remove(tsFileProcessor.getTsFileResource(), tsFileProcessor.isSequence());
@@ -2205,7 +2205,7 @@ public class DataRegion implements IDataRegionForQuery {
           tsfileToBeInserted, newTsFileResource, newFilePartitionId, deleteOriginFile);
 
       PipeInsertionDataNodeListener.getInstance()
-          .listenToTsFile(dataRegionId, newTsFileResource, isGeneratedByPipe);
+          .listenToTsFile(dataRegionId, newTsFileResource, true, isGeneratedByPipe);
 
       FileMetrics.getInstance()
           .addTsFile(

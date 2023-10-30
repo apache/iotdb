@@ -97,6 +97,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -165,8 +166,14 @@ public class DataNode implements DataNodeMBean {
       // Check if this DataNode is start for the first time and do other pre-checks
       isFirstStart = prepareDataNode();
 
-      // Set target ConfigNodeList from iotdb-datanode.properties file
-      ConfigNodeInfo.getInstance().updateConfigNodeList(config.getTargetConfigNodeList());
+      if (isFirstStart) {
+        // Set target ConfigNodeList from iotdb-datanode.properties file
+        ConfigNodeInfo.getInstance()
+            .updateConfigNodeList(Collections.singletonList(config.getSeedConfigNode()));
+      } else {
+        // Load registered ConfigNodes from system.properties
+        ConfigNodeInfo.getInstance().loadConfigNodeList();
+      }
 
       // Pull and check system configurations from ConfigNode-leader
       pullAndCheckSystemConfigurations();
@@ -249,11 +256,9 @@ public class DataNode implements DataNodeMBean {
         configurationResp = configNodeClient.getSystemConfiguration();
         break;
       } catch (TException | ClientManagerException e) {
-        // Read ConfigNodes from system.properties and retry
         logger.warn(
             "Cannot pull system configurations from ConfigNode-leader, because: {}",
             e.getMessage());
-        ConfigNodeInfo.getInstance().loadConfigNodeList();
         retry--;
       }
 
@@ -373,9 +378,7 @@ public class DataNode implements DataNodeMBean {
         dataNodeRegisterResp = configNodeClient.registerDataNode(req);
         break;
       } catch (TException | ClientManagerException e) {
-        // Read ConfigNodes from system.properties and retry
         logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
-        ConfigNodeInfo.getInstance().loadConfigNodeList();
         retry--;
       }
 
@@ -392,7 +395,7 @@ public class DataNode implements DataNodeMBean {
       // All tries failed
       logger.error(
           "Cannot register into cluster after {} retries. "
-              + "Please check dn_target_config_node_list in iotdb-datanode.properties.",
+              + "Please check dn_seed_config_node in iotdb-datanode.properties.",
           DEFAULT_RETRY);
       throw new StartupException("Cannot register into the cluster.");
     }
@@ -433,10 +436,8 @@ public class DataNode implements DataNodeMBean {
         dataNodeRestartResp = configNodeClient.restartDataNode(req);
         break;
       } catch (TException | ClientManagerException e) {
-        // Read ConfigNodes from system.properties and retry
         logger.warn(
             "Cannot send restart request to the ConfigNode-leader, because: {}", e.getMessage());
-        ConfigNodeInfo.getInstance().loadConfigNodeList();
         retry--;
       }
 
@@ -453,7 +454,7 @@ public class DataNode implements DataNodeMBean {
       // All tries failed
       logger.error(
           "Cannot send restart DataNode request to ConfigNode-leader after {} retries. "
-              + "Please check dn_target_config_node_list in iotdb-datanode.properties.",
+              + "Please check dn_seed_config_node in iotdb-datanode.properties.",
           DEFAULT_RETRY);
       throw new StartupException("Cannot send restart DataNode request to ConfigNode-leader.");
     }

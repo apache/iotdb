@@ -88,6 +88,9 @@ struct TRatisConfig {
 
   31: required i32 schemaRegionGrpcLeaderOutstandingAppendsMax
   32: required i32 schemaRegionLogForceSyncNum
+
+  33: required i64 schemaRegionPeriodicSnapshotInterval
+  34: required i64 dataRegionPeriodicSnapshotInterval
 }
 
 struct TCQConfig {
@@ -1278,42 +1281,42 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /**
-   * Create schema template
+   * Create device template
    */
   common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
 
   /**
-   * Get all schema template info and template set info for DataNode registeration
+   * Get all device template info and template set info for DataNode registeration
    */
   TGetAllTemplatesResp getAllTemplates()
 
   /**
-   * Get one schema template info
+   * Get one device template info
    */
   TGetTemplateResp getTemplate(string req)
 
   /**
-   * Set given schema template to given path
+   * Set given device template to given path
    */
   common.TSStatus setSchemaTemplate(TSetSchemaTemplateReq req)
 
   /**
-   * Get paths setting given schema template
+   * Get paths setting given device template
    */
   TGetPathsSetTemplatesResp getPathsSetTemplate(TGetPathsSetTemplatesReq req)
 
   /**
-   * Deactivate schema template from paths matched by given pattern tree in cluster
+   * Deactivate device template from paths matched by given pattern tree in cluster
    */
   common.TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req)
 
   /**
-   * Unset schema template from given path
+   * Unset device template from given path
    */
   common.TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req)
 
   /**
-   * Drop schema template
+   * Drop device template
    */
   common.TSStatus dropSchemaTemplate(string req)
 

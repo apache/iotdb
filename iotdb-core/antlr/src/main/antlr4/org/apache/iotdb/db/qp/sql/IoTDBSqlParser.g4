@@ -41,7 +41,7 @@ ddlStatement
     // Timeseries & Path
     | createTimeseries | dropTimeseries | alterTimeseries
     | showDevices | showTimeseries | showChildPaths | showChildNodes | countDevices | countTimeseries | countNodes
-    // Schema Template
+    // Device Template
     | createSchemaTemplate | createTimeseriesUsingSchemaTemplate | dropSchemaTemplate | dropTimeseriesOfSchemaTemplate
     | showSchemaTemplates | showNodesInSchemaTemplate | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | setSchemaTemplate | unsetSchemaTemplate
@@ -241,10 +241,10 @@ tagContainsExpression
     ;
 
 
-// Schema Template ==================================================================================
-// ---- Create Schema Template
+// Device Template ==================================================================================
+// ---- Create Device Template
 createSchemaTemplate
-    : CREATE SCHEMA TEMPLATE templateName=identifier
+    : CREATE (SCHEMA | DEVICE) TEMPLATE templateName=identifier
     ALIGNED? (LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET)?
     ;
 
@@ -252,53 +252,53 @@ templateMeasurementClause
     : nodeNameWithoutWildcard attributeClauses
     ;
 
-// ---- Create Timeseries Of Schema Template
+// ---- Create Timeseries Of Device Template
 createTimeseriesUsingSchemaTemplate
-    : CREATE TIMESERIES (OF | USING) SCHEMA TEMPLATE ON prefixPath
+    : CREATE TIMESERIES (OF | USING) (SCHEMA | DEVICE) TEMPLATE ON prefixPath
     ;
 
-// ---- Drop Schema Template
+// ---- Drop Device Template
 dropSchemaTemplate
-    : DROP SCHEMA TEMPLATE templateName=identifier
+    : DROP (SCHEMA | DEVICE) TEMPLATE templateName=identifier
     ;
 
-// ---- Drop Timeseries of Schema Template
+// ---- Drop Timeseries of Device Template
 dropTimeseriesOfSchemaTemplate
-    : ((DELETE | DROP) TIMESERIES OF | DEACTIVATE) SCHEMA TEMPLATE (templateName=identifier) ? FROM prefixPath (COMMA prefixPath)*
+    : ((DELETE | DROP) TIMESERIES OF | DEACTIVATE) (SCHEMA | DEVICE) TEMPLATE (templateName=identifier) ? FROM prefixPath (COMMA prefixPath)*
     ;
 
-// ---- Show Schema Template
+// ---- Show Device Template
 showSchemaTemplates
-    : SHOW SCHEMA TEMPLATES
+    : SHOW (SCHEMA | DEVICE) TEMPLATES
     ;
 
-// ---- Show Measurements In Schema Template
+// ---- Show Measurements In Device Template
 showNodesInSchemaTemplate
-    : SHOW NODES operator_in SCHEMA TEMPLATE templateName=identifier
+    : SHOW NODES operator_in (SCHEMA | DEVICE) TEMPLATE templateName=identifier
     ;
 
-// ---- Show Paths Set Schema Template
+// ---- Show Paths Set Device Template
 showPathsSetSchemaTemplate
-    : SHOW PATHS SET SCHEMA TEMPLATE templateName=identifier
+    : SHOW PATHS SET (SCHEMA | DEVICE) TEMPLATE templateName=identifier
     ;
 
-// ---- Show Paths Using Schema Template
+// ---- Show Paths Using Device Template
 showPathsUsingSchemaTemplate
-    : SHOW PATHS prefixPath? USING SCHEMA TEMPLATE templateName=identifier
+    : SHOW PATHS prefixPath? USING (SCHEMA | DEVICE) TEMPLATE templateName=identifier
     ;
 
-// ---- Set Schema Template
+// ---- Set Device Template
 setSchemaTemplate
-    : SET SCHEMA TEMPLATE templateName=identifier TO prefixPath
+    : SET (SCHEMA | DEVICE) TEMPLATE templateName=identifier TO prefixPath
     ;
 
-// ---- Unset Schema Template
+// ---- Unset Device Template
 unsetSchemaTemplate
-    : UNSET SCHEMA TEMPLATE templateName=identifier FROM prefixPath
+    : UNSET (SCHEMA | DEVICE) TEMPLATE templateName=identifier FROM prefixPath
     ;
 
 alterSchemaTemplate
-    : ALTER SCHEMA TEMPLATE templateName=identifier ADD LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
+    : ALTER (SCHEMA | DEVICE) TEMPLATE templateName=identifier ADD LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
     ;
 
 
@@ -521,7 +521,7 @@ createPipe
     ;
 
 extractorAttributesClause
-    : WITH EXTRACTOR
+    : WITH (EXTRACTOR | SOURCE)
         LR_BRACKET
         (extractorAttributeClause COMMA)* extractorAttributeClause?
         RR_BRACKET
@@ -543,7 +543,7 @@ processorAttributeClause
     ;
 
 connectorAttributesClause
-    : WITH CONNECTOR
+    : WITH (CONNECTOR | SINK)
         LR_BRACKET
         (connectorAttributeClause COMMA)* connectorAttributeClause?
         RR_BRACKET

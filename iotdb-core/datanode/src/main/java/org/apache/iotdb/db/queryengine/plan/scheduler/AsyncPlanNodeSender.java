@@ -35,14 +35,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
-
-import static com.google.common.util.concurrent.Futures.immediateFuture;
 
 public class AsyncPlanNodeSender {
 
@@ -53,8 +51,11 @@ public class AsyncPlanNodeSender {
 
   private final Map<TEndPoint, BatchRequestWithIndex> batchRequests;
   private final Map<Integer, TSendSinglePlanNodeResp> instanceId2RespMap;
+
+  private final List<Integer> needRetryInstanceIndex;
+
   private final AtomicLong pendingNumber;
-  private final long startSendTime;
+  private long startSendTime;
 
   public AsyncPlanNodeSender(
       IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
@@ -77,6 +78,7 @@ public class AsyncPlanNodeSender {
                   instances.get(i).getRegionReplicaSet().getRegionId()));
     }
     this.instanceId2RespMap = new ConcurrentHashMap<>(instances.size() + 1, 1);
+    this.needRetryInstanceIndex = Collections.synchronizedList(new ArrayList<>());
     this.pendingNumber = new AtomicLong(batchRequests.keySet().size());
   }
 
@@ -84,7 +86,11 @@ public class AsyncPlanNodeSender {
     for (Map.Entry<TEndPoint, BatchRequestWithIndex> entry : batchRequests.entrySet()) {
       AsyncSendPlanNodeHandler handler =
           new AsyncSendPlanNodeHandler(
-              entry.getValue().getIndexes(), pendingNumber, instanceId2RespMap, startSendTime);
+              entry.getValue().getIndexes(),
+              pendingNumber,
+              instanceId2RespMap,
+              needRetryInstanceIndex,
+              startSendTime);
       try {
         AsyncDataNodeInternalServiceClient client =
             asyncInternalServiceClientManager.borrowClient(entry.getKey());
@@ -135,26 +141,55 @@ public class AsyncPlanNodeSender {
     return failureStatusList;
   }
 
-  public Future<FragInstanceDispatchResult> getResult() {
-    for (Map.Entry<Integer, TSendSinglePlanNodeResp> entry : instanceId2RespMap.entrySet()) {
-      if (!entry.getValue().accepted) {
-        logger.warn(
-            "dispatch write failed. status: {}, code: {}, message: {}, node {}",
-            entry.getValue().status,
-            TSStatusCode.representOf(entry.getValue().status.code),
-            entry.getValue().message,
-            instances.get(entry.getKey()).getHostDataNode().getInternalEndPoint());
-        if (entry.getValue().getStatus() == null) {
-          return immediateFuture(
-              new FragInstanceDispatchResult(
-                  RpcUtils.getStatus(
-                      TSStatusCode.WRITE_PROCESS_ERROR, entry.getValue().getMessage())));
-        } else {
-          return immediateFuture(new FragInstanceDispatchResult(entry.getValue().getStatus()));
-        }
-      }
+  public boolean needRetry() {
+    // retried FI list is not empty and data region replica number is greater than 1
+    return !needRetryInstanceIndex.isEmpty()
+        && instances.get(0).getRegionReplicaSet().dataNodeLocations.size() > 1;
+  }
+
+  /**
+   * This function should be called after all last batch responses were received. This function will
+   * do the cleaning work and caller won't need to do the cleaning work outside this function. We
+   * will retry all failed FIs in last batch whose id were all saved in needRetryInstanceIds, if
+   * there are still failed FIs this time, they will be also saved in needRetryInstanceIds.
+   *
+   * <p>It's a sync function which means that once this function returned, the results of this retry
+   * have been received, and you don't need to call waitUntilCompleted.
+   */
+  public void retry() throws InterruptedException {
+    // 1. rebuild the batchRequests using remaining failed FIs, change the replica for each failed
+    // FI in this step
+    batchRequests.clear();
+    for (int fragmentInstanceIndex : needRetryInstanceIndex) {
+      this.batchRequests
+          .computeIfAbsent(
+              instances
+                  .get(fragmentInstanceIndex)
+                  .getNextRetriedHostDataNode()
+                  .getInternalEndPoint(),
+              x -> new BatchRequestWithIndex())
+          .addSinglePlanNodeReq(
+              fragmentInstanceIndex,
+              new TSendSinglePlanNodeReq(
+                  new TPlanNode(
+                      instances
+                          .get(fragmentInstanceIndex)
+                          .getFragment()
+                          .getPlanNodeTree()
+                          .serializeToByteBuffer()),
+                  instances.get(fragmentInstanceIndex).getRegionReplicaSet().getRegionId()));
     }
-    return immediateFuture(new FragInstanceDispatchResult(true));
+
+    // 2. reset the pendingNumber, needRetryInstanceIds and startSendTime
+    needRetryInstanceIndex.clear();
+    pendingNumber.set(batchRequests.keySet().size());
+    startSendTime = System.nanoTime();
+
+    // 3. call sendAll() to retry
+    sendAll();
+
+    // 4. call waitUntilCompleted() to wait for the responses
+    waitUntilCompleted();
   }
 
   /**

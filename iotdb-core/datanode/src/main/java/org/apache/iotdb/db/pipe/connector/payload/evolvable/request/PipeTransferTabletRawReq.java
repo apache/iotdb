@@ -207,6 +207,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
 
     tabletReq.tablet = tablet;
+    tabletReq.isAligned = isAligned;
 
     tabletReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     tabletReq.type = PipeRequestType.TRANSFER_TABLET_RAW.getType();

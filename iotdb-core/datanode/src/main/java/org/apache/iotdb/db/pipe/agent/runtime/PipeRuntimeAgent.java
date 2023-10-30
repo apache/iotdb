@@ -59,7 +59,7 @@ public class PipeRuntimeAgent implements IService {
     PipeHardlinkFileDirStartupCleaner.clean();
 
     // clean receiver file dir
-    PipeAgent.receiver().cleanPipeReceiverDir();
+    PipeAgent.receiver().cleanPipeReceiverDirs();
 
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
     simpleConsensusProgressIndexAssigner.start();
@@ -102,14 +102,14 @@ public class PipeRuntimeAgent implements IService {
 
   ////////////////////// Recover ProgressIndex Assigner //////////////////////
 
-  public void assignRecoverProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
-    tsFileResource.recoverProgressIndex(
+  public void assignProgressIndexForTsFileLoad(TsFileResource tsFileResource) {
+    tsFileResource.setProgressIndex(
         new RecoverProgressIndex(
             DATA_NODE_ID,
             simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery()));
   }
 
-  public void assignUpdateProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
+  public void assignProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
     tsFileResource.updateProgressIndex(
         new RecoverProgressIndex(
             DATA_NODE_ID,

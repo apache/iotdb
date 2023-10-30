@@ -40,6 +40,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,14 +68,16 @@ public class PipeConnectorSubtaskManager {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final int connectorNum =
           pipeConnectorParameters.getIntOrDefault(
-              PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
+              Arrays.asList(
+                  PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
+                  PipeConnectorConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
               PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
       final String connectorKey =
           pipeConnectorParameters.getStringOrDefault(
-              PipeConnectorConstant.CONNECTOR_KEY,
+              Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
               BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
       // Shared pending queue for all subtasks
       final BoundedBlockingPendingQueue<Event> pendingQueue =

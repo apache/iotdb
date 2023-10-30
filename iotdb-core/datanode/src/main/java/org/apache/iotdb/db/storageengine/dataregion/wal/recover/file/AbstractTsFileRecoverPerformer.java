@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
@@ -117,6 +118,10 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
         new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath())) {
       FileLoaderUtils.updateTsFileResource(reader, tsFileResource);
     }
+
+    // set progress index for pipe to avoid data loss
+    PipeAgent.runtime().assignProgressIndexForTsFileRecovery(tsFileResource);
+
     tsFileResource.serialize();
   }
 

@@ -102,7 +102,7 @@ public class RestApiServiceImpl extends RestApiService {
           COORDINATOR.execute(
               statement,
               queryId,
-              null,
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               sql.getSql(),
               partitionFetcher,
               schemaFetcher,
@@ -157,7 +157,7 @@ public class RestApiServiceImpl extends RestApiService {
           COORDINATOR.execute(
               statement,
               queryId,
-              null,
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               sql.getSql(),
               partitionFetcher,
               schemaFetcher,
@@ -206,7 +206,7 @@ public class RestApiServiceImpl extends RestApiService {
           COORDINATOR.execute(
               insertRowsStatement,
               SESSION_MANAGER.requestQueryId(),
-              null,
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               partitionFetcher,
               schemaFetcher,
@@ -262,7 +262,7 @@ public class RestApiServiceImpl extends RestApiService {
           COORDINATOR.execute(
               insertTabletStatement,
               SESSION_MANAGER.requestQueryId(),
-              null,
+              SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
               "",
               partitionFetcher,
               schemaFetcher,

@@ -257,6 +257,23 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case DeleteDatabase:
           plan = new DeleteDatabasePlan();
           break;
+        case ListUserDep:
+        case ListRoleDep:
+        case ListUserPrivilegeDep:
+        case ListRolePrivilegeDep:
+        case ListUserRolesDep:
+        case ListRoleUsersDep:
+        case CreateUserDep:
+        case CreateRoleDep:
+        case DropUserDep:
+        case DropRoleDep:
+        case GrantRoleDep:
+        case GrantUserDep:
+        case GrantRoleToUserDep:
+        case RevokeUserDep:
+        case RevokeRoleDep:
+        case RevokeRoleFromUserDep:
+        case UpdateUserDep:
         case ListUser:
         case ListRole:
         case ListUserPrivilege:

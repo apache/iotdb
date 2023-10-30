@@ -690,12 +690,20 @@ SHOW
     : S H O W
     ;
 
+SINK
+    : S I N K
+    ;
+
 SLIMIT
     : S L I M I T
     ;
 
 SOFFSET
     : S O F F S E T
+    ;
+
+SOURCE
+    : S O U R C E
     ;
 
 SPACE
@@ -928,7 +936,6 @@ PRIVILEGE_VALUE
     | USE_CQ
     | USE_PIPE
     | EXTEND_TEMPLATE
-    | AUDIT
     | MANAGE_DATABASE
     | MAINTAIN
     ;
@@ -975,10 +982,6 @@ USE_PIPE
 
 EXTEND_TEMPLATE
     : E X T E N D '_' T E M P L A T E
-    ;
-
-AUDIT
-    : A U D I T
     ;
 
 MANAGE_DATABASE

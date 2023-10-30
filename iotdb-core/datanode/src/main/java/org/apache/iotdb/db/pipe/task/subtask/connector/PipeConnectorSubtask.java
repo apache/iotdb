@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
+import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.DecoratingLock;
@@ -58,6 +59,18 @@ public class PipeConnectorSubtask extends PipeSubtask {
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
   protected ExecutorService subtaskCallbackListeningExecutor;
 
+  public Integer getTsFileInsertionEventCount() {
+    return inputPendingQueue.getTsFileInsertionEventCount();
+  }
+
+  public Integer getTabletInsertionEventCount() {
+    return inputPendingQueue.getTabletInsertionEventCount();
+  }
+
+  public Integer getPipeHeartbeatEventCount() {
+    return inputPendingQueue.getPipeHeartbeatEventCount();
+  }
+
   public PipeConnectorSubtask(
       String taskID,
       BoundedBlockingPendingQueue<Event> inputPendingQueue,
@@ -65,6 +78,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
     super(taskID);
     this.inputPendingQueue = inputPendingQueue;
     this.outputPipeConnector = outputPipeConnector;
+    PipeConnectorMetrics.getInstance().register(this);
   }
 
   @Override
@@ -104,8 +118,10 @@ public class PipeConnectorSubtask extends PipeSubtask {
     try {
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
+        PipeConnectorMetrics.getInstance().markTabletEvent(taskID);
       } else if (event instanceof TsFileInsertionEvent) {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
+        PipeConnectorMetrics.getInstance().markTsFileEvent(taskID);
       } else if (event instanceof PipeHeartbeatEvent) {
         try {
           outputPipeConnector.heartbeat();
@@ -116,6 +132,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
               e);
         }
         ((PipeHeartbeatEvent) event).onTransferred();
+        PipeConnectorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
       } else {
         outputPipeConnector.transfer(event);
       }
@@ -253,6 +270,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   @Override
   public void close() {
+    PipeConnectorMetrics.getInstance().deregister(taskID);
     isClosed.set(true);
     try {
       outputPipeConnector.close();

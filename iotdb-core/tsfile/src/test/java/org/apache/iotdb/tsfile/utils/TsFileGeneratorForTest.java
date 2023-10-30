@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Scanner;
 
 @Ignore
@@ -272,6 +273,7 @@ public class TsFileGeneratorForTest {
       long tsFileVersion) {
     String filePath =
         String.format(
+            Locale.ENGLISH,
             TestConstant.TEST_TSFILE_PATH,
             logicalStorageGroupName,
             VirtualStorageGroupId,

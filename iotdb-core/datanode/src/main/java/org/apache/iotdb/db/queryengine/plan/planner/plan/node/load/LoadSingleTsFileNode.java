@@ -100,7 +100,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       needDecodeTsFile = !isDispatchedToLocal(new HashSet<>(partitionFetcher.apply(slotList)));
     }
 
-    PipeAgent.runtime().assignRecoverProgressIndexForTsFileRecovery(resource);
+    PipeAgent.runtime().assignProgressIndexForTsFileLoad(resource);
 
     // we serialize the resource file even if the tsfile does not need to be decoded
     // or the resource file is already existed because we need to serialize the

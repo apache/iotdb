@@ -57,6 +57,8 @@ public class AuthorityChecker {
 
   public static final String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
 
+  public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
   private static final String NO_PERMISSION_PROMOTION =
       "No permissions for this operation, please add privilege ";
 
@@ -112,19 +114,19 @@ public class AuthorityChecker {
 
   public static TSStatus getOptTSStatus(boolean hasGrantOpt, String errMsg) {
     return hasGrantOpt
-        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        ? SUCCEED
         : new TSStatus(TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode()).setMessage(errMsg);
   }
 
   public static TSStatus getTSStatus(boolean hasPermission, String errMsg) {
     return hasPermission
-        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(errMsg);
   }
 
   public static TSStatus getTSStatus(boolean hasPermission, PrivilegeType neededPrivilege) {
     return hasPermission
-        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
             .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege);
   }
@@ -132,7 +134,7 @@ public class AuthorityChecker {
   public static TSStatus getTSStatus(
       boolean hasPermission, PartialPath path, PrivilegeType neededPrivilege) {
     return hasPermission
-        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        ? SUCCEED
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
             .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege + " on " + path);
   }
@@ -142,7 +144,7 @@ public class AuthorityChecker {
       List<PartialPath> pathList,
       PrivilegeType neededPrivilege) {
     if (noPermissionIndexList == null || noPermissionIndexList.isEmpty()) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return SUCCEED;
     }
 
     StringBuilder prompt = new StringBuilder(NO_PERMISSION_PROMOTION);
@@ -229,7 +231,7 @@ public class AuthorityChecker {
       builder = new TsBlockBuilder(types);
       TUserResp user = authResp.getPermissionInfo().getUserInfo();
       if (user != null) {
-        appendPriBuilder("", "", user.getSysPriSet(), user.getSysPriSetGrantOpt(), builder);
+        appendPriBuilder("", "root.**", user.getSysPriSet(), user.getSysPriSetGrantOpt(), builder);
         for (TPathPrivilege path : user.getPrivilegeList()) {
           appendPriBuilder("", path.getPath(), path.getPriSet(), path.getPriGrantOpt(), builder);
         }
@@ -239,7 +241,11 @@ public class AuthorityChecker {
       while (it.hasNext()) {
         TRoleResp role = it.next().getValue();
         appendPriBuilder(
-            role.getRoleName(), "", role.getSysPriSet(), role.getSysPriSetGrantOpt(), builder);
+            role.getRoleName(),
+            "root.**",
+            role.getSysPriSet(),
+            role.getSysPriSetGrantOpt(),
+            builder);
         for (TPathPrivilege path : role.getPrivilegeList()) {
           appendPriBuilder(
               role.getRoleName(), path.getPath(), path.getPriSet(), path.getPriGrantOpt(), builder);

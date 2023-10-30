@@ -1277,7 +1277,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
-            "Failed to execute create schema template {} in config node, status is {}.",
+            "Failed to execute create device template {} in config node, status is {}.",
             createSchemaTemplateStatement.getName(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
@@ -1390,7 +1390,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
-            "Failed to execute deactivate schema template {} from {} in config node, status is {}.",
+            "Failed to execute deactivate device template {} from {} in config node, status is {}.",
             deactivateTemplateStatement.getTemplateName(),
             deactivateTemplateStatement.getPathPatternList(),
             tsStatus);
@@ -1416,7 +1416,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
-            "Failed to execute drop schema template {} in config node, status is {}.",
+            "Failed to execute drop device template {} in config node, status is {}.",
             dropSchemaTemplateStatement.getTemplateName(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
@@ -1445,7 +1445,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(
             new MetadataException(
                 String.format(
-                    "Duplicated measurement [%s] in schema template alter request",
+                    "Duplicated measurement [%s] in device template alter request",
                     duplicateMeasurement)));
         return future;
       }
@@ -1477,7 +1477,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
-            "Failed to alter schema template {} in config node, status is {}.",
+            "Failed to alter device template {} in config node, status is {}.",
             alterSchemaTemplateStatement.getTemplateAlterInfo().getTemplateName(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
@@ -1534,7 +1534,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
-            "Failed to execute unset schema template {} from {} in config node, status is {}.",
+            "Failed to execute unset device template {} from {} in config node, status is {}.",
             unsetSchemaTemplateStatement.getTemplateName(),
             unsetSchemaTemplateStatement.getPath(),
             tsStatus);

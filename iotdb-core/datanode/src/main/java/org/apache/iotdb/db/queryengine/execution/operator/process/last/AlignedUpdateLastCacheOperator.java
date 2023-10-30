@@ -28,8 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaC
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-import static org.weakref.jmx.internal.guava.base.Preconditions.checkArgument;
-
 /** update last cache for aligned series. */
 public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
 
@@ -59,7 +57,9 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
       return LAST_QUERY_EMPTY_TSBLOCK;
     }
 
-    checkArgument(res.getPositionCount() == 1, "last read result should only have one record");
+    if (res.getPositionCount() != 1) {
+      throw new IllegalArgumentException("last read result should only have one record");
+    }
 
     tsBlockBuilder.reset();
     for (int i = 0; i + 1 < res.getValueColumnCount(); i += 2) {

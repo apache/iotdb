@@ -90,7 +90,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     // a timed thread. If a pipe is deleted and created again before its subtask is
     // removed, the new subtask will have the same pipeName and dataRegionId as the
     // old one, so we need creationTime to make their hash code different in the map.
-    final String taskId = pipeName + "_" + dataRegionId + "_" + creationTime;
+    final String taskId = pipeName + "_" + dataRegionId.getId() + "_" + creationTime;
     final PipeEventCollector pipeConnectorOutputEventCollector =
         new PipeEventCollector(pipeConnectorOutputPendingQueue);
     this.pipeProcessorSubtask =

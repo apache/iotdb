@@ -5,16 +5,14 @@ on:
     branches:
       - master
       - "new_*"
-    paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+    paths:
+      - 'iotdb-connector/grafana-plugin/**'
   pull_request:
     branches:
       - master
       - "new_*"
-    paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+    paths:
+      - 'iotdb-connector/grafana-plugin/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

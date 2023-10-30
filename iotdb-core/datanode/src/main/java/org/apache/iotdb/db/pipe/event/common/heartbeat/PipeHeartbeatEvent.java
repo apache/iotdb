@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionHybridExtractor;
+import org.apache.iotdb.db.pipe.metric.PipeHeartbeatEventMetrics;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.connection.EnrichedDeque;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
@@ -133,18 +134,24 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public void onAssigned() {
     if (shouldPrintMessage) {
       timeAssigned = System.currentTimeMillis();
+      PipeHeartbeatEventMetrics.getInstance()
+          .recordPublishedToAssignedTime(timeAssigned - timePublished);
     }
   }
 
   public void onProcessed() {
     if (shouldPrintMessage) {
       timeProcessed = System.currentTimeMillis();
+      PipeHeartbeatEventMetrics.getInstance()
+          .recordAssignedToProcessedTime(timeProcessed - timeAssigned);
     }
   }
 
   public void onTransferred() {
     if (shouldPrintMessage) {
       timeTransferred = System.currentTimeMillis();
+      PipeHeartbeatEventMetrics.getInstance()
+          .recordProcessedToTransferredTime(timeTransferred - timeProcessed);
     }
   }
 
@@ -167,13 +174,13 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public void recordBufferQueueSize(EnrichedDeque<Event> bufferQueue) {
     if (shouldPrintMessage) {
       bufferQueueTabletSize = bufferQueue.getTabletInsertionEventCount();
+      bufferQueueTsFileSize = bufferQueue.getTsFileInsertionEventCount();
       bufferQueueSize = bufferQueue.size();
     }
 
-    bufferQueueTsFileSize = bufferQueue.getTsFileInsertionEventCount();
     if (extractor instanceof PipeRealtimeDataRegionHybridExtractor) {
       ((PipeRealtimeDataRegionHybridExtractor) extractor)
-          .informEventCollectorQueueTsFileSize(bufferQueueTsFileSize);
+          .informEventCollectorQueueTsFileSize(bufferQueue.getTsFileInsertionEventCount());
     }
   }
 

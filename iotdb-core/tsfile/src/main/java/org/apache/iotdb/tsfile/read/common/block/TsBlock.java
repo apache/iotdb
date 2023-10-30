@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.common.block;
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -506,5 +507,50 @@ public class TsBlock {
     }
 
     return columns[0].getPositionCount();
+  }
+
+  public void update(int updateIdx, TsBlock sourceTsBlock, int sourceIndex) {
+    timeColumn.getTimes()[updateIdx] = sourceTsBlock.getTimeByIndex(sourceIndex);
+    for (int i = 0; i < getValueColumnCount(); i++) {
+      if (sourceTsBlock.getValueColumns()[i].isNull(sourceIndex)) {
+        valueColumns[i].isNull()[updateIdx] = true;
+        continue;
+      }
+      switch (valueColumns[i].getDataType()) {
+        case BOOLEAN:
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getBooleans()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getBoolean(sourceIndex);
+          break;
+        case INT32:
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getInts()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getInt(sourceIndex);
+          break;
+        case INT64:
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getLongs()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getLong(sourceIndex);
+          break;
+        case FLOAT:
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getFloats()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getFloat(sourceIndex);
+          break;
+        case DOUBLE:
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getDoubles()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getDouble(sourceIndex);
+          break;
+        case TEXT:
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getBinaries()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getBinary(sourceIndex);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              "Unknown datatype: " + valueColumns[i].getDataType());
+      }
+    }
   }
 }

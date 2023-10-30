@@ -84,7 +84,6 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.PROBE_TIMEOUT_MS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_LIB_PATH;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_PATH;
 import static org.apache.iotdb.jdbc.Config.VERSION;
-import static org.junit.Assert.fail;
 
 public abstract class AbstractEnv implements BaseEnv {
   private static final Logger logger = IoTDBTestLogger.logger;
@@ -154,7 +153,7 @@ public abstract class AbstractEnv implements BaseEnv {
         (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
     seedConfigNodeWrapper.createLogDir();
     seedConfigNodeWrapper.start();
-    String targetConfigNode = seedConfigNodeWrapper.getIpAndPortString();
+    String seedConfigNode = seedConfigNodeWrapper.getIpAndPortString();
     this.configNodeWrapperList.add(seedConfigNodeWrapper);
 
     // Check if the Seed-ConfigNode started successfully
@@ -172,7 +171,7 @@ public abstract class AbstractEnv implements BaseEnv {
       ConfigNodeWrapper configNodeWrapper =
           new ConfigNodeWrapper(
               false,
-              targetConfigNode,
+              seedConfigNode,
               testClassName,
               testMethodName,
               EnvUtils.searchAvailablePorts(),
@@ -197,7 +196,7 @@ public abstract class AbstractEnv implements BaseEnv {
       configNodesDelegate.requestAll();
     } catch (SQLException e) {
       logger.error("Start configNodes failed", e);
-      fail();
+      throw new AssertionError();
     }
 
     List<String> dataNodeEndpoints = new ArrayList<>();
@@ -206,7 +205,7 @@ public abstract class AbstractEnv implements BaseEnv {
     for (int i = 0; i < dataNodesNum; i++) {
       DataNodeWrapper dataNodeWrapper =
           new DataNodeWrapper(
-              targetConfigNode,
+              seedConfigNode,
               testClassName,
               testMethodName,
               EnvUtils.searchAvailablePorts(),
@@ -232,7 +231,7 @@ public abstract class AbstractEnv implements BaseEnv {
       dataNodesDelegate.requestAll();
     } catch (SQLException e) {
       logger.error("Start dataNodes failed", e);
-      fail();
+      throw new AssertionError();
     }
 
     testWorkingNoUnknown();
@@ -302,7 +301,8 @@ public abstract class AbstractEnv implements BaseEnv {
       logger.info("Start cluster costs: {}s", (System.currentTimeMillis() - startTime) / 1000.0);
     } catch (Exception e) {
       logger.error("exception in testWorking of ClusterID, message: {}", e.getMessage(), e);
-      fail(String.format("After %d times retry, the cluster can't work!", testWorkingRetryCount));
+      throw new AssertionError(
+          String.format("After %d times retry, the cluster can't work!", testWorkingRetryCount));
     }
   }
 
@@ -731,7 +731,7 @@ public abstract class AbstractEnv implements BaseEnv {
       configNodeDelegate.requestAll();
     } catch (SQLException e) {
       logger.error("Start configNode failed", e);
-      fail();
+      throw new AssertionError();
     }
 
     if (isNeedVerify) {
@@ -756,7 +756,7 @@ public abstract class AbstractEnv implements BaseEnv {
       dataNodesDelegate.requestAll();
     } catch (SQLException e) {
       logger.error("Start dataNodes failed", e);
-      fail();
+      throw new AssertionError();
     }
 
     if (isNeedVerify) {

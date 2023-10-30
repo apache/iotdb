@@ -71,6 +71,7 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.ServiceLoader;
@@ -90,7 +91,15 @@ public class IoTDBDescriptor {
     for (IPropertiesLoader loader : propertiesLoaderServiceLoader) {
       logger.info("Will reload properties from {} ", loader.getClass().getName());
       Properties properties = loader.loadProperties();
-      loadProperties(properties);
+      try {
+        loadProperties(properties);
+      } catch (Exception e) {
+        logger.error(
+            "Failed to reload properties from {}, reject DataNode startup.",
+            loader.getClass().getName(),
+            e);
+        System.exit(-1);
+      }
       conf.setCustomizedProperties(loader.getCustomizedProperties());
       TSFileDescriptor.getInstance().overwriteConfigByCustomSettings(properties);
       TSFileDescriptor.getInstance()
@@ -107,33 +116,39 @@ public class IoTDBDescriptor {
     return conf;
   }
 
+  public String getConfDir() {
+    // Check if a config-directory was specified first.
+    String confString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
+    // If it wasn't, check if a home directory was provided (This usually contains a config)
+    if (confString == null) {
+      confString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+      if (confString != null) {
+        confString = confString + File.separatorChar + "conf";
+      }
+    }
+    return confString;
+  }
+
   /**
    * get props url location
    *
    * @return url object if location exit, otherwise null.
    */
   public URL getPropsUrl(String configFileName) {
-    // Check if a config-directory was specified first.
-    String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
-    // If it wasn't, check if a home directory was provided (This usually contains a config)
+    String urlString = getConfDir();
     if (urlString == null) {
-      urlString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-      if (urlString != null) {
-        urlString = urlString + File.separatorChar + "conf" + File.separatorChar + configFileName;
-      } else {
-        // If this too wasn't provided, try to find a default config in the root of the classpath.
-        URL uri = IoTDBConfig.class.getResource("/" + configFileName);
-        if (uri != null) {
-          return uri;
-        }
-        logger.warn(
-            "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
-                + "config file {}, use default configuration",
-            configFileName);
-        // update all data seriesPath
-        conf.updatePath();
-        return null;
+      // If urlString wasn't provided, try to find a default config in the root of the classpath.
+      URL uri = IoTDBConfig.class.getResource("/" + configFileName);
+      if (uri != null) {
+        return uri;
       }
+      logger.warn(
+          "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
+              + "config file {}, use default configuration",
+          configFileName);
+      // update all data seriesPath
+      conf.updatePath();
+      return null;
     }
     // If a config location was provided, but it doesn't end with a properties file,
     // append the default location.
@@ -163,11 +178,14 @@ public class IoTDBDescriptor {
         logger.info("Start to read config file {}", url);
         commonProperties.load(inputStream);
       } catch (FileNotFoundException e) {
-        logger.warn("Fail to find config file {}", url, e);
+        logger.error("Fail to find config file {}, reject DataNode startup.", url, e);
+        System.exit(-1);
       } catch (IOException e) {
-        logger.warn("Cannot load config file, use default configuration", e);
+        logger.error("Cannot load config file, reject DataNode startup.", e);
+        System.exit(-1);
       } catch (Exception e) {
-        logger.warn("Incorrect format in config file, use default configuration", e);
+        logger.error("Incorrect format in config file, reject DataNode startup.", e);
+        System.exit(-1);
       }
     } else {
       logger.warn(
@@ -183,11 +201,14 @@ public class IoTDBDescriptor {
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
       } catch (FileNotFoundException e) {
-        logger.warn("Fail to find config file {}", url, e);
+        logger.error("Fail to find config file {}, reject DataNode startup.", url, e);
+        System.exit(-1);
       } catch (IOException e) {
-        logger.warn("Cannot load config file, use default configuration", e);
+        logger.error("Cannot load config file, reject DataNode startup.", e);
+        System.exit(-1);
       } catch (Exception e) {
-        logger.warn("Incorrect format in config file, use default configuration", e);
+        logger.error("Incorrect format in config file, reject DataNode startup.", e);
+        System.exit(-1);
       } finally {
         // update all data seriesPath
         conf.updatePath();
@@ -205,7 +226,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  public void loadProperties(Properties properties) {
+  public void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
     conf.setClusterSchemaLimitLevel(
         properties
             .getProperty("cluster_schema_limit_level", conf.getClusterSchemaLimitLevel())
@@ -1697,6 +1718,11 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
         conf.setAllocateMemoryForConsensus(
             maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
+        // if pipe proportion is set, use it, otherwise use the default value
+        if (proportions.length >= 6) {
+          conf.setAllocateMemoryForPipe(
+              maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum);
+        }
       }
     }
 
@@ -1704,6 +1730,7 @@ public class IoTDBDescriptor {
     logger.info("initial allocateMemoryForWrite = {}", conf.getAllocateMemoryForStorageEngine());
     logger.info("initial allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
     logger.info("initial allocateMemoryForConsensus = {}", conf.getAllocateMemoryForConsensus());
+    logger.info("initial allocateMemoryForPipe = {}", conf.getAllocateMemoryForPipe());
 
     initSchemaMemoryAllocate(properties);
     initStorageEngineAllocate(properties);
@@ -1972,8 +1999,15 @@ public class IoTDBDescriptor {
   private void loadPipeProps(Properties properties) {
     conf.setPipeLibDir(properties.getProperty("pipe_lib_dir", conf.getPipeLibDir()));
 
-    conf.setPipeReceiverFileDir(
-        properties.getProperty("pipe_receiver_file_dir", conf.getPipeReceiverFileDir()));
+    conf.setPipeReceiverFileDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "pipe_receiver_file_dirs", String.join(",", conf.getPipeReceiverFileDirs()))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
   }
 
   private void loadCQProps(Properties properties) {
@@ -1989,19 +2023,29 @@ public class IoTDBDescriptor {
     conf.setContinuousQueryMinimumEveryInterval(
         DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+            false));
   }
 
-  public void loadClusterProps(Properties properties) {
-    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
+  public void loadClusterProps(Properties properties) throws IOException {
+    String configNodeUrls = properties.getProperty(IoTDBConstant.DN_SEED_CONFIG_NODE);
+    if (configNodeUrls == null) {
+      configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
+      logger.warn(
+          "The parameter dn_target_config_node_list has been abandoned, "
+              + "only the first ConfigNode address will be used to join in the cluster. "
+              + "Please use dn_seed_config_node instead.");
+    }
     if (configNodeUrls != null) {
       try {
         configNodeUrls = configNodeUrls.trim();
-        conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
+        conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(configNodeUrls).get(0));
       } catch (BadNodeUrlException e) {
-        logger.error(
-            "Config nodes are set in wrong format, please set them like 127.0.0.1:10710,127.0.0.1:10712");
+        logger.error("ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710");
       }
+    } else {
+      throw new IOException(
+          "The parameter dn_seed_config_node is not set, this DataNode will not join in any cluster.");
     }
 
     conf.setInternalAddress(
@@ -2153,6 +2197,10 @@ public class IoTDBDescriptor {
 
     conf.setSchemaRatisLogMax(ratisConfig.getSchemaRegionRatisLogMax());
     conf.setDataRatisLogMax(ratisConfig.getDataRegionRatisLogMax());
+
+    conf.setSchemaRatisPeriodicSnapshotInterval(
+        ratisConfig.getSchemaRegionPeriodicSnapshotInterval());
+    conf.setDataRatisPeriodicSnapshotInterval(ratisConfig.getDataRegionPeriodicSnapshotInterval());
   }
 
   public void loadCQConfig(TCQConfig cqConfig) {

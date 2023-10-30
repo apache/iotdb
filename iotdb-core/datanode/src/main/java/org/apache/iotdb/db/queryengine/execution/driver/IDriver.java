@@ -79,4 +79,8 @@ public interface IDriver {
   ISink getSink();
 
   DriverContext getDriverContext();
+
+  boolean isHighestPriority();
+
+  void setHighestPriority(boolean isHighestPriority);
 }
