@@ -67,7 +67,6 @@ import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
@@ -86,6 +85,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.VersionController;
+import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
@@ -2055,8 +2055,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       tsFileProcessor.close();
       if (tsFileProcessor.isEmpty()
-          || !TsFileValidator.getInstance(config.getWriteTsFileValidationLevel())
-              .validateTsFile(tsFileProcessor.getTsFileResource())
+          || !TsFileValidator.getInstance().validateTsFile(tsFileProcessor.getTsFileResource())
           || tsFileProcessor.getTsFileResource().isEmpty()) {
         try {
           fsFactory.deleteIfExists(tsFileProcessor.getTsFileResource().getTsFile());
@@ -2188,9 +2187,7 @@ public class DataRegion implements IDataRegionForQuery {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
 
-    if (!TsFileValidator.getInstance(
-            IoTDBDescriptor.getInstance().getConfig().getRewriteTsFileValidationLevel())
-        .validateTsFile(newTsFileResource)) {
+    if (!TsFileValidator.getInstance().validateTsFile(newTsFileResource)) {
       throw new LoadFileException(
           "tsfile validate failed, " + newTsFileResource.getTsFile().getName());
     }

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -138,7 +138,9 @@ public class CompactionValidationTest {
     writeOneFile(path);
     TsFileResource mockTsFile = Mockito.mock(TsFileResource.class);
     Mockito.when(mockTsFile.getTsFilePath()).thenReturn(path);
-    Assert.assertTrue(CompactionUtils.validateTsFiles(Collections.singletonList(mockTsFile)));
+    Assert.assertTrue(
+        TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(
+            Collections.singletonList(mockTsFile)));
   }
 
   @Test
@@ -151,7 +153,7 @@ public class CompactionValidationTest {
       Mockito.when(mockTsFile.getTsFilePath()).thenReturn(path);
       resources.add(mockTsFile);
     }
-    Assert.assertTrue(CompactionUtils.validateTsFiles(resources));
+    Assert.assertTrue(TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(resources));
   }
 
   @Test
@@ -164,7 +166,9 @@ public class CompactionValidationTest {
     randomAccessFile.close();
     TsFileResource mockTsFile = Mockito.mock(TsFileResource.class);
     Mockito.when(mockTsFile.getTsFilePath()).thenReturn(path);
-    Assert.assertFalse(CompactionUtils.validateTsFiles(Collections.singletonList(mockTsFile)));
+    Assert.assertFalse(
+        TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(
+            Collections.singletonList(mockTsFile)));
   }
 
   @Test
@@ -181,7 +185,7 @@ public class CompactionValidationTest {
       Mockito.when(mockTsFile.getTsFilePath()).thenReturn(path);
       resources.add(mockTsFile);
     }
-    Assert.assertFalse(CompactionUtils.validateTsFiles(resources));
+    Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(resources));
   }
 
   @Test // broken in chunk
@@ -200,7 +204,7 @@ public class CompactionValidationTest {
       Mockito.when(mockTsFile.getTsFilePath()).thenReturn(path);
       resources.add(mockTsFile);
     }
-    Assert.assertFalse(CompactionUtils.validateTsFiles(resources));
+    Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(resources));
   }
 
   @Test // broken in metadata
@@ -219,6 +223,6 @@ public class CompactionValidationTest {
       Mockito.when(mockTsFile.getTsFilePath()).thenReturn(path);
       resources.add(mockTsFile);
     }
-    Assert.assertFalse(CompactionUtils.validateTsFiles(resources));
+    Assert.assertFalse(TsFileResourceUtils.validateTsFileResourcesIsHasOverlap(resources));
   }
 }

@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.TsFileValidationLevel;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -71,9 +70,7 @@ public class TsFileValidationCorrectnessTests {
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
       writer.endFile();
     }
-    boolean success =
-        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
-            .validateTsFile(tsFileResource);
+    boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertFalse(success);
   }
 
@@ -88,9 +85,7 @@ public class TsFileValidationCorrectnessTests {
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
         path);
-    boolean success =
-        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
-            .validateTsFile(tsFileResource);
+    boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
   }
 
@@ -105,9 +100,7 @@ public class TsFileValidationCorrectnessTests {
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
         path);
-    boolean success =
-        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
-            .validateTsFile(tsFileResource);
+    boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
   }
 
@@ -130,9 +123,7 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
-    boolean success =
-        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
-            .validateTsFile(tsFileResource);
+    boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertFalse(success);
   }
 
@@ -158,9 +149,7 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
-    boolean success =
-        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
-            .validateTsFile(tsFileResource);
+    boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertFalse(success);
   }
 
@@ -185,31 +174,9 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
-    boolean success =
-        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
-            .validateTsFile(tsFileResource);
+    boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
   }
-
-  // aligned
-  // 2. normal tsfile with one page
-  // 3. normal tsfile with many pages
-  // 4. the timestamp is repeated or not incremented on a page
-  // 5. the timestamp has overlap between many pages
-
-  // 6. time chunk offset is the same as metadata
-  // 7. value chunk offset is the same as metadata
-  // 8. start and end time are the same as page header or chunk header
-
-  // noAligned
-  // 9. normal tsfile with one page
-  // 10. normal tsfile with many pages
-  // 11. the timestamp is repeated or not incremented on a page
-  // 12. the timestamp has overlap between many pages
-  // 13. time chunk offset is the same as metadata
-  // 14. value chunk offset is the same as metadata
-  // 15. start and end time are the same as page header or chunk header
-  // 16. normal noAligned tsfile with one page
 
   @Test
   public void testNonAlignedTsFileHasOnePageData() throws IOException {
@@ -222,9 +189,7 @@ public class TsFileValidationCorrectnessTests {
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
         path);
-    boolean success =
-        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
-            .validateTsFile(tsFileResource);
+    boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
   }
 
@@ -239,9 +204,7 @@ public class TsFileValidationCorrectnessTests {
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
         path);
-    boolean success =
-        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
-            .validateTsFile(tsFileResource);
+    boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
   }
 
@@ -262,9 +225,7 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
-    boolean success =
-        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
-            .validateTsFile(tsFileResource);
+    boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertFalse(success);
   }
 
@@ -286,9 +247,7 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
-    boolean success =
-        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
-            .validateTsFile(tsFileResource);
+    boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertFalse(success);
   }
 
@@ -313,9 +272,7 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
-    boolean success =
-        TsFileValidator.getInstance(TsFileValidationLevel.TSFILE_DATA_CORRECTNESS)
-            .validateTsFile(tsFileResource);
+    boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
   }
 }

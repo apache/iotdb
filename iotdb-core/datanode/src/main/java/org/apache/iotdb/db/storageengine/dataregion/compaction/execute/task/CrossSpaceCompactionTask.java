@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
@@ -33,11 +32,11 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.slf4j.Logger;
@@ -216,11 +215,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           }
         }
 
-        TsFileValidator validator =
-            TsFileValidator.getInstance(
-                IoTDBDescriptor.getInstance().getConfig().getRewriteTsFileValidationLevel());
-        if (!validator.validateTsFile(
-            tsFileManager, targetTsfileResourceList, storageGroupName, timePartition, false)) {
+        TsFileValidator validator = TsFileValidator.getInstance();
+
+        if (!validator.validateTsFiles(targetTsfileResourceList)) {
           LOGGER.error(
               "Failed to pass compaction validation, "
                   + "source sequence files is: {}, "

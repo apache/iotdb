@@ -34,7 +34,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
@@ -42,6 +41,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
@@ -244,11 +244,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           compactionLogger.force();
         }
 
-        TsFileValidator validator =
-            TsFileValidator.getInstance(
-                IoTDBDescriptor.getInstance().getConfig().getRewriteTsFileValidationLevel());
-        if (!validator.validateTsFile(
-            tsFileManager, targetTsFileList, storageGroupName, timePartition, !sequence)) {
+        TsFileValidator validator = TsFileValidator.getInstance();
+        if (!validator.validateTsFiles(targetTsFileList)
+            || validator.validateTsFilesIsHasOverlap(
+                tsFileManager
+                    .getOrCreateSequenceListByTimePartition(timePartition)
+                    .getArrayList())) {
           LOGGER.error(
               "Failed to pass compaction validation, source files is: {}, target files is {}",
               selectedTsFileResourceList,

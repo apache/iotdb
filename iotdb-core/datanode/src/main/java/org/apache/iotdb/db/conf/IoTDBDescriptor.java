@@ -32,7 +32,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.TsFileValidationLevel;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -701,16 +700,10 @@ public class IoTDBDescriptor {
                 "compaction_write_throughput_mb_per_sec",
                 Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
-    conf.setRewriteTsFileValidationLevel(
-        TsFileValidationLevel.valueOf(
+    conf.setEnableTsFileValidation(
+        Boolean.parseBoolean(
             properties.getProperty(
-                "rewrite_tsfile_validation_level",
-                conf.getRewriteTsFileValidationLevel().toString())));
-    conf.setWriteTsFileValidationLevel(
-        TsFileValidationLevel.valueOf(
-            properties.getProperty(
-                "write_tsfile_validation_level",
-                conf.getRewriteTsFileValidationLevel().toString())));
+                "enable_tsfile_validation", String.valueOf(conf.isEnableTsFileValidation()))));
     conf.setCandidateCompactionTaskQueueSize(
         Integer.parseInt(
             properties.getProperty(
@@ -1134,11 +1127,6 @@ public class IoTDBDescriptor {
   }
 
   private void loadCompactionHotModifiedProps(Properties properties) throws InterruptedException {
-    conf.setRewriteTsFileValidationLevel(
-        TsFileValidationLevel.valueOf(
-            properties.getProperty(
-                "rewrite_tsfile_validation_level",
-                conf.getRewriteTsFileValidationLevel().toString())));
 
     loadCompactionIsEnabledHotModifiedProps(properties);
 
@@ -1632,11 +1620,10 @@ public class IoTDBDescriptor {
                   "enable_query_memory_estimation",
                   Boolean.toString(conf.isEnableQueryMemoryEstimation()))));
 
-      conf.setWriteTsFileValidationLevel(
-          TsFileValidationLevel.valueOf(
+      conf.setEnableTsFileValidation(
+          Boolean.parseBoolean(
               properties.getProperty(
-                  "write_tsfile_validation_level",
-                  conf.getRewriteTsFileValidationLevel().toString())));
+                  "enable_tsfile_validation", String.valueOf(conf.isEnableTsFileValidation()))));
 
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();

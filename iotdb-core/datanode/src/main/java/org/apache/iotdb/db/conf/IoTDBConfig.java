@@ -29,7 +29,6 @@ import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.TsFileValidationLevel;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -534,8 +533,7 @@ public class IoTDBConfig {
    */
   private int subCompactionTaskNum = 4;
 
-  private TsFileValidationLevel rewriteTsFileValidationLevel = TsFileValidationLevel.RESOURCE_ONLY;
-  private TsFileValidationLevel writeTsFileValidationLevel = TsFileValidationLevel.RESOURCE_ONLY;
+  private boolean enableTsFileValidation = false;
 
   /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
@@ -3686,22 +3684,6 @@ public class IoTDBConfig {
     this.schemaRatisLogMax = schemaRatisLogMax;
   }
 
-  public TsFileValidationLevel getRewriteTsFileValidationLevel() {
-    return this.rewriteTsFileValidationLevel;
-  }
-
-  public void setRewriteTsFileValidationLevel(TsFileValidationLevel level) {
-    this.rewriteTsFileValidationLevel = level;
-  }
-
-  public TsFileValidationLevel getWriteTsFileValidationLevel() {
-    return writeTsFileValidationLevel;
-  }
-
-  public void setWriteTsFileValidationLevel(TsFileValidationLevel writeTsFileValidationLevel) {
-    this.writeTsFileValidationLevel = writeTsFileValidationLevel;
-  }
-
   public int getCandidateCompactionTaskQueueSize() {
     return candidateCompactionTaskQueueSize;
   }
@@ -3826,5 +3808,13 @@ public class IoTDBConfig {
 
   public void setSchemaRatisPeriodicSnapshotInterval(long schemaRatisPeriodicSnapshotInterval) {
     this.schemaRatisPeriodicSnapshotInterval = schemaRatisPeriodicSnapshotInterval;
+  }
+
+  public boolean isEnableTsFileValidation() {
+    return enableTsFileValidation;
+  }
+
+  public void setEnableTsFileValidation(boolean enableTsFileValidation) {
+    this.enableTsFileValidation = enableTsFileValidation;
   }
 }
