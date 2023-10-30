@@ -129,11 +129,13 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
     if (flushTimeMapForPartition == null) {
       return;
     }
-    recoverFlushTime(timePartitionId, path);
     flushTimeMapForPartition.compute(
         path,
         (k, v) -> {
           if (v == null) {
+            v = recoverFlushTime(timePartitionId, path);
+          }
+          if (v == Long.MIN_VALUE) {
             long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * path.length();
             memCostForEachPartition.compute(
                 timePartitionId, (k1, v1) -> v1 == null ? memCost : v1 + memCost);
