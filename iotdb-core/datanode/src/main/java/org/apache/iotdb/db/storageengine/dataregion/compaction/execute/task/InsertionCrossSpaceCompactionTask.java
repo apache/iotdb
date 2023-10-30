@@ -129,8 +129,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       return true;
     }
     try {
-      targetFile = new TsFileResource(generateTargetFile());
-      targetFile.setStatus(TsFileResourceStatus.NORMAL);
+      targetFile = new TsFileResource(generateTargetFile(), TsFileResourceStatus.COMPACTING);
     } catch (IOException e) {
       LOGGER.error(
           "{}-{} [InsertionCrossSpaceCompactionTask] failed to generate target file name, source unseq file is {}",
@@ -201,6 +200,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       } catch (IOException e) {
         printLogWhenException(LOGGER, e);
       }
+      targetFile.setStatus(TsFileResourceStatus.NORMAL);
     }
     return isSuccess;
   }
