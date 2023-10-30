@@ -52,6 +52,7 @@ public enum Metric {
   RATIS_CONSENSUS_READ("ratis_consensus_read"),
   // storage engine related
   POINTS("points"),
+  POINTS_IN("points_in"),
   COST_TASK("cost_task"),
   QUEUE("queue"),
   FLUSHING_MEM_TABLE_STATUS("flushing_mem_table_status"),

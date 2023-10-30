@@ -174,13 +174,16 @@ public class LoadTsfileAnalyzer {
   private void analyzeSingleTsFile(File tsFile) throws IOException, AuthException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // can be reused when constructing tsfile resource
-      Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata = null;
+      final Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata =
+          reader.getAllTimeseriesMetadata(true);
+      if (device2TimeseriesMetadata.isEmpty()) {
+        LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
+        return;
+      }
 
       // auto create or verify schema
       if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
           || loadTsFileStatement.isVerifySchema()) {
-        // cache timeseries metadata for the next step
-        device2TimeseriesMetadata = reader.getAllTimeseriesMetadata(true);
 
         final TimeSeriesIterator timeSeriesIterator =
             new TimeSeriesIterator(tsFile, device2TimeseriesMetadata);
@@ -194,9 +197,6 @@ public class LoadTsfileAnalyzer {
       // construct tsfile resource
       final TsFileResource tsFileResource = new TsFileResource(tsFile);
       if (!tsFileResource.resourceFileExists()) {
-        if (device2TimeseriesMetadata == null) {
-          device2TimeseriesMetadata = reader.getAllTimeseriesMetadata(true);
-        }
         // it will be serialized in LoadSingleTsFileNode
         FileLoaderUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
         tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
@@ -204,10 +204,20 @@ public class LoadTsfileAnalyzer {
       } else {
         tsFileResource.deserialize();
       }
+
       TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+
       loadTsFileStatement.addTsFileResource(tsFileResource);
+      loadTsFileStatement.addWritePointCount(getWritePointCount(device2TimeseriesMetadata));
     }
+  }
+
+  private long getWritePointCount(Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata) {
+    return device2TimeseriesMetadata.values().stream()
+        .flatMap(List::stream)
+        .mapToLong(t -> t.getStatistics().getCount())
+        .sum();
   }
 
   private static final class TimeSeriesIterator
