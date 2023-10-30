@@ -182,7 +182,7 @@ public abstract class EnrichedEvent implements Event {
     if (pipeTaskMeta != null) {
       PipeAgent.runtime().report(pipeTaskMeta, pipeRuntimeException);
     } else {
-      LOGGER.warn("Attempt to report pipe exception to a null PipeTaskMeta.");
+      LOGGER.warn("Attempt to report pipe exception to a null PipeTaskMeta.", pipeRuntimeException);
     }
   }
 

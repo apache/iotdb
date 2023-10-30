@@ -241,7 +241,9 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     }
 
     if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
-      LOGGER.warn("Pipe found a temporary TsFile which shouldn't be transferred. Skipping.");
+      LOGGER.warn(
+          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+          ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile());
       return;
     }
 

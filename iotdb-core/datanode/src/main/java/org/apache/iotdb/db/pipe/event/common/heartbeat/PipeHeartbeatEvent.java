@@ -74,10 +74,10 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   }
 
   public PipeHeartbeatEvent(
+      PipeTaskMeta pipeTaskMeta,
       String dataRegionId,
       long timePublished,
-      boolean shouldPrintMessage,
-      PipeTaskMeta pipeTaskMeta) {
+      boolean shouldPrintMessage) {
     super(pipeTaskMeta, null);
     this.dataRegionId = dataRegionId;
     this.timePublished = timePublished;
@@ -108,7 +108,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
     // Should record PipeTaskMeta, for sometimes HeartbeatEvents should report exceptions.
-    return new PipeHeartbeatEvent(dataRegionId, timePublished, shouldPrintMessage, pipeTaskMeta);
+    return new PipeHeartbeatEvent(pipeTaskMeta, dataRegionId, timePublished, shouldPrintMessage);
   }
 
   @Override

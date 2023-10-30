@@ -300,7 +300,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     if (!pipeTsFileInsertionEvent.waitForTsFileClose()) {
-      LOGGER.warn("Pipe found a temporary TsFile which shouldn't be transferred. Skipping.");
+      LOGGER.warn(
+          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+          pipeTsFileInsertionEvent.getTsFile());
       return;
     }
 
@@ -352,13 +354,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
   @Override
   public void transfer(Event event) throws Exception {
-    try {
-      transferQueuedEventsIfNecessary();
-    } catch (Exception e) {
-      LOGGER.warn("caught ex in retry, rethrown.");
-      throw e;
-    }
-    LOGGER.warn("no ex in retry");
+    transferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
 
     if (!(event instanceof PipeHeartbeatEvent)) {
