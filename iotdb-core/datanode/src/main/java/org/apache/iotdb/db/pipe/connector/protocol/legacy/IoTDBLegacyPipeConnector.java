@@ -128,7 +128,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
                     || givenNodeUrls.contains(new TEndPoint("127.0.0.1", ioTDBConfig.getRpcPort()))
                     || givenNodeUrls.contains(new TEndPoint("0.0.0.0", ioTDBConfig.getRpcPort()))),
             String.format(
-                "The pipe destinations %s cannot point to one of the dataNodes' legacy receiver endpoint %s",
+                "One of the endpoints %s of the receivers is pointing back to the legacy receiver on sender %s itself",
                 givenNodeUrls,
                 new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort())));
   }

@@ -104,7 +104,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
                 || givenNodeUrls.contains(
                     new TEndPoint("0.0.0.0", pipeConfig.getPipeAirGapReceiverPort()))),
         String.format(
-            "The pipe destinations %s cannot point to one of the dataNodes' air gap receiver endpoint %s",
+            "One of the endpoints %s of the receivers is pointing back to the air gap receiver %s on sender itself",
             givenNodeUrls,
             new TEndPoint(ioTDBConfig.getRpcAddress(), pipeConfig.getPipeAirGapReceiverPort())));
   }
