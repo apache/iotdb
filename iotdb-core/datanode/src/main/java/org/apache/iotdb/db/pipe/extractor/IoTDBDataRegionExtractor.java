@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.extractor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.extractor.historical.BatchedTsFileExtractor;
 import org.apache.iotdb.db.pipe.extractor.historical.PipeHistoricalDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.historical.PipeHistoricalDataRegionTsFileExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
@@ -48,6 +49,9 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOCAL_SPLIT_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
@@ -120,16 +124,24 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
           EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE);
     }
 
-    constructHistoricalExtractor();
+    constructHistoricalExtractor(validator.getParameters());
     constructRealtimeExtractor(validator.getParameters());
 
     historicalExtractor.validate(validator);
     realtimeExtractor.validate(validator);
   }
 
-  private void constructHistoricalExtractor() {
+  private void constructHistoricalExtractor(PipeParameters parameters) {
     // Enable historical extractor by default
-    historicalExtractor = new PipeHistoricalDataRegionTsFileExtractor();
+    if (parameters.getBooleanOrDefault(CONNECTOR_LOCAL_SPLIT_ENABLE_KEY, false)) {
+      historicalExtractor =
+          new BatchedTsFileExtractor(
+              parameters.getIntOrDefault(
+                  CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_KEY,
+                  CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE));
+    } else {
+      historicalExtractor = new PipeHistoricalDataRegionTsFileExtractor();
+    }
   }
 
   private void constructRealtimeExtractor(PipeParameters parameters) {

@@ -53,18 +53,21 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
   private final List<TsFileResource> resources;
   private List<File> tsFiles;
 
+  private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
 
   private final AtomicBoolean[] isClosed;
 
   private TsFileListInsertionDataContainer dataContainer;
 
-  public PipeBatchTsFileInsertionEvent(List<TsFileResource> resources, boolean isGeneratedByPipe) {
-    this(resources, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE, false);
+  public PipeBatchTsFileInsertionEvent(
+      List<TsFileResource> resources, boolean isLoaded, boolean isGeneratedByPipe) {
+    this(resources, isLoaded, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE, false);
   }
 
   public PipeBatchTsFileInsertionEvent(
       List<TsFileResource> resources,
+      boolean isLoaded,
       boolean isGeneratedByPipe,
       PipeTaskMeta pipeTaskMeta,
       String pattern,
@@ -78,13 +81,14 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
     this.needParseTime = needParseTime;
 
     if (needParseTime) {
-      this.isPatternAndTimeParsed = false;
+      this.isTimeParsed = false;
     }
 
     this.resources = resources;
     tsFiles = resources.stream().map(TsFileResource::getTsFile).collect(Collectors.toList());
     isClosed = new AtomicBoolean[resources.size()];
 
+    this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
 
     for (int i = 0; i < isClosed.length; i++) {
@@ -181,7 +185,14 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
   public PipeBatchTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeBatchTsFileInsertionEvent(
-        resources, isGeneratedByPipe, pipeTaskMeta, pattern, startTime, endTime, needParseTime);
+        resources,
+        isLoaded,
+        isGeneratedByPipe,
+        pipeTaskMeta,
+        pattern,
+        startTime,
+        endTime,
+        needParseTime);
   }
 
   @Override
@@ -247,6 +258,7 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
       result.add(
           new PipeTsFileInsertionEvent(
               resource,
+              isLoaded,
               isGeneratedByPipe,
               pipeTaskMeta,
               getPattern(),

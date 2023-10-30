@@ -62,6 +62,7 @@ public class BatchedTsFileExtractor extends PipeHistoricalDataRegionTsFileExtrac
         new PipeBatchTsFileInsertionEvent(
             tsFileResourceList,
             false,
+            false,
             pipeTaskMeta,
             pattern,
             historicalDataExtractionStartTime,
