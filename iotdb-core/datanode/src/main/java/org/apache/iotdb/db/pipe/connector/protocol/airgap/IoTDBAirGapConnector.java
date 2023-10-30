@@ -96,10 +96,14 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     validator.validate(
         empty ->
             !(pipeConf.getPipeAirGapReceiverEnabled()
-                && givenNodeUrls.contains(
-                    new TEndPoint(conf.getRpcAddress(), pipeConf.getPipeAirGapReceiverPort()))),
+                    && (givenNodeUrls.contains(
+                        new TEndPoint(conf.getRpcAddress(), pipeConf.getPipeAirGapReceiverPort())))
+                || givenNodeUrls.contains(
+                    new TEndPoint("127.0.0.1", pipeConf.getPipeAirGapReceiverPort()))
+                || givenNodeUrls.contains(
+                    new TEndPoint("0.0.0.0", pipeConf.getPipeAirGapReceiverPort()))),
         String.format(
-            "The pipe destinations %s cannot contain one of the dataNodes' air gap receiver endpoint %s",
+            "The pipe destinations %s cannot point to one of the dataNodes' air gap receiver endpoint %s",
             givenNodeUrls,
             new TEndPoint(conf.getRpcAddress(), pipeConf.getPipeAirGapReceiverPort())));
   }
