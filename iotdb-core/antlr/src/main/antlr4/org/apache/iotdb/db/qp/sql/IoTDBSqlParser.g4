@@ -566,7 +566,7 @@ stopPipe
     ;
 
 showPipes
-    : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE CONNECTOR USED BY pipeName=identifier)?)
+    : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE (CONNECTOR | SINK) USED BY pipeName=identifier)?)
     ;
 
 // Pipe Plugin =========================================================================================
