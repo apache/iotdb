@@ -267,7 +267,13 @@ public class RatisConfig {
       private TimeDuration timeoutMax = TimeDuration.valueOf(4, TimeUnit.SECONDS);
       private TimeDuration requestTimeout = TimeDuration.valueOf(20, TimeUnit.SECONDS);
       private TimeDuration sleepTime = TimeDuration.valueOf(1, TimeUnit.SECONDS);
-      private TimeDuration slownessTimeout = TimeDuration.valueOf(3, TimeUnit.DAYS);
+      /**
+       * TODO: After introducing version 3.0 of Ratis, we plan to reduce the value of this parameter
+       * because a new parameter will be introduced later. For more details, please refer to `<a
+       * href="https://lists.apache.org/thread/vxd97lpllqtdb8cdbt3nxvg1kv6kjfss">email</a>`. It is
+       * set to 100 years instead of Long.MAX_VALUE to avoid potential overflows when shifting time.
+       */
+      private TimeDuration slownessTimeout = TimeDuration.valueOf(100 * 365L, TimeUnit.DAYS);
 
       private TimeDuration firstElectionTimeoutMin =
           TimeDuration.valueOf(50, TimeUnit.MILLISECONDS);
