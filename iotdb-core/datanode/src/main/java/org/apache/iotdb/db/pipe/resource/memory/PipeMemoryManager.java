@@ -90,36 +90,53 @@ public class PipeMemoryManager {
   private long calculateTabletSizeInBytes(Tablet tablet) {
     long totalSizeInBytes = 0;
 
+    if (tablet == null) {
+      return totalSizeInBytes;
+    }
+
     // timestamps
-    totalSizeInBytes += tablet.timestamps.length * 8L;
+    if (tablet.timestamps != null) {
+      totalSizeInBytes += tablet.timestamps.length * 8L;
+    }
 
     // values
-    List<MeasurementSchema> timeseries = tablet.getSchemas();
-    for (int column = 0; column < timeseries.size(); column++) {
-      TSDataType tsDataType = timeseries.get(column).getType();
-      for (int row = 0; row < tablet.rowSize; row++) {
-        // check isNull in tablet
-        if (tablet.bitMaps != null
-            && tablet.bitMaps[column] != null
-            && tablet.bitMaps[column].isMarked(row)) {
+    final List<MeasurementSchema> timeseries = tablet.getSchemas();
+    if (timeseries != null) {
+      for (int column = 0; column < timeseries.size(); column++) {
+        final MeasurementSchema measurementSchema = timeseries.get(column);
+        if (measurementSchema == null) {
           continue;
         }
 
-        // value
-        totalSizeInBytes +=
-            tsDataType == TSDataType.TEXT
-                ? (((Binary[]) tablet.values[column])[row]).getLength()
-                : tsDataType.getDataTypeSize();
+        final TSDataType tsDataType = measurementSchema.getType();
+        if (tsDataType == null) {
+          continue;
+        }
+
+        if (tsDataType == TSDataType.TEXT) {
+          if (tablet.values == null || tablet.values.length <= column) {
+            continue;
+          }
+          final Binary[] values = ((Binary[]) tablet.values[column]);
+          if (values == null) {
+            continue;
+          }
+          for (Binary value : values) {
+            totalSizeInBytes +=
+                value == null ? 0 : (value.getLength() == -1 ? 0 : value.getLength());
+          }
+        } else {
+          totalSizeInBytes += (long) tablet.timestamps.length * tsDataType.getDataTypeSize();
+        }
       }
     }
 
     // bitMaps
-    for (int i = 0; i < tablet.bitMaps.length; i++) {
-      totalSizeInBytes += tablet.bitMaps[i] == null ? 0 : tablet.bitMaps[i].getSize();
+    if (tablet.bitMaps != null) {
+      for (int i = 0; i < tablet.bitMaps.length; i++) {
+        totalSizeInBytes += tablet.bitMaps[i] == null ? 0 : tablet.bitMaps[i].getSize();
+      }
     }
-
-    // rowSize, maxRowNumber
-    totalSizeInBytes += TSDataType.INT32.getDataTypeSize() * 2L;
 
     // estimate other dataStructures size
     totalSizeInBytes += 100;
