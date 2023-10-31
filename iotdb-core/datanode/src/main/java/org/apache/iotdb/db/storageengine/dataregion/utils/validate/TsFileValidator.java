@@ -39,9 +39,9 @@ public interface TsFileValidator {
     boolean enableTsFileValidation =
         IoTDBDescriptor.getInstance().getConfig().isEnableTsFileValidation();
     if (enableTsFileValidation) {
-      return TsFileResourceValidator.getInstance();
-    } else {
       return TsFileResourceAndDataValidator.getInstance();
+    } else {
+      return TsFileResourceValidator.getInstance();
     }
   }
 }
