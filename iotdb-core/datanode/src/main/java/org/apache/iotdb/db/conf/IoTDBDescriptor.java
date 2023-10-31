@@ -1722,7 +1722,13 @@ public class IoTDBDescriptor {
           conf.setAllocateMemoryForPipe(
               maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum);
         } else {
-          conf.setAllocateMemoryForPipe(0);
+          conf.setAllocateMemoryForPipe(
+              (maxMemoryAvailable
+                      - (conf.getAllocateMemoryForStorageEngine()
+                          + conf.getAllocateMemoryForRead()
+                          + conf.getAllocateMemoryForSchema()
+                          + conf.getAllocateMemoryForConsensus()))
+                  / 2);
         }
       }
     }
