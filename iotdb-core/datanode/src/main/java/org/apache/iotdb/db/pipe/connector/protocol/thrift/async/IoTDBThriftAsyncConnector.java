@@ -561,5 +561,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   // synchronized to avoid close connector when transfer event
   public synchronized void close() throws Exception {
     retryConnector.close();
+
+    if (tabletBatchBuilder != null) {
+      tabletBatchBuilder.close();
+    }
   }
 }
