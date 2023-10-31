@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -54,31 +53,28 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** This cache is used by {@link WALEntryPosition}. */
 public class WALInsertNodeCache {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(WALInsertNodeCache.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
+  private final PipeMemoryBlock allocatedMemoryBlock;
+  private final boolean isBatchLoadEnabled;
   private final LoadingCache<WALEntryPosition, Pair<ByteBuffer, InsertNode>> lruCache;
-  private boolean isBatchLoadEnabled;
 
   // ids of all pinned memTables
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
 
   private volatile boolean hasPipeRunning = false;
 
-  private final PipeMemoryBlock block;
-
   private WALInsertNodeCache(Integer dataRegionId) {
-    // If allocate memory failed, disable batch load
-    isBatchLoadEnabled = true;
-
-    block = PipeResourceManager.memory().tryAllocate(2 * CONFIG.getWalFileSizeThresholdInByte());
+    allocatedMemoryBlock =
+        PipeResourceManager.memory().tryAllocate(2 * CONFIG.getWalFileSizeThresholdInByte());
     isBatchLoadEnabled =
-        block.getMemoryUsageInBytes() != PipeConfig.getInstance().getPipeMemoryAllocateMinSize();
-
+        allocatedMemoryBlock.getMemoryUsageInBytes() >= CONFIG.getWalFileSizeThresholdInByte();
     lruCache =
         Caffeine.newBuilder()
-            .maximumWeight(block.getMemoryUsageInBytes())
+            .maximumWeight(allocatedMemoryBlock.getMemoryUsageInBytes())
             .weigher(
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
                     (position, pair) -> position.getSize())
@@ -296,7 +292,7 @@ public class WALInsertNodeCache {
   @TestOnly
   public void clear() {
     lruCache.invalidateAll();
-    block.close();
+    allocatedMemoryBlock.close();
     memTablesNeedSearch.clear();
   }
 }

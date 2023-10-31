@@ -38,7 +38,7 @@ public class PipeMemoryManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeMemoryManager.class);
 
   private final boolean memoryAllocateEnabled =
-      PipeConfig.getInstance().getPipeMemoryAllocateEnabled();
+      PipeConfig.getInstance().getPipeMemoryManagementEnabled();
 
   private static final int MEMORY_ALLOCATE_MAX_RETRIES =
       PipeConfig.getInstance().getPipeMemoryAllocateMaxRetries();
@@ -47,7 +47,8 @@ public class PipeMemoryManager {
 
   private static final long TOTAL_MEMORY_SIZE_IN_BYTES =
       IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForPipe();
-  private final long allocateMinSize = PipeConfig.getInstance().getPipeMemoryAllocateMinSize();
+  private final long allocateMinSize =
+      PipeConfig.getInstance().getPipeMemoryAllocateMinSizeInBytes();
   private long usedMemorySizeInBytes = 0;
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes) throws PipeRuntimeException {

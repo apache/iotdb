@@ -163,8 +163,8 @@ public class PipeConfig {
 
   /////////////////////////////// Memory ///////////////////////////////
 
-  public boolean getPipeMemoryAllocateEnabled() {
-    return COMMON_CONFIG.getPipeMemoryAllocateEnabled();
+  public boolean getPipeMemoryManagementEnabled() {
+    return COMMON_CONFIG.getPipeMemoryManagementEnabled();
   }
 
   public int getPipeMemoryAllocateMaxRetries() {
@@ -175,12 +175,12 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMemoryAllocateRetryIntervalInMs();
   }
 
-  public long getPipeMemoryAllocateMinSize() {
-    return COMMON_CONFIG.getPipeMemoryAllocateMinSize();
+  public long getPipeMemoryAllocateMinSizeInBytes() {
+    return COMMON_CONFIG.getPipeMemoryAllocateMinSizeInBytes();
   }
 
-  public long getPipeMemoryAllocateForTsFileSequenceReader() {
-    return COMMON_CONFIG.getPipeMemoryAllocateForTsFileSequenceReader();
+  public long getPipeMemoryAllocateForTsFileSequenceReaderInBytes() {
+    return COMMON_CONFIG.getPipeMemoryAllocateForTsFileSequenceReaderInBytes();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -242,14 +242,14 @@ public class PipeConfig {
         "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
         getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
 
-    LOGGER.info("PipeMemoryAllocateEnabled: {}", getPipeMemoryAllocateEnabled());
+    LOGGER.info("PipeMemoryManagementEnabled: {}", getPipeMemoryManagementEnabled());
     LOGGER.info("PipeMemoryAllocateMaxRetries: {}", getPipeMemoryAllocateMaxRetries());
     LOGGER.info(
         "PipeMemoryAllocateRetryIntervalInMs: {}", getPipeMemoryAllocateRetryIntervalInMs());
-    LOGGER.info("PipeMemoryAllocateMinSize: {}", getPipeMemoryAllocateMinSize());
+    LOGGER.info("PipeMemoryAllocateMinSizeInBytes: {}", getPipeMemoryAllocateMinSizeInBytes());
     LOGGER.info(
-        "PipeMemoryAllocateForTsFileSequenceReader: {}",
-        getPipeMemoryAllocateForTsFileSequenceReader());
+        "PipeMemoryAllocateForTsFileSequenceReaderInBytes: {}",
+        getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

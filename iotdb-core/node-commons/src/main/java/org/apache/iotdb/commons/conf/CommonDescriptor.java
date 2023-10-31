@@ -377,35 +377,31 @@ public class CommonDescriptor {
                 "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
                 String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
 
+    config.setPipeMemoryManagementEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_memory_management_enabled",
+                String.valueOf(config.getPipeMemoryManagementEnabled()))));
     config.setPipeMemoryAllocateMaxRetries(
         Integer.parseInt(
             properties.getProperty(
                 "pipe_memory_allocate_max_retries",
                 String.valueOf(config.getPipeMemoryAllocateMaxRetries()))));
-
     config.setPipeMemoryAllocateRetryIntervalInMs(
         Long.parseLong(
             properties.getProperty(
                 "pipe_memory_allocate_retry_interval_in_ms",
                 String.valueOf(config.getPipeMemoryAllocateRetryIntervalInMs()))));
-
-    config.setPipeMemoryAllocateEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "pipe_memory_allocate_enabled",
-                String.valueOf(config.getPipeMemoryAllocateEnabled()))));
-
-    config.setPipeMemoryAllocateMinSize(
+    config.setPipeMemoryAllocateMinSizeInBytes(
         Long.parseLong(
             properties.getProperty(
-                "pipe_memory_allocate_min_size",
-                String.valueOf(config.getPipeMemoryAllocateMinSize()))));
-
-    config.setPipeMemoryAllocateForTsFileSequenceReader(
+                "pipe_memory_allocate_min_size_in_bytes",
+                String.valueOf(config.getPipeMemoryAllocateMinSizeInBytes()))));
+    config.setPipeMemoryAllocateForTsFileSequenceReaderInBytes(
         Long.parseLong(
             properties.getProperty(
-                "pipe_memory_allocate_for_tsfile_sequence_reader",
-                String.valueOf(config.getPipeMemoryAllocateForTsFileSequenceReader()))));
+                "pipe_memory_allocate_for_tsfile_sequence_reader_in_bytes",
+                String.valueOf(config.getPipeMemoryAllocateForTsFileSequenceReaderInBytes()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

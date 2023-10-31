@@ -97,7 +97,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     try {
       block =
           PipeResourceManager.memory()
-              .tryAllocate(PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReader());
+              .tryAllocate(
+                  PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
 
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), true, true);
       tsFileReader = new TsFileReader(tsFileSequenceReader);

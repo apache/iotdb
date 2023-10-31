@@ -185,12 +185,11 @@ public class CommonConfig {
 
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
 
+  private boolean pipeMemoryManagementEnabled = true;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
   private int pipeMemoryAllocateMaxRetries = 10;
-  private long pipeMemoryAllocateMinSize = 1;
-
-  private long pipeMemoryAllocateForTsFileSequenceReader = 2 * 1024 * 1024; // 2MB
-  private boolean pipeMemoryAllocateEnabled = false;
+  private long pipeMemoryAllocateMinSizeInBytes = 1;
+  private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = 2 * 1024 * 1024; // 2MB
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -735,6 +734,24 @@ public class CommonConfig {
     this.pipeMaxAllowedPendingTsFileEpochPerDataRegion = pipeExtractorPendingQueueTsfileLimit;
   }
 
+  public boolean getPipeMemoryManagementEnabled() {
+    return pipeMemoryManagementEnabled;
+  }
+
+  public void setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled) {
+    this.pipeMemoryManagementEnabled = pipeMemoryManagementEnabled;
+  }
+
+  public long getPipeMemoryAllocateForTsFileSequenceReaderInBytes() {
+    return pipeMemoryAllocateForTsFileSequenceReaderInBytes;
+  }
+
+  public void setPipeMemoryAllocateForTsFileSequenceReaderInBytes(
+      long pipeMemoryAllocateForTsFileSequenceReaderInBytes) {
+    this.pipeMemoryAllocateForTsFileSequenceReaderInBytes =
+        pipeMemoryAllocateForTsFileSequenceReaderInBytes;
+  }
+
   public int getPipeMemoryAllocateMaxRetries() {
     return pipeMemoryAllocateMaxRetries;
   }
@@ -751,29 +768,12 @@ public class CommonConfig {
     this.pipeMemoryAllocateRetryIntervalMs = pipeMemoryAllocateRetryIntervalMs;
   }
 
-  public long getPipeMemoryAllocateMinSize() {
-    return pipeMemoryAllocateMinSize;
+  public long getPipeMemoryAllocateMinSizeInBytes() {
+    return pipeMemoryAllocateMinSizeInBytes;
   }
 
-  public void setPipeMemoryAllocateMinSize(long pipeMemoryAllocateMinSize) {
-    this.pipeMemoryAllocateMinSize = pipeMemoryAllocateMinSize;
-  }
-
-  public long getPipeMemoryAllocateForTsFileSequenceReader() {
-    return pipeMemoryAllocateForTsFileSequenceReader;
-  }
-
-  public void setPipeMemoryAllocateForTsFileSequenceReader(
-      long pipeMemoryAllocateForTsFileSequenceReader) {
-    this.pipeMemoryAllocateForTsFileSequenceReader = pipeMemoryAllocateForTsFileSequenceReader;
-  }
-
-  public boolean getPipeMemoryAllocateEnabled() {
-    return pipeMemoryAllocateEnabled;
-  }
-
-  public void setPipeMemoryAllocateEnabled(boolean pipeMemoryAllocateEnabled) {
-    this.pipeMemoryAllocateEnabled = pipeMemoryAllocateEnabled;
+  public void setPipeMemoryAllocateMinSizeInBytes(long pipeMemoryAllocateMinSizeInBytes) {
+    this.pipeMemoryAllocateMinSizeInBytes = pipeMemoryAllocateMinSizeInBytes;
   }
 
   public String getSchemaEngineMode() {
