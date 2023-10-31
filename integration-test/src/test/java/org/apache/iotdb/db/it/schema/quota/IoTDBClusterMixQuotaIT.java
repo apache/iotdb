@@ -89,15 +89,18 @@ public class IoTDBClusterMixQuotaIT extends IoTDBClusterQuotaIT {
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));
       }
-      //      try {
-      //        // TODO: extend template
-      //        statement.execute("insert into root.sg1.d1(timestamp,s3) values(1,1.0)");
-      //        Assert.fail();
-      //      } catch (Exception e) {
-      //        Assert.assertTrue(
-      //            e.getMessage()
-      //                .contains("capacity has exceeded the cluster quota"));
-      //      }
+      try {
+        statement.execute("insert into root.sg1.d1(timestamp,s4) values(1,1.0)");
+        Assert.fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));
+      }
+      try {
+        statement.execute("insert into root.sg1.d4(timestamp,s4) values(1,1.0)");
+        Assert.fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));
+      }
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());

@@ -32,7 +32,7 @@ public class IoTDBClusterTimeSeriesQuotaIT extends IoTDBClusterQuotaIT {
   @Parameterized.BeforeParam
   public static void before() throws Exception {
     setUpEnvironment();
-    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterDeviceLimitThreshold(2);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterTimeseriesLimitThreshold(6);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
