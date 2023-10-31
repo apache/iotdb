@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 
 import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getBelongedContainer;
 import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getCachedMNodeContainer;
@@ -339,7 +338,8 @@ public abstract class CacheManager implements ICacheManager {
 
       if (currentSubtreeRootInBuffer != null) {
         // current subtree has been flushed, remove the subtreeRoot from nodeBuffer
-        nodeBuffer.remove(getCacheEntry(currentSubtreeRootInBuffer));
+        moveFromBufferToCache(currentSubtreeRootInBuffer);
+        currentSubtreeRootInBuffer = null;
       }
 
       // there's no subtree under traverse, try to get the next subtree
@@ -351,7 +351,7 @@ public abstract class CacheManager implements ICacheManager {
           return;
         }
         // subtree of this node doesn't need to be flush, remove the node from nodeBuffer
-        nodeBuffer.remove(getCacheEntry(subtreeRoot));
+        moveFromBufferToCache(subtreeRoot);
       }
     }
 
@@ -365,21 +365,37 @@ public abstract class CacheManager implements ICacheManager {
           getCachedMNodeContainer(node).getChildrenBufferIterator();
       if (childrenBufferIterator.hasNext()) {
         nextMNode = node;
-        childrenBufferIteratorStack.push(childrenBufferIterator);
+        List<ICachedMNode> bufferedChildren = new ArrayList<>();
+        while (childrenBufferIterator.hasNext()) {
+          bufferedChildren.add(childrenBufferIterator.next());
+        }
+        childrenBufferIteratorStack.push(bufferedChildren.iterator());
         return true;
       } else {
         // the subtree may be deleted, thus no need to flush it, add the ancestors back to cache
-        CacheEntry cacheEntry = getCacheEntry(node);
-        while (!node.isDatabase()) {
-          if (cacheEntry != null
-              && !isInNodeCache(cacheEntry)
-              && !getCachedMNodeContainer(node).hasChildrenInBuffer()) {
-            addToNodeCache(cacheEntry, node);
-          }
-          node = node.getParent();
-          cacheEntry = getCacheEntry(node);
-        }
+        moveFromBufferToCache(node);
         return false;
+      }
+    }
+
+    // move a node from NodeBuffer to cache when this node's subtree has already been deleted or
+    // processed
+    private void moveFromBufferToCache(ICachedMNode node) {
+      // the subtree may be deleted, thus no need to flush it, add the ancestors back to cache
+      CacheEntry cacheEntry = getCacheEntry(node);
+      if (node.isDatabase()) {
+        nodeBuffer.remove(cacheEntry);
+        return;
+      }
+
+      while (!node.isDatabase()) {
+        if (cacheEntry != null
+            && !isInNodeCache(cacheEntry)
+            && !getCachedMNodeContainer(node).hasChildrenInBuffer()) {
+          addToNodeCache(cacheEntry, node);
+        }
+        node = node.getParent();
+        cacheEntry = getCacheEntry(node);
       }
     }
   }
@@ -637,14 +653,6 @@ public abstract class CacheManager implements ICacheManager {
       maps[getLoc(cacheEntry)].remove(cacheEntry);
     }
 
-    void forEachNode(Consumer<ICachedMNode> action) {
-      for (Map<CacheEntry, ICachedMNode> map : maps) {
-        for (ICachedMNode node : map.values()) {
-          action.accept(node);
-        }
-      }
-    }
-
     long getBufferNodeNum() {
       long res = updatedStorageGroupMNode == null ? 0 : 1;
       for (int i = 0; i < MAP_NUM; i++) {
@@ -691,6 +699,10 @@ public abstract class CacheManager implements ICacheManager {
         }
 
         private void tryGetNext() {
+          if (mapIndex >= maps.length) {
+            return;
+          }
+
           while (!currentIterator.hasNext()) {
             currentIterator = null;
 
