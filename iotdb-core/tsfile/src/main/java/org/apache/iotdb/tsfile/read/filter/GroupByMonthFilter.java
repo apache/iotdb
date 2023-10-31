@@ -217,8 +217,9 @@ public class GroupByMonthFilter extends GroupByFilter {
               startTime,
               originalSlidingStep,
               (int)
-                  ((originalEndTime - originalStartTime)
-                      / originalSlidingStep.getMinTotalDuration(currPrecision)),
+                  Math.ceil(
+                      ((originalEndTime - originalStartTime)
+                          / (double) originalSlidingStep.getMinTotalDuration(currPrecision))),
               timeZone,
               currPrecision);
     }
@@ -229,7 +230,7 @@ public class GroupByMonthFilter extends GroupByFilter {
   private int getTimePointPosition(long time) {
     if (originalSlidingStep.containsMonth()) {
       int searchResult = Arrays.binarySearch(startTimes, time);
-      return searchResult >= 0 ? searchResult : Math.abs(searchResult) - 2;
+      return searchResult >= 0 ? searchResult : Math.max(0, Math.abs(searchResult) - 2);
     } else {
       return (int) ((time - originalStartTime) / slidingStep);
     }
@@ -244,6 +245,10 @@ public class GroupByMonthFilter extends GroupByFilter {
               - startTime;
     }
     if (originalSlidingStep.containsMonth()) {
+      if (n < 0 || n > startTimes.length - 1) {
+        this.interval = -1;
+        return;
+      }
       this.startTime = startTimes[n];
       this.slidingStep =
           calcPositiveIntervalByMonth(startTime, originalSlidingStep, 1, timeZone, currPrecision)

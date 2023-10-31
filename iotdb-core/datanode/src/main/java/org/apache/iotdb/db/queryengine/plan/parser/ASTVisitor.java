@@ -206,6 +206,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import com.google.common.collect.ImmutableSet;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -229,6 +230,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetToGroupByTime;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter;
+import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_FUNCTION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_TYPE;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.REPLACE_FROM;
@@ -945,10 +947,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
 
       long interval =
-          queryStatement
-              .getGroupByTimeComponent()
-              .getInterval()
-              .getTotalDuration(TimestampPrecisionUtils.currPrecision);
+          queryStatement.getGroupByTimeComponent().getInterval().getTotalDuration(currPrecision);
       statement.setEveryInterval(interval);
       statement.setStartTimeOffset(interval);
     }
@@ -972,10 +971,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             "CQ: At least one of the parameters `every_interval` and `group_by_interval` needs to be specified.");
       }
       statement.setEveryInterval(
-          queryStatement
-              .getGroupByTimeComponent()
-              .getInterval()
-              .getTotalDuration(TimestampPrecisionUtils.currPrecision));
+          queryStatement.getGroupByTimeComponent().getInterval().getTotalDuration(currPrecision));
     }
 
     if (ctx.BOUNDARY() != null) {
@@ -1558,6 +1554,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
       groupByTimeComponent.setOriginalInterval(groupByTimeComponent.getOriginalInterval());
+    }
+    TimeDuration slidingStep = groupByTimeComponent.getSlidingStep();
+    if (slidingStep.containsMonth()
+        && Math.ceil(
+                ((groupByTimeComponent.getEndTime() - groupByTimeComponent.getStartTime())
+                    / (double) slidingStep.getMinTotalDuration(currPrecision)))
+            >= 10000) {
+      throw new SemanticException("The time windows may exceed 10000, please ensure your input.");
     }
     if (groupByTimeComponent.getSlidingStep().monthDuration == 0
         && groupByTimeComponent.getSlidingStep().nonMonthDuration == 0) {
