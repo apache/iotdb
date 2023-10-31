@@ -247,15 +247,11 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     }
     File sourceTsFile = sourceFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
     if (sourceTsFile != null) {
-      unseqFileToInsert =
-          new TsFileResource(
-              sourceFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists());
+      unseqFileToInsert = new TsFileResource(sourceTsFile);
     }
     File targetTsFile = targetFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
     if (targetTsFile != null) {
-      targetFile =
-          new TsFileResource(
-              targetFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists());
+      targetFile = new TsFileResource(targetTsFile);
     }
     return true;
   }
