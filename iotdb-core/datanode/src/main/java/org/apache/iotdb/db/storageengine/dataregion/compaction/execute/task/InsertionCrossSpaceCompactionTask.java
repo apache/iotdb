@@ -237,30 +237,37 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     targetFile.deserialize();
   }
 
-  private void recoverTaskInfoFromLogFile() throws IOException {
+  private boolean recoverTaskInfoFromLogFile() throws IOException {
     CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(this.logFile);
     logAnalyzer.analyze();
     List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
+    List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
+    if (sourceFileIdentifiers.isEmpty() || targetFileIdentifiers.isEmpty()) {
+      return false;
+    }
     File sourceTsFile = sourceFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
     if (sourceTsFile != null) {
       unseqFileToInsert =
           new TsFileResource(
               sourceFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists());
     }
-    List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
     File targetTsFile = targetFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
     if (targetTsFile != null) {
       targetFile =
           new TsFileResource(
               targetFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists());
     }
+    return true;
   }
 
   @Override
   public void recover() {
     try {
       if (needRecoverTaskInfoFromLogFile) {
-        recoverTaskInfoFromLogFile();
+        boolean isValidLog = recoverTaskInfoFromLogFile();
+        if (!isValidLog) {
+          return;
+        }
       }
       if (!canRecover()) {
         throw new CompactionRecoverException("Can not recover InsertionCrossSpaceCompactionTask");
