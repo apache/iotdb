@@ -39,6 +39,7 @@ jobs:
     runs-on: [self-hosted, iotdb, ubuntu-latest, windows-latest]
     #      group: self-hosted
     #      labels: iotdb
+    #      Will run on github machines ubuntu-latest, windows-latest when iotdb machine is unavailable.
     steps:
       - uses: actions/checkout@v3
       - name: Set up JDK ${{ matrix.java }}
