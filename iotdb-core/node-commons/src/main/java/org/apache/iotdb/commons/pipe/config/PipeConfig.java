@@ -209,6 +209,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeExtractorAssignerDisruptorRingBufferSize: {}",
         getPipeExtractorAssignerDisruptorRingBufferSize());
+    LOGGER.info(
+        "PipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes: {}",
+        getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes());
     LOGGER.info("PipeExtractorMatcherCacheSize: {}", getPipeExtractorMatcherCacheSize());
 
     LOGGER.info("PipeConnectorTimeoutMs: {}", getPipeConnectorTimeoutMs());

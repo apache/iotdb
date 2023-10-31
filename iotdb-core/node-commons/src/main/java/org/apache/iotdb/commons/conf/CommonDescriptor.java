@@ -283,6 +283,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_extractor_assigner_disruptor_ring_buffer_size",
                 String.valueOf(config.getPipeExtractorAssignerDisruptorRingBufferSize()))));
+    config.setPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes( // 1MB
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_extractor_assigner_disruptor_ring_buffer_entry_size_in_bytes",
+                String.valueOf(
+                    config.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes()))));
     config.setPipeExtractorMatcherCacheSize(
         Integer.parseInt(
             properties.getProperty(
