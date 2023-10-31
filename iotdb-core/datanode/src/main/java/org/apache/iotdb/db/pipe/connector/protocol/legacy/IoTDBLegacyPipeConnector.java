@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnectorClient;
@@ -33,8 +32,6 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -191,33 +188,14 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    final Tablet tablet;
-    final boolean isAligned;
-
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      tablet = ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
-      isAligned = ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).isAligned();
-
+      doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
-      isAligned = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).isAligned();
-
+      doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
     } else {
       throw new NotImplementedException(
           "IoTDBLegacyPipeConnector only support "
               + "PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
-    }
-
-    try (final PipeMemoryBlock block =
-        PipeResourceManager.memory().forceAllocateForTablet(tablet)) {
-      doTransfer(tablet, isAligned);
-    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
-      LOGGER.error(
-          "IoTDBLegacyPipeConnector: Transfer tabletInsertionEvent {} error.Failed to allocate memory for tabletInsertionEvent {}MB.",
-          tabletInsertionEvent,
-          PipeResourceManager.memory().calculateTabletSizeInBytes(tablet) / 1024 / 1024,
-          e);
-      throw e;
     }
   }
 
@@ -227,7 +205,6 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
       throw new NotImplementedException(
           "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.");
     }
-
     if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
       LOGGER.warn(
           "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
@@ -235,22 +212,13 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
       return;
     }
 
-    try (final PipeMemoryBlock block =
-        PipeResourceManager.memory()
-            .forceAllocate(PipeConfig.getInstance().getPipeConnectorReadFileBufferSize())) {
+    try {
       doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer tsFile insertion event: %s.", tsFileInsertionEvent),
           e);
-    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
-      LOGGER.error(
-          "IoTDBLegacyPipeConnector: Transfer tsFileInsertionEvent {} error.Failed to allocate memory for tsFileInsertionEvent {}MB.",
-          tsFileInsertionEvent,
-          PipeConfig.getInstance().getPipeConnectorReadFileBufferSize(),
-          e);
-      throw e;
     }
   }
 
@@ -261,9 +229,20 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     }
   }
 
-  private void doTransfer(Tablet tablet, boolean isAligned)
+  private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
       throws IoTDBConnectionException, StatementExecutionException {
-    if (isAligned) {
+    final Tablet tablet = pipeInsertNodeInsertionEvent.convertToTablet();
+    if (pipeInsertNodeInsertionEvent.isAligned()) {
+      sessionPool.insertAlignedTablet(tablet);
+    } else {
+      sessionPool.insertTablet(tablet);
+    }
+  }
+
+  private void doTransfer(PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
+      throws PipeException, IoTDBConnectionException, StatementExecutionException {
+    final Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
+    if (pipeTabletInsertionEvent.isAligned()) {
       sessionPool.insertAlignedTablet(tablet);
     } else {
       sessionPool.insertTablet(tablet);
