@@ -436,5 +436,9 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
         isClientAlive.set(i, false);
       }
     }
+
+    if (tabletBatchBuilder != null) {
+      tabletBatchBuilder.close();
+    }
   }
 }

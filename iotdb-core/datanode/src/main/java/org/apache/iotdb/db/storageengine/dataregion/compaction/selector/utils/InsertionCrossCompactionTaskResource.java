@@ -17,34 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.resource.memory;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-public class PipeMemoryBlock implements AutoCloseable {
+public class InsertionCrossCompactionTaskResource extends CrossCompactionTaskResource {
+  public TsFileResource prevSeqFile = null;
+  public TsFileResource nextSeqFile = null;
+  public TsFileResource toInsertUnSeqFile = null;
+  public TsFileResource firstUnSeqFileInParitition = null;
+  public long targetFileTimestamp;
 
-  private final long memoryUsageInBytes;
-
-  private volatile boolean isReleased = false;
-
-  public PipeMemoryBlock(long memoryUsageInBytes) {
-    this.memoryUsageInBytes = memoryUsageInBytes;
-  }
-
-  public long getMemoryUsageInBytes() {
-    return memoryUsageInBytes;
-  }
-
-  boolean isReleased() {
-    return isReleased;
-  }
-
-  void markAsReleased() {
-    isReleased = true;
+  public void setToInsertUnSeqFile(TsFileResource toInsertUnSeqFile) {
+    this.toInsertUnSeqFile = toInsertUnSeqFile;
   }
 
   @Override
-  public void close() {
-    PipeResourceManager.memory().release(this);
+  public float getTotalSeqFileSize() {
+    return super.getTotalSeqFileSize();
+  }
+
+  @Override
+  public boolean isValid() {
+    return toInsertUnSeqFile != null;
   }
 }

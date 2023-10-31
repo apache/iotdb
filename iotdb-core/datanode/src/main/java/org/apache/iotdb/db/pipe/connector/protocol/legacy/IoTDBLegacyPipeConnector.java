@@ -246,7 +246,6 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
       throw new NotImplementedException(
           "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.");
     }
-
     if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
       LOGGER.warn(
           "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
