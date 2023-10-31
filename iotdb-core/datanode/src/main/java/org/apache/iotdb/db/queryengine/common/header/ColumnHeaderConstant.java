@@ -179,15 +179,6 @@ public class ColumnHeaderConstant {
   public static final String USER = "User";
   public static final String READ_WRITE = "Read/Write";
 
-  // column names for show models/trials
-  public static final String MODEL_ID = "ModelId";
-  public static final String TRIAL_ID = "TrialId";
-  public static final String MODEL_TASK = "ModelTask";
-  public static final String MODEL_TYPE = "ModelType";
-  public static final String QUERY_BODY = "QueryBody";
-  public static final String HYPERPARAMETER = "Hyperparameter";
-  public static final String MODEL_PATH = "ModelPath";
-
   // column names for views (e.g. logical view)
   public static final String VIEW_TYPE = "ViewType";
   public static final String SOURCE = "Source";
@@ -451,21 +442,6 @@ public class ColumnHeaderConstant {
           new ColumnHeader(QUOTA_TYPE, TSDataType.TEXT),
           new ColumnHeader(LIMIT, TSDataType.TEXT),
           new ColumnHeader(READ_WRITE, TSDataType.TEXT));
-
-  public static final List<ColumnHeader> showModelsColumnHeaders =
-      ImmutableList.of(
-          new ColumnHeader(MODEL_ID, TSDataType.TEXT),
-          new ColumnHeader(MODEL_TASK, TSDataType.TEXT),
-          new ColumnHeader(MODEL_TYPE, TSDataType.TEXT),
-          new ColumnHeader(QUERY_BODY, TSDataType.TEXT),
-          new ColumnHeader(STATE, TSDataType.TEXT),
-          new ColumnHeader(HYPERPARAMETER, TSDataType.TEXT));
-
-  public static final List<ColumnHeader> showTrialsColumnHeaders =
-      ImmutableList.of(
-          new ColumnHeader(TRIAL_ID, TSDataType.TEXT),
-          new ColumnHeader(MODEL_PATH, TSDataType.TEXT),
-          new ColumnHeader(HYPERPARAMETER, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showLogicalViewColumnHeaders =
       ImmutableList.of(

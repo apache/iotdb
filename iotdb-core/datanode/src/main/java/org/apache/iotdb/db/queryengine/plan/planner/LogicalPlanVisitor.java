@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
@@ -54,8 +53,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ForecastModelInferenceDescriptor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
@@ -102,7 +99,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
@@ -224,22 +220,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             .planFill(analysis.getFillDescriptor(), queryStatement.getResultTimeOrder())
             .planOffset(queryStatement.getRowOffset())
             .planLimit(queryStatement.getRowLimit());
-
-    if (queryStatement.isModelInferenceQuery()) {
-      ModelInferenceDescriptor modelInferenceDescriptor = analysis.getModelInferenceDescriptor();
-      if (Objects.requireNonNull(modelInferenceDescriptor.getFunctionType())
-          == ModelInferenceFunction.FORECAST) {
-        ForecastModelInferenceDescriptor forecastModelInferenceDescriptor =
-            (ForecastModelInferenceDescriptor) modelInferenceDescriptor;
-        planBuilder
-            .planLimit(forecastModelInferenceDescriptor.getModelInputLength())
-            .planForecast(forecastModelInferenceDescriptor);
-      } else {
-        throw new IllegalArgumentException(
-            "Unsupported model inference function type: "
-                + modelInferenceDescriptor.getFunctionType());
-      }
-    }
 
     // plan select into
     if (queryStatement.isAlignByDevice()) {

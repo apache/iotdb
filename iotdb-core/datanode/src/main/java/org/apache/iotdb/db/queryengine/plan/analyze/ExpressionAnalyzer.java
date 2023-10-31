@@ -197,8 +197,6 @@ public class ExpressionAnalyzer {
           }
         }
         return ResultColumn.ColumnType.AGGREGATION;
-      } else if (((FunctionExpression) expression).isModelInferenceFunction()) {
-        return ResultColumn.ColumnType.MODEL_INFERENCE;
       } else {
         ResultColumn.ColumnType checkedType = null;
         int lastCheckedIndex = 0;
