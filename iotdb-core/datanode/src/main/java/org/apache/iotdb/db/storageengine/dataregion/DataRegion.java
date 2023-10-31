@@ -504,9 +504,18 @@ public class DataRegion implements IDataRegionForQuery {
       // signal wal recover manager to recover this region's files
       WALRecoverManager.getInstance().getAllDataRegionScannedLatch().countDown();
       // recover sealed TsFiles
-      if (!partitionTmpSeqTsFiles.isEmpty()) {
-        long latestPartitionId =
-            ((TreeMap<Long, List<TsFileResource>>) partitionTmpSeqTsFiles).lastKey();
+      if (!partitionTmpSeqTsFiles.isEmpty() || !partitionTmpUnseqTsFiles.isEmpty()) {
+        long latestPartitionId = Long.MIN_VALUE;
+        if (!partitionTmpSeqTsFiles.isEmpty()) {
+          latestPartitionId =
+              ((TreeMap<Long, List<TsFileResource>>) partitionTmpSeqTsFiles).lastKey();
+        }
+        if (!partitionTmpUnseqTsFiles.isEmpty()) {
+          latestPartitionId =
+              Math.max(
+                  latestPartitionId,
+                  ((TreeMap<Long, List<TsFileResource>>) partitionTmpUnseqTsFiles).lastKey());
+        }
         for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpSeqTsFiles.entrySet()) {
           recoverFilesInPartition(
               partitionFiles.getKey(),
@@ -515,14 +524,24 @@ public class DataRegion implements IDataRegionForQuery {
               true,
               partitionFiles.getKey() == latestPartitionId);
         }
-      }
-      for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpUnseqTsFiles.entrySet()) {
-        recoverFilesInPartition(
-            partitionFiles.getKey(),
-            dataRegionRecoveryContext,
-            partitionFiles.getValue(),
-            false,
-            false);
+        for (Entry<Long, List<TsFileResource>> partitionFiles :
+            partitionTmpUnseqTsFiles.entrySet()) {
+          recoverFilesInPartition(
+              partitionFiles.getKey(),
+              dataRegionRecoveryContext,
+              partitionFiles.getValue(),
+              false,
+              partitionFiles.getKey() == latestPartitionId);
+        }
+        TimePartitionManager.getInstance()
+            .registerTimePartitionInfo(
+                new TimePartitionInfo(
+                    new DataRegionId(Integer.parseInt(dataRegionId)),
+                    latestPartitionId,
+                    false,
+                    Long.MAX_VALUE,
+                    lastFlushTimeMap.getMemSize(latestPartitionId),
+                    true));
       }
       // wait until all unsealed TsFiles have been recovered
       for (WALRecoverListener recoverListener : recoverListeners) {
@@ -793,20 +812,11 @@ public class DataRegion implements IDataRegionForQuery {
     for (TsFileResource tsFileResource : resourceList) {
       recoverSealedTsFiles(tsFileResource, context, isSeq);
     }
-    lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId);
-    for (TsFileResource tsFileResource : resourceList) {
-      updateLastFlushTime(tsFileResource, true);
-    }
     if (isLatestPartition) {
-      TimePartitionManager.getInstance()
-          .registerTimePartitionInfo(
-              new TimePartitionInfo(
-                  new DataRegionId(Integer.parseInt(dataRegionId)),
-                  partitionId,
-                  false,
-                  Long.MAX_VALUE,
-                  lastFlushTimeMap.getMemSize(partitionId),
-                  true));
+      lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId);
+      for (TsFileResource tsFileResource : resourceList) {
+        updateLastFlushTime(tsFileResource, isSeq);
+      }
     }
   }
 
