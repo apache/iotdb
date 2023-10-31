@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
@@ -38,8 +37,6 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -49,7 +46,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
@@ -283,26 +279,10 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   }
 
   private void doTransfer(IoTDBThriftSyncConnectorClient client) throws IOException, TException {
-    final TPipeTransferResp resp;
-
-    long allocateMemoryInBytes =
-        tabletBatchBuilder.getTPipeTransferReqs().stream()
-            .mapToLong(req -> req.getBody().length)
-            .sum();
-    try (final PipeMemoryBlock block =
-        PipeResourceManager.memory().forceAllocate(allocateMemoryInBytes)) {
-      resp =
-          client.pipeTransfer(
-              PipeTransferTabletBatchReq.toTPipeTransferReq(
-                  tabletBatchBuilder.getTPipeTransferReqs()));
-    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
-      LOGGER.error(
-          "IoTDBThriftSyncConnector: Transfer tablet batch {} error.Failed to allocate memory for batch {}MB.",
-          tabletBatchBuilder,
-          allocateMemoryInBytes / 1024 / 1024,
-          e);
-      throw e;
-    }
+    final TPipeTransferResp resp =
+        client.pipeTransfer(
+            PipeTransferTabletBatchReq.toTPipeTransferReq(
+                tabletBatchBuilder.getTPipeTransferReqs()));
 
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
@@ -317,25 +297,14 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       IoTDBThriftSyncConnectorClient client,
       PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, TException, WALPipeException {
-    final TPipeTransferResp resp;
-    final TPipeTransferReq req =
+    final TPipeTransferResp resp =
         pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
-            ? PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-            : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
-                pipeInsertNodeTabletInsertionEvent.getInsertNode());
-
-    try (final PipeMemoryBlock block =
-        PipeResourceManager.memory().forceAllocate(req.getBody().length)) {
-      resp = client.pipeTransfer(req);
-    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
-      LOGGER.error(
-          "IoTDBThriftSyncConnector: Transfer PipeInsertNodeTabletInsertionEvent {} error.Failed to allocate memory for tablet {}MB.",
-          pipeInsertNodeTabletInsertionEvent,
-          req.getBody().length / 1024 / 1024,
-          e);
-      throw e;
-    }
+            ? client.pipeTransfer(
+                PipeTransferTabletBinaryReq.toTPipeTransferReq(
+                    pipeInsertNodeTabletInsertionEvent.getByteBuffer()))
+            : client.pipeTransfer(
+                PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
+                    pipeInsertNodeTabletInsertionEvent.getInsertNode()));
 
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
@@ -349,23 +318,11 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       IoTDBThriftSyncConnectorClient client,
       PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, TException, IOException {
-
-    final TPipeTransferResp resp;
-    final TPipeTransferReq req =
-        PipeTransferTabletRawReq.toTPipeTransferReq(
-            pipeRawTabletInsertionEvent.convertToTablet(), pipeRawTabletInsertionEvent.isAligned());
-
-    try (final PipeMemoryBlock block =
-        PipeResourceManager.memory().forceAllocate(req.getBody().length)) {
-      resp = client.pipeTransfer(req);
-    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
-      LOGGER.error(
-          "IoTDBThriftSyncConnector: Transfer PipeInsertNodeTabletInsertionEvent {} error.Failed to allocate memory for batch {}MB.",
-          pipeRawTabletInsertionEvent,
-          req.getBody().length / 1024 / 1024,
-          e);
-      throw e;
-    }
+    final TPipeTransferResp resp =
+        client.pipeTransfer(
+            PipeTransferTabletRawReq.toTPipeTransferReq(
+                pipeRawTabletInsertionEvent.convertToTablet(),
+                pipeRawTabletInsertionEvent.isAligned()));
 
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
@@ -391,27 +348,15 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
           break;
         }
 
-        final PipeTransferFilePieceResp resp;
-        try (PipeMemoryBlock ignored =
-            PipeResourceManager.memory().forceAllocate(readFileBufferSize)) {
-          resp =
-              PipeTransferFilePieceResp.fromTPipeTransferResp(
-                  client.pipeTransfer(
-                      PipeTransferFilePieceReq.toTPipeTransferReq(
-                          tsFile.getName(),
-                          position,
-                          readLength == readFileBufferSize
-                              ? readBuffer
-                              : Arrays.copyOfRange(readBuffer, 0, readLength))));
-        } catch (PipeRuntimeOutOfMemoryCriticalException e) {
-          LOGGER.error(
-              "IoTDBThriftSyncConnector: Transfer PipeTsFileInsertionEvent {} error.Failed to allocate memory for tsfile {}MB.",
-              pipeTsFileInsertionEvent,
-              readFileBufferSize,
-              e);
-          throw e;
-        }
-
+        final PipeTransferFilePieceResp resp =
+            PipeTransferFilePieceResp.fromTPipeTransferResp(
+                client.pipeTransfer(
+                    PipeTransferFilePieceReq.toTPipeTransferReq(
+                        tsFile.getName(),
+                        position,
+                        readLength == readFileBufferSize
+                            ? readBuffer
+                            : Arrays.copyOfRange(readBuffer, 0, readLength))));
         position += readLength;
 
         // This case only happens when the connection is broken, and the connector is reconnected
