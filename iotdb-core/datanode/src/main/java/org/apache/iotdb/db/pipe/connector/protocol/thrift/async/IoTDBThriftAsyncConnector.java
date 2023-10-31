@@ -66,12 +66,15 @@ import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY;
 
 public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
@@ -122,7 +125,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       throws Exception {
     super.customize(parameters, configuration);
 
-    retryConnector.customize(parameters, configuration);
+    // Disable batch mode for retry connector, in case retry events are never sent again
+    PipeParameters retryParameters = new PipeParameters(new HashMap<>(parameters.getAttribute()));
+    retryParameters.getAttribute().put(SINK_IOTDB_BATCH_MODE_ENABLE_KEY, "false");
+    retryConnector.customize(retryParameters, configuration);
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new IoTDBThriftAsyncPipeTransferBatchReqBuilder(parameters);
@@ -331,26 +337,32 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
+    final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
+        (PipeTsFileInsertionEvent) tsFileInsertionEvent;
+    if (!pipeTsFileInsertionEvent.waitForTsFileClose()) {
+      LOGGER.warn(
+          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+          pipeTsFileInsertionEvent.getTsFile());
+      return;
+    }
+
+    if ((pipeTsFileInsertionEvent).shouldParsePatternOrTime()) {
       try {
-        for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+        for (final TabletInsertionEvent event :
+            pipeTsFileInsertionEvent.toTabletInsertionEvents()) {
           transfer(event);
         }
       } finally {
-        tsFileInsertionEvent.close();
+        pipeTsFileInsertionEvent.close();
       }
       return;
     }
 
     final long requestCommitId = commitIdGenerator.incrementAndGet();
-
-    final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
-        (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
         new PipeTransferTsFileInsertionEventHandler(
             requestCommitId, pipeTsFileInsertionEvent, this);
 
-    pipeTsFileInsertionEvent.waitForTsFileClose();
     transfer(requestCommitId, pipeTransferTsFileInsertionEventHandler);
   }
 

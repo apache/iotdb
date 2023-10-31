@@ -2054,14 +2054,8 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       tsFileProcessor.close();
       if (tsFileProcessor.isEmpty() || tsFileProcessor.getTsFileResource().isEmpty()) {
-        try {
-          fsFactory.deleteIfExists(tsFileProcessor.getTsFileResource().getTsFile());
-          tsFileManager.remove(tsFileProcessor.getTsFileResource(), tsFileProcessor.isSequence());
-        } catch (IOException e) {
-          logger.error(
-              "Remove empty file {} error",
-              tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
-        }
+        tsFileProcessor.getTsFileResource().remove();
+        tsFileManager.remove(tsFileProcessor.getTsFileResource(), tsFileProcessor.isSequence());
       } else {
         tsFileResourceManager.registerSealedTsFileResource(tsFileProcessor.getTsFileResource());
       }
