@@ -134,7 +134,7 @@
         <!-- This was the last version to support Java 8 -->
         <!--mockito.version>4.11.0</mockito.version-->
         <moquette.version>0.17</moquette.version>
-        <netty.version>4.1.97.Final</netty.version>
+        <netty.version>4.1.100.Final</netty.version>
         <nimbus-jose-jwt.version>9.34</nimbus-jose-jwt.version>
         <oauth2-oidc-sdk.version>10.15</oauth2-oidc-sdk.version>
         <!-- This was the last version to support Java 8 -->
@@ -1147,15 +1147,6 @@
                 <artifactId>awaitility</artifactId>
                 <version>${awaitility.version}</version>
             </dependency>
-            <!--
-        TODO: This dependency is only needed to run one single test-case ... possibly refactor?
-        (org.apache.iotdb.db.conf.IoTDBDescriptorTest)
-      -->
-            <dependency>
-                <groupId>org.apache.tomcat.embed</groupId>
-                <artifactId>tomcat-embed-core</artifactId>
-                <version>${tomcat.version}</version>
-            </dependency>
             <dependency>
                 <groupId>io.projectreactor.netty</groupId>
                 <artifactId>reactor-netty-http</artifactId>
@@ -2154,12 +2145,6 @@
                                 </requireJavaVersion>
                                 <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies">
                                     <excludeCoordinates>
-                                        <!-- TODO: For this CVE no fix exists yet (Keep an eye on it) -->
-                                        <exclude>
-                                            <groupId>io.netty</groupId>
-                                            <artifactId>netty-handler</artifactId>
-                                            <version>4.1.97.Final</version>
-                                        </exclude>
                                         <!--
                       CVE-2016-1000027 seems to effect the HTTP Invoker, which we are not using.
                       These are marked deprecated anyway and are removed in Spring 6.x. Unfortunately,
