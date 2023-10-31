@@ -193,7 +193,7 @@ public class StorageEngine implements IService {
     isAllSgReady.set(allSgReady);
   }
 
-  public void recover() throws StartupException {
+  public void asyncRecover() throws StartupException {
     setAllSgReady(false);
     cachedThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.STORAGE_ENGINE_CACHED_POOL.getName());
@@ -218,9 +218,18 @@ public class StorageEngine implements IService {
               checkResults(futures, "StorageEngine failed to recover.");
               setAllSgReady(true);
               ttlMapForRecover.clear();
+              initCompactionSchedule();
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
+  }
+
+  private void initCompactionSchedule() {
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        dataRegion.initCompactionSchedule();
+      }
+    }
   }
 
   private void asyncRecover(List<Future<Void>> futures) {
@@ -295,12 +304,7 @@ public class StorageEngine implements IService {
       throw new StorageEngineFailureException(e);
     }
 
-    recover();
-    for (DataRegion dataRegion : dataRegionMap.values()) {
-      if (dataRegion != null) {
-        dataRegion.initCompaction();
-      }
-    }
+    asyncRecover();
 
     ttlCheckThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.TTL_CHECK.getName());
