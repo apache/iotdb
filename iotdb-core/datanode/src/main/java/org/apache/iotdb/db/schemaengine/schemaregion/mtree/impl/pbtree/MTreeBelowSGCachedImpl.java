@@ -928,6 +928,10 @@ public class MTreeBelowSGCachedImpl {
             if (entityMNode.isDatabase()) {
               replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
             }
+            // this parent has no measurement before. The leafName is his first child who is a
+            // logical
+            // view.
+            entityMNode.setAligned(null);
             device = entityMNode.getAsMNode();
           }
 
