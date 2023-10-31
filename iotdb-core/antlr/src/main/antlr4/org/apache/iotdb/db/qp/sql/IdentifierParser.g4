@@ -132,8 +132,6 @@ keyWords
     | MERGE
     | METADATA
     | MIGRATE
-    | MODEL
-    | MODELS
     | NAN
     | NODEID
     | NODES
@@ -227,7 +225,6 @@ keyWords
     | TOLERANCE
     | TOP
     | TRACING
-    | TRIALS
     | TRIGGER
     | TRIGGERS
     | TRUE
