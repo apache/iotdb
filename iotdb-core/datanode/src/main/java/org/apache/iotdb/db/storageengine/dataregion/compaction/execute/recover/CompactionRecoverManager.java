@@ -64,11 +64,13 @@ public class CompactionRecoverManager {
         "{} [Compaction][Recover] recovering {} inner compaction",
         logicalStorageGroupName,
         isSequence ? "sequence" : "unsequence");
+    recoverCompactionBefore013(true);
     recoverCompaction(true, isSequence);
   }
 
   public void recoverCrossSpaceCompaction() {
     logger.info("{} [Compaction][Recover] recovering cross compaction", logicalStorageGroupName);
+    recoverCompactionBefore013(false);
     recoverCompaction(false, true);
   }
 
