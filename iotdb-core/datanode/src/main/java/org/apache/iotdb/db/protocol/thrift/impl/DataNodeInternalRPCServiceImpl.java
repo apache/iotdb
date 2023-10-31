@@ -1137,7 +1137,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   MetricLevel.CORE,
                   Tag.NAME.toString(),
                   SYSTEM)
-              .value();
+              .getValue();
       if (cpuLoad != 0) {
         loadSample.setCpuUsageRate(cpuLoad);
       }
@@ -1224,13 +1224,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         AutoGauge gauge =
             MetricService.getInstance()
                 .getAutoGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "heap");
-        result += gauge.value();
+        result += gauge.getValue();
       }
       for (String id : noHeapIds) {
         AutoGauge gauge =
             MetricService.getInstance()
                 .getAutoGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "noheap");
-        result += gauge.value();
+        result += gauge.getValue();
       }
     } catch (Exception e) {
       LOGGER.warn("Failed to get memory from metric because: ", e);
@@ -1249,7 +1249,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
                 SYSTEM)
-            .value();
+            .getValue();
     double totalDisk =
         MetricService.getInstance()
             .getAutoGauge(
@@ -1257,7 +1257,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
                 SYSTEM)
-            .value();
+            .getValue();
 
     if (availableDisk != 0 && totalDisk != 0) {
       double freeDiskRatio = availableDisk / totalDisk;

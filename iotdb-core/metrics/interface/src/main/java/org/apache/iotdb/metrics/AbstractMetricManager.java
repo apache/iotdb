@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.reporter.JmxReporter;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
@@ -39,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.ToDoubleFunction;
@@ -51,10 +53,36 @@ public abstract class AbstractMetricManager {
   protected Map<String, MetricInfo.MetaInfo> nameToMetaInfo;
   /** The map from metricInfo to metric. */
   protected Map<MetricInfo, IMetric> metrics;
+  /** The bind IoTDBJmxReporter */
+  protected JmxReporter bindJmxReporter = null;
 
   protected AbstractMetricManager() {
     nameToMetaInfo = new ConcurrentHashMap<>();
     metrics = new ConcurrentHashMap<>();
+  }
+
+  /**
+   * Notify IoTDB JmxReporter to register metric in JMX
+   *
+   * @param metric the created metric
+   * @param metricInfo the created metric info
+   */
+  private void notifyReporterOnAdd(IMetric metric, MetricInfo metricInfo) {
+    // if the reporter type is JMX, register the new metric
+    Optional.ofNullable(bindJmxReporter)
+        .ifPresent(x -> bindJmxReporter.registerMetric(metric, metricInfo));
+  }
+
+  /**
+   * Notify IoTDB JmxReporter to remove metric in JMX
+   *
+   * @param metric the removed metric
+   * @param metricInfo the removed metric info
+   */
+  private void notifyReporterOnRemove(IMetric metric, MetricInfo metricInfo) {
+    // if the reporter type is JMX, unregister the new metric
+    Optional.ofNullable(bindJmxReporter)
+        .ifPresent(x -> bindJmxReporter.unregisterMetric(metric, metricInfo));
   }
 
   /**
@@ -74,8 +102,9 @@ public abstract class AbstractMetricManager {
         metrics.computeIfAbsent(
             metricInfo,
             key -> {
-              Counter counter = createCounter(metricInfo);
+              Counter counter = createCounter();
               nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              notifyReporterOnAdd(counter, metricInfo);
               return counter;
             });
     if (metric instanceof Counter) {
@@ -84,7 +113,7 @@ public abstract class AbstractMetricManager {
     throw new IllegalArgumentException(metricInfo + ALREADY_EXISTS);
   }
 
-  protected abstract Counter createCounter(MetricInfo metricInfo);
+  protected abstract Counter createCounter();
 
   /**
    * Create autoGauge
@@ -104,21 +133,20 @@ public abstract class AbstractMetricManager {
       return DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.AUTO_GAUGE, name, tags);
-    AutoGauge gauge = createAutoGauge(metricInfo, obj, mapper);
+    AutoGauge gauge = createAutoGauge(obj, mapper);
     nameToMetaInfo.put(name, metricInfo.getMetaInfo());
     metrics.put(metricInfo, gauge);
+    notifyReporterOnAdd(gauge, metricInfo);
     return gauge;
   }
 
   /**
    * Create autoGauge according to metric framework.
    *
-   * @param metricInfo the metricInfo of autoGauge
    * @param obj which will be monitored automatically
    * @param mapper use which to map the obj to a double value
    */
-  protected abstract <T> AutoGauge createAutoGauge(
-      MetricInfo metricInfo, T obj, ToDoubleFunction<T> mapper);
+  protected abstract <T> AutoGauge createAutoGauge(T obj, ToDoubleFunction<T> mapper);
 
   /**
    * Get autoGauge.
@@ -158,8 +186,9 @@ public abstract class AbstractMetricManager {
         metrics.computeIfAbsent(
             metricInfo,
             key -> {
-              Gauge gauge = createGauge(metricInfo);
+              Gauge gauge = createGauge();
               nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              notifyReporterOnAdd(gauge, metricInfo);
               return gauge;
             });
     if (metric instanceof Gauge) {
@@ -168,12 +197,8 @@ public abstract class AbstractMetricManager {
     throw new IllegalArgumentException(metricInfo + ALREADY_EXISTS);
   }
 
-  /**
-   * Create gauge according to metric framework.
-   *
-   * @param metricInfo the metricInfo of gauge
-   */
-  protected abstract Gauge createGauge(MetricInfo metricInfo);
+  /** Create gauge according to metric framework. */
+  protected abstract Gauge createGauge();
 
   /**
    * Get rate. return if exists, create if not.
@@ -192,8 +217,9 @@ public abstract class AbstractMetricManager {
         metrics.computeIfAbsent(
             metricInfo,
             key -> {
-              Rate rate = createRate(metricInfo);
+              Rate rate = createRate();
               nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              notifyReporterOnAdd(rate, metricInfo);
               return rate;
             });
     if (metric instanceof Rate) {
@@ -202,12 +228,8 @@ public abstract class AbstractMetricManager {
     throw new IllegalArgumentException(metricInfo + ALREADY_EXISTS);
   }
 
-  /**
-   * Create rate according to metric framework.
-   *
-   * @param metricInfo the metricInfo of rate
-   */
-  protected abstract Rate createRate(MetricInfo metricInfo);
+  /** Create rate according to metric framework. */
+  protected abstract Rate createRate();
 
   /**
    * Get histogram. return if exists, create if not.
@@ -228,6 +250,7 @@ public abstract class AbstractMetricManager {
             key -> {
               Histogram histogram = createHistogram(metricInfo);
               nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              notifyReporterOnAdd(histogram, metricInfo);
               return histogram;
             });
     if (metric instanceof Histogram) {
@@ -262,6 +285,7 @@ public abstract class AbstractMetricManager {
             key -> {
               Timer timer = createTimer(metricInfo);
               nameToMetaInfo.put(name, metricInfo.getMetaInfo());
+              notifyReporterOnAdd(timer, metricInfo);
               return timer;
             });
     if (metric instanceof Timer) {
@@ -409,6 +433,7 @@ public abstract class AbstractMetricManager {
     MetricInfo metricInfo = new MetricInfo(type, name, tags);
     if (metrics.containsKey(metricInfo)) {
       if (type == metricInfo.getMetaInfo().getType()) {
+        notifyReporterOnRemove(metrics.get(metricInfo), metricInfo);
         nameToMetaInfo.remove(metricInfo.getName());
         metrics.remove(metricInfo);
         removeMetric(type, metricInfo);
@@ -426,6 +451,10 @@ public abstract class AbstractMetricManager {
   /** Is metric service enabled in specific level. */
   public boolean isEnableMetricInGivenLevel(MetricLevel metricLevel) {
     return MetricLevel.higherOrEqual(metricLevel, METRIC_CONFIG.getMetricLevel());
+  }
+
+  public void setBindJmxReporter(JmxReporter reporter) {
+    this.bindJmxReporter = reporter;
   }
 
   /** Stop and clear metric manager. */

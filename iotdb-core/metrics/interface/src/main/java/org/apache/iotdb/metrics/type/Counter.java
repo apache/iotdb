@@ -30,10 +30,10 @@ public interface Counter extends IMetric {
   void inc(long n);
 
   /** Get the value of counter. */
-  long count();
+  long getCount();
 
   @Override
   default void constructValueMap(Map<String, Object> result) {
-    result.put("value", count());
+    result.put("value", getCount());
   }
 }

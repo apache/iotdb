@@ -285,15 +285,10 @@
             <artifactId>junit</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- These two dependencies are needed at runtime, so please not set test scope -->
+        <!-- This dependency is needed at runtime, so please not set test scope -->
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>dropwizard-metrics</artifactId>
-            <version>1.3.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>micrometer-metrics</artifactId>
+            <artifactId>metrics-core</artifactId>
             <version>1.3.0-SNAPSHOT</version>
         </dependency>
         <dependency>
@@ -520,9 +515,8 @@
                         <!-- These are used at runtime in tests -->
                         <usedDependency>io.jsonwebtoken:jjwt-impl</usedDependency>
                         <usedDependency>io.jsonwebtoken:jjwt-jackson</usedDependency>
-                        <!-- We need these dependencies as they provide the metric managers used in tests -->
-                        <usedDependency>org.apache.iotdb:dropwizard-metrics</usedDependency>
-                        <usedDependency>org.apache.iotdb:micrometer-metrics</usedDependency>
+                        <!-- We need this dependency as it provides the metric managers used in tests -->
+                        <usedDependency>org.apache.iotdb:metrics-core</usedDependency>
                         <!-- This dependency is required at runtime, when esnabling the rest service -->
                         <usedDependency>org.glassfish.jersey.inject:jersey-hk2</usedDependency>
                     </usedDependencies>
