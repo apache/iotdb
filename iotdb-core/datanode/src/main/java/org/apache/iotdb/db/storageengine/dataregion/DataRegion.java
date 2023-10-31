@@ -568,7 +568,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  public void initCompaction() {
+  public void initCompactionSchedule() {
     if (!config.isEnableSeqSpaceCompaction()
         && !config.isEnableUnseqSpaceCompaction()
         && !config.isEnableCrossSpaceCompaction()) {
