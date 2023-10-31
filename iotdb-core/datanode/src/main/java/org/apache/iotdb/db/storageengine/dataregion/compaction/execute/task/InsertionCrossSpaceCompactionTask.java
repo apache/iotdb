@@ -152,7 +152,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       replaceTsFileInMemory(
           Collections.singletonList(unseqFileToInsert), Collections.singletonList(targetFile));
 
-      if (TsFileValidator.getInstance()
+      if (!TsFileValidator.getInstance()
           .validateTsFilesIsHasNoOverlap(
               tsFileManager.getOrCreateSequenceListByTimePartition(timePartition))) {
         LOGGER.error(
