@@ -41,25 +41,28 @@ public class DisruptorQueue {
   private static final IoTDBDaemonThreadFactory THREAD_FACTORY =
       new IoTDBDaemonThreadFactory(PIPE_EXTRACTOR_DISRUPTOR.getName());
 
+  private final PipeMemoryBlock allocatedMemoryBlock;
   private final Disruptor<EventContainer> disruptor;
   private final RingBuffer<EventContainer> ringBuffer;
-
-  private final PipeMemoryBlock block;
 
   private final PipeEventCounter eventCounter = new PipeEventCounter();
 
   public DisruptorQueue(EventHandler<PipeRealtimeEvent> eventHandler) {
-    PipeConfig config = PipeConfig.getInstance();
+    final PipeConfig config = PipeConfig.getInstance();
+    final int ringBufferSize = config.getPipeExtractorAssignerDisruptorRingBufferSize();
     final long ringBufferEntrySizeInBytes =
         config.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes();
-    final int ringBufferSize = config.getPipeExtractorAssignerDisruptorRingBufferSize();
 
-    block = PipeResourceManager.memory().tryAllocate(ringBufferSize * ringBufferEntrySizeInBytes);
+    allocatedMemoryBlock =
+        PipeResourceManager.memory().tryAllocate(ringBufferSize * ringBufferEntrySizeInBytes);
 
     disruptor =
         new Disruptor<>(
             EventContainer::new,
-            Math.toIntExact(block.getMemoryUsageInBytes() / ringBufferEntrySizeInBytes),
+            Math.max(
+                32,
+                Math.toIntExact(
+                    allocatedMemoryBlock.getMemoryUsageInBytes() / ringBufferEntrySizeInBytes)),
             THREAD_FACTORY,
             ProducerType.MULTI,
             new BlockingWaitStrategy());
@@ -85,7 +88,7 @@ public class DisruptorQueue {
 
   public void clear() {
     disruptor.halt();
-    block.close();
+    allocatedMemoryBlock.close();
   }
 
   private static class EventContainer {
