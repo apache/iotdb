@@ -1690,8 +1690,17 @@ public class IoTDBDescriptor {
   }
 
   private void initMemoryAllocate(Properties properties) {
-    String memoryAllocateProportion =
-        properties.getProperty("storage_query_schema_consensus_free_memory_proportion");
+    String memoryAllocateProportion = properties.getProperty("datanode_memory_proportion", null);
+    if (memoryAllocateProportion == null) {
+      memoryAllocateProportion =
+          properties.getProperty("storage_query_schema_consensus_free_memory_proportion");
+      if (memoryAllocateProportion != null) {
+        logger.warn(
+            "The parameter storage_query_schema_consensus_free_memory_proportion is deprecated since v1.2.3, "
+                + "please use datanode_memory_proportion instead.");
+      }
+    }
+
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -1712,6 +1721,8 @@ public class IoTDBDescriptor {
         if (proportions.length >= 6) {
           conf.setAllocateMemoryForPipe(
               maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum);
+        } else {
+          conf.setAllocateMemoryForPipe(0);
         }
       }
     }
