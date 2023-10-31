@@ -77,6 +77,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeExtractorAssignerDisruptorRingBufferSize();
   }
 
+  public long getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes() {
+    return COMMON_CONFIG.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes();
+  }
+
   public int getPipeExtractorMatcherCacheSize() {
     return COMMON_CONFIG.getPipeExtractorMatcherCacheSize();
   }
@@ -159,12 +163,24 @@ public class PipeConfig {
 
   /////////////////////////////// Memory ///////////////////////////////
 
+  public boolean getPipeMemoryManagementEnabled() {
+    return COMMON_CONFIG.getPipeMemoryManagementEnabled();
+  }
+
   public int getPipeMemoryAllocateMaxRetries() {
     return COMMON_CONFIG.getPipeMemoryAllocateMaxRetries();
   }
 
   public long getPipeMemoryAllocateRetryIntervalInMs() {
     return COMMON_CONFIG.getPipeMemoryAllocateRetryIntervalInMs();
+  }
+
+  public long getPipeMemoryAllocateMinSizeInBytes() {
+    return COMMON_CONFIG.getPipeMemoryAllocateMinSizeInBytes();
+  }
+
+  public long getPipeMemoryAllocateForTsFileSequenceReaderInBytes() {
+    return COMMON_CONFIG.getPipeMemoryAllocateForTsFileSequenceReaderInBytes();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -193,6 +209,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeExtractorAssignerDisruptorRingBufferSize: {}",
         getPipeExtractorAssignerDisruptorRingBufferSize());
+    LOGGER.info(
+        "PipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes: {}",
+        getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes());
     LOGGER.info("PipeExtractorMatcherCacheSize: {}", getPipeExtractorMatcherCacheSize());
 
     LOGGER.info("PipeConnectorTimeoutMs: {}", getPipeConnectorTimeoutMs());
@@ -226,9 +245,14 @@ public class PipeConfig {
         "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
         getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
 
+    LOGGER.info("PipeMemoryManagementEnabled: {}", getPipeMemoryManagementEnabled());
     LOGGER.info("PipeMemoryAllocateMaxRetries: {}", getPipeMemoryAllocateMaxRetries());
     LOGGER.info(
         "PipeMemoryAllocateRetryIntervalInMs: {}", getPipeMemoryAllocateRetryIntervalInMs());
+    LOGGER.info("PipeMemoryAllocateMinSizeInBytes: {}", getPipeMemoryAllocateMinSizeInBytes());
+    LOGGER.info(
+        "PipeMemoryAllocateForTsFileSequenceReaderInBytes: {}",
+        getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////
