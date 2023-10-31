@@ -26,7 +26,6 @@ user=root
 pass=root
 
 # Data Profiling
-
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function distinct as 'org.apache.iotdb.library.dprofile.UDTFDistinct'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function histogram as 'org.apache.iotdb.library.dprofile.UDTFHistogram'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function integral as 'org.apache.iotdb.library.dprofile.UDAFIntegral'"
@@ -79,6 +78,7 @@ pass=root
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function twosidedfilter as 'org.apache.iotdb.library.anomaly.UDTFTwoSidedFilter'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function iqr as 'org.apache.iotdb.library.anomaly.UDTFIQR'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function missdetect as 'org.apache.iotdb.library.anomaly.UDTFMissDetect'"
+../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function outlier as 'org.apache.iotdb.library.anomaly.UDTFOutlier'"
 
 
 # Frequency Domain
@@ -101,3 +101,5 @@ pass=root
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function strreplace as 'org.apache.iotdb.library.string.UDTFStrReplace'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function regexreplace as 'org.apache.iotdb.library.string.UDTFRegexReplace'"
 
+# Machine Learning
+../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function ar as 'org.apache.iotdb.library.dlearn.UDTFAR'"

@@ -64,6 +64,8 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
 
 public class IoTDBAirGapConnector extends IoTDBConnector {
 
@@ -98,14 +100,16 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
     handshakeTimeoutMs =
         parameters.getIntOrDefault(
-            CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY,
+            Arrays.asList(
+                CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY, SINK_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY),
             CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE);
     LOGGER.info(
         "IoTDBAirGapConnector is customized with handshakeTimeoutMs: {}.", handshakeTimeoutMs);
 
     eLanguageEnable =
         parameters.getBooleanOrDefault(
-            CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY,
+            Arrays.asList(
+                CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY, SINK_AIR_GAP_E_LANGUAGE_ENABLE_KEY),
             CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_DEFAULT_VALUE);
     LOGGER.info("IoTDBAirGapConnector is customized with eLanguageEnable: {}.", eLanguageEnable);
   }
@@ -236,6 +240,13 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       return;
     }
 
+    if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
+      LOGGER.warn(
+          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+          ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile());
+      return;
+    }
+
     if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
       try {
         for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
@@ -303,9 +314,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   }
 
   private void doTransfer(Socket socket, PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
-      throws PipeException, InterruptedException, IOException {
-    pipeTsFileInsertionEvent.waitForTsFileClose();
-
+      throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
 
     // 1. Transfer file piece by piece

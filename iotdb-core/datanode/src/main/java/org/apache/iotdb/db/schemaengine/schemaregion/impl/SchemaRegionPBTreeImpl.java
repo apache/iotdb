@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -834,30 +835,89 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public void createLogicalView(ICreateLogicalViewPlan createLogicalViewPlan)
-      throws MetadataException {
-    throw new UnsupportedOperationException("createLogicalView is unsupported.");
+  public void createLogicalView(ICreateLogicalViewPlan plan) throws MetadataException {
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
+      CacheMemoryManager.getInstance().waitIfReleasing();
+    }
+    try {
+      List<PartialPath> pathList = plan.getViewPathList();
+      Map<PartialPath, ViewExpression> viewPathToSourceMap =
+          plan.getViewPathToSourceExpressionMap();
+      for (PartialPath path : pathList) {
+        ViewExpression viewExpression = viewPathToSourceMap.get(path);
+        mtree.createLogicalView(path, viewExpression);
+        // write log
+        if (!isRecovering) {
+          writeToMLog(SchemaRegionWritePlanFactory.getCreateLogicalViewPlan(path, viewExpression));
+        }
+        regionStatistics.addTimeseries(1L);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
 
   @Override
   public long constructLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException();
+    long preDeletedNum = 0;
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      // Given pathPatterns may match one logical view multi times, which may results in the
+      // preDeletedNum larger than the actual num of logical view. It doesn't matter since the main
+      // purpose is to check whether there's logical view to be deleted.
+      List<PartialPath> paths = mtree.constructLogicalViewBlackList(pathPattern);
+      preDeletedNum += paths.size();
+      for (PartialPath path : paths) {
+        try {
+          writeToMLog(SchemaRegionWritePlanFactory.getPreDeleteLogicalViewPlan(path));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
+    return preDeletedNum;
   }
 
   @Override
   public void rollbackLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException();
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      List<PartialPath> paths = mtree.rollbackLogicalViewBlackList(pathPattern);
+      for (PartialPath path : paths) {
+        try {
+          writeToMLog(SchemaRegionWritePlanFactory.getRollbackPreDeleteLogicalViewPlan(path));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
   }
 
   @Override
   public void deleteLogicalView(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException();
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (PartialPath path : mtree.getPreDeletedLogicalView(pathPattern)) {
+        try {
+          deleteSingleTimeseriesInBlackList(path);
+          writeToMLog(SchemaRegionWritePlanFactory.getDeleteLogicalViewPlan(path));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
   }
 
   @Override
   public void alterLogicalView(IAlterLogicalViewPlan alterLogicalViewPlan)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    mtree.alterLogicalView(
+        alterLogicalViewPlan.getViewPath(), alterLogicalViewPlan.getSourceExpression());
+    // write log
+    if (!isRecovering) {
+      try {
+        writeToMLog(alterLogicalViewPlan);
+      } catch (IOException e) {
+        throw new MetadataException(e);
+      }
+    }
   }
 
   private void deleteSingleTimeseriesInBlackList(PartialPath path)

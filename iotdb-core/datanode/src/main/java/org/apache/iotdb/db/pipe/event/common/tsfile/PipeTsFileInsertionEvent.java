@@ -45,6 +45,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final long startTime;
   private final long endTime;
   private final boolean needParseTime;
+  private boolean isTsFileFormatValid = true;
 
   private final TsFileResource resource;
   private File tsFile;
@@ -93,6 +94,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         processor.addCloseFileListener(
             o -> {
               synchronized (isClosed) {
+                isTsFileFormatValid = o.isTsFileFormatValidForPipe();
                 isClosed.set(true);
                 isClosed.notifyAll();
               }
@@ -103,7 +105,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     isClosed.set(resource.isClosed());
   }
 
-  public void waitForTsFileClose() throws InterruptedException {
+  /**
+   * @return {@code false} if this file can't be sent by pipe due to format violations. {@code true}
+   *     otherwise.
+   */
+  public boolean waitForTsFileClose() throws InterruptedException {
     if (!isClosed.get()) {
       synchronized (isClosed) {
         while (!isClosed.get()) {
@@ -111,6 +117,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         }
       }
     }
+    return isTsFileFormatValid;
   }
 
   public File getTsFile() {

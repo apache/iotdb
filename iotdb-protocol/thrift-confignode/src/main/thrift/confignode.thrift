@@ -763,58 +763,6 @@ struct TUnsetSchemaTemplateReq{
   3: required string path
 }
 
-struct TCreateModelReq {
-  1: required string modelId
-  2: required common.TaskType taskType
-  3: required map<string, string> options
-  4: required map<string, string> hyperparameters
-  5: required string datasetFetchSQL
-}
-
-struct TDropModelReq {
-  1: required string modelId
-}
-
-struct TShowModelReq {
-  1: optional string modelId
-}
-
-struct TShowModelResp {
-  1: required common.TSStatus status
-  2: required list<binary> modelInfoList
-}
-
-struct TShowTrialReq {
-  1: required string modelId
-  2: optional string trialId
-}
-
-struct TGetModelInfoReq {
-  1: required string modelId
-}
-
-struct TShowTrialResp {
-  1: required common.TSStatus status
-  2: required list<binary> trialInfoList
-}
-
-struct TUpdateModelInfoReq {
-  1: required string modelId
-  2: required string trialId
-  3: required map<string, string> modelInfo
-}
-
-struct TUpdateModelStateReq {
-  1: required string modelId
-  2: required common.TrainingState state
-  3: optional string bestTrialId
-}
-
-struct TGetModelInfoResp {
-  1: required common.TSStatus status
-  2: optional binary modelInfo
-}
-
 // ====================================================
 // Quota
 // ====================================================
@@ -1398,53 +1346,6 @@ service IConfigNodeRPCService {
    * Return the cq table of config leader
    */
   TShowCQResp showCQ()
-
-  // ====================================================
-  // ML Model
-  // ====================================================
-
-  /**
-   * Create a model
-   *
-   * @return SUCCESS_STATUS if the model was created successfully
-   */
-  common.TSStatus createModel(TCreateModelReq req)
-
-  /**
-   * Drop a model
-   *
-   * @return SUCCESS_STATUS if the model was removed successfully
-   */
-  common.TSStatus dropModel(TDropModelReq req)
-
-  /**
-   * Return the model table
-   */
-  TShowModelResp showModel(TShowModelReq req)
-
-  /**
-   * Return the trial table
-   */
-  TShowTrialResp showTrial(TShowTrialReq req)
-
-  /**
-   * Update the model info
-   *
-   * @return SUCCESS_STATUS if the model was removed successfully
-   */
-  common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
-
-  /**
-   * Update the model state
-   *
-   * @return SUCCESS_STATUS if the model was removed successfully
-   */
-  common.TSStatus updateModelState(TUpdateModelStateReq req)
-
-   /**
-   * Return the model info by model_id
-   */
-  TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
 
   // ======================================================
   // Quota

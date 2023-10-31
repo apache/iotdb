@@ -52,7 +52,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -64,7 +63,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
@@ -84,15 +82,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrialReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrialResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
@@ -113,7 +107,6 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -134,8 +127,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegion
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowTrialsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
@@ -144,11 +135,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpace
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
-import org.apache.iotdb.db.queryengine.plan.statement.component.FromComponent;
-import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
-import org.apache.iotdb.db.queryengine.plan.statement.component.SelectComponent;
-import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -167,7 +153,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
@@ -207,8 +192,6 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.udf.api.UDTF;
 
@@ -239,14 +222,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.model.ForecastModeInformation.INPUT_TYPE_LIST;
-import static org.apache.iotdb.commons.model.ForecastModeInformation.PREDICT_INDEX_LIST;
-import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.lte;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
@@ -2134,148 +2110,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
 
-    return future;
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> createModel(
-      CreateModelStatement createModelStatement, MPPQueryContext context) {
-    createModelStatement.semanticCheck();
-
-    QueryStatement datasetStatement = createModelStatement.getDatasetStatement();
-    Analysis analysis = Analyzer.analyze(datasetStatement, context);
-
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    if (analysis.getOutputExpressions() == null) {
-      future.setException(
-          new IoTDBException(
-              "The query result of the sql in CREATE MODEL are null.",
-              TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()));
-      return future;
-    }
-
-    SelectComponent formattedSelect =
-        new SelectComponent(datasetStatement.getSelectComponent().getZoneId());
-    List<TSDataType> inputTypeList = new ArrayList<>();
-    for (Expression outputExpression :
-        analysis.getOutputExpressions().stream().map(Pair::getLeft).collect(Collectors.toList())) {
-      ResultColumn.ColumnType columnType =
-          ExpressionAnalyzer.identifyOutputColumnType(outputExpression, true);
-      formattedSelect.addResultColumn(
-          new ResultColumn(ExpressionAnalyzer.removeRootPrefix(outputExpression), columnType));
-      inputTypeList.add(analysis.getType(outputExpression));
-    }
-    datasetStatement.setSelectComponent(formattedSelect);
-
-    FromComponent fromRoot = new FromComponent();
-    fromRoot.addPrefixPath(new PartialPath(ROOT, false));
-    datasetStatement.setFromComponent(fromRoot);
-
-    WhereCondition endNowWhereCondition = new WhereCondition();
-    Expression endNowExpression = lte(time(), longValue(System.currentTimeMillis()));
-    if (!datasetStatement.hasWhere()) {
-      endNowWhereCondition.setPredicate(endNowExpression);
-    } else {
-      endNowWhereCondition.setPredicate(
-          and(
-              ExpressionAnalyzer.removeRootPrefix(
-                  datasetStatement.getWhereCondition().getPredicate()),
-              endNowExpression));
-    }
-    datasetStatement.setWhereCondition(endNowWhereCondition);
-
-    String datesetFetchSQL = datasetStatement.constructFormattedSQL();
-
-    Map<String, String> options = createModelStatement.getOptions();
-    options.put(INPUT_TYPE_LIST, Arrays.toString(inputTypeList.toArray()));
-    if (!options.containsKey(PREDICT_INDEX_LIST)) {
-      List<Integer> predictIndexList = new ArrayList<>();
-      for (int i = 0; i < inputTypeList.size(); i++) {
-        predictIndexList.add(i);
-      }
-      options.put(PREDICT_INDEX_LIST, Arrays.toString(predictIndexList.toArray()));
-    }
-
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TCreateModelReq createModelReq =
-          new TCreateModelReq(
-              createModelStatement.getModelId(),
-              createModelStatement.getTaskType(),
-              createModelStatement.getOptions(),
-              createModelStatement.getHyperparameters(),
-              datesetFetchSQL);
-
-      final TSStatus executionStatus = client.createModel(createModelReq);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.warn(
-            "[{}] Failed to create model {}. TSStatus is {}",
-            executionStatus,
-            createModelStatement.getModelId(),
-            executionStatus.message);
-        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      }
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
-    }
-    return future;
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> dropModel(String modelId) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus executionStatus = client.dropModel(new TDropModelReq(modelId));
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.warn("[{}] Failed to drop model {}.", executionStatus, modelId);
-        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      }
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
-    }
-    return future;
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> showModels() {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowModelResp showModelResp = client.showModel(new TShowModelReq());
-      if (showModelResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.setException(
-            new IoTDBException(showModelResp.getStatus().message, showModelResp.getStatus().code));
-        return future;
-      }
-      // convert model info list and buildTsBlock
-      ShowModelsTask.buildTsBlock(showModelResp.getModelInfoList(), future);
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
-    }
-    return future;
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> showTrials(String modelId) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowTrialResp showTrialResp = client.showTrial(new TShowTrialReq(modelId));
-      if (showTrialResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.setException(
-            new IoTDBException(showTrialResp.getStatus().message, showTrialResp.getStatus().code));
-        return future;
-      }
-      // convert trail info list and buildTsBlock
-      ShowTrialsTask.buildTsBlock(showTrialResp.getTrialInfoList(), future);
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
-    }
     return future;
   }
 

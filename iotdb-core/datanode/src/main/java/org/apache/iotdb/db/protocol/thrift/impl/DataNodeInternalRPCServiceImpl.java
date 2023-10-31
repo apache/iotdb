@@ -110,7 +110,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -126,7 +125,6 @@ import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaMana
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
-import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -153,7 +151,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
@@ -225,7 +222,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -1089,34 +1085,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (Exception e) {
       // TODO call the coordinator to release query resource
       return onQueryException(e, "\"" + executedSQL + "\". " + OperationType.EXECUTE_STATEMENT);
-    } finally {
-      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
-      SESSION_MANAGER.removeCurrSession();
-    }
-  }
-
-  @Override
-  public TSStatus deleteModelMetrics(TDeleteModelMetricsReq req) {
-    IClientSession session = new InternalClientSession(req.getModelId());
-    SESSION_MANAGER.registerSession(session);
-    SESSION_MANAGER.supplySession(
-        session, "MLNode", TimeZone.getDefault().getID(), ClientVersion.V_1_0);
-
-    try {
-      DeleteTimeSeriesStatement deleteTimeSeriesStatement = StatementGenerator.createStatement(req);
-
-      long queryId = SESSION_MANAGER.requestQueryId();
-      ExecutionResult result =
-          COORDINATOR.execute(
-              deleteTimeSeriesStatement,
-              queryId,
-              SESSION_MANAGER.getSessionInfo(session),
-              "",
-              partitionFetcher,
-              schemaFetcher);
-      return result.status;
-    } catch (Exception e) {
-      return ErrorHandlingUtils.onQueryException(e, OperationType.DELETE_TIMESERIES);
     } finally {
       SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
       SESSION_MANAGER.removeCurrSession();
