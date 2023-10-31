@@ -80,6 +80,8 @@ public class Analysis {
   // map from output column name (for every node) to its datatype
   private final Map<NodeRef<Expression>, TSDataType> expressionTypes = new LinkedHashMap<>();
 
+  private Template templateTypes;
+
   private boolean finishQueryAfterAnalyze;
 
   // potential fail status when finishQueryAfterAnalyze is true. If failStatus is NULL, means no
@@ -354,6 +356,10 @@ public class Analysis {
     if (expression.getExpressionType() == ExpressionType.NULL) {
       return null;
     }
+
+    // TODO add template optimization
+    // expression.get
+
     TSDataType type = expressionTypes.get(NodeRef.of(expression));
     checkArgument(type != null, "Expression is not analyzed: %s", expression);
     return type;
@@ -674,6 +680,10 @@ public class Analysis {
 
   public Map<NodeRef<Expression>, TSDataType> getExpressionTypes() {
     return expressionTypes;
+  }
+
+  public Template getTemplateTypes() {
+    return this.templateTypes;
   }
 
   public void setOrderByExpressions(Set<Expression> orderByExpressions) {

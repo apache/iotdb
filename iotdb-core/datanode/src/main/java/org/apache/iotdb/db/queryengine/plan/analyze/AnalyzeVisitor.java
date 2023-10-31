@@ -262,7 +262,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
 
       ISchemaTree schemaTree = analyzeSchema(queryStatement, analysis, context);
-
       logger.warn("----- Analyze analyzeSchema cost: {}ms", System.currentTimeMillis() - startTime);
       startTime = System.currentTimeMillis();
 
@@ -280,13 +279,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
-        // TODO
-        // 并行 最上层比如加sort
-        // fe 线程管理
-        //
+
+        if (!queryStatement.isAggregationQuery()) {
+          analysis =
+              TemplatedDeviceAnalyze.visitQuery(analysis, queryStatement, context, schemaTree);
+          // fetch partition information
+          analyzeDataPartition(analysis, queryStatement, schemaTree);
+          return analysis;
+        }
+
         List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
-        logger.warn("----- Analyze analyzeFrom cost: {}ms", System.currentTimeMillis() - startTime);
-        startTime = System.currentTimeMillis();
 
         if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
           // remove the device which won't appear in resultSet after limit/offset
@@ -294,13 +296,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
 
         analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceList);
-        logger.warn(
-            "----- Analyze analyzeDeviceToWhere cost: {}ms",
-            System.currentTimeMillis() - startTime);
-        startTime = System.currentTimeMillis();
 
         outputExpressions =
-            TemplatedDeviceAnalyze.analyzeSelect(analysis, queryStatement, schemaTree, deviceList);
+            TemplatedDeviceAnalyze.analyzeSelectUseTemplate(
+                analysis, queryStatement, schemaTree, deviceList);
 
         logger.warn(
             "----- Analyze analyzeSelect cost: {}ms", System.currentTimeMillis() - startTime);
@@ -319,7 +318,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeDeviceToSourceTransform(analysis, queryStatement);
         analyzeDeviceToSource(analysis, queryStatement);
         logger.warn(
-            "----- Analyze analyzeDeviceToSource cost: {}ms",
+            "----- Analyze analyzeDeviceToSource + analyzeDeviceToSourceTransform cost: {}ms",
             System.currentTimeMillis() - startTime);
         startTime = System.currentTimeMillis();
 
@@ -663,14 +662,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Set<PartialPath> deviceSet = new HashSet<>();
     for (PartialPath devicePattern : devicePatternList) {
       // get all matched devices
-      // TODO isPrefixMatch可否设置为false? analyzeFrom能否直接返回schemaTree的全部devices?
       deviceSet.addAll(
           schemaTree.getMatchedDevices(devicePattern, false).stream()
               .map(DeviceSchemaInfo::getDevicePath)
               .collect(Collectors.toList()));
     }
 
-    // TODO 是否一定要排序?  最终的sourceNodeList已经会排序?
     return queryStatement.getResultDeviceOrder() == Ordering.ASC
         ? deviceSet.stream().sorted().collect(Collectors.toList())
         : deviceSet.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
@@ -1348,7 +1345,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private static final String WHERE_WRONG_TYPE_ERROR_MSG =
+  static final String WHERE_WRONG_TYPE_ERROR_MSG =
       "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: %s.";
 
   private void analyzeDeviceToWhere(
@@ -1449,7 +1446,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement, analysis));
   }
 
-  private boolean analyzeDeviceViewSpecialProcess(
+  static boolean analyzeDeviceViewSpecialProcess(
       Set<Expression> deviceViewOutputExpressions,
       QueryStatement queryStatement,
       Analysis analysis) {
@@ -1509,7 +1506,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setDeviceViewInputIndexesMap(deviceViewInputIndexesMap);
   }
 
-  private void checkDeviceViewInputUniqueness(Set<Expression> outputExpressionsUnderDevice) {
+  static void checkDeviceViewInputUniqueness(Set<Expression> outputExpressionsUnderDevice) {
     Set<Expression> normalizedOutputExpressionsUnderDevice =
         outputExpressionsUnderDevice.stream()
             .map(ExpressionAnalyzer::normalizeExpression)
@@ -1521,7 +1518,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private void analyzeOutput(
+  static void analyzeOutput(
       Analysis analysis,
       QueryStatement queryStatement,
       List<Pair<Expression, String>> outputExpressions) {
@@ -1655,7 +1652,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     queryStatement.updateSortItems(orderByExpressions);
   }
 
-  private static TSDataType analyzeExpressionType(Analysis analysis, Expression expression) {
+  static TSDataType analyzeExpressionType(Analysis analysis, Expression expression) {
     return analyzeExpression(analysis, expression);
   }
 
