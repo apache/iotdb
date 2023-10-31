@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
@@ -36,7 +35,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.slf4j.Logger;
@@ -215,19 +213,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           }
         }
 
-        TsFileValidator validator = TsFileValidator.getInstance();
-
-        if (!validator.validateTsFiles(targetTsfileResourceList)) {
-          LOGGER.error(
-              "Failed to pass compaction validation, "
-                  + "source sequence files is: {}, "
-                  + "unsequence files is {}, "
-                  + "target files is {}",
-              selectedSequenceFiles,
-              selectedUnsequenceFiles,
-              targetTsfileResourceList);
-          throw new CompactionValidationFailedException("Failed to pass compaction validation");
-        }
+        validateTsFileResource(targetTsfileResourceList, true);
 
         lockWrite(selectedSequenceFiles);
         lockWrite(selectedUnsequenceFiles);
