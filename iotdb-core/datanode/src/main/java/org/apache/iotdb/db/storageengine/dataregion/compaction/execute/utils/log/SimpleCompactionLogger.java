@@ -32,6 +32,10 @@ public class SimpleCompactionLogger extends CompactionLogger {
     super(logFile);
   }
 
+  public void logSourceFile(TsFileResource sourceFile) throws IOException {
+    logFile(sourceFile, STR_SOURCE_FILES);
+  }
+
   public void logSourceFiles(List<TsFileResource> sourceFiles) throws IOException {
     logFiles(sourceFiles, STR_SOURCE_FILES);
   }

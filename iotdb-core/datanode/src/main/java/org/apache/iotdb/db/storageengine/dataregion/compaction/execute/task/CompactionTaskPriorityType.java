@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,11 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.constant;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
-public enum CompactionTaskType {
-  INNER_SEQ,
-  INNER_UNSEQ,
-  CROSS,
-  INSERTION
+public enum CompactionTaskPriorityType {
+  /** default compaction task type */
+  NORMAL,
+
+  /**
+   * in either of the following situations: 1. the TsFile has .mods file whose size exceeds 50 MB.
+   * 2. the TsFile has .mods file and the disk availability rate is lower than the
+   * disk_space_warning_threshold.
+   */
+  MOD_SETTLE
 }

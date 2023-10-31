@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.lo
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import java.io.File;
@@ -93,7 +95,7 @@ public class TsFileIdentifier {
         splittedPath[length - LOGICAL_SG_OFFSET_IN_PATH],
         splittedPath[length - DATA_REGION_OFFSET_IN_PATH],
         splittedPath[length - TIME_PARTITION_OFFSET_IN_PATH],
-        splittedPath[length - SEQUENCE_OFFSET_IN_PATH].equals(IoTDBConstant.SEQUENCE_FLODER_NAME),
+        splittedPath[length - SEQUENCE_OFFSET_IN_PATH].equals(IoTDBConstant.SEQUENCE_FOLDER_NAME),
         splittedPath[length - FILE_NAME_OFFSET_IN_PATH]);
   }
 
@@ -157,7 +159,7 @@ public class TsFileIdentifier {
   public File getFileFromDataDirs() {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     String partialFileString =
-        (sequence ? IoTDBConstant.SEQUENCE_FLODER_NAME : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
+        (sequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
             + File.separator
             + logicalStorageGroupName
             + File.separator
@@ -175,6 +177,30 @@ public class TsFileIdentifier {
     return null;
   }
 
+  public File getFileFromDataDirsIfAnyAdjuvantFileExists() {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    String partialFileString =
+        (sequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
+            + File.separator
+            + logicalStorageGroupName
+            + File.separator
+            + dataRegionId
+            + File.separator
+            + timePartitionId
+            + File.separator
+            + filename;
+    for (String dataDir : dataDirs) {
+      File file = FSFactoryProducer.getFSFactory().getFile(dataDir, partialFileString);
+      if (file.exists()
+          || new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
+          || new File(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists()
+          || new File(file.getAbsolutePath() + ModificationFile.COMPACTION_FILE_SUFFIX).exists()) {
+        return file;
+      }
+    }
+    return null;
+  }
+
   public void setFilename(String filename) {
     this.filename = filename;
   }
@@ -184,7 +210,7 @@ public class TsFileIdentifier {
   }
 
   public String getFilePath() {
-    return (sequence ? IoTDBConstant.SEQUENCE_FLODER_NAME : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
+    return (sequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
         + File.separator
         + logicalStorageGroupName
         + File.separator
