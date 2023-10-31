@@ -34,7 +34,8 @@ import org.junit.Test;
 import java.util.HashMap;
 
 public class PipeConnectorTest {
-  @Test
+
+  @Test(expected = PipeConnectionException.class)
   public void testIoTDBLegacyPipeConnector() {
     IoTDBLegacyPipeConnector connector = new IoTDBLegacyPipeConnector();
     try {
@@ -55,7 +56,7 @@ public class PipeConnectorTest {
     }
   }
 
-  @Test
+  @Test(expected = PipeConnectionException.class)
   public void testIoTDBThriftSyncConnector() {
     IoTDBThriftSyncConnector connector = new IoTDBThriftSyncConnector();
     try {
