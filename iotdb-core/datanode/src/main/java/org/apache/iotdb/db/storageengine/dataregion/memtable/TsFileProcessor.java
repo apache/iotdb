@@ -161,6 +161,12 @@ public class TsFileProcessor {
   private static final String FLUSH_QUERY_WRITE_RELEASE =
       "{}: {} get flushQueryLock write lock released";
 
+  /**
+   * Whether this file keeps TsFile format. If the file violates TsFile format, then it shouldn't be
+   * captured by pipe engine.
+   */
+  private boolean isTsFileFormatValidForPipe = true;
+
   /** close file listener. */
   private final List<CloseFileListener> closeFileListeners = new CopyOnWriteArrayList<>();
 
@@ -1384,6 +1390,7 @@ public class TsFileProcessor {
     // remove this processor from Closing list in DataRegion,
     // mark the TsFileResource closed, no need writer anymore
     writer.close();
+    isTsFileFormatValidForPipe = false; // empty file, no need to be captured by pipe
     for (CloseFileListener closeFileListener : closeFileListeners) {
       closeFileListener.onClosed(this);
     }
@@ -1397,6 +1404,11 @@ public class TsFileProcessor {
         tsFileResource.getTsFile().getAbsoluteFile());
 
     writer = null;
+  }
+
+  /** Only useful after TsFile is closed. */
+  public boolean isTsFileFormatValidForPipe() {
+    return isTsFileFormatValidForPipe;
   }
 
   public boolean isManagedByFlushManager() {
