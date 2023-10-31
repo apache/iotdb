@@ -658,8 +658,8 @@ public class StorageEngine implements IService {
         region.deleteFolder(systemDir);
         if (config.isClusterMode()
             && config
-            .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.IOT_CONSENSUS)) {
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.IOT_CONSENSUS)) {
           // delete wal
           WALManager.getInstance()
               .deleteWALNode(
