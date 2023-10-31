@@ -28,13 +28,13 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.CompactionValidator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 
 import java.io.File;
 import java.io.IOException;
@@ -152,13 +152,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       replaceTsFileInMemory(
           Collections.singletonList(unseqFileToInsert), Collections.singletonList(targetFile));
 
-      CompactionValidator validator = CompactionValidator.getInstance();
-      if (!validator.validateCompaction(
-          tsFileManager,
-          Collections.singletonList(targetFile),
-          storageGroupName,
-          timePartition,
-          false)) {
+      if (!TsFileValidator.getInstance()
+          .validateTsFilesIsHasNoOverlap(
+              tsFileManager.getOrCreateSequenceListByTimePartition(timePartition))) {
         LOGGER.error(
             "Failed to pass compaction validation, source un seq files is: {}, target files is {}",
             unseqFileToInsert,

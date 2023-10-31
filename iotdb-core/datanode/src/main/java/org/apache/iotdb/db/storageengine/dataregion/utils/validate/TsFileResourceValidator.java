@@ -17,40 +17,43 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator;
+package org.apache.iotdb.db.storageengine.dataregion.utils.validate;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
-import java.io.IOException;
 import java.util.List;
 
 @SuppressWarnings("squid:S6548")
-public class ResourceOnlyCompactionValidator implements CompactionValidator {
+public class TsFileResourceValidator implements TsFileValidator {
 
-  private ResourceOnlyCompactionValidator() {}
+  private TsFileResourceValidator() {}
 
-  public static ResourceOnlyCompactionValidator getInstance() {
-    return ResourceOnlyCompactionValidatorHolder.INSTANCE;
+  @Override
+  public boolean validateTsFile(TsFileResource resource) {
+    return TsFileResourceUtils.validateTsFileResourceCorrectness(resource);
   }
 
   @Override
-  public boolean validateCompaction(
-      TsFileManager manager,
-      List<TsFileResource> targetTsFileList,
-      String storageGroupName,
-      long timePartition,
-      boolean isInnerUnSequenceSpaceTask)
-      throws IOException {
-    if (isInnerUnSequenceSpaceTask) {
-      return true;
+  public boolean validateTsFiles(List<TsFileResource> resourceList) {
+    for (TsFileResource resource : resourceList) {
+      if (!validateTsFile(resource)) {
+        return false;
+      }
     }
-    return CompactionUtils.validateTsFileResources(manager, storageGroupName, timePartition);
+    return true;
+  }
+
+  @Override
+  public boolean validateTsFilesIsHasNoOverlap(List<TsFileResource> resourceList) {
+    return TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(resourceList);
+  }
+
+  public static TsFileResourceValidator getInstance() {
+    return ResourceOnlyCompactionValidatorHolder.INSTANCE;
   }
 
   private static class ResourceOnlyCompactionValidatorHolder {
-    private static final ResourceOnlyCompactionValidator INSTANCE =
-        new ResourceOnlyCompactionValidator();
+    private static final TsFileResourceValidator INSTANCE = new TsFileResourceValidator();
   }
 }

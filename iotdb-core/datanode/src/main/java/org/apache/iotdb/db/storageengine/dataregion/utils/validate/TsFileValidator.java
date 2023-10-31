@@ -17,33 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator;
+package org.apache.iotdb.db.storageengine.dataregion.utils.validate;
 
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.util.List;
 
-@SuppressWarnings("squid:S6548")
-public class NoneCompactionValidator implements CompactionValidator {
+public interface TsFileValidator {
 
-  private NoneCompactionValidator() {}
+  /** validate that a single .resource file is correct */
+  boolean validateTsFile(TsFileResource resource);
 
-  public static NoneCompactionValidator getInstance() {
-    return NoneCompactionValidatorHolder.INSTANCE;
-  }
+  /** validate that multiple .resource files are correct */
+  boolean validateTsFiles(List<TsFileResource> resourceList);
 
-  @Override
-  public boolean validateCompaction(
-      TsFileManager manager,
-      List<TsFileResource> targetTsFileList,
-      String storageGroupName,
-      long timePartition,
-      boolean isInnerUnSequenceSpaceTask) {
-    return true;
-  }
+  /** */
+  boolean validateTsFilesIsHasNoOverlap(List<TsFileResource> resourceList);
 
-  private static class NoneCompactionValidatorHolder {
-    private static final NoneCompactionValidator INSTANCE = new NoneCompactionValidator();
+  static TsFileValidator getInstance() {
+    boolean enableTsFileValidation =
+        IoTDBDescriptor.getInstance().getConfig().isEnableTsFileValidation();
+    if (enableTsFileValidation) {
+      return TsFileResourceAndDataValidator.getInstance();
+    } else {
+      return TsFileResourceValidator.getInstance();
+    }
   }
 }

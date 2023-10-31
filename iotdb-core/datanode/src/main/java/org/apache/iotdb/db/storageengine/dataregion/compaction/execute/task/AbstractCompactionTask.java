@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.slf4j.Logger;
@@ -368,6 +370,24 @@ public abstract class AbstractCompactionTask {
       return true;
     }
     return CompactionUtils.isDiskHasSpace();
+  }
+
+  protected void validateTsFileResource(
+      List<TsFileResource> targetTsFileList, boolean needValidateOverlap) {
+    TsFileValidator validator = TsFileValidator.getInstance();
+    if (!validator.validateTsFiles(targetTsFileList)) {
+      LOGGER.error("Failed to pass compaction validation, target files is {}", targetTsFileList);
+      throw new CompactionValidationFailedException(
+          "Failed to pass compaction validation, .resources file or tsfile data is wrong");
+    }
+    if (needValidateOverlap
+        && !validator.validateTsFilesIsHasNoOverlap(
+            tsFileManager.getOrCreateSequenceListByTimePartition(timePartition).getArrayList())) {
+      LOGGER.error("Failed to pass compaction validation, target files is {}", targetTsFileList);
+      throw new CompactionValidationFailedException(
+          "Failed to pass compaction validation, sequence files has overlap, time partition id is "
+              + timePartition);
+    }
   }
 
   public CompactionTaskType getCompactionTaskType() {

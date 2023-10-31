@@ -85,6 +85,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.VersionController;
+import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
@@ -2070,7 +2071,8 @@ public class DataRegion implements IDataRegionForQuery {
     closeQueryLock.writeLock().lock();
     try {
       tsFileProcessor.close();
-      if (tsFileProcessor.isEmpty() || tsFileProcessor.getTsFileResource().isEmpty()) {
+      if (tsFileProcessor.isEmpty()
+          || !TsFileValidator.getInstance().validateTsFile(tsFileProcessor.getTsFileResource())) {
         tsFileProcessor.getTsFileResource().remove();
         tsFileManager.remove(tsFileProcessor.getTsFileResource(), tsFileProcessor.isSequence());
       } else {
@@ -2222,6 +2224,12 @@ public class DataRegion implements IDataRegionForQuery {
       throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
+
+    if (!TsFileValidator.getInstance().validateTsFile(newTsFileResource)) {
+      throw new LoadFileException(
+          "tsfile validate failed, " + newTsFileResource.getTsFile().getName());
+    }
+
     writeLock("loadNewTsFile");
     try {
       newTsFileResource.setSeq(false);
