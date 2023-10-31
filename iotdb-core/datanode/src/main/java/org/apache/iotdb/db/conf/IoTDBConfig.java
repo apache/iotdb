@@ -433,7 +433,6 @@ public class IoTDBConfig {
   /** Insert the non overlapped unsequence files into sequence space */
   private boolean enableInsertionCrossSpaceCompaction = false;
 
-  /** Enable the service for MLNode */
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
 
