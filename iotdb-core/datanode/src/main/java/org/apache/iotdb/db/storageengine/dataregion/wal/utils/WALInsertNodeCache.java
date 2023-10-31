@@ -59,7 +59,7 @@ public class WALInsertNodeCache {
 
   // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
   private final PipeMemoryBlock allocatedMemoryBlock;
-  private final boolean isBatchLoadEnabled;
+  private boolean isBatchLoadEnabled;
   private final LoadingCache<WALEntryPosition, Pair<ByteBuffer, InsertNode>> lruCache;
 
   // ids of all pinned memTables
