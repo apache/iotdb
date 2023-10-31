@@ -31,7 +31,7 @@ public enum PipeRuntimeExceptionType {
   NON_CRITICAL_EXCEPTION((short) 1),
   CRITICAL_EXCEPTION((short) 2),
   CONNECTOR_CRITICAL_EXCEPTION((short) 3),
-  OUT_OF_MEMORY_EXCEPTION((short) 4),
+  OUT_OF_MEMORY_CRITICAL_EXCEPTION((short) 4),
   ;
 
   private final short type;

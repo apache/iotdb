@@ -48,14 +48,14 @@ public class PipeRuntimeOutOfMemoryCriticalException extends PipeRuntimeCritical
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    PipeRuntimeExceptionType.OUT_OF_MEMORY_EXCEPTION.serialize(byteBuffer);
+    PipeRuntimeExceptionType.OUT_OF_MEMORY_CRITICAL_EXCEPTION.serialize(byteBuffer);
     ReadWriteIOUtils.write(getMessage(), byteBuffer);
     ReadWriteIOUtils.write(getTimeStamp(), byteBuffer);
   }
 
   @Override
   public void serialize(OutputStream stream) throws IOException {
-    PipeRuntimeExceptionType.OUT_OF_MEMORY_EXCEPTION.serialize(stream);
+    PipeRuntimeExceptionType.OUT_OF_MEMORY_CRITICAL_EXCEPTION.serialize(stream);
     ReadWriteIOUtils.write(getMessage(), stream);
     ReadWriteIOUtils.write(getTimeStamp(), stream);
   }
