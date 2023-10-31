@@ -37,8 +37,7 @@ public class PipeConnectorTest {
 
   @Test(expected = PipeConnectionException.class)
   public void testIoTDBLegacyPipeConnector() {
-    IoTDBLegacyPipeConnector connector = new IoTDBLegacyPipeConnector();
-    try {
+    try (IoTDBLegacyPipeConnector connector = new IoTDBLegacyPipeConnector()) {
       connector.validate(
           new PipeParameterValidator(
               new PipeParameters(
@@ -58,8 +57,7 @@ public class PipeConnectorTest {
 
   @Test(expected = PipeConnectionException.class)
   public void testIoTDBThriftSyncConnector() {
-    IoTDBThriftSyncConnector connector = new IoTDBThriftSyncConnector();
-    try {
+    try (IoTDBThriftSyncConnector connector = new IoTDBThriftSyncConnector()) {
       connector.validate(
           new PipeParameterValidator(
               new PipeParameters(
@@ -79,8 +77,7 @@ public class PipeConnectorTest {
 
   @Test(expected = PipeConnectionException.class)
   public void testIoTDBThriftAsyncConnector() {
-    IoTDBThriftAsyncConnector connector = new IoTDBThriftAsyncConnector();
-    try {
+    try (IoTDBThriftAsyncConnector connector = new IoTDBThriftAsyncConnector()) {
       connector.validate(
           new PipeParameterValidator(
               new PipeParameters(
