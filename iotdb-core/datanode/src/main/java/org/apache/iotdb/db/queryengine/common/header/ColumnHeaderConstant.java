@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.common.header;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 
 import com.google.common.collect.ImmutableList;
 

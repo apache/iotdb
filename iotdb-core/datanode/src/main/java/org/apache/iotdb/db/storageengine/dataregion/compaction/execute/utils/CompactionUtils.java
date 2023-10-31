@@ -35,12 +35,12 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -477,7 +477,7 @@ public class CompactionUtils {
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
                 SYSTEM)
-            .value();
+            .getValue();
     double totalDisk =
         MetricService.getInstance()
             .getAutoGauge(
@@ -485,7 +485,7 @@ public class CompactionUtils {
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
                 SYSTEM)
-            .value();
+            .getValue();
 
     if (availableDisk != 0 && totalDisk != 0) {
       return availableDisk / totalDisk

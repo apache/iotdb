@@ -26,10 +26,11 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -161,9 +162,11 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
     for (Pair<String, PartialPath> sourceTargetPathPair :
         deviceToSourceTargetPathPairListMap.get(currentDevice)) {
       timeColumnBuilder.writeLong(0);
-      columnBuilders[0].writeBinary(new Binary(currentDevice));
-      columnBuilders[1].writeBinary(new Binary(sourceTargetPathPair.left));
-      columnBuilders[2].writeBinary(new Binary(sourceTargetPathPair.right.toString()));
+      columnBuilders[0].writeBinary(new Binary(currentDevice, TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(
+          new Binary(sourceTargetPathPair.left, TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeBinary(
+          new Binary(sourceTargetPathPair.right.toString(), TSFileConfig.STRING_CHARSET));
       columnBuilders[3].writeInt(
           findWritten(
               sourceTargetPathPair.right.getDevice(), sourceTargetPathPair.right.getMeasurement()));

@@ -37,6 +37,11 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
+            <artifactId>common-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
             <artifactId>tsfile</artifactId>
             <version>1.3.0-SNAPSHOT</version>
             <!-- we want to reduce the size of JDBC -->

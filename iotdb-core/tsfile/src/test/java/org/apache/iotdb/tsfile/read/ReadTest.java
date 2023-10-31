@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -318,7 +319,7 @@ public class ReadTest {
       if (cnt == 1) {
         assertEquals(1480562618976L, r.getTimestamp());
         Field f1 = r.getFields().get(0);
-        assertEquals("dog976", f1.getBinaryV().getStringValue());
+        assertEquals("dog976", f1.getBinaryV().getStringValue(TSFileConfig.STRING_CHARSET));
       }
       cnt++;
     }

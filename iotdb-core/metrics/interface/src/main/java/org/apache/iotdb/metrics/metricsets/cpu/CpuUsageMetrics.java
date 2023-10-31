@@ -309,7 +309,7 @@ public class CpuUsageMetrics implements IMetricSet {
       processCpuLoadGauge =
           metricService.getAutoGauge("process_cpu_load", MetricLevel.CORE, "name", "process");
     }
-    double processCpuLoad = processCpuLoadGauge.value();
+    double processCpuLoad = processCpuLoadGauge.getValue();
     for (Map.Entry<String, Long> entry : moduleIncrementCpuTimeMap.entrySet()) {
       moduleCpuTimePercentageMap.put(
           entry.getKey(), entry.getValue() * 1.0 / totalIncrementTime * processCpuLoad);

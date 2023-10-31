@@ -68,7 +68,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.RegularCo
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
@@ -238,9 +238,6 @@ public class ColumnTransformerVisitor
                   .map(expression -> this.process(expression, context))
                   .toArray(ColumnTransformer[]::new);
 
-          TSDataType[] inputTransformerDataTypes =
-              expressions.stream().map(context::getType).toArray(TSDataType[]::new);
-
           UDTFExecutor executor =
               context.udtfContext.getExecutorByFunctionExpression(functionExpression);
 
@@ -260,7 +257,6 @@ public class ColumnTransformerVisitor
               new MappableUDFColumnTransformer(
                   TypeFactory.getType(context.getType(functionExpression)),
                   inputColumnTransformers,
-                  inputTransformerDataTypes,
                   context.udtfContext.getExecutorByFunctionExpression(functionExpression)));
         }
       }

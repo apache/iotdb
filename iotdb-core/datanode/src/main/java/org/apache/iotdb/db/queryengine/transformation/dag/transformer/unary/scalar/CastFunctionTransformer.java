@@ -23,8 +23,10 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import java.io.IOException;
 
@@ -86,7 +88,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         cachedBoolean = (value != 0);
         return;
       case TEXT:
-        cachedBinary = Binary.valueOf(String.valueOf(value));
+        cachedBinary = BytesUtils.valueOf(String.valueOf(value));
         return;
       default:
         throw new UnsupportedOperationException(
@@ -112,7 +114,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         cachedBoolean = (value != 0L);
         return;
       case TEXT:
-        cachedBinary = Binary.valueOf(String.valueOf(value));
+        cachedBinary = BytesUtils.valueOf(String.valueOf(value));
         return;
       default:
         throw new UnsupportedOperationException(
@@ -138,7 +140,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         cachedBoolean = (value != 0f);
         return;
       case TEXT:
-        cachedBinary = Binary.valueOf(String.valueOf(value));
+        cachedBinary = BytesUtils.valueOf(String.valueOf(value));
         return;
       default:
         throw new UnsupportedOperationException(
@@ -164,7 +166,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         cachedBoolean = (value != 0.0);
         return;
       case TEXT:
-        cachedBinary = Binary.valueOf(String.valueOf(value));
+        cachedBinary = BytesUtils.valueOf(String.valueOf(value));
         return;
       default:
         throw new UnsupportedOperationException(
@@ -190,7 +192,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         cachedBoolean = value;
         return;
       case TEXT:
-        cachedBinary = Binary.valueOf(String.valueOf(value));
+        cachedBinary = BytesUtils.valueOf(String.valueOf(value));
         return;
       default:
         throw new UnsupportedOperationException(
@@ -199,7 +201,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
   }
 
   private void cast(Binary value) {
-    String stringValue = value.getStringValue();
+    String stringValue = value.getStringValue(TSFileConfig.STRING_CHARSET);
     // could throw exception when parsing string value
     switch (targetDataType) {
       case INT32:
@@ -218,7 +220,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         cachedBoolean = CastFunctionHelper.castTextToBoolean(stringValue);
         return;
       case TEXT:
-        cachedBinary = Binary.valueOf(String.valueOf(value));
+        cachedBinary = BytesUtils.valueOf(String.valueOf(value));
         return;
       default:
         throw new UnsupportedOperationException(
