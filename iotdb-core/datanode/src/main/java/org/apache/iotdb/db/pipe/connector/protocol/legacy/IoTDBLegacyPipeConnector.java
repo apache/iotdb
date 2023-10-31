@@ -206,6 +206,13 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
           "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.");
     }
 
+    if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
+      LOGGER.warn(
+          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+          ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile());
+      return;
+    }
+
     try {
       doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
@@ -244,9 +251,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   }
 
   private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
-      throws PipeException, TException, InterruptedException, IOException {
-    pipeTsFileInsertionEvent.waitForTsFileClose();
-
+      throws PipeException, TException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
     transportSingleFilePieceByPiece(tsFile);
     client.sendPipeData(ByteBuffer.wrap(new TsFilePipeData("", tsFile.getName(), -1).serialize()));

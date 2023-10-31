@@ -70,7 +70,18 @@ public abstract class AbstractCli {
   static final String USERNAME_NAME = "username";
 
   private static final String EXECUTE_ARGS = "e";
+
+  static final String USE_SSL_ARGS = "usessl";
+  static final String TRUST_STORE_ARGS = "ts";
+
+  static final String TRUST_STORE_PWD_ARGS = "tpw";
+
   private static final String EXECUTE_NAME = "execute";
+
+  private static final String USE_SSL = "use_ssl";
+  private static final String TRUST_STORE = "trust_store";
+
+  private static final String TRUST_STORE_PWD = "trust_store_pwd";
   private static final String NULL = "null";
 
   static final int CODE_OK = 0;
@@ -113,6 +124,10 @@ public abstract class AbstractCli {
   static String port = "6667";
   static String username;
   static String password;
+  static String useSsl;
+  static String trustStore;
+  static String trustStorePwd;
+
   static String execute;
   static boolean hasExecuteSQL = false;
 
@@ -130,6 +145,9 @@ public abstract class AbstractCli {
     keywordSet.add("-" + PORT_ARGS);
     keywordSet.add("-" + PW_ARGS);
     keywordSet.add("-" + USERNAME_ARGS);
+    keywordSet.add("-" + USE_SSL_ARGS);
+    keywordSet.add("-" + TRUST_STORE_ARGS);
+    keywordSet.add("-" + TRUST_STORE_PWD_ARGS);
     keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
     keywordSet.add("-" + RPC_COMPRESS_ARGS);
@@ -173,6 +191,30 @@ public abstract class AbstractCli {
     Option password =
         Option.builder(PW_ARGS).argName(PW_NAME).hasArg().desc("password (optional)").build();
     options.addOption(password);
+
+    Option useSSL =
+        Option.builder(USE_SSL_ARGS)
+            .argName(USE_SSL)
+            .hasArg()
+            .desc("use_ssl statement (optional)")
+            .build();
+    options.addOption(useSSL);
+
+    Option trustStore =
+        Option.builder(TRUST_STORE_ARGS)
+            .argName(TRUST_STORE)
+            .hasArg()
+            .desc("trust_store statement (optional)")
+            .build();
+    options.addOption(trustStore);
+
+    Option trustStorePwd =
+        Option.builder(TRUST_STORE_PWD_ARGS)
+            .argName(TRUST_STORE_PWD)
+            .hasArg()
+            .desc("trust_store_pwd statement (optional)")
+            .build();
+    options.addOption(trustStorePwd);
 
     Option execute =
         Option.builder(EXECUTE_ARGS)

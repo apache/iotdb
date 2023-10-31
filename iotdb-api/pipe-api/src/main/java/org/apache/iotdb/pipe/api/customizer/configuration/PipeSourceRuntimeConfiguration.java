@@ -17,12 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state.model;
+package org.apache.iotdb.pipe.api.customizer.configuration;
 
-public enum DropModelState {
-  INIT,
-  VALIDATED,
-  DATA_NODE_DROPPED,
-  ML_NODE_DROPPED,
-  CONFIG_NODE_DROPPED
-}
+public interface PipeSourceRuntimeConfiguration extends PipeExtractorRuntimeConfiguration {}

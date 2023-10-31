@@ -17,11 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze;
+package org.apache.iotdb.pipe.api.customizer.configuration;
 
-import org.apache.iotdb.commons.model.ModelInformation;
-
-public interface IModelFetcher {
-  /** Get model information by model id from configNode. */
-  ModelInformation getModelInformation(String modelId);
-}
+public interface PipeSinkRuntimeConfiguration extends PipeConnectorRuntimeConfiguration {}

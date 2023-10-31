@@ -102,9 +102,6 @@ public enum DataNodeRequestType {
   // TODO Need to migrate to Node Maintenance
   KILL_QUERY_INSTANCE,
 
-  // ML Model
-  DELETE_MODEL_METRICS,
-
   // Quota
   SET_SPACE_QUOTA,
   SET_THROTTLE_QUOTA,

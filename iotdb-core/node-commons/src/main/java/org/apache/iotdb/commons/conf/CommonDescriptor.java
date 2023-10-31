@@ -22,7 +22,6 @@ package org.apache.iotdb.commons.conf;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
 import java.io.File;
@@ -205,14 +204,7 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
 
-    String endPointUrl =
-        properties.getProperty(
-            "target_ml_node_endpoint",
-            NodeUrlUtils.convertTEndPointUrl(config.getTargetMLNodeEndPoint()));
-
     loadPipeProps(properties);
-
-    config.setTargetMLNodeEndPoint(NodeUrlUtils.parseTEndPointUrl(endPointUrl));
 
     config.setSchemaEngineMode(
         properties.getProperty("schema_engine_mode", String.valueOf(config.getSchemaEngineMode())));
@@ -238,11 +230,6 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
-    config.setModelInferenceExecutionThreadCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "model_inference_execution_thread_count",
-                String.valueOf(config.getModelInferenceExecutionThreadCount()))));
   }
 
   private void loadPipeProps(Properties properties) {

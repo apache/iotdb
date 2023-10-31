@@ -296,6 +296,11 @@ public class StorageEngine implements IService {
     }
 
     recover();
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        dataRegion.initCompaction();
+      }
+    }
 
     ttlCheckThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.TTL_CHECK.getName());
@@ -552,7 +557,7 @@ public class StorageEngine implements IService {
   public void operateFlush(TFlushReq req) {
     if (req.storageGroups == null) {
       StorageEngine.getInstance().syncCloseAllProcessor();
-      WALManager.getInstance().deleteOutdatedWALFiles();
+      WALManager.getInstance().deleteOutdatedFilesInWALNodes();
     } else {
       for (String storageGroup : req.storageGroups) {
         if (req.isSeq == null) {

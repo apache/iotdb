@@ -234,11 +234,16 @@ public class IoTDBStartCheck {
    * During a restart, it is necessary to check if the file exists in the old location. If it does,
    * move the file to the new location.
    *
-   * @throws IOException
+   * @throws IOException If copy fail or delete fail
    */
   public void checkOldSystemConfig() throws IOException {
     if (oldPropertiesFile.exists()) {
-      FileUtils.moveFile(oldPropertiesFile, propertiesFile);
+      FileUtils.copyFile(oldPropertiesFile, propertiesFile);
+      FileUtils.delete(oldPropertiesFile);
+      logger.info(
+          "system.properties file has been moved successfully: {} -> {}",
+          oldPropertiesFile.getAbsolutePath(),
+          propertiesFile.getAbsolutePath());
     }
   }
 

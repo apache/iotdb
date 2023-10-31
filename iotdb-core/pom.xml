@@ -35,7 +35,6 @@
         <module>consensus</module>
         <module>datanode</module>
         <module>metrics</module>
-        <module>mlnode</module>
         <module>node-commons</module>
         <module>tsfile</module>
     </modules>

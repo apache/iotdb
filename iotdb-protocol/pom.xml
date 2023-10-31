@@ -35,6 +35,5 @@
         <module>thrift-commons</module>
         <module>thrift-confignode</module>
         <module>thrift-consensus</module>
-        <module>thrift-mlnode</module>
     </modules>
 </project>

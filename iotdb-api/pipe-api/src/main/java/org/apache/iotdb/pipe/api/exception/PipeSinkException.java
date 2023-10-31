@@ -17,24 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client.mlnode;
+package org.apache.iotdb.pipe.api.exception;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
-import org.apache.iotdb.commons.client.IClientManager;
+public class PipeSinkException extends PipeConnectionException {
 
-public class MLNodeClientManager {
-  private MLNodeClientManager() {
-    // Empty constructor
+  public PipeSinkException(String message) {
+    super(message);
   }
 
-  private static final class MLNodeClientManagerHolder {
-    private static final IClientManager<TEndPoint, MLNodeClient> INSTANCE =
-        new IClientManager.Factory<TEndPoint, MLNodeClient>()
-            .createClientManager(new ClientPoolFactory.MLNodeClientPoolFactory());
-  }
-
-  public static IClientManager<TEndPoint, MLNodeClient> getInstance() {
-    return MLNodeClientManagerHolder.INSTANCE;
+  public PipeSinkException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

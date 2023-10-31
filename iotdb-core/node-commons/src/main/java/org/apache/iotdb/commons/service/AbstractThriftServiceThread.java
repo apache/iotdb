@@ -36,6 +36,7 @@ import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.server.TThreadedSelectorServer;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
+import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -154,6 +155,41 @@ public abstract class AbstractThriftServiceThread extends Thread {
   }
 
   /** for synced ThriftServiceThread */
+  @SuppressWarnings("squid:S107")
+  protected AbstractThriftServiceThread(
+      TProcessor processor,
+      String serviceName,
+      String threadsName,
+      String bindAddress,
+      int port,
+      int maxWorkerThreads,
+      int timeoutSecond,
+      TServerEventHandler serverEventHandler,
+      boolean compress,
+      String keyStorePath,
+      String keyStorePwd,
+      int clientTimeout) {
+    initProtocolFactory(compress);
+    this.serviceName = serviceName;
+
+    try {
+      TSSLTransportFactory.TSSLTransportParameters params =
+          new TSSLTransportFactory.TSSLTransportParameters();
+      params.setKeyStore(keyStorePath, keyStorePwd);
+      params.requireClientAuth(false);
+      InetSocketAddress socketAddress = new InetSocketAddress(bindAddress, port);
+      serverTransport =
+          TSSLTransportFactory.getServerSocket(
+              socketAddress.getPort(), clientTimeout, socketAddress.getAddress(), params);
+      TThreadPoolServer.Args poolArgs =
+          initSyncedPoolArgs(processor, threadsName, maxWorkerThreads, timeoutSecond);
+      poolServer = new TThreadPoolServer(poolArgs);
+      poolServer.setServerEventHandler(serverEventHandler);
+    } catch (TTransportException e) {
+      catchFailedInitialization(e);
+    }
+  }
+
   @SuppressWarnings("squid:S107")
   protected AbstractThriftServiceThread(
       TProcessor processor,
