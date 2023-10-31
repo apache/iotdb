@@ -239,11 +239,6 @@ public class GroupByMonthFilter extends GroupByFilter {
   /** get the Nth time interval. */
   private void getNthTimeInterval(int n) {
     // get interval and sliding step
-    if (originalInterval.containsMonth()) {
-      this.interval =
-          calcPositiveIntervalByMonth(startTime, originalInterval, 1, timeZone, currPrecision)
-              - startTime;
-    }
     if (originalSlidingStep.containsMonth()) {
       if (n < 0 || n > startTimes.length - 1) {
         this.interval = -1;
@@ -255,6 +250,11 @@ public class GroupByMonthFilter extends GroupByFilter {
               - startTime;
     } else {
       startTime = originalStartTime + n * slidingStep;
+    }
+    if (originalInterval.containsMonth()) {
+      this.interval =
+          calcPositiveIntervalByMonth(startTime, originalInterval, 1, timeZone, currPrecision)
+              - startTime;
     }
   }
 
