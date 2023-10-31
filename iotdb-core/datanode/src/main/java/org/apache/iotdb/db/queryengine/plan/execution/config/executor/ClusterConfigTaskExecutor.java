@@ -101,6 +101,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -191,6 +192,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
@@ -1448,6 +1451,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                     "Duplicated measurement [%s] in device template alter request",
                     duplicateMeasurement)));
         return future;
+      }
+      // check schema quota
+      long localNeedQuota =
+          (long) templateExtendInfo.getMeasurements().size()
+              * SchemaEngine.getInstance()
+                  .getSchemaEngineStatistics()
+                  .getTemplateUsingNumber(templateExtendInfo.getTemplateName());
+      if (localNeedQuota != 0) {
+        try {
+
+          DataNodeSchemaQuotaManager.getInstance().check(localNeedQuota, 0);
+        } catch (SchemaQuotaExceededException e) {
+          future.setException(e);
+          return future;
+        }
       }
     }
 

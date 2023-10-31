@@ -52,7 +52,7 @@ public class DataNodeSchemaQuotaManager {
     }
   }
 
-  private void checkMeasurementLevel(int acquireNumber) throws SchemaQuotaExceededException {
+  private void checkMeasurementLevel(long acquireNumber) throws SchemaQuotaExceededException {
     if (seriesLimit) {
       if (seriesRemain.get() <= 0) {
         throw new SchemaQuotaExceededException(ClusterSchemaQuotaLevel.TIMESERIES);
@@ -72,7 +72,7 @@ public class DataNodeSchemaQuotaManager {
     }
   }
 
-  public void check(int acquireSeriesNumber, int acquireDeviceNumber)
+  public void check(long acquireSeriesNumber, int acquireDeviceNumber)
       throws SchemaQuotaExceededException {
     if (acquireDeviceNumber > 0) {
       checkDeviceLevel();
