@@ -139,6 +139,11 @@ public class ClusterConstant {
   public static final String TRIGGER_LIB_DIR = "trigger_lib_dir";
   public static final String PIPE_LIB_DIR = "pipe_lib_dir";
   public static final String REST_SERVICE_PORT = "rest_service_port";
+  public static final String ENABLE_REST_SERVICE = "enable_rest_service";
+  public static final String ENABLE_SWAGGER = "enable_swagger";
+  public static final String REST_QUERY_DEFAULT_ROW_SIZE_LIMIT =
+      "rest_query_default_row_size_limit";
+  public static final String CACHE_EXPIRE_IN_SECONDS = "cache_expire_in_seconds";
   public static final String INFLUXDB_RPC_PORT = "influxdb_rpc_port";
 
   // ConfigNode

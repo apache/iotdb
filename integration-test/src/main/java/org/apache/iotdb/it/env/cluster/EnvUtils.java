@@ -72,7 +72,7 @@ public class EnvUtils {
           continue;
         }
         List<Integer> requiredPorts =
-            IntStream.rangeClosed(randomPortStart, randomPortStart + 9)
+            IntStream.rangeClosed(randomPortStart, randomPortStart + 10)
                 .boxed()
                 .collect(Collectors.toList());
         if (checkPortsAvailable(requiredPorts)) {

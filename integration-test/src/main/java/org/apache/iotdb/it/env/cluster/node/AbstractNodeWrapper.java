@@ -415,6 +415,27 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
         startCmd.add("--add-opens=java.base/java.io=ALL-UNNAMED");
         startCmd.add("--add-opens=java.base/java.net=ALL-UNNAMED");
       }
+
+      String libPath =
+          System.getProperty("user.dir")
+              + File.separator
+              + "target"
+              + File.separator
+              + "template-node-share"
+              + File.separator
+              + "lib"
+              + File.separator;
+      File directory = new File(libPath);
+      String server_node_lib_path = "";
+      if (directory.exists() && directory.isDirectory()) {
+        File[] files = directory.listFiles();
+        for (File file : files) {
+          if (file.getName().startsWith("iotdb-server")) {
+            server_node_lib_path = libPath + file.getName() + ":" + TEMPLATE_NODE_LIB_PATH;
+            break;
+          }
+        }
+      }
       startCmd.addAll(
           Arrays.asList(
               "-Dcom.sun.management.jmxremote.port=" + jmxPort,
@@ -428,7 +449,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               "-XX:MaxDirectMemorySize=" + jvmConfig.getMaxDirectMemorySize() + "m",
               "-Djdk.nio.maxCachedBufferSize=262144",
               "-cp",
-              TEMPLATE_NODE_LIB_PATH));
+              server_node_lib_path));
       addStartCmdParams(startCmd);
       FileUtils.write(
           stdoutFile, String.join(" ", startCmd) + "\n\n", StandardCharsets.UTF_8, true);
