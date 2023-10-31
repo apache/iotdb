@@ -188,7 +188,7 @@ public class CommonConfig {
   private boolean pipeMemoryManagementEnabled = true;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
   private int pipeMemoryAllocateMaxRetries = 10;
-  private long pipeMemoryAllocateMinSizeInBytes = 1;
+  private long pipeMemoryAllocateMinSizeInBytes = 32;
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = 2 * 1024 * 1024; // 2MB
 
   /** Whether to use persistent schema mode. */
