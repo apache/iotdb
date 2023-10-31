@@ -17,9 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.common.block.column;
-
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus;
+package org.apache.iotdb.tsfile.access;
 
 import org.openjdk.jol.info.ClassLayout;
 

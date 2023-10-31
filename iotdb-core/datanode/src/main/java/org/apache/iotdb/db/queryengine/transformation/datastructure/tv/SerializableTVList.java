@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.transformation.datastructure.tv;
 
 import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public abstract class SerializableTVList extends BatchData implements SerializableList {

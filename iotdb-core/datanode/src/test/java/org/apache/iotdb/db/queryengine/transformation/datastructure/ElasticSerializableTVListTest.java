@@ -22,7 +22,8 @@ package org.apache.iotdb.db.queryengine.transformation.datastructure;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.udf.api.type.Binary;
 
 import org.junit.After;
@@ -227,9 +228,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
               assertTrue(tvList.isNull(i));
             } else {
               assertFalse(tvList.isNull(i));
-              assertEquals(
-                  org.apache.iotdb.tsfile.utils.Binary.valueOf(String.valueOf(i)),
-                  tvList.getBinary(i));
+              assertEquals(BytesUtils.valueOf(String.valueOf(i)), tvList.getBinary(i));
             }
           }
           break;

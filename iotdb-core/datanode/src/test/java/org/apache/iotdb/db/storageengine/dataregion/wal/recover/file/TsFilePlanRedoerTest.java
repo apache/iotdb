@@ -32,16 +32,18 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.TsFileUtilsForRecoverTest;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
@@ -194,7 +196,8 @@ public class TsFilePlanRedoerTest {
         new TSDataType[] {
           TSDataType.INT32, TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.FLOAT, TSDataType.TEXT
         };
-    Object[] columns = new Object[] {1, 1L, true, 1.0f, new Binary("1")};
+    Object[] columns =
+        new Object[] {1, 1L, true, 1.0f, new Binary("1", TSFileConfig.STRING_CHARSET)};
 
     InsertRowNode insertRowNode1 =
         new InsertRowNode(
@@ -262,7 +265,7 @@ public class TsFilePlanRedoerTest {
       assertEquals(1L, timeValuePair.getValue().getVector()[1].getLong());
       assertTrue(timeValuePair.getValue().getVector()[2].getBoolean());
       assertEquals(1, timeValuePair.getValue().getVector()[3].getFloat(), 0.00001);
-      assertEquals(Binary.valueOf("1"), timeValuePair.getValue().getVector()[4].getBinary());
+      assertEquals(BytesUtils.valueOf("1"), timeValuePair.getValue().getVector()[4].getBinary());
       ++time;
     }
     assertEquals(7, time);
@@ -387,7 +390,7 @@ public class TsFilePlanRedoerTest {
       ((long[]) columns[1])[r] = (r + 1) * 100;
       ((boolean[]) columns[2])[r] = true;
       ((float[]) columns[3])[r] = (r + 1) * 100;
-      ((Binary[]) columns[4])[r] = Binary.valueOf((r + 1) * 100 + "");
+      ((Binary[]) columns[4])[r] = BytesUtils.valueOf((r + 1) * 100 + "");
     }
 
     BitMap[] bitMaps = new BitMap[dataTypes.size()];
@@ -454,7 +457,7 @@ public class TsFilePlanRedoerTest {
       assertEquals(true, timeValuePair.getValue().getVector()[2].getBoolean());
       assertEquals((time - 5) * 100, timeValuePair.getValue().getVector()[3].getFloat(), 0.00001);
       assertEquals(
-          Binary.valueOf((time - 5) * 100 + ""),
+          BytesUtils.valueOf((time - 5) * 100 + ""),
           timeValuePair.getValue().getVector()[4].getBinary());
       ++time;
     }
@@ -648,7 +651,7 @@ public class TsFilePlanRedoerTest {
       ((long[]) columns[1])[r] = (r + 1) * 100;
       ((boolean[]) columns[2])[r] = true;
       ((float[]) columns[3])[r] = (r + 1) * 100;
-      ((Binary[]) columns[4])[r] = Binary.valueOf((r + 1) * 100 + "");
+      ((Binary[]) columns[4])[r] = BytesUtils.valueOf((r + 1) * 100 + "");
     }
     BitMap[] bitMaps = new BitMap[dataTypes.size()];
     for (int i = 0; i < dataTypes.size(); i++) {
@@ -695,7 +698,8 @@ public class TsFilePlanRedoerTest {
         new TSDataType[] {
           TSDataType.INT32, TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.FLOAT, TSDataType.TEXT
         };
-    Object[] columns2 = new Object[] {400, 400L, true, 400.0f, new Binary("400")};
+    Object[] columns2 =
+        new Object[] {400, 400L, true, 400.0f, new Binary("400", TSFileConfig.STRING_CHARSET)};
     // redo InsertTabletPlan, data region is used to test IdTable, don't test IdTable here
     InsertRowNode insertRowNode =
         new InsertRowNode(
@@ -779,7 +783,7 @@ public class TsFilePlanRedoerTest {
               .addTuple(new LongDataPoint("s2", 5))
               .addTuple(new BooleanDataPoint("s3", true))
               .addTuple(new FloatDataPoint("s4", 5))
-              .addTuple(new StringDataPoint("s5", Binary.valueOf("5"))));
+              .addTuple(new StringDataPoint("s5", BytesUtils.valueOf("5"))));
     }
   }
 }

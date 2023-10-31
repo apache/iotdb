@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.exception.runtime;
+package org.apache.iotdb.tsfile.exception;
 
 public class UnSupportedDataTypeException extends RuntimeException {
 
   public UnSupportedDataTypeException(String message) {
-    super(message);
+    super("Unsupported dataType: " + message);
   }
 
   public UnSupportedDataTypeException(String message, Throwable e) {

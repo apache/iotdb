@@ -22,8 +22,9 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -105,7 +106,7 @@ public class CompactionValidationTest {
       timestamps[row] = startTime++;
       for (int i = 0; i < sensorNum; i++) {
         Binary[] textSensor = (Binary[]) values[i];
-        textSensor[row] = new Binary("testString.........");
+        textSensor[row] = new Binary("testString.........", TSFileConfig.STRING_CHARSET);
       }
       // write
       if (tablet.rowSize == tablet.getMaxRowNumber()) {

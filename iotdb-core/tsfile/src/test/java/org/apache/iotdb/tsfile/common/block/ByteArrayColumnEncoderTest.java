@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.tsfile.common.block;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.ColumnEncoding;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoderFactory;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoding;
 
 import org.junit.Assert;
 import org.junit.Test;
