@@ -590,16 +590,6 @@ public class RegerPDoubleTest {
         ts_block[beta][1] = tmp_tv[1];
     }
 
-    private static ArrayList<Integer> isMovable(ArrayList<Integer> alpha_list, ArrayList<Integer> beta_list) {
-        ArrayList<Integer> isMoveable = new ArrayList<>();
-        for (int i = 0; i < alpha_list.size(); i++) {
-            if (alpha_list.get(i) != -1 && beta_list.get(i) != -1) {
-                isMoveable.add(i);
-            }
-        }
-        return isMoveable;
-    }
-
     private static ArrayList<Integer> isMovable(int[] alpha_list, int[] beta_list) {
         ArrayList<Integer> isMoveable = new ArrayList<>();
         for (int i = 0; i < alpha_list.length; i++) {
@@ -1171,104 +1161,6 @@ public class RegerPDoubleTest {
     }
 
 
-    private static int getIstarClose(int alpha, ArrayList<Integer> j_star_list) {
-        int min_i = 0;
-        int min_dis = Integer.MAX_VALUE;
-        for (int i : j_star_list) {
-            if (abs(alpha - i) < min_dis) {
-                min_i = i;
-                min_dis = abs(alpha - i);
-            }
-        }
-        if (min_dis == 0) {
-            System.out.println("get IstarClose error");
-            return 0;
-        }
-        return min_i;
-    }
-
-
-
-    public static ArrayList<Byte> encodeRLEBitWidth2Bytes(
-            ArrayList<ArrayList<Integer>> bit_width_segments) {
-        ArrayList<Byte> encoded_result = new ArrayList<>();
-
-        ArrayList<ArrayList<Integer>> run_length_time = new ArrayList<>();
-        ArrayList<ArrayList<Integer>> run_length_value = new ArrayList<>();
-
-        int count_of_time = 0;
-        int count_of_value = 0;
-        int pre_time = bit_width_segments.get(0).get(0);
-        int pre_value = bit_width_segments.get(0).get(1);
-        int size = bit_width_segments.size();
-        for (int i = 1; i < size; i++) {
-            int cur_time = bit_width_segments.get(i).get(0);
-            int cur_value = bit_width_segments.get(i).get(1);
-            if (cur_time != pre_time) { // 当前值与前一个值不同
-                ArrayList<Integer> tmp = new ArrayList<>();
-                tmp.add(count_of_time);
-                tmp.add(pre_time);
-                run_length_time.add(tmp);
-                pre_time = cur_time;
-                count_of_time = 0;
-            } else {// 当前值与前一个值相同
-                count_of_time++;
-                if (count_of_time == 256) { // 个数不能大于256
-                    ArrayList<Integer> tmp = new ArrayList<>();
-                    tmp.add(count_of_time);
-                    tmp.add(pre_time);
-                    run_length_time.add(tmp);
-                    count_of_time = 0;
-                }
-            }
-
-            if (cur_value != pre_value) { // 当前值与前一个值不同
-                ArrayList<Integer> tmp = new ArrayList<>();
-                tmp.add(count_of_value);
-                tmp.add(pre_value);
-                run_length_value.add(tmp);
-                pre_value = cur_value;
-                count_of_value = 0;
-            } else {// 当前值与前一个值相同
-                count_of_value++;
-                if (count_of_value == 256) { // 个数不能大于256
-                    ArrayList<Integer> tmp = new ArrayList<>();
-                    tmp.add(count_of_value);
-                    tmp.add(pre_value);
-                    run_length_value.add(tmp);
-                    count_of_value = 0;
-                }
-            }
-
-        }
-        if (count_of_time != 0) {
-            ArrayList<Integer> tmp = new ArrayList<>();
-            tmp.add(count_of_time);
-            tmp.add(pre_time);
-            run_length_time.add(tmp);
-        }
-        if (count_of_value != 0) {
-            ArrayList<Integer> tmp = new ArrayList<>();
-            tmp.add(count_of_value);
-            tmp.add(pre_value);
-            run_length_value.add(tmp);
-        }
-
-        for (ArrayList<Integer> bit_width_time : run_length_time) {
-            byte[] timestamp_bytes = bitWidth2Bytes(bit_width_time.get(0));
-            for (byte b : timestamp_bytes) encoded_result.add(b);
-            byte[] value_bytes = bitWidth2Bytes(bit_width_time.get(1));
-            for (byte b : value_bytes) encoded_result.add(b);
-        }
-        for (ArrayList<Integer> bit_width_value : run_length_value) {
-            byte[] timestamp_bytes = bitWidth2Bytes(bit_width_value.get(0));
-            for (byte b : timestamp_bytes) encoded_result.add(b);
-            byte[] value_bytes = bitWidth2Bytes(bit_width_value.get(1));
-            for (byte b : value_bytes) encoded_result.add(b);
-        }
-        return encoded_result;
-    }
-
     public static int encodeRLEBitWidth2Bytes(
             int[][] bit_width_segments) {
         int encoded_result = 0;
@@ -1448,15 +1340,15 @@ public class RegerPDoubleTest {
         int2Bytes(delta_segments[0][1], pos_encode, encoded_result);
         pos_encode += 4;
         double2bytes(theta[0] + raw_length[3], pos_encode, encoded_result);
-        pos_encode += 4;
+        pos_encode += 8;
 
         double2bytes(theta[1] + raw_length[4], pos_encode, encoded_result);
-        pos_encode += 4;
+        pos_encode += 8;
 
 
         for (int i = 2; i < theta.length; i++) {
             double2bytes(theta[i], pos_encode, encoded_result);
-            pos_encode += 4;
+            pos_encode += 8;
         }
 //        System.out.println(delta_segments[0][0]);
 //        System.out.println(delta_segments[0][1]);
@@ -1645,7 +1537,7 @@ public class RegerPDoubleTest {
         int segment_n = (block_size-p) / segment_size;
         int result = 0;
         result += 8; // encode interval0 and value0
-        result += 16; // encode theta
+        result += ((2*p+1)*8); // encode theta
         result += encodeRLEBitWidth2Bytes(bit_width_segments);
 
         for (int segment_i = 0; segment_i < segment_n; segment_i++) {
@@ -2655,7 +2547,7 @@ public class RegerPDoubleTest {
 
                     String[] record = {
                             f.toString(),
-                            "REGER-32-DOUBLE",
+                            "REGER-64-DOUBLE",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data.size()),
@@ -2841,7 +2733,7 @@ public class RegerPDoubleTest {
 
                     String[] record = {
                             f.toString(),
-                            "REGER-32-DOUBLE",
+                            "REGER-64-DOUBLE",
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data.size()),

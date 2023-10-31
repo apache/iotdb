@@ -2043,7 +2043,7 @@ public class RegerPFloatTest {
         int segment_n = (block_size-p) / segment_size;
         int result = 0;
         result += 8; // encode interval0 and value0
-        result += 16; // encode theta
+        result += ((2*p+1)*4);  // encode theta
         result += encodeRLEBitWidth2Bytes(bit_width_segments);
 
         for (int segment_i = 0; segment_i < segment_n; segment_i++) {
