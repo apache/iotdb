@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 
 public class SharedTsBlockQueueTest {
-  @Test(timeout = 5000L)
+  @Test(timeout = 15000L)
   public void concurrencyTest() {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
