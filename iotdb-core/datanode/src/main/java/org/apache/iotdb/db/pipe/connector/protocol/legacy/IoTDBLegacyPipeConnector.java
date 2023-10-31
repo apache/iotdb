@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnectorClient;
@@ -211,7 +211,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     try (final PipeMemoryBlock block =
         PipeResourceManager.memory().forceAllocateForTablet(tablet)) {
       doTransfer(tablet, isAligned);
-    } catch (PipeRuntimeOutOfMemoryException e) {
+    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.error(
           "IoTDBLegacyPipeConnector: Transfer tabletInsertionEvent {} error.Failed to allocate memory for tabletInsertionEvent {}MB.",
           tabletInsertionEvent,
@@ -244,7 +244,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
           String.format(
               "Network error when transfer tsFile insertion event: %s.", tsFileInsertionEvent),
           e);
-    } catch (PipeRuntimeOutOfMemoryException e) {
+    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.error(
           "IoTDBLegacyPipeConnector: Transfer tsFileInsertionEvent {} error.Failed to allocate memory for tsFileInsertionEvent {}MB.",
           tsFileInsertionEvent,

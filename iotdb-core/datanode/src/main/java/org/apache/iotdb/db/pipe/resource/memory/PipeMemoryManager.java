@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -70,7 +70,7 @@ public class PipeMemoryManager {
       }
     }
 
-    throw new PipeRuntimeOutOfMemoryException(
+    throw new PipeRuntimeOutOfMemoryCriticalException(
         String.format(
             "failed to allocate memory after %d retries, "
                 + "total memory size %d bytes, used memory size %d bytes, "

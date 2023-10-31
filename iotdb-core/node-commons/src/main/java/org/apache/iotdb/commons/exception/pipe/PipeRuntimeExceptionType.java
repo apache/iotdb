@@ -63,7 +63,7 @@ public enum PipeRuntimeExceptionType {
       case 3:
         return PipeRuntimeConnectorCriticalException.deserializeFrom(version, byteBuffer);
       case 4:
-        return PipeRuntimeOutOfMemoryException.deserializeFrom(version, byteBuffer);
+        return PipeRuntimeOutOfMemoryCriticalException.deserializeFrom(version, byteBuffer);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported PipeRuntimeException type %s.", type));
@@ -81,7 +81,7 @@ public enum PipeRuntimeExceptionType {
       case 3:
         return PipeRuntimeConnectorCriticalException.deserializeFrom(version, stream);
       case 4:
-        return PipeRuntimeOutOfMemoryException.deserializeFrom(version, stream);
+        return PipeRuntimeOutOfMemoryCriticalException.deserializeFrom(version, stream);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported PipeRuntimeException type %s.", type));

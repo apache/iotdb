@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
@@ -295,7 +295,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
           client.pipeTransfer(
               PipeTransferTabletBatchReq.toTPipeTransferReq(
                   tabletBatchBuilder.getTPipeTransferReqs()));
-    } catch (PipeRuntimeOutOfMemoryException e) {
+    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.error(
           "IoTDBThriftSyncConnector: Transfer tablet batch {} error.Failed to allocate memory for batch {}MB.",
           tabletBatchBuilder,
@@ -328,7 +328,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     try (final PipeMemoryBlock block =
         PipeResourceManager.memory().forceAllocate(req.getBody().length)) {
       resp = client.pipeTransfer(req);
-    } catch (PipeRuntimeOutOfMemoryException e) {
+    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.error(
           "IoTDBThriftSyncConnector: Transfer PipeInsertNodeTabletInsertionEvent {} error.Failed to allocate memory for tablet {}MB.",
           pipeInsertNodeTabletInsertionEvent,
@@ -358,7 +358,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     try (final PipeMemoryBlock block =
         PipeResourceManager.memory().forceAllocate(req.getBody().length)) {
       resp = client.pipeTransfer(req);
-    } catch (PipeRuntimeOutOfMemoryException e) {
+    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.error(
           "IoTDBThriftSyncConnector: Transfer PipeInsertNodeTabletInsertionEvent {} error.Failed to allocate memory for batch {}MB.",
           pipeRawTabletInsertionEvent,
@@ -403,7 +403,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
                           readLength == readFileBufferSize
                               ? readBuffer
                               : Arrays.copyOfRange(readBuffer, 0, readLength))));
-        } catch (PipeRuntimeOutOfMemoryException e) {
+        } catch (PipeRuntimeOutOfMemoryCriticalException e) {
           LOGGER.error(
               "IoTDBThriftSyncConnector: Transfer PipeTsFileInsertionEvent {} error.Failed to allocate memory for tsfile {}MB.",
               pipeTsFileInsertionEvent,

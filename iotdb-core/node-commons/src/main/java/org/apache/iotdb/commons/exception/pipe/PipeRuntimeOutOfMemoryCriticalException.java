@@ -28,20 +28,21 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeRuntimeOutOfMemoryException extends PipeRuntimeException {
+public class PipeRuntimeOutOfMemoryCriticalException extends PipeRuntimeCriticalException {
 
-  public PipeRuntimeOutOfMemoryException(String message) {
+  public PipeRuntimeOutOfMemoryCriticalException(String message) {
     super(message);
   }
 
-  public PipeRuntimeOutOfMemoryException(String message, long timeStamp) {
+  public PipeRuntimeOutOfMemoryCriticalException(String message, long timeStamp) {
     super(message, timeStamp);
   }
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof PipeRuntimeOutOfMemoryException
-        && Objects.equals(getMessage(), ((PipeRuntimeOutOfMemoryException) obj).getMessage())
+    return obj instanceof PipeRuntimeOutOfMemoryCriticalException
+        && Objects.equals(
+            getMessage(), ((PipeRuntimeOutOfMemoryCriticalException) obj).getMessage())
         && Objects.equals(getTimeStamp(), ((PipeRuntimeException) obj).getTimeStamp());
   }
 
@@ -59,27 +60,29 @@ public class PipeRuntimeOutOfMemoryException extends PipeRuntimeException {
     ReadWriteIOUtils.write(getTimeStamp(), stream);
   }
 
-  public static PipeRuntimeOutOfMemoryException deserializeFrom(
+  public static PipeRuntimeOutOfMemoryCriticalException deserializeFrom(
       PipeRuntimeMetaVersion version, ByteBuffer byteBuffer) {
     final String message = ReadWriteIOUtils.readString(byteBuffer);
     switch (version) {
       case VERSION_1:
-        return new PipeRuntimeOutOfMemoryException(message);
+        return new PipeRuntimeOutOfMemoryCriticalException(message);
       case VERSION_2:
-        return new PipeRuntimeOutOfMemoryException(message, ReadWriteIOUtils.readLong(byteBuffer));
+        return new PipeRuntimeOutOfMemoryCriticalException(
+            message, ReadWriteIOUtils.readLong(byteBuffer));
       default:
         throw new UnsupportedOperationException(String.format("Unsupported version %s", version));
     }
   }
 
-  public static PipeRuntimeOutOfMemoryException deserializeFrom(
+  public static PipeRuntimeOutOfMemoryCriticalException deserializeFrom(
       PipeRuntimeMetaVersion version, InputStream stream) throws IOException {
     final String message = ReadWriteIOUtils.readString(stream);
     switch (version) {
       case VERSION_1:
-        return new PipeRuntimeOutOfMemoryException(message);
+        return new PipeRuntimeOutOfMemoryCriticalException(message);
       case VERSION_2:
-        return new PipeRuntimeOutOfMemoryException(message, ReadWriteIOUtils.readLong(stream));
+        return new PipeRuntimeOutOfMemoryCriticalException(
+            message, ReadWriteIOUtils.readLong(stream));
       default:
         throw new UnsupportedOperationException(String.format("Unsupported version %s", version));
     }

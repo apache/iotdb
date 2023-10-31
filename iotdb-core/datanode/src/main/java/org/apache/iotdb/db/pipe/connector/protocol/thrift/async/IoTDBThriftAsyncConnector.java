@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
@@ -187,7 +187,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
           transfer(requestCommitId, pipeTransferTabletBatchEventHandler);
 
           tabletBatchBuilder.onSuccess();
-        } catch (PipeRuntimeOutOfMemoryException e) {
+        } catch (PipeRuntimeOutOfMemoryCriticalException e) {
           LOGGER.error(
               "IoTDBThriftAsyncConnector: Transfer tablet batch {} error.Failed to allocate memory for batch {}MB.",
               tabletBatchBuilder,
@@ -213,7 +213,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
         try (final PipeMemoryBlock block =
             PipeResourceManager.memory().forceAllocate(pipeTransferReq.getBody().length)) {
           transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
-        } catch (PipeRuntimeOutOfMemoryException e) {
+        } catch (PipeRuntimeOutOfMemoryCriticalException e) {
           LOGGER.error(
               "IoTDBThriftAsyncConnector: Transfer PipeInsertNodeTabletInsertionEvent {} error.Failed to allocate memory for tablet {}MB.",
               pipeInsertNodeTabletInsertionEvent,
@@ -236,7 +236,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
         try (final PipeMemoryBlock block =
             PipeResourceManager.memory().forceAllocate(pipeTransferTabletRawReq.getBody().length)) {
           transfer(requestCommitId, pipeTransferTabletReqHandler);
-        } catch (PipeRuntimeOutOfMemoryException e) {
+        } catch (PipeRuntimeOutOfMemoryCriticalException e) {
           LOGGER.error(
               "IoTDBThriftAsyncConnector: Transfer PipeRawTabletInsertionEvent {} error.Failed to allocate memory for tablet {}MB.",
               pipeRawTabletInsertionEvent,

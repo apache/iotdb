@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
@@ -179,7 +179,7 @@ public class OpcUaConnector implements PipeConnector {
     try (final PipeMemoryBlock block =
         PipeResourceManager.memory().forceAllocateForTablet(tablet)) {
       transferTablet(server, tablet);
-    } catch (PipeRuntimeOutOfMemoryException e) {
+    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.error(
           "OpcUaConnector: Transfer tabletInsertionEvent {} error.Failed to allocate memory for tablet {}MB.",
           tabletInsertionEvent,

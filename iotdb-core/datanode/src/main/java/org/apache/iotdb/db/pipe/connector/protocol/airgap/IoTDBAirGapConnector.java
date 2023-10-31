@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
@@ -276,7 +276,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
               "Network error when transfer tsfile insertion event %s, because %s.",
               tsFileInsertionEvent, e.getMessage()),
           e);
-    } catch (PipeRuntimeOutOfMemoryException e) {
+    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.error(
           "Failed to allocate memory for tsfile {}MB.",
           PipeConfig.getInstance().getPipeConnectorReadFileBufferSize() / 1024 / 1024,
@@ -309,7 +309,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
                 "Transfer PipeInsertNodeTabletInsertionEvent %s error. Socket: %s",
                 pipeInsertNodeTabletInsertionEvent, socket));
       }
-    } catch (PipeRuntimeOutOfMemoryException e) {
+    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.error("Failed to allocate memory for tablet {}MB.", bytes.length / 1024 / 1024, e);
       throw e;
     }
@@ -328,7 +328,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
                 "Transfer PipeRawTabletInsertionEvent %s error. Socket: %s.",
                 pipeRawTabletInsertionEvent, socket));
       }
-    } catch (PipeRuntimeOutOfMemoryException e) {
+    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.error(
           "Transfer PipeRawTabletInsertionEvent {} error.Failed to allocate memory for tablet {}MB.",
           pipeRawTabletInsertionEvent,
