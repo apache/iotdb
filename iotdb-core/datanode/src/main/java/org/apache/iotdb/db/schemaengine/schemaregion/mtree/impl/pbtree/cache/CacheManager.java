@@ -365,6 +365,8 @@ public abstract class CacheManager implements ICacheManager {
           getCachedMNodeContainer(node).getChildrenBufferIterator();
       if (childrenBufferIterator.hasNext()) {
         nextMNode = node;
+        // after written to disk, the children will be moved to container.cache,
+        // thus they should be stored temporarily for rest iteration
         List<ICachedMNode> bufferedChildren = new ArrayList<>();
         while (childrenBufferIterator.hasNext()) {
           bufferedChildren.add(childrenBufferIterator.next());
