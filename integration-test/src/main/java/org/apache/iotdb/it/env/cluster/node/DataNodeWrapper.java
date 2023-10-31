@@ -196,6 +196,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     mutableNodeProperties.setProperty(IoTDBConstant.DN_RPC_PORT, String.valueOf(super.getPort()));
     mutableNodeProperties.setProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, this.internalAddress);
     mutableNodeProperties.setProperty(
+        IoTDBConstant.DN_METRIC_PROMETHEUS_REPORTER_PORT, String.valueOf(super.getMetricPort()));
+    mutableNodeProperties.setProperty(
         IoTDBConstant.DN_INTERNAL_PORT, String.valueOf(this.internalPort));
     mutableNodeProperties.setProperty(
         DN_MPP_DATA_EXCHANGE_PORT, String.valueOf(this.mppDataExchangePort));

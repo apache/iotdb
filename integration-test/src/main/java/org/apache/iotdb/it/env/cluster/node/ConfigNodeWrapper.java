@@ -168,6 +168,8 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     mutableNodeProperties.setProperty(IoTDBConstant.CN_INTERNAL_PORT, String.valueOf(getPort()));
     mutableNodeProperties.setProperty(
         IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(this.consensusPort));
+    mutableNodeProperties.setProperty(
+        IoTDBConstant.CN_METRIC_PROMETHEUS_REPORTER_PORT, String.valueOf(super.getMetricPort()));
   }
 
   @Override

@@ -33,6 +33,7 @@
     <name>Apache IoTDB Project Parent POM</name>
     <description>This is the top level project that builds, packages the tsfile, iotdb engine, jdbc, and integration libs.</description>
     <modules>
+        <module>integration-test</module>
         <module>iotdb-api</module>
         <module>iotdb-client</module>
         <module>iotdb-connector</module>

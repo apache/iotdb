@@ -55,6 +55,7 @@ public class RemoteServerEnv implements BaseEnv {
 
   private final String ip_addr = System.getProperty("RemoteIp", "127.0.0.1");
   private final String port = System.getProperty("RemotePort", "6667");
+  private final String metricPort = System.getProperty("RemoteMetricPort", "9091");
   private final String user = System.getProperty("RemoteUser", "root");
   private final String password = System.getProperty("RemotePassword", "root");
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
@@ -95,6 +96,11 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public ClusterConfig getConfig() {
     return clusterConfig;
+  }
+
+  @Override
+  public String getMetricPrometheusReporterContent() {
+    return getUrlContent(Config.IOTDB_URL_PREFIX + ip_addr + ":" + metricPort + "/metrics");
   }
 
   @Override
