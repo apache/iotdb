@@ -26,6 +26,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsync
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -75,7 +76,7 @@ public class PipeConnectorTest {
     }
   }
 
-  @Test
+  @Test(expected = PipeConnectionException.class)
   public void testIoTDBThriftAsyncConnector() {
     IoTDBThriftAsyncConnector connector = new IoTDBThriftAsyncConnector();
     try {
