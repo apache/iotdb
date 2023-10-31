@@ -60,14 +60,12 @@ public class CompactionRecoverManager {
   }
 
   public void recoverInnerSpaceCompaction(boolean isSequence) {
-    logger.info("recovering inner compaction");
-    recoverCompactionBefore013(true);
+    logger.info("{} [Compaction][Recover] recovering inner compaction", logicalStorageGroupName);
     recoverCompaction(true, isSequence);
   }
 
   public void recoverCrossSpaceCompaction() {
-    logger.info("recovering cross compaction");
-    recoverCompactionBefore013(false);
+    logger.info("{} [Compaction][Recover] recovering cross compaction", logicalStorageGroupName);
     recoverCompaction(false, true);
   }
 
@@ -82,6 +80,10 @@ public class CompactionRecoverManager {
     for (String dir : dirs) {
       File storageGroupDir =
           new File(dir + File.separator + logicalStorageGroupName + File.separator + dataRegionId);
+      logger.info(
+          "{} [Compaction][Recover] recover compaction in data region dir {}",
+          logicalStorageGroupName,
+          storageGroupDir.getAbsolutePath());
       if (!storageGroupDir.exists()) {
         return;
       }
@@ -94,6 +96,10 @@ public class CompactionRecoverManager {
             || !Pattern.compile("\\d*").matcher(timePartitionDir.getName()).matches()) {
           continue;
         }
+        logger.info(
+            "{} [Compaction][Recover] recover compaction in time partition dir {}",
+            logicalStorageGroupName,
+            timePartitionDir.getAbsolutePath());
         // recover temporary files generated during compacted
         recoverCompaction(isInnerSpace, timePartitionDir);
 
@@ -132,7 +138,8 @@ public class CompactionRecoverManager {
     File[] compactionLogs =
         CompactionLogger.findCompactionLogs(isInnerSpace, timePartitionDir.getPath());
     for (File compactionLog : compactionLogs) {
-      logger.info("Calling compaction recover task.");
+      logger.info(
+          "{} [Compaction][Recover] calling compaction recover task.", logicalStorageGroupName);
       new CompactionRecoverTask(
               logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog, isInnerSpace)
           .doCompaction();
