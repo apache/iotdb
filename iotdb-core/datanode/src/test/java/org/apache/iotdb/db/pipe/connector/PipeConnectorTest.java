@@ -26,7 +26,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsync
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -35,8 +35,8 @@ import java.util.HashMap;
 
 public class PipeConnectorTest {
 
-  @Test(expected = PipeConnectionException.class)
-  public void testIoTDBLegacyPipeConnector() {
+  @Test(expected = PipeParameterNotValidException.class)
+  public void testIoTDBLegacyPipeConnectorToSelf() throws Exception {
     try (IoTDBLegacyPipeConnector connector = new IoTDBLegacyPipeConnector()) {
       connector.validate(
           new PipeParameterValidator(
@@ -50,13 +50,31 @@ public class PipeConnectorTest {
                       put(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY, "6667");
                     }
                   })));
+    }
+  }
+
+  @Test
+  public void testIoTDBLegacyPipeConnectorToOthers() {
+    try (IoTDBLegacyPipeConnector connector = new IoTDBLegacyPipeConnector()) {
+      connector.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeConnectorConstant.CONNECTOR_KEY,
+                          BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName());
+                      put(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY, "127.0.0.1");
+                      put(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY, "6668");
+                    }
+                  })));
     } catch (Exception e) {
       Assert.fail();
     }
   }
 
-  @Test(expected = PipeConnectionException.class)
-  public void testIoTDBThriftSyncConnector() {
+  @Test(expected = PipeParameterNotValidException.class)
+  public void testIoTDBThriftSyncConnectorToSelf() throws Exception {
     try (IoTDBThriftSyncConnector connector = new IoTDBThriftSyncConnector()) {
       connector.validate(
           new PipeParameterValidator(
@@ -70,13 +88,31 @@ public class PipeConnectorTest {
                       put(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY, "6667");
                     }
                   })));
+    }
+  }
+
+  @Test
+  public void testIoTDBThriftSyncConnectorToOthers() {
+    try (IoTDBThriftSyncConnector connector = new IoTDBThriftSyncConnector()) {
+      connector.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeConnectorConstant.CONNECTOR_KEY,
+                          BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName());
+                      put(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY, "127.0.0.1");
+                      put(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY, "6668");
+                    }
+                  })));
     } catch (Exception e) {
       Assert.fail();
     }
   }
 
-  @Test(expected = PipeConnectionException.class)
-  public void testIoTDBThriftAsyncConnector() {
+  @Test(expected = PipeParameterNotValidException.class)
+  public void testIoTDBThriftAsyncConnectorToSelf() throws Exception {
     try (IoTDBThriftAsyncConnector connector = new IoTDBThriftAsyncConnector()) {
       connector.validate(
           new PipeParameterValidator(
@@ -87,6 +123,23 @@ public class PipeConnectorTest {
                           PipeConnectorConstant.CONNECTOR_KEY,
                           BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName());
                       put(PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY, "127.0.0.1:6667");
+                    }
+                  })));
+    }
+  }
+
+  @Test
+  public void testIoTDBThriftAsyncConnectorToOthers() {
+    try (IoTDBThriftAsyncConnector connector = new IoTDBThriftAsyncConnector()) {
+      connector.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(
+                          PipeConnectorConstant.CONNECTOR_KEY,
+                          BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName());
+                      put(PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY, "127.0.0.1:6668");
                     }
                   })));
     } catch (Exception e) {
