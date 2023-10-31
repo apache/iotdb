@@ -68,7 +68,10 @@ public class IoTDBShutdownHook extends Thread {
     WALManager.getInstance().waitAllWALFlushed();
 
     // flush data to Tsfile and remove WAL log files
-    if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+    if (!IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     }
     WALManager.getInstance().deleteOutdatedFilesInWALNodes();
