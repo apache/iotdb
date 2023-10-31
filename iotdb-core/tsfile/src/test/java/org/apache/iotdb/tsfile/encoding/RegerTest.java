@@ -2237,8 +2237,7 @@ public class RegerTest {
         int pre_time = bit_width_segments[0][0];
         int pre_value = bit_width_segments[0][1];
         int size = bit_width_segments.length;
-        int[][] run_length_time = new int[size][2];
-        int[][] run_length_value = new int[size][2];
+
 
         int pos_time = 0;
         int pos_value = 0;
@@ -2247,8 +2246,6 @@ public class RegerTest {
             int cur_time = bit_width_segments[i][0];
             int cur_value = bit_width_segments[i][1];
             if (cur_time != pre_time && count_of_time != 0) {
-                run_length_time[pos_time][0] = count_of_time;
-                run_length_time[pos_time][1] = pre_time;
                 pos_time++;
                 pre_time = cur_time;
                 count_of_time = 1;
@@ -2256,16 +2253,12 @@ public class RegerTest {
                 count_of_time++;
                 pre_time = cur_time;
                 if (count_of_time == 256) {
-                    run_length_time[pos_time][0] = count_of_time;
-                    run_length_time[pos_time][1] = pre_time;
                     pos_time++;
                     count_of_time = 1;
                 }
             }
 
             if (cur_value != pre_value && count_of_value != 0) {
-                run_length_value[pos_value][0] = count_of_value;
-                run_length_value[pos_value][1] = pre_value;
                 pos_value++;
 
                 pre_value = cur_value;
@@ -2274,8 +2267,6 @@ public class RegerTest {
                 count_of_value++;
                 pre_value = cur_value;
                 if (count_of_value == 256) {
-                    run_length_value[pos_value][0] = count_of_value;
-                    run_length_value[pos_value][1] = pre_value;
                     pos_value++;
                     count_of_value = 0;
                 }
@@ -2283,13 +2274,9 @@ public class RegerTest {
 
         }
         if (count_of_time != 0) {
-            run_length_time[pos_time][0] = count_of_time;
-            run_length_time[pos_time][1] = pre_time;
             pos_time++;
         }
         if (count_of_value != 0) {
-            run_length_value[pos_value][0] = count_of_value;
-            run_length_value[pos_value][1] = pre_value;
             pos_value++;
         }
 
