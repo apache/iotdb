@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
-import java.util.List;
+import java.util.Iterator;
 
 public interface ICacheManager {
 
@@ -41,7 +41,7 @@ public interface ICacheManager {
 
   IDatabaseMNode<ICachedMNode> collectUpdatedStorageGroupMNodes();
 
-  List<ICachedMNode> collectVolatileMNodes();
+  Iterator<ICachedMNode> collectVolatileMNodes();
 
   void remove(ICachedMNode node);
 

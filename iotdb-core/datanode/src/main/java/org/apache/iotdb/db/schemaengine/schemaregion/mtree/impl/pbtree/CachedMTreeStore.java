@@ -49,7 +49,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
@@ -557,8 +556,12 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
           return;
         }
       }
-      List<ICachedMNode> nodesToPersist = cacheManager.collectVolatileMNodes();
-      for (ICachedMNode volatileNode : nodesToPersist) {
+      Iterator<ICachedMNode> nodesToPersist = cacheManager.collectVolatileMNodes();
+      boolean hasNodeToPersist = nodesToPersist.hasNext();
+
+      ICachedMNode volatileNode;
+      while (nodesToPersist.hasNext()) {
+        volatileNode = nodesToPersist.next();
         try {
           file.writeMNode(volatileNode);
         } catch (MetadataException | IOException e) {
@@ -570,7 +573,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         }
         cacheManager.updateCacheStatusAfterPersist(volatileNode);
       }
-      if (updatedStorageGroupMNode != null || !nodesToPersist.isEmpty()) {
+
+      if (updatedStorageGroupMNode != null || hasNodeToPersist) {
         flushCallback.run();
       }
     } catch (Throwable e) {
