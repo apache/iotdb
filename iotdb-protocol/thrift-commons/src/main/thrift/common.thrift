@@ -181,17 +181,3 @@ enum TAggregationType {
   MODE,
   COUNT_TIME
 }
-
-// for MLNode
-enum TrainingState {
-  PENDING,
-  RUNNING,
-  FINISHED,
-  FAILED,
-  DROPPING
-}
-
-enum TaskType {
-  FORECAST,
-  ANOMALY_DETECTION,
-}

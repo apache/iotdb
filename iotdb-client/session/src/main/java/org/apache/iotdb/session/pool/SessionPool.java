@@ -97,6 +97,12 @@ public class SessionPool implements ISessionPool {
   private final String user;
   private final String password;
   private int fetchSize;
+
+  private boolean useSSL;
+
+  private String trustStore;
+
+  private String trustStorePwd;
   private ZoneId zoneId;
   private boolean enableRedirection;
   private boolean enableQueryRedirection = false;
@@ -352,6 +358,48 @@ public class SessionPool implements ISessionPool {
     this.formattedNodeUrls = String.format("%s:%s", host, port);
   }
 
+  public SessionPool(
+      String host,
+      int port,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long waitToGetSessionTimeoutInMs,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableRedirection,
+      int connectionTimeoutInMs,
+      Version version,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean useSSL,
+      String trustStore,
+      String trustStorePwd) {
+    this.maxSize = maxSize;
+    this.host = host;
+    this.port = port;
+    this.nodeUrls = null;
+    this.user = user;
+    this.password = password;
+    this.fetchSize = fetchSize;
+    this.waitToGetSessionTimeoutInMs = waitToGetSessionTimeoutInMs;
+    this.enableCompression = enableCompression;
+    this.zoneId = zoneId;
+    this.enableRedirection = enableRedirection;
+    if (this.enableRedirection) {
+      deviceIdToEndpoint = new ConcurrentHashMap<>();
+    }
+    this.connectionTimeoutInMs = connectionTimeoutInMs;
+    this.version = version;
+    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.formattedNodeUrls = String.format("%s:%s", host, port);
+    this.useSSL = useSSL;
+    this.trustStore = trustStore;
+    this.trustStorePwd = trustStorePwd;
+  }
+
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   public SessionPool(
       List<String> nodeUrls,
@@ -388,6 +436,38 @@ public class SessionPool implements ISessionPool {
     this.formattedNodeUrls = nodeUrls.toString();
   }
 
+  public SessionPool(Builder builder) {
+    this.maxSize = builder.maxSize;
+    this.user = builder.user;
+    this.password = builder.pw;
+    this.fetchSize = builder.fetchSize;
+    this.waitToGetSessionTimeoutInMs = builder.waitToGetSessionTimeoutInMs;
+    this.enableCompression = builder.enableCompression;
+    this.zoneId = builder.zoneId;
+    this.enableRedirection = builder.enableRedirection;
+    if (this.enableRedirection) {
+      deviceIdToEndpoint = new ConcurrentHashMap<>();
+    }
+    this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
+    this.version = builder.version;
+    this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    if (builder.nodeUrls != null && builder.nodeUrls.size() > 0) {
+      this.nodeUrls = builder.nodeUrls;
+      this.host = null;
+      this.port = -1;
+      this.formattedNodeUrls = builder.nodeUrls.toString();
+    } else {
+      this.host = builder.host;
+      this.port = builder.port;
+      this.nodeUrls = null;
+      this.formattedNodeUrls = String.format("%s:%s", host, port);
+    }
+    this.useSSL = builder.useSSL;
+    this.trustStore = builder.trustStore;
+    this.trustStorePwd = builder.trustStorePwd;
+  }
+
   private Session constructNewSession() {
     Session session;
     if (nodeUrls == null) {
@@ -404,6 +484,9 @@ public class SessionPool implements ISessionPool {
               .thriftMaxFrameSize(thriftMaxFrameSize)
               .enableRedirection(enableRedirection)
               .version(version)
+              .useSSL(useSSL)
+              .trustStore(trustStore)
+              .trustStorePwd(trustStorePwd)
               .build();
     } else {
       // Construct redirect-able Session
@@ -418,6 +501,9 @@ public class SessionPool implements ISessionPool {
               .thriftMaxFrameSize(thriftMaxFrameSize)
               .enableRedirection(enableRedirection)
               .version(version)
+              .useSSL(useSSL)
+              .trustStore(trustStore)
+              .trustStorePwd(trustStorePwd)
               .build();
     }
     session.setEnableQueryRedirection(enableQueryRedirection);
@@ -3441,6 +3527,25 @@ public class SessionPool implements ISessionPool {
     private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
     private Version version = SessionConfig.DEFAULT_VERSION;
 
+    private boolean useSSL = false;
+    private String trustStore;
+    private String trustStorePwd;
+
+    public Builder useSSL(boolean useSSL) {
+      this.useSSL = useSSL;
+      return this;
+    }
+
+    public Builder trustStore(String keyStore) {
+      this.trustStore = keyStore;
+      return this;
+    }
+
+    public Builder trustStorePwd(String keyStorePwd) {
+      this.trustStorePwd = keyStorePwd;
+      return this;
+    }
+
     public Builder host(String host) {
       this.host = host;
       return this;
@@ -3517,38 +3622,7 @@ public class SessionPool implements ISessionPool {
     }
 
     public SessionPool build() {
-      if (nodeUrls == null) {
-        return new SessionPool(
-            host,
-            port,
-            user,
-            pw,
-            maxSize,
-            fetchSize,
-            waitToGetSessionTimeoutInMs,
-            enableCompression,
-            zoneId,
-            enableRedirection,
-            connectionTimeoutInMs,
-            version,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize);
-      } else {
-        return new SessionPool(
-            nodeUrls,
-            user,
-            pw,
-            maxSize,
-            fetchSize,
-            waitToGetSessionTimeoutInMs,
-            enableCompression,
-            zoneId,
-            enableRedirection,
-            connectionTimeoutInMs,
-            version,
-            thriftDefaultBufferSize,
-            thriftMaxFrameSize);
-      }
+      return new SessionPool(this);
     }
   }
 }

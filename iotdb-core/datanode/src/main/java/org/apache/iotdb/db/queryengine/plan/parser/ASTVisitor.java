@@ -153,10 +153,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowTrialsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
@@ -1217,69 +1213,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       queryStatement.setFromComponent(parseFromClause(ctx.fromClause()));
       setSourceQueryStatement.accept(queryStatement);
     }
-  }
-
-  // Create Model =====================================================================
-  @Override
-  public Statement visitCreateModel(IoTDBSqlParser.CreateModelContext ctx) {
-    CreateModelStatement createModelStatement = new CreateModelStatement();
-    createModelStatement.setModelId(parseIdentifier(ctx.modelId.getText()));
-
-    Map<String, String> modelOptions = new HashMap<>();
-    for (IoTDBSqlParser.AttributePairContext attribute : ctx.attributePair()) {
-      modelOptions.put(
-          parseAttributeKey(attribute.key).toLowerCase(), parseAttributeValue(attribute.value));
-    }
-    createModelStatement.setOptions(modelOptions);
-
-    Map<String, String> hyperParameters = new HashMap<>();
-    for (IoTDBSqlParser.HparamPairContext attribute : ctx.hparamPair()) {
-      hyperParameters.put(
-          parseAttributeKey(attribute.hparamKey).toLowerCase(),
-          parseHparamValue(attribute.hparamValue()));
-    }
-    createModelStatement.setHyperparameters(hyperParameters);
-
-    createModelStatement.setDatasetStatement(
-        (QueryStatement) visitSelectStatement(ctx.selectStatement()));
-    return createModelStatement;
-  }
-
-  private String parseHparamValue(IoTDBSqlParser.HparamValueContext ctx) {
-    if (ctx.attributeValue() != null) {
-      return parseAttributeValue(ctx.attributeValue());
-    } else if (ctx.hparamRange() != null) {
-      return parseAttributeValue(ctx.hparamRange().hparamRangeStart)
-          + ","
-          + parseAttributeValue(ctx.hparamRange().hparamRangeEnd);
-    } else if (ctx.hparamCandidates() != null) {
-      List<String> candidates = new ArrayList<>();
-      for (IoTDBSqlParser.AttributeValueContext candidate :
-          ctx.hparamCandidates().attributeValue()) {
-        candidates.add(parseAttributeValue(candidate));
-      }
-      return Arrays.toString(candidates.toArray());
-    } else {
-      throw new IllegalArgumentException();
-    }
-  }
-
-  // Drop Model =====================================================================
-  @Override
-  public Statement visitDropModel(IoTDBSqlParser.DropModelContext ctx) {
-    return new DropModelStatement(parseIdentifier(ctx.modelId.getText()));
-  }
-
-  // Show Models =====================================================================
-  @Override
-  public Statement visitShowModels(IoTDBSqlParser.ShowModelsContext ctx) {
-    return new ShowModelsStatement();
-  }
-
-  // Show Trails =====================================================================
-  @Override
-  public Statement visitShowTrials(IoTDBSqlParser.ShowTrialsContext ctx) {
-    return new ShowTrialsStatement(parseIdentifier(ctx.modelId.getText()));
   }
 
   /** Data Manipulation Language (DML). */

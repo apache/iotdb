@@ -36,8 +36,6 @@ public class SelectComponent extends StatementNode {
 
   private boolean hasBuiltInAggregationFunction = false;
 
-  private boolean hasModelInferenceFunction = false;
-
   protected List<ResultColumn> resultColumns = new ArrayList<>();
 
   private Map<String, Expression> aliasToColumnMap;
@@ -54,17 +52,11 @@ public class SelectComponent extends StatementNode {
     return hasBuiltInAggregationFunction;
   }
 
-  public boolean hasModelInferenceFunction() {
-    return hasModelInferenceFunction;
-  }
-
   public void addResultColumn(ResultColumn resultColumn) {
     resultColumns.add(resultColumn);
     ResultColumn.ColumnType columnType = resultColumn.getColumnType();
     if (columnType == ResultColumn.ColumnType.AGGREGATION) {
       hasBuiltInAggregationFunction = true;
-    } else if (columnType == ResultColumn.ColumnType.MODEL_INFERENCE) {
-      hasModelInferenceFunction = true;
     }
   }
 

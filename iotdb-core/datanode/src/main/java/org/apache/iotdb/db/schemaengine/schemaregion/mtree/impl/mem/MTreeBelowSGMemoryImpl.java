@@ -44,7 +44,6 @@ import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.LogicalViewInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
@@ -348,7 +347,7 @@ public class MTreeBelowSGMemoryImpl {
         }
       }
 
-      // create a non-aligned timeseries
+      // create a aligned timeseries
       if (entityMNode.isAlignedNullable() == null) {
         entityMNode.setAligned(true);
       }
@@ -1125,7 +1124,7 @@ public class MTreeBelowSGMemoryImpl {
       String leafName = path.getMeasurement();
       IMeasurementMNode<IMemMNode> measurementMNode =
           nodeFactory.createLogicalViewMNode(
-              null, leafName, new LogicalViewInfo(new LogicalViewSchema(leafName, viewExpression)));
+              null, leafName, new LogicalViewSchema(leafName, viewExpression));
       IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
 
       // no need to check alias, because logical view has no alias

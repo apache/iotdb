@@ -99,7 +99,7 @@ public class WALManagerTest {
       }
     }
 
-    walManager.deleteOutdatedWALFiles();
+    walManager.deleteOutdatedFilesInWALNodes();
 
     for (String walDir : walDirs) {
       File walDirFile = new File(walDir);

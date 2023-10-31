@@ -311,19 +311,6 @@ public class IoTDBDescriptor {
                 .getProperty(IoTDBConstant.DN_RPC_PORT, Integer.toString(conf.getRpcPort()))
                 .trim()));
 
-    conf.setEnableMLNodeService(
-        Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_mlnode_rpc_service", Boolean.toString(conf.isEnableMLNodeService()))
-                .trim()));
-
-    conf.setMLNodePort(
-        Integer.parseInt(
-            properties
-                .getProperty("mlnode_rpc_port", Integer.toString(conf.getMLNodePort()))
-                .trim()));
-
     conf.setBufferedArraysMemoryProportion(
         Double.parseDouble(
             properties
@@ -1010,6 +997,9 @@ public class IoTDBDescriptor {
 
     // UDF
     loadUDFProps(properties);
+
+    // thrift ssl
+    initThriftSSL(properties);
 
     // trigger
     loadTriggerProps(properties);
@@ -1947,6 +1937,14 @@ public class IoTDBDescriptor {
                 + readerTransformerCollectorMemoryProportion);
       }
     }
+  }
+
+  private void initThriftSSL(Properties properties) {
+    conf.setEnableSSL(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_thrift_ssl", Boolean.toString(conf.isEnableSSL()))));
+    conf.setKeyStorePath(properties.getProperty("key_store_path", conf.getKeyStorePath()).trim());
+    conf.setKeyStorePwd(properties.getProperty("key_store_pwd", conf.getKeyStorePath()).trim());
   }
 
   private void loadTriggerProps(Properties properties) {
