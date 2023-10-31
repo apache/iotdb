@@ -115,7 +115,7 @@ if "%OFF_HEAP_MEMORY:~-1%"=="M" (
 set IO_THREADS_NUMBER=1000
 @REM Max cached buffer size, Note: unit can only be B!
 @REM which equals OFF_HEAP_MEMORY / IO_THREADS_NUMBER
-set MAX_CACHED_BUFFER_SIZE=%off_heap_memory_size_in_mb%*1024*1024/%IO_THREADS_NUMBER%
+set /a MAX_CACHED_BUFFER_SIZE=%off_heap_memory_size_in_mb%/%IO_THREADS_NUMBER%*1024*1024
 
 set IOTDB_HEAP_OPTS=-Xmx%ON_HEAP_MEMORY% -Xms%ON_HEAP_MEMORY%
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%OFF_HEAP_MEMORY%
