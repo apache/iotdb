@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
@@ -36,8 +35,6 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -264,9 +261,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
-    try (final PipeMemoryBlock block =
-        PipeResourceManager.memory()
-            .forceAllocate(PipeConfig.getInstance().getPipeConnectorReadFileBufferSize())) {
+    try {
       doTransfer(socket, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (IOException e) {
       isSocketAlive.set(socketIndex, false);
@@ -276,12 +271,6 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
               "Network error when transfer tsfile insertion event %s, because %s.",
               tsFileInsertionEvent, e.getMessage()),
           e);
-    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
-      LOGGER.error(
-          "Failed to allocate memory for tsfile {}MB.",
-          PipeConfig.getInstance().getPipeConnectorReadFileBufferSize() / 1024 / 1024,
-          e);
-      throw e;
     }
   }
 
@@ -302,39 +291,25 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
             : PipeTransferTabletInsertNodeReq.toTransferInsertNodeBytes(
                 pipeInsertNodeTabletInsertionEvent.getInsertNode());
 
-    try (final PipeMemoryBlock block = PipeResourceManager.memory().forceAllocate(bytes.length)) {
-      if (!send(socket, bytes)) {
-        throw new PipeException(
-            String.format(
-                "Transfer PipeInsertNodeTabletInsertionEvent %s error. Socket: %s",
-                pipeInsertNodeTabletInsertionEvent, socket));
-      }
-    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
-      LOGGER.error("Failed to allocate memory for tablet {}MB.", bytes.length / 1024 / 1024, e);
-      throw e;
+    if (!send(socket, bytes)) {
+      throw new PipeException(
+          String.format(
+              "Transfer PipeInsertNodeTabletInsertionEvent %s error. Socket: %s",
+              pipeInsertNodeTabletInsertionEvent, socket));
     }
   }
 
   private void doTransfer(Socket socket, PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, IOException {
-    final byte[] bytes =
+    if (!send(
+        socket,
         PipeTransferTabletRawReq.toTPipeTransferTabletBytes(
-            pipeRawTabletInsertionEvent.convertToTablet(), pipeRawTabletInsertionEvent.isAligned());
-
-    try (final PipeMemoryBlock block = PipeResourceManager.memory().forceAllocate(bytes.length)) {
-      if (!send(socket, bytes)) {
-        throw new PipeException(
-            String.format(
-                "Transfer PipeRawTabletInsertionEvent %s error. Socket: %s.",
-                pipeRawTabletInsertionEvent, socket));
-      }
-    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
-      LOGGER.error(
-          "Transfer PipeRawTabletInsertionEvent {} error.Failed to allocate memory for tablet {}MB.",
-          pipeRawTabletInsertionEvent,
-          bytes.length / 1024 / 1024,
-          e);
-      throw e;
+            pipeRawTabletInsertionEvent.convertToTablet(),
+            pipeRawTabletInsertionEvent.isAligned()))) {
+      throw new PipeException(
+          String.format(
+              "Transfer PipeRawTabletInsertionEvent %s error. Socket: %s.",
+              pipeRawTabletInsertionEvent, socket));
     }
   }
 
