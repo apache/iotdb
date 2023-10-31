@@ -56,6 +56,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   private static final Logger logger = LoggerFactory.getLogger(CachedMTreeStore.class);
 
+  private final int schemaRegionId;
+
   private final MemManager memManager;
   private final ICacheManager cacheManager;
   private ISchemaFile file;
@@ -72,6 +74,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       CachedSchemaRegionStatistics regionStatistics,
       Runnable flushCallback)
       throws MetadataException, IOException {
+    this.schemaRegionId = schemaRegionId;
     file = SchemaFile.initSchemaFile(storageGroup.getFullPath(), schemaRegionId);
     root = file.init();
     this.regionStatistics = regionStatistics;
@@ -504,6 +507,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       CachedSchemaRegionStatistics regionStatistics,
       Runnable flushCallback)
       throws IOException, MetadataException {
+    this.schemaRegionId = schemaRegionId;
     file = SchemaFile.loadSnapshot(snapshotDir, storageGroup, schemaRegionId);
     root = file.init();
     this.regionStatistics = regionStatistics;
@@ -556,6 +560,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
           return;
         }
       }
+
+      long startTime = System.currentTimeMillis();
       Iterator<ICachedMNode> nodesToPersist = cacheManager.collectVolatileMNodes();
       boolean hasNodeToPersist = nodesToPersist.hasNext();
 
@@ -573,6 +579,10 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         }
         cacheManager.updateCacheStatusAfterPersist(volatileNode);
       }
+      logger.info(
+          "It takes {}ms to flush MTree in SchemaRegion {}",
+          (System.currentTimeMillis() - startTime),
+          schemaRegionId);
 
       if (updatedStorageGroupMNode != null || hasNodeToPersist) {
         flushCallback.run();
