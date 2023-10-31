@@ -61,14 +61,14 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
   private final EnrichedEvent sourceEvent; // used to report progress
 
+  private final PipeMemoryBlock allocatedMemoryBlock;
+
   private final TsFileSequenceReader tsFileSequenceReader;
   private final TsFileReader tsFileReader;
 
   private final Iterator<Map.Entry<String, List<String>>> deviceMeasurementsMapIterator;
   private final Map<String, Boolean> deviceIsAlignedMap;
   private final Map<String, TSDataType> measurementDataTypeMap;
-
-  private final PipeMemoryBlock block;
 
   public TsFileInsertionDataContainer(File tsFile, String pattern, long startTime, long endTime)
       throws IOException {
@@ -95,9 +95,9 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     this.sourceEvent = sourceEvent;
 
     try {
-      block =
+      allocatedMemoryBlock =
           PipeResourceManager.memory()
-              .tryAllocate(
+              .forceAllocate(
                   PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
 
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), true, true);
@@ -240,6 +240,6 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       LOGGER.warn("Failed to close TsFileSequenceReader", e);
     }
 
-    block.close();
+    allocatedMemoryBlock.close();
   }
 }

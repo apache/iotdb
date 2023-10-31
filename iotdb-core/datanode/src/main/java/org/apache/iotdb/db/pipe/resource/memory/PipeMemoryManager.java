@@ -105,8 +105,7 @@ public class PipeMemoryManager {
     return new PipeMemoryBlock(0);
   }
 
-  public synchronized PipeMemoryBlock forceAllocateForTablet(Tablet tablet)
-      throws PipeRuntimeException {
+  public synchronized PipeMemoryBlock forceAllocate(Tablet tablet) throws PipeRuntimeException {
     return forceAllocate(calculateTabletSizeInBytes(tablet));
   }
 

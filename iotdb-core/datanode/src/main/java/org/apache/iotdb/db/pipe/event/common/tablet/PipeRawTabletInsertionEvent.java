@@ -41,7 +41,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   private final EnrichedEvent sourceEvent;
   private boolean needToReport;
-  private PipeMemoryBlock block;
+
+  private PipeMemoryBlock allocatedMemoryBlock;
 
   private TabletInsertionDataContainer dataContainer;
 
@@ -80,12 +81,13 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
-    block = PipeResourceManager.memory().forceAllocateForTablet(tablet);
+    allocatedMemoryBlock = PipeResourceManager.memory().forceAllocate(tablet);
     return true;
   }
 
   @Override
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+    allocatedMemoryBlock.close();
     return true;
   }
 
@@ -94,7 +96,6 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     if (needToReport) {
       super.reportProgress();
     }
-    block.close();
   }
 
   @Override
