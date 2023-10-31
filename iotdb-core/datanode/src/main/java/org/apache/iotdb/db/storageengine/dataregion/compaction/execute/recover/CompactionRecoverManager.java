@@ -60,7 +60,10 @@ public class CompactionRecoverManager {
   }
 
   public void recoverInnerSpaceCompaction(boolean isSequence) {
-    logger.info("{} [Compaction][Recover] recovering inner compaction", logicalStorageGroupName);
+    logger.info(
+        "{} [Compaction][Recover] recovering {} inner compaction",
+        logicalStorageGroupName,
+        isSequence ? "sequence" : "unsequence");
     recoverCompaction(true, isSequence);
   }
 
