@@ -44,12 +44,12 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -605,6 +605,19 @@ public class AbstractCompactionTest {
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
     resource.updatePlanIndexes(fileVersion);
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+    return resource;
+  }
+
+  protected TsFileResource createEmptyFileAndResourceWithName(
+      String fileName, boolean isSeq, int innerCompactionCnt) {
+    String filePath;
+    if (isSeq) {
+      filePath = SEQ_DIRS.getPath() + File.separator + fileName;
+    } else {
+      filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
+    }
+    TsFileResource resource = new TsFileResource(new File(filePath));
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
     return resource;
   }

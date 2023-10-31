@@ -53,6 +53,6 @@ public class CounterProxy extends com.codahale.metrics.Counter {
 
   @Override
   public long getCount() {
-    return counter.count();
+    return counter.getCount();
   }
 }

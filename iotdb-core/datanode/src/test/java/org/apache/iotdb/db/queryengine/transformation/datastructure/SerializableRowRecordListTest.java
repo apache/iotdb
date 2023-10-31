@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
 import org.apache.iotdb.db.queryengine.transformation.datastructure.row.SerializableRowRecordList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import org.junit.After;
 import org.junit.Before;
@@ -103,7 +103,7 @@ public class SerializableRowRecordListTest extends SerializableListTest {
           rowRecord.addField(index % 2 == 0, dataType);
           break;
         case TEXT:
-          rowRecord.addField(Binary.valueOf(String.valueOf(index)), dataType);
+          rowRecord.addField(BytesUtils.valueOf(String.valueOf(index)), dataType);
           break;
       }
     }

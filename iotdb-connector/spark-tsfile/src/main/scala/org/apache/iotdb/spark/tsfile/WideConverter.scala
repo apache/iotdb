@@ -26,7 +26,9 @@ import org.apache.hadoop.fs.FileStatus
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata
-import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
+import org.apache.iotdb.tsfile.enums.TSDataType
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.iotdb.tsfile.read.common.Path
 import org.apache.iotdb.tsfile.read.expression.impl.{BinaryExpression, GlobalTimeExpression, SingleSeriesExpression}
@@ -327,7 +329,7 @@ object WideConverter extends Converter {
               filter
             case StringType =>
               val filter = new SingleSeriesExpression(new Path(nodeName, true),
-                ValueFilter.eq(new Binary(nodeValue.toString)))
+                ValueFilter.eq(new Binary(nodeValue.toString, TSFileConfig.STRING_CHARSET)))
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
           }

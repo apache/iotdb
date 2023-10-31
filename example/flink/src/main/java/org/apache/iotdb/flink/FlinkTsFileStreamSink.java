@@ -21,7 +21,7 @@ package org.apache.iotdb.flink;
 import org.apache.iotdb.flink.tsfile.RowTSRecordConverter;
 import org.apache.iotdb.flink.tsfile.TSRecordOutputFormat;
 import org.apache.iotdb.tsfile.common.constant.QueryConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;

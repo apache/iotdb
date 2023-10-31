@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
@@ -39,6 +42,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -58,6 +62,7 @@ import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
@@ -74,6 +79,23 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   public IoTDBThriftSyncConnector() {
     // Do nothing
+  }
+
+  @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    super.validate(validator);
+    final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
+    Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
+
+    validator.validate(
+        empty ->
+            !(givenNodeUrls.contains(
+                    new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort()))
+                || givenNodeUrls.contains(new TEndPoint("127.0.0.1", ioTDBConfig.getRpcPort()))
+                || givenNodeUrls.contains(new TEndPoint("0.0.0.0", ioTDBConfig.getRpcPort()))),
+        String.format(
+            "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself",
+            givenNodeUrls, new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort())));
   }
 
   @Override
@@ -231,6 +253,13 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       return;
     }
 
+    if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
+      LOGGER.warn(
+          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+          ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile());
+      return;
+    }
+
     if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
       for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
         transfer(event);
@@ -327,9 +356,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   private void doTransfer(
       IoTDBThriftSyncConnectorClient client, PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
-      throws PipeException, TException, InterruptedException, IOException {
-    pipeTsFileInsertionEvent.waitForTsFileClose();
-
+      throws PipeException, TException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
 
     // 1. Transfer file piece by piece

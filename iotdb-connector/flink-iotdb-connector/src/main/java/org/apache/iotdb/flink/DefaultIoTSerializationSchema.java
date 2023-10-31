@@ -18,7 +18,7 @@
 
 package org.apache.iotdb.flink;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.Arrays;

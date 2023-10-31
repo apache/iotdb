@@ -83,12 +83,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         sequence,
         performer,
         serialId,
-        CompactionTaskType.NORMAL);
+        CompactionTaskPriorityType.NORMAL);
   }
 
   public InnerSpaceCompactionTask(
       String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
-    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, CompactionTaskType.NORMAL);
+    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, CompactionTaskPriorityType.NORMAL);
     this.logFile = logFile;
     this.needRecoverTaskInfoFromLogFile = true;
   }
@@ -121,14 +121,14 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       boolean sequence,
       ICompactionPerformer performer,
       long serialId,
-      CompactionTaskType compactionTaskType) {
+      CompactionTaskPriorityType compactionTaskPriorityType) {
     super(
         tsFileManager.getStorageGroupName(),
         tsFileManager.getDataRegionId(),
         timePartition,
         tsFileManager,
         serialId,
-        compactionTaskType);
+        compactionTaskPriorityType);
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     this.performer = performer;

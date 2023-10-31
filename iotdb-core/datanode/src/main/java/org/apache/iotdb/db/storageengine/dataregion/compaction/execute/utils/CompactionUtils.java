@@ -314,7 +314,7 @@ public class CompactionUtils {
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
                 SYSTEM)
-            .value();
+            .getValue();
     double totalDisk =
         MetricService.getInstance()
             .getAutoGauge(
@@ -322,7 +322,7 @@ public class CompactionUtils {
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
                 SYSTEM)
-            .value();
+            .getValue();
 
     if (availableDisk != 0 && totalDisk != 0) {
       return availableDisk / totalDisk

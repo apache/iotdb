@@ -64,8 +64,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.Times
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.DeviceFilterVisitor;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -928,6 +928,10 @@ public class MTreeBelowSGCachedImpl {
             if (entityMNode.isDatabase()) {
               replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
             }
+            // this parent has no measurement before. The leafName is his first child who is a
+            // logical
+            // view.
+            entityMNode.setAligned(null);
             device = entityMNode.getAsMNode();
           }
 

@@ -37,6 +37,11 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
+            <artifactId>common-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-antlr</artifactId>
             <version>1.3.0-SNAPSHOT</version>
         </dependency>

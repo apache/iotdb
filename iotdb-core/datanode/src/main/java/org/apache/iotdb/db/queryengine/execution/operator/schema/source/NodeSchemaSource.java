@@ -30,6 +30,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowNodesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -76,10 +77,15 @@ public class NodeSchemaSource implements ISchemaSource<INodeSchemaInfo> {
   public void transformToTsBlockColumns(
       INodeSchemaInfo nodeSchemaInfo, TsBlockBuilder tsBlockBuilder, String database) {
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(nodeSchemaInfo.getFullPath()));
+    tsBlockBuilder
+        .getColumnBuilder(0)
+        .writeBinary(new Binary(nodeSchemaInfo.getFullPath(), TSFileConfig.STRING_CHARSET));
     tsBlockBuilder
         .getColumnBuilder(1)
-        .writeBinary(new Binary(String.valueOf(nodeSchemaInfo.getNodeType().getNodeType())));
+        .writeBinary(
+            new Binary(
+                String.valueOf(nodeSchemaInfo.getNodeType().getNodeType()),
+                TSFileConfig.STRING_CHARSET));
     tsBlockBuilder.declarePosition();
   }
 

@@ -44,7 +44,7 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.utils.FSUtils;
@@ -428,6 +428,9 @@ public class IoTDBConfig {
 
   /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
+
+  /** Insert the non overlapped unsequence files into sequence space */
+  private boolean enableInsertionCrossSpaceCompaction = false;
 
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
@@ -2680,6 +2683,14 @@ public class IoTDBConfig {
 
   public void setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
+  }
+
+  public boolean isEnableInsertionCrossSpaceCompaction() {
+    return enableInsertionCrossSpaceCompaction;
+  }
+
+  public void setEnableInsertionCrossSpaceCompaction(boolean enableInsertionCrossSpaceCompaction) {
+    this.enableInsertionCrossSpaceCompaction = enableInsertionCrossSpaceCompaction;
   }
 
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {

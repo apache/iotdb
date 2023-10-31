@@ -33,4 +33,14 @@ public class DoNothingMetricService extends AbstractMetricService {
   protected void reloadService(ReloadLevel reloadLevel) {
     // do nothing
   }
+
+  @Override
+  protected void loadManager() {
+    // do nothing
+  }
+
+  @Override
+  protected void loadReporter() {
+    // do nothing
+  }
 }

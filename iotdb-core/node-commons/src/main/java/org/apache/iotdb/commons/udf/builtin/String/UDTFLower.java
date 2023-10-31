@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.commons.udf.builtin.String;
 
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -56,6 +56,6 @@ public class UDTFLower implements UDTF {
     if (row.isNull(0)) {
       return null;
     }
-    return Binary.valueOf(row.getString(0).toLowerCase());
+    return BytesUtils.valueOf(row.getString(0).toLowerCase());
   }
 }

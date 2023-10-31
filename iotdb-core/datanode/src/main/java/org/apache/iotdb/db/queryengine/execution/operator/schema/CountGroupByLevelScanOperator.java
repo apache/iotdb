@@ -28,7 +28,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -44,7 +46,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements SourceOperator {
 
@@ -63,6 +64,9 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
   private ListenableFuture<?> isBlocked;
   private TsBlock next;
   private boolean isFinished;
+
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   public CountGroupByLevelScanOperator(
       PlanNodeId sourceId,
@@ -178,7 +182,9 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(OUTPUT_DATA_TYPES);
     for (Map.Entry<PartialPath, Long> entry : countMap.entrySet()) {
       tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-      tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(entry.getKey().getFullPath()));
+      tsBlockBuilder
+          .getColumnBuilder(0)
+          .writeBinary(new Binary(entry.getKey().getFullPath(), TSFileConfig.STRING_CHARSET));
       tsBlockBuilder.getColumnBuilder(1).writeLong(entry.getValue());
       tsBlockBuilder.declarePosition();
     }

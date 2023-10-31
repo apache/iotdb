@@ -55,7 +55,7 @@ import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.NodeType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -461,6 +461,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "compaction_submission_interval_in_ms",
                 Long.toString(conf.getCompactionSubmissionIntervalInMs()))));
+
+    conf.setEnableInsertionCrossSpaceCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_insertion_cross_space_compaction",
+                Boolean.toString(conf.isEnableInsertionCrossSpaceCompaction()))));
 
     conf.setEnableCrossSpaceCompaction(
         Boolean.parseBoolean(
@@ -1165,8 +1171,14 @@ public class IoTDBDescriptor {
     boolean isCompactionEnabled =
         conf.isEnableSeqSpaceCompaction()
             || conf.isEnableUnseqSpaceCompaction()
-            || conf.isEnableCrossSpaceCompaction();
+            || conf.isEnableCrossSpaceCompaction()
+            || conf.isEnableInsertionCrossSpaceCompaction();
 
+    boolean newConfigEnableInsertionCrossSpaceCompaction =
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_insertion_cross_space_compaction",
+                Boolean.toString(conf.isEnableInsertionCrossSpaceCompaction())));
     boolean newConfigEnableCrossSpaceCompaction =
         Boolean.parseBoolean(
             properties.getProperty(
@@ -1184,6 +1196,7 @@ public class IoTDBDescriptor {
                 Boolean.toString(conf.isEnableUnseqSpaceCompaction())));
     boolean compactionEnabledInNewConfig =
         newConfigEnableCrossSpaceCompaction
+            || newConfigEnableInsertionCrossSpaceCompaction
             || newConfigEnableSeqSpaceCompaction
             || newConfigEnableUnseqSpaceCompaction;
 
@@ -1192,6 +1205,7 @@ public class IoTDBDescriptor {
       return;
     }
 
+    conf.setEnableInsertionCrossSpaceCompaction(newConfigEnableInsertionCrossSpaceCompaction);
     conf.setEnableCrossSpaceCompaction(newConfigEnableCrossSpaceCompaction);
     conf.setEnableSeqSpaceCompaction(newConfigEnableSeqSpaceCompaction);
     conf.setEnableUnseqSpaceCompaction(newConfigEnableUnseqSpaceCompaction);
@@ -1690,8 +1704,17 @@ public class IoTDBDescriptor {
   }
 
   private void initMemoryAllocate(Properties properties) {
-    String memoryAllocateProportion =
-        properties.getProperty("storage_query_schema_consensus_free_memory_proportion");
+    String memoryAllocateProportion = properties.getProperty("datanode_memory_proportion", null);
+    if (memoryAllocateProportion == null) {
+      memoryAllocateProportion =
+          properties.getProperty("storage_query_schema_consensus_free_memory_proportion");
+      if (memoryAllocateProportion != null) {
+        logger.warn(
+            "The parameter storage_query_schema_consensus_free_memory_proportion is deprecated since v1.2.3, "
+                + "please use datanode_memory_proportion instead.");
+      }
+    }
+
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -1712,6 +1735,8 @@ public class IoTDBDescriptor {
         if (proportions.length >= 6) {
           conf.setAllocateMemoryForPipe(
               maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum);
+        } else {
+          conf.setAllocateMemoryForPipe(0);
         }
       }
     }

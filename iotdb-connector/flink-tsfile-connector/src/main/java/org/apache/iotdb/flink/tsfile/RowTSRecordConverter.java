@@ -21,8 +21,8 @@ package org.apache.iotdb.flink.tsfile;
 
 import org.apache.iotdb.tsfile.common.constant.QueryConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -141,10 +141,10 @@ public class RowTSRecordConverter implements TSRecordConverter<Row> {
             templateDataPoint.setDouble((Double) o);
             break;
           case TEXT:
-            templateDataPoint.setString(Binary.valueOf((String) o));
+            templateDataPoint.setString(BytesUtils.valueOf((String) o));
             break;
           default:
-            templateDataPoint.setString(Binary.valueOf(o.toString()));
+            templateDataPoint.setString(BytesUtils.valueOf(o.toString()));
         }
         reuse[tsRecordIndexMapping[i]].addTuple(templateDataPoint);
       }

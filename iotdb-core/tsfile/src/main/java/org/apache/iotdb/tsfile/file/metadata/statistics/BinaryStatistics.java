@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -34,8 +35,8 @@ import java.util.Objects;
 /** Statistics for string type. */
 public class BinaryStatistics extends Statistics<Binary> {
 
-  private Binary firstValue = new Binary("");
-  private Binary lastValue = new Binary("");
+  private Binary firstValue = new Binary("", TSFileConfig.STRING_CHARSET);
+  private Binary lastValue = new Binary("", TSFileConfig.STRING_CHARSET);
   static final int BINARY_STATISTICS_FIXED_RAM_SIZE = 32;
 
   @Override
