@@ -600,7 +600,7 @@ public class DataRegion implements IDataRegionForQuery {
     lastFlushTimeMap.setMultiDeviceGlobalFlushedTime(endTimeMap);
   }
 
-  public void initCompaction() {
+  public void initCompactionSchedule() {
     if (!config.isEnableSeqSpaceCompaction()
         && !config.isEnableUnseqSpaceCompaction()
         && !config.isEnableCrossSpaceCompaction()
