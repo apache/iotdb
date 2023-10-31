@@ -309,6 +309,11 @@ public class StorageEngine implements IService {
     }
 
     recover();
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        dataRegion.initCompaction();
+      }
+    }
 
     ttlCheckThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.TTL_CHECK.getName());

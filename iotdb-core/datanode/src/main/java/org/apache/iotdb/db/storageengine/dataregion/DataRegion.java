@@ -133,6 +133,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -544,9 +547,6 @@ public class DataRegion implements IDataRegionForQuery {
       throw new DataRegionException(e);
     }
 
-    // recover and start timed compaction thread
-    initCompaction();
-
     if (StorageEngine.getInstance().isAllSgReady()) {
       logger.info("The data region {}[{}] is created successfully", databaseName, dataRegionId);
     } else {
@@ -568,7 +568,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private void initCompaction() {
+  public void initCompaction() {
     if (!config.isEnableSeqSpaceCompaction()
         && !config.isEnableUnseqSpaceCompaction()
         && !config.isEnableCrossSpaceCompaction()) {
@@ -1349,21 +1349,21 @@ public class DataRegion implements IDataRegionForQuery {
    * @param sequence whether this tsfile processor is sequence or not
    * @param tsFileProcessor tsfile processor
    */
-  public void asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
+  public Future<?> asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
     // for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
     // for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
     if (closingSequenceTsFileProcessor.contains(tsFileProcessor)
         || closingUnSequenceTsFileProcessor.contains(tsFileProcessor)
         || tsFileProcessor.alreadyMarkedClosing()) {
-      return;
+      return CompletableFuture.completedFuture(null);
     }
     logger.info(
         "Async close tsfile: {}",
         tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
-
+    Future<?> future;
     if (sequence) {
       closingSequenceTsFileProcessor.add(tsFileProcessor);
-      tsFileProcessor.asyncClose();
+      future = tsFileProcessor.asyncClose();
 
       workSequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
       // if unsequence files don't contain this time range id, we should remove it's version
@@ -1374,7 +1374,7 @@ public class DataRegion implements IDataRegionForQuery {
       logger.info("close a sequence tsfile processor {}", databaseName + "-" + dataRegionId);
     } else {
       closingUnSequenceTsFileProcessor.add(tsFileProcessor);
-      tsFileProcessor.asyncClose();
+      future = tsFileProcessor.asyncClose();
 
       workUnsequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
       // if sequence files don't contain this time range id, we should remove it's version
@@ -1383,6 +1383,7 @@ public class DataRegion implements IDataRegionForQuery {
         timePartitionIdVersionControllerMap.remove(tsFileProcessor.getTimeRangeId());
       }
     }
+    return future;
   }
 
   /**
@@ -1585,7 +1586,7 @@ public class DataRegion implements IDataRegionForQuery {
   public void syncCloseAllWorkingTsFileProcessors() {
     synchronized (closeStorageGroupCondition) {
       try {
-        asyncCloseAllWorkingTsFileProcessors();
+        List<Future<?>> tsFileProcessorsClosingFutures = asyncCloseAllWorkingTsFileProcessors();
         long startTime = System.currentTimeMillis();
         while (!closingSequenceTsFileProcessor.isEmpty()
             || !closingUnSequenceTsFileProcessor.isEmpty()) {
@@ -1597,7 +1598,12 @@ public class DataRegion implements IDataRegionForQuery {
                 (System.currentTimeMillis() - startTime) / 1000);
           }
         }
-      } catch (InterruptedException e) {
+        for (Future<?> f : tsFileProcessorsClosingFutures) {
+          if (f != null) {
+            f.get();
+          }
+        }
+      } catch (InterruptedException | ExecutionException e) {
         logger.error(
             "CloseFileNodeCondition error occurs while waiting for closing the storage "
                 + "group {}",
@@ -1609,23 +1615,25 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** close all working tsfile processors */
-  public void asyncCloseAllWorkingTsFileProcessors() {
+  public List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
     writeLock("asyncCloseAllWorkingTsFileProcessors");
+    List<Future<?>> futures = new ArrayList<>();
     try {
       logger.info("async force close all files in database: {}", databaseName + "-" + dataRegionId);
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor :
           new ArrayList<>(workSequenceTsFileProcessors.values())) {
-        asyncCloseOneTsFileProcessor(true, tsFileProcessor);
+        futures.add(asyncCloseOneTsFileProcessor(true, tsFileProcessor));
       }
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor :
           new ArrayList<>(workUnsequenceTsFileProcessors.values())) {
-        asyncCloseOneTsFileProcessor(false, tsFileProcessor);
+        futures.add(asyncCloseOneTsFileProcessor(false, tsFileProcessor));
       }
     } finally {
       writeUnlock();
     }
+    return futures;
   }
 
   /** force close all working tsfile processors */
