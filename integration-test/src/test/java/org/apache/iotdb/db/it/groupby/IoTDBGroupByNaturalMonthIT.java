@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
@@ -54,11 +55,12 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByNaturalMonthIT {
 
-  private static final List<String> dataSet = new ArrayList<>();
+  protected static final List<String> dataSet = new ArrayList<>();
+  protected static TimeUnit currPrecision;
 
   static {
-    for (long i = 1604102400000L /*  2020-10-31 08:00:00 */;
-        i <= 1617148800000L /* 2021-03-31 08:00:00 */;
+    for (long i = 1604102400000L /*  2020-10-31 00:00:00 */;
+        i <= 1617148800000L /* 2021-03-31 00:00:00 */;
         i += 86400_000L) {
       dataSet.add("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");
     }
@@ -75,12 +77,13 @@ public class IoTDBGroupByNaturalMonthIT {
     }
   }
 
-  private static final DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+  protected static final DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
 
   @BeforeClass
   public static void setUp() throws Exception {
     df.setTimeZone(TimeZone.getTimeZone("GMT+00:00"));
     EnvFactory.getEnv().initClusterEnvironment();
+    currPrecision = EnvFactory.getEnv().getConfig().getCommonConfig().getTimestampPrecision();
     prepareData(dataSet.toArray(new String[0]));
   }
 
@@ -106,10 +109,11 @@ public class IoTDBGroupByNaturalMonthIT {
         };
     resultSetEqualTest(
         "select sum(temperature) from root.sg1.d1 "
-            + "GROUP BY ([1604102400000, 1614556800000), 1mo, 1mo)",
+            + "GROUP BY ([2020-10-31, 2021-03-01), 1mo, 1mo)",
         expectedHeader,
         retArray,
-        df);
+        df,
+        currPrecision);
   }
 
   /**
@@ -128,10 +132,11 @@ public class IoTDBGroupByNaturalMonthIT {
     };
     resultSetEqualTest(
         "select sum(temperature) from root.sg1.d1 "
-            + "GROUP BY ([1604102400000, 1614556800000), 10d, 1mo)",
+            + "GROUP BY ([2020-10-31, 2021-03-01), 10d, 1mo)",
         expectedHeader,
         retArray,
-        df);
+        df,
+        currPrecision);
   }
 
   /**
@@ -143,11 +148,11 @@ public class IoTDBGroupByNaturalMonthIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
     String[] retArray = {"10/31/2020:00:00:00,30.0,"};
     resultSetEqualTest(
-        "select sum(temperature) from root.sg1.d1 "
-            + "GROUP BY ([1604102400000, 1606694400000), 1mo)",
+        "select sum(temperature) from root.sg1.d1 " + "GROUP BY ([2020-10-31, 2020-11-30), 1mo)",
         expectedHeader,
         retArray,
-        df);
+        df,
+        currPrecision);
   }
 
   /**
@@ -159,10 +164,11 @@ public class IoTDBGroupByNaturalMonthIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, sum("root.sg1.d1.temperature")};
     String[] retArray = {"01/31/2021:00:00:00,28.0,", "02/28/2021:00:00:00,31.0,"};
     resultSetEqualTest(
-        "select sum(temperature) from root.sg1.d1 GROUP BY ([1612051200000, 1617148800000), 1mo)",
+        "select sum(temperature) from root.sg1.d1 GROUP BY ([2021-01-31, 2021-03-31), 1mo)",
         expectedHeader,
         retArray,
-        df);
+        df,
+        currPrecision);
   }
 
   /** Test group by month with order by time desc. */
@@ -170,8 +176,12 @@ public class IoTDBGroupByNaturalMonthIT {
   public void groupByNaturalMonthFailTest() {
     assertTestFail(
         "select sum(temperature) from root.sg1.d1 "
-            + "GROUP BY ([1612051200000, 1617148800000), 1mo) order by time desc",
+            + "GROUP BY ([2021-01-31, 2021-03-31), 1mo) order by time desc",
         "doesn't support order by time desc now.");
+
+    assertTestFail(
+        "select sum(temperature) from root.sg1.d1 GROUP BY ([1970-01-01, 2970-01-01), 40d, 1mo)",
+        "The time windows may exceed 10000, please ensure your input.");
   }
 
   /** StartTime: now() - 1mo, EndTime: now(). */
@@ -217,10 +227,11 @@ public class IoTDBGroupByNaturalMonthIT {
     };
     resultSetEqualTest(
         "select sum(temperature) from root.sg1.d1 "
-            + "GROUP BY ([1604102400000, 1614556800000), 2mo, 1mo)",
+            + "GROUP BY ([2020-10-31, 2021-03-01), 2mo, 1mo)",
         expectedHeader,
         retArray,
-        df);
+        df,
+        currPrecision);
   }
 
   @Test
@@ -243,10 +254,11 @@ public class IoTDBGroupByNaturalMonthIT {
     };
     resultSetEqualTest(
         "select sum(temperature) from root.sg1.d1 "
-            + "GROUP BY ([1604102400000, 1614556800000), 1mo, 10d)",
+            + "GROUP BY ([2020-10-31, 2021-03-01), 1mo, 10d)",
         expectedHeader,
         retArray,
-        df);
+        df,
+        currPrecision);
   }
 
   @Test
@@ -263,7 +275,8 @@ public class IoTDBGroupByNaturalMonthIT {
         "select count(s1) from root.test.d1 " + "group by ([2023-01-01, 2027-01-01), 1y)",
         expectedHeader,
         retArray,
-        df);
+        df,
+        currPrecision);
   }
 
   @Test
@@ -280,7 +293,8 @@ public class IoTDBGroupByNaturalMonthIT {
         "select count(s1) from root.test.d1 " + "group by ((2023-01-01, 2027-01-01], 1y)",
         expectedHeader,
         retArray,
-        df);
+        df,
+        currPrecision);
   }
 
   @Test
@@ -301,7 +315,8 @@ public class IoTDBGroupByNaturalMonthIT {
         "select count(s1) from root.test.d1 " + "group by ([2023-01-01, 2027-01-01), 1y, 6mo)",
         expectedHeader,
         retArray,
-        df);
+        df,
+        currPrecision);
   }
 
   @Test
@@ -318,7 +333,8 @@ public class IoTDBGroupByNaturalMonthIT {
         "select count(s1) from root.test.d1 " + "group by ([2023-01-01, 2027-01-01), 2y, 1y)",
         expectedHeader,
         retArray,
-        df);
+        df,
+        currPrecision);
   }
 
   @Test
@@ -335,6 +351,7 @@ public class IoTDBGroupByNaturalMonthIT {
         "select count(s1) from root.test.d1 " + "group by ([2023-01-01, 2027-01-01), 6mo, 1y)",
         expectedHeader,
         retArray,
-        df);
+        df,
+        currPrecision);
   }
 }
