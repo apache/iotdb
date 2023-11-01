@@ -142,7 +142,7 @@ public class CompactionRecoverManager {
         CompactionLogger.findCompactionLogs(isInnerSpace, timePartitionDir.getPath());
     for (File compactionLog : compactionLogs) {
       logger.info(
-              "{} [Compaction][Recover] calling compaction recover task.", logicalStorageGroupName);
+          "{} [Compaction][Recover] calling compaction recover task.", logicalStorageGroupName);
       if (!isInnerSpace
           && compactionLog
               .getAbsolutePath()
