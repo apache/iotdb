@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
@@ -32,6 +33,7 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -576,7 +578,8 @@ public class CompactionMetrics implements IMetricSet {
 
   // region compaction task memory
   private Histogram seqInnerSpaceCompactionTaskMemory = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  private Histogram unseqInnerSpaceCompactionTaskMemory = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram unseqInnerSpaceCompactionTaskMemory =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram crossSpaceCompactionTaskMemory = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   public void updateCompactionMemoryMetrics(CompactionTaskType taskType, long memory) {
@@ -597,24 +600,24 @@ public class CompactionMetrics implements IMetricSet {
   }
 
   private void bindCompactionTaskMemory(AbstractMetricService metricService) {
-    seqInnerSpaceCompactionTaskMemory = metricService.getOrCreateHistogram(
-        Metric.COMPACTION_TASK_MEMORY.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.NAME.toString(),
-        "seq"
-    );
-    unseqInnerSpaceCompactionTaskMemory = metricService.getOrCreateHistogram(
-        Metric.COMPACTION_TASK_MEMORY.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.NAME.toString(),
-        "unseq"
-    );
-    crossSpaceCompactionTaskMemory = metricService.getOrCreateHistogram(
-        Metric.COMPACTION_TASK_MEMORY.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.NAME.toString(),
-        "cross"
-    );
+    seqInnerSpaceCompactionTaskMemory =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_MEMORY.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "seq");
+    unseqInnerSpaceCompactionTaskMemory =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_MEMORY.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "unseq");
+    crossSpaceCompactionTaskMemory =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_MEMORY.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "cross");
     metricService.createAutoGauge(
         Metric.COMPACTION_TASK_MEMORY_DISTRIBUTION.toString(),
         MetricLevel.IMPORTANT,
@@ -647,51 +650,177 @@ public class CompactionMetrics implements IMetricSet {
 
   private void unbindCompactionTaskMemory(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.HISTOGRAM,
-        Metric.COMPACTION_TASK_MEMORY.toString(),
-        Tag.NAME.toString(),
-        "seq"
-    );
+        MetricType.HISTOGRAM, Metric.COMPACTION_TASK_MEMORY.toString(), Tag.NAME.toString(), "seq");
     metricService.remove(
         MetricType.HISTOGRAM,
         Metric.COMPACTION_TASK_MEMORY.toString(),
         Tag.NAME.toString(),
-        "unseq"
-    );
+        "unseq");
     metricService.remove(
         MetricType.HISTOGRAM,
         Metric.COMPACTION_TASK_MEMORY.toString(),
         Tag.NAME.toString(),
-        "cross"
-    );
+        "cross");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.COMPACTION_TASK_MEMORY_DISTRIBUTION.toString(),
         Tag.NAME.toString(),
-        "total"
-    );
+        "total");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.COMPACTION_TASK_MEMORY_DISTRIBUTION.toString(),
         Tag.NAME.toString(),
-        "cross"
-    );
+        "cross");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.COMPACTION_TASK_MEMORY_DISTRIBUTION.toString(),
         Tag.NAME.toString(),
-        "seq"
-    );
+        "seq");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.COMPACTION_TASK_MEMORY_DISTRIBUTION.toString(),
         Tag.NAME.toString(),
-        "unseq"
-    );
+        "unseq");
   }
 
   // endregion
 
+  // region compaction task selection
+  private Gauge seqInnerSpaceCompactionTaskSelectedNum = DoNothingMetricManager.DO_NOTHING_GAUGE;
+  private Gauge unseqInnerSpaceCompactionTaskSelectedNum = DoNothingMetricManager.DO_NOTHING_GAUGE;
+  private Gauge crossInnerSpaceCompactionTaskSelectedNum = DoNothingMetricManager.DO_NOTHING_GAUGE;
+  private Gauge insertionCrossSpaceCompactionTaskSelectedNum =
+      DoNothingMetricManager.DO_NOTHING_GAUGE;
+
+  private Histogram seqSpaceCompactionTaskSelectionTimeCost =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram unseqSpaceCompactionTaskSelectionTimeCost =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram crossSpaceCompactionTaskSelectionTimeCost =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram insertionCrossSpaceCompactionTaskSelectionTimeCost =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  public void updateCompactionTaskSelectionNum(CompactionScheduleSummary summary) {
+    seqInnerSpaceCompactionTaskSelectedNum.set(summary.getSubmitSeqInnerSpaceCompactionTaskNum());
+    unseqInnerSpaceCompactionTaskSelectedNum.set(
+        summary.getSubmitUnseqInnerSpaceCompactionTaskNum());
+    crossInnerSpaceCompactionTaskSelectedNum.set(summary.getSubmitCrossSpaceCompactionTaskNum());
+    insertionCrossSpaceCompactionTaskSelectedNum.set(
+        summary.getSubmitInsertionCrossSpaceCompactionTaskNum());
+  }
+
+  public void updateCompactionTaskSelectionTimeCost(CompactionTaskType taskType, long time) {
+    switch (taskType) {
+      case INNER_SEQ:
+        seqSpaceCompactionTaskSelectionTimeCost.update(time);
+        break;
+      case INNER_UNSEQ:
+        unseqSpaceCompactionTaskSelectionTimeCost.update(time);
+        break;
+      case CROSS:
+        crossSpaceCompactionTaskSelectionTimeCost.update(time);
+        break;
+      case INSERTION:
+        insertionCrossSpaceCompactionTaskSelectionTimeCost.update(time);
+        break;
+      default:
+        break;
+    }
+  }
+
+  private void bindCompactionTaskSelection(AbstractMetricService metricService) {
+    seqInnerSpaceCompactionTaskSelectedNum =
+        metricService.getOrCreateGauge(
+            Metric.COMPACTION_TASK_SELECTION.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "seq");
+    unseqInnerSpaceCompactionTaskSelectedNum =
+        metricService.getOrCreateGauge(
+            Metric.COMPACTION_TASK_SELECTION.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "unseq");
+    crossInnerSpaceCompactionTaskSelectedNum =
+        metricService.getOrCreateGauge(
+            Metric.COMPACTION_TASK_SELECTION.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "cross");
+    insertionCrossSpaceCompactionTaskSelectedNum =
+        metricService.getOrCreateGauge(
+            Metric.COMPACTION_TASK_SELECTION.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "insertion");
+    seqSpaceCompactionTaskSelectionTimeCost =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTION_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "seq");
+    unseqSpaceCompactionTaskSelectionTimeCost =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTION_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "unseq");
+    crossSpaceCompactionTaskSelectionTimeCost =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTION_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "cross");
+    insertionCrossSpaceCompactionTaskSelectionTimeCost =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTION_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "insertion");
+  }
+
+  private void unbindCompactionTaskSelection(AbstractMetricService metricService) {
+    metricService.remove(
+        MetricType.GAUGE, Metric.COMPACTION_TASK_SELECTION.toString(), Tag.NAME.toString(), "seq");
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.COMPACTION_TASK_SELECTION.toString(),
+        Tag.NAME.toString(),
+        "unseq");
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.COMPACTION_TASK_SELECTION.toString(),
+        Tag.NAME.toString(),
+        "cross");
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.COMPACTION_TASK_SELECTION.toString(),
+        Tag.NAME.toString(),
+        "insertion");
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.COMPACTION_TASK_SELECTION_COST.toString(),
+        Tag.NAME.toString(),
+        "seq");
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.COMPACTION_TASK_SELECTION_COST.toString(),
+        Tag.NAME.toString(),
+        "unseq");
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.COMPACTION_TASK_SELECTION_COST.toString(),
+        Tag.NAME.toString(),
+        "cross");
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.COMPACTION_TASK_SELECTION_COST.toString(),
+        Tag.NAME.toString(),
+        "insertion");
+  }
+
+  // endregion
   @Override
   public void bindTo(AbstractMetricService metricService) {
     bindTaskInfo(metricService);
@@ -699,6 +828,7 @@ public class CompactionMetrics implements IMetricSet {
     bindReadInfo(metricService);
     bindPerformanceInfo(metricService);
     bindCompactionTaskMemory(metricService);
+    bindCompactionTaskSelection(metricService);
   }
 
   @Override
@@ -708,6 +838,7 @@ public class CompactionMetrics implements IMetricSet {
     unbindReadInfo(metricService);
     unbindPerformanceInfo(metricService);
     unbindCompactionTaskMemory(metricService);
+    unbindCompactionTaskSelection(metricService);
   }
 
   private void updateCompactionTaskInfo() {

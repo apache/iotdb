@@ -86,8 +86,10 @@ public class CompactionWorker implements Runnable {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
         estimatedMemoryCost = task.getEstimatedMemoryCost();
         CompactionTaskType taskType = task.getCompactionTaskType();
-        memoryAcquired = SystemInfo.getInstance().addCompactionMemoryCost(taskType, estimatedMemoryCost, 60);
-        CompactionMetrics.getInstance().updateCompactionMemoryMetrics(taskType, estimatedMemoryCost);
+        memoryAcquired =
+            SystemInfo.getInstance().addCompactionMemoryCost(taskType, estimatedMemoryCost, 60);
+        CompactionMetrics.getInstance()
+            .updateCompactionMemoryMetrics(taskType, estimatedMemoryCost);
       }
       fileHandleAcquired =
           SystemInfo.getInstance().addCompactionFileNum(task.getProcessedFileNum(), 60);
@@ -110,7 +112,8 @@ public class CompactionWorker implements Runnable {
         task.handleTaskCleanup();
       }
       if (memoryAcquired) {
-        SystemInfo.getInstance().resetCompactionMemoryCost(task.getCompactionTaskType(), estimatedMemoryCost);
+        SystemInfo.getInstance()
+            .resetCompactionMemoryCost(task.getCompactionTaskType(), estimatedMemoryCost);
       }
       if (fileHandleAcquired) {
         SystemInfo.getInstance().decreaseCompactionFileNumCost(task.getProcessedFileNum());

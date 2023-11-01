@@ -217,7 +217,8 @@ public class SystemInfo {
     return true;
   }
 
-  public boolean addCompactionMemoryCost(CompactionTaskType taskType, long memoryCost, long timeOutInSecond)
+  public boolean addCompactionMemoryCost(
+      CompactionTaskType taskType, long memoryCost, long timeOutInSecond)
       throws InterruptedException, CompactionMemoryNotEnoughException {
     if (memoryCost > memorySizeForCompaction) {
       // required memory cost is greater than the total memory budget for compaction
@@ -256,7 +257,8 @@ public class SystemInfo {
     return true;
   }
 
-  public synchronized void resetCompactionMemoryCost(CompactionTaskType taskType, long compactionMemoryCost) {
+  public synchronized void resetCompactionMemoryCost(
+      CompactionTaskType taskType, long compactionMemoryCost) {
     if (!config.isEnableCompactionMemControl()) {
       return;
     }
