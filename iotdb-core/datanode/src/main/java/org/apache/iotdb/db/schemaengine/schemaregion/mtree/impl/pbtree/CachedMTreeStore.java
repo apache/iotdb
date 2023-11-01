@@ -548,27 +548,29 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   /** Sync all volatile nodes to PBTree and execute memory release after flush. */
   public void flushVolatileNodes() {
     try {
-      long startTime = System.currentTimeMillis();
-
       boolean hasVolatileNodes = flushVolatileDBNode();
 
       Iterator<ICachedMNode> volatileSubtrees = cacheManager.collectVolatileSubtrees();
       if (volatileSubtrees.hasNext()) {
         hasVolatileNodes = true;
-      }
 
-      ICachedMNode subtreeRoot;
-      PBTreeFlushExecutor flushExecutor;
-      while (volatileSubtrees.hasNext()) {
-        subtreeRoot = volatileSubtrees.next();
-        flushExecutor = new PBTreeFlushExecutor(subtreeRoot, cacheManager, file);
-        flushExecutor.flushVolatileNodes();
-      }
+        long startTime = System.currentTimeMillis();
 
-      logger.info(
-          "It takes {}ms to flush MTree in SchemaRegion {}",
-          (System.currentTimeMillis() - startTime),
-          schemaRegionId);
+        ICachedMNode subtreeRoot;
+        PBTreeFlushExecutor flushExecutor;
+        while (volatileSubtrees.hasNext()) {
+          subtreeRoot = volatileSubtrees.next();
+          flushExecutor = new PBTreeFlushExecutor(subtreeRoot, cacheManager, file);
+          flushExecutor.flushVolatileNodes();
+        }
+
+        long time = System.currentTimeMillis() - startTime;
+        if (time > 10_000) {
+          logger.info("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
+        } else {
+          logger.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, schemaRegionId);
+        }
+      }
 
       if (hasVolatileNodes) {
         flushCallback.run();
