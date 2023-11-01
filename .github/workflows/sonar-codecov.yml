@@ -46,7 +46,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: Test
         run: | 
-          mvn -B -P with-code-coverage clean compile test -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true
+          mvn -B -P with-code-coverage clean package test -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true
           mvn -B -P with-code-coverage post-integration-test -pl code-coverage
       - name: Upload coverage reports to codecov
         uses: codecov/codecov-action@v3

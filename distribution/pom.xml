@@ -35,21 +35,18 @@
             <artifactId>iotdb-server</artifactId>
             <version>1.3.1-SNAPSHOT</version>
             <type>zip</type>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-cli</artifactId>
             <version>1.3.1-SNAPSHOT</version>
             <type>zip</type>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-confignode</artifactId>
             <version>1.3.1-SNAPSHOT</version>
             <type>zip</type>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
