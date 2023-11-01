@@ -374,8 +374,6 @@ public class TimeRangeIteratorTest {
             true),
         res);
 
-    System.out.println();
-
     res =
         new String[] {
           "[ "

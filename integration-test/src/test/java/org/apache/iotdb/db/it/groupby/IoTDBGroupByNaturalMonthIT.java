@@ -35,6 +35,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -352,6 +353,51 @@ public class IoTDBGroupByNaturalMonthIT {
         expectedHeader,
         retArray,
         df,
+        currPrecision);
+  }
+
+  @Test
+  public void groupByNaturalMonthWithMixedUnit1() {
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.d1.s1")};
+    String[] retArray =
+        new String[] {
+          // [01-28, 03-01)
+          "01/28/2023:00:00:00,1,",
+          // [03-01, 04-02)
+          "03/01/2023:00:00:00,2,",
+          // [04-02, 05-03)
+          "04/02/2023:00:00:00,1,",
+          // [05-03, 05-29)
+          "05/03/2023:00:00:00,0,"
+        };
+    resultSetEqualTest(
+        "select count(s1) from root.test.d1 " + "group by ([2023-01-28, 2023-05-29), 1mo1d)",
+        expectedHeader,
+        retArray,
+        df,
+        currPrecision);
+  }
+
+  @Test
+  public void groupByNaturalMonthWithMixedUnit2() {
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.d1.s1")};
+    String[] retArray =
+        new String[] {
+          // [01-28, 03-01)
+          Timestamp.valueOf("2023-01-28 00:00:00").getTime() + ",1,",
+          // [03-01, 04-02)
+          Timestamp.valueOf("2023-03-01 00:00:00").getTime() + ",2,",
+          // [04-02, 05-03)
+          Timestamp.valueOf("2023-04-02 00:00:00").getTime() + ",1,",
+          // [05-03, 05-29)
+          Timestamp.valueOf("2023-05-03 00:00:00").getTime() + ",0,"
+        };
+    // the part in timeDuration finer than current time precision will be discarded
+    resultSetEqualTest(
+        "select count(s1) from root.test.d1 " + "group by ([2023-01-28, 2023-05-29), 1mo1d1ns)",
+        expectedHeader,
+        retArray,
+        null,
         currPrecision);
   }
 }

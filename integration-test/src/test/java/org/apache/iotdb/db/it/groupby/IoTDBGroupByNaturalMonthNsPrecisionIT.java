@@ -28,11 +28,15 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.TimeZone;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.itbase.constant.TestConstant.count;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -77,5 +81,28 @@ public class IoTDBGroupByNaturalMonthNsPrecisionIT extends IoTDBGroupByNaturalMo
     assertTestFail(
         "select sum(temperature) from root.sg1.d1 GROUP BY ([1970-01-01, 2970-01-01), 40d, 1mo)",
         "Input time format 2970-01-01 error.");
+  }
+
+  @Test
+  public void groupByNaturalMonthWithMixedUnit2() {
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.d1.s1")};
+    String[] retArray =
+        new String[] {
+          // [01-28, 03-01)
+          Timestamp.valueOf("2023-01-28 00:00:00").getTime() * 1000000 + 0 + ",1,",
+          // [03-01, 04-02)
+          Timestamp.valueOf("2023-03-01 00:00:00").getTime() * 1000000 + 1 + ",2,",
+          // [04-02, 05-03)
+          Timestamp.valueOf("2023-04-02 00:00:00").getTime() * 1000000 + 2 + ",1,",
+          // [05-03, 05-29)
+          Timestamp.valueOf("2023-05-03 00:00:00").getTime() * 1000000 + 3 + ",0,"
+        };
+    // the part in timeDuration finer than current time precision will be discarded
+    resultSetEqualTest(
+        "select count(s1) from root.test.d1 " + "group by ([2023-01-28, 2023-05-29), 1mo1d1ns)",
+        expectedHeader,
+        retArray,
+        null,
+        currPrecision);
   }
 }
