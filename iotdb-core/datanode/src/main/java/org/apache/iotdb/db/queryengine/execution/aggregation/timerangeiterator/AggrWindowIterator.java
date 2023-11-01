@@ -91,14 +91,14 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       intervalNum =
           (long)
               Math.ceil(
-                  queryRange
-                      / (double)
-                          (slidingStep.getMaxTotalDuration(TimestampPrecisionUtils.currPrecision)));
-      retStartTime = DateTimeUtils.calcPositiveIntervalByMonth(startTime, slidingStep, intervalNum);
-      while (retStartTime >= endTime) {
-        intervalNum -= 1;
-        retStartTime =
-            DateTimeUtils.calcPositiveIntervalByMonth(startTime, slidingStep, intervalNum);
+                  (double) queryRange
+                      / (slidingStep.getMaxTotalDuration(TimestampPrecisionUtils.currPrecision)));
+      long tempRetStartTime =
+          DateTimeUtils.calcPositiveIntervalByMonth(startTime, slidingStep, intervalNum - 1);
+      retStartTime = tempRetStartTime;
+      while (tempRetStartTime < endTime) {
+        retStartTime = tempRetStartTime;
+        tempRetStartTime = DateTimeUtils.calcPositiveIntervalByMonth(retStartTime, slidingStep, 1);
       }
     } else {
       intervalNum = (long) Math.ceil(queryRange / (double) slidingStep.nonMonthDuration);
