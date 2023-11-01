@@ -237,7 +237,7 @@ public abstract class CacheManager implements ICacheManager {
   @Override
   public void updateCacheStatusAfterPersist(ICachedMNode node) {
     ICachedMNode tmp = node;
-    while (!tmp.isDatabase() && !isInNodeCache(getCacheEntry(tmp))) {
+    while (!tmp.isDatabase() && !isInNodeCache(getCacheEntry(tmp)) && !getCachedMNodeContainer(node).hasChildrenInBuffer()) {
       addToNodeCache(getCacheEntry(tmp), tmp);
       tmp = tmp.getParent();
     }
@@ -303,7 +303,7 @@ public abstract class CacheManager implements ICacheManager {
       // add back to cache
       CacheEntry cacheEntry = getCacheEntry(node);
       while (!node.isDatabase()) {
-        if (cacheEntry != null && !isInNodeCache(cacheEntry)) {
+        if (cacheEntry != null && !isInNodeCache(cacheEntry) && !getCachedMNodeContainer(node).hasChildrenInBuffer()) {
           addToNodeCache(cacheEntry, node);
         }
         node = node.getParent();
