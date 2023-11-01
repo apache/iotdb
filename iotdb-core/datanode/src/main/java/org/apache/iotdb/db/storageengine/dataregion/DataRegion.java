@@ -547,6 +547,8 @@ public class DataRegion implements IDataRegionForQuery {
       throw new DataRegionException(e);
     }
 
+    initCompactionSchedule();
+
     if (StorageEngine.getInstance().isAllSgReady()) {
       logger.info("The data region {}[{}] is created successfully", databaseName, dataRegionId);
     } else {
