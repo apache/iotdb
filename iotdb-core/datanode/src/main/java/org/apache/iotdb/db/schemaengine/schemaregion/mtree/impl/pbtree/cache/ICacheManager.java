@@ -37,11 +37,13 @@ public interface ICacheManager {
 
   void updateCacheStatusAfterUpdate(ICachedMNode node);
 
-  void updateCacheStatusAfterPersist(ICachedMNode node);
-
   IDatabaseMNode<ICachedMNode> collectUpdatedStorageGroupMNodes();
 
-  Iterator<ICachedMNode> collectVolatileMNodes();
+  Iterator<ICachedMNode> collectVolatileSubtrees();
+
+  Iterator<ICachedMNode> updateCacheStatusAndRetrieveSubtreeAfterPersist(ICachedMNode subtreeRoot);
+
+  void updateCacheStatusAfterFlushFailure(ICachedMNode subtreeRoot);
 
   void remove(ICachedMNode node);
 

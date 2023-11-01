@@ -25,9 +25,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontro
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -230,47 +228,6 @@ public abstract class CacheManager implements ICacheManager {
   }
 
   /**
-   * After flush the given node's container to disk, the cache status of the nodes in container and
-   * their ancestors should be updated. All the node should be added to nodeCache and the nodeBuffer
-   * should be cleared after finishing a MTree flush task.
-   *
-   * @param node
-   */
-  @Override
-  public void updateCacheStatusAfterPersist(ICachedMNode node) {
-    ICachedMNode tmp = node;
-    while (!tmp.isDatabase()
-        && !isInNodeCache(getCacheEntry(tmp))
-        && !getCachedMNodeContainer(tmp).hasChildrenInBuffer()) {
-      addToNodeCache(getCacheEntry(tmp), tmp);
-      tmp = tmp.getParent();
-    }
-
-    // when process one node, all of its buffered child should be moved to cache
-    ICachedMNodeContainer container = getCachedMNodeContainer(node);
-    Map<String, ICachedMNode> persistedChildren = container.getNewChildBuffer();
-    for (ICachedMNode child : persistedChildren.values()) {
-      updateCacheStatusAfterPersist(child, container);
-    }
-
-    persistedChildren = container.getUpdatedChildBuffer();
-    for (ICachedMNode child : persistedChildren.values()) {
-      updateCacheStatusAfterPersist(child, container);
-    }
-  }
-
-  private void updateCacheStatusAfterPersist(ICachedMNode node, ICachedMNodeContainer container) {
-    CacheEntry cacheEntry = getCacheEntry(node);
-    cacheEntry.setVolatile(false);
-    container.moveMNodeToCache(node.getName());
-    if (!node.isMeasurement() && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
-      nodeBuffer.put(cacheEntry, node);
-    } else {
-      addToNodeCache(cacheEntry, node);
-    }
-  }
-
-  /**
    * Collect updated storage group node.
    *
    * @return null if not exist
@@ -282,37 +239,61 @@ public abstract class CacheManager implements ICacheManager {
     return storageGroupMNode;
   }
 
-  /**
-   * Collect nodes in all volatile subtrees. All volatile nodes' parents will be collected. The
-   * ancestor will be in front of the descendent in returned list.
-   *
-   * @return
-   */
   @Override
-  public Iterator<ICachedMNode> collectVolatileMNodes() {
-    return new VolatileMNodeIterator(nodeBuffer.iterator());
+  public Iterator<ICachedMNode> collectVolatileSubtrees() {
+    return new Iterator<ICachedMNode>() {
+
+      final Iterator<ICachedMNode> nodeBufferIterator = nodeBuffer.iterator();
+
+      @Override
+      public boolean hasNext() {
+        return nodeBufferIterator.hasNext();
+      }
+
+      @Override
+      public ICachedMNode next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        ICachedMNode result = nodeBufferIterator.next();
+        nodeBuffer.remove(getCacheEntry(result));
+        return result;
+      }
+    };
   }
 
-  private class VolatileMNodeIterator implements Iterator<ICachedMNode> {
+  @Override
+  public Iterator<ICachedMNode> updateCacheStatusAndRetrieveSubtreeAfterPersist(
+      ICachedMNode subtreeRoot) {
+    ICachedMNode tmp = subtreeRoot;
+    while (!tmp.isDatabase()
+        && !isInNodeCache(getCacheEntry(tmp))
+        && !getCachedMNodeContainer(tmp).hasChildrenInBuffer()) {
+      addToNodeCache(getCacheEntry(tmp), tmp);
+      tmp = tmp.getParent();
+    }
 
-    private final Iterator<ICachedMNode> bufferedSubtreeIterator;
+    return new VolatileSubtreeIterator(getCachedMNodeContainer(subtreeRoot));
+  }
 
-    private final Deque<Iterator<ICachedMNode>> childrenBufferIteratorStack = new ArrayDeque<>();
+  private class VolatileSubtreeIterator implements Iterator<ICachedMNode> {
 
-    private ICachedMNode currentSubtreeRootInBuffer = null;
+    private final ICachedMNodeContainer container;
+    private final Iterator<ICachedMNode> bufferedNodeIterator;
 
-    private ICachedMNode nextMNode = null;
+    private ICachedMNode nextSubtree = null;
 
-    private VolatileMNodeIterator(Iterator<ICachedMNode> bufferedSubtreeIterator) {
-      this.bufferedSubtreeIterator = bufferedSubtreeIterator;
+    private VolatileSubtreeIterator(ICachedMNodeContainer container) {
+      this.container = container;
+      this.bufferedNodeIterator = container.getChildrenBufferIterator();
     }
 
     @Override
     public boolean hasNext() {
-      if (nextMNode == null) {
+      if (nextSubtree == null) {
         tryGetNext();
       }
-      return nextMNode != null;
+      return nextSubtree != null;
     }
 
     @Override
@@ -320,84 +301,39 @@ public abstract class CacheManager implements ICacheManager {
       if (!hasNext()) {
         throw new NoSuchElementException();
       }
-      ICachedMNode result = nextMNode;
-      nextMNode = null;
+      ICachedMNode result = nextSubtree;
+      nextSubtree = null;
       return result;
     }
 
     private void tryGetNext() {
-      Iterator<ICachedMNode> childrenBufferIterator;
-      while (!childrenBufferIteratorStack.isEmpty()) {
-        // some subtree is under traverse, continue on it
-        childrenBufferIterator = childrenBufferIteratorStack.peek();
-        while (childrenBufferIterator.hasNext()) {
-          if (checkPotentialNode(childrenBufferIterator.next())) {
-            return;
-          }
-        }
+      ICachedMNode node;
+      CacheEntry cacheEntry;
+      while (bufferedNodeIterator.hasNext()) {
+        node = bufferedNodeIterator.next();
 
-        // the subtree has been processed, try to track back and find another subtree
-        childrenBufferIteratorStack.pop();
-      }
+        // update cache status after persist
+        // when process one node, all of its buffered child should be moved to cache
+        // except those with volatile children
+        cacheEntry = getCacheEntry(node);
+        cacheEntry.setVolatile(false);
+        container.moveMNodeToCache(node.getName());
 
-      if (currentSubtreeRootInBuffer != null) {
-        // current subtree has been flushed, remove the subtreeRoot from nodeBuffer
-        moveFromBufferToCache(currentSubtreeRootInBuffer);
-        currentSubtreeRootInBuffer = null;
-      }
-
-      // there's no subtree under traverse, try to get the next subtree
-      ICachedMNode subtreeRoot;
-      while (bufferedSubtreeIterator.hasNext()) {
-        subtreeRoot = bufferedSubtreeIterator.next();
-        if (checkPotentialNode(subtreeRoot)) {
-          currentSubtreeRootInBuffer = subtreeRoot;
+        if (node.isMeasurement() || !getCachedMNodeContainer(node).hasChildrenInBuffer()) {
+          addToNodeCache(cacheEntry, node);
+        } else {
+          // nodes with volatile children should be treated as root of volatile subtree and return
+          // for flush
+          nextSubtree = node;
           return;
         }
-        // subtree of this node doesn't need to be flush, remove the node from nodeBuffer
-        moveFromBufferToCache(subtreeRoot);
       }
     }
+  }
 
-    // check whether the given node should be collect for flush
-    // return whether a desired result node has been found
-    private boolean checkPotentialNode(ICachedMNode node) {
-      if (node.isMeasurement()) {
-        return false;
-      }
-      Iterator<ICachedMNode> childrenBufferIterator =
-          getCachedMNodeContainer(node).getChildrenBufferIterator();
-      if (childrenBufferIterator.hasNext()) {
-        nextMNode = node;
-        childrenBufferIteratorStack.push(childrenBufferIterator);
-        return true;
-      } else {
-        // the subtree may be deleted, thus no need to flush it, add the ancestors back to cache
-        moveFromBufferToCache(node);
-        return false;
-      }
-    }
-
-    // move a node from NodeBuffer to cache when this node's subtree has already been deleted or
-    // processed
-    private void moveFromBufferToCache(ICachedMNode node) {
-      // the subtree may be deleted, thus no need to flush it, add the ancestors back to cache
-      CacheEntry cacheEntry = getCacheEntry(node);
-      if (node.isDatabase()) {
-        nodeBuffer.remove(cacheEntry);
-        return;
-      }
-
-      while (!node.isDatabase()) {
-        if (cacheEntry != null
-            && !isInNodeCache(cacheEntry)
-            && !getCachedMNodeContainer(node).hasChildrenInBuffer()) {
-          addToNodeCache(cacheEntry, node);
-        }
-        node = node.getParent();
-        cacheEntry = getCacheEntry(node);
-      }
-    }
+  @Override
+  public void updateCacheStatusAfterFlushFailure(ICachedMNode subtreeRoot) {
+    nodeBuffer.put(getCacheEntry(subtreeRoot), subtreeRoot);
   }
 
   @Override

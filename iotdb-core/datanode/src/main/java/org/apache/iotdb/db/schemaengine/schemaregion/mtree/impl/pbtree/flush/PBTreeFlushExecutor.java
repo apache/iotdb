@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.CachedMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICacheManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
@@ -30,90 +28,77 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Iterator;
 
 public class PBTreeFlushExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(PBTreeFlushExecutor.class);
 
-  private final int schemaRegionId;
-
-  private final CachedMTreeStore store;
+  private final ICachedMNode subtreeRoot;
 
   private final ICacheManager cacheManager;
 
   private final ISchemaFile file;
 
-  private final Runnable flushCallback;
-
   public PBTreeFlushExecutor(
-      int schemaRegionId,
-      CachedMTreeStore store,
-      ICacheManager cacheManager,
-      ISchemaFile file,
-      Runnable flushCallback) {
-    this.schemaRegionId = schemaRegionId;
-    this.store = store;
+      ICachedMNode subtreeRoot, ICacheManager cacheManager, ISchemaFile file) {
+    this.subtreeRoot = subtreeRoot;
     this.cacheManager = cacheManager;
     this.file = file;
-    this.flushCallback = flushCallback;
   }
 
-  public void flushVolatileNodes() {
+  public void flushVolatileNodes() throws MetadataException, IOException {
     try {
-      if (flushVolatileDBNode() || flushVolatileSubtree()) {
-        flushCallback.run();
-      }
+      file.writeMNode(this.subtreeRoot);
     } catch (MetadataException | IOException e) {
       logger.warn(
-          "Exception occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
-    } catch (Throwable e) {
-      logger.error(
-          "Error occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
-      e.printStackTrace();
-    }
-  }
-
-  private boolean flushVolatileDBNode() throws IOException {
-    IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode =
-        cacheManager.collectUpdatedStorageGroupMNodes();
-    if (updatedStorageGroupMNode == null) {
-      return false;
-    }
-
-    try {
-      file.updateDatabaseNode(updatedStorageGroupMNode);
-      return true;
-    } catch (IOException e) {
-      logger.warn(
-          "IOException occurred during updating StorageGroupMNode {}",
-          updatedStorageGroupMNode.getFullPath(),
+          "Error occurred during MTree flush, current node is {}",
+          this.subtreeRoot.getFullPath(),
           e);
+      cacheManager.updateCacheStatusAfterFlushFailure(this.subtreeRoot);
       throw e;
     }
-  }
 
-  private boolean flushVolatileSubtree() throws MetadataException, IOException {
-    long startTime = System.currentTimeMillis();
-    Iterator<ICachedMNode> nodesToPersist = cacheManager.collectVolatileMNodes();
-    boolean hasNodesToPersist = nodesToPersist.hasNext();
+    Deque<Iterator<ICachedMNode>> volatileSubtreeStack = new ArrayDeque<>();
+    volatileSubtreeStack.push(
+        cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(this.subtreeRoot));
 
-    ICachedMNode volatileNode;
-    while (nodesToPersist.hasNext()) {
-      volatileNode = nodesToPersist.next();
+    Iterator<ICachedMNode> subtreeIterator;
+    ICachedMNode subtreeRoot;
+    while (!volatileSubtreeStack.isEmpty()) {
+      subtreeIterator = volatileSubtreeStack.peek();
+      if (!subtreeIterator.hasNext()) {
+        volatileSubtreeStack.pop();
+        continue;
+      }
+
+      subtreeRoot = subtreeIterator.next();
+
       try {
-        file.writeMNode(volatileNode);
+        file.writeMNode(subtreeRoot);
       } catch (MetadataException | IOException e) {
         logger.warn(
-            "Error occurred during MTree flush, current node is {}", volatileNode.getFullPath(), e);
+            "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
+        processNotFlushedSubtrees(subtreeRoot, volatileSubtreeStack);
         throw e;
       }
-      cacheManager.updateCacheStatusAfterPersist(volatileNode);
+
+      volatileSubtreeStack.push(
+          cacheManager.updateCacheStatusAndRetrieveSubtreeAfterPersist(subtreeRoot));
     }
-    logger.info(
-        "It takes {}ms to flush MTree in SchemaRegion {}",
-        (System.currentTimeMillis() - startTime),
-        schemaRegionId);
-    return hasNodesToPersist;
+  }
+
+  private void processNotFlushedSubtrees(
+      ICachedMNode currentNode, Deque<Iterator<ICachedMNode>> volatileSubtreeStack) {
+    cacheManager.updateCacheStatusAfterFlushFailure(currentNode);
+    Iterator<ICachedMNode> subtreeIterator;
+    while (!volatileSubtreeStack.isEmpty()) {
+      subtreeIterator = volatileSubtreeStack.pop();
+      while (subtreeIterator.hasNext()) {
+        cacheManager.updateCacheStatusAfterFlushFailure(subtreeIterator.next());
+      }
+    }
   }
 }

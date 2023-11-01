@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
@@ -546,9 +547,59 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   /** Sync all volatile nodes to PBTree and execute memory release after flush. */
   public void flushVolatileNodes() {
-    PBTreeFlushExecutor flushExecutor =
-        new PBTreeFlushExecutor(schemaRegionId, this, cacheManager, file, flushCallback);
-    flushExecutor.flushVolatileNodes();
+    try {
+      long startTime = System.currentTimeMillis();
+
+      boolean hasVolatileNodes = flushVolatileDBNode();
+
+      Iterator<ICachedMNode> volatileSubtrees = cacheManager.collectVolatileSubtrees();
+      if (volatileSubtrees.hasNext()) {
+        hasVolatileNodes = true;
+      }
+
+      ICachedMNode subtreeRoot;
+      PBTreeFlushExecutor flushExecutor;
+      while (volatileSubtrees.hasNext()) {
+        subtreeRoot = volatileSubtrees.next();
+        flushExecutor = new PBTreeFlushExecutor(subtreeRoot, cacheManager, file);
+        flushExecutor.flushVolatileNodes();
+      }
+
+      logger.info(
+          "It takes {}ms to flush MTree in SchemaRegion {}",
+          (System.currentTimeMillis() - startTime),
+          schemaRegionId);
+
+      if (hasVolatileNodes) {
+        flushCallback.run();
+      }
+    } catch (MetadataException | IOException e) {
+      logger.warn(
+          "Exception occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
+    } catch (Throwable e) {
+      logger.error(
+          "Error occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
+      e.printStackTrace();
+    }
+  }
+
+  private boolean flushVolatileDBNode() throws IOException {
+    IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode =
+        cacheManager.collectUpdatedStorageGroupMNodes();
+    if (updatedStorageGroupMNode == null) {
+      return false;
+    }
+
+    try {
+      file.updateDatabaseNode(updatedStorageGroupMNode);
+      return true;
+    } catch (IOException e) {
+      logger.warn(
+          "IOException occurred during updating StorageGroupMNode {}",
+          updatedStorageGroupMNode.getFullPath(),
+          e);
+      throw e;
+    }
   }
 
   /**
