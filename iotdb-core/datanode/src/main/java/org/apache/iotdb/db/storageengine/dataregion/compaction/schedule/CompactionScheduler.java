@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
@@ -63,6 +64,7 @@ public class CompactionScheduler {
    *
    * @param tsFileManager tsfileManager that contains source files
    * @param timePartition the time partition to execute the selection
+   * @param summary the summary of compaction schedule
    * @return the count of submitted task
    */
   public static int scheduleCompaction(
@@ -84,6 +86,11 @@ public class CompactionScheduler {
       Thread.currentThread().interrupt();
     }
     return trySubmitCount;
+  }
+
+  @TestOnly
+  public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition) {
+    scheduleCompaction(tsFileManager, timePartition, new CompactionScheduleSummary());
   }
 
   public static int scheduleInsertionCompaction(
