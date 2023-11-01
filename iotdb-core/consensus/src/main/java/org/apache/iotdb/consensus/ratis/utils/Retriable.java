@@ -22,135 +22,88 @@ import org.apache.ratis.util.Preconditions;
 import org.apache.ratis.util.TimeDuration;
 import org.apache.ratis.util.function.CheckedSupplier;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
-import java.util.function.BiPredicate;
 import java.util.function.BooleanSupplier;
-import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class Retriable {
-  public static final Logger logger = LoggerFactory.getLogger(Retriable.class);
-
-  public static class RetryPolicy<RESP> {
-    private final Function<RESP, Boolean> retryHandler;
-    private final int maxAttempts;
-    private final TimeDuration waitTime;
-
-    public RetryPolicy(
-        Function<RESP, Boolean> retryHandler, int maxAttempts, TimeDuration waitTime) {
-      this.retryHandler = retryHandler;
-      this.maxAttempts = maxAttempts;
-      this.waitTime = waitTime;
-    }
-
-    boolean shouldRetry(RESP resp) {
-      return retryHandler.apply(resp);
-    }
-
-    public int getMaxAttempts() {
-      return maxAttempts;
-    }
-
-    public TimeDuration getWaitTime() {
-      return waitTime;
-    }
-  }
-
-  public static class RetryPolicyBuilder<RESP> {
-    private Function<RESP, Boolean> retryHandler = (r) -> false;
-    private int maxAttempts = 0;
-    private TimeDuration waitTime = TimeDuration.ZERO;
-
-    public static <R> RetryPolicyBuilder<R> newBuilder() {
-      return new RetryPolicyBuilder<>();
-    }
-
-    public RetryPolicyBuilder<RESP> setRetryHandler(Function<RESP, Boolean> retryHandler) {
-      this.retryHandler = retryHandler;
-      return this;
-    }
-
-    public RetryPolicyBuilder<RESP> setMaxAttempts(int maxAttempts) {
-      this.maxAttempts = maxAttempts;
-      return this;
-    }
-
-    public RetryPolicyBuilder<RESP> setWaitTime(TimeDuration waitTime) {
-      this.waitTime = waitTime;
-      return this;
-    }
-
-    public RetryPolicy<RESP> build() {
-      return new RetryPolicy<>(retryHandler, maxAttempts, waitTime);
-    }
-  }
-
-  static <RETURN, THROWABLE extends Throwable> RETURN attempt(
+  /**
+   * Attempt the given operation {@param supplier}. If the result is not expected (as indicated via
+   * {@param shouldRetry}), then retry this operation.
+   *
+   * @param maxAttempts max retry attempts. *-1 indicates for retrying indefinitely.*
+   * @param sleepTime sleep time during each retry.
+   * @param name the operation's name.
+   * @param log the logger to print messages.
+   * @throws InterruptedException if the sleep is interrupted.
+   * @throws THROWABLE if the operation throws a pre-defined error.
+   * @return the result of given operation if it executes successfully
+   */
+  public static <RETURN, THROWABLE extends Throwable> RETURN attempt(
       CheckedSupplier<RETURN, THROWABLE> supplier,
-      BiPredicate<RETURN, Integer> shouldRetry,
+      Predicate<RETURN> shouldRetry,
+      int maxAttempts,
       TimeDuration sleepTime,
       Supplier<?> name,
       Logger log)
       throws THROWABLE, InterruptedException {
     Objects.requireNonNull(supplier, "supplier == null");
     Objects.requireNonNull(shouldRetry, "shouldRetry == null");
+    Preconditions.assertTrue(maxAttempts == -1 || maxAttempts > 0);
     Preconditions.assertTrue(!sleepTime.isNegative(), () -> "sleepTime = " + sleepTime + " < 0");
 
     for (int i = 1; /* Forever Loop */ ; i++) {
       try {
         final RETURN ret = supplier.get();
-        if (!shouldRetry.test(ret, i)) {
-          return ret;
+        // if we should retry and the total attempt doesn't reach max allowed attempts
+        if (shouldRetry.test(ret) && (i < maxAttempts || maxAttempts == -1)) {
+          if (log != null && log.isDebugEnabled()) {
+            log.debug("Failed {}, attempt #{}, sleep {} and then retry", name.get(), i, sleepTime);
+          }
+          sleepTime.sleep();
+          continue;
         }
-
-        if (log != null && log.isDebugEnabled()) {
-          log.debug("Failed {}, attempt #{}, sleep {} and then retry", name.get(), i, sleepTime);
-        }
-        sleepTime.sleep();
+        return ret;
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         if (log != null && log.isDebugEnabled()) {
           log.debug("{}: interrupted when waiting for retry", name.get());
         }
-        throw e;
+        if (maxAttempts != -1 && i == maxAttempts) {
+          // throws out the InterruptedException if it's the last chance to retry
+          throw e;
+        }
       }
     }
   }
 
-  /** Attempt to get a return value from the given supplier multiple times. */
-  static <RETURN, THROWABLE extends Throwable> void attemptRepeatedly(
-      CheckedSupplier<RETURN, THROWABLE> supplier,
-      BiPredicate<RETURN, Integer> shouldRetry,
-      TimeDuration sleepTime,
-      String name,
-      Logger log)
-      throws THROWABLE, InterruptedException {
-    attempt(supplier, shouldRetry, sleepTime, () -> name, log);
-  }
-
-  /** Attempt to wait the given condition to return true multiple times. */
+  /** Attempt indefinitely until the given {@param condition} holds */
   public static void attemptUntilTrue(
       BooleanSupplier condition, TimeDuration sleepTime, String name, Logger log)
       throws InterruptedException {
     Objects.requireNonNull(condition, "condition == null");
-    attemptRepeatedly(
-        () -> null, (nul, attempts) -> condition.getAsBoolean(), sleepTime, name, log);
+    attempt(() -> null, ret -> condition.getAsBoolean(), -1, sleepTime, () -> name, log);
   }
 
+  /**
+   * * Attempt the given operation {@param supplier}. May retry several times according to the given
+   * retry policy {@param policy}
+   *
+   * @param name the operation's name.
+   * @param logger the logger to print messages.
+   * @throws InterruptedException if the sleep is interrupted.
+   * @throws THROWABLE if the operation throws a pre-defined error.
+   * @return the result of given operation if it executes successfully
+   */
   public static <RETURN, THROWABLE extends Throwable> RETURN attempt(
       CheckedSupplier<RETURN, THROWABLE> supplier,
       RetryPolicy<RETURN> policy,
-      String name,
+      Supplier<?> name,
       Logger logger)
       throws THROWABLE, InterruptedException {
     return attempt(
-        supplier,
-        (ret, attemptedCount) ->
-            policy.shouldRetry(ret) && attemptedCount <= policy.getMaxAttempts(),
-        policy.getWaitTime(),
-        () -> name,
-        logger);
+        supplier, policy::shouldRetry, policy.getMaxAttempts(), policy.getWaitTime(), name, logger);
   }
 }

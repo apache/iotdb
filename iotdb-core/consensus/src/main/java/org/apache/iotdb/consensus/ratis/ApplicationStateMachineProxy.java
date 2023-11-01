@@ -185,7 +185,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   private void waitUntilSystemAllowApply() {
     try {
       Retriable.attemptUntilTrue(
-          Utils::stallApply, TimeDuration.ONE_MINUTE, "waitUntilSystemAllowApply", logger);
+          () -> !Utils.stallApply(), TimeDuration.ONE_MINUTE, "waitUntilSystemAllowApply", logger);
     } catch (InterruptedException e) {
       logger.warn("{}: interrupted when waiting until system ready: ", this, e);
       Thread.currentThread().interrupt();

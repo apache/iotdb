@@ -49,6 +49,7 @@ import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricSet;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
 import org.apache.iotdb.consensus.ratis.utils.Retriable;
+import org.apache.iotdb.consensus.ratis.utils.RetryPolicy;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -95,6 +96,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 /** A multi-raft consensus implementation based on Apache Ratis. */
@@ -125,6 +127,7 @@ class RatisConsensus implements IConsensus {
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
   private final RatisConfig config;
+  private final RetryPolicy<RaftClientReply> readRetryPolicy;
 
   private final RatisMetricSet ratisMetricSet;
   private final TConsensusGroupType consensusGroupType;
@@ -146,6 +149,14 @@ class RatisConsensus implements IConsensus {
     this.config = config.getRatisConfig();
     this.consensusGroupType = config.getConsensusGroupType();
     this.ratisMetricSet = new RatisMetricSet();
+    this.readRetryPolicy =
+        RetryPolicy.<RaftClientReply>newBuilder()
+            .setRetryHandler(c -> !c.isSuccess() && c.getException() instanceof ReadIndexException)
+            .setMaxAttempts(this.config.getImpl().getRetryTimesMax())
+            .setWaitTime(
+                TimeDuration.valueOf(
+                    this.config.getImpl().getRetryWaitMillis(), TimeUnit.MILLISECONDS))
+            .build();
 
     this.diskGuardian = new DiskGuardian(() -> this, this.config);
 
@@ -197,19 +208,16 @@ class RatisConsensus implements IConsensus {
   /** launch a consensus write with retry mechanism */
   private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
       throws IOException {
-    final RaftClientReply reply = null;
+    RaftClientReply reply = null;
     try {
-      Retriable.attempt(
-          caller,
-          Retriable.RetryPolicyBuilder.<RaftClientReply>newBuilder()
-              .setRetryHandler(this::shouldRetry)
-              .setMaxAttempts(config.getImpl().getRetryTimesMax())
-              .setWaitTime(
-                  TimeDuration.valueOf(
-                      config.getImpl().getRetryWaitMillis(), TimeUnit.MILLISECONDS))
-              .build(),
-          "RatisConsensus::write",
-          logger);
+      reply =
+          Retriable.attempt(
+              caller,
+              this::shouldRetry,
+              config.getImpl().getRetryTimesMax(),
+              TimeDuration.valueOf(config.getImpl().getRetryWaitMillis(), TimeUnit.MILLISECONDS),
+              () -> caller,
+              logger);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.debug("{}: interrupted when retrying for write request {}", this, caller);
@@ -360,12 +368,8 @@ class RatisConsensus implements IConsensus {
       reply =
           Retriable.attempt(
               () -> server.submitClientRequest(request),
-              Retriable.RetryPolicyBuilder.<RaftClientReply>newBuilder()
-                  .setRetryHandler(r -> r.getException() instanceof ReadIndexException)
-                  .setMaxAttempts(3)
-                  .setWaitTime(TimeDuration.valueOf(100, TimeUnit.MILLISECONDS))
-                  .build(),
-              "RatisConsensus::read",
+              readRetryPolicy,
+              () -> readRequest,
               logger);
     }
 
@@ -596,16 +600,27 @@ class RatisConsensus implements IConsensus {
       logger.info("isLeaderReady checking failed with exception: ", e);
       return false;
     }
-    long startTime = System.currentTimeMillis();
+
+    final long startTime = System.currentTimeMillis();
+    final BooleanSupplier noRetryAtAnyOfFollowingCondition =
+        () ->
+            Utils.anyOf(
+                // this peer is not a leader
+                () -> !divisionInfo.isLeader(),
+                // this peer is a ready leader
+                () -> divisionInfo.isLeader() && divisionInfo.isLeaderReady(),
+                // reaches max retry timeout
+                () -> System.currentTimeMillis() - startTime >= DEFAULT_WAIT_LEADER_READY_TIMEOUT);
+
     try {
-      // TODO use Retriable to rewrite this logic
-      while (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
-        Thread.sleep(10);
-        long consumedTime = System.currentTimeMillis() - startTime;
-        if (consumedTime >= DEFAULT_WAIT_LEADER_READY_TIMEOUT) {
-          logger.warn("{}: leader is still not ready after {}ms", groupId, consumedTime);
-          return false;
-        }
+      Retriable.attemptUntilTrue(
+          noRetryAtAnyOfFollowingCondition,
+          TimeDuration.valueOf(10, TimeUnit.MILLISECONDS),
+          "waitLeaderReady",
+          logger);
+      if (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
+        logger.warn(
+            "{}: leader is still not ready after {}ms", groupId, DEFAULT_WAIT_LEADER_READY_TIMEOUT);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
