@@ -30,14 +30,13 @@
     <packaging>pom</packaging>
     <name>IoTDB: Core: Metrics</name>
     <description>Metrics interfaces for IoTDB</description>
+    <modules>
+        <module>core</module>
+        <module>interface</module>
+    </modules>
     <properties>
         <metrics.test.skip>false</metrics.test.skip>
     </properties>
-    <modules>
-        <module>interface</module>
-        <module>micrometer-metrics</module>
-        <module>dropwizard-metrics</module>
-    </modules>
     <build>
         <plugins>
             <plugin>

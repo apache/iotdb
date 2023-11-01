@@ -74,12 +74,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDevi
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ml.ForecastNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
@@ -182,8 +182,11 @@ public enum PlanNodeType {
   LOGICAL_VIEW_SCHEMA_SCAN((short) 77),
   ALTER_LOGICAL_VIEW((short) 78),
   PIPE_ENRICHED_INSERT((short) 79),
-  FORECAST((short) 80),
-  LAST_QUERY_TRANSFORM((short) 81);
+
+  // NodeId 80 is used by IoTDB-ML which shouldn't be used.
+
+  LAST_QUERY_TRANSFORM((short) 81),
+  TOP_K((short) 82);
 
   public static final int BYTES = Short.BYTES;
 
@@ -388,10 +391,10 @@ public enum PlanNodeType {
         return AlterLogicalViewNode.deserialize(buffer);
       case 79:
         return PipeEnrichedInsertNode.deserialize(buffer);
-      case 80:
-        return ForecastNode.deserialize(buffer);
       case 81:
         return LastQueryTransformNode.deserialize(buffer);
+      case 82:
+        return TopKNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

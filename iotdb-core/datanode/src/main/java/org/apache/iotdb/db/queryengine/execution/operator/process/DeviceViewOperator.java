@@ -21,12 +21,13 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.NullColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -131,7 +132,7 @@ public class DeviceViewOperator implements ProcessOperator {
     }
     // construct device column
     ColumnBuilder deviceColumnBuilder = new BinaryColumnBuilder(null, 1);
-    deviceColumnBuilder.writeBinary(new Binary(getCurDeviceName()));
+    deviceColumnBuilder.writeBinary(new Binary(getCurDeviceName(), TSFileConfig.STRING_CHARSET));
     newValueColumns[0] =
         new RunLengthEncodedColumn(deviceColumnBuilder.build(), tsBlock.getPositionCount());
     // construct other null columns

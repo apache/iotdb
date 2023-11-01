@@ -44,7 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSc
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -117,7 +117,7 @@ public class ClusterTemplateManager implements ITemplateManager {
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
-            "Failed to execute create schema template {} in config node, status is {}.",
+            "Failed to execute create device template {} in config node, status is {}.",
             statement.getName(),
             tsStatus);
       }
@@ -229,7 +229,7 @@ public class ClusterTemplateManager implements ITemplateManager {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
-            "Failed to execute set schema template {} on path {} in config node, status is {}.",
+            "Failed to execute set device template {} on path {} in config node, status is {}.",
             name,
             path,
             tsStatus);

@@ -91,7 +91,6 @@ import org.apache.iotdb.confignode.manager.pipe.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
-import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
@@ -112,7 +111,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
@@ -126,7 +124,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -135,8 +132,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
@@ -163,20 +158,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrialReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrialResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -243,9 +232,6 @@ public class ConfigManager implements IManager {
   /** CQ. */
   private final CQManager cqManager;
 
-  /** ML Model. */
-  private final ModelManager modelManager;
-
   /** Pipe */
   private final PipeManager pipeManager;
 
@@ -268,7 +254,6 @@ public class ConfigManager implements IManager {
     UDFInfo udfInfo = new UDFInfo();
     TriggerInfo triggerInfo = new TriggerInfo();
     CQInfo cqInfo = new CQInfo();
-    ModelInfo modelInfo = new ModelInfo();
     PipeInfo pipeInfo = new PipeInfo();
     QuotaInfo quotaInfo = new QuotaInfo();
 
@@ -283,7 +268,6 @@ public class ConfigManager implements IManager {
             udfInfo,
             triggerInfo,
             cqInfo,
-            modelInfo,
             pipeInfo,
             quotaInfo);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
@@ -298,7 +282,6 @@ public class ConfigManager implements IManager {
     this.udfManager = new UDFManager(this, udfInfo);
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.cqManager = new CQManager(this);
-    this.modelManager = new ModelManager(this, modelInfo);
     this.pipeManager = new PipeManager(this, pipeInfo);
 
     // 1. keep PipeManager initialization before LoadManager initialization, because
@@ -946,11 +929,6 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public ModelManager getModelManager() {
-    return modelManager;
-  }
-
-  @Override
   public PipeManager getPipeManager() {
     return pipeManager;
   }
@@ -1578,7 +1556,7 @@ public class ConfigManager implements IManager {
       return RpcUtils.getStatus(
           TSStatusCode.TEMPLATE_NOT_SET,
           String.format(
-              "Schema Template %s is not set on any prefix path of %s",
+              "Device Template %s is not set on any prefix path of %s",
               req.getTemplateName(), patternList));
     }
 
@@ -1597,7 +1575,7 @@ public class ConfigManager implements IManager {
         return RpcUtils.getStatus(
             TSStatusCode.TEMPLATE_NOT_SET,
             String.format(
-                "Schema Template %s is not set on any prefix path of %s",
+                "Device Template %s is not set on any prefix path of %s",
                 req.getTemplateName(), patternList));
       }
 
@@ -1894,62 +1872,6 @@ public class ConfigManager implements IManager {
     }
 
     return transferResult;
-  }
-
-  @Override
-  public TSStatus createModel(TCreateModelReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.createModel(req)
-        : status;
-  }
-
-  @Override
-  public TSStatus dropModel(TDropModelReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.dropModel(req)
-        : status;
-  }
-
-  @Override
-  public TShowModelResp showModel(TShowModelReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.showModel(req)
-        : new TShowModelResp(status, Collections.emptyList());
-  }
-
-  @Override
-  public TShowTrialResp showTrial(TShowTrialReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.showTrial(req)
-        : new TShowTrialResp(status, Collections.emptyList());
-  }
-
-  @Override
-  public TSStatus updateModelInfo(TUpdateModelInfoReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.updateModelInfo(req)
-        : status;
-  }
-
-  @Override
-  public TSStatus updateModelState(TUpdateModelStateReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.updateModelState(req)
-        : status;
-  }
-
-  @Override
-  public TGetModelInfoResp getModelInfo(TGetModelInfoReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.getModelInfo(req)
-        : new TGetModelInfoResp(status);
   }
 
   @Override

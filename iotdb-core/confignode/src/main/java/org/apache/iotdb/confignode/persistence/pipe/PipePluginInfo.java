@@ -126,7 +126,8 @@ public class PipePluginInfo implements SnapshotProcessor {
         new PipeParameters(createPipeRequest.getExtractorAttributes());
     final String extractorPluginName =
         extractorParameters.getStringOrDefault(
-            PipeExtractorConstant.EXTRACTOR_KEY, IOTDB_EXTRACTOR.getPipePluginName());
+            Arrays.asList(PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+            IOTDB_EXTRACTOR.getPipePluginName());
     if (!pipePluginMetaKeeper.containsPipePlugin(extractorPluginName)) {
       final String exceptionMessage =
           String.format(
@@ -152,14 +153,16 @@ public class PipePluginInfo implements SnapshotProcessor {
 
     final PipeParameters connectorParameters =
         new PipeParameters(createPipeRequest.getConnectorAttributes());
-    if (!connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_KEY)) {
+    if (!connectorParameters.hasAnyAttributes(
+        PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY)) {
       final String exceptionMessage =
           "Failed to create pipe, the pipe connector plugin is not specified";
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
     final String connectorPluginName =
-        connectorParameters.getString(PipeConnectorConstant.CONNECTOR_KEY);
+        connectorParameters.getString(
+            PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY);
     if (!pipePluginMetaKeeper.containsPipePlugin(connectorPluginName)) {
       final String exceptionMessage =
           String.format(
@@ -254,6 +257,7 @@ public class PipePluginInfo implements SnapshotProcessor {
 
       try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
         pipePluginMetaKeeper.processTakeSnapshot(fileOutputStream);
+        fileOutputStream.getFD().sync();
       }
       return true;
     } finally {

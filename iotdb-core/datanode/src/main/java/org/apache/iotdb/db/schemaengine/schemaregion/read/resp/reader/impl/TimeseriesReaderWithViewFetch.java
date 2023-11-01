@@ -39,7 +39,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.FilterContains
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.TimeseriesFilterVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.TransformToExpressionVisitor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;

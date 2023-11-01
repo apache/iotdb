@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.window;
 
+import org.apache.iotdb.tsfile.access.Column;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 /** Used to customize the window which stipulates where we can calculate aggregation result. */
 public interface IWindow {

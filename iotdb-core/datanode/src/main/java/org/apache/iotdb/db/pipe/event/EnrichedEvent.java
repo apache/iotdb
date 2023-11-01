@@ -45,14 +45,15 @@ public abstract class EnrichedEvent implements Event {
   protected final PipeTaskMeta pipeTaskMeta;
 
   private final String pattern;
-  protected boolean isPatternAndTimeParsed;
+
+  protected boolean isPatternParsed;
+  protected boolean isTimeParsed = true;
 
   protected EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
     referenceCount = new AtomicInteger(0);
     this.pipeTaskMeta = pipeTaskMeta;
     this.pattern = pattern;
-    isPatternAndTimeParsed =
-        getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
+    isPatternParsed = getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
   }
 
   /**
@@ -162,8 +163,16 @@ public abstract class EnrichedEvent implements Event {
     return pattern == null ? PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE : pattern;
   }
 
+  /**
+   * If pipe's pattern is database-level, then no need to parse event by pattern cause pipes are
+   * data-region-level.
+   */
+  public void skipParsingPattern() {
+    isPatternParsed = true;
+  }
+
   public boolean shouldParsePatternOrTime() {
-    return !isPatternAndTimeParsed;
+    return !isPatternParsed || !isTimeParsed;
   }
 
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
@@ -172,6 +181,8 @@ public abstract class EnrichedEvent implements Event {
   public void reportException(PipeRuntimeException pipeRuntimeException) {
     if (pipeTaskMeta != null) {
       PipeAgent.runtime().report(pipeTaskMeta, pipeRuntimeException);
+    } else {
+      LOGGER.warn("Attempt to report pipe exception to a null PipeTaskMeta.", pipeRuntimeException);
     }
   }
 

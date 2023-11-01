@@ -58,8 +58,8 @@ import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -366,7 +366,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       } catch (TemplateIsInUseException e) {
         logger.info(
             String.format(
-                "Schema template has already been activated on path %s, there's no need to activate again.",
+                "Device Template has already been activated on path %s, there's no need to activate again.",
                 entry.getKey()));
       } catch (MetadataException e) {
         logger.error(e.getMessage(), e);

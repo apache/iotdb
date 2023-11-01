@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.tsfile.read.common.block.column;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.enums.ColumnEncoding;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import java.io.ByteArrayOutputStream;
@@ -87,7 +89,12 @@ public class TsBlockSerde {
    * @return Serialized tsblock.
    */
   public ByteBuffer serialize(TsBlock tsBlock) throws IOException {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    if (tsBlock.getRetainedSizeInBytes() > Integer.MAX_VALUE) {
+      throw new IllegalStateException(
+          "TsBlock should not be that large: " + tsBlock.getRetainedSizeInBytes());
+    }
+    ByteArrayOutputStream byteArrayOutputStream =
+        new ByteArrayOutputStream((int) tsBlock.getRetainedSizeInBytes());
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
     // Value column count.

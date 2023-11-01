@@ -158,14 +158,20 @@ public class IoTDBClusterRestartIT {
 
   @Test
   public void clusterRestartWithoutSeedConfigNode() {
-    // shutdown all 3 ConfigNodes
+    // shutdown all ConfigNodes and DataNodes
     for (int i = testConfigNodeNum - 1; i >= 0; i--) {
       EnvFactory.getEnv().shutdownConfigNode(i);
     }
-    logger.info("Shutdown all ConfigNode");
+    for (int i = testDataNodeNum - 1; i >= 0; i--) {
+      EnvFactory.getEnv().shutdownDataNode(i);
+    }
+    logger.info("Shutdown all ConfigNodes and DataNodes");
     // restart without seed ConfigNode, the cluster should still work
     for (int i = 1; i < testConfigNodeNum; i++) {
       EnvFactory.getEnv().startConfigNode(i);
+    }
+    for (int i = 0; i < testDataNodeNum; i++) {
+      EnvFactory.getEnv().startDataNode(i);
     }
     logger.info("Restarted");
     ((AbstractEnv) EnvFactory.getEnv()).testWorkingOneUnknownOtherRunning();

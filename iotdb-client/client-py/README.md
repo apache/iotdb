@@ -312,12 +312,12 @@ session.execute_non_query_statement(sql)
 session.execute_statement(sql)
 ```
 
-### Schema Template
-#### Create Schema Template
+### Device Template
+#### Create Device Template
 The step for creating a metadata template is as follows
 1. Create the template class
 2. Adding child Node，InternalNode and MeasurementNode can be chose
-3. Execute create schema template function
+3. Execute create device template function
 
 ```python
 template = Template(name=template_name, share_time=True)
@@ -335,7 +335,7 @@ template.add_template(m_node_x)
 
 session.create_schema_template(template)
 ```
-#### Modify Schema Template nodes
+#### Modify Device Template nodes
 Modify nodes in a template, the template must be already created. These are functions that add or delete some measurement nodes.
 * add node in template
 ```python
@@ -347,18 +347,18 @@ session.add_measurements_in_template(template_name, measurements_path, data_type
 session.delete_node_in_template(template_name, path)
 ```
 
-#### Set Schema Template
+#### Set Device Template
 ```python
 session.set_schema_template(template_name, prefix_path)
 ```
 
-#### Uset Schema Template
+#### Uset Device Template
 ```python
 session.unset_schema_template(template_name, prefix_path)
 ```
 
-#### Show Schema Template
-* Show all schema templates
+#### Show Device Template
+* Show all device templates
 ```python
 session.show_all_templates()
 ```
@@ -377,22 +377,22 @@ session.count_measurements_in_template(template_name, path)
 session.is_path_exist_in_template(template_name, path)
 ```
 
-* Show nodes under in schema template
+* Show nodes under in device template
 ```python
 session.show_measurements_in_template(template_name)
 ```
 
-* Show the path prefix where a schema template is set
+* Show the path prefix where a device template is set
 ```python
 session.show_paths_template_set_on(template_name)
 ```
 
-* Show the path prefix where a schema template is used (i.e. the time series has been created)
+* Show the path prefix where a device template is used (i.e. the time series has been created)
 ```python
 session.show_paths_template_using_on(template_name)
 ```
 
-#### Drop Schema Template
+#### Drop Device Template
 Delete an existing metadata template，dropping an already set template is not supported
 ```python
 session.drop_schema_template("template_python")

@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
@@ -44,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Int
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -53,8 +53,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ForecastModelInferenceDescriptor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
@@ -101,7 +99,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
@@ -173,6 +170,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         }
         deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
       }
+
       // convert to ALIGN BY DEVICE view
       planBuilder =
           planBuilder.planDeviceView(
@@ -181,6 +179,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               analysis.getDeviceViewInputIndexesMap(),
               analysis.getSelectExpressions(),
               queryStatement);
+
+      if (planBuilder.getRoot() instanceof TopKNode) {
+        analysis.setUseTopKNode();
+      }
     } else {
       planBuilder =
           planBuilder.withNewRoot(
@@ -219,22 +221,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             .planOffset(queryStatement.getRowOffset())
             .planLimit(queryStatement.getRowLimit());
 
-    if (queryStatement.isModelInferenceQuery()) {
-      ModelInferenceDescriptor modelInferenceDescriptor = analysis.getModelInferenceDescriptor();
-      if (Objects.requireNonNull(modelInferenceDescriptor.getFunctionType())
-          == ModelInferenceFunction.FORECAST) {
-        ForecastModelInferenceDescriptor forecastModelInferenceDescriptor =
-            (ForecastModelInferenceDescriptor) modelInferenceDescriptor;
-        planBuilder
-            .planLimit(forecastModelInferenceDescriptor.getModelInputLength())
-            .planForecast(forecastModelInferenceDescriptor);
-      } else {
-        throw new IllegalArgumentException(
-            "Unsupported model inference function type: "
-                + modelInferenceDescriptor.getFunctionType());
-      }
-    }
-
     // plan select into
     if (queryStatement.isAlignByDevice()) {
       planBuilder = planBuilder.planDeviceViewInto(analysis.getDeviceViewIntoPathDescriptor());
@@ -255,7 +241,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       List<Integer> deviceViewInputIndexes,
       MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-
     if (aggregationExpressions == null) {
       // raw data query
       planBuilder =
@@ -264,6 +249,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   sourceExpressions,
                   queryStatement.getResultTimeOrder(),
                   analysis.getGlobalTimeFilter(),
+                  0,
+                  pushDownLimitToScanNode(queryStatement),
                   analysis.isLastLevelUseWildcard())
               .planWhereAndSourceTransform(
                   whereExpression,
@@ -286,6 +273,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     sourceExpressions,
                     queryStatement.getResultTimeOrder(),
                     analysis.getGlobalTimeFilter(),
+                    0,
+                    0,
                     analysis.isLastLevelUseWildcard())
                 .planWhereAndSourceTransform(
                     whereExpression,
@@ -362,6 +351,26 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     }
 
     return planBuilder.getRoot();
+  }
+
+  private long pushDownLimitToScanNode(QueryStatement queryStatement) {
+    // `order by time|device LIMIT N align by device` and no value filter,
+    // can push down limitValue to ScanNode
+    if (queryStatement.isAlignByDevice()
+        && queryStatement.hasLimit()
+        && !analysis.hasValueFilter()
+        && (queryStatement.isOrderByBasedOnDevice() || queryStatement.isOrderByBasedOnTime())) {
+
+      // both `offset` and `limit` exist, push `limit+offset` down as limitValue
+      if (queryStatement.hasOffset()) {
+        return queryStatement.getRowOffset() + queryStatement.getRowLimit();
+      }
+
+      // only `limit` exist, push `limit` down as limitValue
+      return queryStatement.getRowLimit();
+    }
+
+    return 0;
   }
 
   private boolean needTransform(Set<Expression> expressions) {

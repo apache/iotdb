@@ -26,9 +26,10 @@ import org.apache.iotdb.db.pipe.event.common.tablet.TabletInsertionDataContainer
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -87,7 +88,7 @@ public class PipeTabletInsertionEventTest {
     values[2] = 2F;
     values[3] = 1.0;
     values[4] = false;
-    values[5] = Binary.valueOf("text");
+    values[5] = BytesUtils.valueOf("text");
 
     insertRowNode =
         new InsertRowNode(
@@ -130,7 +131,7 @@ public class PipeTabletInsertionEventTest {
       ((float[]) values[2])[r] = 2;
       ((double[]) values[3])[r] = 1.0;
       ((boolean[]) values[4])[r] = false;
-      ((Binary[]) values[5])[r] = Binary.valueOf("text");
+      ((Binary[]) values[5])[r] = BytesUtils.valueOf("text");
     }
 
     this.insertTabletNode =
@@ -182,7 +183,7 @@ public class PipeTabletInsertionEventTest {
       ((float[]) values[2])[r] = 2;
       ((double[]) values[3])[r] = 1.0;
       ((boolean[]) values[4])[r] = false;
-      ((Binary[]) values[5])[r] = Binary.valueOf("text");
+      ((Binary[]) values[5])[r] = BytesUtils.valueOf("text");
     }
 
     tabletForInsertRowNode = new Tablet(deviceId, Arrays.asList(schemas), 1);
@@ -210,7 +211,7 @@ public class PipeTabletInsertionEventTest {
       ((float[]) values[2])[r] = 2;
       ((double[]) values[3])[r] = 1.0;
       ((boolean[]) values[4])[r] = false;
-      ((Binary[]) values[5])[r] = Binary.valueOf("text");
+      ((Binary[]) values[5])[r] = BytesUtils.valueOf("text");
     }
     tabletForInsertTabletNode = new Tablet(deviceId, Arrays.asList(schemas), times.length);
     tabletForInsertTabletNode.values = values;

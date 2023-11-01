@@ -155,6 +155,8 @@ public class TsFileResource {
 
   private ProgressIndex maxProgressIndex;
 
+  private boolean isInsertionCompactionTaskCandidate = true;
+
   public TsFileResource() {}
 
   public TsFileResource(TsFileResource other) throws IOException {
@@ -270,10 +272,10 @@ public class TsFileResource {
     }
 
     if (maxProgressIndex != null) {
-      ReadWriteIOUtils.write(true, outputStream);
+      TsFileResourceBlockType.PROGRESS_INDEX.serialize(outputStream);
       maxProgressIndex.serialize(outputStream);
     } else {
-      ReadWriteIOUtils.write(false, outputStream);
+      TsFileResourceBlockType.EMPTY_BLOCK.serialize(outputStream);
     }
   }
 
@@ -294,53 +296,10 @@ public class TsFileResource {
         }
       }
 
-      if (inputStream.available() > 0) {
-        final boolean hasMaxProgressIndex = ReadWriteIOUtils.readBool(inputStream);
-        if (hasMaxProgressIndex) {
-          maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
-        }
-      }
-    }
-  }
-
-  /** deserialize tsfile resource from old file */
-  public void deserializeFromOldFile() throws IOException {
-    try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
-      // deserialize old TsfileResource
-      int size = ReadWriteIOUtils.readInt(inputStream);
-      Map<String, Integer> deviceMap = new HashMap<>();
-      long[] startTimesArray = new long[size];
-      long[] endTimesArray = new long[size];
-      for (int i = 0; i < size; i++) {
-        String path = ReadWriteIOUtils.readString(inputStream);
-        long time = ReadWriteIOUtils.readLong(inputStream);
-        deviceMap.put(path.intern(), i);
-        startTimesArray[i] = time;
-      }
-      size = ReadWriteIOUtils.readInt(inputStream);
-      for (int i = 0; i < size; i++) {
-        ReadWriteIOUtils.readString(inputStream); // String path
-        long time = ReadWriteIOUtils.readLong(inputStream);
-        endTimesArray[i] = time;
-      }
-      timeIndex = new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
-      if (inputStream.available() > 0) {
-        int versionSize = ReadWriteIOUtils.readInt(inputStream);
-        for (int i = 0; i < versionSize; i++) {
-          // historicalVersions
-          ReadWriteIOUtils.readLong(inputStream);
-        }
-      }
-      if (inputStream.available() > 0) {
-        String modFileName = ReadWriteIOUtils.readString(inputStream);
-        if (modFileName != null) {
-          File modF = new File(file.getParentFile(), modFileName);
-          modFile = new ModificationFile(modF.getPath());
-        }
-      }
-      if (inputStream.available() > 0) {
-        final boolean hasMaxProgressIndex = ReadWriteIOUtils.readBool(inputStream);
-        if (hasMaxProgressIndex) {
+      while (inputStream.available() > 0) {
+        final TsFileResourceBlockType blockType =
+            TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
+        if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
           maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
         }
       }
@@ -356,7 +315,15 @@ public class TsFileResource {
   }
 
   public boolean resourceFileExists() {
-    return fsFactory.getFile(file + RESOURCE_SUFFIX).exists();
+    return file != null && fsFactory.getFile(file + RESOURCE_SUFFIX).exists();
+  }
+
+  public boolean tsFileExists() {
+    return file != null && file.exists();
+  }
+
+  public boolean modFileExists() {
+    return getModFile().exists();
   }
 
   public List<IChunkMetadata> getChunkMetadataList(PartialPath seriesPath) {
@@ -773,6 +740,16 @@ public class TsFileResource {
   private boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
     long startTime = getFileStartTime();
     long endTime = isClosed() || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
+    if (startTime > endTime) {
+      // startTime > endTime indicates that there is something wrong with this TsFile. Return false
+      // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
+      LOGGER.warn(
+          "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
+          startTime,
+          this,
+          endTime);
+      return false;
+    }
 
     if (!isAlive(endTime, ttl)) {
       if (debug) {
@@ -803,6 +780,16 @@ public class TsFileResource {
 
     long startTime = getStartTime(deviceId);
     long endTime = isClosed() || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
+    if (startTime > endTime) {
+      // startTime > endTime indicates that there is something wrong with this TsFile. Return false
+      // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
+      LOGGER.warn(
+          "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
+          startTime,
+          this,
+          endTime);
+      return false;
+    }
 
     if (timeFilter != null) {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
@@ -875,7 +862,7 @@ public class TsFileResource {
    *     be created.
    */
   public TsFileResource createHardlink() {
-    if (!file.exists()) {
+    if (file == null || !file.exists()) {
       return null;
     }
 
@@ -1170,7 +1157,7 @@ public class TsFileResource {
             : maxProgressIndex.updateToMinimumIsAfterProgressIndex(progressIndex));
   }
 
-  public void recoverProgressIndex(ProgressIndex progressIndex) {
+  public void setProgressIndex(ProgressIndex progressIndex) {
     if (progressIndex == null) {
       return;
     }
@@ -1190,11 +1177,23 @@ public class TsFileResource {
     return maxProgressIndex == null ? MinimumProgressIndex.INSTANCE : maxProgressIndex;
   }
 
+  public boolean isEmpty() {
+    return getDevices().isEmpty();
+  }
+
   public String getDatabaseName() {
     return file.getParentFile().getParentFile().getParentFile().getName();
   }
 
   public String getDataRegionId() {
     return file.getParentFile().getParentFile().getName();
+  }
+
+  public boolean isInsertionCompactionTaskCandidate() {
+    return !isSeq && isInsertionCompactionTaskCandidate;
+  }
+
+  public void setInsertionCompactionTaskCandidate(boolean insertionCompactionTaskCandidate) {
+    isInsertionCompactionTaskCandidate = insertionCompactionTaskCandidate;
   }
 }

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -65,7 +66,9 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
   public void transformToTsBlockColumns(
       IDeviceSchemaInfo device, TsBlockBuilder builder, String database) {
     builder.getTimeColumnBuilder().writeLong(0L);
-    builder.getColumnBuilder(0).writeBinary(new Binary(device.getFullPath()));
+    builder
+        .getColumnBuilder(0)
+        .writeBinary(new Binary(device.getFullPath(), TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
   }
 

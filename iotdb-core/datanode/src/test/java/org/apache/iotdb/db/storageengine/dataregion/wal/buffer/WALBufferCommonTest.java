@@ -28,7 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -145,7 +146,7 @@ public abstract class WALBufferCommonTest {
     columns[2] = 10000L;
     columns[3] = 100;
     columns[4] = false;
-    columns[5] = new Binary("hh" + 0);
+    columns[5] = new Binary("hh" + 0, TSFileConfig.STRING_CHARSET);
 
     InsertRowNode node =
         new InsertRowNode(

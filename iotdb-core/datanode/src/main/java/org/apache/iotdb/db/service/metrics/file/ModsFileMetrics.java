@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ModsFileMetrics implements IMetricSet {
+  private static final String MODS = "mods";
   private final AtomicInteger modFileNum = new AtomicInteger(0);
   private final AtomicLong modFileSize = new AtomicLong(0);
 
@@ -41,22 +42,22 @@ public class ModsFileMetrics implements IMetricSet {
         this,
         ModsFileMetrics::getModFileSize,
         Tag.NAME.toString(),
-        "mods");
+        MODS);
     metricService.createAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.CORE,
         this,
         ModsFileMetrics::getModFileNum,
         Tag.NAME.toString(),
-        "mods");
+        MODS);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "mods");
+        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), MODS);
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "mods");
+        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), MODS);
   }
 
   private int getModFileNum() {

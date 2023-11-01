@@ -20,10 +20,11 @@
 package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
-public class DoNothingGauge implements Gauge, DoNothingMetric {
+public class DoNothingGauge extends AbstractMetricMBean implements Gauge, DoNothingMetric {
   @Override
-  public long value() {
+  public long getValue() {
     return 0;
   }
 

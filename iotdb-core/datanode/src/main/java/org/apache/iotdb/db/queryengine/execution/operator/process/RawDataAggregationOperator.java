@@ -26,7 +26,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.window.IWindow;
 import org.apache.iotdb.db.queryengine.execution.operator.window.IWindowManager;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowParameter;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.access.Column;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.util.List;

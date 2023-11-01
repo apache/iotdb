@@ -19,12 +19,14 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.utils.SerializeUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.DescReadBatchData;
 import org.apache.iotdb.tsfile.read.common.DescReadWriteBatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.junit.Assert;
@@ -188,7 +190,7 @@ public class SerializeUtilsTest {
     BatchData batchData = new BatchData(TSDataType.TEXT);
     String svalue = "";
     for (long time = 0; time < 10; time++) {
-      batchData.putAnObject(time, Binary.valueOf(svalue));
+      batchData.putAnObject(time, BytesUtils.valueOf(svalue));
       svalue += String.valueOf(time);
     }
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -218,7 +220,7 @@ public class SerializeUtilsTest {
     TimeValuePair p5 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0d));
     TVPairs.add(p5);
     TimeValuePair p6 =
-        new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.TEXT, Binary.valueOf("a")));
+        new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.TEXT, BytesUtils.valueOf("a")));
     TVPairs.add(p6);
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -246,7 +248,7 @@ public class SerializeUtilsTest {
     TimeValuePair p5 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0d));
     TVPairs.add(Collections.singletonList(p5));
     TimeValuePair p6 =
-        new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.TEXT, Binary.valueOf("a")));
+        new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.TEXT, BytesUtils.valueOf("a")));
     TVPairs.add(Collections.singletonList(p6));
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -474,7 +476,7 @@ public class SerializeUtilsTest {
     data = new DescReadWriteBatchData(dataType);
     fullMsg = debugMsg + dataType;
     for (int i = dataSize; i > 0; i--) {
-      data.putBinary(i, Binary.valueOf(String.valueOf(i)));
+      data.putBinary(i, BytesUtils.valueOf(String.valueOf(i)));
     }
     baos = new ByteArrayOutputStream();
     outputStream = new DataOutputStream(baos);
@@ -490,12 +492,17 @@ public class SerializeUtilsTest {
     for (int i = 0; i < dataSize; i++) {
       Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
       Assert.assertEquals(
-          fullMsg, String.valueOf(i + 1), data2.getBinaryByIndex(i).getStringValue());
+          fullMsg,
+          String.valueOf(i + 1),
+          data2.getBinaryByIndex(i).getStringValue(TSFileConfig.STRING_CHARSET));
     }
     for (int i = dataSize; i > 0; i--) {
       Assert.assertTrue(fullMsg, data2.hasCurrent());
       Assert.assertEquals(fullMsg, i, data2.currentTime());
-      Assert.assertEquals(fullMsg, String.valueOf(i), data2.getBinary().getStringValue());
+      Assert.assertEquals(
+          fullMsg,
+          String.valueOf(i),
+          data2.getBinary().getStringValue(TSFileConfig.STRING_CHARSET));
       data2.next();
     }
     Assert.assertFalse(fullMsg, data2.hasCurrent());
@@ -513,7 +520,8 @@ public class SerializeUtilsTest {
             new TsPrimitiveType.TsDouble(i),
             new TsPrimitiveType.TsFloat(i),
             new TsPrimitiveType.TsBoolean(i % 3 == 0),
-            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i))),
+            new TsPrimitiveType.TsBinary(
+                new Binary(String.valueOf(i), TSFileConfig.STRING_CHARSET)),
           });
     }
     baos = new ByteArrayOutputStream();
@@ -537,7 +545,8 @@ public class SerializeUtilsTest {
             new TsPrimitiveType.TsDouble(i + 1),
             new TsPrimitiveType.TsFloat(i + 1),
             new TsPrimitiveType.TsBoolean((i + 1) % 3 == 0),
-            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i + 1))),
+            new TsPrimitiveType.TsBinary(
+                new Binary(String.valueOf(i + 1), TSFileConfig.STRING_CHARSET)),
           },
           data2.getVectorByIndex(i));
     }
@@ -552,7 +561,8 @@ public class SerializeUtilsTest {
             new TsPrimitiveType.TsDouble(i),
             new TsPrimitiveType.TsFloat(i),
             new TsPrimitiveType.TsBoolean(i % 3 == 0),
-            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i))),
+            new TsPrimitiveType.TsBinary(
+                new Binary(String.valueOf(i), TSFileConfig.STRING_CHARSET)),
           },
           data2.getVector());
       data2.next();
@@ -713,7 +723,7 @@ public class SerializeUtilsTest {
     data = new DescReadBatchData(dataType);
     fullMsg = debugMsg + dataType;
     for (int i = 1; i <= dataSize; i++) {
-      data.putBinary(i, Binary.valueOf(String.valueOf(i)));
+      data.putBinary(i, BytesUtils.valueOf(String.valueOf(i)));
     }
     baos = new ByteArrayOutputStream();
     outputStream = new DataOutputStream(baos);
@@ -729,12 +739,17 @@ public class SerializeUtilsTest {
     for (int i = 0; i < dataSize; i++) {
       Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
       Assert.assertEquals(
-          fullMsg, String.valueOf(i + 1), data2.getBinaryByIndex(i).getStringValue());
+          fullMsg,
+          String.valueOf(i + 1),
+          data2.getBinaryByIndex(i).getStringValue(TSFileConfig.STRING_CHARSET));
     }
     for (int i = dataSize; i > 0; i--) {
       Assert.assertTrue(fullMsg, data2.hasCurrent());
       Assert.assertEquals(fullMsg, i, data2.currentTime());
-      Assert.assertEquals(fullMsg, String.valueOf(i), data2.getBinary().getStringValue());
+      Assert.assertEquals(
+          fullMsg,
+          String.valueOf(i),
+          data2.getBinary().getStringValue(TSFileConfig.STRING_CHARSET));
       data2.next();
     }
     Assert.assertFalse(fullMsg, data2.hasCurrent());
@@ -751,7 +766,8 @@ public class SerializeUtilsTest {
             new TsPrimitiveType.TsDouble(i),
             new TsPrimitiveType.TsFloat(i),
             new TsPrimitiveType.TsBoolean(i % 3 == 0),
-            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i))),
+            new TsPrimitiveType.TsBinary(
+                new Binary(String.valueOf(i), TSFileConfig.STRING_CHARSET)),
           });
     }
     baos = new ByteArrayOutputStream();
@@ -775,7 +791,8 @@ public class SerializeUtilsTest {
             new TsPrimitiveType.TsDouble(i + 1),
             new TsPrimitiveType.TsFloat(i + 1),
             new TsPrimitiveType.TsBoolean((i + 1) % 3 == 0),
-            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i + 1))),
+            new TsPrimitiveType.TsBinary(
+                new Binary(String.valueOf(i + 1), TSFileConfig.STRING_CHARSET)),
           },
           data2.getVectorByIndex(i));
     }
@@ -790,7 +807,8 @@ public class SerializeUtilsTest {
             new TsPrimitiveType.TsDouble(i),
             new TsPrimitiveType.TsFloat(i),
             new TsPrimitiveType.TsBoolean(i % 3 == 0),
-            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i))),
+            new TsPrimitiveType.TsBinary(
+                new Binary(String.valueOf(i), TSFileConfig.STRING_CHARSET)),
           },
           data2.getVector());
       data2.next();
@@ -946,7 +964,7 @@ public class SerializeUtilsTest {
     data = new BatchData(dataType);
     fullMsg = debugMsg + dataType;
     for (int i = 1; i <= dataSize; i++) {
-      data.putBinary(i, Binary.valueOf(String.valueOf(i)));
+      data.putBinary(i, BytesUtils.valueOf(String.valueOf(i)));
     }
     baos = new ByteArrayOutputStream();
     outputStream = new DataOutputStream(baos);
@@ -961,12 +979,17 @@ public class SerializeUtilsTest {
     for (int i = 0; i < dataSize; i++) {
       Assert.assertEquals(fullMsg, i + 1, data2.getTimeByIndex(i));
       Assert.assertEquals(
-          fullMsg, String.valueOf(i + 1), data2.getBinaryByIndex(i).getStringValue());
+          fullMsg,
+          String.valueOf(i + 1),
+          data2.getBinaryByIndex(i).getStringValue(TSFileConfig.STRING_CHARSET));
     }
     for (int i = 1; i <= dataSize; i++) {
       Assert.assertTrue(fullMsg, data2.hasCurrent());
       Assert.assertEquals(fullMsg, i, data2.currentTime());
-      Assert.assertEquals(fullMsg, String.valueOf(i), data2.getBinary().getStringValue());
+      Assert.assertEquals(
+          fullMsg,
+          String.valueOf(i),
+          data2.getBinary().getStringValue(TSFileConfig.STRING_CHARSET));
       data2.next();
     }
     Assert.assertFalse(fullMsg, data2.hasCurrent());
@@ -983,7 +1006,8 @@ public class SerializeUtilsTest {
             new TsPrimitiveType.TsDouble(i),
             new TsPrimitiveType.TsFloat(i),
             new TsPrimitiveType.TsBoolean(i % 3 == 0),
-            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i))),
+            new TsPrimitiveType.TsBinary(
+                new Binary(String.valueOf(i), TSFileConfig.STRING_CHARSET)),
           });
     }
     baos = new ByteArrayOutputStream();
@@ -1006,7 +1030,8 @@ public class SerializeUtilsTest {
             new TsPrimitiveType.TsDouble(i + 1),
             new TsPrimitiveType.TsFloat(i + 1),
             new TsPrimitiveType.TsBoolean((i + 1) % 3 == 0),
-            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i + 1))),
+            new TsPrimitiveType.TsBinary(
+                new Binary(String.valueOf(i + 1), TSFileConfig.STRING_CHARSET)),
           },
           data2.getVectorByIndex(i));
     }
@@ -1021,7 +1046,8 @@ public class SerializeUtilsTest {
             new TsPrimitiveType.TsDouble(i),
             new TsPrimitiveType.TsFloat(i),
             new TsPrimitiveType.TsBoolean(i % 3 == 0),
-            new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i))),
+            new TsPrimitiveType.TsBinary(
+                new Binary(String.valueOf(i), TSFileConfig.STRING_CHARSET)),
           },
           data2.getVector());
       data2.next();

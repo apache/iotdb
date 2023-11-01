@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.metrics.type;
 
+import javax.management.ObjectName;
+
 import java.util.Map;
 
 public interface IMetric {
   void constructValueMap(Map<String, Object> result);
+
+  void setObjectName(ObjectName objectName);
 }

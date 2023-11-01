@@ -29,7 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -65,7 +66,9 @@ public class ShowPathSetTemplateTask implements IConfigTask {
         // template.get
         for (PartialPath path : listPath) {
           builder.getTimeColumnBuilder().writeLong(0L);
-          builder.getColumnBuilder(0).writeBinary(new Binary(path.getFullPath()));
+          builder
+              .getColumnBuilder(0)
+              .writeBinary(new Binary(path.getFullPath(), TSFileConfig.STRING_CHARSET));
           builder.declarePosition();
         }
       }

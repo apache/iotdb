@@ -43,8 +43,8 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManage
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
@@ -446,6 +446,12 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
         new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+    for (TsFileResource resource : seqResources) {
+      Assert.assertTrue(resource.getModFile().exists());
+    }
+    for (TsFileResource resource : unseqResources) {
+      Assert.assertTrue(resource.getModFile().exists());
+    }
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -457,12 +463,6 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             0);
     task.start();
 
-    for (TsFileResource resource : seqResources) {
-      Assert.assertFalse(resource.getModFile().exists());
-    }
-    for (TsFileResource resource : unseqResources) {
-      Assert.assertFalse(resource.getModFile().exists());
-    }
     for (TsFileResource resource : targetResources) {
       resource.setFile(
           new File(

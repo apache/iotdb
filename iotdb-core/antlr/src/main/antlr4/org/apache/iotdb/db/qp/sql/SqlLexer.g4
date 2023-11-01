@@ -434,14 +434,6 @@ MIGRATE
     : M I G R A T E
     ;
 
-MODEL
-    : M O D E L
-    ;
-
-MODELS
-    : M O D E L S
-    ;
-
 NAN
     : N A N
     ;
@@ -690,12 +682,20 @@ SHOW
     : S H O W
     ;
 
+SINK
+    : S I N K
+    ;
+
 SLIMIT
     : S L I M I T
     ;
 
 SOFFSET
     : S O F F S E T
+    ;
+
+SOURCE
+    : S O U R C E
     ;
 
 SPACE
@@ -796,10 +796,6 @@ TOP
 
 TRACING
     : T R A C I N G
-    ;
-
-TRIALS
-    : T R I A L S
     ;
 
 TRIGGER
@@ -926,9 +922,9 @@ PRIVILEGE_VALUE
     | USE_TRIGGER
     | USE_UDF
     | USE_CQ
+    | USE_MODEL
     | USE_PIPE
     | EXTEND_TEMPLATE
-    | AUDIT
     | MANAGE_DATABASE
     | MAINTAIN
     ;
@@ -961,6 +957,10 @@ USE_TRIGGER
     : U S E '_' T R I G G E R
     ;
 
+USE_MODEL
+    : U S E '_' M O D E L
+    ;
+
 USE_UDF
     : U S E '_' U D F
     ;
@@ -975,10 +975,6 @@ USE_PIPE
 
 EXTEND_TEMPLATE
     : E X T E N D '_' T E M P L A T E
-    ;
-
-AUDIT
-    : A U D I T
     ;
 
 MANAGE_DATABASE

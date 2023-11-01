@@ -153,10 +153,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowTrialsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
@@ -202,8 +198,8 @@ import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
@@ -1219,69 +1215,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  // Create Model =====================================================================
-  @Override
-  public Statement visitCreateModel(IoTDBSqlParser.CreateModelContext ctx) {
-    CreateModelStatement createModelStatement = new CreateModelStatement();
-    createModelStatement.setModelId(parseIdentifier(ctx.modelId.getText()));
-
-    Map<String, String> modelOptions = new HashMap<>();
-    for (IoTDBSqlParser.AttributePairContext attribute : ctx.attributePair()) {
-      modelOptions.put(
-          parseAttributeKey(attribute.key).toLowerCase(), parseAttributeValue(attribute.value));
-    }
-    createModelStatement.setOptions(modelOptions);
-
-    Map<String, String> hyperParameters = new HashMap<>();
-    for (IoTDBSqlParser.HparamPairContext attribute : ctx.hparamPair()) {
-      hyperParameters.put(
-          parseAttributeKey(attribute.hparamKey).toLowerCase(),
-          parseHparamValue(attribute.hparamValue()));
-    }
-    createModelStatement.setHyperparameters(hyperParameters);
-
-    createModelStatement.setDatasetStatement(
-        (QueryStatement) visitSelectStatement(ctx.selectStatement()));
-    return createModelStatement;
-  }
-
-  private String parseHparamValue(IoTDBSqlParser.HparamValueContext ctx) {
-    if (ctx.attributeValue() != null) {
-      return parseAttributeValue(ctx.attributeValue());
-    } else if (ctx.hparamRange() != null) {
-      return parseAttributeValue(ctx.hparamRange().hparamRangeStart)
-          + ","
-          + parseAttributeValue(ctx.hparamRange().hparamRangeEnd);
-    } else if (ctx.hparamCandidates() != null) {
-      List<String> candidates = new ArrayList<>();
-      for (IoTDBSqlParser.AttributeValueContext candidate :
-          ctx.hparamCandidates().attributeValue()) {
-        candidates.add(parseAttributeValue(candidate));
-      }
-      return Arrays.toString(candidates.toArray());
-    } else {
-      throw new IllegalArgumentException();
-    }
-  }
-
-  // Drop Model =====================================================================
-  @Override
-  public Statement visitDropModel(IoTDBSqlParser.DropModelContext ctx) {
-    return new DropModelStatement(parseIdentifier(ctx.modelId.getText()));
-  }
-
-  // Show Models =====================================================================
-  @Override
-  public Statement visitShowModels(IoTDBSqlParser.ShowModelsContext ctx) {
-    return new ShowModelsStatement();
-  }
-
-  // Show Trails =====================================================================
-  @Override
-  public Statement visitShowTrials(IoTDBSqlParser.ShowTrialsContext ctx) {
-    return new ShowTrialsStatement(parseIdentifier(ctx.modelId.getText()));
-  }
-
   /** Data Manipulation Language (DML). */
 
   // Select Statement ========================================================================
@@ -1579,14 +1512,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
    */
   private long parseTimeIntervalOrSlidingStep(
       String duration, boolean isParsingTimeInterval, GroupByTimeComponent groupByTimeComponent) {
-    if (duration.toLowerCase().contains("mo")) {
+    if (duration.toLowerCase().contains("y") || duration.toLowerCase().contains("mo")) {
       if (isParsingTimeInterval) {
         groupByTimeComponent.setIntervalByMonth(true);
       } else {
         groupByTimeComponent.setSlidingStepByMonth(true);
       }
     }
-    return DateTimeUtils.convertDurationStrToLong(duration);
+    return DateTimeUtils.convertDurationStrToLong(duration, true);
   }
 
   private GroupByComponent parseGroupByClause(
@@ -3046,9 +2979,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     time = parseDateFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
-        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
       } else {
-        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
       }
     }
     return time;
@@ -3059,9 +2992,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     time = parseDateFormat(ctx.getChild(0).getText(), currentTime);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
-        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
       } else {
-        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
       }
     }
     return time;
@@ -3327,7 +3260,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new ShowConfigNodesStatement();
   }
 
-  // schema template
+  // device template
 
   @Override
   public Statement visitCreateSchemaTemplate(IoTDBSqlParser.CreateSchemaTemplateContext ctx) {
@@ -3413,7 +3346,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       List<TSEncoding> encodings,
       List<CompressionType> compressors) {
     if (ctx.aliasNodeName() != null) {
-      throw new SemanticException("Schema template: alias is not supported yet.");
+      throw new SemanticException("Device Template: alias is not supported yet.");
     }
 
     TSDataType dataType = parseDataTypeAttribute(ctx);
@@ -3470,15 +3403,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (props.size() > 0) {
-      throw new SemanticException("Schema template: property is not supported yet.");
+      throw new SemanticException("Device Template: property is not supported yet.");
     }
 
     if (ctx.tagClause() != null) {
-      throw new SemanticException("Schema template: tag is not supported yet.");
+      throw new SemanticException("Device Template: tag is not supported yet.");
     }
 
     if (ctx.attributeClause() != null) {
-      throw new SemanticException("Schema template: attribute is not supported yet.");
+      throw new SemanticException("Device Template: attribute is not supported yet.");
     }
   }
 

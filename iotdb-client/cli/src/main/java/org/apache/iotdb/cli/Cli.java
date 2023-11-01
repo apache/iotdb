@@ -39,6 +39,7 @@ import org.jline.reader.UserInterruptException;
 import java.io.IOException;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Properties;
 
 import static org.apache.iotdb.cli.utils.IoTPrinter.println;
 import static org.apache.iotdb.jdbc.Config.IOTDB_ERROR_PREFIX;
@@ -47,6 +48,8 @@ import static org.apache.iotdb.jdbc.Config.IOTDB_ERROR_PREFIX;
 public class Cli extends AbstractCli {
   private static CommandLine commandLine;
   private static LineReader lineReader;
+
+  private static Properties info = new Properties();
 
   /**
    * IoTDB Client main function.
@@ -93,6 +96,16 @@ public class Cli extends AbstractCli {
     serve();
   }
 
+  private static void constructProperties() {
+    if (useSsl != null && Boolean.parseBoolean(useSsl)) {
+      info.setProperty("use_ssl", useSsl);
+      info.setProperty("trust_store", trustStore);
+      info.setProperty("trust_store_pwd", trustStorePwd);
+    }
+    info.setProperty("user", username);
+    info.setProperty("password", password);
+  }
+
   private static boolean parseCommandLine(Options options, String[] newArgs, HelpFormatter hf) {
     try {
       CommandLineParser parser = new DefaultParser();
@@ -128,7 +141,11 @@ public class Cli extends AbstractCli {
 
   private static void serve() {
     try {
+      useSsl = commandLine.getOptionValue(USE_SSL_ARGS);
+      trustStore = commandLine.getOptionValue(TRUST_STORE_ARGS);
+      trustStorePwd = commandLine.getOptionValue(TRUST_STORE_PWD_ARGS);
       password = commandLine.getOptionValue(PW_ARGS);
+      constructProperties();
       if (hasExecuteSQL && password != null) {
         executeSql();
       }
@@ -145,8 +162,7 @@ public class Cli extends AbstractCli {
   private static void executeSql() throws TException {
     try (IoTDBConnection connection =
         (IoTDBConnection)
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+            DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       timestampPrecision = properties.getTimestampPrecision();
@@ -162,8 +178,7 @@ public class Cli extends AbstractCli {
   private static void receiveCommands(LineReader reader) throws TException {
     try (IoTDBConnection connection =
         (IoTDBConnection)
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+            DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());

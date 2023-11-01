@@ -30,6 +30,7 @@
     <packaging>pom</packaging>
     <name>IoTDB: API</name>
     <modules>
+        <module>common-api</module>
         <module>external-api</module>
         <module>pipe-api</module>
         <module>trigger-api</module>

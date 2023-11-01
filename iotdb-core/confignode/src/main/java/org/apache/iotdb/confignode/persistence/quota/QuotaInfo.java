@@ -160,6 +160,7 @@ public class QuotaInfo implements SnapshotProcessor {
     try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
       serializeSpaceQuotaLimit(fileOutputStream);
       serializeThrottleQuotaLimit(fileOutputStream);
+      fileOutputStream.getFD().sync();
     } finally {
       spaceQuotaReadWriteLock.writeLock().unlock();
     }
