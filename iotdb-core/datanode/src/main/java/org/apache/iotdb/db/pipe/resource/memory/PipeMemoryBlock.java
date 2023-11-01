@@ -31,7 +31,7 @@ public class PipeMemoryBlock implements AutoCloseable {
     this.memoryUsageInBytes = memoryUsageInBytes;
   }
 
-  long getMemoryUsageInBytes() {
+  public long getMemoryUsageInBytes() {
     return memoryUsageInBytes;
   }
 
@@ -44,7 +44,7 @@ public class PipeMemoryBlock implements AutoCloseable {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     PipeResourceManager.memory().release(this);
   }
 }

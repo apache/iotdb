@@ -180,7 +180,7 @@ public class SnapshotLoader {
           new File(
               dataDirPath
                   + File.separator
-                  + IoTDBConstant.SEQUENCE_FLODER_NAME
+                  + IoTDBConstant.SEQUENCE_FOLDER_NAME
                   + File.separator
                   + storageGroupName
                   + File.separator
@@ -196,7 +196,7 @@ public class SnapshotLoader {
           new File(
               dataDirPath
                   + File.separator
-                  + IoTDBConstant.UNSEQUENCE_FLODER_NAME
+                  + IoTDBConstant.UNSEQUENCE_FOLDER_NAME
                   + File.separator
                   + storageGroupName
                   + File.separator
@@ -229,7 +229,7 @@ public class SnapshotLoader {
     File seqFileDir =
         new File(
             sourceDir,
-            IoTDBConstant.SEQUENCE_FLODER_NAME
+            IoTDBConstant.SEQUENCE_FOLDER_NAME
                 + File.separator
                 + storageGroupName
                 + File.separator
@@ -237,7 +237,7 @@ public class SnapshotLoader {
     File unseqFileDir =
         new File(
             sourceDir,
-            IoTDBConstant.UNSEQUENCE_FLODER_NAME
+            IoTDBConstant.UNSEQUENCE_FOLDER_NAME
                 + File.separator
                 + storageGroupName
                 + File.separator
@@ -260,7 +260,7 @@ public class SnapshotLoader {
           continue;
         }
         String targetSuffix =
-            IoTDBConstant.SEQUENCE_FLODER_NAME
+            IoTDBConstant.SEQUENCE_FOLDER_NAME
                 + File.separator
                 + storageGroupName
                 + File.separator
@@ -279,7 +279,7 @@ public class SnapshotLoader {
           continue;
         }
         String targetSuffix =
-            IoTDBConstant.UNSEQUENCE_FLODER_NAME
+            IoTDBConstant.UNSEQUENCE_FOLDER_NAME
                 + File.separator
                 + storageGroupName
                 + File.separator
@@ -347,7 +347,7 @@ public class SnapshotLoader {
         new File(
             snapshotFolder.getAbsolutePath()
                 + File.separator
-                + IoTDBConstant.SEQUENCE_FLODER_NAME
+                + IoTDBConstant.SEQUENCE_FOLDER_NAME
                 + File.separator
                 + storageGroupName
                 + File.separator
@@ -364,7 +364,7 @@ public class SnapshotLoader {
             new File(
                 dataDir
                     + File.separator
-                    + IoTDBConstant.SEQUENCE_FLODER_NAME
+                    + IoTDBConstant.SEQUENCE_FOLDER_NAME
                     + File.separator
                     + storageGroupName
                     + File.separator
@@ -380,7 +380,7 @@ public class SnapshotLoader {
         new File(
             snapshotFolder.getAbsolutePath()
                 + File.separator
-                + IoTDBConstant.UNSEQUENCE_FLODER_NAME
+                + IoTDBConstant.UNSEQUENCE_FOLDER_NAME
                 + File.separator
                 + storageGroupName
                 + File.separator
@@ -397,7 +397,7 @@ public class SnapshotLoader {
             new File(
                 dataDir
                     + File.separator
-                    + IoTDBConstant.UNSEQUENCE_FLODER_NAME
+                    + IoTDBConstant.UNSEQUENCE_FOLDER_NAME
                     + File.separator
                     + storageGroupName
                     + File.separator

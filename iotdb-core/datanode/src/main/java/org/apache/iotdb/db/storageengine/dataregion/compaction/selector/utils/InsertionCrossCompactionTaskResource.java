@@ -17,33 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import java.util.List;
+public class InsertionCrossCompactionTaskResource extends CrossCompactionTaskResource {
+  public TsFileResource prevSeqFile = null;
+  public TsFileResource nextSeqFile = null;
+  public TsFileResource toInsertUnSeqFile = null;
+  public TsFileResource firstUnSeqFileInParitition = null;
+  public long targetFileTimestamp;
 
-@SuppressWarnings("squid:S6548")
-public class NoneCompactionValidator implements CompactionValidator {
-
-  private NoneCompactionValidator() {}
-
-  public static NoneCompactionValidator getInstance() {
-    return NoneCompactionValidatorHolder.INSTANCE;
+  public void setToInsertUnSeqFile(TsFileResource toInsertUnSeqFile) {
+    this.toInsertUnSeqFile = toInsertUnSeqFile;
   }
 
   @Override
-  public boolean validateCompaction(
-      TsFileManager manager,
-      List<TsFileResource> targetTsFileList,
-      String storageGroupName,
-      long timePartition,
-      boolean isInnerUnSequenceSpaceTask) {
-    return true;
+  public float getTotalSeqFileSize() {
+    return super.getTotalSeqFileSize();
   }
 
-  private static class NoneCompactionValidatorHolder {
-    private static final NoneCompactionValidator INSTANCE = new NoneCompactionValidator();
+  @Override
+  public boolean isValid() {
+    return toInsertUnSeqFile != null;
   }
 }

@@ -31,6 +31,7 @@ public class CompactionLogger implements AutoCloseable {
 
   public static final String CROSS_COMPACTION_LOG_NAME_SUFFIX = ".cross-compaction.log";
   public static final String INNER_COMPACTION_LOG_NAME_SUFFIX = ".inner-compaction.log";
+  public static final String INSERTION_COMPACTION_LOG_NAME_SUFFIX = ".insertion-compaction.log";
 
   public static final String STR_SOURCE_FILES = "source";
   public static final String STR_TARGET_FILES = "target";
@@ -69,11 +70,17 @@ public class CompactionLogger implements AutoCloseable {
   }
 
   public static File[] findCompactionLogs(boolean isInnerSpace, String directory) {
-    String compactionLogSuffix =
-        isInnerSpace ? INNER_COMPACTION_LOG_NAME_SUFFIX : CROSS_COMPACTION_LOG_NAME_SUFFIX;
     File timePartitionDir = new File(directory);
     if (timePartitionDir.exists()) {
-      return timePartitionDir.listFiles((dir, name) -> name.endsWith(compactionLogSuffix));
+      return timePartitionDir.listFiles(
+          (dir, name) -> {
+            if (isInnerSpace) {
+              return name.endsWith(INNER_COMPACTION_LOG_NAME_SUFFIX);
+            } else {
+              return name.endsWith(CROSS_COMPACTION_LOG_NAME_SUFFIX)
+                  || name.endsWith(INSERTION_COMPACTION_LOG_NAME_SUFFIX);
+            }
+          });
     } else {
       return new File[0];
     }

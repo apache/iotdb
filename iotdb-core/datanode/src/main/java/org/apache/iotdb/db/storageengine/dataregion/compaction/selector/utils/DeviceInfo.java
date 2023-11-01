@@ -17,16 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
-public enum CompactionTaskType {
-  /** default compaction task type */
-  NORMAL,
+public class DeviceInfo {
+  public String deviceId;
+  public long startTime;
+  public long endTime;
 
-  /**
-   * in either of the following situations: 1. the TsFile has .mods file whose size exceeds 50 MB.
-   * 2. the TsFile has .mods file and the disk availability rate is lower than the
-   * disk_space_warning_threshold.
-   */
-  MOD_SETTLE
+  public DeviceInfo(String deviceId, long startTime, long endTime) {
+    this.deviceId = deviceId;
+    this.startTime = startTime;
+    this.endTime = endTime;
+  }
 }

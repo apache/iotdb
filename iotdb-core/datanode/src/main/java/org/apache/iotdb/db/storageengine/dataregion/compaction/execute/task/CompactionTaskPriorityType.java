@@ -17,10 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.constant;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
-public enum CompactionValidationLevel {
-  NONE,
-  RESOURCE_ONLY,
-  RESOURCE_AND_TSFILE
+public enum CompactionTaskPriorityType {
+  /** default compaction task type */
+  NORMAL,
+
+  /**
+   * in either of the following situations: 1. the TsFile has .mods file whose size exceeds 50 MB.
+   * 2. the TsFile has .mods file and the disk availability rate is lower than the
+   * disk_space_warning_threshold.
+   */
+  MOD_SETTLE
 }

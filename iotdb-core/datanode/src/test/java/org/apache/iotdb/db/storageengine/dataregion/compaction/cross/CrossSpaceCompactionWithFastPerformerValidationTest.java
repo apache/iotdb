@@ -45,6 +45,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManag
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -2154,14 +2155,16 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
     // meet overlap files
     Assert.assertFalse(
-        CompactionUtils.validateTsFileResources(tsFileManager, COMPACTION_TEST_SG, 0));
+        TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
+            tsFileManager.getOrCreateSequenceListByTimePartition(0).getArrayList()));
 
     tsFileManager.getTsFileList(true).get(0).deserialize();
     tsFileManager.getTsFileList(true).get(1).deserialize();
     tsFileManager.getTsFileList(true).get(0).degradeTimeIndex();
     tsFileManager.getTsFileList(true).get(1).degradeTimeIndex();
     Assert.assertTrue(
-        CompactionUtils.validateTsFileResources(tsFileManager, COMPACTION_TEST_SG, 0));
+        TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
+            tsFileManager.getOrCreateSequenceListByTimePartition(0).getArrayList()));
 
     // seq file 4,5 and 6 are being compacted by inner space compaction
     List<TsFileResource> sourceFiles = new ArrayList<>();
@@ -2173,7 +2176,8 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     InnerSpaceCompactionTask innerSpaceCompactionTask =
         new InnerSpaceCompactionTask(0, tsFileManager, sourceFiles, true, performer, 0);
     Assert.assertTrue(
-        CompactionUtils.validateTsFileResources(tsFileManager, COMPACTION_TEST_SG, 0));
+        TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
+            tsFileManager.getOrCreateSequenceListByTimePartition(0).getArrayList()));
     innerSpaceCompactionTask.start();
     validateSeqFiles(true);
   }

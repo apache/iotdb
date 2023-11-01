@@ -85,6 +85,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.VersionController;
+import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
@@ -137,6 +138,7 @@ import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.Phaser;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -506,9 +508,18 @@ public class DataRegion implements IDataRegionForQuery {
       // signal wal recover manager to recover this region's files
       WALRecoverManager.getInstance().getAllDataRegionScannedLatch().countDown();
       // recover sealed TsFiles
-      if (!partitionTmpSeqTsFiles.isEmpty()) {
-        long latestPartitionId =
-            ((TreeMap<Long, List<TsFileResource>>) partitionTmpSeqTsFiles).lastKey();
+      if (!partitionTmpSeqTsFiles.isEmpty() || !partitionTmpUnseqTsFiles.isEmpty()) {
+        long latestPartitionId = Long.MIN_VALUE;
+        if (!partitionTmpSeqTsFiles.isEmpty()) {
+          latestPartitionId =
+              ((TreeMap<Long, List<TsFileResource>>) partitionTmpSeqTsFiles).lastKey();
+        }
+        if (!partitionTmpUnseqTsFiles.isEmpty()) {
+          latestPartitionId =
+              Math.max(
+                  latestPartitionId,
+                  ((TreeMap<Long, List<TsFileResource>>) partitionTmpUnseqTsFiles).lastKey());
+        }
         for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpSeqTsFiles.entrySet()) {
           recoverFilesInPartition(
               partitionFiles.getKey(),
@@ -517,14 +528,24 @@ public class DataRegion implements IDataRegionForQuery {
               true,
               partitionFiles.getKey() == latestPartitionId);
         }
-      }
-      for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpUnseqTsFiles.entrySet()) {
-        recoverFilesInPartition(
-            partitionFiles.getKey(),
-            dataRegionRecoveryContext,
-            partitionFiles.getValue(),
-            false,
-            false);
+        for (Entry<Long, List<TsFileResource>> partitionFiles :
+            partitionTmpUnseqTsFiles.entrySet()) {
+          recoverFilesInPartition(
+              partitionFiles.getKey(),
+              dataRegionRecoveryContext,
+              partitionFiles.getValue(),
+              false,
+              partitionFiles.getKey() == latestPartitionId);
+        }
+        TimePartitionManager.getInstance()
+            .registerTimePartitionInfo(
+                new TimePartitionInfo(
+                    new DataRegionId(Integer.parseInt(dataRegionId)),
+                    latestPartitionId,
+                    false,
+                    Long.MAX_VALUE,
+                    lastFlushTimeMap.getMemSize(latestPartitionId),
+                    true));
       }
       // wait until all unsealed TsFiles have been recovered
       for (WALRecoverListener recoverListener : recoverListeners) {
@@ -562,6 +583,8 @@ public class DataRegion implements IDataRegionForQuery {
       throw new DataRegionException(e);
     }
 
+    initCompactionSchedule();
+
     if (StorageEngine.getInstance().isAllSgReady()) {
       logger.info("The data region {}[{}] is created successfully", databaseName, dataRegionId);
     } else {
@@ -570,23 +593,21 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void updateLastFlushTime(TsFileResource resource, boolean isSeq) {
-    //  only update flush time when it is a seq file
-    if (isSeq) {
-      long timePartitionId = resource.getTimePartition();
-      Map<String, Long> endTimeMap = new HashMap<>();
-      for (String deviceId : resource.getDevices()) {
-        long endTime = resource.getEndTime(deviceId);
-        endTimeMap.put(deviceId.intern(), endTime);
-      }
-      lastFlushTimeMap.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
-      lastFlushTimeMap.setMultiDeviceGlobalFlushedTime(endTimeMap);
+    long timePartitionId = resource.getTimePartition();
+    Map<String, Long> endTimeMap = new HashMap<>();
+    for (String deviceId : resource.getDevices()) {
+      long endTime = resource.getEndTime(deviceId);
+      endTimeMap.put(deviceId.intern(), endTime);
     }
+    lastFlushTimeMap.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
+    lastFlushTimeMap.setMultiDeviceGlobalFlushedTime(endTimeMap);
   }
 
-  public void initCompaction() {
+  public void initCompactionSchedule() {
     if (!config.isEnableSeqSpaceCompaction()
         && !config.isEnableUnseqSpaceCompaction()
-        && !config.isEnableCrossSpaceCompaction()) {
+        && !config.isEnableCrossSpaceCompaction()
+        && !config.isEnableInsertionCrossSpaceCompaction()) {
       return;
     }
     timedCompactionScheduleTask =
@@ -794,20 +815,11 @@ public class DataRegion implements IDataRegionForQuery {
     for (TsFileResource tsFileResource : resourceList) {
       recoverSealedTsFiles(tsFileResource, context, isSeq);
     }
-    if (isLatestPartition && isSeq) {
+    if (isLatestPartition) {
       lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId);
       for (TsFileResource tsFileResource : resourceList) {
-        updateLastFlushTime(tsFileResource, true);
+        updateLastFlushTime(tsFileResource, isSeq);
       }
-      TimePartitionManager.getInstance()
-          .registerTimePartitionInfo(
-              new TimePartitionInfo(
-                  new DataRegionId(Integer.parseInt(dataRegionId)),
-                  partitionId,
-                  false,
-                  Long.MAX_VALUE,
-                  lastFlushTimeMap.getMemSize(partitionId),
-                  true));
     }
   }
 
@@ -2061,7 +2073,8 @@ public class DataRegion implements IDataRegionForQuery {
     closeQueryLock.writeLock().lock();
     try {
       tsFileProcessor.close();
-      if (tsFileProcessor.isEmpty() || tsFileProcessor.getTsFileResource().isEmpty()) {
+      if (tsFileProcessor.isEmpty()
+          || !TsFileValidator.getInstance().validateTsFile(tsFileProcessor.getTsFileResource())) {
         tsFileProcessor.getTsFileResource().remove();
         tsFileManager.remove(tsFileProcessor.getTsFileResource(), tsFileProcessor.isSequence());
       } else {
@@ -2091,15 +2104,43 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   protected int executeCompaction() {
+    int trySubmitCount = 0;
+    List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
+    // sort the time partition from largest to smallest
+    timePartitions.sort(Comparator.reverseOrder());
+
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction()) {
+      trySubmitCount += executeInsertionCompaction(timePartitions);
+    }
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
-    int trySubmitCount = 0;
     try {
-      List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
-      // sort the time partition from largest to smallest
-      timePartitions.sort(Comparator.reverseOrder());
       for (long timePartition : timePartitions) {
         trySubmitCount += CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
+      }
+    } catch (Throwable e) {
+      logger.error("Meet error in compaction schedule.", e);
+    }
+    return trySubmitCount;
+  }
+
+  protected int executeInsertionCompaction(List<Long> timePartitions) {
+    int trySubmitCount = 0;
+    try {
+      while (true) {
+        int currentSubmitCount = 0;
+        Phaser insertionTaskPhaser = new Phaser(1);
+        for (long timePartition : timePartitions) {
+          currentSubmitCount +=
+              CompactionScheduler.scheduleInsertionCompaction(
+                  tsFileManager, timePartition, insertionTaskPhaser);
+        }
+        trySubmitCount += currentSubmitCount;
+        insertionTaskPhaser.arriveAndAwaitAdvance();
+        if (currentSubmitCount != 0) {
+          continue;
+        }
+        break;
       }
     } catch (Throwable e) {
       logger.error("Meet error in compaction schedule.", e);
@@ -2185,6 +2226,12 @@ public class DataRegion implements IDataRegionForQuery {
       throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
+
+    if (!TsFileValidator.getInstance().validateTsFile(newTsFileResource)) {
+      throw new LoadFileException(
+          "tsfile validate failed, " + newTsFileResource.getTsFile().getName());
+    }
+
     writeLock("loadNewTsFile");
     try {
       newTsFileResource.setSeq(false);
