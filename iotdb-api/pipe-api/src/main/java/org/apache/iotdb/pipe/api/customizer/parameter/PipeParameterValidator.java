@@ -22,7 +22,6 @@ package org.apache.iotdb.pipe.api.customizer.parameter;
 import org.apache.iotdb.pipe.api.exception.PipeAttributeNotProvidedException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
-import java.net.UnknownHostException;
 import java.util.Arrays;
 
 public class PipeParameterValidator {
@@ -122,6 +121,6 @@ public class PipeParameterValidator {
 
   public interface MultipleObjectsValidationRule {
 
-    boolean validate(Object... args) throws UnknownHostException;
+    boolean validate(Object... args);
   }
 }
