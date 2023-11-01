@@ -1034,8 +1034,8 @@ public class DataRegion implements IDataRegionForQuery {
       boolean sequence,
       TSStatus[] results,
       long timePartitionId) {
-    // return when start >= end
-    if (start >= end) {
+    // return when start >= end or all measurement failed
+    if (start >= end || insertTabletNode.allMeasurementFailed()) {
       return true;
     }
 
@@ -1101,6 +1101,9 @@ public class DataRegion implements IDataRegionForQuery {
   private void insertToTsFileProcessor(
       InsertRowNode insertRowNode, boolean sequence, long timePartitionId)
       throws WriteProcessException {
+    if (insertRowNode.allMeasurementFailed()) {
+      return;
+    }
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
     if (tsFileProcessor == null) {
       return;
