@@ -171,6 +171,12 @@ public class GroupByMonthFilter extends GroupByFilter {
   public void deserialize(ByteBuffer buffer) {
     originalInterval = TimeDuration.deserialize(buffer);
     originalSlidingStep = TimeDuration.deserialize(buffer);
+    if (!originalInterval.containsMonth()) {
+      this.interval = originalInterval.nonMonthDuration;
+    }
+    if (!originalSlidingStep.containsMonth()) {
+      this.slidingStep = originalSlidingStep.nonMonthDuration;
+    }
     originalStartTime = ReadWriteIOUtils.readLong(buffer);
     originalEndTime = ReadWriteIOUtils.readLong(buffer);
     currPrecision = TimeUnit.values()[ReadWriteIOUtils.readInt(buffer)];
@@ -194,8 +200,8 @@ public class GroupByMonthFilter extends GroupByFilter {
       return false;
     }
     GroupByMonthFilter other = (GroupByMonthFilter) obj;
-    return this.originalInterval == other.originalInterval
-        && this.originalSlidingStep == other.originalSlidingStep
+    return this.originalInterval.equals(other.originalInterval)
+        && this.originalSlidingStep.equals(other.originalSlidingStep)
         && this.originalStartTime == other.originalStartTime
         && this.originalEndTime == other.originalEndTime
         && this.currPrecision == other.currPrecision
