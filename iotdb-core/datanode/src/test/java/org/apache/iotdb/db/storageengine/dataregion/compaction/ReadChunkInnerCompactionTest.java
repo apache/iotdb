@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -40,6 +41,7 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -362,5 +364,84 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     validateSeqFiles(true);
 
     validateTargetDatas(sourceDatas, tsDataTypes);
+  }
+
+  @Test
+  public void testReadChunkPerformerWithEmptyTargetFile1() throws IOException {
+    TsFileResource seqFile1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile1)) {
+      writer.endFile();
+    }
+    TsFileResource seqFile2 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile2)) {
+      writer.endFile();
+    }
+    TsFileResource seqFile3 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile3)) {
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqResources.add(seqFile1);
+    seqResources.add(seqFile2);
+    seqResources.add(seqFile3);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+    Assert.assertTrue(task.start());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+  }
+
+  @Test
+  public void testReadChunkPerformerWithEmptyTargetFile2() throws IOException {
+    TsFileResource seqFile1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile1)) {
+      writer.endFile();
+    }
+    TsFileResource seqFile2 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile2)) {
+      writer.endFile();
+    }
+    TsFileResource seqFile3 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile3)) {
+      writer.startChunkGroup("d1");
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqResources.add(seqFile1);
+    seqResources.add(seqFile2);
+    seqResources.add(seqFile3);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+    Assert.assertTrue(task.start());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+  }
+
+  @Test
+  public void testReadChunkPerformerWithNonEmptyTargetFile() throws IOException {
+    TsFileResource seqFile1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile1)) {
+      writer.endFile();
+    }
+    TsFileResource seqFile2 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile2)) {
+      writer.endFile();
+    }
+    TsFileResource seqFile3 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile3)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1", new TimeRange[] {new TimeRange(1, 2)}, TSEncoding.PLAIN, CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqResources.add(seqFile1);
+    seqResources.add(seqFile2);
+    seqResources.add(seqFile3);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+    Assert.assertTrue(task.start());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
   }
 }

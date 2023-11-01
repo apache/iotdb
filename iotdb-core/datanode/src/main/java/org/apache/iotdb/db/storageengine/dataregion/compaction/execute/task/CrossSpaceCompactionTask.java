@@ -204,6 +204,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             timePartition,
             true);
 
+        validateCompactionResult(
+            selectedSequenceFiles, selectedUnsequenceFiles, targetTsfileResourceList);
+
         // find empty target files and add log
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (targetResource.isDeleted()) {
@@ -212,8 +215,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             compactionLogger.force();
           }
         }
-
-        validateTsFileResource(targetTsfileResourceList, true);
 
         lockWrite(selectedSequenceFiles);
         lockWrite(selectedUnsequenceFiles);

@@ -219,6 +219,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
               String.format("%s-%s [Compaction] abort", storageGroupName, dataRegionId));
         }
 
+        validateCompactionResult(
+            sequence ? selectedTsFileResourceList : Collections.emptyList(),
+            sequence ? Collections.emptyList() : selectedTsFileResourceList,
+            targetTsFileList);
+
         // replace the old files with new file, the new is in same position as the old
         if (sequence) {
           tsFileManager.replace(
@@ -241,8 +246,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           isTargetTsFileEmpty = true;
           compactionLogger.force();
         }
-
-        validateTsFileResource(targetTsFileList, sequence);
 
         LOGGER.info(
             "{}-{} [Compaction] Compacted target files, try to get the write lock of source files",
