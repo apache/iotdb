@@ -38,6 +38,12 @@ public class GroupByMonthFilter extends GroupByFilter {
 
   private int slidingStepsInMo;
   private int intervalInMo;
+
+  private long fixedIntervalOther;
+  private long fixedSlidingStepOther;
+  private long[] timeArray;
+  private int arraySize;
+
   private Calendar calendar = Calendar.getInstance();
   private static final long MS_TO_MONTH = 30 * 86400_000L;
   /** 10.31 -> 11.30 -> 12.31, not 10.31 -> 11.30 -> 12.30 */
@@ -51,6 +57,8 @@ public class GroupByMonthFilter extends GroupByFilter {
   private long originalInterval;
   private long originalStartTime;
   private long originalEndTime;
+  private long fixedSlidingStepInMonth;
+  private long fixedIntervalInMonth;
 
   public GroupByMonthFilter() {}
 
@@ -59,14 +67,19 @@ public class GroupByMonthFilter extends GroupByFilter {
       long slidingStep,
       long startTime,
       long endTime,
+      long fixedIntervalInMonth,
+      long fixedSlidingStepInMonth,
       boolean isSlidingStepByMonth,
       boolean isIntervalByMonth,
       TimeZone timeZone) {
+
     super(interval, slidingStep, startTime, endTime);
     this.originalInterval = interval;
     this.originalSlidingStep = slidingStep;
     this.originalStartTime = startTime;
     this.originalEndTime = endTime;
+    this.fixedSlidingStepInMonth = fixedSlidingStepInMonth;
+    this.fixedIntervalInMonth = fixedIntervalInMonth;
     initMonthGroupByParameters(isSlidingStepByMonth, isIntervalByMonth, timeZone);
   }
 
@@ -76,6 +89,8 @@ public class GroupByMonthFilter extends GroupByFilter {
     isSlidingStepByMonth = filter.isSlidingStepByMonth;
     intervalInMo = filter.intervalInMo;
     slidingStepsInMo = filter.slidingStepsInMo;
+    fixedIntervalInMonth = filter.fixedIntervalInMonth;
+    fixedSlidingStepInMonth = filter.fixedSlidingStepInMonth;
     initialStartTime = filter.initialStartTime;
     originalStartTime = filter.originalStartTime;
     originalEndTime = filter.originalEndTime;
@@ -85,6 +100,8 @@ public class GroupByMonthFilter extends GroupByFilter {
     calendar.setTimeZone(filter.calendar.getTimeZone());
     calendar.setTimeInMillis(filter.calendar.getTimeInMillis());
     timeZone = filter.timeZone;
+    fixedIntervalOther = filter.fixedIntervalOther;
+    fixedSlidingStepOther = filter.fixedSlidingStepOther;
   }
 
   // TODO: time descending order
@@ -97,7 +114,7 @@ public class GroupByMonthFilter extends GroupByFilter {
     } else {
       long count = getTimePointPosition(time);
       getNthTimeInterval(count);
-      return time - startTime < interval;
+      return time - startTime >= 0 && time - startTime < interval;
     }
   }
 
@@ -156,6 +173,8 @@ public class GroupByMonthFilter extends GroupByFilter {
       ReadWriteIOUtils.write(isSlidingStepByMonth, outputStream);
       ReadWriteIOUtils.write(isIntervalByMonth, outputStream);
       ReadWriteIOUtils.write(timeZone.getID(), outputStream);
+      ReadWriteIOUtils.write(fixedIntervalInMonth, outputStream);
+      ReadWriteIOUtils.write(fixedSlidingStepInMonth, outputStream);
     } catch (IOException ignored) {
       // ignored
     }
@@ -170,6 +189,8 @@ public class GroupByMonthFilter extends GroupByFilter {
     isSlidingStepByMonth = ReadWriteIOUtils.readBool(buffer);
     isIntervalByMonth = ReadWriteIOUtils.readBool(buffer);
     timeZone = TimeZone.getTimeZone(ReadWriteIOUtils.readString(buffer));
+    fixedIntervalInMonth = ReadWriteIOUtils.readLong(buffer);
+    fixedSlidingStepInMonth = ReadWriteIOUtils.readLong(buffer);
 
     interval = originalInterval;
     slidingStep = originalSlidingStep;
@@ -202,13 +223,22 @@ public class GroupByMonthFilter extends GroupByFilter {
         && this.timeZone.equals(other.timeZone)
         && this.initialStartTime == other.initialStartTime
         && this.intervalInMo == other.intervalInMo
-        && this.slidingStepsInMo == other.slidingStepsInMo;
+        && this.slidingStepsInMo == other.slidingStepsInMo
+        && this.fixedIntervalInMonth == other.fixedIntervalInMonth
+        && this.fixedSlidingStepInMonth == other.fixedSlidingStepInMonth;
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        interval, slidingStep, startTime, endTime, isSlidingStepByMonth, isIntervalByMonth);
+        interval,
+        slidingStep,
+        startTime,
+        endTime,
+        isSlidingStepByMonth,
+        isIntervalByMonth,
+        fixedSlidingStepInMonth,
+        fixedIntervalInMonth);
   }
 
   private void initMonthGroupByParameters(
@@ -219,34 +249,74 @@ public class GroupByMonthFilter extends GroupByFilter {
     this.timeZone = timeZone;
     this.isIntervalByMonth = isIntervalByMonth;
     this.isSlidingStepByMonth = isSlidingStepByMonth;
+    this.fixedIntervalOther = interval - fixedIntervalInMonth;
+    this.fixedSlidingStepOther = slidingStep - fixedSlidingStepInMonth;
     if (isIntervalByMonth) {
-      // TODO: 1mo1d
-      intervalInMo = (int) (interval / MS_TO_MONTH);
+      intervalInMo = (int) (fixedIntervalInMonth / MS_TO_MONTH);
     }
     if (isSlidingStepByMonth) {
-      slidingStepsInMo = (int) (slidingStep / MS_TO_MONTH);
+      slidingStepsInMo = (int) (fixedSlidingStepInMonth / MS_TO_MONTH);
+      if (fixedSlidingStepOther != 0) {
+        initTimeArray();
+      }
     }
     getNthTimeInterval(0);
+  }
+
+  private void initTimeArray() {
+    long iterStartTime = originalStartTime;
+    long count =
+        (originalEndTime - originalStartTime)
+                / (slidingStepsInMo * 28 * 86400_000L + fixedSlidingStepOther)
+            + 1;
+    timeArray = new long[(int) count];
+    arraySize = 0;
+    for (int i = 0; i < count; i++) {
+      timeArray[arraySize++] = iterStartTime;
+      iterStartTime =
+          calcIntervalByMonthWithFixedOther(iterStartTime, slidingStepsInMo, fixedSlidingStepOther);
+      if (iterStartTime >= originalEndTime) {
+        break;
+      }
+    }
+  }
+
+  public int getTimePointPositionFromArray(long time) {
+    int left = 0;
+    int right = arraySize - 1;
+    while (left < right) {
+      int mid = (left + right + 1) / 2;
+      if (timeArray[mid] <= time) {
+        left = mid;
+      } else {
+        right = mid - 1;
+      }
+    }
+    return left;
   }
 
   /** Get the interval that @param time belongs to. */
   private long getTimePointPosition(long time) {
     long count;
+    long timeRange = time - this.initialStartTime;
     if (isSlidingStepByMonth) {
-      count = (time - this.initialStartTime) / (slidingStepsInMo * 31 * 86400_000L);
-      calendar.setTimeInMillis(initialStartTime);
-      calendar.add(Calendar.MONTH, (int) count * slidingStepsInMo);
-      while (calendar.getTimeInMillis() < time) {
-        calendar.setTimeInMillis(initialStartTime);
-        calendar.add(Calendar.MONTH, (int) (count + 1) * slidingStepsInMo);
-        if (calendar.getTimeInMillis() > time) {
-          break;
-        } else {
-          count++;
+      // Processing input with only months as before
+      if (fixedSlidingStepOther == 0) {
+        count = timeRange / (slidingStepsInMo * 31 * 86400_000L);
+        long retStartTime = calcIntervalByMonth(initialStartTime, count * slidingStepsInMo);
+        while (retStartTime < time) {
+          retStartTime = calcIntervalByMonth(initialStartTime, (count + 1) * slidingStepsInMo);
+          if (retStartTime > time) {
+            break;
+          } else {
+            count++;
+          }
         }
+      } else {
+        count = getTimePointPositionFromArray(time);
       }
     } else {
-      count = (time - this.initialStartTime) / slidingStep;
+      count = timeRange / slidingStep;
     }
     return count;
   }
@@ -255,32 +325,47 @@ public class GroupByMonthFilter extends GroupByFilter {
   private void getNthTimeInterval(long n) {
     // get start time of time interval
     if (isSlidingStepByMonth) {
-      calendar.setTimeInMillis(initialStartTime);
-      calendar.add(Calendar.MONTH, (int) (slidingStepsInMo * n));
+      if (fixedSlidingStepOther == 0) {
+        this.startTime = calcIntervalByMonth(initialStartTime, slidingStepsInMo * n);
+      } else {
+        this.startTime = timeArray[(int) n];
+      }
     } else {
-      calendar.setTimeInMillis(initialStartTime + slidingStep * n);
+      this.startTime = initialStartTime + slidingStep * n;
     }
-    this.startTime = calendar.getTimeInMillis();
 
     // get interval and sliding step
     if (isIntervalByMonth) {
-      if (isSlidingStepByMonth) {
-        calendar.setTimeInMillis(initialStartTime);
-        calendar.add(Calendar.MONTH, (int) (slidingStepsInMo * n) + intervalInMo);
-      } else {
-        calendar.add(Calendar.MONTH, intervalInMo);
-      }
-      this.interval = calendar.getTimeInMillis() - startTime;
+      this.interval =
+          calcIntervalByMonthWithFixedOther(startTime, intervalInMo, fixedIntervalOther)
+              - startTime;
     }
     if (isSlidingStepByMonth) {
-      calendar.setTimeInMillis(initialStartTime);
-      calendar.add(Calendar.MONTH, (int) (slidingStepsInMo * (n + 1)));
-      this.slidingStep = calendar.getTimeInMillis() - startTime;
+      this.slidingStep =
+          calcIntervalByMonthWithFixedOther(startTime, slidingStepsInMo, fixedSlidingStepOther)
+              - startTime;
     }
   }
 
   @Override
   public FilterSerializeId getSerializeId() {
     return FilterSerializeId.GROUP_BY_MONTH;
+  }
+
+  private long calcIntervalByMonth(long startTime, long numMonths) {
+    calendar.setTimeInMillis(startTime);
+    boolean isLastDayOfMonth =
+        calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
+    calendar.add(Calendar.MONTH, (int) (numMonths));
+    if (isLastDayOfMonth) {
+      calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
+    }
+    return calendar.getTimeInMillis();
+  }
+
+  private long calcIntervalByMonthWithFixedOther(
+      long startTime, long fixedMonths, long fixedOther) {
+    long nextStartTime = calcIntervalByMonth(startTime, fixedMonths);
+    return nextStartTime + fixedOther;
   }
 }

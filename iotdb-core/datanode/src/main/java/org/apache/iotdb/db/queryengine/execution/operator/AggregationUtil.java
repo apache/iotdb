@@ -79,6 +79,8 @@ public class AggregationUtil {
           groupByTimeParameter.isIntervalByMonth(),
           groupByTimeParameter.isSlidingStepByMonth(),
           groupByTimeParameter.isLeftCRightO(),
+          groupByTimeParameter.getFixedIntervalInMonth(),
+          groupByTimeParameter.getFixedSlidingStepInMonth(),
           outputPartialTimeWindow);
     }
   }

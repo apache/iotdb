@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
-import static org.apache.iotdb.db.utils.DateTimeUtils.MS_TO_MONTH;
-
 public class TimeRangeIteratorFactory {
 
   private TimeRangeIteratorFactory() {}
@@ -40,13 +38,11 @@ public class TimeRangeIteratorFactory {
       boolean isIntervalByMonth,
       boolean isSlidingStepByMonth,
       boolean leftCRightO,
+      long fixedIntervalInMonth,
+      long fixedSlidingStepInMonth,
       boolean outputPartialTimeWindow) {
-    long originInterval = interval;
-    long originSlidingStep = slidingStep;
-    interval = isIntervalByMonth ? interval / MS_TO_MONTH : interval;
-    slidingStep = isSlidingStepByMonth ? slidingStep / MS_TO_MONTH : slidingStep;
 
-    if (outputPartialTimeWindow && originInterval > originSlidingStep) {
+    if (outputPartialTimeWindow && interval > slidingStep) {
       if (!isIntervalByMonth && !isSlidingStepByMonth) {
         return new PreAggrWindowIterator(
             startTime, endTime, interval, slidingStep, isAscending, leftCRightO);
@@ -59,7 +55,9 @@ public class TimeRangeIteratorFactory {
             isAscending,
             isSlidingStepByMonth,
             isIntervalByMonth,
-            leftCRightO);
+            leftCRightO,
+            fixedIntervalInMonth,
+            fixedSlidingStepInMonth);
       }
     } else {
       return new AggrWindowIterator(
@@ -70,7 +68,9 @@ public class TimeRangeIteratorFactory {
           isAscending,
           isSlidingStepByMonth,
           isIntervalByMonth,
-          leftCRightO);
+          leftCRightO,
+          fixedIntervalInMonth,
+          fixedSlidingStepInMonth);
     }
   }
 }

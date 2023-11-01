@@ -29,6 +29,7 @@ import org.junit.Test;
 public class TimeRangeIteratorTest {
 
   private static final long MS_TO_MONTH = 30 * 86400_000L;
+  private static final long MS_TO_DAY = 86400_000L;
 
   @Test
   public void testNotSplitTimeRange() {
@@ -50,13 +51,13 @@ public class TimeRangeIteratorTest {
 
     ITimeRangeIterator timeRangeIterator =
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            startTime, endTime, interval, slidingStep, true, false, false, true, false);
+            startTime, endTime, interval, slidingStep, true, false, false, true, 0, 0, false);
 
     checkRes(timeRangeIterator, res);
 
     ITimeRangeIterator descTimeRangeIterator =
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            startTime, endTime, interval, slidingStep, false, false, false, true, false);
+            startTime, endTime, interval, slidingStep, false, false, false, true, 0, 0, false);
 
     checkRes(descTimeRangeIterator, res);
   }
@@ -163,40 +164,52 @@ public class TimeRangeIteratorTest {
     };
 
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 1, true, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, 4, 1, true, false, false, true, 0, 0, true),
         res4_1);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 2, true, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, 4, 2, true, false, false, true, 0, 0, true),
         res4_2);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 3, true, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, 4, 3, true, false, false, true, 0, 0, true),
         res4_3);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 4, true, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, 4, 4, true, false, false, true, 0, 0, true),
         res4_4);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 5, true, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, 4, 5, true, false, false, true, 0, 0, true),
         res4_5);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 6, true, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, 4, 6, true, false, false, true, 0, 0, true),
         res4_6);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 1, false, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, 4, 1, false, false, false, true, 0, 0, true),
         res4_1);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 2, false, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, 4, 2, false, false, false, true, 0, 0, true),
         res4_2);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 3, false, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, 4, 3, false, false, false, true, 0, 0, true),
         res4_3);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 4, false, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, 4, 4, false, false, false, true, 0, 0, true),
         res4_4);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 5, false, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, 4, 5, false, false, false, true, 0, 0, true),
         res4_5);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 6, false, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, 4, 6, false, false, false, true, 0, 0, true),
         res4_6);
   }
 
@@ -270,27 +283,235 @@ public class TimeRangeIteratorTest {
             true,
             true,
             true,
+            MS_TO_MONTH,
+            MS_TO_MONTH,
             false),
         res1);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, MS_TO_MONTH, MS_TO_MONTH, true, true, true, true, true),
+            1604102400000L,
+            1617148800000L,
+            MS_TO_MONTH,
+            MS_TO_MONTH,
+            true,
+            true,
+            true,
+            true,
+            MS_TO_MONTH,
+            MS_TO_MONTH,
+            true),
         res1);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, 864000000, MS_TO_MONTH, true, false, true, true, false),
+            1604102400000L,
+            1617148800000L,
+            864000000,
+            MS_TO_MONTH,
+            true,
+            false,
+            true,
+            true,
+            0,
+            MS_TO_MONTH,
+            false),
         res2);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, 864000000, MS_TO_MONTH, true, false, true, true, true),
+            1604102400000L,
+            1617148800000L,
+            864000000,
+            MS_TO_MONTH,
+            true,
+            false,
+            true,
+            true,
+            0,
+            MS_TO_MONTH,
+            true),
         res2);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, MS_TO_MONTH, 864000000, true, true, false, true, false),
+            1604102400000L,
+            1617148800000L,
+            MS_TO_MONTH,
+            864000000,
+            true,
+            true,
+            false,
+            true,
+            MS_TO_MONTH,
+            0,
+            false),
         res3);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, MS_TO_MONTH, 864000000, true, true, false, true, true),
+            1604102400000L,
+            1617148800000L,
+            MS_TO_MONTH,
+            864000000,
+            true,
+            true,
+            false,
+            true,
+            MS_TO_MONTH,
+            0,
+            true),
+        res4);
+  }
+
+  @Test
+  public void testNaturalMonthWithFixedOtherTimeRange() {
+    String[] res1 = {
+      "[ 1604102400000 : 1606780800000 ]",
+      "[ 1606780800001 : 1609545600001 ]",
+      "[ 1609545600002 : 1612310400002 ]",
+      "[ 1612310400003 : 1614816000003 ]",
+      "[ 1614816000004 : 1617580800004 ]"
+    };
+    String[] res2 = {
+      "[ 1572480000000 : 1573343999999 ]",
+      "[ 1577664000000 : 1578527999999 ]",
+      "[ 1582934400000 : 1583798399999 ]",
+      "[ 1588204800000 : 1589068799999 ]",
+      "[ 1593475200000 : 1594339199999 ]",
+      "[ 1598745600000 : 1599609599999 ]",
+      "[ 1604016000000 : 1604879999999 ]",
+      "[ 1609286400000 : 1610150399999 ]",
+      "[ 1614556800000 : 1615420799999 ]",
+      "[ 1619827200000 : 1619827200000 ]"
+    };
+    String[] res3 = {
+      "[ 1604102400000 : 1606694400000 ]",
+      "[ 1604966400000 : 1607558400000 ]",
+      "[ 1605830400000 : 1608422400000 ]",
+      "[ 1606694400000 : 1609372800000 ]",
+      "[ 1607558400000 : 1610236800000 ]",
+      "[ 1608422400000 : 1611100800000 ]",
+      "[ 1609286400000 : 1611964800000 ]",
+      "[ 1610150400000 : 1612828800000 ]",
+      "[ 1611014400000 : 1613692800000 ]",
+      "[ 1611878400000 : 1614470400000 ]",
+      "[ 1612742400000 : 1615161600000 ]",
+      "[ 1613606400000 : 1616025600000 ]",
+      "[ 1614470400000 : 1617148799999 ]",
+      "[ 1615334400000 : 1617148799999 ]",
+      "[ 1616198400000 : 1617148799999 ]",
+      "[ 1617062400000 : 1617148799999 ]"
+    };
+    String[] res4 = {
+      "[ 1604102400000 : 1604966399999 ]",
+      "[ 1604966400000 : 1605830399999 ]",
+      "[ 1605830400000 : 1606694399999 ]",
+      "[ 1606694400000 : 1606694400000 ]",
+      "[ 1606694400001 : 1607558399999 ]",
+      "[ 1607558400000 : 1607558400000 ]",
+      "[ 1607558400001 : 1608422399999 ]",
+      "[ 1608422400000 : 1608422400000 ]",
+      "[ 1608422400001 : 1609286399999 ]",
+      "[ 1609286400000 : 1609372800000 ]",
+      "[ 1609372800001 : 1610150399999 ]",
+      "[ 1610150400000 : 1610236800000 ]",
+      "[ 1610236800001 : 1611014399999 ]",
+      "[ 1611014400000 : 1611100800000 ]",
+      "[ 1611100800001 : 1611878399999 ]",
+      "[ 1611878400000 : 1611964800000 ]",
+      "[ 1611964800001 : 1612742399999 ]",
+      "[ 1612742400000 : 1612828800000 ]",
+      "[ 1612828800001 : 1613606399999 ]",
+      "[ 1613606400000 : 1613692800000 ]",
+      "[ 1613692800001 : 1614470399999 ]",
+      "[ 1614470400000 : 1614470400000 ]",
+      "[ 1614470400001 : 1615161600000 ]",
+      "[ 1615161600001 : 1615334399999 ]",
+      "[ 1615334400000 : 1616025600000 ]",
+      "[ 1616025600001 : 1616198399999 ]",
+      "[ 1616198400000 : 1617062399999 ]",
+      "[ 1617062400000 : 1617148799999 ]"
+    };
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            1604102400000L,
+            1617580800005L,
+            MS_TO_MONTH + MS_TO_DAY + 1,
+            MS_TO_MONTH + MS_TO_DAY + 1,
+            true,
+            true,
+            true,
+            true,
+            MS_TO_MONTH,
+            MS_TO_MONTH,
+            false),
+        res1);
+
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            1604102400000L,
+            1617580800005L,
+            MS_TO_MONTH + MS_TO_DAY + 1,
+            MS_TO_MONTH + MS_TO_DAY + 1,
+            true,
+            true,
+            true,
+            true,
+            MS_TO_MONTH,
+            MS_TO_MONTH,
+            true),
+        res1);
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            1572480000000L,
+            1619827200001L,
+            MS_TO_DAY * 10,
+            MS_TO_MONTH + MS_TO_DAY * 30,
+            true,
+            false,
+            true,
+            true,
+            0,
+            MS_TO_MONTH,
+            false),
+        res2);
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            1572480000000L,
+            1619827200001L,
+            MS_TO_DAY * 10,
+            MS_TO_MONTH + MS_TO_DAY * 30,
+            true,
+            false,
+            true,
+            true,
+            0,
+            MS_TO_MONTH,
+            true),
+        res2);
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            1604102400000L,
+            1617148800000L,
+            MS_TO_MONTH + 1,
+            MS_TO_DAY * 10,
+            true,
+            true,
+            false,
+            true,
+            MS_TO_MONTH,
+            0,
+            false),
+        res3);
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            1604102400000L,
+            1617148800000L,
+            MS_TO_MONTH + 1,
+            MS_TO_DAY * 10,
+            true,
+            true,
+            false,
+            true,
+            MS_TO_MONTH,
+            0,
+            true),
         res4);
   }
 

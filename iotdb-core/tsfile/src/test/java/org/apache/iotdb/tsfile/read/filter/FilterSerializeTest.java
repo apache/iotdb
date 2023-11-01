@@ -109,8 +109,10 @@ public class FilterSerializeTest {
   public void testGroupByMonthFilter() {
     Filter[] filters =
         new Filter[] {
-          new GroupByMonthFilter(1, 2, 3, 4, true, false, TimeZone.getTimeZone("Asia/Shanghai")),
-          new GroupByMonthFilter(4, 3, 2, 1, false, true, TimeZone.getTimeZone("Atlantic/Faeroe")),
+          new GroupByMonthFilter(
+              1, 2, 3, 4, 0, 0, true, false, TimeZone.getTimeZone("Asia/Shanghai")),
+          new GroupByMonthFilter(
+              4, 3, 2, 1, 0, 0, false, true, TimeZone.getTimeZone("Atlantic/Faeroe")),
         };
     for (Filter filter : filters) {
       validateSerialization(filter);

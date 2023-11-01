@@ -52,6 +52,11 @@ public class GroupByTimeParameter {
   // if it is left close and right open interval
   private boolean leftCRightO;
 
+  // for natural month + fixed other time eg, "1mo55d" fixedIntervalMo is 1mo to long value
+  // 2_592_000_000L
+  private long fixedIntervalInMonth = 0;
+  private long fixedSlidingStepInMonth = 0;
+
   public GroupByTimeParameter() {}
 
   public GroupByTimeParameter(
@@ -84,6 +89,8 @@ public class GroupByTimeParameter {
     this.isIntervalByMonth = groupByTimeComponent.isIntervalByMonth();
     this.isSlidingStepByMonth = groupByTimeComponent.isSlidingStepByMonth();
     this.leftCRightO = groupByTimeComponent.isLeftCRightO();
+    this.fixedIntervalInMonth = groupByTimeComponent.getFixedIntervalInMonth();
+    this.fixedSlidingStepInMonth = groupByTimeComponent.getFixedSlidingStepInMonth();
   }
 
   public long getStartTime() {
@@ -142,6 +149,22 @@ public class GroupByTimeParameter {
     this.leftCRightO = leftCRightO;
   }
 
+  public long getFixedIntervalInMonth() {
+    return fixedIntervalInMonth;
+  }
+
+  public void setFixedIntervalInMonth(long fixedIntervalInMonth) {
+    this.fixedIntervalInMonth = fixedIntervalInMonth;
+  }
+
+  public long getFixedSlidingStepInMonth() {
+    return fixedSlidingStepInMonth;
+  }
+
+  public void setFixedSlidingStepInMonth(long fixedSlidingStepInMonth) {
+    this.fixedSlidingStepInMonth = fixedSlidingStepInMonth;
+  }
+
   public boolean hasOverlap() {
     return interval > slidingStep;
   }
@@ -154,6 +177,8 @@ public class GroupByTimeParameter {
     ReadWriteIOUtils.write(isIntervalByMonth, buffer);
     ReadWriteIOUtils.write(isSlidingStepByMonth, buffer);
     ReadWriteIOUtils.write(leftCRightO, buffer);
+    ReadWriteIOUtils.write(fixedIntervalInMonth, buffer);
+    ReadWriteIOUtils.write(fixedSlidingStepInMonth, buffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
@@ -164,6 +189,8 @@ public class GroupByTimeParameter {
     ReadWriteIOUtils.write(isIntervalByMonth, stream);
     ReadWriteIOUtils.write(isSlidingStepByMonth, stream);
     ReadWriteIOUtils.write(leftCRightO, stream);
+    ReadWriteIOUtils.write(fixedIntervalInMonth, stream);
+    ReadWriteIOUtils.write(fixedSlidingStepInMonth, stream);
   }
 
   public static GroupByTimeParameter deserialize(ByteBuffer buffer) {
@@ -175,6 +202,8 @@ public class GroupByTimeParameter {
     groupByTimeParameter.setIntervalByMonth(ReadWriteIOUtils.readBool(buffer));
     groupByTimeParameter.setSlidingStepByMonth(ReadWriteIOUtils.readBool(buffer));
     groupByTimeParameter.setLeftCRightO(ReadWriteIOUtils.readBool(buffer));
+    groupByTimeParameter.setFixedIntervalInMonth(ReadWriteIOUtils.readLong(buffer));
+    groupByTimeParameter.setFixedSlidingStepInMonth(ReadWriteIOUtils.readLong(buffer));
     return groupByTimeParameter;
   }
 
@@ -190,7 +219,9 @@ public class GroupByTimeParameter {
         && this.slidingStep == other.slidingStep
         && this.isSlidingStepByMonth == other.isSlidingStepByMonth
         && this.isIntervalByMonth == other.isIntervalByMonth
-        && this.leftCRightO == other.leftCRightO;
+        && this.leftCRightO == other.leftCRightO
+        && this.fixedIntervalInMonth == other.fixedIntervalInMonth
+        && this.fixedSlidingStepInMonth == other.fixedSlidingStepInMonth;
   }
 
   @Override
@@ -202,6 +233,8 @@ public class GroupByTimeParameter {
         slidingStep,
         isIntervalByMonth,
         isSlidingStepByMonth,
-        leftCRightO);
+        leftCRightO,
+        fixedIntervalInMonth,
+        fixedSlidingStepInMonth);
   }
 }

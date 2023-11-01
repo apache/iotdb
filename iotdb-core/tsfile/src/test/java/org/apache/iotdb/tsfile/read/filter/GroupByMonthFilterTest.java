@@ -44,7 +44,15 @@ public class GroupByMonthFilterTest {
   public void TestSatisfy1() {
     GroupByMonthFilter filter =
         new GroupByMonthFilter(
-            MS_TO_MONTH, 2 * MS_TO_MONTH, 0, END_TIME, true, true, TimeZone.getTimeZone("+08:00"));
+            MS_TO_MONTH,
+            2 * MS_TO_MONTH,
+            0,
+            END_TIME,
+            MS_TO_MONTH,
+            2 * MS_TO_MONTH,
+            true,
+            true,
+            TimeZone.getTimeZone("+08:00"));
 
     // 1970-01-01 08:00:00, timezone = GMT+08:00
     assertTrue(filter.satisfy(0, null));
@@ -79,7 +87,15 @@ public class GroupByMonthFilterTest {
   public void TestSatisfy2() {
     GroupByMonthFilter filter =
         new GroupByMonthFilter(
-            MS_TO_MONTH, MS_TO_MONTH, 0, END_TIME, true, true, TimeZone.getTimeZone("+08:00"));
+            MS_TO_MONTH,
+            MS_TO_MONTH,
+            0,
+            END_TIME,
+            MS_TO_MONTH,
+            MS_TO_MONTH,
+            true,
+            true,
+            TimeZone.getTimeZone("+08:00"));
 
     // 1970-01-01 08:00:00, timezone = GMT+08:00
     assertTrue(filter.satisfy(0, null));
@@ -111,7 +127,15 @@ public class GroupByMonthFilterTest {
   public void TestSatisfy3() {
     GroupByMonthFilter filter =
         new GroupByMonthFilter(
-            MS_TO_DAY, MS_TO_MONTH, 0, END_TIME, true, false, TimeZone.getTimeZone("+08:00"));
+            MS_TO_DAY,
+            MS_TO_MONTH,
+            0,
+            END_TIME,
+            0,
+            MS_TO_MONTH,
+            true,
+            false,
+            TimeZone.getTimeZone("+08:00"));
 
     // 1970-01-01 08:00:00, timezone = GMT+08:00
     assertTrue(filter.satisfy(0, null));
@@ -143,7 +167,15 @@ public class GroupByMonthFilterTest {
   public void TestSatisfy4() {
     GroupByMonthFilter filter =
         new GroupByMonthFilter(
-            MS_TO_MONTH, MS_TO_DAY * 100, 0, END_TIME, false, true, TimeZone.getTimeZone("+08:00"));
+            MS_TO_MONTH,
+            MS_TO_DAY * 100,
+            0,
+            END_TIME,
+            MS_TO_MONTH,
+            0,
+            false,
+            true,
+            TimeZone.getTimeZone("+08:00"));
 
     // 1970-01-01 08:00:00, timezone = GMT+08:00
     assertTrue(filter.satisfy(0, null));
@@ -163,7 +195,15 @@ public class GroupByMonthFilterTest {
   public void TestSatisfyStartEndTime() {
     GroupByMonthFilter filter =
         new GroupByMonthFilter(
-            MS_TO_DAY, MS_TO_MONTH, 0, END_TIME, true, false, TimeZone.getTimeZone("+08:00"));
+            MS_TO_DAY,
+            MS_TO_MONTH,
+            0,
+            END_TIME,
+            0,
+            MS_TO_MONTH,
+            true,
+            false,
+            TimeZone.getTimeZone("+08:00"));
 
     // 1970-01-01 08:00:00 - 1970-01-02 08:00:00, timezone = GMT+08:00
     Statistics statistics = new LongStatistics();
@@ -210,7 +250,15 @@ public class GroupByMonthFilterTest {
   public void TestContainStartEndTime() {
     GroupByMonthFilter filter =
         new GroupByMonthFilter(
-            MS_TO_DAY, MS_TO_MONTH, 0, END_TIME, true, false, TimeZone.getTimeZone("+08:00"));
+            MS_TO_DAY,
+            MS_TO_MONTH,
+            0,
+            END_TIME,
+            0,
+            MS_TO_MONTH,
+            true,
+            false,
+            TimeZone.getTimeZone("+08:00"));
 
     // 1970-01-01 08:00:00 - 1970-01-02 08:00:00, timezone = GMT+08:00
     assertFalse(filter.containStartEndTime(0, MS_TO_DAY));
@@ -247,12 +295,120 @@ public class GroupByMonthFilterTest {
   public void TestEquals() {
     GroupByMonthFilter filter =
         new GroupByMonthFilter(
-            MS_TO_DAY, MS_TO_MONTH, 0, END_TIME, true, false, TimeZone.getTimeZone("+08:00"));
+            MS_TO_DAY,
+            MS_TO_MONTH,
+            0,
+            END_TIME,
+            0,
+            MS_TO_MONTH,
+            true,
+            false,
+            TimeZone.getTimeZone("+08:00"));
     Filter filter2 = filter.copy();
     assertEquals(filter, filter2);
     GroupByMonthFilter filter3 =
         new GroupByMonthFilter(
-            MS_TO_MONTH, MS_TO_MONTH, 0, END_TIME, true, true, TimeZone.getTimeZone("+08:00"));
+            MS_TO_MONTH,
+            MS_TO_MONTH,
+            0,
+            END_TIME,
+            MS_TO_MONTH,
+            MS_TO_MONTH,
+            true,
+            true,
+            TimeZone.getTimeZone("+08:00"));
     assertNotEquals(filter, filter3);
+  }
+
+  /** Test filter with slidingStep = 1mo28d, and timeInterval = 1 month */
+  @Test
+  public void TestSatisfy5() {
+    GroupByMonthFilter filter =
+        new GroupByMonthFilter(
+            MS_TO_MONTH,
+            MS_TO_MONTH + 28 * MS_TO_DAY,
+            0,
+            END_TIME,
+            MS_TO_MONTH,
+            MS_TO_MONTH,
+            true,
+            true,
+            TimeZone.getTimeZone("+08:00"));
+
+    // 1970-01-01 08:00:00, timezone = GMT+08:00
+    assertTrue(filter.satisfy(0, null));
+
+    // 1970-02-01 07:59:59
+    assertTrue(filter.satisfy(2678399999L, null));
+
+    // 1970-02-01 08:00:00
+    assertFalse(filter.satisfy(2678400000L, null));
+
+    // 1970-03-01 07:59:59
+    assertFalse(filter.satisfy(5097599999L, null));
+
+    // 1970-03-01 08:00:00
+    assertTrue(filter.satisfy(5097600000L, null));
+
+    // 1970-04-05 00:00:00
+    assertFalse(filter.satisfy(8092800000L, null));
+
+    // 1970-04-29 07:59:59
+    assertFalse(filter.satisfy(10195199000L, null));
+
+    // 1970-04-29 08:00:00
+    assertTrue(filter.satisfy(10195200000L, null));
+
+    // 1970-06-26 07:59:59
+    assertFalse(filter.satisfy(15206399000L, null));
+
+    // 1970-06-26 08:00:00   7-26  8-23 :080000  9-23 10-21
+    assertTrue(filter.satisfy(15206400000L, null));
+
+    // 1970-11-21 07:59:59
+    assertTrue(filter.satisfy(27993599999L, null));
+
+    // 1970-12-31 23:59:59
+    assertFalse(filter.satisfy(31507199000L, null));
+  }
+
+  /**
+   * Test filter with slidingStep = 1mo, and interval = 1mo on edge cases ie. startTIme = 1/31,
+   * interval = 1mo, curEndTime will be set to 2/29
+   */
+  @Test
+  public void TestSatisfy6() {
+    GroupByMonthFilter filter =
+        new GroupByMonthFilter(
+            MS_TO_MONTH,
+            2 * MS_TO_MONTH,
+            5011200000L,
+            END_TIME,
+            MS_TO_MONTH,
+            2 * MS_TO_MONTH,
+            true,
+            true,
+            TimeZone.getTimeZone("+08:00"));
+
+    // 1970-02-28 08:00:00
+    assertTrue(filter.satisfy(5011200000L, null));
+
+    // 1970-03-31 07:59:59
+    assertTrue(filter.satisfy(7689599999L, null));
+
+    // 1970-03-31 08:00:00
+    assertFalse(filter.satisfy(7689600000L, null));
+
+    // 1970-04-30 07:59:59
+    assertFalse(filter.satisfy(10281599999L, null));
+
+    // 1970-04-30 08:00:00
+    assertTrue(filter.satisfy(10281600000L, null));
+
+    // 1970-05-31 07:59:59
+    assertTrue(filter.satisfy(12959999999L, null));
+
+    // 1970-05-31 08:00:00
+    assertFalse(filter.satisfy(12960000000L, null));
   }
 }

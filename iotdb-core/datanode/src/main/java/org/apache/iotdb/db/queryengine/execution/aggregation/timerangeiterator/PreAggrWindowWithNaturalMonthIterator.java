@@ -46,7 +46,9 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
       boolean isAscending,
       boolean isSlidingStepByMonth,
       boolean isIntervalByMonth,
-      boolean leftCRightO) {
+      boolean leftCRightO,
+      long fixedIntervalMo,
+      long fixedSlidingStepMo) {
     this.isAscending = isAscending;
     this.timeBoundaryHeap = new TimeSelector(HEAP_MAX_SIZE, isAscending);
     this.aggrWindowIterator =
@@ -58,7 +60,9 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
             isAscending,
             isSlidingStepByMonth,
             isIntervalByMonth,
-            leftCRightO);
+            leftCRightO,
+            fixedIntervalMo,
+            fixedSlidingStepMo);
     this.leftCRightO = leftCRightO;
     initHeap();
   }
