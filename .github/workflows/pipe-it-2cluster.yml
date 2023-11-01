@@ -36,10 +36,8 @@ jobs:
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
         cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
         cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
-    runs-on: [self-hosted, iotdb, ubuntu-latest, windows-latest]
-    #      group: self-hosted
-    #      labels: iotdb
-    #      Will run on github machines ubuntu-latest, windows-latest when iotdb machine is unavailable.
+        os: [ ubuntu-latest, windows-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
       - name: Set up JDK ${{ matrix.java }}
