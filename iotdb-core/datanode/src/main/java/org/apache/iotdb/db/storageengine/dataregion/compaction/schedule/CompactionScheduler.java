@@ -224,7 +224,7 @@ public class CompactionScheduler {
                       .createInstance(),
                   memoryCost.get(i),
                   tsFileManager.getNextCompactionTaskId()))) {
-        trySubmitCount++;
+        rySubmitCount++;
       }
     }
     summary.incrementSubmitTaskNum(CompactionTaskType.CROSS, trySubmitCount);

@@ -90,6 +90,8 @@ public class CompactionWorker implements Runnable {
             SystemInfo.getInstance().addCompactionMemoryCost(taskType, estimatedMemoryCost, 60);
         CompactionMetrics.getInstance()
             .updateCompactionMemoryMetrics(taskType, estimatedMemoryCost);
+        CompactionMetrics.getInstance()
+            .updateCompactionTaskSelectedFileNum(taskType, task.getAllSourceTsFiles().size());
       }
       fileHandleAcquired =
           SystemInfo.getInstance().addCompactionFileNum(task.getProcessedFileNum(), 60);

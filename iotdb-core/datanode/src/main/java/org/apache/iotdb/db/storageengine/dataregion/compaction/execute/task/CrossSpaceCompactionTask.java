@@ -373,7 +373,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  protected List<TsFileResource> getAllSourceTsFiles() {
+  public List<TsFileResource> getAllSourceTsFiles() {
     List<TsFileResource> allRelatedFiles = new ArrayList<>();
     allRelatedFiles.addAll(selectedSequenceFiles);
     allRelatedFiles.addAll(selectedUnsequenceFiles);

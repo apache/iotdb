@@ -103,7 +103,7 @@ public abstract class AbstractCompactionTask {
     this.compactionTaskPriorityType = compactionTaskPriorityType;
   }
 
-  protected abstract List<TsFileResource> getAllSourceTsFiles();
+  public abstract List<TsFileResource> getAllSourceTsFiles();
 
   /**
    * This method will try to set the files to COMPACTION_CANDIDATE. If failed, it should roll back

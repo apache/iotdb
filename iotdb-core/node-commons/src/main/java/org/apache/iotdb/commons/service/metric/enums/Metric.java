@@ -72,6 +72,7 @@ public enum Metric {
   COMPACTION_TASK_MEMORY_DISTRIBUTION("compaction_task_memory"),
   COMPACTION_TASK_SELECTION("compaction_task_selection"),
   COMPACTION_TASK_SELECTION_COST("compaction_task_selection_cost"),
+  COMPACTION_TASK_SELECTED_FILE("compaction_task_selected_file"),
   // schema engine related
   MEM("mem"),
   CACHE("cache"),

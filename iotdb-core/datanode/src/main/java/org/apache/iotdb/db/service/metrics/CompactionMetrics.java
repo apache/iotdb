@@ -701,6 +701,13 @@ public class CompactionMetrics implements IMetricSet {
   private Histogram insertionCrossSpaceCompactionTaskSelectionTimeCost =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
+  private Histogram seqInnerSpaceCompactionTaskSelectedFileNum =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram unseqInnerSpaceCompactionTaskSelectedFileNum =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram crossSpaceCompactionTaskSelectedFileNum =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
   public void updateCompactionTaskSelectionNum(CompactionScheduleSummary summary) {
     seqInnerSpaceCompactionTaskSelectedNum.set(summary.getSubmitSeqInnerSpaceCompactionTaskNum());
     unseqInnerSpaceCompactionTaskSelectedNum.set(
@@ -724,6 +731,24 @@ public class CompactionMetrics implements IMetricSet {
       case INSERTION:
         insertionCrossSpaceCompactionTaskSelectionTimeCost.update(time);
         break;
+      default:
+        break;
+    }
+  }
+
+  public void updateCompactionTaskSelectedFileNum(
+      CompactionTaskType taskType, int selectedFileNum) {
+    switch (taskType) {
+      case INNER_SEQ:
+        seqInnerSpaceCompactionTaskSelectedFileNum.update(selectedFileNum);
+        break;
+      case INNER_UNSEQ:
+        unseqInnerSpaceCompactionTaskSelectedFileNum.update(selectedFileNum);
+        break;
+      case CROSS:
+        crossSpaceCompactionTaskSelectedFileNum.update(selectedFileNum);
+        break;
+      case INSERTION:
       default:
         break;
     }
@@ -778,6 +803,24 @@ public class CompactionMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             "insertion");
+    seqInnerSpaceCompactionTaskSelectedFileNum =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTED_FILE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "seq");
+    unseqInnerSpaceCompactionTaskSelectedFileNum =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTED_FILE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "unseq");
+    crossSpaceCompactionTaskSelectedFileNum =
+        metricService.getOrCreateHistogram(
+            Metric.COMPACTION_TASK_SELECTED_FILE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "cross");
   }
 
   private void unbindCompactionTaskSelection(AbstractMetricService metricService) {
@@ -818,6 +861,21 @@ public class CompactionMetrics implements IMetricSet {
         Metric.COMPACTION_TASK_SELECTION_COST.toString(),
         Tag.NAME.toString(),
         "insertion");
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.COMPACTION_TASK_SELECTED_FILE.toString(),
+        Tag.NAME.toString(),
+        "seq");
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.COMPACTION_TASK_SELECTED_FILE.toString(),
+        Tag.NAME.toString(),
+        "unseq");
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.COMPACTION_TASK_SELECTED_FILE.toString(),
+        Tag.NAME.toString(),
+        "cross");
   }
 
   // endregion
