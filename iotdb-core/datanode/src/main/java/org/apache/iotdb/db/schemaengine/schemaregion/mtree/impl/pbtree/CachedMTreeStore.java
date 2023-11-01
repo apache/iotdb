@@ -21,7 +21,6 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
@@ -547,7 +546,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   /** Sync all volatile nodes to PBTree and execute memory release after flush. */
   public void flushVolatileNodes() {
-    PBTreeFlushExecutor flushExecutor = new PBTreeFlushExecutor(schemaRegionId, this, cacheManager, file, flushCallback);
+    PBTreeFlushExecutor flushExecutor =
+        new PBTreeFlushExecutor(schemaRegionId, this, cacheManager, file, flushCallback);
     flushExecutor.flushVolatileNodes();
   }
 

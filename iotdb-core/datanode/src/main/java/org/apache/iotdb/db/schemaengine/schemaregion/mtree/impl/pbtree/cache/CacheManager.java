@@ -700,7 +700,7 @@ public abstract class CacheManager implements ICacheManager {
         if (nextNode == null) {
           tryGetNext();
           if (nextNode == null && hasNew) {
-            synchronized (this){
+            synchronized (this) {
               hasNew = false;
               mapIndex = 0;
             }
@@ -734,7 +734,7 @@ public abstract class CacheManager implements ICacheManager {
         while (!currentIterator.hasNext()) {
           currentIterator = null;
 
-          synchronized (this){
+          synchronized (this) {
             mapIndex++;
           }
 
@@ -749,8 +749,8 @@ public abstract class CacheManager implements ICacheManager {
 
       private void checkHasNew(int index) {
         if (mapIndex >= index) {
-          synchronized (this){
-            if (mapIndex >= index){
+          synchronized (this) {
+            if (mapIndex >= index) {
               hasNew = true;
             }
           }
