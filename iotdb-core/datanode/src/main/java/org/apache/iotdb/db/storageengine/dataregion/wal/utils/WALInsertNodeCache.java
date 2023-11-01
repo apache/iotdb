@@ -69,7 +69,12 @@ public class WALInsertNodeCache {
 
   private WALInsertNodeCache(Integer dataRegionId) {
     allocatedMemoryBlock =
-        PipeResourceManager.memory().tryAllocate(2 * CONFIG.getWalFileSizeThresholdInByte());
+        PipeResourceManager.memory()
+            .tryAllocate(
+                (long)
+                    Math.min(
+                        2 * CONFIG.getWalFileSizeThresholdInByte(),
+                        CONFIG.getAllocateMemoryForPipe() * 0.8 / 5));
     isBatchLoadEnabled =
         allocatedMemoryBlock.getMemoryUsageInBytes() >= CONFIG.getWalFileSizeThresholdInByte();
     lruCache =

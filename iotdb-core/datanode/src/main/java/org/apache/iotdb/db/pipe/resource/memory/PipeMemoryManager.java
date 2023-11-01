@@ -170,13 +170,6 @@ public class PipeMemoryManager {
         return new PipeMemoryBlock(sizeToAllocateInBytes);
       }
 
-      try {
-        this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOGGER.warn("tryAllocate: interrupted while waiting for available memory", e);
-      }
-
       sizeToAllocateInBytes =
           Math.max(sizeToAllocateInBytes * 2 / 3, MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES);
     }
