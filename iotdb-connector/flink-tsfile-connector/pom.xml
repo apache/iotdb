@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-connector</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <artifactId>flink-tsfile-connector</artifactId>
     <name>IoTDB: Connector: Apache Flink TSFile</name>
@@ -32,12 +32,12 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>common-api</artifactId>
-            <version>1.3.0-SNAPSHOT</version>
+            <version>1.3.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>tsfile</artifactId>
-            <version>1.3.0-SNAPSHOT</version>
+            <version>1.3.1-SNAPSHOT</version>
             <exclusions>
                 <!--
                     We need the flink-shaded-zookeeper-3 dependency for some shaded classes.
@@ -54,7 +54,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>hadoop-tsfile</artifactId>
-            <version>1.3.0-SNAPSHOT</version>
+            <version>1.3.1-SNAPSHOT</version>
             <exclusions>
                 <!--
                    We need the flink-shaded-zookeeper-3 dependency for some shaded classes.
