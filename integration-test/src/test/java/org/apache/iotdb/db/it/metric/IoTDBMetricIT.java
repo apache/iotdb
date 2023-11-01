@@ -32,6 +32,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.util.Collections;
+import java.util.List;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -58,6 +59,10 @@ public class IoTDBMetricIT {
 
   @Test
   public void testPrometheusReporter() {
-    Assert.assertNotNull(EnvFactory.getEnv().getMetricPrometheusReporterContent());
+    List<String> metricContents = EnvFactory.getEnv().getMetricPrometheusReporterContents();
+    for (String metricContent: metricContents) {
+      Assert.assertNotNull(metricContent);
+      Assert.assertNotEquals(0, metricContent.length());
+    }
   }
 }

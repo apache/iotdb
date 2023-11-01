@@ -91,8 +91,8 @@ public interface BaseEnv {
     return sb.toString();
   }
 
-  /** Return the content of prometheus. */
-  String getMetricPrometheusReporterContent();
+  /** Return the content of prometheus */
+  List<String> getMetricPrometheusReporterContents();
 
   default Connection getConnection() throws SQLException {
     return getConnection("root", "root");

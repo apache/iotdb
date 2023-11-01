@@ -105,11 +105,21 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public String getMetricPrometheusReporterContent() {
-    DataNodeWrapper dataNode =
-        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    return getUrlContent(
-        Config.IOTDB_URL_PREFIX + dataNode.getIp() + ":" + dataNode.getMetricPort() + "/metrics");
+  public List<String> getMetricPrometheusPorterContents() {
+    List<String> result = new ArrayList<>();
+    // get all report content of confignodes
+    for (ConfigNodeWrapper configNode: this.configNodeWrapperList) {
+      String configNodeMetricContent = getUrlContent(
+          Config.IOTDB_URL_PREFIX + configNode.getIp() + ":" + configNode.getMetricPort() + "/metrics");
+      result.add(configNodeMetricContent);
+    }
+    // get all report content of datanodes
+    for (DataNodeWrapper dataNode: this.dataNodeWrapperList) {
+      String dataNodeMetricContent = getUrlContent(
+          Config.IOTDB_URL_PREFIX + dataNode.getIp() + ":" + dataNode.getMetricPort() + "/metrics");
+      result.add(dataNodeMetricContent);
+    }
+    return result;
   }
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
