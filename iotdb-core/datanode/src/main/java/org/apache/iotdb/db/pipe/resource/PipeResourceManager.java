@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.resource;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.resource.wal.PipeWALResourceManager;
 import org.apache.iotdb.db.pipe.resource.wal.hardlink.PipeWALHardlinkResourceManager;
@@ -31,6 +32,7 @@ public class PipeResourceManager {
 
   private final PipeTsFileResourceManager pipeTsFileResourceManager;
   private final AtomicReference<PipeWALResourceManager> pipeWALResourceManager;
+  private final PipeMemoryManager pipeMemoryManager;
 
   public static PipeTsFileResourceManager tsfile() {
     return PipeResourceManagerHolder.INSTANCE.pipeTsFileResourceManager;
@@ -50,11 +52,16 @@ public class PipeResourceManager {
     return PipeResourceManagerHolder.INSTANCE.pipeWALResourceManager.get();
   }
 
+  public static PipeMemoryManager memory() {
+    return PipeResourceManagerHolder.INSTANCE.pipeMemoryManager;
+  }
+
   ///////////////////////////// SINGLETON /////////////////////////////
 
   private PipeResourceManager() {
     pipeTsFileResourceManager = new PipeTsFileResourceManager();
     pipeWALResourceManager = new AtomicReference<>();
+    pipeMemoryManager = new PipeMemoryManager();
   }
 
   private static class PipeResourceManagerHolder {

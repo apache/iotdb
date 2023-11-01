@@ -22,5 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.constant;
 public enum CompactionTaskType {
   INNER_SEQ,
   INNER_UNSEQ,
-  CROSS
+  CROSS,
+  INSERTION
 }

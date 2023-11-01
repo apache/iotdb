@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -331,5 +331,9 @@ public class CompactionTestFileWriter implements Closeable {
       }
       alignedChunkWriter.writeToFileWriter(fileWriter);
     }
+  }
+
+  public TsFileIOWriter getFileWriter() {
+    return fileWriter;
   }
 }

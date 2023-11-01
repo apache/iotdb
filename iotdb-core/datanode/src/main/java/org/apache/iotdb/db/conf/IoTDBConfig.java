@@ -29,7 +29,6 @@ import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionValidationLevel;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -45,7 +44,7 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.utils.FSUtils;
@@ -58,7 +57,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -125,6 +123,15 @@ public class IoTDBConfig {
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
 
+  /** Enable the thrift rpcPort Service ssl. */
+  private boolean enableSSL = false;
+
+  /** ssl key Store Path. */
+  private String keyStorePath = "";
+
+  /** ssl key Store password. */
+  private String keyStorePwd = "";
+
   /** Rpc Selector thread num */
   private int rpcSelectorThreadCount = 1;
 
@@ -145,6 +152,9 @@ public class IoTDBConfig {
 
   /** Memory allocated for the consensus layer */
   private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
+
+  /** Memory allocated for the pipe */
+  private long allocateMemoryForPipe = Runtime.getRuntime().maxMemory() / 10;
 
   /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
@@ -419,8 +429,8 @@ public class IoTDBConfig {
   /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
 
-  /** Enable the service for MLNode */
-  private boolean enableMLNodeService = false;
+  /** Insert the non overlapped unsequence files into sequence space */
+  private boolean enableInsertionCrossSpaceCompaction = false;
 
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
@@ -523,8 +533,7 @@ public class IoTDBConfig {
    */
   private int subCompactionTaskNum = 4;
 
-  private CompactionValidationLevel compactionValidationLevel =
-      CompactionValidationLevel.RESOURCE_ONLY;
+  private boolean enableTsFileValidation = false;
 
   /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
@@ -558,10 +567,6 @@ public class IoTDBConfig {
 
   /** Memory allocated proportion for time partition info */
   private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 8 / 10 / 20;
-
-  /** Memory allocated proportion for wal pipe cache */
-  private long allocateMemoryForWALPipeCache =
-      Math.min(allocateMemoryForConsensus / 2, 3 * getWalFileSizeThresholdInByte());
 
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny
@@ -856,9 +861,6 @@ public class IoTDBConfig {
   /** Internal port for coordinator */
   private int internalPort = 10730;
 
-  /** Port for MLNode */
-  private int mlNodePort = 10780;
-
   /** Internal port for dataRegion consensus protocol */
   private int dataRegionConsensusPort = 10760;
 
@@ -866,8 +868,7 @@ public class IoTDBConfig {
   private int schemaRegionConsensusPort = 10750;
 
   /** Ip and port of config nodes. */
-  private List<TEndPoint> targetConfigNodeList =
-      Collections.singletonList(new TEndPoint("127.0.0.1", 10710));
+  private TEndPoint seedConfigNode = new TEndPoint("127.0.0.1", 10710);
 
   /** The time of data node waiting for the next retry to join into the cluster */
   private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(5);
@@ -1050,14 +1051,11 @@ public class IoTDBConfig {
   private long dataRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
   private long schemaRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
 
+  private long dataRatisPeriodicSnapshotInterval = 24L * 60 * 60; // 24hr
+  private long schemaRatisPeriodicSnapshotInterval = 24L * 60 * 60; // 24hr
+
   /** whether to enable the audit log * */
   private boolean enableAuditLog = false;
-
-  /** This configuration parameter sets the level at which the time series limit is applied.* */
-  private String clusterSchemaLimitLevel = "timeseries";
-
-  /** This configuration parameter sets the maximum number of schema allowed in the cluster.* */
-  private long clusterSchemaLimitThreshold = -1;
 
   /** Output location of audit logs * */
   private List<AuditLogStorage> auditLogStorage =
@@ -1080,8 +1078,8 @@ public class IoTDBConfig {
   private double maxMemoryRatioForQueue = 0.6;
 
   /** Pipe related */
-  /** initialized as null, updated based on the latest `systemDir` during querying */
-  private String pipeReceiverFileDir = null;
+  /** initialized as empty, updated based on the latest `systemDir` during querying */
+  private String[] pipeReceiverFileDirs = new String[0];
 
   /** Resource control */
   private boolean quotaEnable = false;
@@ -1159,6 +1157,30 @@ public class IoTDBConfig {
     this.udfCollectorMemoryBudgetInMB = udfCollectorMemoryBudgetInMB;
   }
 
+  public boolean isEnableSSL() {
+    return enableSSL;
+  }
+
+  public void setEnableSSL(boolean enableSSL) {
+    this.enableSSL = enableSSL;
+  }
+
+  public String getKeyStorePath() {
+    return keyStorePath;
+  }
+
+  public void setKeyStorePath(String keyStorePath) {
+    this.keyStorePath = keyStorePath;
+  }
+
+  public String getKeyStorePwd() {
+    return keyStorePwd;
+  }
+
+  public void setKeyStorePwd(String keyStorePwd) {
+    this.keyStorePwd = keyStorePwd;
+  }
+
   public int getUdfInitialByteArrayLengthForMemoryControl() {
     return udfInitialByteArrayLengthForMemoryControl;
   }
@@ -1214,7 +1236,9 @@ public class IoTDBConfig {
     triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
     pipeDir = addDataHomeDir(pipeDir);
     pipeTemporaryLibDir = addDataHomeDir(pipeTemporaryLibDir);
-    pipeReceiverFileDir = addDataHomeDir(pipeReceiverFileDir);
+    for (int i = 0; i < pipeReceiverFileDirs.length; i++) {
+      pipeReceiverFileDirs[i] = addDataHomeDir(pipeReceiverFileDirs[i]);
+    }
     mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
     queryDir = addDataHomeDir(queryDir);
@@ -1881,7 +1905,6 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
     this.allocateMemoryForConsensus = allocateMemoryForConsensus;
-    this.allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
   }
 
   public long getAllocateMemoryForRead() {
@@ -1899,6 +1922,14 @@ public class IoTDBConfig {
     this.allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
     this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
     this.allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
+  }
+
+  public long getAllocateMemoryForPipe() {
+    return allocateMemoryForPipe;
+  }
+
+  public void setAllocateMemoryForPipe(long allocateMemoryForPipe) {
+    this.allocateMemoryForPipe = allocateMemoryForPipe;
   }
 
   public long getAllocateMemoryForFree() {
@@ -2148,14 +2179,6 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForTimePartitionInfo(long allocateMemoryForTimePartitionInfo) {
     this.allocateMemoryForTimePartitionInfo = allocateMemoryForTimePartitionInfo;
-  }
-
-  public long getAllocateMemoryForWALPipeCache() {
-    return allocateMemoryForWALPipeCache;
-  }
-
-  public void setAllocateMemoryForWALPipeCache(long allocateMemoryForWALPipeCache) {
-    this.allocateMemoryForWALPipeCache = allocateMemoryForWALPipeCache;
   }
 
   public boolean isEnableQueryMemoryEstimation() {
@@ -2656,12 +2679,12 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
-  public boolean isEnableMLNodeService() {
-    return enableMLNodeService;
+  public boolean isEnableInsertionCrossSpaceCompaction() {
+    return enableInsertionCrossSpaceCompaction;
   }
 
-  public void setEnableMLNodeService(boolean enableMLNodeService) {
-    this.enableMLNodeService = enableMLNodeService;
+  public void setEnableInsertionCrossSpaceCompaction(boolean enableInsertionCrossSpaceCompaction) {
+    this.enableInsertionCrossSpaceCompaction = enableInsertionCrossSpaceCompaction;
   }
 
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
@@ -2897,14 +2920,6 @@ public class IoTDBConfig {
     this.internalPort = internalPort;
   }
 
-  public int getMLNodePort() {
-    return mlNodePort;
-  }
-
-  public void setMLNodePort(int mlNodePort) {
-    this.mlNodePort = mlNodePort;
-  }
-
   public int getDataRegionConsensusPort() {
     return dataRegionConsensusPort;
   }
@@ -2921,12 +2936,12 @@ public class IoTDBConfig {
     this.schemaRegionConsensusPort = schemaRegionConsensusPort;
   }
 
-  public List<TEndPoint> getTargetConfigNodeList() {
-    return targetConfigNodeList;
+  public TEndPoint getSeedConfigNode() {
+    return seedConfigNode;
   }
 
-  public void setTargetConfigNodeList(List<TEndPoint> targetConfigNodeList) {
-    this.targetConfigNodeList = targetConfigNodeList;
+  public void setSeedConfigNode(TEndPoint seedConfigNode) {
+    this.seedConfigNode = seedConfigNode;
   }
 
   public long getJoinClusterRetryIntervalMs() {
@@ -3652,14 +3667,6 @@ public class IoTDBConfig {
     this.schemaRatisLogMax = schemaRatisLogMax;
   }
 
-  public CompactionValidationLevel getCompactionValidationLevel() {
-    return this.compactionValidationLevel;
-  }
-
-  public void setCompactionValidationLevel(CompactionValidationLevel level) {
-    this.compactionValidationLevel = level;
-  }
-
   public int getCandidateCompactionTaskQueueSize() {
     return candidateCompactionTaskQueueSize;
   }
@@ -3708,14 +3715,14 @@ public class IoTDBConfig {
     return modeMapSizeThreshold;
   }
 
-  public void setPipeReceiverFileDir(String pipeReceiverFileDir) {
-    this.pipeReceiverFileDir = pipeReceiverFileDir;
+  public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {
+    this.pipeReceiverFileDirs = pipeReceiverFileDirs;
   }
 
-  public String getPipeReceiverFileDir() {
-    return Objects.isNull(this.pipeReceiverFileDir)
-        ? (systemDir + File.separator + "pipe" + File.separator + "receiver")
-        : this.pipeReceiverFileDir;
+  public String[] getPipeReceiverFileDirs() {
+    return (Objects.isNull(this.pipeReceiverFileDirs) || this.pipeReceiverFileDirs.length == 0)
+        ? new String[] {systemDir + File.separator + "pipe" + File.separator + "receiver"}
+        : this.pipeReceiverFileDirs;
   }
 
   public boolean isQuotaEnable() {
@@ -3750,23 +3757,31 @@ public class IoTDBConfig {
     return sortTmpDir;
   }
 
-  public String getClusterSchemaLimitLevel() {
-    return clusterSchemaLimitLevel;
-  }
-
-  public void setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
-    this.clusterSchemaLimitLevel = clusterSchemaLimitLevel;
-  }
-
-  public long getClusterSchemaLimitThreshold() {
-    return clusterSchemaLimitThreshold;
-  }
-
-  public void setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
-    this.clusterSchemaLimitThreshold = clusterSchemaLimitThreshold;
-  }
-
   public String getObjectStorageBucket() {
     throw new UnsupportedOperationException("object storage is not supported yet");
+  }
+
+  public long getDataRatisPeriodicSnapshotInterval() {
+    return dataRatisPeriodicSnapshotInterval;
+  }
+
+  public void setDataRatisPeriodicSnapshotInterval(long dataRatisPeriodicSnapshotInterval) {
+    this.dataRatisPeriodicSnapshotInterval = dataRatisPeriodicSnapshotInterval;
+  }
+
+  public long getSchemaRatisPeriodicSnapshotInterval() {
+    return schemaRatisPeriodicSnapshotInterval;
+  }
+
+  public void setSchemaRatisPeriodicSnapshotInterval(long schemaRatisPeriodicSnapshotInterval) {
+    this.schemaRatisPeriodicSnapshotInterval = schemaRatisPeriodicSnapshotInterval;
+  }
+
+  public boolean isEnableTsFileValidation() {
+    return enableTsFileValidation;
+  }
+
+  public void setEnableTsFileValidation(boolean enableTsFileValidation) {
+    this.enableTsFileValidation = enableTsFileValidation;
   }
 }

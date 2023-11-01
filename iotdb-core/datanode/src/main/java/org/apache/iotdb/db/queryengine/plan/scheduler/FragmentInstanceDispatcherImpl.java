@@ -48,6 +48,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +58,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.DISPATCH_READ;
@@ -210,6 +212,25 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     // wait until remote dispatch done
     try {
       asyncPlanNodeSender.waitUntilCompleted();
+
+      if (asyncPlanNodeSender.needRetry()) {
+        // retry failed remote FIs
+        int retry = 0;
+        final int maxRetryTimes = 10;
+        long waitMillis = getRetrySleepTime(retry);
+
+        while (asyncPlanNodeSender.needRetry()) {
+          retry++;
+          asyncPlanNodeSender.retry();
+          if (!(asyncPlanNodeSender.needRetry() && retry < maxRetryTimes)) {
+            break;
+          }
+          // still need to retry, sleep some time before make another retry.
+          Thread.sleep(waitMillis);
+          waitMillis = getRetrySleepTime(retry);
+        }
+      }
+
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Interrupted when dispatching write async", e);
@@ -237,6 +258,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       }
       return immediateFuture(new FragInstanceDispatchResult(RpcUtils.getStatus(failureStatusList)));
     }
+  }
+
+  private long getRetrySleepTime(int retryTimes) {
+    return Math.min(
+        (long) (TimeUnit.MILLISECONDS.toMillis(100) * Math.pow(2, retryTimes)),
+        TimeUnit.SECONDS.toMillis(20));
   }
 
   private void dispatchOneInstance(FragmentInstance instance)
@@ -313,7 +340,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   String.format("unknown read type [%s]", instance.getType())));
       }
     } catch (ClientManagerException | TException e) {
-      logger.warn("can't connect to node {}", endPoint, e);
+      logger.warn(
+          "can't connect to node {}, error msg is {}.",
+          endPoint,
+          ExceptionUtils.getRootCause(e).toString());
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
       status.setMessage("can't connect to node " + endPoint);

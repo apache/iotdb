@@ -290,6 +290,7 @@ public class IoTDBLegacyPipeReceiverAgent {
       byte[] byteArray = new byte[length];
       buff.get(byteArray);
       randomAccessFile.write(byteArray);
+      randomAccessFile.getFD().sync();
       recordStartIndex(new File(fileDir, fileName), startIndex + length);
       LOGGER.debug("Sync {} start at {} to {} is done.", fileName, startIndex, startIndex + length);
     } catch (IOException e) {

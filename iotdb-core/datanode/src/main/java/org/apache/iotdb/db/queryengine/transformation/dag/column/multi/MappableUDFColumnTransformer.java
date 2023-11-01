@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.multi;
 
-import org.apache.iotdb.db.queryengine.transformation.dag.adapter.ElasticSerializableRowRecordListBackedMultiColumnRow;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 public class MappableUDFColumnTransformer extends ColumnTransformer {
@@ -33,55 +31,31 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
 
   private final UDTFExecutor executor;
 
-  private final TSDataType[] inputDataTypes;
-
   public MappableUDFColumnTransformer(
-      Type returnType,
-      ColumnTransformer[] inputColumnTransformers,
-      TSDataType[] inputDataTypes,
-      UDTFExecutor executor) {
+      Type returnType, ColumnTransformer[] inputColumnTransformers, UDTFExecutor executor) {
     super(returnType);
     this.inputColumnTransformers = inputColumnTransformers;
     this.executor = executor;
-    this.inputDataTypes = inputDataTypes;
   }
 
   @Override
   public void evaluate() {
+    // pull columns from previous transformers
     for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
       inputColumnTransformer.tryEvaluate();
     }
+    // construct input TsBlock with columns
     int size = inputColumnTransformers.length;
     Column[] columns = new Column[size];
-    // attention: get positionCount before calling getColumn
-    int positionCount = inputColumnTransformers[0].getColumnCachePositionCount();
     for (int i = 0; i < size; i++) {
       columns[i] = inputColumnTransformers[i].getColumn();
     }
-    ColumnBuilder columnBuilder = returnType.createColumnBuilder(positionCount);
-    for (int i = 0; i < positionCount; i++) {
-
-      Object[] values = new Object[size];
-      for (int j = 0; j < size; j++) {
-        if (columns[j].isNull(i)) {
-          values[j] = null;
-        } else {
-          values[j] = columns[j].getObject(i);
-        }
-      }
-      // construct input row for executor
-      ElasticSerializableRowRecordListBackedMultiColumnRow row =
-          new ElasticSerializableRowRecordListBackedMultiColumnRow(inputDataTypes);
-      row.setRowRecord(values);
-      executor.execute(row);
-      Object res = executor.getCurrentValue();
-      if (res != null) {
-        returnType.writeObject(columnBuilder, res);
-      } else {
-        columnBuilder.appendNull();
-      }
-    }
-    initializeColumnCache(columnBuilder.build());
+    // construct TsBlockBuilder
+    int count = inputColumnTransformers[0].getColumnCachePositionCount();
+    ColumnBuilder builder = returnType.createColumnBuilder(count);
+    // executor UDF and cache result
+    executor.execute(columns, builder);
+    initializeColumnCache(builder.build());
   }
 
   @Override

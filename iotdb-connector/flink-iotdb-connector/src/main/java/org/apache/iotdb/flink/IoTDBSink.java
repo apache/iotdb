@@ -21,7 +21,7 @@ package org.apache.iotdb.flink;
 import org.apache.iotdb.flink.options.IoTDBSinkOptions;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 
 import com.google.common.base.Preconditions;
 import org.apache.flink.configuration.Configuration;

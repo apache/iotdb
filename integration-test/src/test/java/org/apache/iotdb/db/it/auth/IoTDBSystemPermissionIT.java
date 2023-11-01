@@ -61,6 +61,11 @@ public class IoTDBSystemPermissionIT {
   }
 
   @Test
+  public void showVersionTest() {
+    executeQuery("show version", "test", "test123");
+  }
+
+  @Test
   public void manageDataBaseTest() {
     assertNonQueryTestFail(
         "create database root.test2",
@@ -321,8 +326,6 @@ public class IoTDBSystemPermissionIT {
         "803: Only the admin user can perform this operation",
         "test",
         "test123");
-    assertTestFail(
-        "show version", "803: Only the admin user can perform this operation", "test", "test123");
     assertTestFail(
         "show regions", "803: Only the admin user can perform this operation", "test", "test123");
   }

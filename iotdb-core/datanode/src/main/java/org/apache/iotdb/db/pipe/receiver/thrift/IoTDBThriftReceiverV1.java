@@ -21,9 +21,11 @@ package org.apache.iotdb.db.pipe.receiver.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
@@ -49,6 +51,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
+import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -63,6 +67,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -73,7 +79,21 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftReceiverV1.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final String RECEIVER_FILE_BASE_DIR = IOTDB_CONFIG.getPipeReceiverFileDir();
+  private static final String[] RECEIVER_FILE_BASE_DIRS = IOTDB_CONFIG.getPipeReceiverFileDirs();
+  private static FolderManager folderManager = null;
+
+  static {
+    try {
+      folderManager =
+          new FolderManager(
+              Arrays.asList(RECEIVER_FILE_BASE_DIRS), DirectoryStrategyType.SEQUENCE_STRATEGY);
+    } catch (DiskSpaceInsufficientException e) {
+      LOGGER.error(
+          "Fail to create pipe receiver file folders allocation strategy because all disks of folders are full.",
+          e);
+    }
+  }
+
   private final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
 
   // Used to generate transfer id, which is used to identify a receiver thread.
@@ -182,8 +202,23 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       LOGGER.info("Current receiver file dir is null. No need to delete.");
     }
 
+    // get next receiver file base dir by folder manager
+    if (Objects.isNull(folderManager)) {
+      LOGGER.error(
+          "Failed to init pipe receiver file folder manager because all disks of folders are full.");
+      return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
+    }
+    String receiverFileBaseDir;
+    try {
+      receiverFileBaseDir = folderManager.getNextFolder();
+    } catch (DiskSpaceInsufficientException e) {
+      LOGGER.error(
+          "Fail to create pipe receiver file folder because all disks of folders are full.", e);
+      return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
+    }
+
     // create a new receiver file dir
-    final File newReceiverDir = new File(RECEIVER_FILE_BASE_DIR, Long.toString(receiverId.get()));
+    final File newReceiverDir = new File(receiverFileBaseDir, Long.toString(receiverId.get()));
     if (!newReceiverDir.exists()) {
       if (newReceiverDir.mkdirs()) {
         LOGGER.info("Receiver file dir {} was created.", newReceiverDir.getPath());
@@ -272,6 +307,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       }
 
       writingFileWriter.write(req.getFilePiece());
+      writingFileWriter.getFD().sync();
       return PipeTransferFilePieceResp.toTPipeTransferResp(
           RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
     } catch (Exception e) {
@@ -426,6 +462,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
       // loaded file. Since the writing file writer has already been closed, it will throw a Stream
       // Close exception.
+      writingFileWriter.getFD().sync();
       writingFileWriter.close();
       writingFileWriter = null;
 

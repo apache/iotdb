@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metric;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.DoNothingMetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;
@@ -30,7 +31,6 @@ import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
-import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -57,27 +57,23 @@ public class MetricServiceTest {
 
   @Test
   public void testMetricService() {
-    for (MetricFrameType type : MetricFrameType.values()) {
-      // init metric service
-      metricConfig.setMetricFrameType(type);
-      metricConfig.setMetricLevel(MetricLevel.IMPORTANT);
-      metricService = new DoNothingMetricService();
-      metricService.startService();
+    metricConfig.setMetricLevel(MetricLevel.IMPORTANT);
+    metricService = MetricService.getInstance();
+    metricService.startService();
 
-      // test metric service
-      assertTrue(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.CORE));
-      assertTrue(
-          metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.IMPORTANT));
-      assertFalse(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.NORMAL));
-      assertFalse(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.ALL));
+    // test metric service
+    assertTrue(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.CORE));
+    assertTrue(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.IMPORTANT));
 
-      testNormalSituation();
+    assertFalse(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.NORMAL));
+    assertFalse(metricService.getMetricManager().isEnableMetricInGivenLevel(MetricLevel.ALL));
 
-      testOtherSituation();
+    testNormalSituation();
 
-      // stop metric module
-      metricService.stopService();
-    }
+    testOtherSituation();
+
+    // stop metric module
+    metricService.stopService();
   }
 
   private void testNormalSituation() {
@@ -86,9 +82,9 @@ public class MetricServiceTest {
         metricService.getOrCreateCounter("counter1", MetricLevel.IMPORTANT, "tag", "value");
     assertNotNull(counter1);
     metricService.count(10, "counter1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(10, counter1.count());
+    assertEquals(10, counter1.getCount());
     metricService.count(20, "counter1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(30, counter1.count());
+    assertEquals(30, counter1.getCount());
     Counter counter2 =
         metricService.getOrCreateCounter("counter1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(counter1, counter2);
@@ -115,7 +111,7 @@ public class MetricServiceTest {
     Gauge gauge1 = metricService.getOrCreateGauge("gauge1", MetricLevel.IMPORTANT, "tag", "value");
     assertNotNull(gauge1);
     metricService.gauge(10, "gauge1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(10, gauge1.value());
+    assertEquals(10, gauge1.getValue());
     Gauge gauge2 = metricService.getOrCreateGauge("gauge1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(gauge1, gauge2);
     gauge2 = metricService.getOrCreateGauge("gauge2", MetricLevel.IMPORTANT);
@@ -142,13 +138,13 @@ public class MetricServiceTest {
     AutoGauge autoGauge =
         metricService.createAutoGauge(
             "autoGauge", MetricLevel.IMPORTANT, list, List::size, "tag", "value");
-    assertEquals(0d, autoGauge.value(), DELTA);
+    assertEquals(0d, autoGauge.getValue(), DELTA);
     list.add(1);
-    assertEquals(1d, autoGauge.value(), DELTA);
+    assertEquals(1d, autoGauge.getValue(), DELTA);
     list.clear();
-    assertEquals(0d, autoGauge.value(), DELTA);
+    assertEquals(0d, autoGauge.getValue(), DELTA);
     list.add(1);
-    assertEquals(1d, autoGauge.value(), DELTA);
+    assertEquals(1d, autoGauge.getValue(), DELTA);
     assertEquals(4, metricService.getMetricsByType(MetricType.GAUGE).size());
     assertEquals(1, metricService.getMetricsByType(MetricType.AUTO_GAUGE).size());
     metricService.remove(MetricType.AUTO_GAUGE, "autoGauge", "tag", "value");
@@ -192,7 +188,7 @@ public class MetricServiceTest {
     metricService.histogram(30, "histogram1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.histogram(40, "histogram1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.histogram(50, "histogram1", MetricLevel.IMPORTANT, "tag", "value");
-    assertEquals(5, histogram1.count());
+    assertEquals(5, histogram1.getCount());
     assertEquals(150.0D, histogram1.takeSnapshot().getSum(), 0.00001);
     assertEquals(50.0D, histogram1.takeSnapshot().getMax(), 0.00001);
     Histogram histogram2 =

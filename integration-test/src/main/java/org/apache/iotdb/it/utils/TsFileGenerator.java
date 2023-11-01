@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -223,7 +224,8 @@ public class TsFileGenerator implements AutoCloseable {
 
   private void generateTEXT(Object obj, int row) {
     Binary[] binaries = (Binary[]) obj;
-    binaries[row] = new Binary(String.format("test point %d", random.nextInt()));
+    binaries[row] =
+        new Binary(String.format("test point %d", random.nextInt()), TSFileConfig.STRING_CHARSET);
   }
 
   public void generateDeletion(String device, int number) throws IOException, IllegalPathException {

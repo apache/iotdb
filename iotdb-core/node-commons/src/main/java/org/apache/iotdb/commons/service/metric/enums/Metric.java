@@ -52,6 +52,7 @@ public enum Metric {
   RATIS_CONSENSUS_READ("ratis_consensus_read"),
   // storage engine related
   POINTS("points"),
+  POINTS_IN("points_in"),
   COST_TASK("cost_task"),
   QUEUE("queue"),
   FLUSHING_MEM_TABLE_STATUS("flushing_mem_table_status"),
@@ -93,7 +94,38 @@ public enum Metric {
   LOCAL_EXECUTION_PLANNER("local_execution_planner"),
   // file related
   FILE_SIZE("file_size"),
-  FILE_COUNT("file_count");
+  FILE_COUNT("file_count"),
+  // pipe related
+  UNASSIGNED_TABLET_COUNT("unassigned_tablet_count"),
+  UNASSIGNED_TSFILE_COUNT("unassigned_tsfile_count"),
+  UNASSIGNED_HEARTBEAT_COUNT("unassigned_heartbeat_count"),
+  UNPROCESSED_TABLET_COUNT("unprocessed_tablet_count"),
+  UNPROCESSED_HISTORICAL_TSFILE_COUNT("unprocessed_historical_tsfile_count"),
+  UNPROCESSED_REALTIME_TSFILE_COUNT("unprocessed_realtime_tsfile_count"),
+  UNPROCESSED_HEARTBEAT_COUNT("unprocessed_heartbeat_count"),
+  BUFFERED_TABLET_COUNT("buffered_tablet_count"),
+  BUFFERED_TSFILE_COUNT("buffered_tsfile_count"),
+  BUFFERED_HEARTBEAT_COUNT("buffered_heartbeat_count"),
+  UNTRANSFERRED_TABLET_COUNT("untransferred_tablet_count"),
+  UNTRANSFERRED_TSFILE_COUNT("untransferred_tsfile_count"),
+  UNTRANSFERRED_HEARTBEAT_COUNT("untransferred_heartbeat_count"),
+  PIPE_EXTRACTOR_TABLET_SUPPLY("pipe_extractor_tablet_supply"),
+  PIPE_EXTRACTOR_TSFILE_SUPPLY("pipe_extractor_tsfile_supply"),
+  PIPE_EXTRACTOR_HEARTBEAT_SUPPLY("pipe_extractor_heartbeat_supply"),
+  PIPE_PROCESSOR_TABLET_PROCESS("pipe_processor_tablet_process"),
+  PIPE_PROCESSOR_TSFILE_PROCESS("pipe_processor_tsfile_process"),
+  PIPE_PROCESSOR_HEARTBEAT_PROCESS("pipe_processor_heartbeat_process"),
+  PIPE_CONNECTOR_TABLET_TRANSFER("pipe_connector_tablet_transfer"),
+  PIPE_CONNECTOR_TSFILE_TRANSFER("pipe_connector_tsfile_transfer"),
+  PIPE_CONNECTOR_HEARTBEAT_TRANSFER("pipe_connector_heartbeat_transfer"),
+  PIPE_HEARTBEAT_EVENT("pipe_heartbeat_event"),
+  PIPE_WAL_INSERT_NODE_CACHE_HIT_RATE("pipe_wal_insert_node_cache_hit_rate"),
+  PIPE_EXTRACTOR_TSFILE_EPOCH_STATE("pipe_extractor_tsfile_epoch_state"),
+  PIPE_MEM_COST("pipe_mem_cost"),
+  PIPE_MEM_USAGE("pipe_mem_usage"),
+  PIPE_PINNED_MEMTABLE_COUNT("pipe_pinned_memtable_count"),
+  PIPE_LINKED_TSFILE_COUNT("pipe_linked_tsfile_count"),
+  ;
 
   final String value;
 

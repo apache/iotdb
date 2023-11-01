@@ -19,8 +19,8 @@
 package org.apache.iotdb.flink;
 
 import org.apache.iotdb.flink.options.IoTDBSinkOptions;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import com.google.common.collect.Lists;

@@ -20,8 +20,9 @@
 package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
-public class DoNothingRate implements Rate, DoNothingMetric {
+public class DoNothingRate extends AbstractMetricMBean implements Rate, DoNothingMetric {
   @Override
   public long getCount() {
     return 0;
@@ -34,16 +35,6 @@ public class DoNothingRate implements Rate, DoNothingMetric {
 
   @Override
   public double getMeanRate() {
-    return 0;
-  }
-
-  @Override
-  public double getFiveMinuteRate() {
-    return 0;
-  }
-
-  @Override
-  public double getFifteenMinuteRate() {
     return 0;
   }
 

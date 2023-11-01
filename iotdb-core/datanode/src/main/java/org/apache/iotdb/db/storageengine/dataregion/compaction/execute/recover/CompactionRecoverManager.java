@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,13 +61,11 @@ public class CompactionRecoverManager {
 
   public void recoverInnerSpaceCompaction(boolean isSequence) {
     logger.info("recovering inner compaction");
-    recoverCompactionBefore013(true);
     recoverCompaction(true, isSequence);
   }
 
   public void recoverCrossSpaceCompaction() {
     logger.info("recovering cross compaction");
-    recoverCompactionBefore013(false);
     recoverCompaction(false, true);
   }
 
@@ -133,26 +131,18 @@ public class CompactionRecoverManager {
         CompactionLogger.findCompactionLogs(isInnerSpace, timePartitionDir.getPath());
     for (File compactionLog : compactionLogs) {
       logger.info("Calling compaction recover task.");
-      new CompactionRecoverTask(
-              logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog, isInnerSpace)
-          .doCompaction();
-    }
-  }
-
-  /** Check whether there is old compaction log from previous version (<0.13) and recover it. */
-  private void recoverCompactionBefore013(boolean isInnerSpace) {
-    String oldLogName =
-        isInnerSpace
-            ? logicalStorageGroupName + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD
-            : CompactionLogger.CROSS_COMPACTION_LOG_NAME_FROM_OLD;
-    File logFileFromOld =
-        FSFactoryProducer.getFSFactory().getFile(tsFileManager.getStorageGroupDir(), oldLogName);
-
-    if (logFileFromOld.exists()) {
-      logger.info("Calling compaction task to recover from previous version.");
-      new CompactionRecoverTask(
-              logicalStorageGroupName, dataRegionId, tsFileManager, logFileFromOld, isInnerSpace)
-          .doCompaction();
+      if (!isInnerSpace
+          && compactionLog
+              .getAbsolutePath()
+              .endsWith(CompactionLogger.INSERTION_COMPACTION_LOG_NAME_SUFFIX)) {
+        new InsertionCrossSpaceCompactionTask(
+                logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog)
+            .recover();
+      } else {
+        new CompactionRecoverTask(
+                logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog, isInnerSpace)
+            .doCompaction();
+      }
     }
   }
 }

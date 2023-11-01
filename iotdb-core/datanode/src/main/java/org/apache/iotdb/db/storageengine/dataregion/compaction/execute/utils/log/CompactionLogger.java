@@ -30,23 +30,12 @@ import java.util.List;
 public class CompactionLogger implements AutoCloseable {
 
   public static final String CROSS_COMPACTION_LOG_NAME_SUFFIX = ".cross-compaction.log";
-  public static final String CROSS_COMPACTION_LOG_NAME_FROM_OLD = "merge.log";
   public static final String INNER_COMPACTION_LOG_NAME_SUFFIX = ".inner-compaction.log";
-  public static final String INNER_COMPACTION_LOG_NAME_SUFFIX_FROM_OLD = ".compaction.log";
+  public static final String INSERTION_COMPACTION_LOG_NAME_SUFFIX = ".insertion-compaction.log";
 
   public static final String STR_SOURCE_FILES = "source";
   public static final String STR_TARGET_FILES = "target";
-
   public static final String STR_DELETED_TARGET_FILES = "empty";
-
-  public static final String STR_SOURCE_FILES_FROM_OLD = "info-source";
-  public static final String STR_TARGET_FILES_FROM_OLD = "info-target";
-  public static final String STR_SEQ_FILES_FROM_OLD = "seqFiles";
-  public static final String STR_UNSEQ_FILES_FROM_OLD = "unseqFiles";
-  public static final String SEQUENCE_NAME_FROM_OLD = "sequence";
-  public static final String UNSEQUENCE_NAME_FROM_OLD = "unsequence";
-  public static final String STR_MERGE_START_FROM_OLD = "merge start";
-
   private FileOutputStream logStream;
 
   public CompactionLogger(File logFile) throws IOException {
@@ -64,6 +53,12 @@ public class CompactionLogger implements AutoCloseable {
     }
   }
 
+  public void logTaskStage(CompactionTaskStage stage) throws IOException {
+    logStream.write(stage.name().getBytes());
+    logStream.write(System.lineSeparator().getBytes());
+    logStream.flush();
+  }
+
   public void logFile(TsFileResource tsFile, String flag) throws IOException {
     String log =
         flag
@@ -75,11 +70,17 @@ public class CompactionLogger implements AutoCloseable {
   }
 
   public static File[] findCompactionLogs(boolean isInnerSpace, String directory) {
-    String compactionLogSuffix =
-        isInnerSpace ? INNER_COMPACTION_LOG_NAME_SUFFIX : CROSS_COMPACTION_LOG_NAME_SUFFIX;
     File timePartitionDir = new File(directory);
     if (timePartitionDir.exists()) {
-      return timePartitionDir.listFiles((dir, name) -> name.endsWith(compactionLogSuffix));
+      return timePartitionDir.listFiles(
+          (dir, name) -> {
+            if (isInnerSpace) {
+              return name.endsWith(INNER_COMPACTION_LOG_NAME_SUFFIX);
+            } else {
+              return name.endsWith(CROSS_COMPACTION_LOG_NAME_SUFFIX)
+                  || name.endsWith(INSERTION_COMPACTION_LOG_NAME_SUFFIX);
+            }
+          });
     } else {
       return new File[0];
     }

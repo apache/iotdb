@@ -125,6 +125,15 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     return event.getProgressIndex();
   }
 
+  /**
+   * If pipe's pattern is database-level, then no need to parse event by pattern cause pipes are
+   * data-region-level.
+   */
+  @Override
+  public void skipParsingPattern() {
+    event.skipParsingPattern();
+  }
+
   @Override
   public PipeRealtimeEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {

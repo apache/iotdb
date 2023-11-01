@@ -70,11 +70,11 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     super(testClassName, testMethodName, portList, clusterIndex, isMultiCluster, startTime);
     this.consensusPort = portList[1];
     this.isSeed = isSeed;
-    String targetConfigNodes;
+    String seedConfigNodes;
     if (isSeed) {
-      targetConfigNodes = getIpAndPortString();
+      seedConfigNodes = getIpAndPortString();
     } else {
-      targetConfigNodes = targetCNs;
+      seedConfigNodes = targetCNs;
     }
     this.defaultNodePropertiesFile =
         EnvUtils.getFilePathFromSysVar(DEFAULT_CONFIG_NODE_PROPERTIES, clusterIndex);
@@ -85,8 +85,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     reloadMutableFields();
 
     // initialize immutable properties
-    immutableNodeProperties.setProperty(
-        IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, targetConfigNodes);
+    immutableNodeProperties.setProperty(IoTDBConstant.CN_SEED_CONFIG_NODE, seedConfigNodes);
     immutableNodeProperties.setProperty(CN_SYSTEM_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(CN_CONSENSUS_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(

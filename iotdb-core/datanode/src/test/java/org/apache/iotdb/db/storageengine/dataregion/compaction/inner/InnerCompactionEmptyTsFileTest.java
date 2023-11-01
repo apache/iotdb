@@ -89,6 +89,6 @@ public class InnerCompactionEmptyTsFileTest extends InnerCompactionTest {
     Future<CompactionTaskSummary> future =
         CompactionTaskManager.getInstance().getCompactionTaskFutureMayBlock(task);
     unseqResources.get(0).readUnlock();
-    Assert.assertTrue(future.get().isSuccess());
+    Assert.assertFalse(future.get().isSuccess());
   }
 }

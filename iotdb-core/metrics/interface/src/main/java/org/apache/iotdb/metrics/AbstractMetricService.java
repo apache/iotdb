@@ -24,12 +24,8 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.reporter.JmxReporter;
-import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
-import org.apache.iotdb.metrics.reporter.iotdb.IoTDBSessionReporter;
-import org.apache.iotdb.metrics.reporter.prometheus.PrometheusReporter;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
@@ -49,7 +45,6 @@ import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.ToDoubleFunction;
@@ -66,7 +61,6 @@ public abstract class AbstractMetricService {
   protected CompositeReporter compositeReporter = new CompositeReporter();
   /** The internal reporter of metric service. */
   protected IoTDBInternalReporter internalReporter = new IoTDBInternalMemoryReporter();
-
   /** The list of metric sets. */
   protected Set<IMetricSet> metricSets = new HashSet<>();
 
@@ -114,71 +108,10 @@ public abstract class AbstractMetricService {
   }
 
   /** Load metric manager according to configuration. */
-  private void loadManager() {
-    LOGGER.info("Load metricManager, type: {}", METRIC_CONFIG.getMetricFrameType());
-    ServiceLoader<AbstractMetricManager> metricManagers =
-        ServiceLoader.load(AbstractMetricManager.class);
-    int size = 0;
-    for (AbstractMetricManager mf : metricManagers) {
-      size++;
-      if (mf.getClass()
-          .getName()
-          .toLowerCase()
-          .contains(METRIC_CONFIG.getMetricFrameType().name().toLowerCase())) {
-        metricManager = mf;
-        break;
-      }
-    }
-
-    // if no more implementations, we use nothingManager.
-    if (size == 0 || metricManager == null) {
-      LOGGER.debug("No MetricManager available, defaulting to DoNothingMetricManager");
-      metricManager = new DoNothingMetricManager();
-    } else if (size > 1) {
-      LOGGER.info(
-          "Detect more than one MetricManager, will use {}", metricManager.getClass().getName());
-    }
-  }
+  protected abstract void loadManager();
 
   /** Load metric reporters according to configuration. */
-  protected void loadReporter() {
-    LOGGER.info("Load metric reporters, type: {}", METRIC_CONFIG.getMetricReporterList());
-    compositeReporter.clearReporter();
-    if (METRIC_CONFIG.getMetricReporterList() == null) {
-      return;
-    }
-    for (ReporterType reporterType : METRIC_CONFIG.getMetricReporterList()) {
-      Reporter reporter = null;
-      switch (reporterType) {
-        case JMX:
-          ServiceLoader<JmxReporter> reporters = ServiceLoader.load(JmxReporter.class);
-          for (JmxReporter jmxReporter : reporters) {
-            if (jmxReporter
-                .getClass()
-                .getName()
-                .toLowerCase()
-                .contains(METRIC_CONFIG.getMetricFrameType().name().toLowerCase())) {
-              jmxReporter.setMetricManager(metricManager);
-              reporter = jmxReporter;
-            }
-          }
-          break;
-        case PROMETHEUS:
-          reporter = new PrometheusReporter(metricManager);
-          break;
-        case IOTDB:
-          reporter = new IoTDBSessionReporter(metricManager);
-          break;
-        default:
-          break;
-      }
-      if (reporter == null) {
-        LOGGER.warn("Failed to load reporter which type is {}", reporterType);
-        continue;
-      }
-      compositeReporter.addReporter(reporter);
-    }
-  }
+  protected abstract void loadReporter();
 
   /**
    * Reload internal reporter.

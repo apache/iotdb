@@ -26,7 +26,7 @@ public interface Gauge extends IMetric {
   void set(long value);
 
   /** Get value stored in gauge. */
-  long value();
+  long getValue();
 
   /** Increase the value stored in gauge. */
   void incr(long value);
@@ -36,6 +36,6 @@ public interface Gauge extends IMetric {
 
   @Override
   default void constructValueMap(Map<String, Object> result) {
-    result.put("value", value());
+    result.put("value", getValue());
   }
 }

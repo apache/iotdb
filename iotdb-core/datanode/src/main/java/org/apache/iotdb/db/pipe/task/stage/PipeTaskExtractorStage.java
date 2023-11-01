@@ -33,6 +33,8 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import java.util.Arrays;
+
 public class PipeTaskExtractorStage extends PipeTaskStage {
 
   private final PipeExtractor pipeExtractor;
@@ -43,12 +45,13 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
       PipeParameters extractorParameters,
       TConsensusGroupId dataRegionId,
       PipeTaskMeta pipeTaskMeta) {
+    final String pluginName =
+        extractorParameters.getStringOrDefault(
+            Arrays.asList(PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+            BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
     pipeExtractor =
-        extractorParameters
-                .getStringOrDefault(
-                    PipeExtractorConstant.EXTRACTOR_KEY,
-                    BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
-                .equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+                || pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())
             ? new IoTDBDataRegionExtractor()
             : PipeAgent.plugin().reflectExtractor(extractorParameters);
 

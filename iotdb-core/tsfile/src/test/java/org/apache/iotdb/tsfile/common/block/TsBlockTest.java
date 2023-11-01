@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.tsfile.common.block;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockSingleColumnIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -154,7 +155,11 @@ public class TsBlockTest {
   public void testBinaryTsBlock() {
     long[] timeArray = {1L, 2L, 3L, 4L, 5L};
     Binary[] valueArray = {
-      new Binary("10"), new Binary("20"), new Binary("30"), new Binary("40"), new Binary("50")
+      new Binary("10", TSFileConfig.STRING_CHARSET),
+      new Binary("20", TSFileConfig.STRING_CHARSET),
+      new Binary("30", TSFileConfig.STRING_CHARSET),
+      new Binary("40", TSFileConfig.STRING_CHARSET),
+      new Binary("50", TSFileConfig.STRING_CHARSET)
     };
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     for (int i = 0; i < timeArray.length; i++) {
@@ -235,11 +240,11 @@ public class TsBlockTest {
     double[] doubleValueArray = {10000.0, 20000.0, 30000.0, 40000.0, 50000.0};
     boolean[] doubleIsNull = {true, false, false, true, false};
     Binary[] binaryValueArray = {
-      new Binary("19970909"),
-      new Binary("ty"),
-      new Binary("love"),
-      new Binary("zm"),
-      new Binary("19950421")
+      new Binary("19970909", TSFileConfig.STRING_CHARSET),
+      new Binary("ty", TSFileConfig.STRING_CHARSET),
+      new Binary("love", TSFileConfig.STRING_CHARSET),
+      new Binary("zm", TSFileConfig.STRING_CHARSET),
+      new Binary("19950421", TSFileConfig.STRING_CHARSET)
     };
     boolean[] binaryIsNull = {false, false, false, false, false};
 
