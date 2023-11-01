@@ -27,20 +27,75 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ClusterSchemaQuotaStatistics {
 
   // TODO: it can be merged with statistics in ClusterQuotaManager
-  private final Map<Integer, Long> countMap = new ConcurrentHashMap<>();
+  private long seriesThreshold;
+  private long deviceThreshold;
 
-  public void updateCount(@NotNull Map<Integer, Long> schemaCountMap) {
-    countMap.putAll(schemaCountMap);
+  private final Map<Integer, Long> seriesCountMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Long> deviceCountMap = new ConcurrentHashMap<>();
+
+  public ClusterSchemaQuotaStatistics(long seriesThreshold, long deviceThreshold) {
+    this.seriesThreshold = seriesThreshold;
+    this.deviceThreshold = deviceThreshold;
   }
 
-  public long getSchemaQuotaCount(Set<Integer> consensusGroupIdSet) {
-    return countMap.entrySet().stream()
-        .filter(i -> consensusGroupIdSet.contains(i.getKey()))
-        .mapToLong(Map.Entry::getValue)
-        .sum();
+  public void updateTimeSeriesUsage(@NotNull Map<Integer, Long> seriesUsage) {
+    seriesCountMap.putAll(seriesUsage);
+  }
+
+  public void updateDeviceUsage(@NotNull Map<Integer, Long> deviceUsage) {
+    deviceCountMap.putAll(deviceUsage);
+  }
+
+  /**
+   * Get the remain quota of series and device for the given consensus group.
+   *
+   * @param consensusGroupIdSet the consensus group id set
+   * @return the remain quota, >=0
+   */
+  public long getSeriesQuotaRemain(Set<Integer> consensusGroupIdSet) {
+    long res =
+        seriesThreshold
+            - seriesCountMap.entrySet().stream()
+                .filter(i -> consensusGroupIdSet.contains(i.getKey()))
+                .mapToLong(Map.Entry::getValue)
+                .sum();
+    return res > 0 ? res : 0;
+  }
+
+  /**
+   * Get the remain quota of device for the given consensus group.
+   *
+   * @param consensusGroupIdSet the consensus group id set
+   * @return the remain quota, >=0
+   */
+  public long getDeviceQuotaRemain(Set<Integer> consensusGroupIdSet) {
+    long res =
+        deviceThreshold
+            - deviceCountMap.entrySet().stream()
+                .filter(i -> consensusGroupIdSet.contains(i.getKey()))
+                .mapToLong(Map.Entry::getValue)
+                .sum();
+    return res > 0 ? res : 0;
+  }
+
+  public long getSeriesThreshold() {
+    return seriesThreshold;
+  }
+
+  public void setSeriesThreshold(long seriesThreshold) {
+    this.seriesThreshold = seriesThreshold;
+  }
+
+  public long getDeviceThreshold() {
+    return deviceThreshold;
+  }
+
+  public void setDeviceThreshold(long deviceThreshold) {
+    this.deviceThreshold = deviceThreshold;
   }
 
   public void clear() {
-    countMap.clear();
+    seriesCountMap.clear();
+    deviceCountMap.clear();
   }
 }

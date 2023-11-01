@@ -16,43 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.it.schema;
+package org.apache.iotdb.db.it.schema.quota;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.util.AbstractSchemaIT;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runners.Parameterized;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class IoTDBClusterMeasurementQuotaIT extends AbstractSchemaIT {
-  public IoTDBClusterMeasurementQuotaIT(SchemaTestMode schemaTestMode) {
+public abstract class IoTDBClusterQuotaIT extends AbstractSchemaIT {
+  public IoTDBClusterQuotaIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
-  }
-
-  @Parameterized.BeforeParam
-  public static void before() throws Exception {
-    setUpEnvironment();
-    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitLevel("timeseries");
-    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitThreshold(6);
-    EnvFactory.getEnv().initClusterEnvironment();
-  }
-
-  @Parameterized.AfterParam
-  public static void after() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    tearDownEnvironment();
   }
 
   @Before
   public void setUp() throws Exception {
     prepareTimeSeries();
     Thread.sleep(2000); // wait heartbeat
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    clearSchema();
   }
 
   /** Prepare time series: 2 databases, 3 devices, 6 time series */
@@ -87,17 +78,13 @@ public class IoTDBClusterMeasurementQuotaIT extends AbstractSchemaIT {
             "create timeseries root.sg1.d3.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
         Assert.fail();
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage()
-                .contains("The current metadata capacity has exceeded the cluster quota"));
+        Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));
       }
       try {
         statement.execute("create timeseries of device template on root.sg2.d2;");
         Assert.fail();
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage()
-                .contains("The current metadata capacity has exceeded the cluster quota"));
+        Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));
       }
       // delete some timeseries and database
       statement.execute("delete database root.sg2;");
@@ -114,9 +101,7 @@ public class IoTDBClusterMeasurementQuotaIT extends AbstractSchemaIT {
             "create timeseries root.sg1.d3.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
         Assert.fail();
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage()
-                .contains("The current metadata capacity has exceeded the cluster quota"));
+        Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));
       }
     } catch (Exception e) {
       e.printStackTrace();

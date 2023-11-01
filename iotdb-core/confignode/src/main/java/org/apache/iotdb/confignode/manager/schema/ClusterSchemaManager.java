@@ -1077,12 +1077,35 @@ public class ClusterSchemaManager {
     }
   }
 
-  public long getSchemaQuotaCount() {
-    return schemaQuotaStatistics.getSchemaQuotaCount(getPartitionManager().getAllSchemaPartition());
+  /**
+   * Only leader use this interface. Get the remain schema quota of specified schema region.
+   *
+   * @return pair of <series quota, device quota>, -1 means no limit
+   */
+  public Pair<Long, Long> getSchemaQuotaRemain() {
+    boolean isDeviceLimit = schemaQuotaStatistics.getDeviceThreshold() != -1;
+    boolean isSeriesLimit = schemaQuotaStatistics.getSeriesThreshold() != -1;
+    if (isSeriesLimit || isDeviceLimit) {
+      Set<Integer> schemaPartitionSet = getPartitionManager().getAllSchemaPartition();
+      return new Pair<>(
+          isSeriesLimit ? schemaQuotaStatistics.getSeriesQuotaRemain(schemaPartitionSet) : -1L,
+          isDeviceLimit ? schemaQuotaStatistics.getDeviceQuotaRemain(schemaPartitionSet) : -1L);
+    } else {
+      return new Pair<>(-1L, -1L);
+    }
   }
 
-  public void updateSchemaQuota(Map<Integer, Long> schemaCountMap) {
-    schemaQuotaStatistics.updateCount(schemaCountMap);
+  public void updateTimeSeriesUsage(Map<Integer, Long> seriesUsage) {
+    schemaQuotaStatistics.updateTimeSeriesUsage(seriesUsage);
+  }
+
+  public void updateDeviceUsage(Map<Integer, Long> deviceUsage) {
+    schemaQuotaStatistics.updateDeviceUsage(deviceUsage);
+  }
+
+  public void updateSchemaQuotaConfiguration(long seriesThreshold, long deviceThreshold) {
+    schemaQuotaStatistics.setDeviceThreshold(deviceThreshold);
+    schemaQuotaStatistics.setSeriesThreshold(seriesThreshold);
   }
 
   public void clearSchemaQuotaCache() {

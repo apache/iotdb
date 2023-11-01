@@ -108,9 +108,9 @@ public interface CommonConfig {
 
   CommonConfig setWriteMemoryProportion(String writeMemoryProportion);
 
-  CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel);
+  CommonConfig setClusterTimeseriesLimitThreshold(long clusterTimeseriesLimitThreshold);
 
-  CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold);
+  CommonConfig setClusterDeviceLimitThreshold(long clusterDeviceLimitThreshold);
 
   CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold);
 

@@ -17,27 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.rescon;
+package org.apache.iotdb.db.it.schema.quota;
 
-public interface ISchemaEngineStatistics {
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.util.AbstractSchemaIT;
 
-  boolean isAllowToCreateNewSeries();
+import org.junit.runners.Parameterized;
 
-  boolean isExceedCapacity();
+public class IoTDBClusterTimeSeriesQuotaIT extends IoTDBClusterQuotaIT {
+  public IoTDBClusterTimeSeriesQuotaIT(AbstractSchemaIT.SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
 
-  long getMemoryCapacity();
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
+    setUpEnvironment();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterTimeseriesLimitThreshold(6);
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
 
-  long getMemoryUsage();
-
-  long getTotalSeriesNumber();
-
-  int getSchemaRegionNumber();
-
-  long getTemplateSeriesNumber();
-
-  int getTemplateUsingNumber(String templateName);
-
-  MemSchemaEngineStatistics getAsMemSchemaEngineStatistics();
-
-  CachedSchemaEngineStatistics getAsCachedSchemaEngineStatistics();
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    tearDownEnvironment();
+  }
 }

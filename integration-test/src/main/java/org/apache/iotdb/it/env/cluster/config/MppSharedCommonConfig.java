@@ -352,16 +352,16 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
-    dnConfig.setClusterSchemaLimitLevel(clusterSchemaLimitLevel);
-    cnConfig.setClusterSchemaLimitLevel(clusterSchemaLimitLevel);
+  public CommonConfig setClusterTimeseriesLimitThreshold(long clusterSchemaLimitThreshold) {
+    dnConfig.setClusterTimeseriesLimitThreshold(clusterSchemaLimitThreshold);
+    cnConfig.setClusterTimeseriesLimitThreshold(clusterSchemaLimitThreshold);
     return this;
   }
 
   @Override
-  public CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
-    dnConfig.setClusterSchemaLimitThreshold(clusterSchemaLimitThreshold);
-    cnConfig.setClusterSchemaLimitThreshold(clusterSchemaLimitThreshold);
+  public CommonConfig setClusterDeviceLimitThreshold(long clusterDeviceLimitThreshold) {
+    dnConfig.setClusterDeviceLimitThreshold(clusterDeviceLimitThreshold);
+    cnConfig.setClusterDeviceLimitThreshold(clusterDeviceLimitThreshold);
     return this;
   }
 

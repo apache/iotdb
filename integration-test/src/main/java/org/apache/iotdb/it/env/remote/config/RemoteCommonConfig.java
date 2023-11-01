@@ -253,13 +253,13 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
+  public CommonConfig setClusterTimeseriesLimitThreshold(long clusterSchemaLimitThreshold) {
     return this;
   }
 
   @Override
-  public CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
-    return this;
+  public CommonConfig setClusterDeviceLimitThreshold(long clusterDeviceLimitThreshold) {
+    return null;
   }
 
   @Override

@@ -43,8 +43,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionParams;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionParams;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
-import org.apache.iotdb.mpp.rpc.thrift.TSchemaLimitLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -374,45 +374,39 @@ public class SchemaEngine {
    * not -1 and deviceNumMap/timeSeriesNumMap is null, fill deviceNumMap/timeSeriesNumMap of the
    * SchemaRegion whose current node is the leader
    *
-   * @param totalCount cluster schema usage
+   * @param req heartbeat request
    * @param resp heartbeat response
    */
-  public void updateAndFillSchemaCountMap(long totalCount, THeartbeatResp resp) {
+  public void updateAndFillSchemaCountMap(THeartbeatReq req, THeartbeatResp resp) {
     // update DataNodeSchemaQuotaManager
-    schemaQuotaManager.updateRemain(totalCount);
-    if (schemaQuotaManager.getLimit() < 0) {
-      return;
+    schemaQuotaManager.updateRemain(
+        req.getTimeSeriesQuotaRemain(),
+        req.isSetDeviceQuotaRemain() ? req.getDeviceQuotaRemain() : -1);
+    if (schemaQuotaManager.isDeviceLimit()) {
+      if (resp.getRegionDeviceUsageMap() == null) {
+        resp.setRegionDeviceUsageMap(new HashMap<>());
+      }
+      Map<Integer, Long> tmp = resp.getRegionDeviceUsageMap();
+      schemaRegionMap.values().stream()
+          .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
+          .forEach(
+              i ->
+                  tmp.put(
+                      i.getSchemaRegionId().getId(),
+                      i.getSchemaRegionStatistics().getDevicesNumber()));
     }
-    Map<Integer, Long> res = new HashMap<>();
-    switch (schemaQuotaManager.getLevel()) {
-      case TIMESERIES:
-        if (resp.getRegionTimeSeriesNumMap() == null) {
-          schemaRegionMap.values().stream()
-              .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
-              .forEach(
-                  i ->
-                      res.put(
-                          i.getSchemaRegionId().getId(),
-                          i.getSchemaRegionStatistics().getSeriesNumber()));
-          resp.setRegionTimeSeriesNumMap(res);
-          resp.setSchemaLimitLevel(TSchemaLimitLevel.TIMESERIES);
-        }
-        break;
-      case DEVICE:
-        if (resp.getRegionDeviceNumMap() == null) {
-          schemaRegionMap.values().stream()
-              .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
-              .forEach(
-                  i ->
-                      res.put(
-                          i.getSchemaRegionId().getId(),
-                          i.getSchemaRegionStatistics().getDevicesNumber()));
-          resp.setRegionDeviceNumMap(res);
-          resp.setSchemaLimitLevel(TSchemaLimitLevel.DEVICE);
-        }
-        break;
-      default:
-        throw new UnsupportedOperationException();
+    if (schemaQuotaManager.isSeriesLimit()) {
+      if (resp.getRegionSeriesUsageMap() == null) {
+        resp.setRegionSeriesUsageMap(new HashMap<>());
+      }
+      Map<Integer, Long> tmp = resp.getRegionSeriesUsageMap();
+      schemaRegionMap.values().stream()
+          .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
+          .forEach(
+              i ->
+                  tmp.put(
+                      i.getSchemaRegionId().getId(),
+                      i.getSchemaRegionStatistics().getSeriesNumber()));
     }
   }
 

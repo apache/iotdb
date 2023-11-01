@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,7 +127,10 @@ public class HeartbeatService {
     heartbeatReq.setNeedJudgeLeader(true);
     // We sample DataNode's load in every 10 heartbeat loop
     heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
-    heartbeatReq.setSchemaQuotaCount(configManager.getClusterSchemaManager().getSchemaQuotaCount());
+    Pair<Long, Long> schemaQuotaRemain =
+        configManager.getClusterSchemaManager().getSchemaQuotaRemain();
+    heartbeatReq.setTimeSeriesQuotaRemain(schemaQuotaRemain.left);
+    heartbeatReq.setDeviceQuotaRemain(schemaQuotaRemain.right);
     // We collect pipe meta in every 100 heartbeat loop
     heartbeatReq.setNeedPipeMetaList(
         !PipeConfig.getInstance().isSeperatedPipeHeartbeatEnabled()
@@ -186,7 +190,8 @@ public class HeartbeatService {
               configManager.getClusterQuotaManager().getDeviceNum(),
               configManager.getClusterQuotaManager().getTimeSeriesNum(),
               configManager.getClusterQuotaManager().getRegionDisk(),
-              configManager.getClusterSchemaManager()::updateSchemaQuota,
+              configManager.getClusterSchemaManager()::updateTimeSeriesUsage,
+              configManager.getClusterSchemaManager()::updateDeviceUsage,
               configManager.getPipeManager().getPipeRuntimeCoordinator());
       configManager.getClusterQuotaManager().updateSpaceQuotaUsage();
       AsyncDataNodeHeartbeatClientPool.getInstance()

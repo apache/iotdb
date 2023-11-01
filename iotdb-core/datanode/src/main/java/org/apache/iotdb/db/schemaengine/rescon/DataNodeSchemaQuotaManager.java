@@ -20,62 +20,81 @@
 package org.apache.iotdb.db.schemaengine.rescon;
 
 import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 
 import java.util.concurrent.atomic.AtomicLong;
 
 @SuppressWarnings("java:S6548") // do not warn about singleton class
 public class DataNodeSchemaQuotaManager {
+  private boolean seriesLimit = false;
+  private boolean deviceLimit = false;
+  private final AtomicLong seriesRemain = new AtomicLong(0);
+  private final AtomicLong deviceRemain = new AtomicLong(0);
 
-  private ClusterSchemaQuotaLevel level =
-      ClusterSchemaQuotaLevel.valueOf(
-          IoTDBDescriptor.getInstance().getConfig().getClusterSchemaLimitLevel().toUpperCase());
-  private long limit =
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .getClusterSchemaLimitThreshold(); // -1 means no limitation
-  private final AtomicLong remain = new AtomicLong(0);
-
-  public void updateRemain(long totalCount) {
-    this.remain.getAndSet(limit - totalCount);
+  /**
+   * Update remain quota.
+   *
+   * @param seriesRemain -1 means no limit, otherwise it is the remain series quota
+   * @param deviceRemain -1 means no limit, otherwise it is the remain device quota
+   */
+  public void updateRemain(long seriesRemain, long deviceRemain) {
+    if (seriesRemain == -1) {
+      this.seriesLimit = false;
+    } else {
+      this.seriesLimit = true;
+      this.seriesRemain.set(seriesRemain);
+    }
+    if (deviceRemain == -1) {
+      this.deviceLimit = false;
+    } else {
+      this.deviceLimit = true;
+      this.deviceRemain.set(deviceRemain);
+    }
   }
 
-  public void checkMeasurementLevel(int acquireNumber) throws SchemaQuotaExceededException {
-    if (limit > 0 && level.equals(ClusterSchemaQuotaLevel.TIMESERIES)) {
-      if (remain.get() <= 0) {
-        throw new SchemaQuotaExceededException(level, limit);
+  private void checkMeasurementLevel(long acquireNumber) throws SchemaQuotaExceededException {
+    if (seriesLimit) {
+      if (seriesRemain.get() <= 0) {
+        throw new SchemaQuotaExceededException(ClusterSchemaQuotaLevel.TIMESERIES);
       } else {
-        remain.addAndGet(-acquireNumber);
+        seriesRemain.addAndGet(-acquireNumber);
       }
     }
   }
 
-  public void checkDeviceLevel() throws SchemaQuotaExceededException {
-    if (limit > 0 && level.equals(ClusterSchemaQuotaLevel.DEVICE)) {
-      if (remain.get() <= 0) {
-        throw new SchemaQuotaExceededException(level, limit);
+  private void checkDeviceLevel() throws SchemaQuotaExceededException {
+    if (deviceLimit) {
+      if (deviceRemain.get() <= 0) {
+        throw new SchemaQuotaExceededException(ClusterSchemaQuotaLevel.DEVICE);
       } else {
-        remain.addAndGet(-1L);
+        deviceRemain.addAndGet(-1L);
       }
     }
   }
 
-  public void updateConfiguration() {
-    this.level =
-        ClusterSchemaQuotaLevel.valueOf(
-            IoTDBDescriptor.getInstance().getConfig().getClusterSchemaLimitLevel().toUpperCase());
-    long oldLimit = limit;
-    this.limit = IoTDBDescriptor.getInstance().getConfig().getClusterSchemaLimitThreshold();
-    this.remain.addAndGet(limit - oldLimit);
+  public void check(long acquireSeriesNumber, int acquireDeviceNumber)
+      throws SchemaQuotaExceededException {
+    if (acquireDeviceNumber > 0) {
+      checkDeviceLevel();
+    }
+    // if pass device check, check measurement level
+    try {
+      checkMeasurementLevel(acquireSeriesNumber);
+    } catch (SchemaQuotaExceededException e) {
+      // if measurement level check failed, roll back device remain
+      if (acquireDeviceNumber > 0) {
+        deviceRemain.addAndGet(1L);
+      }
+      throw e;
+    }
   }
 
-  public ClusterSchemaQuotaLevel getLevel() {
-    return level;
+  public boolean isSeriesLimit() {
+    return seriesLimit;
   }
 
-  public long getLimit() {
-    return limit;
+  public boolean isDeviceLimit() {
+    return deviceLimit;
   }
 
   private DataNodeSchemaQuotaManager() {}
