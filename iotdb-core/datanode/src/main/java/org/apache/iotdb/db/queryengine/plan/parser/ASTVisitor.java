@@ -1550,10 +1550,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // parse sliding step
     if (ctx.step != null) {
       groupByTimeComponent.setSlidingStep(DateTimeUtils.constructTimeDuration(ctx.step.getText()));
-      groupByTimeComponent.setOriginalInterval(ctx.step.getText());
+      groupByTimeComponent.setOriginalSlidingStep(ctx.step.getText());
     } else {
       groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
-      groupByTimeComponent.setOriginalInterval(groupByTimeComponent.getOriginalInterval());
+      groupByTimeComponent.setOriginalSlidingStep(groupByTimeComponent.getOriginalInterval());
     }
     TimeDuration slidingStep = groupByTimeComponent.getSlidingStep();
     if (slidingStep.containsMonth()

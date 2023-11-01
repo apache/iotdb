@@ -94,10 +94,6 @@ public class GroupByTimeComponent extends StatementNode {
     this.originalInterval = originalInterval;
   }
 
-  public String getOriginalSlidingStep() {
-    return originalSlidingStep;
-  }
-
   public void setOriginalSlidingStep(String originalSlidingStep) {
     this.originalSlidingStep = originalSlidingStep;
   }
