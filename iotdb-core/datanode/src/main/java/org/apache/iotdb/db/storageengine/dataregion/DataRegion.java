@@ -724,15 +724,15 @@ public class DataRegion implements IDataRegionForQuery {
       TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
       boolean isSeq = recoverPerformer.isSequence();
       if (!recoverPerformer.canWrite()) {
-        if (!TsFileValidator.getInstance().validateTsFile(tsFileResource)) {
-          tsFileResource.remove();
-          return;
-        }
         // cannot write, just close it
         try {
           tsFileResource.close();
         } catch (IOException e) {
           logger.error("Fail to close TsFile {} when recovering", tsFileResource.getTsFile(), e);
+        }
+        if (!TsFileValidator.getInstance().validateTsFile(tsFileResource)) {
+          tsFileResource.remove();
+          return;
         }
         updateLastFlushTime(tsFileResource, isSeq);
         tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
