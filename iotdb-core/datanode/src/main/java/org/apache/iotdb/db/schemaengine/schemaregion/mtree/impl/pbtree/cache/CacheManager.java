@@ -629,9 +629,9 @@ public abstract class CacheManager implements ICacheManager {
     private static final int MAP_NUM = 17;
 
     private IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode;
-    private Map<CacheEntry, ICachedMNode>[] maps = new Map[MAP_NUM];
+    private final Map<CacheEntry, ICachedMNode>[] maps = new Map[MAP_NUM];
 
-    private Map<Integer, NodeBufferIterator> currentIteratorMap = new ConcurrentHashMap<>();
+    private final Map<Integer, NodeBufferIterator> currentIteratorMap = new ConcurrentHashMap<>();
 
     NodeBuffer() {
       for (int i = 0; i < MAP_NUM; i++) {
@@ -686,12 +686,12 @@ public abstract class CacheManager implements ICacheManager {
     }
 
     private class NodeBufferIterator implements Iterator<ICachedMNode> {
-      int mapIndex = 0;
+      volatile int mapIndex = 0;
       Iterator<ICachedMNode> currentIterator = maps[0].values().iterator();
 
       ICachedMNode nextNode = null;
 
-      boolean hasNew = false;
+      volatile boolean hasNew = false;
 
       private final int hashCode = super.hashCode();
 
@@ -700,8 +700,10 @@ public abstract class CacheManager implements ICacheManager {
         if (nextNode == null) {
           tryGetNext();
           if (nextNode == null && hasNew) {
-            hasNew = false;
-            mapIndex = 0;
+            synchronized (this){
+              hasNew = false;
+              mapIndex = 0;
+            }
             currentIterator = maps[0].values().iterator();
             tryGetNext();
           }
@@ -732,7 +734,10 @@ public abstract class CacheManager implements ICacheManager {
         while (!currentIterator.hasNext()) {
           currentIterator = null;
 
-          mapIndex++;
+          synchronized (this){
+            mapIndex++;
+          }
+
           if (mapIndex == maps.length) {
             return;
           }
@@ -744,7 +749,11 @@ public abstract class CacheManager implements ICacheManager {
 
       private void checkHasNew(int index) {
         if (mapIndex >= index) {
-          hasNew = true;
+          synchronized (this){
+            if (mapIndex >= index){
+              hasNew = true;
+            }
+          }
         }
       }
     }

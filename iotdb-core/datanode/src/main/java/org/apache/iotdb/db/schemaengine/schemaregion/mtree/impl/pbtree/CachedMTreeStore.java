@@ -33,6 +33,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.estima
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.AbstractTraverserIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheMemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICacheManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush.PBTreeFlushExecutor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
@@ -546,54 +547,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   /** Sync all volatile nodes to PBTree and execute memory release after flush. */
   public void flushVolatileNodes() {
-    try {
-      IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode =
-          cacheManager.collectUpdatedStorageGroupMNodes();
-      if (updatedStorageGroupMNode != null) {
-        try {
-          file.updateDatabaseNode(updatedStorageGroupMNode);
-        } catch (IOException e) {
-          logger.error(
-              "IOException occurred during updating StorageGroupMNode {}",
-              updatedStorageGroupMNode.getFullPath(),
-              e);
-          return;
-        }
-      }
-
-      long startTime = System.currentTimeMillis();
-      Iterator<ICachedMNode> nodesToPersist = cacheManager.collectVolatileMNodes();
-      boolean hasNodeToPersist = nodesToPersist.hasNext();
-
-      ICachedMNode volatileNode;
-      while (nodesToPersist.hasNext()) {
-        volatileNode = nodesToPersist.next();
-        try {
-          file.writeMNode(volatileNode);
-        } catch (MetadataException | IOException e) {
-          logger.error(
-              "Error occurred during MTree flush, current node is {}",
-              volatileNode.getFullPath(),
-              e);
-          return;
-        }
-        cacheManager.updateCacheStatusAfterPersist(volatileNode);
-      }
-      logger.info(
-          "It takes {}ms to flush MTree in SchemaRegion {}",
-          (System.currentTimeMillis() - startTime),
-          schemaRegionId);
-
-      if (updatedStorageGroupMNode != null || hasNodeToPersist) {
-        flushCallback.run();
-      }
-    } catch (Throwable e) {
-      logger.error(
-          "Error occurred during MTree flush, current SchemaRegionId is {}",
-          regionStatistics.getSchemaRegionId(),
-          e);
-      e.printStackTrace();
-    }
+    PBTreeFlushExecutor flushExecutor = new PBTreeFlushExecutor(schemaRegionId, this, cacheManager, file, flushCallback);
+    flushExecutor.flushVolatileNodes();
   }
 
   /**
