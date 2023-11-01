@@ -724,6 +724,10 @@ public class DataRegion implements IDataRegionForQuery {
       TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
       boolean isSeq = recoverPerformer.isSequence();
       if (!recoverPerformer.canWrite()) {
+        if (!TsFileValidator.getInstance().validateTsFile(tsFileResource)) {
+          tsFileResource.remove();
+          return;
+        }
         // cannot write, just close it
         try {
           tsFileResource.close();
