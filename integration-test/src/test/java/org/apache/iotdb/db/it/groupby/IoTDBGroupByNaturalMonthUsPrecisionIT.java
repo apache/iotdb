@@ -28,7 +28,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.TimeZone;
 
@@ -74,13 +73,13 @@ public class IoTDBGroupByNaturalMonthUsPrecisionIT extends IoTDBGroupByNaturalMo
     String[] retArray =
         new String[] {
           // [01-28, 03-01)
-          Timestamp.valueOf("2023-01-28 00:00:00").getTime() * 1000 + ",1,",
+          "1674864000000000,1,",
           // [03-01, 04-02)
-          Timestamp.valueOf("2023-03-01 00:00:00").getTime() * 1000 + ",2,",
+          "1677628800000000,2,",
           // [04-02, 05-03)
-          Timestamp.valueOf("2023-04-02 00:00:00").getTime() * 1000 + ",1,",
+          "1680393600000000,1,",
           // [05-03, 05-29)
-          Timestamp.valueOf("2023-05-03 00:00:00").getTime() * 1000 + ",0,"
+          "1683072000000000,0,"
         };
     // the part in timeDuration finer than current time precision will be discarded
     resultSetEqualTest(

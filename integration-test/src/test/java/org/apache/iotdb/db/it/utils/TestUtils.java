@@ -138,9 +138,7 @@ public class TestUtils {
       TimeUnit currPrecision) {
     try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
-      if (df != null) {
-        connection.setClientInfo("time_zone", "+00:00");
-      }
+      connection.setClientInfo("time_zone", "+00:00");
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         assertResultSetEqual(resultSet, expectedHeader, expectedRetArray, df, currPrecision);
       }

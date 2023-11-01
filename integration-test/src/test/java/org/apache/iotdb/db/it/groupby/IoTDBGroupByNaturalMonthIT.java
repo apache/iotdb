@@ -35,7 +35,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -384,13 +383,13 @@ public class IoTDBGroupByNaturalMonthIT {
     String[] retArray =
         new String[] {
           // [01-28, 03-01)
-          Timestamp.valueOf("2023-01-28 00:00:00").getTime() + ",1,",
+          "1674864000000,1,",
           // [03-01, 04-02)
-          Timestamp.valueOf("2023-03-01 00:00:00").getTime() + ",2,",
+          "1677628800000,2,",
           // [04-02, 05-03)
-          Timestamp.valueOf("2023-04-02 00:00:00").getTime() + ",1,",
+          "1680393600000,1,",
           // [05-03, 05-29)
-          Timestamp.valueOf("2023-05-03 00:00:00").getTime() + ",0,"
+          "1683072000000,0,"
         };
     // the part in timeDuration finer than current time precision will be discarded
     resultSetEqualTest(
