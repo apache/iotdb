@@ -230,6 +230,16 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
+    config.setSeriesLimitThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "cluster_timeseries_limit_threshold",
+                String.valueOf(config.getSeriesLimitThreshold()))));
+    config.setDeviceLimitThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "cluster_device_limit_threshold",
+                String.valueOf(config.getDeviceLimitThreshold()))));
   }
 
   private void loadPipeProps(Properties properties) {
