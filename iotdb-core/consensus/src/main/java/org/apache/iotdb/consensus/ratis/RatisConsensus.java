@@ -48,6 +48,7 @@ import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricSet;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
+import org.apache.iotdb.consensus.ratis.utils.Retriable;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -196,28 +197,24 @@ class RatisConsensus implements IConsensus {
   /** launch a consensus write with retry mechanism */
   private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
       throws IOException {
-
-    final int maxRetryTimes = config.getImpl().getRetryTimesMax();
-    final long waitMillis = config.getImpl().getRetryWaitMillis();
-
-    int retry = 0;
-    RaftClientReply reply = null;
-    while (retry < maxRetryTimes) {
-      retry++;
-
-      reply = caller.get();
-      if (!shouldRetry(reply)) {
-        return reply;
-      }
-      logger.debug("{} sending write request with retry = {} and reply = {}", this, retry, reply);
-
-      try {
-        Thread.sleep(waitMillis);
-      } catch (InterruptedException e) {
-        logger.warn("{} retry write sleep is interrupted: {}", this, e);
-        Thread.currentThread().interrupt();
-      }
+    final RaftClientReply reply = null;
+    try {
+      Retriable.attempt(
+          caller,
+          Retriable.RetryPolicyBuilder.<RaftClientReply>newBuilder()
+              .setRetryHandler(this::shouldRetry)
+              .setMaxAttempts(config.getImpl().getRetryTimesMax())
+              .setWaitTime(
+                  TimeDuration.valueOf(
+                      config.getImpl().getRetryWaitMillis(), TimeUnit.MILLISECONDS))
+              .build(),
+          "RatisConsensus::write",
+          logger);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.debug("{}: interrupted when retrying for write request {}", this, caller);
     }
+
     if (reply == null) {
       return RaftClientReply.newBuilder()
           .setSuccess(false)
@@ -360,7 +357,16 @@ class RatisConsensus implements IConsensus {
     RaftClientReply reply;
     try (AutoCloseable ignored =
         RatisMetricsManager.getInstance().startReadTimer(consensusGroupType)) {
-      reply = server.submitClientRequest(request);
+      reply =
+          Retriable.attempt(
+              () -> server.submitClientRequest(request),
+              Retriable.RetryPolicyBuilder.<RaftClientReply>newBuilder()
+                  .setRetryHandler(r -> r.getException() instanceof ReadIndexException)
+                  .setMaxAttempts(3)
+                  .setWaitTime(TimeDuration.valueOf(100, TimeUnit.MILLISECONDS))
+                  .build(),
+              "RatisConsensus::read",
+              logger);
     }
 
     // rethrow the exception if the reply is not successful
@@ -592,6 +598,7 @@ class RatisConsensus implements IConsensus {
     }
     long startTime = System.currentTimeMillis();
     try {
+      // TODO use Retriable to rewrite this logic
       while (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
         Thread.sleep(10);
         long consumedTime = System.currentTimeMillis() - startTime;

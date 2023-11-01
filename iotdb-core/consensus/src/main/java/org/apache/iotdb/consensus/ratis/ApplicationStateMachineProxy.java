@@ -28,6 +28,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
+import org.apache.iotdb.consensus.ratis.utils.Retriable;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -46,6 +47,7 @@ import org.apache.ratis.statemachine.TransactionContext;
 import org.apache.ratis.statemachine.impl.BaseStateMachine;
 import org.apache.ratis.util.FileUtils;
 import org.apache.ratis.util.LifeCycle;
+import org.apache.ratis.util.TimeDuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +58,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
@@ -182,13 +183,12 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   }
 
   private void waitUntilSystemAllowApply() {
-    while (Utils.stallApply()) {
-      try {
-        TimeUnit.SECONDS.sleep(60);
-      } catch (InterruptedException e) {
-        logger.warn("{}: interrupted when waiting until system ready: ", this, e);
-        Thread.currentThread().interrupt();
-      }
+    try {
+      Retriable.attemptUntilTrue(
+          Utils::stallApply, TimeDuration.ONE_MINUTE, "waitUntilSystemAllowApply", logger);
+    } catch (InterruptedException e) {
+      logger.warn("{}: interrupted when waiting until system ready: ", this, e);
+      Thread.currentThread().interrupt();
     }
   }
 
