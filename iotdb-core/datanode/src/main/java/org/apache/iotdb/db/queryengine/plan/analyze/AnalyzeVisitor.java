@@ -381,7 +381,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       logger.warn(
           "----- Analyze analyzeOutput+analyzeDataPartition cost: {}ms",
           System.currentTimeMillis() - startTime);
-      startTime = System.currentTimeMillis();
+
     } catch (StatementAnalyzeException e) {
       throw new StatementAnalyzeException(
           "Meet error when analyzing the query statement: " + e.getMessage());
@@ -1928,8 +1928,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Set<String> deviceSet = new HashSet<>();
     if (queryStatement.isAlignByDevice()) {
       deviceSet =
-          analysis.getOutputDeviceToQueriedDevicesMap().values().stream()
-              .flatMap(List::stream)
+          analysis.getDeviceList().stream()
+              .map(PartialPath::getFullPath)
               .collect(Collectors.toSet());
     } else {
       for (Expression expression : analysis.getSourceExpressions()) {

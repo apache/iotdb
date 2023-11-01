@@ -129,8 +129,11 @@ public class TemplatedDeviceAnalyze {
     // analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceList);
     // analyzeHaving(analysis, queryStatement, schemaTree, deviceList);
     // analyzeDeviceToAggregation(analysis, queryStatement);
-    analyzeDeviceToSourceTransform(analysis, queryStatement);
-    analyzeDeviceToSource(analysis, queryStatement);
+    // analyzeDeviceToSourceTransform(analysis, queryStatement);
+    // analyzeDeviceToSource(analysis, queryStatement);
+    analysis.setDeviceToSourceTransformExpressions(analysis.getDeviceToSelectExpressions());
+    analysis.setDeviceToSourceExpressions(analysis.getDeviceToSelectExpressions());
+    analysis.setDeviceToOutputExpressions(analysis.getDeviceToSelectExpressions());
     logger.warn(
         "----- Analyze analyzeDeviceToSource + analyzeDeviceToSourceTransform cost: {}ms",
         System.currentTimeMillis() - startTime);
