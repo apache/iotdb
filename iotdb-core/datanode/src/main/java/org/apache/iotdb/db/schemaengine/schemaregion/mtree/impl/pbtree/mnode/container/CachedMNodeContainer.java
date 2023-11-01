@@ -265,7 +265,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public boolean hasChildrenInBuffer() {
-    return !updatedChildBuffer.isEmpty() || !newChildBuffer.isEmpty();
+    return !isEmpty(updatedChildBuffer) || !isEmpty(newChildBuffer);
   }
 
   @Override
