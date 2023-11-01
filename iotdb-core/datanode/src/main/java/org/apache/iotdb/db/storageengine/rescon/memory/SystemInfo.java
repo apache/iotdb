@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
@@ -54,9 +55,12 @@ public class SystemInfo {
   private Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
-  private AtomicLong compactionMemoryCost = new AtomicLong(0L);
+  private final AtomicLong compactionMemoryCost = new AtomicLong(0L);
+  private final AtomicLong seqInnerSpaceCompactionMemoryCost = new AtomicLong(0L);
+  private final AtomicLong unseqInnerSpaceCompactionMemoryCost = new AtomicLong(0L);
+  private final AtomicLong crossSpaceCompactionMemoryCost = new AtomicLong(0L);
 
-  private AtomicInteger compactionFileNumCost = new AtomicInteger(0);
+  private final AtomicInteger compactionFileNumCost = new AtomicInteger(0);
 
   private int totalFileLimitForCrossTask = config.getTotalFileLimitForCrossTask();
 
@@ -213,7 +217,7 @@ public class SystemInfo {
     return true;
   }
 
-  public boolean addCompactionMemoryCost(long memoryCost, long timeOutInSecond)
+  public boolean addCompactionMemoryCost(CompactionTaskType taskType, long memoryCost, long timeOutInSecond)
       throws InterruptedException, CompactionMemoryNotEnoughException {
     if (memoryCost > memorySizeForCompaction) {
       // required memory cost is greater than the total memory budget for compaction
@@ -237,14 +241,39 @@ public class SystemInfo {
       Thread.sleep(100);
       originSize = this.compactionMemoryCost.get();
     }
+    switch (taskType) {
+      case INNER_SEQ:
+        seqInnerSpaceCompactionMemoryCost.addAndGet(memoryCost);
+        break;
+      case INNER_UNSEQ:
+        unseqInnerSpaceCompactionMemoryCost.addAndGet(memoryCost);
+        break;
+      case CROSS:
+        crossSpaceCompactionMemoryCost.addAndGet(memoryCost);
+        break;
+      default:
+    }
     return true;
   }
 
-  public synchronized void resetCompactionMemoryCost(long compactionMemoryCost) {
+  public synchronized void resetCompactionMemoryCost(CompactionTaskType taskType, long compactionMemoryCost) {
     if (!config.isEnableCompactionMemControl()) {
       return;
     }
     this.compactionMemoryCost.addAndGet(-compactionMemoryCost);
+    switch (taskType) {
+      case INNER_SEQ:
+        seqInnerSpaceCompactionMemoryCost.addAndGet(-compactionMemoryCost);
+        break;
+      case INNER_UNSEQ:
+        unseqInnerSpaceCompactionMemoryCost.addAndGet(-compactionMemoryCost);
+        break;
+      case CROSS:
+        crossSpaceCompactionMemoryCost.addAndGet(-compactionMemoryCost);
+        break;
+      default:
+        break;
+    }
   }
 
   public synchronized void decreaseCompactionFileNumCost(int fileNum) {
@@ -284,9 +313,20 @@ public class SystemInfo {
     return totalFileLimitForCrossTask;
   }
 
-  @TestOnly
   public AtomicLong getCompactionMemoryCost() {
     return compactionMemoryCost;
+  }
+
+  public AtomicLong getSeqInnerSpaceCompactionMemoryCost() {
+    return seqInnerSpaceCompactionMemoryCost;
+  }
+
+  public AtomicLong getUnseqInnerSpaceCompactionMemoryCost() {
+    return unseqInnerSpaceCompactionMemoryCost;
+  }
+
+  public AtomicLong getCrossSpaceCompactionMemoryCost() {
+    return crossSpaceCompactionMemoryCost;
   }
 
   @TestOnly

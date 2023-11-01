@@ -68,6 +68,8 @@ public enum Metric {
   DATA_WRITTEN("data_written"),
   DATA_READ("data_read"),
   COMPACTION_TASK_COUNT("compaction_task_count"),
+  COMPACTION_TASK_MEMORY("compaction_task_memory"),
+  COMPACTION_TASK_MEMORY_DISTRIBUTION("compaction_task_memory"),
   // schema engine related
   MEM("mem"),
   CACHE("cache"),
