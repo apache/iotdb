@@ -56,12 +56,15 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
@@ -94,15 +97,45 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
 
     validator.validate(
-        empty ->
-            !(pipeConfig.getPipeAirGapReceiverEnabled()
-                    && (givenNodeUrls.contains(
-                        new TEndPoint(
-                            ioTDBConfig.getRpcAddress(), pipeConfig.getPipeAirGapReceiverPort())))
-                || givenNodeUrls.contains(
-                    new TEndPoint("127.0.0.1", pipeConfig.getPipeAirGapReceiverPort()))
-                || givenNodeUrls.contains(
-                    new TEndPoint("0.0.0.0", pipeConfig.getPipeAirGapReceiverPort()))),
+        empty -> {
+          // Ensure the sink doesn't point to the air gap receiver on DataNode itself
+
+          if (!pipeConfig.getPipeAirGapReceiverEnabled()) {
+            return true;
+          }
+
+          // Check internal and external, IPv4 and IPv6 network addresses
+          HashSet<String> selfAddresses =
+              Arrays.stream(InetAddress.getAllByName(InetAddress.getLocalHost().getHostName()))
+                  .map(InetAddress::getHostAddress)
+                  .collect(Collectors.toCollection(HashSet::new));
+          // Check IPv4 and IPv6 loopback address 127.0.0.1 and 0.0.0.0.0.0.0.1
+          selfAddresses.addAll(
+              Arrays.stream(InetAddress.getAllByName("localhost"))
+                  .map(InetAddress::getHostAddress)
+                  .collect(Collectors.toCollection(HashSet::new)));
+          // Check general address 0.0.0.0
+          selfAddresses.add("0.0.0.0");
+
+          for (TEndPoint endPoint : givenNodeUrls) {
+            if (endPoint.getPort() != pipeConfig.getPipeAirGapReceiverPort()) {
+              continue;
+            }
+
+            // The specified receiver addresses, Effective for ip and host name
+            HashSet<String> receiverAddresses =
+                Arrays.stream(InetAddress.getAllByName(endPoint.getIp()))
+                    .map(InetAddress::getHostAddress)
+                    .collect(Collectors.toCollection(HashSet::new));
+            receiverAddresses.retainAll(selfAddresses);
+
+            if (!receiverAddresses.isEmpty()) {
+              return false;
+            }
+          }
+
+          return true;
+        },
         String.format(
             "One of the endpoints %s of the receivers is pointing back to the air gap receiver %s on sender itself",
             givenNodeUrls,

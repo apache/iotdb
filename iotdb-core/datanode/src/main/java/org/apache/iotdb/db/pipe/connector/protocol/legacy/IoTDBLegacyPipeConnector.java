@@ -60,10 +60,12 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
@@ -122,11 +124,41 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
             parameters.hasAttribute(SINK_IOTDB_IP_KEY),
             parameters.hasAttribute(SINK_IOTDB_PORT_KEY))
         .validate(
-            empty ->
-                !(givenNodeUrls.contains(
-                        new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort()))
-                    || givenNodeUrls.contains(new TEndPoint("127.0.0.1", ioTDBConfig.getRpcPort()))
-                    || givenNodeUrls.contains(new TEndPoint("0.0.0.0", ioTDBConfig.getRpcPort()))),
+            empty -> {
+              // Ensure the sink doesn't point to the legacy receiver on DataNode itself
+
+              // Check internal and external, IPv4 and IPv6 network addresses
+              HashSet<String> selfAddresses =
+                  Arrays.stream(InetAddress.getAllByName(InetAddress.getLocalHost().getHostName()))
+                      .map(InetAddress::getHostAddress)
+                      .collect(Collectors.toCollection(HashSet::new));
+              // Check IPv4 and IPv6 loopback address 127.0.0.1 and 0.0.0.0.0.0.0.1
+              selfAddresses.addAll(
+                  Arrays.stream(InetAddress.getAllByName("localhost"))
+                      .map(InetAddress::getHostAddress)
+                      .collect(Collectors.toCollection(HashSet::new)));
+              // Check general address 0.0.0.0
+              selfAddresses.add("0.0.0.0");
+
+              for (TEndPoint endPoint : givenNodeUrls) {
+                if (endPoint.getPort() != ioTDBConfig.getRpcPort()) {
+                  continue;
+                }
+
+                // The specified receiver addresses, Effective for ip and host name
+                HashSet<String> receiverAddresses =
+                    Arrays.stream(InetAddress.getAllByName(endPoint.getIp()))
+                        .map(InetAddress::getHostAddress)
+                        .collect(Collectors.toCollection(HashSet::new));
+                receiverAddresses.retainAll(selfAddresses);
+
+                if (!receiverAddresses.isEmpty()) {
+                  return false;
+                }
+              }
+
+              return true;
+            },
             String.format(
                 "One of the endpoints %s of the receivers is pointing back to the legacy receiver on sender %s itself",
                 givenNodeUrls,
