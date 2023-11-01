@@ -263,7 +263,11 @@ public abstract class CacheManager implements ICacheManager {
     CacheEntry cacheEntry = getCacheEntry(node);
     cacheEntry.setVolatile(false);
     container.moveMNodeToCache(node.getName());
-    addToNodeCache(cacheEntry, node);
+    if (!node.isMeasurement() && getCachedMNodeContainer(node).hasChildrenInBuffer()) {
+      nodeBuffer.put(cacheEntry, node);
+    } else {
+      addToNodeCache(cacheEntry, node);
+    }
   }
 
   /**
@@ -365,13 +369,7 @@ public abstract class CacheManager implements ICacheManager {
           getCachedMNodeContainer(node).getChildrenBufferIterator();
       if (childrenBufferIterator.hasNext()) {
         nextMNode = node;
-        // after written to disk, the children will be moved to container.cache,
-        // thus they should be stored temporarily for rest iteration
-        List<ICachedMNode> bufferedChildren = new ArrayList<>();
-        while (childrenBufferIterator.hasNext()) {
-          bufferedChildren.add(childrenBufferIterator.next());
-        }
-        childrenBufferIteratorStack.push(bufferedChildren.iterator());
+        childrenBufferIteratorStack.push(childrenBufferIterator);
         return true;
       } else {
         // the subtree may be deleted, thus no need to flush it, add the ancestors back to cache
@@ -633,6 +631,8 @@ public abstract class CacheManager implements ICacheManager {
     private IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode;
     private Map<CacheEntry, ICachedMNode>[] maps = new Map[MAP_NUM];
 
+    private Map<Integer, NodeBufferIterator> currentIteratorMap = new ConcurrentHashMap<>();
+
     NodeBuffer() {
       for (int i = 0; i < MAP_NUM; i++) {
         maps[i] = new ConcurrentHashMap<>();
@@ -649,6 +649,11 @@ public abstract class CacheManager implements ICacheManager {
 
     void put(CacheEntry cacheEntry, ICachedMNode node) {
       maps[getLoc(cacheEntry)].put(cacheEntry, node);
+      if (!currentIteratorMap.isEmpty()) {
+        for (NodeBufferIterator nodeBufferIterator : currentIteratorMap.values()) {
+          nodeBufferIterator.checkHasNew(getLoc(cacheEntry));
+        }
+      }
     }
 
     void remove(CacheEntry cacheEntry) {
@@ -675,49 +680,73 @@ public abstract class CacheManager implements ICacheManager {
     }
 
     Iterator<ICachedMNode> iterator() {
-      return new Iterator<ICachedMNode>() {
+      NodeBufferIterator iterator = new NodeBufferIterator();
+      currentIteratorMap.put(iterator.hashCode, iterator);
+      return iterator;
+    }
 
-        int mapIndex = 0;
-        Iterator<ICachedMNode> currentIterator = maps[0].values().iterator();
+    private class NodeBufferIterator implements Iterator<ICachedMNode> {
+      int mapIndex = 0;
+      Iterator<ICachedMNode> currentIterator = maps[0].values().iterator();
 
-        ICachedMNode nextNode = null;
+      ICachedMNode nextNode = null;
 
-        @Override
-        public boolean hasNext() {
-          if (nextNode == null) {
+      boolean hasNew = false;
+
+      private final int hashCode = super.hashCode();
+
+      @Override
+      public boolean hasNext() {
+        if (nextNode == null) {
+          tryGetNext();
+          if (nextNode == null && hasNew) {
+            hasNew = false;
+            mapIndex = 0;
+            currentIterator = maps[0].values().iterator();
             tryGetNext();
           }
-          return nextNode != null;
+        }
+        if (nextNode == null) {
+          currentIteratorMap.remove(hashCode);
+          return false;
+        } else {
+          return true;
+        }
+      }
+
+      @Override
+      public ICachedMNode next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        ICachedMNode result = nextNode;
+        nextNode = null;
+        return result;
+      }
+
+      private void tryGetNext() {
+        if (mapIndex >= maps.length) {
+          return;
         }
 
-        @Override
-        public ICachedMNode next() {
-          if (!hasNext()) {
-            throw new NoSuchElementException();
-          }
-          ICachedMNode result = nextNode;
-          nextNode = null;
-          return result;
-        }
+        while (!currentIterator.hasNext()) {
+          currentIterator = null;
 
-        private void tryGetNext() {
-          if (mapIndex >= maps.length) {
+          mapIndex++;
+          if (mapIndex == maps.length) {
             return;
           }
-
-          while (!currentIterator.hasNext()) {
-            currentIterator = null;
-
-            mapIndex++;
-            if (mapIndex == maps.length) {
-              return;
-            }
-            currentIterator = maps[mapIndex].values().iterator();
-          }
-
-          nextNode = currentIterator.next();
+          currentIterator = maps[mapIndex].values().iterator();
         }
-      };
+
+        nextNode = currentIterator.next();
+      }
+
+      private void checkHasNew(int index) {
+        if (mapIndex >= index) {
+          hasNew = true;
+        }
+      }
     }
   }
 }
