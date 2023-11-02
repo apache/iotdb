@@ -65,7 +65,6 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
   private final IStateMachine applicationStateMachine;
-  private final IStateMachine.RetryPolicy retryPolicy;
   private final SnapshotStorage snapshotStorage;
   private final RaftGroupId groupId;
   private final ConsensusGroupId consensusGroupId;
@@ -84,10 +83,6 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     this.canStaleRead = canStaleRead;
     this.groupId = id;
     this.consensusGroupId = Utils.fromRaftGroupIdToConsensusGroupId(id);
-    retryPolicy =
-        applicationStateMachine instanceof IStateMachine.RetryPolicy
-            ? (IStateMachine.RetryPolicy) applicationStateMachine
-            : new IStateMachine.RetryPolicy() {};
     snapshotStorage = new SnapshotStorage(applicationStateMachine, groupId);
     consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(groupId.toString());
     applicationStateMachine.start();
@@ -134,7 +129,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     RaftProtos.LogEntryProto log = trx.getLogEntry();
     updateLastAppliedTermIndex(log.getTerm(), log.getIndex());
 
-    IConsensusRequest applicationRequest;
+    final IConsensusRequest applicationRequest;
 
     // if this server is leader
     // it will first try to obtain applicationRequest from transaction context
@@ -148,37 +143,16 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
           new ByteBufferConsensusRequest(
               log.getStateMachineLogEntry().getLogData().asReadOnlyByteBuffer());
     }
+    final IConsensusRequest deserializedRequest =
+        applicationStateMachine.deserializeRequest(applicationRequest);
 
-    Message ret = null;
+    Message ret;
     waitUntilSystemAllowApply();
-    TSStatus finalStatus = null;
-    boolean shouldRetry = false;
-    boolean firstTry = true;
     do {
       try {
-        if (!firstTry) {
-          Thread.sleep(retryPolicy.getSleepTime());
-        }
-        IConsensusRequest deserializedRequest =
-            applicationStateMachine.deserializeRequest(applicationRequest);
-
-        TSStatus result = applicationStateMachine.write(deserializedRequest);
-
-        if (firstTry) {
-          finalStatus = result;
-          firstTry = false;
-        } else {
-          finalStatus = retryPolicy.updateResult(finalStatus, result);
-        }
-
-        shouldRetry = retryPolicy.shouldRetry(finalStatus);
-        if (!shouldRetry) {
-          ret = new ResponseMessage(finalStatus);
-          break;
-        }
-      } catch (InterruptedException i) {
-        logger.warn("{} interrupted when retry sleep", this);
-        Thread.currentThread().interrupt();
+        final TSStatus result = applicationStateMachine.write(deserializedRequest);
+        ret = new ResponseMessage(result);
+        break;
       } catch (Throwable rte) {
         logger.error("application statemachine throws a runtime exception: ", rte);
         ret =
@@ -187,12 +161,12 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
                     .setMessage("internal error. statemachine throws a runtime exception: " + rte));
         if (Utils.stallApply()) {
           waitUntilSystemAllowApply();
-          shouldRetry = true;
         } else {
           break;
         }
       }
-    } while (shouldRetry);
+    } while (Utils.stallApply());
+
     if (isLeader) {
       // only record time cost for data region in Performance Overview Dashboard
       if (consensusGroupType == TConsensusGroupType.DataRegion) {
