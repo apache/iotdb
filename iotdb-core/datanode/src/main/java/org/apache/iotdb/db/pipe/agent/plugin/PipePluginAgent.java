@@ -226,7 +226,7 @@ public class PipePluginAgent {
     }
     return (PipeConnector)
         reflect(
-            connectorParameters.getString(
+            connectorParameters.getStringByKeys(
                 PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY));
   }
 
