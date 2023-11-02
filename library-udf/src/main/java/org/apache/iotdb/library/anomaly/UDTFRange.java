@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.library.anomaly;
 
-import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
