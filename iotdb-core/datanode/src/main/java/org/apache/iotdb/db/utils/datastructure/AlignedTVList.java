@@ -1211,17 +1211,25 @@ public abstract class AlignedTVList extends TVList {
 
   public BitMap getRowBitMap() {
     // row exists when any column value exists
-    if (bitMaps == null || bitMaps.contains(null)) {
+    if (bitMaps == null) {
       return null;
+    }
+    for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
+      if (values.get(columnIndex) != null && bitMaps.get(columnIndex) == null) {
+        return null;
+      }
     }
 
     byte[] rowBits = new byte[rowCount / Byte.SIZE + 1];
     for (int row = 0; row < rowCount; row += Byte.SIZE) {
       byte res = (byte) 0xFF;
-      for (List<BitMap> columnBitMaps : bitMaps) {
+      for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
+        List<BitMap> columnBitMaps = bitMaps.get(columnIndex);
         // row exists when any column value exists
         if (columnBitMaps == null || columnBitMaps.get(row / ARRAY_SIZE) == null) {
-          res = 0x00;
+          if (values.get(columnIndex) != null) {
+            res = 0x00;
+          }
           break;
         }
         // set row to null when all column values are null
