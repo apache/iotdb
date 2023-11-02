@@ -275,7 +275,7 @@ public abstract class CacheManager implements ICacheManager {
             return;
           } else if (!node.isDatabase()) {
             // the volatile subtree of this node has been deleted, thus there's no need to flush it
-            // add the node and its ancestors to buffer
+            // add the node and its ancestors to cache
             // if there's flush failure, such node and ancestors will be removed from cache again by
             // #updateCacheStatusAfterFlushFailure
             ICachedMNode tmp = node;
@@ -343,7 +343,7 @@ public abstract class CacheManager implements ICacheManager {
 
         if (node.isMeasurement() || !getCachedMNodeContainer(node).hasChildrenInBuffer()) {
           // there's no volatile subtree under this node, thus there's no need to flush it
-          // add the node and its ancestors to buffer
+          // add the node and its ancestors to cache
           // if there's flush failure, such node and ancestors will be removed from cache again by
           // #updateCacheStatusAfterFlushFailure
           addToNodeCache(cacheEntry, node);
