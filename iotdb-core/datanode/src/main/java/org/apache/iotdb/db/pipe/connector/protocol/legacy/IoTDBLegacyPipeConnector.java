@@ -151,15 +151,16 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
         && parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY)) {
       givenNodeUrls.add(
           new TEndPoint(
-              parameters.getString(CONNECTOR_IOTDB_IP_KEY),
-              parameters.getInt(CONNECTOR_IOTDB_PORT_KEY)));
+              parameters.getStringByKeys(CONNECTOR_IOTDB_IP_KEY),
+              parameters.getIntByKeys(CONNECTOR_IOTDB_PORT_KEY)));
     }
 
     if (parameters.hasAttribute(SINK_IOTDB_IP_KEY)
         && parameters.hasAttribute(SINK_IOTDB_PORT_KEY)) {
       givenNodeUrls.add(
           new TEndPoint(
-              parameters.getString(SINK_IOTDB_IP_KEY), parameters.getInt(SINK_IOTDB_PORT_KEY)));
+              parameters.getStringByKeys(SINK_IOTDB_IP_KEY),
+              parameters.getIntByKeys(SINK_IOTDB_PORT_KEY)));
     }
 
     return givenNodeUrls;
@@ -168,8 +169,8 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    ipAddress = parameters.getString(CONNECTOR_IOTDB_IP_KEY, SINK_IOTDB_IP_KEY);
-    port = parameters.getInt(CONNECTOR_IOTDB_PORT_KEY, SINK_IOTDB_PORT_KEY);
+    ipAddress = parameters.getStringByKeys(CONNECTOR_IOTDB_IP_KEY, SINK_IOTDB_IP_KEY);
+    port = parameters.getIntByKeys(CONNECTOR_IOTDB_PORT_KEY, SINK_IOTDB_PORT_KEY);
 
     user =
         parameters.getStringOrDefault(
