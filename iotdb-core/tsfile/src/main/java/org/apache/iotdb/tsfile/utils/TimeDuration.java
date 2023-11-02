@@ -129,11 +129,9 @@ public class TimeDuration implements Serializable {
     if (isLastDayOfMonth) {
       calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
     }
-    startTime =
-        currPrecision.convert(calendar.getTimeInMillis(), TimeUnit.MILLISECONDS)
-            + getFinerThanMsPart(startTime, currPrecision)
-            + duration.nonMonthDuration;
-    return startTime;
+    return currPrecision.convert(calendar.getTimeInMillis(), TimeUnit.MILLISECONDS)
+        + getFinerThanMsPart(startTime, currPrecision)
+        + duration.nonMonthDuration;
   }
 
   /**
