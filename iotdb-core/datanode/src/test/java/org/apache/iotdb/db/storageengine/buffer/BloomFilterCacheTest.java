@@ -63,7 +63,7 @@ public class BloomFilterCacheTest {
               .concat(File.separator)
               .concat("root.sg" + (i + 1))
               .concat(File.separator)
-              .concat("0")
+              .concat(Integer.toString(i))
               .concat(File.separator)
               .concat("0")
               .concat(File.separator)
@@ -83,6 +83,7 @@ public class BloomFilterCacheTest {
       for (String filePath : pathList) {
         FileUtils.forceDelete(new File(filePath));
       }
+      bloomFilterCache.clear();
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -73,6 +74,7 @@ public class AlignedSeriesTestUtil {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
   }
 
