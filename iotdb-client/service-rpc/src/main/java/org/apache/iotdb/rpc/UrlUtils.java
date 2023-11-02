@@ -21,64 +21,27 @@ package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.net.InetSocketAddress;
-
 /** The UrlUtils */
 public class UrlUtils {
-  private static final Logger logger = LoggerFactory.getLogger(UrlUtils.class);
-  public static final String COLON = ":";
+  private static final String POINT_COLON = ":";
 
   private UrlUtils() {}
 
   /**
-   * Parse TEndPoint from a given TEndPointUrl
+   * Parse TEndPoint from a given TEndPointUrl example:D80:0000:0000:0000:ABAA:0000:00C2:0002:22227
    *
    * @param endPointUrl ip:port
    * @return TEndPoint null if parse error
    */
   public static TEndPoint parseTEndPointIpv4AndIpv6Url(String endPointUrl) {
     TEndPoint endPoint = new TEndPoint();
-    InetSocketAddress address = getSocketAddress(endPointUrl);
-    if (address != null) {
-      endPoint.setIp(address.getHostString());
-      endPoint.setPort(address.getPort());
+    if (endPointUrl.contains(POINT_COLON)) {
+      int i = endPointUrl.lastIndexOf(POINT_COLON);
+      String port = endPointUrl.substring(endPointUrl.lastIndexOf(POINT_COLON) + 1);
+      String ip = endPointUrl.substring(0, i);
+      endPoint.setIp(ip);
+      endPoint.setPort(Integer.parseInt(port));
     }
     return endPoint;
-  }
-
-  /**
-   * Generate address from url, support ipv4 and ipv6
-   *
-   * @param url example:D80:0000:0000:0000:ABAA:0000:00C2:0002:22227
-   * @return socket address
-   */
-  private static InetSocketAddress getSocketAddress(String url) {
-    String ip = null;
-    String port = null;
-    InetSocketAddress address = null;
-    if (url.contains(COLON)) {
-      int i;
-      if (url.contains("%")) {
-        i = url.lastIndexOf("%");
-        url = url.trim();
-      } else {
-        i = url.lastIndexOf(COLON);
-      }
-      port = url.substring(url.lastIndexOf(COLON) + 1);
-      ip = url.substring(0, i);
-
-      try {
-        address = new InetSocketAddress(ip, Integer.parseInt(port));
-      } catch (NumberFormatException e) {
-        logger.warn("Bad url: {}", url);
-      }
-    } else {
-      logger.warn("Bad url: {}", url);
-    }
-
-    return address;
   }
 }

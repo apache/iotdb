@@ -35,7 +35,6 @@ import java.util.StringJoiner;
 public class NodeUrlUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(NodeUrlUtils.class);
-  public static final String COLON = ":";
 
   /**
    * Convert TEndPoint to TEndPointUrl
