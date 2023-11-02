@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -77,7 +76,7 @@ public class ChunkCache {
             .weigher(
                 (Weigher<ChunkCacheKey, Chunk>)
                     (key, chunk) ->
-                        (int) (key.getRetainedSizeInBytes() + RamUsageEstimator.sizeOf(chunk)))
+                        (int) (key.getRetainedSizeInBytes() + chunk.getRetainedSizeInBytes()))
             .recordStats()
             .build(
                 key -> {
