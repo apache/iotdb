@@ -75,17 +75,17 @@ public class IoTDBCountTimeAlignedDeviceIT {
         "INSERT INTO root.aligned.having.d1(time, s1, s2) ALIGNED VALUES(0,0,null), (1,null,1), (2,null,2), (4,4,null), (5,5,5), (7,null,7), (8,8,8), (9,null,9);",
         "INSERT INTO root.aligned.having.d2(time, s1, s2) ALIGNED VALUES(0,null,0), (1,1,null), (2,2,null), (4,null,4), (5,5,5), (7,7,null), (8,8,8), (9,9,null);",
 
-          // test delete
-          "CREATE ALIGNED TIMESERIES root.aligned.delete.d1(s1 INT32, s2 INT32);",
-          "CREATE ALIGNED TIMESERIES root.aligned.delete.d2(s1 INT32, s2 INT32);",
-          "INSERT INTO root.aligned.delete.d1(time, s1, s2) ALIGNED VALUES(1, 1, null), (2, null, 2);",
-          "INSERT INTO root.aligned.delete.d2(time, s1, s2) ALIGNED VALUES(1, null, 1);",
-          "DELETE FROM root.aligned.db.** where time < 2;",
-          // test null
-          "create aligned timeseries root.aligned.null.d1(s1 double,s2 double,s3 double);",
-          "insert into root.aligned.null.d1(time,s1) values(1,null);",
-          "insert into root.aligned.null.d1(time,s1) values(2,null);",
-          "insert into root.aligned.null.d1(time,s1) values(3,null);",
+        // test delete
+        "CREATE ALIGNED TIMESERIES root.aligned.delete.d1(s1 INT32, s2 INT32);",
+        "CREATE ALIGNED TIMESERIES root.aligned.delete.d2(s1 INT32, s2 INT32);",
+        "INSERT INTO root.aligned.delete.d1(time, s1, s2) ALIGNED VALUES(1, 1, null), (2, null, 2);",
+        "INSERT INTO root.aligned.delete.d2(time, s1, s2) ALIGNED VALUES(1, null, 1);",
+        "DELETE FROM root.aligned.db.** where time < 2;",
+        // test null
+        "create aligned timeseries root.aligned.null.d1(s1 double,s2 double,s3 double);",
+        "insert into root.aligned.null.d1(time,s1) values(1,null);",
+        "insert into root.aligned.null.d1(time,s1) values(2,null);",
+        "insert into root.aligned.null.d1(time,s1) values(3,null);",
       };
 
   @BeforeClass
@@ -319,7 +319,8 @@ public class IoTDBCountTimeAlignedDeviceIT {
     // align by time
     String[] expectedHeader = new String[] {"count_time(*)"};
     String[] retArray = new String[] {"1,"};
-    resultSetEqualTest("SELECT COUNT_TIME(*) FROM root.aligned.delete.**;", expectedHeader, retArray);
+    resultSetEqualTest(
+        "SELECT COUNT_TIME(*) FROM root.aligned.delete.**;", expectedHeader, retArray);
 
     expectedHeader = new String[] {"count_time(*)"};
     retArray = new String[] {"1,"};
@@ -332,7 +333,9 @@ public class IoTDBCountTimeAlignedDeviceIT {
     expectedHeader = new String[] {"Device,count_time(*)"};
     retArray = new String[] {"root.aligned.delete.d1,1,", "root.aligned.delete.d2,0,"};
     resultSetEqualTest(
-        "select count_time(*) from root.aligned.delete.** align by device;", expectedHeader, retArray);
+        "select count_time(*) from root.aligned.delete.** align by device;",
+        expectedHeader,
+        retArray);
 
     expectedHeader = new String[] {"Device,count_time(*)"};
     retArray = new String[] {"root.aligned.delete.d1,1,", "root.aligned.delete.d2,0,"};
