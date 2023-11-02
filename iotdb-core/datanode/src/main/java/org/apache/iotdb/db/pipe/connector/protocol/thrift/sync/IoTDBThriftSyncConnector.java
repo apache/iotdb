@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
@@ -59,11 +60,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -95,38 +94,11 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
         empty -> {
           try {
             // Ensure the sink doesn't point to the thrift receiver on DataNode itself
-
-            // Check internal and external, IPv4 and IPv6 network addresses
-            HashSet<String> selfAddresses =
-                Arrays.stream(InetAddress.getAllByName(InetAddress.getLocalHost().getHostName()))
-                    .map(InetAddress::getHostAddress)
-                    .collect(Collectors.toCollection(HashSet::new));
-            // Check IPv4 and IPv6 loopback address 127.0.0.1 and 0.0.0.0.0.0.0.1
-            selfAddresses.addAll(
-                Arrays.stream(InetAddress.getAllByName("localhost"))
-                    .map(InetAddress::getHostAddress)
-                    .collect(Collectors.toCollection(HashSet::new)));
-            // Check general address 0.0.0.0
-            selfAddresses.add("0.0.0.0");
-
-            for (TEndPoint endPoint : givenNodeUrls) {
-              if (endPoint.getPort() != ioTDBConfig.getRpcPort()) {
-                continue;
-              }
-
-              // The specified receiver addresses, Effective for ip and host name
-              HashSet<String> receiverAddresses =
-                  Arrays.stream(InetAddress.getAllByName(endPoint.getIp()))
-                      .map(InetAddress::getHostAddress)
-                      .collect(Collectors.toCollection(HashSet::new));
-              receiverAddresses.retainAll(selfAddresses);
-
-              if (!receiverAddresses.isEmpty()) {
-                return false;
-              }
-            }
-
-            return true;
+            return !NodeUrlUtils.containsLocalAddress(
+                givenNodeUrls.stream()
+                    .filter(tEndPoint -> tEndPoint.getPort() == ioTDBConfig.getRpcPort())
+                    .map(TEndPoint::getIp)
+                    .collect(Collectors.toList()));
           } catch (UnknownHostException e) {
             LOGGER.warn("Unknown host when checking pipe sink IP.", e);
             return false;
