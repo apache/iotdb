@@ -19,14 +19,21 @@
 
 package org.apache.iotdb.library.string;
 
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
+
+import java.io.IOException;
+import java.util.regex.Matcher;
 
 /** This function splits string from an input series according to given regex. */
 public class UDTFRegexSplit implements UDTF {
@@ -39,7 +46,7 @@ public class UDTFRegexSplit implements UDTF {
       throws Exception {
     regex = udfParameters.getString("regex");
     index = udfParameters.getIntOrDefault("index", -1);
-    udtfConfigurations.setAccessStrategy(new RowByRowAccessStrategy());
+    udtfConfigurations.setAccessStrategy(new MappableRowByRowAccessStrategy());
     if (index == -1) {
       udtfConfigurations.setOutputDataType(Type.INT32);
     } else {
@@ -55,6 +62,61 @@ public class UDTFRegexSplit implements UDTF {
     } else {
       if (index < splitResult.length) {
         collector.putString(row.getTime(), splitResult[index]);
+      }
+    }
+  }
+
+  @Override
+  public Object transform(Row row) throws IOException {
+    if (row.isNull(0)) {
+      return null;
+    }
+    String str = row.getString(0);
+    String[] splitResult = str.split(regex);
+
+    if (index == -1) {
+      return splitResult.length;
+    } else {
+      if (index < splitResult.length) {
+        return splitResult[index];
+      }
+
+      return null;
+    }
+  }
+
+  @Override
+  public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
+    Binary[] inputs = columns[0].getBinaries();
+    boolean[] isNulls = columns[0].isNull();
+
+    int count = columns[0].getPositionCount();
+
+    if (index == -1) {
+      for (int i = 0; i < count; i++) {
+        if (isNulls[i]) {
+          builder.appendNull();
+        } else {
+          String str = inputs[i].toString();
+
+          String[] splitResult = str.split(regex);
+          builder.writeInt(splitResult.length);
+        }
+      }
+    } else {
+      for (int i = 0; i < count; i++) {
+        if (isNulls[i]) {
+          builder.appendNull();
+        } else {
+          String str = inputs[i].toString();
+
+          String[] splitResult = str.split(regex);
+          if (index < splitResult.length) {
+            builder.writeBinary(new Binary(splitResult[index].getBytes()));
+          } else {
+            builder.appendNull();
+          }
+        }
       }
     }
   }
