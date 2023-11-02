@@ -50,12 +50,12 @@ public class StampedWriterPreferredLock {
   private final Lock lock = new ReentrantLock();
   private final Condition okToRead = lock.newCondition();
   private final Condition okToWrite = lock.newCondition();
-  private long stampAllocator = 0;
+  private volatile long stampAllocator = 0;
 
   private final Map<Long, Integer> readCnt = new HashMap<>();
-  private int readWait = 0;
-  private int writeCnt = 0;
-  private int writeWait = 0;
+  private volatile int readWait = 0;
+  private volatile int writeCnt = 0;
+  private volatile int writeWait = 0;
 
   private final ThreadLocal<Long> sharedOwnerStamp = new ThreadLocal<>();
   /**
@@ -115,7 +115,7 @@ public class StampedWriterPreferredLock {
    * @return read lock stamp
    */
   private long acquireReadLockStamp(boolean prior) {
-    if ((prior ? writeCnt : writeCnt + writeWait) > 0) {
+    while ((prior ? writeCnt : writeCnt + writeWait) > 0) {
       readWait++;
       try {
         okToRead.await();
