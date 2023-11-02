@@ -65,6 +65,31 @@ public class UtilsTest {
     assertEquals(params.getPassword(), userPwd);
   }
 
+  @Test
+  public void testParseIPV6URL() throws IoTDBURLException {
+    String userName = "test";
+    String userPwd = "test";
+    String host1 =
+        "AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE";
+    int port = 6667;
+    Properties properties = new Properties();
+    properties.setProperty(Config.AUTH_USER, userName);
+    properties.setProperty(Config.AUTH_PASSWORD, userPwd);
+    IoTDBConnectionParams params =
+        Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host1, port), properties);
+    assertEquals(host1, params.getHost());
+    assertEquals(port, params.getPort());
+    assertEquals(userName, params.getUsername());
+    assertEquals(userPwd, params.getPassword());
+
+    params =
+        Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host1, port), properties);
+    assertEquals(params.getHost(), host1);
+    assertEquals(params.getPort(), port);
+    assertEquals(params.getUsername(), userName);
+    assertEquals(params.getPassword(), userPwd);
+  }
+
   @Test(expected = IoTDBURLException.class)
   public void testParseWrongUrl1() throws IoTDBURLException {
     Properties properties = new Properties();

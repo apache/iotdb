@@ -59,4 +59,41 @@ public class NodeUrlUtilsTest {
     Assert.assertEquals(configNodeUrls, NodeUrlUtils.convertTConfigNodeUrls(configNodeLocations));
     Assert.assertEquals(configNodeLocations, NodeUrlUtils.parseTConfigNodeUrls(configNodeUrls));
   }
+
+  @Test
+  public void parseAndConvertTEndPointUrlsIPV4AndIPV6Test() throws BadNodeUrlException {
+    final List<TEndPoint> endPoints =
+        Arrays.asList(
+            new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:2345", 6667),
+            new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:2345", 6668),
+            new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:2345", 6669));
+    final String endPointUrls =
+        "AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:2345:6667,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:2345:6668,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:2345:6669";
+
+    Assert.assertEquals(endPointUrls, NodeUrlUtils.convertTEndPointUrls(endPoints));
+    Assert.assertEquals(endPoints, NodeUrlUtils.parseTEndPointUrls(endPointUrls));
+  }
+
+  @Test
+  public void parseAndConvertTConfigNodeUrlsIPV4AndIPV6Test() throws BadNodeUrlException {
+    final List<TConfigNodeLocation> configNodeLocations =
+        Arrays.asList(
+            new TConfigNodeLocation(
+                0,
+                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE", 22277),
+                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE", 22278)),
+            new TConfigNodeLocation(
+                1,
+                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE", 22279),
+                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE", 22280)),
+            new TConfigNodeLocation(
+                2,
+                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE", 22281),
+                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE", 22282)));
+    final String configNodeUrls =
+        "0,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:22277,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:22278;1,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:22279,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:22280;2,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:22281,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:22282";
+
+    Assert.assertEquals(configNodeUrls, NodeUrlUtils.convertTConfigNodeUrls(configNodeLocations));
+    Assert.assertEquals(configNodeLocations, NodeUrlUtils.parseTConfigNodeUrls(configNodeUrls));
+  }
 }

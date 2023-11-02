@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.rpc.UrlUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,7 @@ import java.util.StringJoiner;
 public class NodeUrlUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(NodeUrlUtils.class);
+  public static final String COLON = ":";
 
   /**
    * Convert TEndPoint to TEndPointUrl
@@ -70,21 +72,7 @@ public class NodeUrlUtils {
    * @throws BadNodeUrlException Throw when unable to parse
    */
   public static TEndPoint parseTEndPointUrl(String endPointUrl) throws BadNodeUrlException {
-    String[] split = endPointUrl.split(":");
-    if (split.length != 2) {
-      logger.warn("Illegal endpoint url format: {}", endPointUrl);
-      throw new BadNodeUrlException(String.format("Bad endpoint url: %s", endPointUrl));
-    }
-    String ip = split[0];
-    TEndPoint result;
-    try {
-      int port = Integer.parseInt(split[1]);
-      result = new TEndPoint(ip, port);
-    } catch (NumberFormatException e) {
-      logger.warn("Illegal endpoint url format: {}", endPointUrl);
-      throw new BadNodeUrlException(String.format("Bad node url: %s", endPointUrl));
-    }
-    return result;
+    return UrlUtils.parseTEndPointIpv4AndIpv6Url(endPointUrl);
   }
 
   /**
@@ -98,7 +86,7 @@ public class NodeUrlUtils {
       throws BadNodeUrlException {
     List<TEndPoint> result = new ArrayList<>();
     for (String url : endPointUrls) {
-      result.add(parseTEndPointUrl(url));
+      result.add(UrlUtils.parseTEndPointIpv4AndIpv6Url(url));
     }
     return result;
   }
@@ -157,7 +145,9 @@ public class NodeUrlUtils {
       throw new BadNodeUrlException(String.format("Bad node url: %s", configNodeUrl));
     }
     return new TConfigNodeLocation(
-        Integer.parseInt(split[0]), parseTEndPointUrl(split[1]), parseTEndPointUrl(split[2]));
+        Integer.parseInt(split[0]),
+        UrlUtils.parseTEndPointIpv4AndIpv6Url(split[1]),
+        UrlUtils.parseTEndPointIpv4AndIpv6Url(split[2]));
   }
 
   /**
