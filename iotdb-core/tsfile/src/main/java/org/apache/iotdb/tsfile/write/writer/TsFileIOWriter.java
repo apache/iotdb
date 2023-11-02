@@ -75,7 +75,7 @@ public class TsFileIOWriter implements AutoCloseable {
 
   protected static final byte[] MAGIC_STRING_BYTES;
   public static final byte VERSION_NUMBER_BYTE;
-  protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+  protected static final TSFileConfig TS_FILE_CONFIG = TSFileDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(TsFileIOWriter.class);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
 
@@ -379,13 +379,11 @@ public class TsFileIOWriter implements AutoCloseable {
     Path currentPath = null;
     MetadataIndexNode currentIndexNode =
         new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
-    TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
     int seriesIdxForCurrDevice = 0;
     BloomFilter filter =
         BloomFilter.getEmptyBloomFilter(
             TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(), pathCount);
 
-    int indexCount = 0;
     while (tsmIterator.hasNext()) {
       // read in all chunk metadata of one series
       // construct the timeseries metadata for this series
@@ -393,7 +391,6 @@ public class TsFileIOWriter implements AutoCloseable {
       TimeseriesMetadata timeseriesMetadata = timeseriesMetadataPair.right;
       currentPath = timeseriesMetadataPair.left;
 
-      indexCount++;
       // build bloom filter
       filter.add(currentPath.getFullPath());
       // construct the index tree node for the series
@@ -412,7 +409,7 @@ public class TsFileIOWriter implements AutoCloseable {
         seriesIdxForCurrDevice = 0;
       }
 
-      if (seriesIdxForCurrDevice % config.getMaxDegreeOfIndexNode() == 0) {
+      if (seriesIdxForCurrDevice % TS_FILE_CONFIG.getMaxDegreeOfIndexNode() == 0) {
         if (currentIndexNode.isFull()) {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
           currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);

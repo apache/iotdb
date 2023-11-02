@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.openjdk.jol.info.ClassLayout;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -35,10 +37,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static io.airlift.slice.SizeOf.sizeOfCharArray;
+import static io.airlift.slice.SizeOf.sizeOfObjectArray;
+
 public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
-  /** used for old version tsfile. */
-  private long startOffsetOfChunkMetaDataList;
+  private static final int INSTANCE_SIZE =
+      ClassLayout.parseClass(TimeseriesMetadata.class).instanceSize()
+          + ClassLayout.parseClass(String.class).instanceSize()
+          + ClassLayout.parseClass(TSDataType.class).instanceSize()
+          + ClassLayout.parseClass(ArrayList.class).instanceSize();
 
   /**
    * 0 means this time series has only one chunk, no need to save the statistic again in chunk
@@ -186,14 +194,6 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     this.timeSeriesMetadataType = timeSeriesMetadataType;
   }
 
-  public long getOffsetOfChunkMetaDataList() {
-    return startOffsetOfChunkMetaDataList;
-  }
-
-  public void setOffsetOfChunkMetaDataList(long position) {
-    this.startOffsetOfChunkMetaDataList = position;
-  }
-
   public String getMeasurementId() {
     return measurementId;
   }
@@ -276,12 +276,25 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     this.chunkMetadataList = new ArrayList<>(chunkMetadataList);
   }
 
+  // it's only used for query cache, field chunkMetadataListBuffer and chunkMetadataLoader should
+  // always be null
+  public long getRetainedSizeInBytes() {
+    long retainedSize = INSTANCE_SIZE + sizeOfCharArray(measurementId.length());
+    int length = chunkMetadataList == null ? 0 : chunkMetadataList.size();
+    if (length > 0) {
+      retainedSize += sizeOfObjectArray(length);
+      for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+        retainedSize +=
+            chunkMetadata == null ? 0 : ((ChunkMetadata) chunkMetadata).getRetainedSizeInBytes();
+      }
+    }
+    return retainedSize;
+  }
+
   @Override
   public String toString() {
     return "TimeseriesMetadata{"
-        + "startOffsetOfChunkMetaDataList="
-        + startOffsetOfChunkMetaDataList
-        + ", timeSeriesMetadataType="
+        + "timeSeriesMetadataType="
         + timeSeriesMetadataType
         + ", chunkMetaDataListDataSize="
         + chunkMetaDataListDataSize

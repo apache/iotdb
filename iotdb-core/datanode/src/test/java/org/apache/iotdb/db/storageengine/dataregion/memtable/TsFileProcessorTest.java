@@ -231,10 +231,8 @@ public class TsFileProcessorTest {
         assertEquals(entry1.getValue().size(), entry2.getValue().size());
         for (int i = 0; i < entry1.getValue().size(); i++) {
           ChunkMetadata chunkMetaData = entry1.getValue().get(i);
-          chunkMetaData.setFilePath(filePath);
 
           ChunkMetadata chunkMetadataRestore = entry2.getValue().get(i);
-          chunkMetadataRestore.setFilePath(filePath);
 
           assertEquals(chunkMetaData, chunkMetadataRestore);
         }

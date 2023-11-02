@@ -119,7 +119,6 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
   public AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList) {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
-    timeTimeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setMeasurementId("");
     timeTimeSeriesMetadata.setTsDataType(TSDataType.VECTOR);
@@ -131,7 +130,6 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     List<TimeseriesMetadata> valueTimeSeriesMetadataList = new ArrayList<>();
     for (IMeasurementSchema valueChunkMetadata : (partialPath.getSchemaList())) {
       TimeseriesMetadata valueMetadata = new TimeseriesMetadata();
-      valueMetadata.setOffsetOfChunkMetaDataList(-1);
       valueMetadata.setDataSizeOfChunkMetaDataList(-1);
       valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementId());
       valueMetadata.setTsDataType(valueChunkMetadata.getType());
@@ -326,7 +324,6 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     TimeseriesMetadata timeSeriesMetadata = new TimeseriesMetadata();
     timeSeriesMetadata.setMeasurementId(partialPath.getMeasurementSchema().getMeasurementId());
     timeSeriesMetadata.setTsDataType(partialPath.getMeasurementSchema().getType());
-    timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
 
     Statistics<? extends Serializable> seriesStatistics =

@@ -124,7 +124,7 @@ public class TsFileResource {
   /** Minimum index of plans executed within this TsFile. */
   public long minPlanIndex = Long.MAX_VALUE;
 
-  private long version = 0;
+  private TsFileID tsFileID;
 
   private long ramSize;
 
@@ -157,7 +157,9 @@ public class TsFileResource {
 
   private boolean isInsertionCompactionTaskCandidate = true;
 
-  public TsFileResource() {}
+  public TsFileResource() {
+    this.tsFileID = new TsFileID();
+  }
 
   public TsFileResource(TsFileResource other) throws IOException {
     this.file = other.file;
@@ -172,7 +174,7 @@ public class TsFileResource {
     this.fsFactory = other.fsFactory;
     this.maxPlanIndex = other.maxPlanIndex;
     this.minPlanIndex = other.minPlanIndex;
-    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
+    this.tsFileID = other.tsFileID;
     this.tsFileSize = other.tsFileSize;
     this.isSeq = other.isSeq;
     this.tierLevel = other.tierLevel;
@@ -182,7 +184,7 @@ public class TsFileResource {
   /** for sealed TsFile, call setClosed to close TsFileResource */
   public TsFileResource(File file) {
     this.file = file;
-    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
+    this.tsFileID = new TsFileID(file.getAbsolutePath());
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
     this.isSeq = FilePathUtils.isSequence(this.file.getAbsolutePath());
     // This method is invoked when DataNode recovers, so the tierLevel should be calculated when
@@ -199,7 +201,7 @@ public class TsFileResource {
   /** unsealed TsFile, for writter */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
-    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
+    this.tsFileID = new TsFileID(file.getAbsolutePath());
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
     this.processor = processor;
     this.isSeq = processor.isSequence();
@@ -220,7 +222,7 @@ public class TsFileResource {
     this.pathToChunkMetadataListMap = pathToChunkMetadataListMap;
     generatePathToTimeSeriesMetadataMap();
     this.originTsFileResource = originTsFileResource;
-    this.version = originTsFileResource.version;
+    this.tsFileID = originTsFileResource.tsFileID;
     this.isSeq = originTsFileResource.isSeq;
     this.tierLevel = originTsFileResource.tierLevel;
   }
@@ -229,6 +231,7 @@ public class TsFileResource {
   public TsFileResource(
       File file, Map<String, Integer> deviceToIndex, long[] startTimes, long[] endTimes) {
     this.file = file;
+    this.tsFileID = new TsFileID(file.getAbsolutePath());
     this.timeIndex = new DeviceTimeIndex(deviceToIndex, startTimes, endTimes);
   }
 
@@ -368,6 +371,7 @@ public class TsFileResource {
 
   public void setFile(File file) {
     this.file = file;
+    this.tsFileID = new TsFileID(file.getAbsolutePath());
   }
 
   public File getTsFile() {
@@ -837,7 +841,7 @@ public class TsFileResource {
 
   /** make sure Either the deviceToIndex is not empty Or the path contains a partition folder */
   public long getTimePartition() {
-    return timeIndex.getTimePartition(file.getAbsolutePath());
+    return tsFileID.timePartitionId;
   }
 
   /**
@@ -965,11 +969,17 @@ public class TsFileResource {
   }
 
   public void setVersion(long version) {
-    this.version = version;
+    this.tsFileID =
+        new TsFileID(
+            tsFileID.regionId, tsFileID.timePartitionId, version, tsFileID.compactionVersion);
   }
 
   public long getVersion() {
-    return version;
+    return tsFileID.fileVersion;
+  }
+
+  public TsFileID getTsFileID() {
+    return tsFileID;
   }
 
   public void setTimeIndex(ITimeIndex timeIndex) {

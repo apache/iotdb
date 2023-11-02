@@ -141,8 +141,9 @@ public class FileLoaderUtils {
         timeSeriesMetadata =
             TimeSeriesMetadataCache.getInstance()
                 .get(
+                    resource.getTsFilePath(),
                     new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
-                        resource.getTsFilePath(),
+                        resource.getTsFileID(),
                         seriesPath.getDevice(),
                         seriesPath.getMeasurement()),
                     allSensors,
@@ -279,7 +280,8 @@ public class FileLoaderUtils {
     // we should not ignore the non-exist of device in TsFileMetadata
     TimeseriesMetadata timeColumn =
         cache.get(
-            new TimeSeriesMetadataCacheKey(filePath, deviceId, ""),
+            filePath,
+            new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, ""),
             allSensors,
             resource.getTimeIndexType() != 1,
             isDebug);
@@ -299,7 +301,9 @@ public class FileLoaderUtils {
         for (String valueMeasurement : valueMeasurementList) {
           TimeseriesMetadata valueColumn =
               cache.get(
-                  new TimeSeriesMetadataCacheKey(filePath, deviceId, valueMeasurement),
+                  filePath,
+                  new TimeSeriesMetadataCacheKey(
+                      resource.getTsFileID(), deviceId, valueMeasurement),
                   allSensors,
                   resource.getTimeIndexType() != 1,
                   isDebug);

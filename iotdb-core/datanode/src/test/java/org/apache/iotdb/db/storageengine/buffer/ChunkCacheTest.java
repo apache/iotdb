@@ -52,8 +52,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class ChunkCacheTest {
   File tempSGDir;
@@ -97,37 +95,39 @@ public class ChunkCacheTest {
   @Test
   public void testChunkCache() throws IOException {
     TsFileResource tsFileResource = seqResources.get(0);
-    TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
-    List<Path> paths = reader.getAllPaths();
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath())) {
+      List<Path> paths = reader.getAllPaths();
 
-    ChunkMetadata firstChunkMetadata = reader.getChunkMetadataList(paths.get(0)).get(0);
-    firstChunkMetadata.setFilePath(tsFileResource.getTsFilePath());
+      ChunkMetadata firstChunkMetadata = reader.getChunkMetadataList(paths.get(0)).get(0);
 
-    // add cache
-    chunkCache.getAverageSize();
-    Chunk chunk1 = chunkCache.get(firstChunkMetadata);
-    chunkCache.getAverageSize();
+      // add cache
+      Chunk chunk1 =
+          chunkCache.get(
+              new ChunkCache.ChunkCacheKey(
+                  tsFileResource.getTsFilePath(),
+                  tsFileResource.getTsFileID(),
+                  firstChunkMetadata.getOffsetOfChunkHeader()),
+              firstChunkMetadata.getDeleteIntervalList(),
+              firstChunkMetadata.getStatistics(),
+              false);
 
-    ChunkMetadata chunkMetadataKey =
-        new ChunkMetadata("sensor0", TSDataType.DOUBLE, 25, new DoubleStatistics());
-    chunkMetadataKey.setVersion(0);
-    chunkMetadataKey.setFilePath(tsFileResource.getTsFilePath());
+      ChunkMetadata chunkMetadataKey =
+          new ChunkMetadata("sensor0", TSDataType.DOUBLE, 25, new DoubleStatistics());
+      chunkMetadataKey.setVersion(0);
 
-    Assert.assertEquals(chunkMetadataKey, firstChunkMetadata);
-
-    // get cache
-    Chunk chunk2 = chunkCache.get(chunkMetadataKey);
-    Assert.assertEquals(chunk1.getHeader(), chunk2.getHeader());
-    Assert.assertEquals(chunk1.getData(), chunk2.getData());
-
-    try {
-      chunkMetadataKey.setFilePath(null);
-      chunkCache.get(chunkMetadataKey);
-      fail();
-    } catch (NullPointerException e) {
-      assertTrue(true);
+      // get cache
+      Chunk chunk2 =
+          chunkCache.get(
+              new ChunkCache.ChunkCacheKey(
+                  tsFileResource.getTsFilePath(),
+                  tsFileResource.getTsFileID(),
+                  chunkMetadataKey.getOffsetOfChunkHeader()),
+              chunkMetadataKey.getDeleteIntervalList(),
+              chunkMetadataKey.getStatistics(),
+              false);
+      Assert.assertEquals(chunk1.getHeader(), chunk2.getHeader());
+      Assert.assertEquals(chunk1.getData(), chunk2.getData());
     }
-    reader.close();
   }
 
   void prepareSeries() throws MetadataException {

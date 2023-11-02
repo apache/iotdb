@@ -90,7 +90,6 @@ public class AlignedSeriesTestUtil {
       tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
       tsFileResource.setMinPlanIndex(i);
       tsFileResource.setMaxPlanIndex(i);
-      tsFileResource.setVersion(i);
       seqResources.add(tsFileResource);
       prepareFile(sgName, tsFileResource, i * ptNum, ptNum, 0, measurementSchemas);
     }
@@ -101,7 +100,6 @@ public class AlignedSeriesTestUtil {
       tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
       tsFileResource.setMinPlanIndex(i + seqFileNum);
       tsFileResource.setMaxPlanIndex(i + seqFileNum);
-      tsFileResource.setVersion(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareFile(
           sgName,
@@ -117,7 +115,6 @@ public class AlignedSeriesTestUtil {
     tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
     tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
     tsFileResource.setMaxPlanIndex(seqFileNum + unseqFileNum);
-    tsFileResource.setVersion(seqFileNum + unseqFileNum);
     unseqResources.add(tsFileResource);
     prepareFile(sgName, tsFileResource, 0, ptNum * 2, 20000, measurementSchemas);
   }
