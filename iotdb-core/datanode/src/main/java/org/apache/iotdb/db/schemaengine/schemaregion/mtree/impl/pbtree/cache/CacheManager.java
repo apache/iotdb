@@ -308,6 +308,7 @@ public abstract class CacheManager implements ICacheManager {
 
     private void tryGetNext() {
       ICachedMNode node;
+      ICachedMNode tmp;
       CacheEntry cacheEntry;
       while (bufferedNodeIterator.hasNext()) {
         node = bufferedNodeIterator.next();
@@ -321,6 +322,13 @@ public abstract class CacheManager implements ICacheManager {
 
         if (node.isMeasurement() || !getCachedMNodeContainer(node).hasChildrenInBuffer()) {
           addToNodeCache(cacheEntry, node);
+          tmp = node.getParent();
+          while (!tmp.isDatabase()
+              && !isInNodeCache(getCacheEntry(tmp))
+              && !getCachedMNodeContainer(tmp).hasChildrenInBuffer()) {
+            addToNodeCache(getCacheEntry(tmp), tmp);
+            tmp = tmp.getParent();
+          }
         } else {
           // nodes with volatile children should be treated as root of volatile subtree and return
           // for flush
