@@ -64,6 +64,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
+
 public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncConnector.class);
@@ -72,6 +76,10 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   private final List<IoTDBThriftSyncConnectorClient> clients = new ArrayList<>();
   private final List<Boolean> isClientAlive = new ArrayList<>();
+
+  private boolean useSSL;
+  private String trustStore;
+  private String trustStorePwd;
 
   private long currentClientIndex = 0;
 
@@ -84,18 +92,32 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     super.validate(validator);
-    final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
-    Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
 
-    validator.validate(
-        empty ->
-            !(givenNodeUrls.contains(
-                    new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort()))
-                || givenNodeUrls.contains(new TEndPoint("127.0.0.1", ioTDBConfig.getRpcPort()))
-                || givenNodeUrls.contains(new TEndPoint("0.0.0.0", ioTDBConfig.getRpcPort()))),
-        String.format(
-            "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself",
-            givenNodeUrls, new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort())));
+    final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
+    final PipeParameters parameters = validator.getParameters();
+    Set<TEndPoint> givenNodeUrls = parseNodeUrls(parameters);
+
+    validator
+        .validate(
+            empty ->
+                !(givenNodeUrls.contains(
+                        new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort()))
+                    || givenNodeUrls.contains(new TEndPoint("127.0.0.1", ioTDBConfig.getRpcPort()))
+                    || givenNodeUrls.contains(new TEndPoint("0.0.0.0", ioTDBConfig.getRpcPort()))),
+            String.format(
+                "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself",
+                givenNodeUrls,
+                new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort())))
+        .validate(
+            args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
+            String.format(
+                "When %s is specified, %s and %s must be specified",
+                SINK_IOTDB_SSL_ENABLE_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
+            parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
+            parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
+            parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
   }
 
   @Override
@@ -111,6 +133,10 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new IoTDBThriftSyncPipeTransferBatchReqBuilder(parameters);
     }
+
+    useSSL = parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
+    trustStore = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
+    trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
   }
 
   @Override
@@ -145,7 +171,10 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
                       PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
                   .build(),
               ip,
-              port));
+              port,
+              useSSL,
+              trustStore,
+              trustStorePwd));
 
       try {
         final TPipeTransferResp resp =
