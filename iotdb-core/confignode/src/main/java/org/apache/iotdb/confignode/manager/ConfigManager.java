@@ -436,13 +436,13 @@ public class ConfigManager implements IManager {
       Map<Integer, TNodeVersionInfo> nodeVersionInfo = getNodeManager().getNodeVersionInfo();
       Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
       configNodeLocations.forEach(
-              configNodeLocation ->
-                      nodeStatus.putIfAbsent(
-                              configNodeLocation.getConfigNodeId(), NodeStatus.Unknown.toString()));
+          configNodeLocation ->
+              nodeStatus.putIfAbsent(
+                  configNodeLocation.getConfigNodeId(), NodeStatus.Unknown.toString()));
       dataNodeLocations.forEach(
-              dataNodeLocation ->
-                      nodeStatus.putIfAbsent(
-                              dataNodeLocation.getDataNodeId(), NodeStatus.Unknown.toString()));
+          dataNodeLocation ->
+              nodeStatus.putIfAbsent(
+                  dataNodeLocation.getDataNodeId(), NodeStatus.Unknown.toString()));
       return new TShowClusterResp(
           status, configNodeLocations, dataNodeLocations, nodeStatus, nodeVersionInfo, null);
     } else {
