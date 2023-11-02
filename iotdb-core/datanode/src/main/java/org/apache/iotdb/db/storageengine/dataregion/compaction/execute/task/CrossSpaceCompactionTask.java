@@ -196,6 +196,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         CompactionUtils.combineModsInCrossCompaction(
             selectedSequenceFiles, selectedUnsequenceFiles, targetTsfileResourceList);
 
+        validateCompactionResult(
+            selectedSequenceFiles, selectedUnsequenceFiles, targetTsfileResourceList);
+
         // update tsfile resource in memory
         tsFileManager.replace(
             selectedSequenceFiles,
@@ -203,9 +206,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             targetTsfileResourceList,
             timePartition,
             true);
-
-        validateCompactionResult(
-            selectedSequenceFiles, selectedUnsequenceFiles, targetTsfileResourceList);
 
         // find empty target files and add log
         for (TsFileResource targetResource : targetTsfileResourceList) {

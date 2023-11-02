@@ -225,21 +225,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             targetTsFileList);
 
         // replace the old files with new file, the new is in same position as the old
-        if (sequence) {
-          tsFileManager.replace(
-              selectedTsFileResourceList,
-              Collections.emptyList(),
-              targetTsFileList,
-              timePartition,
-              true);
-        } else {
-          tsFileManager.replace(
-              Collections.emptyList(),
-              selectedTsFileResourceList,
-              targetTsFileList,
-              timePartition,
-              false);
-        }
+        tsFileManager.replace(
+            sequence ? selectedTsFileResourceList : Collections.emptyList(),
+            sequence ? Collections.emptyList() : selectedTsFileResourceList,
+            targetTsFileList,
+            timePartition,
+            sequence);
 
         if (targetTsFileResource.isDeleted()) {
           compactionLogger.logEmptyTargetFile(targetTsFileResource);

@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -384,12 +385,12 @@ public abstract class AbstractCompactionTask {
     CompactionTaskType taskType = getCompactionTaskType();
     boolean needToValidateTsFileCorrectness = taskType != CompactionTaskType.INSERTION;
     boolean needToValidatePartitionSeqSpaceOverlap =
-        getCompactionTaskType() == CompactionTaskType.INNER_UNSEQ;
+        getCompactionTaskType() != CompactionTaskType.INNER_UNSEQ;
 
     TsFileValidator validator = TsFileValidator.getInstance();
     if (needToValidatePartitionSeqSpaceOverlap) {
       List<TsFileResource> timePartitionSeqFiles =
-          tsFileManager.getOrCreateSequenceListByTimePartition(timePartition);
+          new ArrayList<>(tsFileManager.getOrCreateSequenceListByTimePartition(timePartition));
       timePartitionSeqFiles.removeAll(sourceSeqFiles);
       timePartitionSeqFiles.addAll(validTargetFiles);
       timePartitionSeqFiles.sort(
