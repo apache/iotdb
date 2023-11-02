@@ -29,7 +29,6 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
@@ -47,7 +46,9 @@ public class UDTFStartsWith implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     target = parameters.getString("target");
-    configurations.setAccessStrategy(new MappableRowByRowAccessStrategy()).setOutputDataType(Type.BOOLEAN);
+    configurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.BOOLEAN);
   }
 
   @Override

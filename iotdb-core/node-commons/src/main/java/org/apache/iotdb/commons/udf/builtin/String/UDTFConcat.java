@@ -30,7 +30,6 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
@@ -60,7 +59,9 @@ public class UDTFConcat implements UDTF {
               if (key.startsWith("target") && value != null) concatTargets.append(value);
             });
     seriesBehind = parameters.getBooleanOrDefault("series_behind", false);
-    configurations.setAccessStrategy(new MappableRowByRowAccessStrategy()).setOutputDataType(Type.TEXT);
+    configurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.TEXT);
   }
 
   @Override
@@ -80,7 +81,6 @@ public class UDTFConcat implements UDTF {
             : concatSeries.append(concatTargets).toString());
   }
 
-
   @Override
   public Object transform(Row row) throws IOException {
     StringBuilder concatSeries = new StringBuilder();
@@ -91,7 +91,8 @@ public class UDTFConcat implements UDTF {
       concatSeries.append(row.getString(i));
     }
 
-    String res = seriesBehind
+    String res =
+        seriesBehind
             ? concatSeries.insert(0, concatTargets).toString()
             : concatSeries.append(concatTargets).toString();
     return BytesUtils.valueOf(res);
@@ -122,7 +123,8 @@ public class UDTFConcat implements UDTF {
         concatSeries.append(str);
       }
 
-      String res = seriesBehind
+      String res =
+          seriesBehind
               ? concatSeries.insert(0, concatTargets).toString()
               : concatSeries.append(concatTargets).toString();
       builder.writeBinary(BytesUtils.valueOf(res));

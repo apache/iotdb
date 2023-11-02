@@ -134,12 +134,12 @@ public class UDTFOnOff implements UDTF {
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
-                0,
-                UDFDataTypeTransformer.transformToUDFDataType(dataType),
-                Type.INT32,
-                Type.INT64,
-                Type.FLOAT,
-                Type.DOUBLE);
+            0,
+            UDFDataTypeTransformer.transformToUDFDataType(dataType),
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE);
     }
   }
 

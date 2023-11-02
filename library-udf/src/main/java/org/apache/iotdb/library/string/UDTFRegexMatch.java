@@ -29,7 +29,6 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
@@ -61,7 +60,9 @@ public class UDTFRegexMatch implements UDTF {
       throws Exception {
     pattern = Pattern.compile(udfParameters.getString("regex"));
     group = udfParameters.getIntOrDefault("group", 0);
-    udtfConfigurations.setAccessStrategy(new MappableRowByRowAccessStrategy()).setOutputDataType(Type.TEXT);
+    udtfConfigurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.TEXT);
   }
 
   @Override

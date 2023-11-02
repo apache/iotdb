@@ -30,7 +30,6 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
@@ -51,7 +50,9 @@ public class UDTFContains implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     s = parameters.getString("s");
-    configurations.setAccessStrategy(new MappableRowByRowAccessStrategy()).setOutputDataType(Type.BOOLEAN);
+    configurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.BOOLEAN);
   }
 
   @Override

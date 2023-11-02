@@ -62,7 +62,9 @@ public class UDTFInRange implements UDTF {
     upper = parameters.getDouble("upper");
     lower = parameters.getDouble("lower");
     dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
-    configurations.setAccessStrategy(new MappableRowByRowAccessStrategy()).setOutputDataType(Type.BOOLEAN);
+    configurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.BOOLEAN);
   }
 
   @Override
@@ -111,12 +113,12 @@ public class UDTFInRange implements UDTF {
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
-                0,
-                UDFDataTypeTransformer.transformToUDFDataType(dataType),
-                Type.INT32,
-                Type.INT64,
-                Type.FLOAT,
-                Type.DOUBLE);
+            0,
+            UDFDataTypeTransformer.transformToUDFDataType(dataType),
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE);
     }
   }
 
@@ -138,12 +140,12 @@ public class UDTFInRange implements UDTF {
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
-                0,
-                UDFDataTypeTransformer.transformToUDFDataType(dataType),
-                Type.INT32,
-                Type.INT64,
-                Type.FLOAT,
-                Type.DOUBLE);
+            0,
+            UDFDataTypeTransformer.transformToUDFDataType(dataType),
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE);
     }
   }
 

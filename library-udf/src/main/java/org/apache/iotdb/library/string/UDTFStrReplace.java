@@ -29,11 +29,9 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
-import java.util.regex.Matcher;
 
 /** This function does limited times of replacement of substring from an input series. */
 public class UDTFStrReplace implements UDTF {
@@ -72,7 +70,9 @@ public class UDTFStrReplace implements UDTF {
     limit = udfParameters.getIntOrDefault("limit", -1);
     offset = udfParameters.getIntOrDefault("offset", 0);
     reverse = udfParameters.getBooleanOrDefault("reverse", false);
-    udtfConfigurations.setAccessStrategy(new MappableRowByRowAccessStrategy()).setOutputDataType(Type.TEXT);
+    udtfConfigurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.TEXT);
   }
 
   @Override
