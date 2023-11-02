@@ -90,21 +90,8 @@ public class TimeDuration implements Serializable {
     result[0] = startTime;
     Calendar calendar = Calendar.getInstance();
     calendar.setTimeZone(timeZone);
-    long coarserThanMsPart;
     for (int i = 1; i < length; i++) {
-      coarserThanMsPart = getCoarserThanMsPart(startTime, currPrecision);
-      calendar.setTimeInMillis(coarserThanMsPart);
-      boolean isLastDayOfMonth =
-          calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
-      calendar.add(Calendar.MONTH, duration.monthDuration);
-      if (isLastDayOfMonth) {
-        calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
-      }
-      startTime =
-          currPrecision.convert(calendar.getTimeInMillis(), TimeUnit.MILLISECONDS)
-              + getFinerThanMsPart(startTime, currPrecision)
-              + duration.nonMonthDuration;
-      result[i] = startTime;
+      result[i] = getStartTime(result[i - 1], duration, currPrecision, calendar);
     }
     return result;
   }
@@ -126,21 +113,26 @@ public class TimeDuration implements Serializable {
       TimeUnit currPrecision) {
     Calendar calendar = Calendar.getInstance();
     calendar.setTimeZone(timeZone);
-    long coarserThanMsPart;
     for (int i = 0; i < times; i++) {
-      coarserThanMsPart = getCoarserThanMsPart(startTime, currPrecision);
-      calendar.setTimeInMillis(coarserThanMsPart);
-      boolean isLastDayOfMonth =
-          calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
-      calendar.add(Calendar.MONTH, duration.monthDuration);
-      if (isLastDayOfMonth) {
-        calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
-      }
-      startTime =
-          currPrecision.convert(calendar.getTimeInMillis(), TimeUnit.MILLISECONDS)
-              + getFinerThanMsPart(startTime, currPrecision)
-              + duration.nonMonthDuration;
+      startTime = getStartTime(startTime, duration, currPrecision, calendar);
     }
+    return startTime;
+  }
+
+  private static long getStartTime(
+      long startTime, TimeDuration duration, TimeUnit currPrecision, Calendar calendar) {
+    long coarserThanMsPart = getCoarserThanMsPart(startTime, currPrecision);
+    calendar.setTimeInMillis(coarserThanMsPart);
+    boolean isLastDayOfMonth =
+        calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
+    calendar.add(Calendar.MONTH, duration.monthDuration);
+    if (isLastDayOfMonth) {
+      calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
+    }
+    startTime =
+        currPrecision.convert(calendar.getTimeInMillis(), TimeUnit.MILLISECONDS)
+            + getFinerThanMsPart(startTime, currPrecision)
+            + duration.nonMonthDuration;
     return startTime;
   }
 
@@ -165,7 +157,7 @@ public class TimeDuration implements Serializable {
       calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
     }
     return currPrecision.convert(calendar.getTimeInMillis(), TimeUnit.MILLISECONDS)
-        + getFinerThanMsPart(startTime, currPrecision);
+        + getFinerThanMsPart(startTime - duration.nonMonthDuration, currPrecision);
   }
 
   private static long getCoarserThanMsPart(long time, TimeUnit currPrecision) {

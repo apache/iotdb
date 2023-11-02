@@ -784,7 +784,7 @@ public class DateTimeUtils {
           unit += duration.charAt(i);
         }
         if (unit.equals("y")) {
-          monthDuration = temp * 12;
+          monthDuration += temp * 12;
           temp = 0;
           continue;
         }
