@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,9 +52,17 @@ public class SortUtilTest {
 
   private static final String filePrefix = folderPath + File.separator + "tmp";
 
+  private int maxTsBlockSizeInBytes;
+
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
+    maxTsBlockSizeInBytes = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(200);
+  }
+
+  @After
+  public void tearDown() {
+    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(maxTsBlockSizeInBytes);
   }
 
   private void clear() {

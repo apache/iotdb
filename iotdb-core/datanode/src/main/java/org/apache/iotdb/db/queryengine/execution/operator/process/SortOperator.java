@@ -72,7 +72,7 @@ public class SortOperator implements ProcessOperator {
 
   private static final Logger logger = LoggerFactory.getLogger(SortOperator.class);
 
-  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+  private final int maxReturnSize =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   public SortOperator(
@@ -337,7 +337,7 @@ public class SortOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxReturnSize() {
-    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    return maxReturnSize;
   }
 
   @Override
