@@ -60,7 +60,7 @@ public class IoTDBMetricIT {
   @Test
   public void testPrometheusReporter() {
     List<String> metricContents = EnvFactory.getEnv().getMetricPrometheusReporterContents();
-    for (String metricContent: metricContents) {
+    for (String metricContent : metricContents) {
       Assert.assertNotNull(metricContent);
       Assert.assertNotEquals(0, metricContent.length());
     }
