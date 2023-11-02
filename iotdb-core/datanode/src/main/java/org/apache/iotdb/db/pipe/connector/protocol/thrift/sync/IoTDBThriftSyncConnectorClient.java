@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 public class IoTDBThriftSyncConnectorClient extends IClientRPCService.Client
@@ -53,7 +54,10 @@ public class IoTDBThriftSyncConnectorClient extends IClientRPCService.Client
                         ipAddress,
                         port,
                         (int) PipeConfig.getInstance().getPipeConnectorTimeoutMs())));
-    getInputProtocol().getTransport().open();
+    TTransport transport = getInputProtocol().getTransport();
+    if (!transport.isOpen()) {
+      transport.open();
+    }
   }
 
   @Override
