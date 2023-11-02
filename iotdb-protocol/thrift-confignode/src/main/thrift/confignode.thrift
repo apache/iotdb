@@ -40,6 +40,7 @@ struct TGlobalConfig {
   8: optional string timestampPrecision
   9: optional string schemaEngineMode
   10: optional i32 tagAttributeTotalSize
+  11: optional bool isEnterprise
 }
 
 struct TRatisConfig {
@@ -406,6 +407,17 @@ struct TConfigNodeRegisterResp {
   2: optional i32 configNodeId
 }
 
+struct TConfigNodeHeartbeatReq {
+    1: required i64 timestamp
+    2: optional common.TLicense licence
+}
+
+struct TConfigNodeHeartbeatResp {
+    1: required i64 timestamp
+    2: optional string activateStatus
+    3: optional common.TLicense license
+}
+
 struct TAddConsensusGroupReq {
   1: required list<common.TConfigNodeLocation> configNodeList
 }
@@ -512,11 +524,16 @@ struct TShowClusterResp {
   3: required list<common.TDataNodeLocation> dataNodeList
   4: required map<i32, string> nodeStatus
   5: required map<i32, TNodeVersionInfo> nodeVersionInfo
+  6: required map<i32, TNodeActivateInfo> nodeActivateInfo
 }
 
 struct TNodeVersionInfo {
   1: required string version;
   2: required string buildInfo;
+}
+
+struct TNodeActivateInfo {
+  1: required string status
 }
 
 struct TShowVariablesResp {
@@ -780,6 +797,15 @@ struct TThrottleQuotaResp{
 struct TShowThrottleReq{
   1: optional string userName;
 }
+
+// ====================================================
+// Activation
+// ====================================================
+struct TLicenseContentResp {
+    1: required common.TSStatus status
+    2: optional common.TLicense licenseContent
+}
+
 
 service IConfigNodeRPCService {
 
@@ -1055,7 +1081,7 @@ service IConfigNodeRPCService {
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /** The ConfigNode-leader will ping other ConfigNodes periodically */
-  i64 getConfigNodeHeartBeat(i64 timestamp)
+  TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq req)
 
   // ======================================================
   // UDF

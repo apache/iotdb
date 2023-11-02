@@ -446,10 +446,10 @@ public class ConfigManager implements IManager {
         }
       }
       return new TShowClusterResp(
-          status, configNodeLocations, dataNodeInfoLocations, nodeStatus, nodeVersionInfo);
+          status, configNodeLocations, dataNodeInfoLocations, nodeStatus, nodeVersionInfo, null);
     } else {
       return new TShowClusterResp(
-          status, new ArrayList<>(), new ArrayList<>(), new HashMap<>(), new HashMap<>());
+          status, new ArrayList<>(), new ArrayList<>(), new HashMap<>(), new HashMap<>(), null);
     }
   }
 
