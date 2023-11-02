@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
@@ -762,12 +761,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @Override
   public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
       throws SchemaQuotaExceededException {
-    if (schemaQuotaManager.getLevel().equals(ClusterSchemaQuotaLevel.TIMESERIES)) {
-      schemaQuotaManager.checkMeasurementLevel(timeSeriesNum);
-    } else if (schemaQuotaManager.getLevel().equals(ClusterSchemaQuotaLevel.DEVICE)) {
-      if (!mtree.checkDeviceNodeExists(devicePath)) {
-        schemaQuotaManager.checkDeviceLevel();
-      }
+    if (!mtree.checkDeviceNodeExists(devicePath)) {
+      schemaQuotaManager.check(timeSeriesNum, 1);
+    } else {
+      schemaQuotaManager.check(timeSeriesNum, 0);
     }
   }
 

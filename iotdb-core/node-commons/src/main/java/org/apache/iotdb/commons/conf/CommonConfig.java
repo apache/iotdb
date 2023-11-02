@@ -158,6 +158,7 @@ public class CommonConfig {
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 1000;
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
+  private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
   private int pipeExtractorMatcherCacheSize = 1024;
 
   private long pipeConnectorTimeoutMs = 15 * 60 * 1000L; // 15 minutes
@@ -184,8 +185,11 @@ public class CommonConfig {
 
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
 
+  private boolean pipeMemoryManagementEnabled = true;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
   private int pipeMemoryAllocateMaxRetries = 10;
+  private long pipeMemoryAllocateMinSizeInBytes = 32;
+  private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = 2 * 1024 * 1024; // 2MB
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -200,6 +204,10 @@ public class CommonConfig {
   private int databaseLimitThreshold = -1;
 
   private long datanodeTokenTimeoutMS = 180 * 1000; // 3 minutes
+
+  // timeseries and device limit
+  private long seriesLimitThreshold = -1;
+  private long deviceLimitThreshold = -1;
 
   CommonConfig() {
     // Empty constructor
@@ -529,6 +537,16 @@ public class CommonConfig {
         pipeExtractorAssignerDisruptorRingBufferSize;
   }
 
+  public long getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes() {
+    return pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes;
+  }
+
+  public void setPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes(
+      long pipeExtractorAssignerDisruptorRingBufferEntrySize) {
+    this.pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes =
+        pipeExtractorAssignerDisruptorRingBufferEntrySize;
+  }
+
   public int getPipeExtractorMatcherCacheSize() {
     return pipeExtractorMatcherCacheSize;
   }
@@ -720,6 +738,24 @@ public class CommonConfig {
     this.pipeMaxAllowedPendingTsFileEpochPerDataRegion = pipeExtractorPendingQueueTsfileLimit;
   }
 
+  public boolean getPipeMemoryManagementEnabled() {
+    return pipeMemoryManagementEnabled;
+  }
+
+  public void setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled) {
+    this.pipeMemoryManagementEnabled = pipeMemoryManagementEnabled;
+  }
+
+  public long getPipeMemoryAllocateForTsFileSequenceReaderInBytes() {
+    return pipeMemoryAllocateForTsFileSequenceReaderInBytes;
+  }
+
+  public void setPipeMemoryAllocateForTsFileSequenceReaderInBytes(
+      long pipeMemoryAllocateForTsFileSequenceReaderInBytes) {
+    this.pipeMemoryAllocateForTsFileSequenceReaderInBytes =
+        pipeMemoryAllocateForTsFileSequenceReaderInBytes;
+  }
+
   public int getPipeMemoryAllocateMaxRetries() {
     return pipeMemoryAllocateMaxRetries;
   }
@@ -734,6 +770,14 @@ public class CommonConfig {
 
   public void setPipeMemoryAllocateRetryIntervalInMs(long pipeMemoryAllocateRetryIntervalMs) {
     this.pipeMemoryAllocateRetryIntervalMs = pipeMemoryAllocateRetryIntervalMs;
+  }
+
+  public long getPipeMemoryAllocateMinSizeInBytes() {
+    return pipeMemoryAllocateMinSizeInBytes;
+  }
+
+  public void setPipeMemoryAllocateMinSizeInBytes(long pipeMemoryAllocateMinSizeInBytes) {
+    this.pipeMemoryAllocateMinSizeInBytes = pipeMemoryAllocateMinSizeInBytes;
   }
 
   public String getSchemaEngineMode() {
@@ -774,5 +818,21 @@ public class CommonConfig {
 
   public void setDatanodeTokenTimeoutMS(long timeoutMS) {
     this.datanodeTokenTimeoutMS = timeoutMS;
+  }
+
+  public long getSeriesLimitThreshold() {
+    return seriesLimitThreshold;
+  }
+
+  public void setSeriesLimitThreshold(long seriesLimitThreshold) {
+    this.seriesLimitThreshold = seriesLimitThreshold;
+  }
+
+  public long getDeviceLimitThreshold() {
+    return deviceLimitThreshold;
+  }
+
+  public void setDeviceLimitThreshold(long deviceLimitThreshold) {
+    this.deviceLimitThreshold = deviceLimitThreshold;
   }
 }

@@ -16,23 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.it.schema;
+
+package org.apache.iotdb.db.it.schema.quota;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.runners.Parameterized;
 
-public class IoTDBClusterDeviceQuotaIT extends IoTDBClusterMeasurementQuotaIT {
-  public IoTDBClusterDeviceQuotaIT(AbstractSchemaIT.SchemaTestMode schemaTestMode) {
+public class IoTDBClusterTimeSeriesQuotaIT extends IoTDBClusterQuotaIT {
+  public IoTDBClusterTimeSeriesQuotaIT(AbstractSchemaIT.SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
 
   @Parameterized.BeforeParam
   public static void before() throws Exception {
     setUpEnvironment();
-    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitLevel("device");
-    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterSchemaLimitThreshold(3);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterTimeseriesLimitThreshold(6);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

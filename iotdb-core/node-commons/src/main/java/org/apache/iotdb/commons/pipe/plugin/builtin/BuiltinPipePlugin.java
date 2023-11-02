@@ -35,6 +35,8 @@ public enum BuiltinPipePlugin {
   // extractors
   IOTDB_EXTRACTOR("iotdb-extractor", IoTDBExtractor.class),
 
+  IOTDB_SOURCE("iotdb-source", IoTDBExtractor.class),
+
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
 
@@ -47,6 +49,15 @@ public enum BuiltinPipePlugin {
   IOTDB_AIR_GAP_CONNECTOR("iotdb-air-gap-connector", IoTDBAirGapConnector.class),
   WEBSOCKET_CONNECTOR("websocket-connector", WebSocketConnector.class),
   OPC_UA_CONNECTOR("opc-ua-connector", OpcUaConnector.class),
+
+  DO_NOTHING_SINK("do-nothing-sink", DoNothingConnector.class),
+  IOTDB_THRIFT_SINK("iotdb-thrift-sink", IoTDBThriftConnector.class),
+  IOTDB_THRIFT_SYNC_SINK("iotdb-thrift-sync-sink", IoTDBThriftSyncConnector.class),
+  IOTDB_THRIFT_ASYNC_SINK("iotdb-thrift-async-sink", IoTDBThriftAsyncConnector.class),
+  IOTDB_LEGACY_PIPE_SINK("iotdb-legacy-pipe-sink", IoTDBLegacyPipeConnector.class),
+  IOTDB_AIR_GAP_SINK("iotdb-air-gap-sink", IoTDBAirGapConnector.class),
+  WEBSOCKET_SINK("websocket-sink", WebSocketConnector.class),
+  OPC_UA_SINK("opc-ua-sink", OpcUaConnector.class),
   ;
 
   private final String pipePluginName;

@@ -35,6 +35,8 @@ public interface ISchemaEngineStatistics {
 
   long getTemplateSeriesNumber();
 
+  int getTemplateUsingNumber(String templateName);
+
   MemSchemaEngineStatistics getAsMemSchemaEngineStatistics();
 
   CachedSchemaEngineStatistics getAsCachedSchemaEngineStatistics();

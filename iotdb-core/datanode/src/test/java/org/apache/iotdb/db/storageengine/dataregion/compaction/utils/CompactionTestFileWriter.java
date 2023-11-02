@@ -332,4 +332,8 @@ public class CompactionTestFileWriter implements Closeable {
       alignedChunkWriter.writeToFileWriter(fileWriter);
     }
   }
+
+  public TsFileIOWriter getFileWriter() {
+    return fileWriter;
+  }
 }

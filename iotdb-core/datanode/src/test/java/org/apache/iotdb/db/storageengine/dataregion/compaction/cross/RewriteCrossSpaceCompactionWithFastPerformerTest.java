@@ -446,6 +446,12 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
         new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
+    for (TsFileResource resource : seqResources) {
+      Assert.assertTrue(resource.getModFile().exists());
+    }
+    for (TsFileResource resource : unseqResources) {
+      Assert.assertTrue(resource.getModFile().exists());
+    }
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0,
@@ -457,12 +463,6 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             0);
     task.start();
 
-    for (TsFileResource resource : seqResources) {
-      Assert.assertFalse(resource.getModFile().exists());
-    }
-    for (TsFileResource resource : unseqResources) {
-      Assert.assertFalse(resource.getModFile().exists());
-    }
     for (TsFileResource resource : targetResources) {
       resource.setFile(
           new File(

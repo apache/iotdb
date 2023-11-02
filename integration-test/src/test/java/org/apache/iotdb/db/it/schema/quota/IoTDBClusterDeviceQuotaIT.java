@@ -16,17 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.it.schema.quota;
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.util.AbstractSchemaIT;
 
-public enum CompactionTaskType {
-  /** default compaction task type */
-  NORMAL,
+import org.junit.runners.Parameterized;
 
-  /**
-   * in either of the following situations: 1. the TsFile has .mods file whose size exceeds 50 MB.
-   * 2. the TsFile has .mods file and the disk availability rate is lower than the
-   * disk_space_warning_threshold.
-   */
-  MOD_SETTLE
+public class IoTDBClusterDeviceQuotaIT extends IoTDBClusterQuotaIT {
+  public IoTDBClusterDeviceQuotaIT(AbstractSchemaIT.SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
+
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
+    setUpEnvironment();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setClusterDeviceLimitThreshold(3);
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    tearDownEnvironment();
+  }
 }

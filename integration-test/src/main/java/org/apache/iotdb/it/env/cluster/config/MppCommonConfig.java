@@ -350,14 +350,14 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
-    setProperty("cluster_schema_limit_level", clusterSchemaLimitLevel);
+  public CommonConfig setClusterTimeseriesLimitThreshold(long clusterSchemaLimitThreshold) {
+    setProperty("cluster_timeseries_limit_threshold", String.valueOf(clusterSchemaLimitThreshold));
     return this;
   }
 
   @Override
-  public CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
-    setProperty("cluster_schema_limit_threshold", String.valueOf(clusterSchemaLimitThreshold));
+  public CommonConfig setClusterDeviceLimitThreshold(long clusterDeviceLimitThreshold) {
+    setProperty("cluster_device_limit_threshold", String.valueOf(clusterDeviceLimitThreshold));
     return this;
   }
 

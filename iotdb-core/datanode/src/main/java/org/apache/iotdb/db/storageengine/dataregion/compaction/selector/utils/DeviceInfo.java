@@ -17,10 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.constant;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
-public enum CompactionValidationLevel {
-  NONE,
-  RESOURCE_ONLY,
-  RESOURCE_AND_TSFILE
+public class DeviceInfo {
+  public String deviceId;
+  public long startTime;
+  public long endTime;
+
+  public DeviceInfo(String deviceId, long startTime, long endTime) {
+    this.deviceId = deviceId;
+    this.startTime = startTime;
+    this.endTime = endTime;
+  }
 }

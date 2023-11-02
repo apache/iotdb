@@ -1162,9 +1162,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
     if (req.getSchemaRegionIds() != null) {
       spaceQuotaManager.updateSpaceQuotaUsage(req.getSpaceQuotaUsage());
-      resp.setRegionDeviceNumMap(
+      resp.setRegionDeviceUsageMap(
           schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaRegionIds()));
-      resp.setRegionTimeSeriesNumMap(
+      resp.setRegionSeriesUsageMap(
           schemaEngine.countTimeSeriesNumBySchemaRegion(req.getSchemaRegionIds()));
     }
     if (req.getDataRegionIds() != null) {
@@ -1172,7 +1172,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp.setRegionDisk(spaceQuotaManager.getRegionDisk());
     }
     // Update schema quota if necessary
-    SchemaEngine.getInstance().updateAndFillSchemaCountMap(req.schemaQuotaCount, resp);
+    SchemaEngine.getInstance().updateAndFillSchemaCountMap(req, resp);
 
     // Update pipe meta if necessary
     if (req.isNeedPipeMetaList()) {

@@ -45,13 +45,13 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
       PipeParameters extractorParameters,
       TConsensusGroupId dataRegionId,
       PipeTaskMeta pipeTaskMeta) {
+    final String pluginName =
+        extractorParameters.getStringOrDefault(
+            Arrays.asList(PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+            BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
     pipeExtractor =
-        extractorParameters
-                .getStringOrDefault(
-                    Arrays.asList(
-                        PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
-                    BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
-                .equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+                || pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())
             ? new IoTDBDataRegionExtractor()
             : PipeAgent.plugin().reflectExtractor(extractorParameters);
 
