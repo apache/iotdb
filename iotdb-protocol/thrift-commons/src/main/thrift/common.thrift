@@ -173,6 +173,7 @@ struct TLicense {
     6: required i64 deviceNumLimit
     7: required i64 sensorNumLimit
     8: required i64 disconnectionFromActiveNodeTimeLimit
+    9: required i16 mlNodeNumLimit
 }
 
 enum TAggregationType {
