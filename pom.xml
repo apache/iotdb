@@ -128,7 +128,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <micrometer.version>1.11.4</micrometer.version>
-        <milo.version>0.6.10</milo.version>
+        <milo.version>0.6.11</milo.version>
         <!-- It seems that powermock is having issues with the newest mockito versions -->
         <mockito.version>2.23.4</mockito.version>
         <!-- This was the last version to support Java 8 -->

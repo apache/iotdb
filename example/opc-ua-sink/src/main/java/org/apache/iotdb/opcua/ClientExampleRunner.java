@@ -25,7 +25,6 @@ import org.eclipse.milo.opcua.stack.client.security.DefaultClientCertificateVali
 import org.eclipse.milo.opcua.stack.core.Stack;
 import org.eclipse.milo.opcua.stack.core.security.DefaultTrustListManager;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
@@ -46,22 +45,12 @@ public class ClientExampleRunner {
     Security.addProvider(new BouncyCastleProvider());
   }
 
-  private final Logger logger = LoggerFactory.getLogger(getClass());
-
   private final CompletableFuture<OpcUaClient> future = new CompletableFuture<>();
 
-  private DefaultTrustListManager trustListManager;
-
   private final ClientExample clientExample;
-  private final boolean serverRequired;
 
-  public ClientExampleRunner(ClientExample clientExample) throws Exception {
-    this(clientExample, true);
-  }
-
-  public ClientExampleRunner(ClientExample clientExample, boolean serverRequired) throws Exception {
+  public ClientExampleRunner(ClientExample clientExample) {
     this.clientExample = clientExample;
-    this.serverRequired = serverRequired;
   }
 
   private OpcUaClient createClient() throws Exception {
@@ -78,7 +67,7 @@ public class ClientExampleRunner {
 
     IoTDBKeyStoreLoaderClient loader = new IoTDBKeyStoreLoaderClient().load(securityTempDir);
 
-    trustListManager = new DefaultTrustListManager(pkiDir);
+    DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
 
     DefaultClientCertificateValidator certificateValidator =
         new DefaultClientCertificateValidator(trustListManager);
@@ -106,20 +95,22 @@ public class ClientExampleRunner {
       future.whenCompleteAsync(
           (c, ex) -> {
             if (ex != null) {
-              logger.error("Error running example: {}", ex.getMessage(), ex);
+              System.out.println("Error running example: " + ex.getMessage());
             }
 
             try {
               client.disconnect().get();
               Stack.releaseSharedResources();
             } catch (InterruptedException | ExecutionException e) {
-              logger.error("Error disconnecting: {}", e.getMessage(), e);
+              Thread.currentThread().interrupt();
+              System.out.println("Error disconnecting: {}" + e.getMessage());
             }
 
             try {
               Thread.sleep(1000);
               System.exit(0);
             } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
               e.printStackTrace();
             }
           });
@@ -128,11 +119,11 @@ public class ClientExampleRunner {
         clientExample.run(client, future);
         future.get(100000, TimeUnit.SECONDS);
       } catch (Throwable t) {
-        logger.error("Error running client example: {}", t.getMessage(), t);
+        System.out.println("Error running client example: " + t.getMessage() + t);
         future.completeExceptionally(t);
       }
     } catch (Throwable t) {
-      logger.error("Error getting client: {}", t.getMessage(), t);
+      System.out.println("Error getting client: {}" + t.getMessage());
 
       future.completeExceptionally(t);
 

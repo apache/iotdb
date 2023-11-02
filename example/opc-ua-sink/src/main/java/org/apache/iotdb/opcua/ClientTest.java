@@ -22,11 +22,6 @@ package org.apache.iotdb.opcua;
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.sdk.client.api.subscriptions.UaMonitoredItem;
 import org.eclipse.milo.opcua.sdk.client.api.subscriptions.UaSubscription;
-import org.eclipse.milo.opcua.sdk.client.subscriptions.ManagedEventItem;
-import org.eclipse.milo.opcua.sdk.client.subscriptions.ManagedItem;
-import org.eclipse.milo.opcua.sdk.client.subscriptions.ManagedSubscription;
-import org.eclipse.milo.opcua.sdk.client.subscriptions.OpcUaMonitoredItem;
-import org.eclipse.milo.opcua.sdk.client.subscriptions.OpcUaSubscription;
 import org.eclipse.milo.opcua.stack.core.AttributeId;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
@@ -51,7 +46,7 @@ import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.
 
 public class ClientTest implements ClientExample {
 
-  public static void main(String[] args) throws Exception {
+  public static void main(String[] args) {
     ClientTest example = new ClientTest();
 
     new ClientExampleRunner(example).run();
@@ -66,8 +61,6 @@ public class ClientTest implements ClientExample {
 
     // create a subscription and a monitored item
     UaSubscription subscription = client.getSubscriptionManager().createSubscription(200.0).get();
-    ManagedSubscription managedSubscription =
-        new ManagedSubscription(client, (OpcUaSubscription) subscription);
 
     ReadValueId readValueId =
         new ReadValueId(
@@ -107,7 +100,7 @@ public class ClientTest implements ClientExample {
             clientHandle,
             0.0,
             ExtensionObject.encode(client.getStaticSerializationContext(), eventFilter),
-            uint(10),
+            uint(10000),
             true);
 
     MonitoredItemCreateRequest request =
@@ -120,10 +113,6 @@ public class ClientTest implements ClientExample {
 
     // do something with the value updates
     UaMonitoredItem monitoredItem = items.get(0);
-
-    ManagedItem managedItem =
-        new ManagedEventItem(client, managedSubscription, (OpcUaMonitoredItem) monitoredItem);
-    managedItem.setQueueSize(UInteger.valueOf(10000));
 
     final AtomicInteger eventCount = new AtomicInteger(0);
 
