@@ -181,21 +181,6 @@ public class ChunkCache {
 
     private final long offsetOfChunkHeader;
 
-    public ChunkCacheKey(
-        String filePath,
-        int regionId,
-        long timePartitionId,
-        long tsFileVersion,
-        long compactionVersion,
-        long offsetOfChunkHeader) {
-      this.filePath = filePath;
-      this.regionId = regionId;
-      this.timePartitionId = timePartitionId;
-      this.tsFileVersion = tsFileVersion;
-      this.compactionVersion = compactionVersion;
-      this.offsetOfChunkHeader = offsetOfChunkHeader;
-    }
-
     public ChunkCacheKey(String filePath, TsFileID tsfileId, long offsetOfChunkHeader) {
       this.filePath = filePath;
       this.regionId = tsfileId.regionId;
