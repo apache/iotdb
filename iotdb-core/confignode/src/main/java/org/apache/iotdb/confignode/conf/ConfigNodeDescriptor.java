@@ -41,6 +41,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.UnknownHostException;
+import java.util.Collections;
 import java.util.Properties;
 
 public class ConfigNodeDescriptor {
@@ -890,10 +892,17 @@ public class ConfigNodeDescriptor {
    * @return True if the seed_config_node points to itself
    */
   public boolean isSeedConfigNode() {
-    return (conf.getInternalAddress().equals(conf.getSeedConfigNode().getIp())
-            || (NodeUrlUtils.isLocalAddress(conf.getInternalAddress())
-                && NodeUrlUtils.isLocalAddress(conf.getSeedConfigNode().getIp())))
-        && conf.getInternalPort() == conf.getSeedConfigNode().getPort();
+    try {
+      return (conf.getInternalAddress().equals(conf.getSeedConfigNode().getIp())
+              || (NodeUrlUtils.containsLocalAddress(
+                      Collections.singletonList(conf.getInternalAddress()))
+                  && NodeUrlUtils.containsLocalAddress(
+                      Collections.singletonList(conf.getSeedConfigNode().getIp()))))
+          && conf.getInternalPort() == conf.getSeedConfigNode().getPort();
+    } catch (UnknownHostException e) {
+      LOGGER.warn("Unknown host when checking seed configNode IP {}", conf.getInternalAddress(), e);
+      return false;
+    }
   }
 
   public static ConfigNodeDescriptor getInstance() {

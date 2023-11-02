@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
@@ -59,10 +60,12 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
@@ -88,13 +91,21 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
 
     validator.validate(
-        empty ->
-            !(givenNodeUrls.contains(
-                    new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort()))
-                || givenNodeUrls.contains(new TEndPoint("127.0.0.1", ioTDBConfig.getRpcPort()))
-                || givenNodeUrls.contains(new TEndPoint("0.0.0.0", ioTDBConfig.getRpcPort()))),
+        empty -> {
+          try {
+            // Ensure the sink doesn't point to the thrift receiver on DataNode itself
+            return !NodeUrlUtils.containsLocalAddress(
+                givenNodeUrls.stream()
+                    .filter(tEndPoint -> tEndPoint.getPort() == ioTDBConfig.getRpcPort())
+                    .map(TEndPoint::getIp)
+                    .collect(Collectors.toList()));
+          } catch (UnknownHostException e) {
+            LOGGER.warn("Unknown host when checking pipe sink IP.", e);
+            return false;
+          }
+        },
         String.format(
-            "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself",
+            "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself, or unknown host when checking pipe sink IP.",
             givenNodeUrls, new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort())));
   }
 

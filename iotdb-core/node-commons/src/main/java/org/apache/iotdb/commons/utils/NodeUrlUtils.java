@@ -26,15 +26,22 @@ import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 public class NodeUrlUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(NodeUrlUtils.class);
 
+  public static final String WILD_CARD_ADDRESS = "0.0.0.0";
+  public static final String LOOPBACK_HOST_NAME = "localhost";
   /**
    * Convert TEndPoint to TEndPointUrl
    *
@@ -188,10 +195,62 @@ public class NodeUrlUtils {
     return parseTConfigNodeUrls(Arrays.asList(configNodeUrls.split(";")));
   }
 
-  public static boolean isLocalAddress(String ip) {
-    if (ip == null) {
+  /**
+   * Detect whether the given addresses or host names(may contain both) point to the node itself.
+   *
+   * @param addressesOrHostNames List of the addresses or host name to check
+   * @return true if one of the given strings point to the node itself
+   * @throws UnknownHostException Throw when unable to parse the given addresses or host names
+   */
+  public static boolean containsLocalAddress(List<String> addressesOrHostNames)
+      throws UnknownHostException {
+    if (addressesOrHostNames == null) {
       return false;
     }
-    return ip.equals("0.0.0.0") || ip.equals("127.0.0.1") || ip.equals("localhost");
+
+    Set<String> selfAddresses = getAllLocalAddresses();
+
+    for (String addressOrHostName : addressesOrHostNames) {
+      if (addressOrHostName == null) {
+        continue;
+      }
+      // Unify address or hostName, converting them to addresses
+      Set<String> translatedAddresses =
+          Arrays.stream(InetAddress.getAllByName(addressOrHostName))
+              .map(InetAddress::getHostAddress)
+              .collect(Collectors.toCollection(HashSet::new));
+      translatedAddresses.retainAll(selfAddresses);
+
+      if (!translatedAddresses.isEmpty()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Return all the internal, external, IPv4, IPv6 and loopback addresses(without hostname) of the
+   * node
+   *
+   * @return the local addresses set
+   * @throws UnknownHostException Throw when unable to self addresses or host names (Normally not
+   *     thrown)
+   */
+  public static Set<String> getAllLocalAddresses() throws UnknownHostException {
+    // Check internal and external, IPv4 and IPv6 network addresses
+    Set<String> selfAddresses =
+        Arrays.stream(InetAddress.getAllByName(InetAddress.getLocalHost().getHostName()))
+            .map(InetAddress::getHostAddress)
+            .collect(Collectors.toCollection(HashSet::new));
+    // Check IPv4 and IPv6 loopback addresses 127.0.0.1 and 0.0.0.0.0.0.0.1
+    selfAddresses.addAll(
+        Arrays.stream(InetAddress.getAllByName(LOOPBACK_HOST_NAME))
+            .map(InetAddress::getHostAddress)
+            .collect(Collectors.toCollection(HashSet::new)));
+    // Check general address 0.0.0.0
+    selfAddresses.add(WILD_CARD_ADDRESS);
+
+    return selfAddresses;
   }
 }
