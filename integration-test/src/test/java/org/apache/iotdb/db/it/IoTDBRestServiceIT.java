@@ -340,10 +340,7 @@ public class IoTDBRestServiceIT {
     HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
 
     nonQuery(httpClient, "{\"sql\":\"CREATE USER `root1` 'root1'\"}", httpPost2);
-    nonQuery(
-        httpClient,
-        "{\"sql\":\"GRANT WRITE ON  root.** to user root1\"}",
-        httpPostV2);
+    nonQuery(httpClient, "{\"sql\":\"GRANT WRITE ON  root.** to user root1\"}", httpPostV2);
   }
 
   @Test
