@@ -296,7 +296,8 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     }
 
     if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn("IoTDBThriftSyncConnector does not support transfer generic event: {}.", event);
+      LOGGER.warn(
+          "IoTDBThriftSyncConnector does not support transferring generic event: {}.", event);
     }
   }
 

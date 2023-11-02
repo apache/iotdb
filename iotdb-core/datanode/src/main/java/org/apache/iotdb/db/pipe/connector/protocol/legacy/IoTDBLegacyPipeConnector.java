@@ -266,7 +266,8 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   @Override
   public void transfer(Event event) throws Exception {
     if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn("IoTDBLegacyPipeConnector does not support transfer generic event: {}.", event);
+      LOGGER.warn(
+          "IoTDBLegacyPipeConnector does not support transferring generic event: {}.", event);
     }
   }
 

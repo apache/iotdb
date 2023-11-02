@@ -305,7 +305,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   @Override
   public void transfer(Event event) {
     if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn("IoTDBAirGapConnector does not support transfer generic event: {}.", event);
+      LOGGER.warn("IoTDBAirGapConnector does not support transferring generic event: {}.", event);
     }
   }
 
