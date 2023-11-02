@@ -40,6 +40,8 @@ public class NodeUrlUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(NodeUrlUtils.class);
 
+  public static final String WILD_CARD_ADDRESS = "0.0.0.0";
+  public static final String LOOPBACK_HOST_NAME = "localhost";
   /**
    * Convert TEndPoint to TEndPointUrl
    *
@@ -213,7 +215,7 @@ public class NodeUrlUtils {
         continue;
       }
       // Unify address or hostName, converting them to addresses
-      HashSet<String> translatedAddresses =
+      Set<String> translatedAddresses =
           Arrays.stream(InetAddress.getAllByName(addressOrHostName))
               .map(InetAddress::getHostAddress)
               .collect(Collectors.toCollection(HashSet::new));
@@ -243,11 +245,11 @@ public class NodeUrlUtils {
             .collect(Collectors.toCollection(HashSet::new));
     // Check IPv4 and IPv6 loopback addresses 127.0.0.1 and 0.0.0.0.0.0.0.1
     selfAddresses.addAll(
-        Arrays.stream(InetAddress.getAllByName("localhost"))
+        Arrays.stream(InetAddress.getAllByName(LOOPBACK_HOST_NAME))
             .map(InetAddress::getHostAddress)
             .collect(Collectors.toCollection(HashSet::new)));
     // Check general address 0.0.0.0
-    selfAddresses.add("0.0.0.0");
+    selfAddresses.add(WILD_CARD_ADDRESS);
 
     return selfAddresses;
   }
