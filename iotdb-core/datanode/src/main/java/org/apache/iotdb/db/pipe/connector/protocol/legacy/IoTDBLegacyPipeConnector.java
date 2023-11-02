@@ -141,7 +141,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
         .validate(
             args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
             String.format(
-                "When %s is specified, %s and %s must be specified",
+                "When %s is specified to true, %s and %s must be specified",
                 SINK_IOTDB_SSL_ENABLE_KEY,
                 SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
                 SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
