@@ -243,11 +243,16 @@ public abstract class CacheManager implements ICacheManager {
   public Iterator<ICachedMNode> collectVolatileSubtrees() {
     return new Iterator<ICachedMNode>() {
 
-      final Iterator<ICachedMNode> nodeBufferIterator = nodeBuffer.iterator();
+      private final Iterator<ICachedMNode> nodeBufferIterator = nodeBuffer.iterator();
+
+      private ICachedMNode nextSubtree = null;
 
       @Override
       public boolean hasNext() {
-        return nodeBufferIterator.hasNext();
+        if (nextSubtree == null) {
+          tryGetNext();
+        }
+        return nextSubtree != null;
       }
 
       @Override
@@ -255,9 +260,33 @@ public abstract class CacheManager implements ICacheManager {
         if (!hasNext()) {
           throw new NoSuchElementException();
         }
-        ICachedMNode result = nodeBufferIterator.next();
-        nodeBuffer.remove(getCacheEntry(result));
+        ICachedMNode result = nextSubtree;
+        nextSubtree = null;
         return result;
+      }
+
+      private void tryGetNext() {
+        ICachedMNode node;
+        while (nodeBufferIterator.hasNext()) {
+          node = nodeBufferIterator.next();
+          nodeBuffer.remove(getCacheEntry(node));
+          if (getCachedMNodeContainer(node).hasChildrenInBuffer()) {
+            nextSubtree = node;
+            return;
+          } else if (!node.isDatabase()) {
+            // the volatile subtree of this node has been deleted, thus there's no need to flush it
+            // add the node and its ancestors to buffer
+            // if there's flush failure, such node and ancestors will be removed from cache again by
+            // #updateCacheStatusAfterFlushFailure
+            ICachedMNode tmp = node;
+            while (!tmp.isDatabase()
+                && !isInNodeCache(getCacheEntry(tmp))
+                && !getCachedMNodeContainer(tmp).hasChildrenInBuffer()) {
+              addToNodeCache(getCacheEntry(tmp), tmp);
+              tmp = tmp.getParent();
+            }
+          }
+        }
       }
     };
   }
@@ -265,14 +294,6 @@ public abstract class CacheManager implements ICacheManager {
   @Override
   public Iterator<ICachedMNode> updateCacheStatusAndRetrieveSubtreeAfterPersist(
       ICachedMNode subtreeRoot) {
-    ICachedMNode tmp = subtreeRoot;
-    while (!tmp.isDatabase()
-        && !isInNodeCache(getCacheEntry(tmp))
-        && !getCachedMNodeContainer(tmp).hasChildrenInBuffer()) {
-      addToNodeCache(getCacheEntry(tmp), tmp);
-      tmp = tmp.getParent();
-    }
-
     return new VolatileSubtreeIterator(getCachedMNodeContainer(subtreeRoot));
   }
 
@@ -321,6 +342,10 @@ public abstract class CacheManager implements ICacheManager {
         container.moveMNodeToCache(node.getName());
 
         if (node.isMeasurement() || !getCachedMNodeContainer(node).hasChildrenInBuffer()) {
+          // there's no volatile subtree under this node, thus there's no need to flush it
+          // add the node and its ancestors to buffer
+          // if there's flush failure, such node and ancestors will be removed from cache again by
+          // #updateCacheStatusAfterFlushFailure
           addToNodeCache(cacheEntry, node);
           tmp = node.getParent();
           while (!tmp.isDatabase()
@@ -342,6 +367,10 @@ public abstract class CacheManager implements ICacheManager {
   @Override
   public void updateCacheStatusAfterFlushFailure(ICachedMNode subtreeRoot) {
     nodeBuffer.put(getCacheEntry(subtreeRoot), subtreeRoot);
+    if (subtreeRoot.isDatabase()) {
+      return;
+    }
+    removeAncestorsFromCache(subtreeRoot);
   }
 
   @Override
