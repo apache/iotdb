@@ -105,7 +105,7 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public List<String> getMetricPrometheusPorterContents() {
+  public List<String> getMetricPrometheusReporterContents() {
     List<String> result = new ArrayList<>();
     // get all report content of confignodes
     for (ConfigNodeWrapper configNode : this.configNodeWrapperList) {

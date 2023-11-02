@@ -103,7 +103,7 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public List<String> getMetricPrometheusPorterContents() {
+  public List<String> getMetricPrometheusReporterContents() {
     List<String> result = new ArrayList<>();
     result.add(
         getUrlContent(Config.IOTDB_URL_PREFIX + ip_addr + ":" + configNodeMetricPort + "/metrics"));
