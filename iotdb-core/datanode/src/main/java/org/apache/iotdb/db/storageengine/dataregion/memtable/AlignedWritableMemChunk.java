@@ -358,6 +358,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     }
 
     List<TSDataType> dataTypes = list.getTsDataTypes();
+    BitMap rowBitMap = list.getRowBitMap();
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
 
     for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
@@ -367,11 +368,14 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
             && lastValidPointIndexForTimeDupCheck[columnIndex] == null) {
           lastValidPointIndexForTimeDupCheck[columnIndex] = new Pair<>(Long.MIN_VALUE, null);
         }
+        TSDataType tsDataType = dataTypes.get(columnIndex);
         for (int sortedRowIndex = pageRange.get(pageNum * 2);
             sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
             sortedRowIndex++) {
-          TSDataType tsDataType = dataTypes.get(columnIndex);
-
+          // skip empty row
+          if (rowBitMap != null && rowBitMap.isMarked(list.getValueIndex(sortedRowIndex))) {
+            continue;
+          }
           // skip time duplicated rows
           long time = list.getTime(sortedRowIndex);
           if (Objects.nonNull(timeDuplicateInfo)) {
@@ -450,6 +454,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       for (int sortedRowIndex = pageRange.get(pageNum * 2);
           sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
           sortedRowIndex++) {
+        // skip empty row
+        if (rowBitMap != null && rowBitMap.isMarked(list.getValueIndex(sortedRowIndex))) {
+          continue;
+        }
         if (Objects.isNull(timeDuplicateInfo) || !timeDuplicateInfo[sortedRowIndex]) {
           times[pointsInPage++] = list.getTime(sortedRowIndex);
         }

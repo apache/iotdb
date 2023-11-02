@@ -904,12 +904,17 @@ public abstract class AlignedTVList extends TVList {
   public TsBlock buildTsBlock(
       int floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
     TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
+    BitMap rowBitMap = getRowBitMap();
     // Time column
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     int validRowCount = 0;
     boolean[] timeDuplicateInfo = null;
     // time column
     for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
+      // skip empty row
+      if (rowBitMap != null && rowBitMap.isMarked(sortedRowIndex)) {
+        continue;
+      }
       if (sortedRowIndex == rowCount - 1
           || getTime(sortedRowIndex) != getTime(sortedRowIndex + 1)) {
         timeBuilder.writeLong(getTime(sortedRowIndex));
@@ -932,6 +937,10 @@ public abstract class AlignedTVList extends TVList {
       }
       ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
       for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
+        // skip empty row
+        if (rowBitMap != null && rowBitMap.isMarked(sortedRowIndex)) {
+          continue;
+        }
         // skip time duplicated rows
         if (Objects.nonNull(timeDuplicateInfo)) {
           if (!isNullValue(getValueIndex(sortedRowIndex), columnIndex)) {
@@ -1198,5 +1207,29 @@ public abstract class AlignedTVList extends TVList {
     AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
     tvList.putAlignedValues(times, values, bitMaps, 0, rowCount);
     return tvList;
+  }
+
+  public BitMap getRowBitMap() {
+    // row exists when any column value exists
+    if (bitMaps == null || bitMaps.contains(null)) {
+      return null;
+    }
+
+    byte[] rowBits = new byte[rowCount / Byte.SIZE + 1];
+    for (int row = 0; row < rowCount; row += Byte.SIZE) {
+      byte res = (byte) 0xFF;
+      for (List<BitMap> columnBitMaps : bitMaps) {
+        // row exists when any column value exists
+        if (columnBitMaps == null || columnBitMaps.get(row / ARRAY_SIZE) == null) {
+          res = 0x00;
+          break;
+        }
+        // set row to null when all column values are null
+        res &= columnBitMaps.get(row / ARRAY_SIZE).getByteArray()[(row % ARRAY_SIZE) / Byte.SIZE];
+      }
+      rowBits[row / Byte.SIZE] = res;
+    }
+
+    return new BitMap(rowCount, rowBits);
   }
 }
