@@ -19,23 +19,48 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
+import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
+
+import java.io.IOException;
 
 public class UDTFConstE implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
+    configurations.setAccessStrategy(new MappableRowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     collector.putDouble(row.getTime(), Math.E);
+  }
+
+  @Override
+  public Object transform(Row row) throws IOException {
+    return Math.E;
+  }
+
+  @Override
+  public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
+    int count = columns[0].getPositionCount();
+    boolean[] isNulls = columns[0].isNull();
+
+    for (int i = 0; i < count; i++) {
+      if (isNulls[i]) {
+        builder.appendNull();
+      } else {
+        builder.writeDouble(Math.E);
+      }
+    }
   }
 }
