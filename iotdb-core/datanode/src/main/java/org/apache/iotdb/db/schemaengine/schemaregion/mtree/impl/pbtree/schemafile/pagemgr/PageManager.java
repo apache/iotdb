@@ -180,13 +180,20 @@ public abstract class PageManager implements IPageManager {
       child = entry.getValue();
       if (!child.isMeasurement()) {
         alias = null;
-        if (SchemaFile.getNodeAddress(child) < 0) {
+
+        if (SchemaFile.getNodeAddress(child) >= 0) {
+          // new child with a valid segment address, weird
+          throw new MetadataException(
+              String.format(
+                  "A child [%s] in newChildBuffer shall not have segmentAddress.",
+                  child.getFullPath()));
+        }
+
+        // pre-allocate except that child is a device node using template
+        if (!(child.isDevice() && child.getAsDeviceMNode().isUseTemplate())) {
           short estSegSize = estimateSegmentSize(child);
           long glbIndex = preAllocateSegment(estSegSize);
           SchemaFile.setNodeAddress(child, glbIndex);
-        } else {
-          // new child with a valid segment address, weird
-          throw new MetadataException("A child in newChildBuffer shall not have segmentAddress.");
         }
       } else {
         alias =

@@ -223,11 +223,18 @@ public class SchemaFile implements ISchemaFile {
       setNodeAddress(node, lastSGAddr);
     } else {
       if (curSegAddr < 0L) {
+        if (node.isDevice() && node.getAsDeviceMNode().isUseTemplate()) {
+          throw new MetadataException(
+              String.format(
+                  "Adding or updating children of device using template [%s] is NOT allowed.",
+                  node.getFullPath()));
+        }
+
         // now only 32 bits page index is allowed
         throw new MetadataException(
             String.format(
-                "Cannot store a node with segment address [%s] except for StorageGroupNode.",
-                curSegAddr));
+                "Cannot flush any node with negative address [%s] except for DatabaseNode.",
+                node.getFullPath()));
       }
     }
 
