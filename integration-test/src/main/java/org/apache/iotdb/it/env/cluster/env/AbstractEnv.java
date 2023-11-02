@@ -606,7 +606,7 @@ public abstract class AbstractEnv implements BaseEnv {
     for (int i = 0; i < 30; i++) {
       try {
         return clientManager.borrowClient(
-                new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()));
+            new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()));
       } catch (Exception e) {
         lastException = e;
       }
@@ -614,7 +614,7 @@ public abstract class AbstractEnv implements BaseEnv {
       TimeUnit.SECONDS.sleep(1);
     }
     throw new IOException(
-            "Failed to get connection to this ConfigNode. Last error: " + lastException);
+        "Failed to get connection to this ConfigNode. Last error: " + lastException);
   }
 
   @Override

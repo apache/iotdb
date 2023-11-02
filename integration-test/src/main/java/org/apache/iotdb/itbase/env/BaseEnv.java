@@ -102,7 +102,6 @@ public interface BaseEnv {
     throw new UnsupportedOperationException();
   }
 
-
   ISessionPool getSessionPool(int maxSize);
 
   ISession getSessionConnection() throws IoTDBConnectionException;
