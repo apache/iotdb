@@ -290,7 +290,9 @@ public class TopKOperator implements ProcessOperator {
 
     tsBlockBuilder.reset();
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    for (int i = resultReturnSize; i < topKResult.length; i++) {
+    for (int i = resultReturnSize, size = (topKResult == null ? 0 : topKResult.length);
+        i < size;
+        i++) {
       MergeSortKey mergeSortKey = topKResult[i];
       TsBlock targetBlock = mergeSortKey.tsBlock;
       tsBlockBuilder

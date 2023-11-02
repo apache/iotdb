@@ -34,6 +34,7 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /** Metadata of one chunk. */
 public class ChunkMetadata implements IChunkMetadata {
@@ -321,5 +322,37 @@ public class ChunkMetadata implements IChunkMetadata {
 
   public void setMask(byte mask) {
     this.mask = mask;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ChunkMetadata that = (ChunkMetadata) o;
+    return offsetOfChunkHeader == that.offsetOfChunkHeader
+        && version == that.version
+        && isSeq == that.isSeq
+        && isClosed == that.isClosed
+        && mask == that.mask
+        && Objects.equals(measurementUid, that.measurementUid)
+        && tsDataType == that.tsDataType
+        && Objects.equals(statistics, that.statistics);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        measurementUid,
+        offsetOfChunkHeader,
+        tsDataType,
+        version,
+        statistics,
+        isSeq,
+        isClosed,
+        mask);
   }
 }
