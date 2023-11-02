@@ -40,18 +40,17 @@ public class UrlUtils {
    * @return TEndPoint null if parse error
    */
   public static TEndPoint parseTEndPointIpv4AndIpv6Url(String endPointUrl) {
+    TEndPoint endPoint = new TEndPoint();
     InetSocketAddress address = getSocketAddress(endPointUrl);
-    if (address == null) {
-      logger.warn("Bad url: {}", endPointUrl);
-      return null;
+    if (address != null) {
+      endPoint.setIp(address.getHostString());
+      endPoint.setPort(address.getPort());
     }
-    String ip = address.getHostString();
-    int port = address.getPort();
-    return new TEndPoint(ip, port);
+    return endPoint;
   }
 
   /**
-   * generate address from url, support ipv4 and ipv6
+   * Generate address from url, support ipv4 and ipv6
    *
    * @param url example:D80:0000:0000:0000:ABAA:0000:00C2:0002:22227
    * @return socket address
