@@ -154,7 +154,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
       return;
     }
 
-    switch (parameters.getString(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
+    switch (parameters.getStringByKeys(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
       case EXTRACTOR_REALTIME_MODE_FILE_VALUE:
       case EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE:
         realtimeExtractor = new PipeRealtimeDataRegionTsFileExtractor();
@@ -172,7 +172,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
         if (LOGGER.isWarnEnabled()) {
           LOGGER.warn(
               "Unsupported extractor realtime mode: {}, create a hybrid extractor.",
-              parameters.getString(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY));
+              parameters.getStringByKeys(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY));
         }
     }
   }
