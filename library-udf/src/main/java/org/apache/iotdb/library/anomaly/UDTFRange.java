@@ -66,25 +66,25 @@ public class UDTFRange implements UDTF {
       case INT32:
         intValue = row.getInt(0);
         if (intValue > upperBound || intValue < lowerBound) {
-          Util.putValue(collector, dataType, timestamp, intValue);
+          collector.putInt(timestamp, intValue);
         }
         break;
       case INT64:
         longValue = row.getLong(0);
         if (longValue > upperBound || longValue < lowerBound) {
-          Util.putValue(collector, dataType, timestamp, longValue);
+          collector.putLong(timestamp, longValue);
         }
         break;
       case FLOAT:
         floatValue = row.getFloat(0);
         if (floatValue > upperBound || floatValue < lowerBound) {
-          Util.putValue(collector, dataType, timestamp, floatValue);
+          collector.putFloat(timestamp, floatValue);
         }
         break;
       case DOUBLE:
         doubleValue = row.getDouble(0);
         if (doubleValue > upperBound || doubleValue < lowerBound) {
-          Util.putValue(collector, dataType, timestamp, doubleValue);
+          collector.putDouble(timestamp, doubleValue);
         }
         break;
       default:
