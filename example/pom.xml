@@ -39,6 +39,7 @@
         <module>flink</module>
         <module>mqtt</module>
         <module>mqtt-customize</module>
+        <module>opc-ua-sink</module>
         <module>pulsar</module>
         <module>udf</module>
         <module>trigger</module>
