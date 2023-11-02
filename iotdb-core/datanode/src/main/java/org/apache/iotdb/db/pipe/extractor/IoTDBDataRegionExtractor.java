@@ -52,11 +52,13 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXT
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_FILE_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_HYBRID_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_LOG_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_MODE_KEY;
@@ -117,7 +119,9 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
           EXTRACTOR_REALTIME_MODE_FILE_VALUE,
           EXTRACTOR_REALTIME_MODE_HYBRID_VALUE,
           EXTRACTOR_REALTIME_MODE_LOG_VALUE,
-          EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE);
+          EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE,
+          EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE,
+          EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE);
     }
 
     constructHistoricalExtractor();
@@ -150,12 +154,14 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
       return;
     }
 
-    switch (parameters.getString(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
+    switch (parameters.getStringByKeys(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
       case EXTRACTOR_REALTIME_MODE_FILE_VALUE:
+      case EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE:
         realtimeExtractor = new PipeRealtimeDataRegionTsFileExtractor();
         break;
       case EXTRACTOR_REALTIME_MODE_HYBRID_VALUE:
       case EXTRACTOR_REALTIME_MODE_LOG_VALUE:
+      case EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE:
         realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
         break;
       case EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE:
@@ -166,7 +172,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
         if (LOGGER.isWarnEnabled()) {
           LOGGER.warn(
               "Unsupported extractor realtime mode: {}, create a hybrid extractor.",
-              parameters.getString(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY));
+              parameters.getStringByKeys(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY));
         }
     }
   }

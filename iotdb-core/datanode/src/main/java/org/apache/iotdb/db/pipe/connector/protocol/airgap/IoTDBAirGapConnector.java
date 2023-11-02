@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
@@ -58,10 +59,12 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
@@ -94,17 +97,27 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
 
     validator.validate(
-        empty ->
-            !(pipeConfig.getPipeAirGapReceiverEnabled()
-                    && (givenNodeUrls.contains(
-                        new TEndPoint(
-                            ioTDBConfig.getRpcAddress(), pipeConfig.getPipeAirGapReceiverPort())))
-                || givenNodeUrls.contains(
-                    new TEndPoint("127.0.0.1", pipeConfig.getPipeAirGapReceiverPort()))
-                || givenNodeUrls.contains(
-                    new TEndPoint("0.0.0.0", pipeConfig.getPipeAirGapReceiverPort()))),
+        empty -> {
+          try {
+            // Ensure the sink doesn't point to the air gap receiver on DataNode itself
+
+            if (!pipeConfig.getPipeAirGapReceiverEnabled()) {
+              return true;
+            }
+
+            return !NodeUrlUtils.containsLocalAddress(
+                givenNodeUrls.stream()
+                    .filter(
+                        tEndPoint -> tEndPoint.getPort() == pipeConfig.getPipeAirGapReceiverPort())
+                    .map(TEndPoint::getIp)
+                    .collect(Collectors.toList()));
+          } catch (UnknownHostException e) {
+            LOGGER.warn("Unknown host when checking pipe sink IP.", e);
+            return false;
+          }
+        },
         String.format(
-            "One of the endpoints %s of the receivers is pointing back to the air gap receiver %s on sender itself",
+            "One of the endpoints %s of the receivers is pointing back to the air gap receiver %s on sender itself, or unknown host when checking pipe sink IP.",
             givenNodeUrls,
             new TEndPoint(ioTDBConfig.getRpcAddress(), pipeConfig.getPipeAirGapReceiverPort())));
   }
