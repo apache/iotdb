@@ -152,60 +152,95 @@ public class UDTFConst implements UDTF {
   @Override
   public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
     int count = columns[0].getPositionCount();
-    boolean[] isNulls = columns[0].isNull();
 
     switch (dataType) {
       case INT32:
         for (int i = 0; i < count; i++) {
-          if (isNulls[i]) {
+          boolean hasWritten = false;
+          for (Column column : columns) {
+            if (!column.isNull(i)) {
+              builder.writeInt(intValue);
+              hasWritten = true;
+              break;
+            }
+          }
+          if (!hasWritten) {
             builder.appendNull();
-          } else {
-            builder.writeInt(intValue);
           }
         }
         return;
       case INT64:
         for (int i = 0; i < count; i++) {
-          if (isNulls[i]) {
+          boolean hasWritten = false;
+          for (Column column : columns) {
+            if (!column.isNull(i)) {
+              builder.writeLong(longValue);
+              hasWritten = true;
+              break;
+            }
+          }
+          if (!hasWritten) {
             builder.appendNull();
-          } else {
-            builder.writeLong(longValue);
           }
         }
         return;
       case FLOAT:
         for (int i = 0; i < count; i++) {
-          if (isNulls[i]) {
+          boolean hasWritten = false;
+          for (Column column : columns) {
+            if (!column.isNull(i)) {
+              builder.writeFloat(floatValue);
+              hasWritten = true;
+              break;
+            }
+          }
+          if (!hasWritten) {
             builder.appendNull();
-          } else {
-            builder.writeFloat(floatValue);
           }
         }
         return;
       case DOUBLE:
         for (int i = 0; i < count; i++) {
-          if (isNulls[i]) {
+          boolean hasWritten = false;
+          for (Column column : columns) {
+            if (!column.isNull(i)) {
+              builder.writeDouble(doubleValue);
+              hasWritten = true;
+              break;
+            }
+          }
+          if (!hasWritten) {
             builder.appendNull();
-          } else {
-            builder.writeDouble(doubleValue);
           }
         }
         return;
       case BOOLEAN:
         for (int i = 0; i < count; i++) {
-          if (isNulls[i]) {
+          boolean hasWritten = false;
+          for (Column column : columns) {
+            if (!column.isNull(i)) {
+              builder.writeBoolean(booleanValue);
+              hasWritten = true;
+              break;
+            }
+          }
+          if (!hasWritten) {
             builder.appendNull();
-          } else {
-            builder.writeBoolean(booleanValue);
           }
         }
         return;
       case TEXT:
         for (int i = 0; i < count; i++) {
-          if (isNulls[i]) {
+          boolean hasWritten = false;
+          for (Column column : columns) {
+            if (!column.isNull(i)) {
+              builder.writeBinary(binaryValue);
+              hasWritten = true;
+              break;
+            }
+          }
+          if (!hasWritten) {
             builder.appendNull();
-          } else {
-            builder.writeBinary(binaryValue);
           }
         }
         return;
