@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
-import static org.apache.iotdb.db.utils.DateTimeUtils.MS_TO_MONTH;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 public class TimeRangeIteratorFactory {
 
@@ -34,43 +35,29 @@ public class TimeRangeIteratorFactory {
   public static ITimeRangeIterator getTimeRangeIterator(
       long startTime,
       long endTime,
-      long interval,
-      long slidingStep,
+      TimeDuration interval,
+      TimeDuration slidingStep,
       boolean isAscending,
-      boolean isIntervalByMonth,
-      boolean isSlidingStepByMonth,
       boolean leftCRightO,
       boolean outputPartialTimeWindow) {
-    long originInterval = interval;
-    long originSlidingStep = slidingStep;
-    interval = isIntervalByMonth ? interval / MS_TO_MONTH : interval;
-    slidingStep = isSlidingStepByMonth ? slidingStep / MS_TO_MONTH : slidingStep;
-
-    if (outputPartialTimeWindow && originInterval > originSlidingStep) {
-      if (!isIntervalByMonth && !isSlidingStepByMonth) {
+    if (outputPartialTimeWindow
+        && interval.getTotalDuration(TimestampPrecisionUtils.currPrecision)
+            > slidingStep.getTotalDuration(TimestampPrecisionUtils.currPrecision)) {
+      if (!interval.containsMonth() && !slidingStep.containsMonth()) {
         return new PreAggrWindowIterator(
-            startTime, endTime, interval, slidingStep, isAscending, leftCRightO);
-      } else {
-        return new PreAggrWindowWithNaturalMonthIterator(
             startTime,
             endTime,
-            interval,
-            slidingStep,
+            interval.nonMonthDuration,
+            slidingStep.nonMonthDuration,
             isAscending,
-            isSlidingStepByMonth,
-            isIntervalByMonth,
             leftCRightO);
+      } else {
+        return new PreAggrWindowWithNaturalMonthIterator(
+            startTime, endTime, interval, slidingStep, isAscending, leftCRightO);
       }
     } else {
       return new AggrWindowIterator(
-          startTime,
-          endTime,
-          interval,
-          slidingStep,
-          isAscending,
-          isSlidingStepByMonth,
-          isIntervalByMonth,
-          leftCRightO);
+          startTime, endTime, interval, slidingStep, isAscending, leftCRightO);
     }
   }
 }

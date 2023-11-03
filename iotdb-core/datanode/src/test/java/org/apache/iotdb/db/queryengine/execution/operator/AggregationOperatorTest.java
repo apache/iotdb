@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -189,7 +190,8 @@ public class AggregationOperatorTest {
           {20099, 20199, 10259, 10379},
           {20000, 20100, 260, 380}
         };
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
     List<TAggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(TAggregationType.COUNT);
     aggregationTypes.add(TAggregationType.SUM);
@@ -245,7 +247,8 @@ public class AggregationOperatorTest {
     aggregationTypes.add(TAggregationType.AVG);
     aggregationTypes.add(TAggregationType.FIRST_VALUE);
     aggregationTypes.add(TAggregationType.LAST_VALUE);
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 399, new TimeDuration(0, 100), new TimeDuration(0, 100), true);
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < aggregationTypes.size(); i++) {
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();

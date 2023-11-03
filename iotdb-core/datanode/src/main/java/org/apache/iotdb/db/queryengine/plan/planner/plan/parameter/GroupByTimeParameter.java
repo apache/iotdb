@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -40,14 +42,10 @@ public class GroupByTimeParameter {
   private long endTime;
 
   // time interval
-  private long interval;
+  private TimeDuration interval;
 
   // sliding step
-  private long slidingStep;
-
-  // if it is expressed by natural month. eg, 1mo
-  private boolean isIntervalByMonth = false;
-  private boolean isSlidingStepByMonth = false;
+  private TimeDuration slidingStep;
 
   // if it is left close and right open interval
   private boolean leftCRightO;
@@ -55,24 +53,15 @@ public class GroupByTimeParameter {
   public GroupByTimeParameter() {}
 
   public GroupByTimeParameter(
-      long startTime, long endTime, long interval, long slidingStep, boolean leftCRightO) {
-    this(startTime, endTime, interval, slidingStep, false, false, leftCRightO);
-  }
-
-  public GroupByTimeParameter(
       long startTime,
       long endTime,
-      long interval,
-      long slidingStep,
-      boolean isIntervalByMonth,
-      boolean isSlidingStepByMonth,
+      TimeDuration interval,
+      TimeDuration slidingStep,
       boolean leftCRightO) {
     this.startTime = startTime;
     this.endTime = endTime;
     this.interval = interval;
     this.slidingStep = slidingStep;
-    this.isIntervalByMonth = isIntervalByMonth;
-    this.isSlidingStepByMonth = isSlidingStepByMonth;
     this.leftCRightO = leftCRightO;
   }
 
@@ -81,8 +70,6 @@ public class GroupByTimeParameter {
     this.endTime = groupByTimeComponent.getEndTime();
     this.interval = groupByTimeComponent.getInterval();
     this.slidingStep = groupByTimeComponent.getSlidingStep();
-    this.isIntervalByMonth = groupByTimeComponent.isIntervalByMonth();
-    this.isSlidingStepByMonth = groupByTimeComponent.isSlidingStepByMonth();
     this.leftCRightO = groupByTimeComponent.isLeftCRightO();
   }
 
@@ -102,36 +89,20 @@ public class GroupByTimeParameter {
     this.endTime = endTime;
   }
 
-  public long getInterval() {
+  public TimeDuration getInterval() {
     return interval;
   }
 
-  public void setInterval(long interval) {
+  public void setInterval(TimeDuration interval) {
     this.interval = interval;
   }
 
-  public long getSlidingStep() {
+  public TimeDuration getSlidingStep() {
     return slidingStep;
   }
 
-  public void setSlidingStep(long slidingStep) {
+  public void setSlidingStep(TimeDuration slidingStep) {
     this.slidingStep = slidingStep;
-  }
-
-  public boolean isIntervalByMonth() {
-    return isIntervalByMonth;
-  }
-
-  public void setIntervalByMonth(boolean intervalByMonth) {
-    isIntervalByMonth = intervalByMonth;
-  }
-
-  public boolean isSlidingStepByMonth() {
-    return isSlidingStepByMonth;
-  }
-
-  public void setSlidingStepByMonth(boolean slidingStepByMonth) {
-    isSlidingStepByMonth = slidingStepByMonth;
   }
 
   public boolean isLeftCRightO() {
@@ -143,26 +114,23 @@ public class GroupByTimeParameter {
   }
 
   public boolean hasOverlap() {
-    return interval > slidingStep;
+    return interval.getTotalDuration(TimestampPrecisionUtils.currPrecision)
+        > slidingStep.getTotalDuration(TimestampPrecisionUtils.currPrecision);
   }
 
   public void serialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(startTime, buffer);
     ReadWriteIOUtils.write(endTime, buffer);
-    ReadWriteIOUtils.write(interval, buffer);
-    ReadWriteIOUtils.write(slidingStep, buffer);
-    ReadWriteIOUtils.write(isIntervalByMonth, buffer);
-    ReadWriteIOUtils.write(isSlidingStepByMonth, buffer);
+    interval.serialize(buffer);
+    slidingStep.serialize(buffer);
     ReadWriteIOUtils.write(leftCRightO, buffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(startTime, stream);
     ReadWriteIOUtils.write(endTime, stream);
-    ReadWriteIOUtils.write(interval, stream);
-    ReadWriteIOUtils.write(slidingStep, stream);
-    ReadWriteIOUtils.write(isIntervalByMonth, stream);
-    ReadWriteIOUtils.write(isSlidingStepByMonth, stream);
+    interval.serialize(stream);
+    slidingStep.serialize(stream);
     ReadWriteIOUtils.write(leftCRightO, stream);
   }
 
@@ -170,10 +138,8 @@ public class GroupByTimeParameter {
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter();
     groupByTimeParameter.setStartTime(ReadWriteIOUtils.readLong(buffer));
     groupByTimeParameter.setEndTime(ReadWriteIOUtils.readLong(buffer));
-    groupByTimeParameter.setInterval(ReadWriteIOUtils.readLong(buffer));
-    groupByTimeParameter.setSlidingStep(ReadWriteIOUtils.readLong(buffer));
-    groupByTimeParameter.setIntervalByMonth(ReadWriteIOUtils.readBool(buffer));
-    groupByTimeParameter.setSlidingStepByMonth(ReadWriteIOUtils.readBool(buffer));
+    groupByTimeParameter.setInterval(TimeDuration.deserialize(buffer));
+    groupByTimeParameter.setSlidingStep(TimeDuration.deserialize(buffer));
     groupByTimeParameter.setLeftCRightO(ReadWriteIOUtils.readBool(buffer));
     return groupByTimeParameter;
   }
@@ -186,22 +152,13 @@ public class GroupByTimeParameter {
     GroupByTimeParameter other = (GroupByTimeParameter) obj;
     return this.startTime == other.startTime
         && this.endTime == other.endTime
-        && this.interval == other.interval
-        && this.slidingStep == other.slidingStep
-        && this.isSlidingStepByMonth == other.isSlidingStepByMonth
-        && this.isIntervalByMonth == other.isIntervalByMonth
+        && this.interval.equals(other.interval)
+        && this.slidingStep.equals(other.slidingStep)
         && this.leftCRightO == other.leftCRightO;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        startTime,
-        endTime,
-        interval,
-        slidingStep,
-        isIntervalByMonth,
-        isSlidingStepByMonth,
-        leftCRightO);
+    return Objects.hash(startTime, endTime, interval, slidingStep, leftCRightO);
   }
 }

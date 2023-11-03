@@ -93,6 +93,7 @@ import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -244,11 +245,11 @@ public class StatementGenerator {
       GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
       groupByTimeComponent.setStartTime(req.getStartTime());
       groupByTimeComponent.setEndTime(req.getEndTime());
-      groupByTimeComponent.setInterval(req.getInterval());
+      groupByTimeComponent.setInterval(new TimeDuration(0, req.getInterval()));
       if (req.isSetSlidingStep()) {
-        groupByTimeComponent.setSlidingStep(req.getSlidingStep());
+        groupByTimeComponent.setSlidingStep(new TimeDuration(0, req.getSlidingStep()));
       } else {
-        groupByTimeComponent.setSlidingStep(req.getInterval());
+        groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
       }
       queryStatement.setGroupByTimeComponent(groupByTimeComponent);
     } else if (req.isSetStartTime()) {

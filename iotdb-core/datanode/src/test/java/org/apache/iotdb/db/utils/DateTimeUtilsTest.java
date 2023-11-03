@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.utils;
+package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -29,7 +29,7 @@ import java.time.ZonedDateTime;
 
 import static org.junit.Assert.assertEquals;
 
-public class DatetimeQueryDataSetUtilsTest {
+public class DateTimeUtilsTest {
 
   private ZoneOffset zoneOffset;
   private ZoneId zoneId;
@@ -234,5 +234,32 @@ public class DatetimeQueryDataSetUtilsTest {
     for (String str : timeFormatWithoutMs) {
       assertEquals(res, DateTimeUtils.convertDatetimeStrToLong(str, zoneId));
     }
+  }
+
+  @Test
+  public void testConstructTimeDuration() {
+    TimeDuration timeDuration = DateTimeUtils.constructTimeDuration("1y1d1ns");
+    Assert.assertEquals(12, timeDuration.monthDuration);
+    Assert.assertEquals(86400_000L, timeDuration.nonMonthDuration);
+
+    timeDuration = DateTimeUtils.constructTimeDuration("1y1mo1d1ms1ns");
+    Assert.assertEquals(13, timeDuration.monthDuration);
+    Assert.assertEquals(86400_001L, timeDuration.nonMonthDuration);
+
+    timeDuration = DateTimeUtils.constructTimeDuration("1d1ns");
+    Assert.assertEquals(0, timeDuration.monthDuration);
+    Assert.assertEquals(86400_000L, timeDuration.nonMonthDuration);
+
+    timeDuration = DateTimeUtils.constructTimeDuration("1y");
+    Assert.assertEquals(12, timeDuration.monthDuration);
+    Assert.assertEquals(0, timeDuration.nonMonthDuration);
+
+    timeDuration = DateTimeUtils.constructTimeDuration("1mo");
+    Assert.assertEquals(1, timeDuration.monthDuration);
+    Assert.assertEquals(0, timeDuration.nonMonthDuration);
+
+    timeDuration = DateTimeUtils.constructTimeDuration("1y1mo");
+    Assert.assertEquals(13, timeDuration.monthDuration);
+    Assert.assertEquals(0, timeDuration.nonMonthDuration);
   }
 }

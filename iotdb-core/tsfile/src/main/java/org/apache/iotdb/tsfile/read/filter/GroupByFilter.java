@@ -47,6 +47,11 @@ public class GroupByFilter implements Filter, Serializable {
     this.endTime = endTime;
   }
 
+  public GroupByFilter(long startTime, long endTime) {
+    this.startTime = startTime;
+    this.endTime = endTime;
+  }
+
   public GroupByFilter() {}
 
   @Override

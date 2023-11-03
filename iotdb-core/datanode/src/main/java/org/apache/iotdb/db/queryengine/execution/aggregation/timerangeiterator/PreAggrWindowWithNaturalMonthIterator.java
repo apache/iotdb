@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator {
 
@@ -41,24 +42,14 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
   public PreAggrWindowWithNaturalMonthIterator(
       long startTime,
       long endTime,
-      long interval,
-      long slidingStep,
+      TimeDuration interval,
+      TimeDuration slidingStep,
       boolean isAscending,
-      boolean isSlidingStepByMonth,
-      boolean isIntervalByMonth,
       boolean leftCRightO) {
     this.isAscending = isAscending;
     this.timeBoundaryHeap = new TimeSelector(HEAP_MAX_SIZE, isAscending);
     this.aggrWindowIterator =
-        new AggrWindowIterator(
-            startTime,
-            endTime,
-            interval,
-            slidingStep,
-            isAscending,
-            isSlidingStepByMonth,
-            isIntervalByMonth,
-            leftCRightO);
+        new AggrWindowIterator(startTime, endTime, interval, slidingStep, isAscending, leftCRightO);
     this.leftCRightO = leftCRightO;
     initHeap();
   }
