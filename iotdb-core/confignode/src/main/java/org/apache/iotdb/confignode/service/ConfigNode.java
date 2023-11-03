@@ -92,7 +92,7 @@ public class ConfigNode implements ConfigNodeMBean {
           ServiceType.CONFIG_NODE.getJmxName());
   private final RegisterManager registerManager = new RegisterManager();
 
-  private ConfigManager configManager;
+  protected ConfigManager configManager;
 
   private ConfigNode() {
     // We do not init anything here, so that we can re-initialize the instance in IT.
@@ -116,7 +116,7 @@ public class ConfigNode implements ConfigNodeMBean {
     try {
       processPid();
       // Add shutdown hook
-      Runtime.getRuntime().addShutdownHook(new ConfigNodeShutdownHook());
+      addShutDownHook();
       // Set up internal services
       setUpInternalServices();
       // Init ConfigManager
@@ -291,7 +291,7 @@ public class ConfigNode implements ConfigNodeMBean {
                 x -> ThreadName.getThreadPoolTheThreadBelongs(x).name()));
   }
 
-  private void initConfigManager() {
+  void initConfigManager() {
     try {
       configManager = new ConfigManager();
     } catch (IOException e) {
@@ -418,6 +418,10 @@ public class ConfigNode implements ConfigNodeMBean {
   public void addMetrics() {
     // Add some Metrics for configManager
     configManager.addMetrics();
+  }
+
+  protected void addShutDownHook() {
+    Runtime.getRuntime().addShutdownHook(new ConfigNodeShutdownHook());
   }
 
   @TestOnly
