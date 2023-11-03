@@ -154,6 +154,8 @@ public class AbstractCompactionTest {
               + File.separator
               + "0");
 
+  protected static Map<Long, Pair<File, File>> registeredTimePartitionDirs = new HashMap<>();
+
   private int fileVersion = 0;
 
   private int fileCount = 0;
@@ -179,6 +181,41 @@ public class AbstractCompactionTest {
     BloomFilterCache.getInstance().clear();
     tsFileManager.getOrCreateSequenceListByTimePartition(0);
     tsFileManager.getOrCreateUnsequenceListByTimePartition(0);
+    registeredTimePartitionDirs.put(0L, new Pair<>(SEQ_DIRS, UNSEQ_DIRS));
+  }
+
+  protected void createTimePartitionDirIfNotExist(long timePartition) {
+    if (registeredTimePartitionDirs.containsKey(timePartition)) {
+      return;
+    }
+    File seqTimePartitionDir =
+        new File(
+            TestConstant.BASE_OUTPUT_PATH
+                + "data"
+                + File.separator
+                + "sequence"
+                + File.separator
+                + COMPACTION_TEST_SG
+                + File.separator
+                + "0"
+                + File.separator
+                + timePartition);
+    seqTimePartitionDir.mkdirs();
+    File unseqTimePartitionDir =
+        new File(
+            TestConstant.BASE_OUTPUT_PATH
+                + "data"
+                + File.separator
+                + "unsequence"
+                + File.separator
+                + COMPACTION_TEST_SG
+                + File.separator
+                + "0"
+                + File.separator
+                + timePartition);
+    unseqTimePartitionDir.mkdirs();
+    registeredTimePartitionDirs.put(
+        timePartition, new Pair<File, File>(seqTimePartitionDir, unseqTimePartitionDir));
   }
 
   /**
@@ -416,6 +453,17 @@ public class AbstractCompactionTest {
     if (UNSEQ_DIRS.exists()) {
       FileUtils.deleteDirectory(UNSEQ_DIRS);
     }
+    for (Map.Entry<Long, Pair<File, File>> entry : registeredTimePartitionDirs.entrySet()) {
+      File seqDir = entry.getValue().left;
+      File unseqDir = entry.getValue().right;
+      if (seqDir.exists() && seqDir.isDirectory()) {
+        FileUtils.deleteDirectory(seqDir);
+      }
+      if (unseqDir.exists() && unseqDir.isDirectory()) {
+        FileUtils.deleteDirectory(unseqDir);
+      }
+    }
+    registeredTimePartitionDirs.clear();
     tsFileManager.clear();
   }
 
@@ -616,6 +664,23 @@ public class AbstractCompactionTest {
       filePath = SEQ_DIRS.getPath() + File.separator + fileName;
     } else {
       filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
+    }
+    TsFileResource resource = new TsFileResource(new File(filePath));
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+    return resource;
+  }
+
+  protected TsFileResource createEmptyFileAndResourceWithName(
+      String fileName, long timePartition, boolean isSeq) {
+    String filePath;
+    if (isSeq) {
+      filePath =
+          registeredTimePartitionDirs.get(timePartition).left.getPath() + File.separator + fileName;
+    } else {
+      filePath =
+          registeredTimePartitionDirs.get(timePartition).right.getPath()
+              + File.separator
+              + fileName;
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
