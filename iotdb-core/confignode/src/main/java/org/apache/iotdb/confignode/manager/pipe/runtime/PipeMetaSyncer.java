@@ -37,6 +37,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeMetaSyncer {
 
@@ -55,6 +56,8 @@ public class PipeMetaSyncer {
   private Future<?> metaSyncFuture;
 
   private final AtomicInteger pipeAutoRestartRoundCounter = new AtomicInteger(0);
+
+  private final ReentrantLock metaSyncLock = new ReentrantLock();
 
   private final boolean pipeAutoRestartEnabled =
       PipeConfig.getInstance().getPipeAutoRestartEnabled();
@@ -87,27 +90,34 @@ public class PipeMetaSyncer {
   }
 
   private void sync() {
-    final ProcedureManager procedureManager = configManager.getProcedureManager();
-
-    boolean somePipesNeedRestarting = false;
-
-    if (pipeAutoRestartEnabled
-        && pipeAutoRestartRoundCounter.incrementAndGet()
-            == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
-      somePipesNeedRestarting = autoRestartWithLock();
-      pipeAutoRestartRoundCounter.set(0);
+    if (!metaSyncLock.tryLock()) {
+      return;
     }
+    try {
+      final ProcedureManager procedureManager = configManager.getProcedureManager();
 
-    final TSStatus status = procedureManager.pipeMetaSync();
+      boolean somePipesNeedRestarting = false;
 
-    if (somePipesNeedRestarting
-        && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      handleSuccessfulRestartWithLock();
-      procedureManager.pipeHandleMetaChange(true, false);
-    }
+      if (pipeAutoRestartEnabled
+          && pipeAutoRestartRoundCounter.incrementAndGet()
+              == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
+        somePipesNeedRestarting = autoRestartWithLock();
+        pipeAutoRestartRoundCounter.set(0);
+      }
 
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      procedureManager.pipeHandleMetaChange(true, true);
+      final TSStatus status = procedureManager.pipeMetaSync();
+
+      if (somePipesNeedRestarting
+          && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        handleSuccessfulRestartWithLock();
+        procedureManager.pipeHandleMetaChangeWithBlock(true, false);
+      }
+
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        procedureManager.pipeHandleMetaChangeWithBlock(true, true);
+      }
+    } finally {
+      metaSyncLock.unlock();
     }
   }
 
