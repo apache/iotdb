@@ -200,6 +200,17 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return sortedBitMap;
   }
 
+  /////////////////////////////// WriteBack ///////////////////////////////
+
+  public static PipeTransferTabletRawReq toTPipeTransferRawReq(Tablet tablet, boolean isAligned) {
+    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
+
+    tabletReq.tablet = tablet;
+    tabletReq.isAligned = isAligned;
+
+    return tabletReq;
+  }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferTabletRawReq toTPipeTransferReq(Tablet tablet, boolean isAligned)
