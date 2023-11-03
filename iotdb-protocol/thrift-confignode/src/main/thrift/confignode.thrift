@@ -524,7 +524,6 @@ struct TShowClusterResp {
   3: required list<common.TDataNodeLocation> dataNodeList
   4: required map<i32, string> nodeStatus
   5: required map<i32, TNodeVersionInfo> nodeVersionInfo
-  6: required map<i32, TNodeActivateInfo> nodeActivateInfo
 }
 
 struct TNodeVersionInfo {

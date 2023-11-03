@@ -444,10 +444,10 @@ public class ConfigManager implements IManager {
               nodeStatus.putIfAbsent(
                   dataNodeLocation.getDataNodeId(), NodeStatus.Unknown.toString()));
       return new TShowClusterResp(
-          status, configNodeLocations, dataNodeLocations, nodeStatus, nodeVersionInfo, null);
+          status, configNodeLocations, dataNodeLocations, nodeStatus, nodeVersionInfo);
     } else {
       return new TShowClusterResp(
-          status, new ArrayList<>(), new ArrayList<>(), new HashMap<>(), new HashMap<>(), null);
+          status, new ArrayList<>(), new ArrayList<>(), new HashMap<>(), new HashMap<>());
     }
   }
 
