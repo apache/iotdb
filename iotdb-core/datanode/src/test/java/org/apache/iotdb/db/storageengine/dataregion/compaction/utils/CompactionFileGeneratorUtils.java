@@ -81,36 +81,7 @@ public class CompactionFileGeneratorUtils {
   }
 
   public static TsFileResource generateTsFileResource(boolean sequence, int index) {
-    if (sequence) {
-      return new TsFileResource(
-          new File(
-              TestConstant.BASE_OUTPUT_PATH
-                  .concat("database")
-                  .concat(File.separator)
-                  .concat("regionId")
-                  .concat(File.separator)
-                  .concat(
-                      index
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + index
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + 0
-                          + IoTDBConstant.FILE_NAME_SEPARATOR
-                          + 0
-                          + ".tsfile")));
-    } else {
-      return new TsFileResource(
-          new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
-                  (index + 10000)
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + (index + 10000)
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile")));
-    }
+    return generateTsFileResource(sequence, index, "default");
   }
 
   public static TsFileResource generateTsFileResource(

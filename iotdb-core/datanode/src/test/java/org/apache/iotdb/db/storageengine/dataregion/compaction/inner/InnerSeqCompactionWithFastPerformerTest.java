@@ -56,6 +56,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1112,10 +1113,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
     pagePointsNum = new ArrayList<>();
     pagePointsNum.add(300L);
     chunkPagePointsNum.add(pagePointsNum);
-    Set<String> paths = new HashSet<>();
-    for (int i = 0; i < fullPaths.length; i++) {
-      paths.add(fullPaths[i]);
-    }
+    Set<String> paths = new HashSet<>(Arrays.asList(fullPaths));
 
     for (int i = 0; i < 5; i++) {
       TsFileResource tsFileResource =

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 import static org.apache.iotdb.tsfile.utils.FilePathUtils.splitTsFilePath;
 
 public class TsFileID {
@@ -82,9 +81,10 @@ public class TsFileID {
       return versionArray;
     }
     versionArray[0] = Long.parseLong(names[1]);
+
+    int dotIndex = names[3].indexOf(".");
     versionArray[1] =
-        (Long.parseLong(names[2]) << 32)
-            | Long.parseLong(names[3].substring(0, names[3].length() - TSFILE_SUFFIX.length()));
+        (Long.parseLong(names[2]) << 32) | Long.parseLong(names[3].substring(0, dotIndex));
     return versionArray;
   }
 }
