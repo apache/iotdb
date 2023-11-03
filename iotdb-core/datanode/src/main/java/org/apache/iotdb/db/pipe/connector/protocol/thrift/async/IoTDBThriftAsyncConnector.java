@@ -360,7 +360,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     transferBatchedEventsIfNecessary();
 
     if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn("IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
+      LOGGER.warn(
+          "IoTDBThriftAsyncConnector does not support transferring generic event: {}.", event);
     }
   }
 

@@ -62,7 +62,9 @@ public class WebSocketConnector implements PipeConnector {
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {}
+  public void validate(PipeParameterValidator validator) throws Exception {
+    // Do nothing
+  }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
