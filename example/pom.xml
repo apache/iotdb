@@ -47,6 +47,7 @@
         <module>rest-java-example</module>
         <module>flink-sql</module>
         <module>schema</module>
+        <module>count-point-processor</module>
     </modules>
     <build>
         <pluginManagement>
