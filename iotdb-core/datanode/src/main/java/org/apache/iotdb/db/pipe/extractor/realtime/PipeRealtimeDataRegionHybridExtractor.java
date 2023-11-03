@@ -42,7 +42,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
   private volatile boolean isStartedToSupply = false;
-  private final AtomicInteger eventCollectorQueueTsFileSize = new AtomicInteger(0);
+  private final AtomicInteger processorEventCollectorQueueTsFileSize = new AtomicInteger(0);
+  private final AtomicInteger connectorInputPendingQueueTsFileSize = new AtomicInteger(0);
 
   @Override
   protected void doExtract(PipeRealtimeEvent event) {
@@ -228,12 +229,18 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean isTsFileEventCountInQueueExceededLimit() {
-    return pendingQueue.getTsFileInsertionEventCount() + eventCollectorQueueTsFileSize.get()
+    return pendingQueue.getTsFileInsertionEventCount()
+            + processorEventCollectorQueueTsFileSize.get()
+            + connectorInputPendingQueueTsFileSize.get()
         >= PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
 
-  public void informEventCollectorQueueTsFileSize(int queueSize) {
-    eventCollectorQueueTsFileSize.set(queueSize);
+  public void informProcessorEventCollectorQueueTsFileSize(int queueSize) {
+    processorEventCollectorQueueTsFileSize.set(queueSize);
+  }
+
+  public void informConnectorInputPendingQueueTsFileSize(int queueSize) {
+    connectorInputPendingQueueTsFileSize.set(queueSize);
   }
 
   @Override
