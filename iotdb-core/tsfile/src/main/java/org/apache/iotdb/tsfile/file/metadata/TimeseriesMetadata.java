@@ -35,7 +35,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static io.airlift.slice.SizeOf.sizeOfCharArray;
 import static io.airlift.slice.SizeOf.sizeOfObjectArray;
@@ -105,7 +104,9 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     this.dataType = timeseriesMetadata.dataType;
     this.statistics = timeseriesMetadata.statistics;
     this.modified = timeseriesMetadata.modified;
-    this.chunkMetadataList = new ArrayList<>(timeseriesMetadata.chunkMetadataList);
+    // we won't change the list in query process so it's safe to directly assign it without copying
+    // new one
+    this.chunkMetadataList = timeseriesMetadata.chunkMetadataList;
   }
 
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer, boolean needChunkMetadata) {
@@ -241,9 +242,11 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
   }
 
   public List<IChunkMetadata> getCopiedChunkMetadataList() {
-    return chunkMetadataList.stream()
-        .map(chunkMetadata -> new ChunkMetadata((ChunkMetadata) chunkMetadata))
-        .collect(Collectors.toList());
+    List<IChunkMetadata> res = new ArrayList<>(chunkMetadataList.size());
+    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      res.add(new ChunkMetadata((ChunkMetadata) chunkMetadata));
+    }
+    return res;
   }
 
   @Override
