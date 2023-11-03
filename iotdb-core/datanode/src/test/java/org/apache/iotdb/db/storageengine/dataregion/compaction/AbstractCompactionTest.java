@@ -154,7 +154,7 @@ public class AbstractCompactionTest {
               + File.separator
               + "0");
 
-  protected static Map<Long, Pair<File, File>> registeredTimePartitionDirs = new HashMap<>();
+  protected Map<Long, Pair<File, File>> registeredTimePartitionDirs = new HashMap<>();
 
   private int fileVersion = 0;
 
