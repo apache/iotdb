@@ -672,6 +672,9 @@ public class AbstractCompactionTest {
 
   protected TsFileResource createEmptyFileAndResourceWithName(
       String fileName, long timePartition, boolean isSeq) {
+    if (!registeredTimePartitionDirs.containsKey(timePartition)) {
+      createTimePartitionDirIfNotExist(timePartition);
+    }
     String filePath;
     if (isSeq) {
       filePath =
