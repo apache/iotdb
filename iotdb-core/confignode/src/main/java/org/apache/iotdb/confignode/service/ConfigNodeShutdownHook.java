@@ -46,7 +46,7 @@ public class ConfigNodeShutdownHook extends Thread {
 
   @Override
   public void run() {
-    boolean isLeader = ConfigNode.getInstance().getConfigManager().getConsensusManager().isLeader();
+    boolean isLeader = getConfigNodeInstance().getConfigManager().getConsensusManager().isLeader();
 
     try {
       ConfigNode.getInstance().deactivate();
@@ -92,5 +92,9 @@ public class ConfigNodeShutdownHook extends Thread {
           MemUtils.bytesCntToStr(
               Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
     }
+  }
+
+  protected ConfigNode getConfigNodeInstance() {
+    return ConfigNode.getInstance();
   }
 }

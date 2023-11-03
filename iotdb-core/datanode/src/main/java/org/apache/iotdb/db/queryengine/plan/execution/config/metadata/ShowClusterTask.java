@@ -98,6 +98,7 @@ public class ShowClusterTask implements IConfigTask {
           .getColumnBuilder(6)
           .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
     }
+
     builder.declarePosition();
   }
 

@@ -250,6 +250,13 @@ struct THeartbeatReq {
   7: optional map<string, common.TSpaceQuota> spaceQuotaUsage
   8: optional bool needPipeMetaList
   9: optional i64 deviceQuotaRemain
+  10: optional TDataNodeActivation activation
+}
+
+struct TDataNodeActivation {
+  1: required bool activated
+  2: required i64 deviceNumRemain
+  3: required i64 sensorNumRemain
 }
 
 struct THeartbeatResp {
@@ -264,6 +271,7 @@ struct THeartbeatResp {
   // TODO: schemaLimitLevel is not used from 1.3.0, keep it for compatibility
   9: optional TSchemaLimitLevel schemaLimitLevel
   10: optional list<binary> pipeMetaList
+  11: optional string activateStatus
 }
 
 struct TPipeHeartbeatReq {
