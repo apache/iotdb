@@ -30,7 +30,7 @@ jobs:
   two-clusters:
     strategy:
       fail-fast: false
-      max-parallel: 20
+      max-parallel: 2
       matrix:
         java: [11]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
