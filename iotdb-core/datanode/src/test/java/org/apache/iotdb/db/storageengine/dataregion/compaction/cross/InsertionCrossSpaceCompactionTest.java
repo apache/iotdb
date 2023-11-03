@@ -59,16 +59,22 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
       new FixedPriorityBlockingQueue<>(50, new DefaultCompactionTaskComparatorImpl());
   private final CompactionWorker worker = new CompactionWorker(0, candidateCompactionTaskQueue);
 
+  private boolean enableInsertionCrossSpaceCompaction;
+
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
+    enableInsertionCrossSpaceCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(true);
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(false);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableInsertionCrossSpaceCompaction(enableInsertionCrossSpaceCompaction);
     super.tearDown();
   }
 
