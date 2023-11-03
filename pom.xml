@@ -2581,6 +2581,16 @@
                 <argLine>--add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
             </properties>
         </profile>
+        <!-- Current version of spotless cannot support JDK21 -->
+        <profile>
+            <id>.java-21-and-above</id>
+            <activation>
+                <jdk>[21,)</jdk>
+            </activation>
+            <properties>
+                <spotless.skip>true</spotless.skip>
+            </properties>
+        </profile>
         <!-- Little helper profile that will disable running the cmake tests when the maven tests are being skipped -->
         <profile>
             <id>.skipTests</id>
