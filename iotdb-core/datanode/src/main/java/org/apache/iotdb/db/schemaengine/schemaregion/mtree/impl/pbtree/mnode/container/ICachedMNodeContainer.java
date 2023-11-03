@@ -40,6 +40,8 @@ public interface ICachedMNodeContainer extends IMNodeContainer<ICachedMNode> {
 
   boolean hasChildInBuffer(String name);
 
+  boolean hasChildrenInBuffer();
+
   Iterator<ICachedMNode> getChildrenIterator();
 
   Iterator<ICachedMNode> getChildrenBufferIterator();
