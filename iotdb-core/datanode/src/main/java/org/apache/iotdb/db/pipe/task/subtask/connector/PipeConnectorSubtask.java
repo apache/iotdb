@@ -230,8 +230,6 @@ public class PipeConnectorSubtask extends PipeSubtask {
               MAX_RETRY_TIMES,
               taskID,
               throwable);
-
-          // FIXME: non-EnrichedEvent should be reported to the ConfigNode instead of being logged
         }
 
         // Although the pipe task will be stopped, we still don't release the last event here
@@ -253,9 +251,15 @@ public class PipeConnectorSubtask extends PipeSubtask {
     super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
   }
 
+  /**
+   * Submit a subTask to the executor to keep it running. Note that the function will be called when
+   * connector starts or the subTask finishes the last round, Thus the "isRunning" sign is added to
+   * avoid concurrent problem of the two, ensuring two or more submitting threads generates only one
+   * winner.
+   */
   @Override
-  public void submitSelf() {
-    if (shouldStopSubmittingSelf.get()) {
+  public synchronized void submitSelf() {
+    if (shouldStopSubmittingSelf.get() || isRunning) {
       return;
     }
 
@@ -263,6 +267,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
     try {
       final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
       Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
+      isRunning = true;
     } finally {
       callbackDecoratingLock.markAsDecorated();
     }
