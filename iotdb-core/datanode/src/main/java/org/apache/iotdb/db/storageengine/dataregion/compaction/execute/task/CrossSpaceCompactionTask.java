@@ -247,8 +247,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
                     true,
                     targetResource.getTsFile().getName());
 
-            // set target resources to CLOSED, so that they can be selected to compact
-            targetResource.setStatus(TsFileResourceStatus.NORMAL);
           } else {
             // target resource is empty after compaction, then delete it
             targetResource.remove();
@@ -272,6 +270,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             summary);
       }
       Files.deleteIfExists(logFile.toPath());
+      for (TsFileResource resource : targetTsfileResourceList) {
+        // may failed to set status if the status of current resource is DELETED
+        resource.setStatus(TsFileResourceStatus.NORMAL);
+      }
     } catch (Exception e) {
       isSuccess = false;
       printLogWhenException(LOGGER, e);
