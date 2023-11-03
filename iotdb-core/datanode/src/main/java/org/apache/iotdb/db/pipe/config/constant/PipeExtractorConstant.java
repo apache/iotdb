@@ -53,6 +53,8 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_REALTIME_MODE_FILE_VALUE = "file";
   public static final String EXTRACTOR_REALTIME_MODE_LOG_VALUE = "log";
   public static final String EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE = "forced-log";
+  public static final String EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE = "stream";
+  public static final String EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE = "batch";
 
   private PipeExtractorConstant() {
     throw new IllegalStateException("Utility class");
