@@ -90,34 +90,27 @@ public class PipeMetaSyncer {
   }
 
   private void sync() {
-    if (!metaSyncLock.tryLock()) {
-      return;
+    final ProcedureManager procedureManager = configManager.getProcedureManager();
+
+    boolean somePipesNeedRestarting = false;
+
+    if (pipeAutoRestartEnabled
+        && pipeAutoRestartRoundCounter.incrementAndGet()
+            == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
+      somePipesNeedRestarting = autoRestartWithLock();
+      pipeAutoRestartRoundCounter.set(0);
     }
-    try {
-      final ProcedureManager procedureManager = configManager.getProcedureManager();
 
-      boolean somePipesNeedRestarting = false;
+    final TSStatus status = procedureManager.pipeMetaSync();
 
-      if (pipeAutoRestartEnabled
-          && pipeAutoRestartRoundCounter.incrementAndGet()
-              == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
-        somePipesNeedRestarting = autoRestartWithLock();
-        pipeAutoRestartRoundCounter.set(0);
-      }
+    if (somePipesNeedRestarting
+        && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      handleSuccessfulRestartWithLock();
+      procedureManager.pipeHandleMetaChangeWithBlock(true, false);
+    }
 
-      final TSStatus status = procedureManager.pipeMetaSync();
-
-      if (somePipesNeedRestarting
-          && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        handleSuccessfulRestartWithLock();
-        procedureManager.pipeHandleMetaChangeWithBlock(true, false);
-      }
-
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        procedureManager.pipeHandleMetaChangeWithBlock(true, true);
-      }
-    } finally {
-      metaSyncLock.unlock();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      procedureManager.pipeHandleMetaChangeWithBlock(true, true);
     }
   }
 
