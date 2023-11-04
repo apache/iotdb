@@ -19,17 +19,16 @@
 
 package org.apache.iotdb.commons.consensus.index;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 
+import com.google.common.collect.ImmutableList;
+
 import javax.annotation.Nonnull;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -90,9 +89,7 @@ public interface ProgressIndex {
    */
   ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex);
 
-  /**
-   * @return the type of this progress index
-   */
+  /** @return the type of this progress index */
   ProgressIndexType getType();
 
   TotalOrderSumTuple getTotalOrderSumTuple();
@@ -166,9 +163,7 @@ public interface ProgressIndex {
 
     @Override
     public String toString() {
-      return "TotalOrderSumTuple{" +
-              "tuple=" + tuple +
-              '}';
+      return "TotalOrderSumTuple{" + "tuple=" + tuple + '}';
     }
 
     public static TotalOrderSumTuple sum(List<TotalOrderSumTuple> tupleList) {
