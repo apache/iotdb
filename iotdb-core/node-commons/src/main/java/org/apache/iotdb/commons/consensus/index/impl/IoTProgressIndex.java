@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -37,7 +38,7 @@ public class IoTProgressIndex implements ProgressIndex {
 
   private final Map<Integer, Long> peerId2SearchIndex;
 
-  public IoTProgressIndex() {
+  private IoTProgressIndex() {
     peerId2SearchIndex = new HashMap<>();
   }
 
@@ -79,7 +80,7 @@ public class IoTProgressIndex implements ProgressIndex {
   }
 
   @Override
-  public boolean isAfter(ProgressIndex progressIndex) {
+  public boolean isAfter(@Nonnull ProgressIndex progressIndex) {
     lock.readLock().lock();
     try {
       if (progressIndex instanceof MinimumProgressIndex) {

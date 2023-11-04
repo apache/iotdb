@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -37,13 +38,17 @@ public class HybridProgressIndex implements ProgressIndex {
 
   private final Map<Short, ProgressIndex> type2Index;
 
-  public HybridProgressIndex() {
+  private HybridProgressIndex() {
     this.type2Index = new HashMap<>();
   }
 
   public HybridProgressIndex(short type, ProgressIndex progressIndex) {
-    this.type2Index = new HashMap<>();
-    type2Index.put(type, progressIndex);
+    if (ProgressIndexType.HYBRID_PROGRESS_INDEX.getType() != type) {
+      this.type2Index = new HashMap<>();
+      type2Index.put(type, progressIndex);
+    } else {
+      this.type2Index = ((HybridProgressIndex) progressIndex).type2Index;
+    }
   }
 
   @Override
@@ -79,7 +84,7 @@ public class HybridProgressIndex implements ProgressIndex {
   }
 
   @Override
-  public boolean isAfter(ProgressIndex progressIndex) {
+  public boolean isAfter(@Nonnull ProgressIndex progressIndex) {
     lock.readLock().lock();
     try {
       if (progressIndex instanceof MinimumProgressIndex) {

@@ -22,9 +22,13 @@ package org.apache.iotdb.commons.consensus.index;
 import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 public interface ProgressIndex {
 
@@ -41,7 +45,7 @@ public interface ProgressIndex {
    * @return true if and only if this progress index is strictly greater than the given consensus
    *     index
    */
-  boolean isAfter(ProgressIndex progressIndex);
+  boolean isAfter(@Nonnull ProgressIndex progressIndex);
 
   /**
    * A.equals(B) is true if and only if A is equal to B
@@ -120,5 +124,8 @@ public interface ProgressIndex {
 
     return new HybridProgressIndex(progressIndex1.getType().getType(), progressIndex1)
         .updateToMinimumIsAfterProgressIndex(progressIndex2);
+  }
+
+  static void topologicalSort(List<ProgressIndex> progressIndexList) {
   }
 }

@@ -38,6 +38,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -91,8 +92,9 @@ public class TsFileResourceProgressIndexTest {
 
   @Test
   public void testProgressIndexRecorder() {
-    HybridProgressIndex hybridProgressIndex = new HybridProgressIndex();
-    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(3, 4));
+    HybridProgressIndex hybridProgressIndex =
+        new HybridProgressIndex(
+            ProgressIndexType.SIMPLE_PROGRESS_INDEX.getType(), new SimpleProgressIndex(3, 4));
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(6, 6));
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
         new RecoverProgressIndex(1, new SimpleProgressIndex(1, 2)));
@@ -161,7 +163,7 @@ public class TsFileResourceProgressIndexTest {
     }
 
     @Override
-    public boolean isAfter(ProgressIndex progressIndex) {
+    public boolean isAfter(@Nonnull ProgressIndex progressIndex) {
       if (!(progressIndex instanceof MockProgressIndex)) {
         return true;
       }
@@ -204,9 +206,9 @@ public class TsFileResourceProgressIndexTest {
     final IoTProgressIndex ioTProgressIndex = new IoTProgressIndex(1, 123L);
     final RecoverProgressIndex recoverProgressIndex =
         new RecoverProgressIndex(1, new SimpleProgressIndex(2, 2));
-    final HybridProgressIndex hybridProgressIndex = new HybridProgressIndex();
+    final HybridProgressIndex hybridProgressIndex =
+        new HybridProgressIndex(ProgressIndexType.IOT_PROGRESS_INDEX.getType(), ioTProgressIndex);
 
-    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(ioTProgressIndex);
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(recoverProgressIndex);
 
     Assert.assertTrue(hybridProgressIndex.isAfter(new IoTProgressIndex(1, 100L)));
