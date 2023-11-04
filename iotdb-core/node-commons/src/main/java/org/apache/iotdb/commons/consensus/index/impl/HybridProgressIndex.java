@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class HybridProgressIndex implements ProgressIndex {
 
@@ -195,6 +196,19 @@ public class HybridProgressIndex implements ProgressIndex {
   @Override
   public ProgressIndexType getType() {
     return ProgressIndexType.HYBRID_PROGRESS_INDEX;
+  }
+
+  @Override
+  public TotalOrderSumTuple getTotalOrderSumTuple() {
+    lock.readLock().lock();
+    try {
+      return ProgressIndex.TotalOrderSumTuple.sum(
+          type2Index.values().stream()
+              .map(ProgressIndex::getTotalOrderSumTuple)
+              .collect(Collectors.toList()));
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   public static HybridProgressIndex deserializeFrom(ByteBuffer byteBuffer) {

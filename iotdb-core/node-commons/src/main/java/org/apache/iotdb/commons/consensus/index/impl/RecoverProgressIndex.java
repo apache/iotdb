@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class RecoverProgressIndex implements ProgressIndex {
 
@@ -182,6 +183,19 @@ public class RecoverProgressIndex implements ProgressIndex {
 
   public ProgressIndexType getType() {
     return ProgressIndexType.RECOVER_PROGRESS_INDEX;
+  }
+
+  @Override
+  public TotalOrderSumTuple getTotalOrderSumTuple() {
+    lock.readLock().lock();
+    try {
+      return ProgressIndex.TotalOrderSumTuple.sum(
+          dataNodeId2LocalIndex.values().stream()
+              .map(SimpleProgressIndex::getTotalOrderSumTuple)
+              .collect(Collectors.toList()));
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   public static RecoverProgressIndex deserializeFrom(ByteBuffer byteBuffer) {

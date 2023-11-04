@@ -80,6 +80,11 @@ public class MinimumProgressIndex implements ProgressIndex {
     return ProgressIndexType.MINIMUM_PROGRESS_INDEX;
   }
 
+  @Override
+  public TotalOrderSumTuple getTotalOrderSumTuple() {
+    return new TotalOrderSumTuple(0L);
+  }
+
   public static MinimumProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
     return INSTANCE;
   }

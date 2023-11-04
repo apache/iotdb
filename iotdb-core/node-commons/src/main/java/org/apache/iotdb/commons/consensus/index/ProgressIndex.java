@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.consensus.index;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 
@@ -26,9 +27,14 @@ import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 
 public interface ProgressIndex {
 
@@ -84,8 +90,12 @@ public interface ProgressIndex {
    */
   ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex);
 
-  /** @return the type of this progress index */
+  /**
+   * @return the type of this progress index
+   */
   ProgressIndexType getType();
+
+  TotalOrderSumTuple getTotalOrderSumTuple();
 
   /**
    * Blend two progress index together, the result progress index should satisfy:
@@ -127,5 +137,51 @@ public interface ProgressIndex {
   }
 
   static void topologicalSort(List<ProgressIndex> progressIndexList) {
+    progressIndexList.sort(Comparator.comparing(ProgressIndex::getTotalOrderSumTuple));
+  }
+
+  class TotalOrderSumTuple implements Comparable<TotalOrderSumTuple> {
+    private final ImmutableList<Long> tuple;
+
+    public TotalOrderSumTuple(Long... args) {
+      tuple = ImmutableList.copyOf(args);
+    }
+
+    public TotalOrderSumTuple(List<Long> list) {
+      tuple = ImmutableList.copyOf(list);
+    }
+
+    @Override
+    public int compareTo(TotalOrderSumTuple that) {
+      if (that.tuple.size() != this.tuple.size()) {
+        return this.tuple.size() - that.tuple.size();
+      }
+      for (int i = this.tuple.size() - 1; i >= 0; --i) {
+        if (!this.tuple.get(i).equals(that.tuple.get(i))) {
+          return this.tuple.get(i) < that.tuple.get(i) ? -1 : 1;
+        }
+      }
+      return 0;
+    }
+
+    public static TotalOrderSumTuple sum(List<TotalOrderSumTuple> tupleList) {
+      if (tupleList == null || tupleList.size() == 0) {
+        return new TotalOrderSumTuple();
+      }
+      if (tupleList.size() == 1) {
+        return tupleList.get(0);
+      }
+
+      List<Long> result =
+          LongStream.range(0, tupleList.stream().mapToInt(t -> t.tuple.size()).max().getAsInt())
+              .map(o -> 0)
+              .boxed()
+              .collect(Collectors.toList());
+      tupleList.forEach(
+          t ->
+              IntStream.range(0, t.tuple.size())
+                  .forEach(i -> result.set(i, result.get(i) + t.tuple.get(i))));
+      return new TotalOrderSumTuple(result);
+    }
   }
 }

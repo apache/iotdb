@@ -177,6 +177,17 @@ public class IoTProgressIndex implements ProgressIndex {
     return ProgressIndexType.IOT_PROGRESS_INDEX;
   }
 
+  @Override
+  public TotalOrderSumTuple getTotalOrderSumTuple() {
+    lock.readLock().lock();
+    try {
+      return new TotalOrderSumTuple(
+          peerId2SearchIndex.values().stream().mapToLong(Long::longValue).sum());
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   public static IoTProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
     final IoTProgressIndex ioTProgressIndex = new IoTProgressIndex();
     final int size = ReadWriteIOUtils.readInt(byteBuffer);

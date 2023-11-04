@@ -174,6 +174,11 @@ public class SimpleProgressIndex implements ProgressIndex {
     return ProgressIndexType.SIMPLE_PROGRESS_INDEX;
   }
 
+  @Override
+  public TotalOrderSumTuple getTotalOrderSumTuple() {
+    return new TotalOrderSumTuple((long) rebootTimes, memtableFlushOrderId);
+  }
+
   public static SimpleProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
     final int rebootTimes = ReadWriteIOUtils.readInt(byteBuffer);
     final long memtableFlushOrderId = ReadWriteIOUtils.readLong(byteBuffer);
