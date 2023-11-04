@@ -42,9 +42,12 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.stream.Collectors;
@@ -248,7 +251,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       final TsFileManager tsFileManager = dataRegion.getTsFileManager();
       tsFileManager.readLock();
       try {
-        pendingQueue = new ArrayDeque<>(tsFileManager.size(true) + tsFileManager.size(false));
+        final List<TsFileResource> resourceList =
+            new ArrayList<>(tsFileManager.size(true) + tsFileManager.size(false));
 
         final Collection<TsFileResource> sequenceTsFileResources =
             tsFileManager.getTsFileList(true).stream()
@@ -261,7 +265,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
-        pendingQueue.addAll(sequenceTsFileResources);
+        resourceList.addAll(sequenceTsFileResources);
 
         final Collection<TsFileResource> unsequenceTsFileResources =
             tsFileManager.getTsFileList(false).stream()
@@ -274,9 +278,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
-        pendingQueue.addAll(unsequenceTsFileResources);
+        resourceList.addAll(unsequenceTsFileResources);
 
-        pendingQueue.forEach(
+        resourceList.forEach(
             resource -> {
               // Pin the resource, in case the file is removed by compaction or anything.
               // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
@@ -286,6 +290,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath());
               }
             });
+
+        // progress index topological sort
+        resourceList.sort(
+            (Comparator.comparing(o -> o.getMaxProgressIndex().getTotalOrderSumTuple())));
+        pendingQueue = new ArrayDeque<>(resourceList);
 
         LOGGER.info(
             "Pipe: start to extract historical TsFile, data region {}, "
