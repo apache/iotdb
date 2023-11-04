@@ -176,7 +176,7 @@ public class SimpleProgressIndex implements ProgressIndex {
 
   @Override
   public TotalOrderSumTuple getTotalOrderSumTuple() {
-    return new TotalOrderSumTuple((long) rebootTimes, memtableFlushOrderId);
+    return new TotalOrderSumTuple(memtableFlushOrderId, (long) rebootTimes);
   }
 
   public static SimpleProgressIndex deserializeFrom(ByteBuffer byteBuffer) {

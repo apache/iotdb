@@ -164,6 +164,13 @@ public interface ProgressIndex {
       return 0;
     }
 
+    @Override
+    public String toString() {
+      return "TotalOrderSumTuple{" +
+              "tuple=" + tuple +
+              '}';
+    }
+
     public static TotalOrderSumTuple sum(List<TotalOrderSumTuple> tupleList) {
       if (tupleList == null || tupleList.size() == 0) {
         return new TotalOrderSumTuple();
