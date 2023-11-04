@@ -20,6 +20,8 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafi
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
@@ -89,6 +91,9 @@ public abstract class PageManager implements IPageManager {
   private final AtomicInteger logCounter;
   private SchemaFileLogWriter logWriter;
 
+  // flush strategy is dependent on consensus protocol, only check protocol on init
+  protected FlushPageStrategy flushDirtyPagesStrategy;
+
   PageManager(FileChannel channel, File pmtFile, int lastPageIndex, String logPath)
       throws IOException, MetadataException {
     this.pageInstCache =
@@ -107,10 +112,21 @@ public abstract class PageManager implements IPageManager {
     this.pmtFile = pmtFile;
     this.readChannel = FileChannel.open(pmtFile.toPath(), StandardOpenOption.READ);
 
-    // recover if log exists
-    int pageAcc = (int) recoverFromLog(logPath) / SchemaFileConfig.PAGE_LENGTH;
-    this.logWriter = new SchemaFileLogWriter(logPath);
-    logCounter = new AtomicInteger(pageAcc);
+    if (IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getSchemaRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      // with RATIS enabled, integrity is guaranteed by consensus protocol
+      logCounter = new AtomicInteger();
+      logWriter = null;
+      flushDirtyPagesStrategy = this::flushDirtyPagesWithoutLogging;
+    } else {
+      // without RATIS, utilize physical logging for integrity
+      int pageAcc = (int) recoverFromLog(logPath) / SchemaFileConfig.PAGE_LENGTH;
+      this.logWriter = new SchemaFileLogWriter(logPath);
+      logCounter = new AtomicInteger(pageAcc);
+      flushDirtyPagesStrategy = this::flushDirtyPagesWithLogging;
+    }
 
     // construct first page if file to init
     if (lastPageIndex < 0) {
@@ -405,29 +421,41 @@ public abstract class PageManager implements IPageManager {
     return lastPageIndex.get();
   }
 
-  @Override
-  public void flushDirtyPages() throws IOException {
-    if (dirtyPages.size() == 0) {
-      return;
-    }
+  @FunctionalInterface
+  interface FlushPageStrategy {
+    void apply() throws IOException;
+  }
 
-    // TODO: better performance expected while ensuring integrity when exception interrupts
+  private void flushDirtyPagesWithLogging() throws IOException {
     if (logCounter.get() > SchemaFileConfig.SCHEMA_FILE_LOG_SIZE) {
       logWriter = logWriter.renew();
       logCounter.set(0);
     }
-
     logCounter.addAndGet(dirtyPages.size());
     for (ISchemaPage page : dirtyPages.values()) {
       page.syncPageBuffer();
       logWriter.write(page);
     }
     logWriter.prepare();
-
     for (ISchemaPage page : dirtyPages.values()) {
       page.flushPageToChannel(channel);
     }
     logWriter.commit();
+  }
+
+  private void flushDirtyPagesWithoutLogging() throws IOException {
+    for (ISchemaPage page : dirtyPages.values()) {
+      page.syncPageBuffer();
+      page.flushPageToChannel(channel);
+    }
+  }
+
+  @Override
+  public void flushDirtyPages() throws IOException {
+    if (dirtyPages.size() == 0) {
+      return;
+    }
+    flushDirtyPagesStrategy.apply();
     dirtyPages.clear();
     Arrays.stream(tieredDirtyPageIndex).forEach(LinkedList::clear);
   }
@@ -438,7 +466,7 @@ public abstract class PageManager implements IPageManager {
     Arrays.stream(tieredDirtyPageIndex).forEach(LinkedList::clear);
     pageInstCache.clear();
     lastPageIndex.set(0);
-    logWriter = logWriter.renew();
+    logWriter = logWriter == null ? null : logWriter.renew();
   }
 
   @Override
@@ -454,7 +482,9 @@ public abstract class PageManager implements IPageManager {
 
   @Override
   public void close() throws IOException {
-    logWriter.close();
+    if (logWriter != null) {
+      logWriter.close();
+    }
   }
 
   // endregion

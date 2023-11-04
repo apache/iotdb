@@ -556,6 +556,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
           return;
         }
       }
+
+      long startTime = System.currentTimeMillis();
       List<ICachedMNode> nodesToPersist = cacheManager.collectVolatileMNodes();
       for (ICachedMNode volatileNode : nodesToPersist) {
         try {
@@ -569,6 +571,10 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         }
         cacheManager.updateCacheStatusAfterPersist(volatileNode);
       }
+      logger.info(
+          "It takes {}ms to flush MTree in SchemaRegion {}",
+          (System.currentTimeMillis() - startTime),
+          regionStatistics.getSchemaRegionId());
       if (updatedStorageGroupMNode != null || !nodesToPersist.isEmpty()) {
         flushCallback.run();
       }
