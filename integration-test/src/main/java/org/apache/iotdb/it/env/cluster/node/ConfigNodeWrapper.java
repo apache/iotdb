@@ -32,8 +32,6 @@ import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_CONNECTION_TIMEOUT_MS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_CONSENSUS_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_METRIC_IOTDB_REPORTER_HOST;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_METRIC_IOTDB_REPORTER_PORT;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_METRIC_PROMETHEUS_REPORTER_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_SYSTEM_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.COMMON_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
@@ -88,10 +86,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     immutableNodeProperties.setProperty(IoTDBConstant.CN_SEED_CONFIG_NODE, seedConfigNodes);
     immutableNodeProperties.setProperty(CN_SYSTEM_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(CN_CONSENSUS_DIR, MppBaseConfig.NULL_VALUE);
-    immutableNodeProperties.setProperty(
-        CN_METRIC_PROMETHEUS_REPORTER_PORT, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(CN_METRIC_IOTDB_REPORTER_HOST, MppBaseConfig.NULL_VALUE);
-    immutableNodeProperties.setProperty(CN_METRIC_IOTDB_REPORTER_PORT, MppBaseConfig.NULL_VALUE);
   }
 
   @Override

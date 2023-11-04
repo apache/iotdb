@@ -47,8 +47,6 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_DATA_REGION_CON
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_JOIN_CLUSTER_RETRY_INTERVAL_MS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_METRIC_INTERNAL_REPORTER_TYPE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_METRIC_IOTDB_REPORTER_HOST;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_METRIC_PROMETHEUS_REPORTER_PORT;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_MPP_DATA_EXCHANGE_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_SCHEMA_REGION_CONSENSUS_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_SYNC_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_SYSTEM_DIR;
@@ -117,8 +115,6 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     immutableNodeProperties.setProperty(DN_TRACING_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(DN_SYNC_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(DN_METRIC_IOTDB_REPORTER_HOST, MppBaseConfig.NULL_VALUE);
-    immutableNodeProperties.setProperty(
-        DN_METRIC_PROMETHEUS_REPORTER_PORT, MppBaseConfig.NULL_VALUE);
   }
 
   @Override

@@ -106,9 +106,11 @@ public class RemoteServerEnv implements BaseEnv {
   public List<String> getMetricPrometheusReporterContents() {
     List<String> result = new ArrayList<>();
     result.add(
-        getUrlContent(Config.IOTDB_URL_PREFIX + ip_addr + ":" + configNodeMetricPort + "/metrics"));
+        getUrlContent(
+            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + configNodeMetricPort + "/metrics"));
     result.add(
-        getUrlContent(Config.IOTDB_URL_PREFIX + ip_addr + ":" + dataNodeMetricPort + "/metrics"));
+        getUrlContent(
+            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + dataNodeMetricPort + "/metrics"));
     return result;
   }
 

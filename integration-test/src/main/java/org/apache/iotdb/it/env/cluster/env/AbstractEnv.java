@@ -111,7 +111,7 @@ public abstract class AbstractEnv implements BaseEnv {
     for (ConfigNodeWrapper configNode : this.configNodeWrapperList) {
       String configNodeMetricContent =
           getUrlContent(
-              Config.IOTDB_URL_PREFIX
+              Config.IOTDB_HTTP_URL_PREFIX
                   + configNode.getIp()
                   + ":"
                   + configNode.getMetricPort()
@@ -122,7 +122,7 @@ public abstract class AbstractEnv implements BaseEnv {
     for (DataNodeWrapper dataNode : this.dataNodeWrapperList) {
       String dataNodeMetricContent =
           getUrlContent(
-              Config.IOTDB_URL_PREFIX
+              Config.IOTDB_HTTP_URL_PREFIX
                   + dataNode.getIp()
                   + ":"
                   + dataNode.getMetricPort()

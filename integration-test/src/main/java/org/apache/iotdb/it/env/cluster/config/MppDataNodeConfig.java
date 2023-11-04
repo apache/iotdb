@@ -52,8 +52,7 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
 
   @Override
   public DataNodeConfig setMetricReporterType(List<String> metricReporterTypes) {
-    properties.setProperty(
-        "dn_metric_reporter_list", "[" + String.join(",", metricReporterTypes) + "]");
+    properties.setProperty("dn_metric_reporter_list", String.join(",", metricReporterTypes));
     return this;
   }
 }

@@ -52,8 +52,7 @@ public class MppConfigNodeConfig extends MppBaseConfig implements ConfigNodeConf
 
   @Override
   public ConfigNodeConfig setMetricReporterType(List<String> metricReporterTypes) {
-    properties.setProperty(
-        "cn_metric_reporter_list", "[" + String.join(",", metricReporterTypes) + "]");
+    properties.setProperty("cn_metric_reporter_list", String.join(",", metricReporterTypes));
     return this;
   }
 }
