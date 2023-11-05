@@ -41,6 +41,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_F
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_COMMON_PROPERTIES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_PROPERTIES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_CONNECTION_TIMEOUT_MS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_MPP_DATA_EXCHANGE_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_CONSENSUS_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_DATA_DIRS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_DATA_REGION_CONSENSUS_PORT;
