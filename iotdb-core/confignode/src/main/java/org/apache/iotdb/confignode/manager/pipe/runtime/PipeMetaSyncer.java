@@ -37,7 +37,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeMetaSyncer {
 
@@ -56,8 +55,6 @@ public class PipeMetaSyncer {
   private Future<?> metaSyncFuture;
 
   private final AtomicInteger pipeAutoRestartRoundCounter = new AtomicInteger(0);
-
-  private final ReentrantLock metaSyncLock = new ReentrantLock();
 
   private final boolean pipeAutoRestartEnabled =
       PipeConfig.getInstance().getPipeAutoRestartEnabled();
