@@ -18,14 +18,20 @@
  */
 package org.apache.iotdb.commons.udf.builtin.String;
 
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
+
+import java.io.IOException;
 
 /*This function returns position of target in an input series.*/
 public class UDTFStrLocate implements UDTF {
@@ -48,7 +54,9 @@ public class UDTFStrLocate implements UDTF {
       throws Exception {
     target = parameters.getString("target");
     reverse = parameters.getBooleanOrDefault("reverse", false);
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.INT32);
+    configurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.INT32);
   }
 
   @Override
@@ -56,5 +64,30 @@ public class UDTFStrLocate implements UDTF {
     collector.putInt(
         row.getTime(),
         reverse ? row.getString(0).lastIndexOf(target) : row.getString(0).indexOf(target));
+  }
+
+  @Override
+  public Object transform(Row row) throws IOException {
+    if (row.isNull(0)) {
+      return null;
+    }
+    return reverse ? row.getString(0).lastIndexOf(target) : row.getString(0).indexOf(target);
+  }
+
+  @Override
+  public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
+    Binary[] inputs = columns[0].getBinaries();
+    boolean[] isNulls = columns[0].isNull();
+
+    int count = columns[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (isNulls[i]) {
+        builder.appendNull();
+      } else {
+        String str = inputs[i].getStringValue(TSFileConfig.STRING_CHARSET);
+        int res = reverse ? str.lastIndexOf(target) : str.indexOf(target);
+        builder.writeInt(res);
+      }
+    }
   }
 }

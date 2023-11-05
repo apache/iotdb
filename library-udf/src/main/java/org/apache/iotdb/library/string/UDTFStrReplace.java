@@ -19,14 +19,19 @@
 
 package org.apache.iotdb.library.string;
 
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
+
+import java.io.IOException;
 
 /** This function does limited times of replacement of substring from an input series. */
 public class UDTFStrReplace implements UDTF {
@@ -65,12 +70,45 @@ public class UDTFStrReplace implements UDTF {
     limit = udfParameters.getIntOrDefault("limit", -1);
     offset = udfParameters.getIntOrDefault("offset", 0);
     reverse = udfParameters.getBooleanOrDefault("reverse", false);
-    udtfConfigurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.TEXT);
+    udtfConfigurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.TEXT);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     String origin = row.getString(0);
+    String result = getResult(origin);
+    collector.putString(row.getTime(), result);
+  }
+
+  @Override
+  public Object transform(Row row) throws IOException {
+    if (row.isNull(0)) {
+      return null;
+    }
+    String str = row.getString(0);
+
+    return getResult(str);
+  }
+
+  @Override
+  public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
+    Binary[] inputs = columns[0].getBinaries();
+    boolean[] isNulls = columns[0].isNull();
+
+    int count = columns[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (isNulls[i]) {
+        builder.appendNull();
+      } else {
+        String str = inputs[i].toString();
+        builder.writeBinary(new Binary(getResult(str).getBytes()));
+      }
+    }
+  }
+
+  private String getResult(String origin) {
     String result;
     if (reverse) {
       int endIndex = origin.length();
@@ -146,6 +184,7 @@ public class UDTFStrReplace implements UDTF {
               .concat(origin.substring(prefix.length(), fromIndex).replace(target, replace))
               .concat(suffix);
     }
-    collector.putString(row.getTime(), result);
+
+    return result;
   }
 }
