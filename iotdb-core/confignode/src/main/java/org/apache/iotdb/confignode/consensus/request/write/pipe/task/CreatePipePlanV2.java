@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class CreatePipePlanV2 extends ConfigPhysicalPlan {
 
@@ -62,5 +63,32 @@ public class CreatePipePlanV2 extends ConfigPhysicalPlan {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     pipeStaticMeta = PipeStaticMeta.deserialize(buffer);
     pipeRuntimeMeta = PipeRuntimeMeta.deserialize(buffer);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    CreatePipePlanV2 that = (CreatePipePlanV2) obj;
+    return pipeStaticMeta.equals(that.pipeStaticMeta) && pipeRuntimeMeta == that.pipeRuntimeMeta;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(pipeStaticMeta, pipeRuntimeMeta);
+  }
+
+  @Override
+  public String toString() {
+    return "PipeTask{"
+        + "pipeStaticMeta='"
+        + pipeStaticMeta
+        + "', pipeRuntimeMeta="
+        + pipeRuntimeMeta
+        + "'}";
   }
 }

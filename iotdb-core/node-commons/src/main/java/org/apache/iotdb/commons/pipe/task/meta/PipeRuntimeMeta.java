@@ -402,6 +402,7 @@ public class PipeRuntimeMeta {
     PipeRuntimeMeta that = (PipeRuntimeMeta) o;
     return Objects.equals(status.get().getType(), that.status.get().getType())
         && dataRegionId2TaskMetaMap.equals(that.dataRegionId2TaskMetaMap)
+        && schemaRegionId2TaskMetaMap.equals(that.schemaRegionId2TaskMetaMap)
         && dataNodeId2PipeRuntimeExceptionMap.equals(that.dataNodeId2PipeRuntimeExceptionMap)
         && exceptionsClearTime.get() == that.exceptionsClearTime.get()
         && isStoppedByRuntimeException.get() == that.isStoppedByRuntimeException.get();
@@ -412,6 +413,7 @@ public class PipeRuntimeMeta {
     return Objects.hash(
         status,
         dataRegionId2TaskMetaMap,
+        schemaRegionId2TaskMetaMap,
         dataNodeId2PipeRuntimeExceptionMap,
         exceptionsClearTime.get(),
         isStoppedByRuntimeException.get());
@@ -424,6 +426,8 @@ public class PipeRuntimeMeta {
         + status
         + ", dataRegionId2TaskMetaMap="
         + dataRegionId2TaskMetaMap
+        + ", schemaRegionId2TaskMetaMap="
+        + schemaRegionId2TaskMetaMap
         + ", dataNodeId2PipeMetaExceptionMap="
         + dataNodeId2PipeRuntimeExceptionMap
         + ", exceptionsClearTime="

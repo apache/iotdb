@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class SetPipeStatusPlanV2 extends ConfigPhysicalPlan {
 
@@ -62,5 +63,27 @@ public class SetPipeStatusPlanV2 extends ConfigPhysicalPlan {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     pipeName = ReadWriteIOUtils.readString(buffer);
     status = PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(buffer));
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    SetPipeStatusPlanV2 that = (SetPipeStatusPlanV2) obj;
+    return pipeName.equals(that.pipeName) && status.equals(that.status);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(pipeName, status);
+  }
+
+  @Override
+  public String toString() {
+    return "PipeTask{" + "pipeName='" + pipeName + "', status=" + status + "'}";
   }
 }

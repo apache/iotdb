@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DropPipePlanV2 extends ConfigPhysicalPlan {
 
@@ -53,5 +54,27 @@ public class DropPipePlanV2 extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     pipeName = BasicStructureSerDeUtil.readString(buffer);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    DropPipePlanV2 that = (DropPipePlanV2) obj;
+    return pipeName.equals(that.pipeName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(pipeName);
+  }
+
+  @Override
+  public String toString() {
+    return "PipeTask{" + "pipeName='" + pipeName + "'}";
   }
 }
