@@ -23,28 +23,41 @@ import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
-import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 public class IoTDBThriftSyncConnectorClient extends IClientRPCService.Client
     implements ThriftClient, AutoCloseable {
 
-  public IoTDBThriftSyncConnectorClient(ThriftClientProperty property, String ipAddress, int port)
+  public IoTDBThriftSyncConnectorClient(
+      ThriftClientProperty property,
+      String ipAddress,
+      int port,
+      boolean useSSL,
+      String trustStore,
+      String trustStorePwd)
       throws TTransportException {
     super(
         property
             .getProtocolFactory()
             .getProtocol(
-                RpcTransportFactory.INSTANCE.getTransport(
-                    new TSocket(
-                        TConfigurationConst.defaultTConfiguration,
+                useSSL
+                    ? RpcTransportFactory.INSTANCE.getTransport(
                         ipAddress,
                         port,
-                        (int) PipeConfig.getInstance().getPipeConnectorTimeoutMs()))));
-    getInputProtocol().getTransport().open();
+                        (int) PipeConfig.getInstance().getPipeConnectorTimeoutMs(),
+                        trustStore,
+                        trustStorePwd)
+                    : RpcTransportFactory.INSTANCE.getTransport(
+                        ipAddress,
+                        port,
+                        (int) PipeConfig.getInstance().getPipeConnectorTimeoutMs())));
+    TTransport transport = getInputProtocol().getTransport();
+    if (!transport.isOpen()) {
+      transport.open();
+    }
   }
 
   @Override
