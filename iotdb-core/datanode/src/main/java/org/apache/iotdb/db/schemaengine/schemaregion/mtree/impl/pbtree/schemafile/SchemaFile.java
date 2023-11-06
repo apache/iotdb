@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
@@ -477,11 +479,19 @@ public class SchemaFile implements ISchemaFile {
     File schemaFile =
         SystemFileFactory.INSTANCE.getFile(
             getDirPath(sgName, schemaRegionId), SchemaConstant.PBTREE_FILE_NAME);
-    File schemaLogFile =
-        SystemFileFactory.INSTANCE.getFile(
-            getDirPath(sgName, schemaRegionId), SchemaConstant.PBTREE_LOG_FILE_NAME);
     Files.deleteIfExists(schemaFile.toPath());
-    Files.deleteIfExists(schemaLogFile.toPath());
+
+    if (!IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getSchemaRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      // schemaFileLog disabled with RATIS consensus
+      File schemaLogFile =
+          SystemFileFactory.INSTANCE.getFile(
+              getDirPath(sgName, schemaRegionId), SchemaConstant.PBTREE_LOG_FILE_NAME);
+      Files.deleteIfExists(schemaLogFile.toPath());
+    }
+
     Files.copy(snapshot.toPath(), schemaFile.toPath());
     return new SchemaFile(
         sgName,
