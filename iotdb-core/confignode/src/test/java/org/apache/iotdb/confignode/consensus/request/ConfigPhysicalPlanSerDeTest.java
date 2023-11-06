@@ -347,15 +347,15 @@ public class ConfigPhysicalPlanSerDeTest {
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
     CreateRegionGroupsPlan req0 = new CreateRegionGroupsPlan();
+    req0.setCreateTime(CommonDateTimeUtils.currentTime());
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
     dataRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     dataRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
-    req0.addRegionGroup("root.sg0", dataRegionSet, CommonDateTimeUtils.currentTime());
-
+    req0.addRegionGroup("root.sg0", dataRegionSet);
     TRegionReplicaSet schemaRegionSet = new TRegionReplicaSet();
     schemaRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
     schemaRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
-    req0.addRegionGroup("root.sg1", schemaRegionSet, CommonDateTimeUtils.currentTime());
+    req0.addRegionGroup("root.sg1", schemaRegionSet);
 
     CreateRegionGroupsPlan req1 =
         (CreateRegionGroupsPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
@@ -867,13 +867,13 @@ public class ConfigPhysicalPlanSerDeTest {
     failedRegions.put(dataRegionGroupId, dataRegionSet);
     failedRegions.put(schemaRegionGroupId, schemaRegionSet);
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
-    createRegionGroupsPlan.addRegionGroup(
-        "root.sg0", dataRegionSet, CommonDateTimeUtils.currentTime());
-    createRegionGroupsPlan.addRegionGroup(
-        "root.sg1", schemaRegionSet, CommonDateTimeUtils.currentTime());
+    createRegionGroupsPlan.setCreateTime(CommonDateTimeUtils.currentTime());
+    createRegionGroupsPlan.addRegionGroup("root.sg0", dataRegionSet);
+    createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
     CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
-    persistPlan.addRegionGroup("root.sg0", dataRegionSet, CommonDateTimeUtils.currentTime());
-    persistPlan.addRegionGroup("root.sg1", schemaRegionSet, CommonDateTimeUtils.currentTime());
+    persistPlan.setCreateTime(CommonDateTimeUtils.currentTime());
+    persistPlan.addRegionGroup("root.sg0", dataRegionSet);
+    persistPlan.addRegionGroup("root.sg1", schemaRegionSet);
     CreateRegionGroupsProcedure procedure0 =
         new CreateRegionGroupsProcedure(
             TConsensusGroupType.DataRegion, createRegionGroupsPlan, persistPlan, failedRegions);

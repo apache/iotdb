@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
@@ -120,8 +119,7 @@ public class RegionBalancer {
                 replicationFactor,
                 new TConsensusGroupId(
                     consensusGroupType, getPartitionManager().generateNextRegionGroupId()));
-        createRegionGroupsPlan.addRegionGroup(
-            database, newRegionGroup, CommonDateTimeUtils.currentTime());
+        createRegionGroupsPlan.addRegionGroup(database, newRegionGroup);
 
         // Mark the new RegionGroup as allocated
         allocatedRegionGroups.add(newRegionGroup);

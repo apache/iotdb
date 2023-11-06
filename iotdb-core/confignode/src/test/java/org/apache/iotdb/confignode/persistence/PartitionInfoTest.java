@@ -109,13 +109,14 @@ public class PartitionInfoTest {
 
     // Create a SchemaRegion
     CreateRegionGroupsPlan createRegionGroupsReq = new CreateRegionGroupsPlan();
+    createRegionGroupsReq.setCreateTime(CommonDateTimeUtils.currentTime());
+
     TRegionReplicaSet schemaRegionReplicaSet =
         generateTRegionReplicaSet(
             testFlag.SchemaPartition.getFlag(),
             generateTConsensusGroupId(
                 testFlag.SchemaPartition.getFlag(), TConsensusGroupType.SchemaRegion));
-    createRegionGroupsReq.addRegionGroup(
-        "root.test", schemaRegionReplicaSet, CommonDateTimeUtils.currentTime());
+    createRegionGroupsReq.addRegionGroup("root.test", schemaRegionReplicaSet);
     partitionInfo.createRegionGroups(createRegionGroupsReq);
 
     // Create a DataRegion
@@ -125,8 +126,7 @@ public class PartitionInfoTest {
             testFlag.DataPartition.getFlag(),
             generateTConsensusGroupId(
                 testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
-    createRegionGroupsReq.addRegionGroup(
-        "root.test", dataRegionReplicaSet, CommonDateTimeUtils.currentTime());
+    createRegionGroupsReq.addRegionGroup("root.test", dataRegionReplicaSet);
     partitionInfo.createRegionGroups(createRegionGroupsReq);
 
     // Create a SchemaPartition
@@ -166,24 +166,24 @@ public class PartitionInfoTest {
 
       // Create a SchemaRegion
       CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
+      createRegionGroupsPlan.setCreateTime(CommonDateTimeUtils.currentTime());
       TRegionReplicaSet schemaRegionReplicaSet =
           generateTRegionReplicaSet(
               testFlag.SchemaPartition.getFlag(),
               generateTConsensusGroupId(
                   testFlag.SchemaPartition.getFlag(), TConsensusGroupType.SchemaRegion));
-      createRegionGroupsPlan.addRegionGroup(
-          "root.test" + i, schemaRegionReplicaSet, CommonDateTimeUtils.currentTime());
+      createRegionGroupsPlan.addRegionGroup("root.test" + i, schemaRegionReplicaSet);
       partitionInfo.createRegionGroups(createRegionGroupsPlan);
 
       // Create a DataRegion
       createRegionGroupsPlan = new CreateRegionGroupsPlan();
+      createRegionGroupsPlan.setCreateTime(CommonDateTimeUtils.currentTime());
       TRegionReplicaSet dataRegionReplicaSet =
           generateTRegionReplicaSet(
               testFlag.DataPartition.getFlag(),
               generateTConsensusGroupId(
                   testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
-      createRegionGroupsPlan.addRegionGroup(
-          "root.test" + i, dataRegionReplicaSet, CommonDateTimeUtils.currentTime());
+      createRegionGroupsPlan.addRegionGroup("root.test" + i, dataRegionReplicaSet);
       partitionInfo.createRegionGroups(createRegionGroupsPlan);
     }
     GetRegionInfoListPlan regionReq = new GetRegionInfoListPlan();

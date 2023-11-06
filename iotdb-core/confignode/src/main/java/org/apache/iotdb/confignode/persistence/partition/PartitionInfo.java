@@ -167,7 +167,7 @@ public class PartitionInfo implements SnapshotProcessor {
             (database, regionReplicaSets) -> {
               databasePartitionTables
                   .get(database)
-                  .createRegionGroups(regionReplicaSets, plan.getRegionGroupCreateTimeMap());
+                  .createRegionGroups(regionReplicaSets, plan.getCreateTime());
               regionReplicaSets.forEach(
                   regionReplicaSet ->
                       maxRegionId.set(

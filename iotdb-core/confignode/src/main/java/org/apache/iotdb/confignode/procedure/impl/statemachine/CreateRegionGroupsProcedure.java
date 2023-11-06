@@ -91,6 +91,7 @@ public class CreateRegionGroupsProcedure
         break;
       case SHUNT_REGION_REPLICAS:
         persistPlan = new CreateRegionGroupsPlan();
+        persistPlan.setCreateTime(CommonDateTimeUtils.currentTime());
         OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
         // Filter those RegionGroups that created successfully
         createRegionGroupsPlan
@@ -103,8 +104,7 @@ public class CreateRegionGroupsProcedure
                               regionReplicaSet.getRegionId())) {
                             // A RegionGroup was created successfully when
                             // all RegionReplicas were created successfully
-                            persistPlan.addRegionGroup(
-                                database, regionReplicaSet, CommonDateTimeUtils.currentTime());
+                            persistPlan.addRegionGroup(database, regionReplicaSet);
                             LOGGER.info(
                                 "[CreateRegionGroups] All replicas of RegionGroup: {} are created successfully!",
                                 regionReplicaSet.getRegionId());
@@ -116,8 +116,7 @@ public class CreateRegionGroupsProcedure
                                 <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
                               // A RegionGroup can provide service as long as there are more than
                               // half of the RegionReplicas created successfully
-                              persistPlan.addRegionGroup(
-                                  database, regionReplicaSet, CommonDateTimeUtils.currentTime());
+                              persistPlan.addRegionGroup(database, regionReplicaSet);
 
                               // Build recreate tasks
                               failedRegionReplicas
