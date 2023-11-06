@@ -171,7 +171,7 @@ public class WALInsertNodeCache {
   }
 
   public double getCacheHitRate() {
-    return Objects.nonNull(lruCache) ? lruCache.stats().hitRate() : 0;
+    return Objects.nonNull(lruCache) ? 1 - lruCache.stats().missRate() : 0;
   }
 
   /////////////////////////// MemTable ///////////////////////////
