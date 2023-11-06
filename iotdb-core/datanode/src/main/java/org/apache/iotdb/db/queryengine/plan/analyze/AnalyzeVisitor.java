@@ -209,7 +209,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private static final Logger logger = LoggerFactory.getLogger(AnalyzeVisitor.class);
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   protected static final Expression DEVICE_EXPRESSION =
       TimeSeriesOperand.constructColumnHeaderExpression(DEVICE, TSDataType.TEXT);
@@ -280,12 +280,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
 
+        // TODO examine that if all devices are in same template
         if (!queryStatement.isAggregationQuery()) {
-          analysis =
-              TemplatedDeviceAnalyze.visitQuery(analysis, queryStatement, context, schemaTree);
-          // fetch partition information
-          analyzeDataPartition(analysis, queryStatement, schemaTree);
-          return analysis;
+          return new TemplatedDeviceAnalyze(
+                  analysis, queryStatement, context, schemaTree, partitionFetcher)
+              .visitQuery();
         }
 
         List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
