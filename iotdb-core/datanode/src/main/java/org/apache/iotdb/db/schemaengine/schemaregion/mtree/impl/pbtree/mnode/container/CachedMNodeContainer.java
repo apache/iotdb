@@ -264,6 +264,11 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
+  public boolean hasChildrenInBuffer() {
+    return !isEmpty(updatedChildBuffer) || !isEmpty(newChildBuffer);
+  }
+
+  @Override
   public Iterator<ICachedMNode> getChildrenIterator() {
     return new CachedMNodeContainerIterator();
   }
