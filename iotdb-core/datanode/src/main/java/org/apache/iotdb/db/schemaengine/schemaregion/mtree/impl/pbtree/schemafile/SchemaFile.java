@@ -143,7 +143,11 @@ public class SchemaFile implements ISchemaFile {
     return new SchemaFile(
         sgName,
         schemaRegionId,
-        !pmtFile.exists(),
+        !pmtFile.exists()
+            || IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getSchemaRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.RATIS_CONSENSUS),
         CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
         false);
   }
