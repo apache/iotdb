@@ -53,7 +53,7 @@ jobs:
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
-          -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=256 \
+          -DintegrationTest.forkCount=3 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=256 \
           -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
           -pl integration-test \
           -am -PMultiClusterIT2
