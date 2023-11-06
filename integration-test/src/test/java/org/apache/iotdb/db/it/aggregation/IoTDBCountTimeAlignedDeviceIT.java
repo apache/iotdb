@@ -80,7 +80,7 @@ public class IoTDBCountTimeAlignedDeviceIT {
         "CREATE ALIGNED TIMESERIES root.aligned.delete.d2(s1 INT32, s2 INT32);",
         "INSERT INTO root.aligned.delete.d1(time, s1, s2) ALIGNED VALUES(1, 1, null), (2, null, 2);",
         "INSERT INTO root.aligned.delete.d2(time, s1, s2) ALIGNED VALUES(1, null, 1);",
-        "DELETE FROM root.aligned.db.** where time < 2;",
+        "DELETE FROM root.aligned.delete.** where time < 2;",
         // test null
         "create aligned timeseries root.aligned.null.d1(s1 double,s2 double,s3 double);",
         "insert into root.aligned.null.d1(time,s1) values(1,null);",

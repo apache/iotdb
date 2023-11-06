@@ -1222,7 +1222,7 @@ public abstract class AlignedTVList extends TVList {
 
     byte[] rowBits = new byte[rowCount / Byte.SIZE + 1];
     for (int row = 0; row < rowCount; row += Byte.SIZE) {
-      byte res = (byte) 0xFF;
+      byte res = (byte) 0x00;
       for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
         List<BitMap> columnBitMaps = bitMaps.get(columnIndex);
         // row exists when any column value exists
@@ -1233,7 +1233,9 @@ public abstract class AlignedTVList extends TVList {
           break;
         }
         // set row to null when all column values are null
-        res &= columnBitMaps.get(row / ARRAY_SIZE).getByteArray()[(row % ARRAY_SIZE) / Byte.SIZE];
+        byte bits =
+            columnBitMaps.get(row / ARRAY_SIZE).getByteArray()[(row % ARRAY_SIZE) / Byte.SIZE];
+        res = res == 0 ? bits : (byte) (res & bits);
       }
       rowBits[row / Byte.SIZE] = res;
     }
