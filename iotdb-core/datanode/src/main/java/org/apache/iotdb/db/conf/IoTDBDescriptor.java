@@ -29,10 +29,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionValidationLevel;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -56,7 +54,7 @@ import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.NodeType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -227,17 +225,6 @@ public class IoTDBDescriptor {
   }
 
   public void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
-    conf.setClusterSchemaLimitLevel(
-        properties
-            .getProperty("cluster_schema_limit_level", conf.getClusterSchemaLimitLevel())
-            .trim());
-    conf.setClusterSchemaLimitThreshold(
-        Long.parseLong(
-            properties
-                .getProperty(
-                    "cluster_schema_limit_threshold",
-                    Long.toString(conf.getClusterSchemaLimitThreshold()))
-                .trim()));
     conf.setClusterName(
         properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
 
@@ -462,6 +449,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "compaction_submission_interval_in_ms",
                 Long.toString(conf.getCompactionSubmissionIntervalInMs()))));
+
+    conf.setEnableInsertionCrossSpaceCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_insertion_cross_space_compaction",
+                Boolean.toString(conf.isEnableInsertionCrossSpaceCompaction()))));
 
     conf.setEnableCrossSpaceCompaction(
         Boolean.parseBoolean(
@@ -688,10 +681,10 @@ public class IoTDBDescriptor {
                 "compaction_write_throughput_mb_per_sec",
                 Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
-    conf.setCompactionValidationLevel(
-        CompactionValidationLevel.valueOf(
+    conf.setEnableTsFileValidation(
+        Boolean.parseBoolean(
             properties.getProperty(
-                "compaction_validation_level", conf.getCompactionValidationLevel().toString())));
+                "enable_tsfile_validation", String.valueOf(conf.isEnableTsFileValidation()))));
     conf.setCandidateCompactionTaskQueueSize(
         Integer.parseInt(
             properties.getProperty(
@@ -1115,10 +1108,6 @@ public class IoTDBDescriptor {
   }
 
   private void loadCompactionHotModifiedProps(Properties properties) throws InterruptedException {
-    conf.setCompactionValidationLevel(
-        CompactionValidationLevel.valueOf(
-            properties.getProperty(
-                "compaction_validation_level", conf.getCompactionValidationLevel().toString())));
 
     loadCompactionIsEnabledHotModifiedProps(properties);
 
@@ -1170,8 +1159,14 @@ public class IoTDBDescriptor {
     boolean isCompactionEnabled =
         conf.isEnableSeqSpaceCompaction()
             || conf.isEnableUnseqSpaceCompaction()
-            || conf.isEnableCrossSpaceCompaction();
+            || conf.isEnableCrossSpaceCompaction()
+            || conf.isEnableInsertionCrossSpaceCompaction();
 
+    boolean newConfigEnableInsertionCrossSpaceCompaction =
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_insertion_cross_space_compaction",
+                Boolean.toString(conf.isEnableInsertionCrossSpaceCompaction())));
     boolean newConfigEnableCrossSpaceCompaction =
         Boolean.parseBoolean(
             properties.getProperty(
@@ -1189,6 +1184,7 @@ public class IoTDBDescriptor {
                 Boolean.toString(conf.isEnableUnseqSpaceCompaction())));
     boolean compactionEnabledInNewConfig =
         newConfigEnableCrossSpaceCompaction
+            || newConfigEnableInsertionCrossSpaceCompaction
             || newConfigEnableSeqSpaceCompaction
             || newConfigEnableUnseqSpaceCompaction;
 
@@ -1197,6 +1193,7 @@ public class IoTDBDescriptor {
       return;
     }
 
+    conf.setEnableInsertionCrossSpaceCompaction(newConfigEnableInsertionCrossSpaceCompaction);
     conf.setEnableCrossSpaceCompaction(newConfigEnableCrossSpaceCompaction);
     conf.setEnableSeqSpaceCompaction(newConfigEnableSeqSpaceCompaction);
     conf.setEnableUnseqSpaceCompaction(newConfigEnableUnseqSpaceCompaction);
@@ -1612,6 +1609,11 @@ public class IoTDBDescriptor {
                   "enable_query_memory_estimation",
                   Boolean.toString(conf.isEnableQueryMemoryEstimation()))));
 
+      conf.setEnableTsFileValidation(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_tsfile_validation", String.valueOf(conf.isEnableTsFileValidation()))));
+
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
       loadWALHotModifiedProps(properties);
@@ -1621,20 +1623,6 @@ public class IoTDBDescriptor {
 
       // update compaction config
       loadCompactionHotModifiedProps(properties);
-
-      // update schema quota configuration
-      conf.setClusterSchemaLimitLevel(
-          properties
-              .getProperty("cluster_schema_limit_level", conf.getClusterSchemaLimitLevel())
-              .trim());
-      conf.setClusterSchemaLimitThreshold(
-          Long.parseLong(
-              properties
-                  .getProperty(
-                      "cluster_schema_limit_threshold",
-                      Long.toString(conf.getClusterSchemaLimitThreshold()))
-                  .trim()));
-      DataNodeSchemaQuotaManager.getInstance().updateConfiguration();
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -1722,7 +1710,13 @@ public class IoTDBDescriptor {
           conf.setAllocateMemoryForPipe(
               maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum);
         } else {
-          conf.setAllocateMemoryForPipe(0);
+          conf.setAllocateMemoryForPipe(
+              (maxMemoryAvailable
+                      - (conf.getAllocateMemoryForStorageEngine()
+                          + conf.getAllocateMemoryForRead()
+                          + conf.getAllocateMemoryForSchema()
+                          + conf.getAllocateMemoryForConsensus()))
+                  / 2);
         }
       }
     }

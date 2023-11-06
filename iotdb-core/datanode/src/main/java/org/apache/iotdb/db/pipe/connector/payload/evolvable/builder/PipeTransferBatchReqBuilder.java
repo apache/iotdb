@@ -24,11 +24,16 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -42,7 +47,9 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_DELAY_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_SIZE_KEY;
 
-public abstract class PipeTransferBatchReqBuilder {
+public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferBatchReqBuilder.class);
 
   protected final List<TPipeTransferReq> reqs = new ArrayList<>();
   protected final List<Event> events = new ArrayList<>();
@@ -52,6 +59,7 @@ public abstract class PipeTransferBatchReqBuilder {
   protected long firstEventProcessingTime = Long.MIN_VALUE;
 
   // limit in buffer size
+  protected final PipeMemoryBlock allocatedMemoryBlock;
   protected final long maxBatchSizeInBytes;
   protected long bufferSize = 0;
 
@@ -61,10 +69,19 @@ public abstract class PipeTransferBatchReqBuilder {
                 Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_KEY, SINK_IOTDB_BATCH_DELAY_KEY),
                 CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE)
             * 1000;
-    maxBatchSizeInBytes =
+
+    final long requestMaxBatchSizeInBytes =
         parameters.getLongOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
             CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE);
+    allocatedMemoryBlock = PipeResourceManager.memory().tryAllocate(requestMaxBatchSizeInBytes);
+    maxBatchSizeInBytes = allocatedMemoryBlock.getMemoryUsageInBytes();
+    if (maxBatchSizeInBytes != requestMaxBatchSizeInBytes) {
+      LOGGER.info(
+          "PipeTransferBatchReqBuilder: the max batch size is adjusted from {} to {}.",
+          requestMaxBatchSizeInBytes,
+          maxBatchSizeInBytes);
+    }
   }
 
   public List<TPipeTransferReq> getTPipeTransferReqs() {
@@ -98,5 +115,10 @@ public abstract class PipeTransferBatchReqBuilder {
               pipeRawTabletInsertionEvent.isAligned());
     }
     return req;
+  }
+
+  @Override
+  public void close() {
+    allocatedMemoryBlock.close();
   }
 }

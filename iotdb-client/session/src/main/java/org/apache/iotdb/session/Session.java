@@ -59,9 +59,9 @@ import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.session.util.ThreadUtils;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -387,11 +387,12 @@ public class Session implements ISession {
   public Session(Builder builder) {
     if (builder.nodeUrls != null && builder.nodeUrls.size() > 0) {
       this.nodeUrls = builder.nodeUrls;
-      this.enableRedirection = true;
+      this.enableQueryRedirection = true;
     } else {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
-      this.enableRedirection = builder.enableRedirection;
+      this.enableQueryRedirection = builder.enableRedirection;
     }
+    this.enableRedirection = builder.enableRedirection;
     this.username = builder.username;
     this.password = builder.pw;
     this.fetchSize = builder.fetchSize;

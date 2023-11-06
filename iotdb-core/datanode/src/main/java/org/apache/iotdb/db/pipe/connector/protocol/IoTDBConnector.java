@@ -99,27 +99,28 @@ public abstract class IoTDBConnector implements PipeConnector {
         && parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY)) {
       givenNodeUrls.add(
           new TEndPoint(
-              parameters.getString(CONNECTOR_IOTDB_IP_KEY),
-              parameters.getInt(CONNECTOR_IOTDB_PORT_KEY)));
+              parameters.getStringByKeys(CONNECTOR_IOTDB_IP_KEY),
+              parameters.getIntByKeys(CONNECTOR_IOTDB_PORT_KEY)));
     }
 
     if (parameters.hasAttribute(SINK_IOTDB_IP_KEY)
         && parameters.hasAttribute(SINK_IOTDB_PORT_KEY)) {
       givenNodeUrls.add(
           new TEndPoint(
-              parameters.getString(SINK_IOTDB_IP_KEY), parameters.getInt(SINK_IOTDB_PORT_KEY)));
+              parameters.getStringByKeys(SINK_IOTDB_IP_KEY),
+              parameters.getIntByKeys(SINK_IOTDB_PORT_KEY)));
     }
 
     if (parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)) {
       givenNodeUrls.addAll(
           SessionUtils.parseSeedNodeUrls(
-              Arrays.asList(parameters.getString(CONNECTOR_IOTDB_NODE_URLS_KEY).split(","))));
+              Arrays.asList(parameters.getStringByKeys(CONNECTOR_IOTDB_NODE_URLS_KEY).split(","))));
     }
 
     if (parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY)) {
       givenNodeUrls.addAll(
           SessionUtils.parseSeedNodeUrls(
-              Arrays.asList(parameters.getString(SINK_IOTDB_NODE_URLS_KEY).split(","))));
+              Arrays.asList(parameters.getStringByKeys(SINK_IOTDB_NODE_URLS_KEY).split(","))));
     }
 
     return givenNodeUrls;

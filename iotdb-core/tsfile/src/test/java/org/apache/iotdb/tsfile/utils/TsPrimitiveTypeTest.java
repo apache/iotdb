@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBinary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsBoolean;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
@@ -49,9 +50,10 @@ public class TsPrimitiveTypeTest {
     Assert.assertEquals(new TsDouble(456), doubleValue);
     Assert.assertEquals(456d, doubleValue.getDouble(), 0.01);
 
-    TsPrimitiveType textValue = TsPrimitiveType.getByType(TSDataType.TEXT, new Binary("123"));
-    Assert.assertEquals(new TsBinary(new Binary("123")), textValue);
-    Assert.assertEquals(new Binary("123"), textValue.getBinary());
+    TsPrimitiveType textValue =
+        TsPrimitiveType.getByType(TSDataType.TEXT, new Binary("123", TSFileConfig.STRING_CHARSET));
+    Assert.assertEquals(new TsBinary(new Binary("123", TSFileConfig.STRING_CHARSET)), textValue);
+    Assert.assertEquals(new Binary("123", TSFileConfig.STRING_CHARSET), textValue.getBinary());
 
     TsPrimitiveType booleanValue = TsPrimitiveType.getByType(TSDataType.BOOLEAN, true);
     Assert.assertEquals(new TsBoolean(true), booleanValue);

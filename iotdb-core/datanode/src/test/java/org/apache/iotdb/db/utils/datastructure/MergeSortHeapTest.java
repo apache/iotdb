@@ -23,7 +23,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.Mer
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -44,19 +45,19 @@ public class MergeSortHeapTest {
     TsBlockBuilder inputBuilder1 =
         new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
     inputBuilder1.getTimeColumnBuilder().writeLong(2);
-    inputBuilder1.getColumnBuilder(0).writeBinary(new Binary(device0));
+    inputBuilder1.getColumnBuilder(0).writeBinary(new Binary(device0, TSFileConfig.STRING_CHARSET));
     inputBuilder1.getColumnBuilder(1).writeInt(20);
     inputBuilder1.declarePosition();
     inputBuilder1.getTimeColumnBuilder().writeLong(4);
-    inputBuilder1.getColumnBuilder(0).writeBinary(new Binary(device0));
+    inputBuilder1.getColumnBuilder(0).writeBinary(new Binary(device0, TSFileConfig.STRING_CHARSET));
     inputBuilder1.getColumnBuilder(1).writeInt(40);
     inputBuilder1.declarePosition();
     inputBuilder1.getTimeColumnBuilder().writeLong(5);
-    inputBuilder1.getColumnBuilder(0).writeBinary(new Binary(device0));
+    inputBuilder1.getColumnBuilder(0).writeBinary(new Binary(device0, TSFileConfig.STRING_CHARSET));
     inputBuilder1.getColumnBuilder(1).appendNull();
     inputBuilder1.declarePosition();
     inputBuilder1.getTimeColumnBuilder().writeLong(6);
-    inputBuilder1.getColumnBuilder(0).writeBinary(new Binary(device0));
+    inputBuilder1.getColumnBuilder(0).writeBinary(new Binary(device0, TSFileConfig.STRING_CHARSET));
     inputBuilder1.getColumnBuilder(1).writeInt(60);
     inputBuilder1.declarePosition();
 
@@ -64,19 +65,19 @@ public class MergeSortHeapTest {
     TsBlockBuilder inputBuilder2 =
         new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
     inputBuilder2.getTimeColumnBuilder().writeLong(1);
-    inputBuilder2.getColumnBuilder(0).writeBinary(new Binary(device1));
+    inputBuilder2.getColumnBuilder(0).writeBinary(new Binary(device1, TSFileConfig.STRING_CHARSET));
     inputBuilder2.getColumnBuilder(1).writeInt(10);
     inputBuilder2.declarePosition();
     inputBuilder2.getTimeColumnBuilder().writeLong(3);
-    inputBuilder2.getColumnBuilder(0).writeBinary(new Binary(device1));
+    inputBuilder2.getColumnBuilder(0).writeBinary(new Binary(device1, TSFileConfig.STRING_CHARSET));
     inputBuilder2.getColumnBuilder(1).writeInt(30);
     inputBuilder2.declarePosition();
     inputBuilder2.getTimeColumnBuilder().writeLong(7);
-    inputBuilder2.getColumnBuilder(0).writeBinary(new Binary(device1));
+    inputBuilder2.getColumnBuilder(0).writeBinary(new Binary(device1, TSFileConfig.STRING_CHARSET));
     inputBuilder2.getColumnBuilder(1).appendNull();
     inputBuilder2.declarePosition();
     inputBuilder2.getTimeColumnBuilder().writeLong(8);
-    inputBuilder2.getColumnBuilder(0).writeBinary(new Binary(device1));
+    inputBuilder2.getColumnBuilder(0).writeBinary(new Binary(device1, TSFileConfig.STRING_CHARSET));
     inputBuilder2.getColumnBuilder(1).writeInt(80);
     inputBuilder2.declarePosition();
 

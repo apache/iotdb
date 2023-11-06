@@ -21,6 +21,8 @@ package org.apache.iotdb.it.env.cluster.config;
 
 import org.apache.iotdb.itbase.env.CommonConfig;
 
+import java.util.concurrent.TimeUnit;
+
 public class MppSharedCommonConfig implements CommonConfig {
 
   private final MppCommonConfig cnConfig;
@@ -229,6 +231,21 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public TimeUnit getTimestampPrecision() {
+    String precision = dnConfig.properties.getProperty("timestamp_precision", "ms");
+    switch (precision) {
+      case "ms":
+        return TimeUnit.MILLISECONDS;
+      case "us":
+        return TimeUnit.MICROSECONDS;
+      case "ns":
+        return TimeUnit.NANOSECONDS;
+      default:
+        throw new UnsupportedOperationException(precision);
+    }
+  }
+
+  @Override
   public CommonConfig setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled) {
     cnConfig.setTimestampPrecisionCheckEnabled(timestampPrecisionCheckEnabled);
     dnConfig.setTimestampPrecisionCheckEnabled(timestampPrecisionCheckEnabled);
@@ -352,16 +369,16 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
-    dnConfig.setClusterSchemaLimitLevel(clusterSchemaLimitLevel);
-    cnConfig.setClusterSchemaLimitLevel(clusterSchemaLimitLevel);
+  public CommonConfig setClusterTimeseriesLimitThreshold(long clusterSchemaLimitThreshold) {
+    dnConfig.setClusterTimeseriesLimitThreshold(clusterSchemaLimitThreshold);
+    cnConfig.setClusterTimeseriesLimitThreshold(clusterSchemaLimitThreshold);
     return this;
   }
 
   @Override
-  public CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
-    dnConfig.setClusterSchemaLimitThreshold(clusterSchemaLimitThreshold);
-    cnConfig.setClusterSchemaLimitThreshold(clusterSchemaLimitThreshold);
+  public CommonConfig setClusterDeviceLimitThreshold(long clusterDeviceLimitThreshold) {
+    dnConfig.setClusterDeviceLimitThreshold(clusterDeviceLimitThreshold);
+    cnConfig.setClusterDeviceLimitThreshold(clusterDeviceLimitThreshold);
     return this;
   }
 

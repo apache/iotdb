@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.query.executor;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -73,7 +74,7 @@ public class QueryExecutorTest {
   @Test
   public void query1() throws IOException {
     Filter filter = TimeFilter.lt(1480562618100L);
-    Filter filter2 = ValueFilter.gt(new Binary("dog"));
+    Filter filter2 = ValueFilter.gt(new Binary("dog", TSFileConfig.STRING_CHARSET));
 
     IExpression IExpression =
         BinaryExpression.and(

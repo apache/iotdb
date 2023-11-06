@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.commons.io.FileUtils;
@@ -99,7 +100,7 @@ public class PipeInfoTest {
     CreatePipePluginPlan createPipePluginPlan =
         new CreatePipePluginPlan(
             new PipePluginMeta(pluginName, "org.apache.iotdb.TestJar", false, "test.jar", "???"),
-            new Binary("123"));
+            new Binary("123", TSFileConfig.STRING_CHARSET));
     pipeInfo.getPipePluginInfo().createPipePlugin(createPipePluginPlan);
 
     pipeInfo.processTakeSnapshot(snapshotDir);
@@ -147,7 +148,7 @@ public class PipeInfoTest {
     CreatePipePluginPlan createPipePluginPlan =
         new CreatePipePluginPlan(
             new PipePluginMeta(pluginName, "org.apache.iotdb.TestJar", false, "test.jar", "???"),
-            new Binary("123"));
+            new Binary("123", TSFileConfig.STRING_CHARSET));
     pipeInfo.getPipePluginInfo().createPipePlugin(createPipePluginPlan);
 
     // Drop pipe plugin test plugin

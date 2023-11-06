@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.encoding.encoder.DictionaryEncoder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -68,7 +69,7 @@ public class DictionaryDecoderTest {
 
   private void testAll(String... all) {
     for (String s : all) {
-      encoder.encode(new Binary(s), baos);
+      encoder.encode(new Binary(s, TSFileConfig.STRING_CHARSET), baos);
     }
     encoder.flush(baos);
 
@@ -76,7 +77,7 @@ public class DictionaryDecoderTest {
 
     for (String s : all) {
       assertTrue(decoder.hasNext(out));
-      assertEquals(s, decoder.readBinary(out).getStringValue());
+      assertEquals(s, decoder.readBinary(out).getStringValue(TSFileConfig.STRING_CHARSET));
     }
 
     decoder.reset();

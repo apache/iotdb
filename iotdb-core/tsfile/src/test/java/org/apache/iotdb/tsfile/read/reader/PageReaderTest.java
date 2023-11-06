@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.reader;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
 import org.apache.iotdb.tsfile.encoding.decoder.DoublePrecisionDecoderV1;
@@ -32,7 +33,7 @@ import org.apache.iotdb.tsfile.encoding.encoder.IntRleEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.LongRleEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoderV1;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
@@ -176,7 +177,7 @@ public class PageReaderTest {
             POINTS_COUNT_IN_ONE_PAGE) {
           @Override
           public Object generateValueByIndex(int i) {
-            return new Binary("TEST TEXT" + i);
+            return new Binary("TEST TEXT" + i, TSFileConfig.STRING_CHARSET);
           }
         };
     test.test(TSDataType.TEXT);

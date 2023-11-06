@@ -71,6 +71,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY;
 
 public class IoTDBThriftAsyncConnector extends IoTDBConnector {
@@ -125,6 +126,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     // Disable batch mode for retry connector, in case retry events are never sent again
     PipeParameters retryParameters = new PipeParameters(new HashMap<>(parameters.getAttribute()));
     retryParameters.getAttribute().put(SINK_IOTDB_BATCH_MODE_ENABLE_KEY, "false");
+    retryParameters.getAttribute().put(CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, "false");
     retryConnector.customize(retryParameters, configuration);
 
     if (isTabletBatchModeEnabled) {
@@ -358,7 +360,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     transferBatchedEventsIfNecessary();
 
     if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn("IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
+      LOGGER.warn(
+          "IoTDBThriftAsyncConnector does not support transferring generic event: {}.", event);
     }
   }
 
@@ -561,5 +564,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   // synchronized to avoid close connector when transfer event
   public synchronized void close() throws Exception {
     retryConnector.close();
+
+    if (tabletBatchBuilder != null) {
+      tabletBatchBuilder.close();
+    }
   }
 }

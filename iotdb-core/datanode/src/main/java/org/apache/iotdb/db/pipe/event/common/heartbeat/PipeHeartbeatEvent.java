@@ -185,7 +185,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
     if (extractor instanceof PipeRealtimeDataRegionHybridExtractor) {
       ((PipeRealtimeDataRegionHybridExtractor) extractor)
-          .informEventCollectorQueueTsFileSize(bufferQueue.getTsFileInsertionEventCount());
+          .informProcessorEventCollectorQueueTsFileSize(bufferQueue.getTsFileInsertionEventCount());
     }
   }
 
@@ -194,6 +194,11 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
       connectorQueueTabletSize = pendingQueue.getTabletInsertionEventCount();
       connectorQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();
       connectorQueueSize = pendingQueue.size();
+    }
+
+    if (extractor instanceof PipeRealtimeDataRegionHybridExtractor) {
+      ((PipeRealtimeDataRegionHybridExtractor) extractor)
+          .informConnectorInputPendingQueueTsFileSize(pendingQueue.getTsFileInsertionEventCount());
     }
   }
 

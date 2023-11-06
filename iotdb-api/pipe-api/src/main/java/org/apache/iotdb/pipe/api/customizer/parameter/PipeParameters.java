@@ -61,7 +61,36 @@ public class PipeParameters {
     return false;
   }
 
-  public String getString(String... keys) {
+  public String getString(String key) {
+    return attributes.get(key);
+  }
+
+  public Boolean getBoolean(String key) {
+    String value = attributes.get(key);
+    return value == null ? null : Boolean.parseBoolean(value);
+  }
+
+  public Integer getInt(String key) {
+    String value = attributes.get(key);
+    return value == null ? null : Integer.parseInt(value);
+  }
+
+  public Long getLong(String key) {
+    String value = attributes.get(key);
+    return value == null ? null : Long.parseLong(value);
+  }
+
+  public Float getFloat(String key) {
+    String value = attributes.get(key);
+    return value == null ? null : Float.parseFloat(value);
+  }
+
+  public Double getDouble(String key) {
+    String value = attributes.get(key);
+    return value == null ? null : Double.parseDouble(value);
+  }
+
+  public String getStringByKeys(String... keys) {
     for (final String key : keys) {
       final String value = attributes.get(key);
       if (value != null) {
@@ -71,7 +100,7 @@ public class PipeParameters {
     return null;
   }
 
-  public Boolean getBoolean(String... keys) {
+  public Boolean getBooleanByKeys(String... keys) {
     for (final String key : keys) {
       final String value = attributes.get(key);
       if (value != null) {
@@ -81,7 +110,7 @@ public class PipeParameters {
     return null;
   }
 
-  public Integer getInt(String... keys) {
+  public Integer getIntByKeys(String... keys) {
     for (final String key : keys) {
       final String value = attributes.get(key);
       if (value != null) {
@@ -91,7 +120,7 @@ public class PipeParameters {
     return null;
   }
 
-  public Long getLong(String... keys) {
+  public Long getLongByKeys(String... keys) {
     for (final String key : keys) {
       final String value = attributes.get(key);
       if (value != null) {
@@ -101,7 +130,7 @@ public class PipeParameters {
     return null;
   }
 
-  public Float getFloat(String... keys) {
+  public Float getFloatByKeys(String... keys) {
     for (final String key : keys) {
       final String value = attributes.get(key);
       if (value != null) {
@@ -111,7 +140,7 @@ public class PipeParameters {
     return null;
   }
 
-  public Double getDouble(String... keys) {
+  public Double getDoubleByKeys(String... keys) {
     for (final String key : keys) {
       final String value = attributes.get(key);
       if (value != null) {

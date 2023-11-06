@@ -21,8 +21,9 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
@@ -50,6 +51,6 @@ public class RegularTransformer extends UnaryTransformer {
   @Override
   protected void transformAndCache() throws QueryProcessException, IOException {
     Binary binary = layerPointReader.currentBinary();
-    cachedBoolean = pattern.matcher(binary.getStringValue()).find();
+    cachedBoolean = pattern.matcher(binary.getStringValue(TSFileConfig.STRING_CHARSET)).find();
   }
 }

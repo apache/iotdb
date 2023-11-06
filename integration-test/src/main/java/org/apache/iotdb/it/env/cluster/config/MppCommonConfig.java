@@ -22,6 +22,7 @@ package org.apache.iotdb.it.env.cluster.config;
 import org.apache.iotdb.itbase.env.CommonConfig;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
@@ -226,6 +227,21 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public TimeUnit getTimestampPrecision() {
+    String precision = properties.getProperty("timestamp_precision", "ms");
+    switch (precision) {
+      case "ms":
+        return TimeUnit.MILLISECONDS;
+      case "us":
+        return TimeUnit.MICROSECONDS;
+      case "ns":
+        return TimeUnit.NANOSECONDS;
+      default:
+        throw new UnsupportedOperationException(precision);
+    }
+  }
+
+  @Override
   public CommonConfig setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled) {
     setProperty(
         "timestamp_precision_check_enabled", String.valueOf(timestampPrecisionCheckEnabled));
@@ -350,14 +366,14 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
-    setProperty("cluster_schema_limit_level", clusterSchemaLimitLevel);
+  public CommonConfig setClusterTimeseriesLimitThreshold(long clusterSchemaLimitThreshold) {
+    setProperty("cluster_timeseries_limit_threshold", String.valueOf(clusterSchemaLimitThreshold));
     return this;
   }
 
   @Override
-  public CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
-    setProperty("cluster_schema_limit_threshold", String.valueOf(clusterSchemaLimitThreshold));
+  public CommonConfig setClusterDeviceLimitThreshold(long clusterDeviceLimitThreshold) {
+    setProperty("cluster_device_limit_threshold", String.valueOf(clusterDeviceLimitThreshold));
     return this;
   }
 

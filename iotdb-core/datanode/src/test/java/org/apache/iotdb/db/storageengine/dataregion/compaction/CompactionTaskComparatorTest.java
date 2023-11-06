@@ -24,7 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskPriorityType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -414,7 +414,7 @@ public class CompactionTaskComparatorTest {
             Collections.singletonList(
                 new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 1)), 1)),
             0,
-            CompactionTaskType.MOD_SETTLE));
+            CompactionTaskPriorityType.MOD_SETTLE));
     candidateCompactionTaskQueue.put(
         new FakedInnerSpaceCompactionTask(
             "fakeSg",
@@ -424,7 +424,7 @@ public class CompactionTaskComparatorTest {
             Collections.singletonList(
                 new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 2)), 1)),
             0,
-            CompactionTaskType.NORMAL));
+            CompactionTaskPriorityType.NORMAL));
     candidateCompactionTaskQueue.put(
         new FakedInnerSpaceCompactionTask(
             "fakeSg",
@@ -434,14 +434,17 @@ public class CompactionTaskComparatorTest {
             Collections.singletonList(
                 new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 3)), 1)),
             0,
-            CompactionTaskType.MOD_SETTLE));
+            CompactionTaskPriorityType.MOD_SETTLE));
 
     Assert.assertEquals(
-        candidateCompactionTaskQueue.take().getCompactionTaskType(), CompactionTaskType.MOD_SETTLE);
+        candidateCompactionTaskQueue.take().getCompactionTaskPriorityType(),
+        CompactionTaskPriorityType.MOD_SETTLE);
     Assert.assertEquals(
-        candidateCompactionTaskQueue.take().getCompactionTaskType(), CompactionTaskType.MOD_SETTLE);
+        candidateCompactionTaskQueue.take().getCompactionTaskPriorityType(),
+        CompactionTaskPriorityType.MOD_SETTLE);
     Assert.assertEquals(
-        candidateCompactionTaskQueue.take().getCompactionTaskType(), CompactionTaskType.NORMAL);
+        candidateCompactionTaskQueue.take().getCompactionTaskPriorityType(),
+        CompactionTaskPriorityType.NORMAL);
   }
 
   private static class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
@@ -469,7 +472,7 @@ public class CompactionTaskComparatorTest {
         boolean sequence,
         List<TsFileResource> selectedTsFileResourceList,
         long serialId,
-        CompactionTaskType compactionTaskType) {
+        CompactionTaskPriorityType compactionTaskPriorityType) {
       super(
           timePartition,
           tsFileManager,
@@ -477,7 +480,7 @@ public class CompactionTaskComparatorTest {
           sequence,
           new FastCompactionPerformer(false),
           serialId,
-          compactionTaskType);
+          compactionTaskPriorityType);
     }
 
     @Override
