@@ -262,8 +262,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
 
       ISchemaTree schemaTree = analyzeSchema(queryStatement, analysis, context);
-      logger.warn("----- Analyze analyzeSchema cost: {}ms", System.currentTimeMillis() - startTime);
-      startTime = System.currentTimeMillis();
+      logger.warn("--- [analyzeSchema] : {}ms", System.currentTimeMillis() - startTime);
 
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
@@ -296,13 +295,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceList);
 
-        outputExpressions =
-            TemplatedDeviceAnalyze.analyzeSelectUseTemplate(
-                analysis, queryStatement, schemaTree, deviceList);
-
-        logger.warn(
-            "----- Analyze analyzeSelect cost: {}ms", System.currentTimeMillis() - startTime);
-        startTime = System.currentTimeMillis();
+        outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree, deviceList);
 
         if (deviceList.isEmpty()) {
           return finishQuery(queryStatement, analysis);
@@ -316,17 +309,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeDeviceToAggregation(analysis, queryStatement);
         analyzeDeviceToSourceTransform(analysis, queryStatement);
         analyzeDeviceToSource(analysis, queryStatement);
-        logger.warn(
-            "----- Analyze analyzeDeviceToSource + analyzeDeviceToSourceTransform cost: {}ms",
-            System.currentTimeMillis() - startTime);
-        startTime = System.currentTimeMillis();
 
         analyzeDeviceViewOutput(analysis, queryStatement);
         analyzeDeviceViewInput(analysis, queryStatement);
-
-        logger.warn(
-            "----- Analyze analyzeDeviceView cost: {}ms", System.currentTimeMillis() - startTime);
-        startTime = System.currentTimeMillis();
 
         analyzeInto(analysis, queryStatement, deviceList, outputExpressions);
       } else {
@@ -377,9 +362,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // fetch partition information
       analyzeDataPartition(analysis, queryStatement, schemaTree);
-      logger.warn(
-          "----- Analyze analyzeOutput+analyzeDataPartition cost: {}ms",
-          System.currentTimeMillis() - startTime);
 
     } catch (StatementAnalyzeException e) {
       throw new StatementAnalyzeException(

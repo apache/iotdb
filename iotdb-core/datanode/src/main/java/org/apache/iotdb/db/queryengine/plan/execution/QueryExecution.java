@@ -221,11 +221,11 @@ public class QueryExecution implements IQueryExecution {
     // check timeout for query first
     checkTimeOutForQuery();
     doLogicalPlan();
-    logger.warn("----- doLogicalPlan cost: {}ms", System.currentTimeMillis() - sTime);
+    logger.warn("--- [doLogicalPlan] : {}ms", System.currentTimeMillis() - sTime);
     sTime = System.currentTimeMillis();
 
     doDistributedPlan();
-    logger.warn("----- doDistributedPlan cost: {}ms", System.currentTimeMillis() - sTime);
+    logger.warn("--- [doDistributedPlan] : {}ms", System.currentTimeMillis() - sTime);
 
     // update timeout after finishing plan stage
     context.setTimeOut(
