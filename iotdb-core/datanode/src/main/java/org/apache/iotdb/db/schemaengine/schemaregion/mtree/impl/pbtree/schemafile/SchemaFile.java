@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
 import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
@@ -141,7 +143,11 @@ public class SchemaFile implements ISchemaFile {
     return new SchemaFile(
         sgName,
         schemaRegionId,
-        !pmtFile.exists(),
+        !pmtFile.exists()
+            || IoTDBDescriptor.getInstance()
+                .getConfig()
+                .getSchemaRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.RATIS_CONSENSUS),
         CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
         false);
   }
