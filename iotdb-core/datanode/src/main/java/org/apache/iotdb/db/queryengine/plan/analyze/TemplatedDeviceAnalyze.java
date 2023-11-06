@@ -74,7 +74,6 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.ge
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.normalizeExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchAggregationExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchSourceExpressions;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetInGroupByTimeForDevice;
 
@@ -125,6 +124,10 @@ public class TemplatedDeviceAnalyze {
                   .get(0)
                   .getExpression()
                   .getOutputSymbol())) {
+
+        Template template = ClusterTemplateManager.getInstance().getAllTemplates().get(0);
+        analysis.setTemplateTypes(template);
+
         isWildCardQuery = true;
       }
     }
@@ -279,18 +282,17 @@ public class TemplatedDeviceAnalyze {
       ISchemaTree schemaTree,
       List<PartialPath> deviceList) {
 
-    Template template = ClusterTemplateManager.getInstance().getAllTemplates().get(0);
-
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
     Map<String, Set<Expression>> deviceToSelectExpressions = new HashMap<>();
 
-    for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
+    for (Map.Entry<String, IMeasurementSchema> entry :
+        analysis.getTemplateTypes().getSchemaMap().entrySet()) {
       String measurementName = entry.getKey();
       IMeasurementSchema measurementSchema = entry.getValue();
       TimeSeriesOperand measurementPath =
           new TimeSeriesOperand(
               new MeasurementPath(new String[] {measurementName}, measurementSchema));
-      analyzeExpression(analysis, measurementPath);
+      // analyzeExpression(analysis, measurementPath);
       outputExpressions.add(new Pair<>(measurementPath, null));
       for (PartialPath devicePath : deviceList) {
         // TODO how to determine whether a device is aligned device
@@ -298,7 +300,7 @@ public class TemplatedDeviceAnalyze {
             new TimeSeriesOperand(
                 new MeasurementPath(
                     devicePath.concatNode(measurementName), measurementSchema, true));
-        analyzeExpression(analysis, fullPath);
+        // analyzeExpression(analysis, fullPath);
         deviceToSelectExpressions
             .computeIfAbsent(devicePath.getFullPath(), k -> new LinkedHashSet<>())
             .add(fullPath);

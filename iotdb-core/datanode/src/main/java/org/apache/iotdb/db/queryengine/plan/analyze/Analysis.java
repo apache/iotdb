@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByParameter;
@@ -357,8 +358,10 @@ public class Analysis {
       return null;
     }
 
-    // TODO add template optimization
-    // expression.get
+    if (templateTypes != null) {
+      TimeSeriesOperand seriesOperand = (TimeSeriesOperand) expression;
+      return templateTypes.getSchemaMap().get(seriesOperand.getPath().getMeasurement()).getType();
+    }
 
     TSDataType type = expressionTypes.get(NodeRef.of(expression));
     checkArgument(type != null, "Expression is not analyzed: %s", expression);
@@ -684,6 +687,10 @@ public class Analysis {
 
   public Template getTemplateTypes() {
     return this.templateTypes;
+  }
+
+  public void setTemplateTypes(Template template) {
+    this.templateTypes = template;
   }
 
   public void setOrderByExpressions(Set<Expression> orderByExpressions) {
