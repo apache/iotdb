@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -113,7 +114,8 @@ public class PartitionInfoTest {
             testFlag.SchemaPartition.getFlag(),
             generateTConsensusGroupId(
                 testFlag.SchemaPartition.getFlag(), TConsensusGroupType.SchemaRegion));
-    createRegionGroupsReq.addRegionGroup("root.test", schemaRegionReplicaSet);
+    createRegionGroupsReq.addRegionGroup(
+        "root.test", schemaRegionReplicaSet, CommonDateTimeUtils.currentTime());
     partitionInfo.createRegionGroups(createRegionGroupsReq);
 
     // Create a DataRegion
@@ -123,7 +125,8 @@ public class PartitionInfoTest {
             testFlag.DataPartition.getFlag(),
             generateTConsensusGroupId(
                 testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
-    createRegionGroupsReq.addRegionGroup("root.test", dataRegionReplicaSet);
+    createRegionGroupsReq.addRegionGroup(
+        "root.test", dataRegionReplicaSet, CommonDateTimeUtils.currentTime());
     partitionInfo.createRegionGroups(createRegionGroupsReq);
 
     // Create a SchemaPartition
@@ -168,7 +171,8 @@ public class PartitionInfoTest {
               testFlag.SchemaPartition.getFlag(),
               generateTConsensusGroupId(
                   testFlag.SchemaPartition.getFlag(), TConsensusGroupType.SchemaRegion));
-      createRegionGroupsPlan.addRegionGroup("root.test" + i, schemaRegionReplicaSet);
+      createRegionGroupsPlan.addRegionGroup(
+          "root.test" + i, schemaRegionReplicaSet, CommonDateTimeUtils.currentTime());
       partitionInfo.createRegionGroups(createRegionGroupsPlan);
 
       // Create a DataRegion
@@ -178,7 +182,8 @@ public class PartitionInfoTest {
               testFlag.DataPartition.getFlag(),
               generateTConsensusGroupId(
                   testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
-      createRegionGroupsPlan.addRegionGroup("root.test" + i, dataRegionReplicaSet);
+      createRegionGroupsPlan.addRegionGroup(
+          "root.test" + i, dataRegionReplicaSet, CommonDateTimeUtils.currentTime());
       partitionInfo.createRegionGroups(createRegionGroupsPlan);
     }
     GetRegionInfoListPlan regionReq = new GetRegionInfoListPlan();

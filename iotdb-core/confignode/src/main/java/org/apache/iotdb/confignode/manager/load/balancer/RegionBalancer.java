@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
@@ -64,7 +65,7 @@ public class RegionBalancer {
   /**
    * Generate a RegionGroups' allocation plan(CreateRegionGroupsPlan)
    *
-   * @param allotmentMap Map<StorageGroupName, RegionGroup allotment>
+   * @param allotmentMap Map<DatabaseName, RegionGroup allotment>
    * @param consensusGroupType TConsensusGroupType of the new RegionGroups
    * @return CreateRegionGroupsPlan
    * @throws NotEnoughDataNodeException When the number of DataNodes is not enough for allocation
@@ -119,7 +120,8 @@ public class RegionBalancer {
                 replicationFactor,
                 new TConsensusGroupId(
                     consensusGroupType, getPartitionManager().generateNextRegionGroupId()));
-        createRegionGroupsPlan.addRegionGroup(database, newRegionGroup);
+        createRegionGroupsPlan.addRegionGroup(
+            database, newRegionGroup, CommonDateTimeUtils.currentTime());
 
         // Mark the new RegionGroup as allocated
         allocatedRegionGroups.add(newRegionGroup);

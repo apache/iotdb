@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.region;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
@@ -39,40 +40,48 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-/** Create regions for specific StorageGroups. */
+/** Create regions for specified Databases. */
 public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
 
-  // Map<StorageGroupName, List<TRegionReplicaSet>>
+  // Map<Database, List<TRegionReplicaSet>>
   protected final Map<String, List<TRegionReplicaSet>> regionGroupMap;
+  protected final Map<TConsensusGroupId, Long> regionGroupCreateTimeMap;
 
   public CreateRegionGroupsPlan() {
     super(ConfigPhysicalPlanType.CreateRegionGroups);
     this.regionGroupMap = new HashMap<>();
+    this.regionGroupCreateTimeMap = new HashMap<>();
   }
 
   public CreateRegionGroupsPlan(ConfigPhysicalPlanType type) {
     super(type);
     this.regionGroupMap = new HashMap<>();
+    this.regionGroupCreateTimeMap = new HashMap<>();
   }
 
   public Map<String, List<TRegionReplicaSet>> getRegionGroupMap() {
     return regionGroupMap;
   }
 
-  public void addRegionGroup(String storageGroup, TRegionReplicaSet regionReplicaSet) {
+  public Map<TConsensusGroupId, Long> getRegionGroupCreateTimeMap() {
+    return regionGroupCreateTimeMap;
+  }
+
+  public void addRegionGroup(String database, TRegionReplicaSet regionReplicaSet, long createTime) {
     regionGroupMap
-        .computeIfAbsent(storageGroup, regionReplicaSets -> new ArrayList<>())
+        .computeIfAbsent(database, regionReplicaSets -> new ArrayList<>())
         .add(regionReplicaSet);
+    regionGroupCreateTimeMap.put(regionReplicaSet.getRegionId(), createTime);
   }
 
   public void planLog(Logger logger) {
     for (Map.Entry<String, List<TRegionReplicaSet>> regionGroupEntry : regionGroupMap.entrySet()) {
-      String storageGroup = regionGroupEntry.getKey();
+      String database = regionGroupEntry.getKey();
       for (TRegionReplicaSet regionReplicaSet : regionGroupEntry.getValue()) {
         logger.info(
-            "[CreateRegionGroups] RegionGroup: {}, belonged StorageGroup: {}, on DataNodes: {}",
+            "[CreateRegionGroups] RegionGroup: {}, belonged database: {}, on DataNodes: {}",
             regionReplicaSet.getRegionId(),
-            storageGroup,
+            database,
             regionReplicaSet.getDataNodeLocations().stream()
                 .map(TDataNodeLocation::getDataNodeId)
                 .collect(Collectors.toList()));
@@ -96,28 +105,46 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
 
     stream.writeInt(regionGroupMap.size());
     for (Entry<String, List<TRegionReplicaSet>> entry : regionGroupMap.entrySet()) {
-      String storageGroup = entry.getKey();
+      String database = entry.getKey();
       List<TRegionReplicaSet> regionReplicaSets = entry.getValue();
-      BasicStructureSerDeUtil.write(storageGroup, stream);
+      BasicStructureSerDeUtil.write(database, stream);
       stream.writeInt(regionReplicaSets.size());
       regionReplicaSets.forEach(
           regionReplicaSet ->
               ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, stream));
     }
+
+    stream.writeInt(regionGroupCreateTimeMap.size());
+    for (Entry<TConsensusGroupId, Long> entry : regionGroupCreateTimeMap.entrySet()) {
+      TConsensusGroupId regionId = entry.getKey();
+      long createTime = entry.getValue();
+      ThriftCommonsSerDeUtils.serializeTConsensusGroupId(regionId, stream);
+      stream.writeLong(createTime);
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    int storageGroupNum = buffer.getInt();
-    for (int i = 0; i < storageGroupNum; i++) {
-      String storageGroup = BasicStructureSerDeUtil.readString(buffer);
-      regionGroupMap.put(storageGroup, new ArrayList<>());
+    int databaseNum = buffer.getInt();
+    for (int i = 0; i < databaseNum; i++) {
+      String database = BasicStructureSerDeUtil.readString(buffer);
+      regionGroupMap.put(database, new ArrayList<>());
 
       int regionReplicaSetNum = buffer.getInt();
       for (int j = 0; j < regionReplicaSetNum; j++) {
         TRegionReplicaSet regionReplicaSet =
             ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
-        regionGroupMap.get(storageGroup).add(regionReplicaSet);
+        regionGroupMap.get(database).add(regionReplicaSet);
+      }
+    }
+
+    if (buffer.hasRemaining()) {
+      // For compatibility
+      int regionGroupCreateTimeMapSize = buffer.getInt();
+      for (int i = 0; i < regionGroupCreateTimeMapSize; i++) {
+        TConsensusGroupId regionId = ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer);
+        long createTime = buffer.getLong();
+        regionGroupCreateTimeMap.put(regionId, createTime);
       }
     }
   }
@@ -130,12 +157,16 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
+    if (!super.equals(o)) {
+      return false;
+    }
     CreateRegionGroupsPlan that = (CreateRegionGroupsPlan) o;
-    return regionGroupMap.equals(that.regionGroupMap);
+    return Objects.equals(regionGroupMap, that.regionGroupMap)
+        && Objects.equals(regionGroupCreateTimeMap, that.regionGroupCreateTimeMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(regionGroupMap);
+    return Objects.hash(super.hashCode(), regionGroupMap, regionGroupCreateTimeMap);
   }
 }
