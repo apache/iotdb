@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_MATCH_PATTERN;
 
 public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaInfo> {
@@ -117,7 +118,10 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
 
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
-    return pathPattern.equals(ALL_MATCH_PATTERN) && (schemaFilter == null);
+    return (pathPattern.equals(ALL_MATCH_PATTERN)
+            || (pathPattern.getMeasurement().equals(MULTI_LEVEL_PATH_WILDCARD)
+                && schemaRegion.getDatabaseFullPath().startsWith(pathPattern.getDevice())))
+        && (schemaFilter == null);
   }
 
   @Override
