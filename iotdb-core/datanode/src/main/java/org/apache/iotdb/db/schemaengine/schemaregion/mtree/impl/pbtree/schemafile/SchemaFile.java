@@ -145,9 +145,9 @@ public class SchemaFile implements ISchemaFile {
         schemaRegionId,
         !pmtFile.exists()
             || IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getSchemaRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.RATIS_CONSENSUS),
+                .getConfig()
+                .getSchemaRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.RATIS_CONSENSUS),
         CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
         false);
   }
