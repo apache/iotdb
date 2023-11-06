@@ -1110,13 +1110,17 @@ public class ConfigPhysicalPlanSerDeTest {
     extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
-    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
+    PipeTaskMeta dataRegionPipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    PipeTaskMeta schemaRegionPipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    Map<TConsensusGroupId, PipeTaskMeta> dataRegionPipeTasks = new HashMap<>();
+    Map<TConsensusGroupId, PipeTaskMeta> schemaRegionPipeTasks = new HashMap<>();
+    dataRegionPipeTasks.put(new TConsensusGroupId(DataRegion, 1), dataRegionPipeTaskMeta);
+    schemaRegionPipeTasks.put(new TConsensusGroupId(SchemaRegion, 2), schemaRegionPipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
-    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    PipeRuntimeMeta pipeRuntimeMeta =
+        new PipeRuntimeMeta(dataRegionPipeTasks, schemaRegionPipeTasks);
     CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
     CreatePipePlanV2 createPipePlanV21 =
         (CreatePipePlanV2)
@@ -1229,6 +1233,18 @@ public class ConfigPhysicalPlanSerDeTest {
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
                     new PipeTaskMeta(
                         MinimumProgressIndex.INSTANCE, 789)); // TODO: replace with IoTConsensus
+              }
+            },
+            new HashMap() {
+              {
+                put(
+                    new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 111),
+                    new PipeTaskMeta(
+                        MinimumProgressIndex.INSTANCE, 222)); // TODO: replace with IoTConsensus
+                put(
+                    new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 333),
+                    new PipeTaskMeta(
+                        MinimumProgressIndex.INSTANCE, 444)); // TODO: replace with IoTConsensus
               }
             });
     pipeMetaList.add(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta));

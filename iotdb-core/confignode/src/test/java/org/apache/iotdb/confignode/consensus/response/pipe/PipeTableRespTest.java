@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
+import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegion;
 
 public class PipeTableRespTest {
 
@@ -55,13 +56,17 @@ public class PipeTableRespTest {
     connectorAttributes.put("host", "127.0.0.1");
     connectorAttributes.put("port", "6667");
 
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
-    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
+    PipeTaskMeta dataRegionPipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    PipeTaskMeta schemaRegionPipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 2);
+    Map<TConsensusGroupId, PipeTaskMeta> dataRegionPipeTasks = new HashMap<>();
+    Map<TConsensusGroupId, PipeTaskMeta> schemaRegionPipeTasks = new HashMap<>();
+    dataRegionPipeTasks.put(new TConsensusGroupId(DataRegion, 1), dataRegionPipeTaskMeta);
+    schemaRegionPipeTasks.put(new TConsensusGroupId(SchemaRegion, 2), schemaRegionPipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
-    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    PipeRuntimeMeta pipeRuntimeMeta =
+        new PipeRuntimeMeta(dataRegionPipeTasks, schemaRegionPipeTasks);
     pipeMetaList.add(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta));
 
     // PipeMeta 2
@@ -75,13 +80,17 @@ public class PipeTableRespTest {
     connectorAttributes1.put("host", "127.0.0.1");
     connectorAttributes1.put("port", "6667");
 
-    PipeTaskMeta pipeTaskMeta1 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks1 = new HashMap<>();
-    pipeTasks1.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta1);
+    PipeTaskMeta dataRegionPipeTaskMeta1 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    PipeTaskMeta schemaRegionPipeTaskMeta1 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 2);
+    Map<TConsensusGroupId, PipeTaskMeta> dataRegionPipeTasks1 = new HashMap<>();
+    Map<TConsensusGroupId, PipeTaskMeta> schemaRegionPipeTasks1 = new HashMap<>();
+    dataRegionPipeTasks1.put(new TConsensusGroupId(DataRegion, 1), dataRegionPipeTaskMeta1);
+    schemaRegionPipeTasks1.put(new TConsensusGroupId(SchemaRegion, 2), schemaRegionPipeTaskMeta1);
     PipeStaticMeta pipeStaticMeta1 =
         new PipeStaticMeta(
             "testPipe", 121, extractorAttributes1, processorAttributes1, connectorAttributes1);
-    PipeRuntimeMeta pipeRuntimeMeta1 = new PipeRuntimeMeta(pipeTasks1);
+    PipeRuntimeMeta pipeRuntimeMeta1 =
+        new PipeRuntimeMeta(dataRegionPipeTasks1, schemaRegionPipeTasks1);
     pipeMetaList.add(new PipeMeta(pipeStaticMeta1, pipeRuntimeMeta1));
 
     // PipeMeta 3
@@ -95,13 +104,17 @@ public class PipeTableRespTest {
     connectorAttributes2.put("host", "172.30.30.30");
     connectorAttributes2.put("port", "6667");
 
-    PipeTaskMeta pipeTaskMeta2 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks2 = new HashMap<>();
-    pipeTasks2.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta2);
+    PipeTaskMeta dataRegionPipeTaskMeta2 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    PipeTaskMeta schemaRegionPipeTaskMeta2 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 2);
+    Map<TConsensusGroupId, PipeTaskMeta> dataRegionPipeTasks2 = new HashMap<>();
+    Map<TConsensusGroupId, PipeTaskMeta> schemaRegionPipeTasks2 = new HashMap<>();
+    dataRegionPipeTasks2.put(new TConsensusGroupId(DataRegion, 1), dataRegionPipeTaskMeta2);
+    schemaRegionPipeTasks2.put(new TConsensusGroupId(SchemaRegion, 2), schemaRegionPipeTaskMeta2);
     PipeStaticMeta pipeStaticMeta2 =
         new PipeStaticMeta(
             "testPipe", 121, extractorAttributes2, processorAttributes2, connectorAttributes2);
-    PipeRuntimeMeta pipeRuntimeMeta2 = new PipeRuntimeMeta(pipeTasks2);
+    PipeRuntimeMeta pipeRuntimeMeta2 =
+        new PipeRuntimeMeta(dataRegionPipeTasks2, schemaRegionPipeTasks2);
     pipeMetaList.add(new PipeMeta(pipeStaticMeta2, pipeRuntimeMeta2));
 
     return new PipeTableResp(status, pipeMetaList);

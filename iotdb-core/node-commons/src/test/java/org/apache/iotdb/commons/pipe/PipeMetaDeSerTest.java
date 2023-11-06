@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SchemaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
@@ -90,6 +91,16 @@ public class PipeMetaDeSerTest {
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 567),
                     new PipeTaskMeta(
                         new RecoverProgressIndex(1, new SimpleProgressIndex(1, 9)), 123));
+              }
+            },
+            new HashMap() {
+              {
+                put(
+                    new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 111),
+                    new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 222));
+                put(
+                    new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 333),
+                    new PipeTaskMeta(new SchemaProgressIndex(444), 555));
               }
             });
     ByteBuffer runtimeByteBuffer = pipeRuntimeMeta.serialize();

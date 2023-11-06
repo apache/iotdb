@@ -48,6 +48,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
+import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegion;
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
 
 public class PipeInfoTest {
@@ -86,13 +87,17 @@ public class PipeInfoTest {
     connectorAttributes.put("host", "127.0.0.1");
     connectorAttributes.put("port", "6667");
 
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
-    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
+    PipeTaskMeta dataRegionPipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    PipeTaskMeta schemaRegionPipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 2);
+    Map<TConsensusGroupId, PipeTaskMeta> dataRegionPipeTasks = new HashMap<>();
+    Map<TConsensusGroupId, PipeTaskMeta> schemaRegionPipeTasks = new HashMap<>();
+    dataRegionPipeTasks.put(new TConsensusGroupId(DataRegion, 1), dataRegionPipeTaskMeta);
+    schemaRegionPipeTasks.put(new TConsensusGroupId(SchemaRegion, 2), schemaRegionPipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             pipeName, 121, extractorAttributes, processorAttributes, connectorAttributes);
-    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    PipeRuntimeMeta pipeRuntimeMeta =
+        new PipeRuntimeMeta(dataRegionPipeTasks, schemaRegionPipeTasks);
     CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
     pipeInfo.getPipeTaskInfo().createPipe(createPipePlanV2);
 
@@ -121,13 +126,17 @@ public class PipeInfoTest {
     extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
-    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
+    PipeTaskMeta dataRegionPipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    PipeTaskMeta schemaRegionPipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 2);
+    Map<TConsensusGroupId, PipeTaskMeta> dataRegionPipeTasks = new HashMap<>();
+    Map<TConsensusGroupId, PipeTaskMeta> schemaRegionPipeTasks = new HashMap<>();
+    dataRegionPipeTasks.put(new TConsensusGroupId(DataRegion, 1), dataRegionPipeTaskMeta);
+    schemaRegionPipeTasks.put(new TConsensusGroupId(SchemaRegion, 2), schemaRegionPipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
-            pipeName, 121, extractorAttributes, processorAttributes, connectorAttributes);
-    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+            "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
+    PipeRuntimeMeta pipeRuntimeMeta =
+        new PipeRuntimeMeta(dataRegionPipeTasks, schemaRegionPipeTasks);
     CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
     pipeInfo.getPipeTaskInfo().createPipe(createPipePlanV2);
 
