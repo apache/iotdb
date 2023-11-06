@@ -117,7 +117,7 @@ public class PipeMetaDeSerTest {
         .getDataNodeId2PipeRuntimeExceptionMap()
         .put(345, new PipeRuntimeCriticalException("test345"));
     pipeRuntimeMeta
-        .getConsensusGroupId2TaskMetaMap()
+        .getDataRegionId2TaskMetaMap()
         .get(new TConsensusGroupId(TConsensusGroupType.DataRegion, 456))
         .trackExceptionMessage(new PipeRuntimeConnectorCriticalException("test456"));
 

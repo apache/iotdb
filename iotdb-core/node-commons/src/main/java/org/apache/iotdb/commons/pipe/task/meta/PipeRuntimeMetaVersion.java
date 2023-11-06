@@ -35,7 +35,7 @@ public enum PipeRuntimeMetaVersion {
   VERSION_1(PipeStatus.RUNNING.getType()),
 
   VERSION_2(Byte.MAX_VALUE),
-  ;
+  VERSION_3((byte) (Byte.MAX_VALUE - 1));
 
   private static final Map<Byte, PipeRuntimeMetaVersion> VERSION_MAP = new HashMap<>();
 
