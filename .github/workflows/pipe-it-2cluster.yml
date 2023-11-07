@@ -36,9 +36,8 @@ jobs:
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
         cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
         cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
-    runs-on: [self-hosted, iotdb]
-    #      group: self-hosted
-    #      labels: iotdb
+        os: [ ubuntu-latest, windows-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
       - name: Set up JDK ${{ matrix.java }}
@@ -54,7 +53,7 @@ jobs:
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
-          -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=256 \
+          -DintegrationTest.forkCount=3 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=256 \
           -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
           -pl integration-test \
           -am -PMultiClusterIT2
