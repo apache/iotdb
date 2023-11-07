@@ -138,6 +138,11 @@
             <artifactId>hadoop-client</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -150,6 +155,11 @@
                         <usedDependency>org.apache.flink:flink-clients</usedDependency>
                         <usedDependency>org.apache.hadoop:hadoop-client</usedDependency>
                         <usedDependency>org.apache.flink:flink-shaded-zookeeper-3</usedDependency>
+                        <!--
+                            For some reason it complains about this one, if we omit the dependency,
+                            we get the red "no provider found" messages from slf4j.
+                        -->
+                        <usedDependency>ch.qos.logback:logback-classic</usedDependency>
                     </usedDependencies>
                 </configuration>
             </plugin>
