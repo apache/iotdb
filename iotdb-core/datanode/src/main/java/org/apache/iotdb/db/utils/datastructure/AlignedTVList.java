@@ -74,6 +74,9 @@ public abstract class AlignedTVList extends TVList {
   // If a sensor chunk size of Text datatype reaches the threshold, this flag will be set true
   boolean reachMaxChunkSizeFlag;
 
+  // not null when constructed by queries
+  BitMap rowBitMap;
+
   AlignedTVList(List<TSDataType> types) {
     super();
     indices = new ArrayList<>(types.size());
@@ -125,6 +128,7 @@ public abstract class AlignedTVList extends TVList {
     alignedTvList.values = values;
     alignedTvList.bitMaps = bitMaps;
     alignedTvList.rowCount = this.rowCount;
+    alignedTvList.rowBitMap = getRowBitMap();
     return alignedTvList;
   }
 
@@ -904,7 +908,6 @@ public abstract class AlignedTVList extends TVList {
   public TsBlock buildTsBlock(
       int floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
     TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
-    BitMap rowBitMap = getRowBitMap();
     // Time column
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     int validRowCount = 0;
@@ -942,7 +945,7 @@ public abstract class AlignedTVList extends TVList {
       ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
       for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
         // skip empty row
-        if (rowBitMap != null && rowBitMap.isMarked(sortedRowIndex)) {
+        if (rowBitMap != null && rowBitMap.isMarked(getValueIndex(sortedRowIndex))) {
           continue;
         }
         // skip time duplicated rows
@@ -1226,6 +1229,7 @@ public abstract class AlignedTVList extends TVList {
 
     byte[] rowBitsArr = new byte[rowCount / Byte.SIZE + 1];
     for (int row = 0; row < rowCount; row += Byte.SIZE) {
+      boolean isFirstColumn = true;
       byte rowBits = 0x00;
       for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
         List<BitMap> columnBitMaps = bitMaps.get(columnIndex);
@@ -1241,7 +1245,12 @@ public abstract class AlignedTVList extends TVList {
               columnBitMaps.get(row / ARRAY_SIZE).getByteArray()[(row % ARRAY_SIZE) / Byte.SIZE];
         }
         // set row to null when all column values are null
-        rowBits = rowBits == 0x00 ? columnBits : (byte) (rowBits & columnBits);
+        if (isFirstColumn) {
+          rowBits = columnBits;
+          isFirstColumn = false;
+        } else {
+          rowBits &= columnBits;
+        }
       }
       rowBitsArr[row / Byte.SIZE] = rowBits;
     }
