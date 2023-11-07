@@ -40,6 +40,9 @@ public class PipeProcessorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
         Mockito.spy(
             new PipeProcessorSubtask(
                 "PipeProcessorSubtaskExecutorTest",
+                System.currentTimeMillis(),
+                "TestPipe",
+                0,
                 mock(EventSupplier.class),
                 mock(PipeProcessor.class),
                 mock(PipeEventCollector.class)));

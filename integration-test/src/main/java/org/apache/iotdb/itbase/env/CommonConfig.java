@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.itbase.env;
 
+import java.util.concurrent.TimeUnit;
+
 /** This interface is used to handle properties in iotdb-common.properties. */
 public interface CommonConfig {
 
@@ -77,6 +79,8 @@ public interface CommonConfig {
   CommonConfig setTimePartitionInterval(long timePartitionInterval);
 
   CommonConfig setTimestampPrecision(String timestampPrecision);
+
+  TimeUnit getTimestampPrecision();
 
   CommonConfig setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled);
 

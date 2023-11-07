@@ -49,12 +49,21 @@ public class PipeProcessorSubtask extends PipeSubtask {
   private final PipeProcessor pipeProcessor;
   private final PipeEventCollector outputEventCollector;
 
+  // Record these variables to provide corresponding value to tag key of monitoring metrics
+  private final String pipeName;
+  private final int dataRegionId;
+
   public PipeProcessorSubtask(
       String taskID,
+      long creationTime,
+      String pipeName,
+      int dataRegionId,
       EventSupplier inputEventSupplier,
       PipeProcessor pipeProcessor,
       PipeEventCollector outputEventCollector) {
-    super(taskID);
+    super(taskID, creationTime);
+    this.pipeName = pipeName;
+    this.dataRegionId = dataRegionId;
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
@@ -178,6 +187,16 @@ public class PipeProcessorSubtask extends PipeSubtask {
   @Override
   public int hashCode() {
     return taskID.hashCode();
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public String getPipeName() {
+    return pipeName;
+  }
+
+  public int getDataRegionId() {
+    return dataRegionId;
   }
 
   public int getTabletInsertionEventCount() {
