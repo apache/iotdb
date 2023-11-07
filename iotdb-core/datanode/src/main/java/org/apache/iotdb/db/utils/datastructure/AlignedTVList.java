@@ -916,7 +916,7 @@ public abstract class AlignedTVList extends TVList {
         continue;
       }
       int nextRowIndex = sortedRowIndex + 1;
-      while (nextRowIndex < rowCount && rowBitMap.isMarked(nextRowIndex)) {
+      while (nextRowIndex < rowCount && rowBitMap != null && rowBitMap.isMarked(nextRowIndex)) {
         nextRowIndex++;
       }
       if (nextRowIndex == rowCount || getTime(sortedRowIndex) != getTime(nextRowIndex)) {
