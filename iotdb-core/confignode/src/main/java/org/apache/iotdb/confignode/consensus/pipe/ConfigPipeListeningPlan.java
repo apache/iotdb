@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.consensus.pipe;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+
 import com.google.common.collect.ImmutableSet;
 
 public class ConfigPipeListeningPlan {
