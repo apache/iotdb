@@ -42,6 +42,16 @@ public abstract class MeasurementCollector<R, N extends IMNode<N>>
     super(startNode, path, store, isPrefixMatch, scope);
   }
 
+  protected MeasurementCollector(
+      N startNode,
+      PathPatternTree patternTree,
+      IMTreeStore<N> store,
+      boolean isPrefixMatch,
+      PathPatternTree scope)
+      throws MetadataException {
+    super(startNode, patternTree, store, isPrefixMatch, scope);
+  }
+
   @Override
   protected R generateResult(N nextMatchedNode) {
     return collectMeasurement(nextMatchedNode.getAsMeasurementMNode());

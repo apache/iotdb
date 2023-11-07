@@ -61,6 +61,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   protected IMTreeStore<N> store;
 
   protected N startNode;
+  // TODO: nodes should be deleted
   protected String[] nodes;
 
   // measurement in template should be processed only if templateMap is not null
@@ -102,6 +103,27 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     }
     this.startNode = startNode;
     this.nodes = nodes;
+  }
+
+  /**
+   * To traverse subtree under startNode.
+   *
+   * @param startNode denote which tree to traverse by passing its root
+   * @param patternTree must not contain any wildcard
+   * @param store MTree store to traverse
+   * @param isPrefixMatch prefix match or not
+   * @param scope traversing scope
+   */
+  protected Traverser(
+      N startNode,
+      PathPatternTree patternTree,
+      IMTreeStore<N> store,
+      boolean isPrefixMatch,
+      PathPatternTree scope) {
+    super(startNode, patternTree, isPrefixMatch, scope);
+    this.store = store.getWithReentrantReadLock();
+    initStack();
+    this.startNode = startNode;
   }
 
   /**

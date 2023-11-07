@@ -103,7 +103,7 @@ class ClusterSchemaFetchExecutor {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
     }
     return executeSchemaFetchQuery(
-        new SchemaFetchStatement(patternTree, templateMap, withTags), context);
+        new SchemaFetchStatement(patternTree, templateMap, withTags, context !=null &&QueryType.WRITE.equals(context.getQueryType())), context);
   }
 
   /**
@@ -118,7 +118,7 @@ class ClusterSchemaFetchExecutor {
       List<PartialPath> fullPathList, PathPatternTree rawPatternTree, MPPQueryContext context) {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
-            new SchemaFetchStatement(rawPatternTree, analyzeTemplate(fullPathList), false),
+            new SchemaFetchStatement(rawPatternTree, analyzeTemplate(fullPathList), false,context !=null &&QueryType.WRITE.equals(context.getQueryType())),
             context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);
@@ -182,7 +182,7 @@ class ClusterSchemaFetchExecutor {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
             new SchemaFetchStatement(
-                patternTree, analyzeTemplate(patternTree.getAllPathPatterns()), false),
+                patternTree, analyzeTemplate(patternTree.getAllPathPatterns()), false,context !=null &&QueryType.WRITE.equals(context.getQueryType())),
             context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);

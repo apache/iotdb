@@ -52,6 +52,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   private final ISchemaRegion schemaRegion;
   private final boolean withTags;
+  private final boolean write;
 
   private boolean isFinished = false;
 
@@ -61,13 +62,15 @@ public class SchemaFetchScanOperator implements SourceOperator {
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       ISchemaRegion schemaRegion,
-      boolean withTags) {
+      boolean withTags,
+      boolean write) {
     this.sourceId = planNodeId;
     this.operatorContext = context;
     this.patternTree = patternTree;
     this.schemaRegion = schemaRegion;
     this.templateMap = templateMap;
     this.withTags = withTags;
+    this.write = write;
   }
 
   @Override
@@ -105,10 +108,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   private TsBlock fetchSchema() throws MetadataException {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
-    for (PartialPath path : partialPathList) {
-      schemaTree.appendMeasurementPaths(schemaRegion.fetchSchema(path, templateMap, withTags));
-    }
+    schemaTree.appendMeasurementPaths(schemaRegion.fetchSchema(patternTree, templateMap, withTags, !write));
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {

@@ -46,6 +46,8 @@ public class PathPatternTree {
   // set the default value to TRUE to ensure correctness
   private boolean useWildcard = true;
 
+  private boolean containWildcard = false;
+
   public PathPatternTree(boolean useWildcard) {
     this();
     this.useWildcard = useWildcard;
@@ -134,6 +136,9 @@ public class PathPatternTree {
       PathPatternNode<Void, VoidSerializer> newNode =
           new PathPatternNode<>(pathNodes[i], VoidSerializer.getInstance());
       curNode.addChild(newNode);
+      if(!containWildcard){
+        containWildcard = PathPatternUtil.hasWildcard(pathNodes[i]);
+      }
       curNode = newNode;
     }
     curNode.markPathPattern(true);

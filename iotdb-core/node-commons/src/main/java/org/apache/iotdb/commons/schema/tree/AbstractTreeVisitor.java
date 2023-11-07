@@ -141,6 +141,19 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
     this.allScope = this.scopeDFA == SchemaConstant.ALL_MATCH_DFA;
   }
 
+  // Notices: PatternTree must not contain any wildcard
+  protected AbstractTreeVisitor(
+      N root, PathPatternTree patternTree, boolean isPrefixMatch, PathPatternTree scope) {
+    this.root = root;
+    this.patternFA =
+             new IPatternFA.Builder().patternTree(patternTree).isPrefixMatch(isPrefixMatch).buildDFA();
+    this.scopeDFA =
+        scope == null
+            ? SchemaConstant.ALL_MATCH_DFA
+            : (PatternDFA) new IPatternFA.Builder().patternTree(scope).buildDFA();
+    this.allScope = this.scopeDFA == SchemaConstant.ALL_MATCH_DFA;
+  }
+
   /** This method must be invoked before iteration */
   protected final void initStack() {
     IFAState initialState = patternFA.getInitialState();

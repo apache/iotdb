@@ -47,6 +47,26 @@ public abstract class MeasurementTraverser<R, N extends IMNode<N>> extends Trave
     super(startNode, path, store, isPrefixMatch, scope);
   }
 
+  /**
+   * To traverse subtree under startNode.
+   *
+   * @param startNode denote which tree to traverse by passing its root
+   * @param patternTree must not contain any wildcard
+   * @param store MTree store to traverse
+   * @param isPrefixMatch prefix match or not
+   * @param scope traversing scope
+   * @throws MetadataException path does not meet the expected rules
+   */
+  protected MeasurementTraverser(
+      N startNode,
+      PathPatternTree patternTree,
+      IMTreeStore<N> store,
+      boolean isPrefixMatch,
+      PathPatternTree scope)
+      throws MetadataException {
+    super(startNode, patternTree, store, isPrefixMatch, scope);
+  }
+
   @Override
   protected boolean mayTargetNodeType(N node) {
     return node.isMeasurement();
