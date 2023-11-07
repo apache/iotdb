@@ -915,8 +915,11 @@ public abstract class AlignedTVList extends TVList {
       if (rowBitMap != null && rowBitMap.isMarked(sortedRowIndex)) {
         continue;
       }
-      if (sortedRowIndex == rowCount - 1
-          || getTime(sortedRowIndex) != getTime(sortedRowIndex + 1)) {
+      int nextRowIndex = sortedRowIndex + 1;
+      while (nextRowIndex < rowCount && rowBitMap.isMarked(nextRowIndex)) {
+        nextRowIndex++;
+      }
+      if (sortedRowIndex == rowCount - 1 || getTime(sortedRowIndex) != getTime(nextRowIndex)) {
         timeBuilder.writeLong(getTime(sortedRowIndex));
         validRowCount++;
       } else {
@@ -925,6 +928,7 @@ public abstract class AlignedTVList extends TVList {
         }
         timeDuplicateInfo[sortedRowIndex] = true;
       }
+      sortedRowIndex = nextRowIndex - 1;
     }
 
     // value columns
@@ -1220,26 +1224,28 @@ public abstract class AlignedTVList extends TVList {
       }
     }
 
-    byte[] rowBits = new byte[rowCount / Byte.SIZE + 1];
+    byte[] rowBitsArr = new byte[rowCount / Byte.SIZE + 1];
     for (int row = 0; row < rowCount; row += Byte.SIZE) {
-      byte res = (byte) 0x00;
+      byte rowBits = 0x00;
       for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
         List<BitMap> columnBitMaps = bitMaps.get(columnIndex);
-        // row exists when any column value exists
-        if (columnBitMaps == null || columnBitMaps.get(row / ARRAY_SIZE) == null) {
-          if (values.get(columnIndex) != null) {
-            res = 0x00;
-          }
+        byte columnBits;
+        if (values.get(columnIndex) == null) {
+          columnBits = (byte) 0xFF;
+        } else if (columnBitMaps == null || columnBitMaps.get(row / ARRAY_SIZE) == null) {
+          // row exists when any column value exists
+          rowBits = 0x00;
           break;
+        } else {
+          columnBits =
+              columnBitMaps.get(row / ARRAY_SIZE).getByteArray()[(row % ARRAY_SIZE) / Byte.SIZE];
         }
         // set row to null when all column values are null
-        byte bits =
-            columnBitMaps.get(row / ARRAY_SIZE).getByteArray()[(row % ARRAY_SIZE) / Byte.SIZE];
-        res = res == 0 ? bits : (byte) (res & bits);
+        rowBits = rowBits == 0x00 ? columnBits : (byte) (rowBits & columnBits);
       }
-      rowBits[row / Byte.SIZE] = res;
+      rowBitsArr[row / Byte.SIZE] = rowBits;
     }
 
-    return new BitMap(rowCount, rowBits);
+    return new BitMap(rowCount, rowBitsArr);
   }
 }

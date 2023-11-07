@@ -331,6 +331,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   public void encode(IChunkWriter chunkWriter) {
     AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
 
+    BitMap rowBitMap = list.getRowBitMap();
     boolean[] timeDuplicateInfo = null;
     List<Integer> pageRange = new ArrayList<>();
     int range = 0;
@@ -345,12 +346,17 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         range = 0;
       }
 
-      if (sortedRowIndex != list.rowCount() - 1 && time == list.getTime(sortedRowIndex + 1)) {
+      int nextRowIndex = sortedRowIndex + 1;
+      while (nextRowIndex < list.rowCount() && rowBitMap.isMarked(nextRowIndex)) {
+        nextRowIndex++;
+      }
+      if (sortedRowIndex != list.rowCount() - 1 && time == list.getTime(nextRowIndex)) {
         if (Objects.isNull(timeDuplicateInfo)) {
           timeDuplicateInfo = new boolean[list.rowCount()];
         }
         timeDuplicateInfo[sortedRowIndex] = true;
       }
+      sortedRowIndex = nextRowIndex - 1;
     }
 
     if (range != 0) {
@@ -358,7 +364,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     }
 
     List<TSDataType> dataTypes = list.getTsDataTypes();
-    BitMap rowBitMap = list.getRowBitMap();
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
 
     for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
