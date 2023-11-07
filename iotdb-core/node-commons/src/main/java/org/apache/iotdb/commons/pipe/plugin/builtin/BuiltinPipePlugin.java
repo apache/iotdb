@@ -106,5 +106,6 @@ public enum BuiltinPipePlugin {
     SHOW_PIPE_PLUGINS_BLACKLIST.add(IOTDB_THRIFT_ASYNC_SINK.getPipePluginName());
     SHOW_PIPE_PLUGINS_BLACKLIST.add(IOTDB_LEGACY_PIPE_SINK.getPipePluginName());
     SHOW_PIPE_PLUGINS_BLACKLIST.add(WEBSOCKET_SINK.getPipePluginName());
+    SHOW_PIPE_PLUGINS_BLACKLIST.add(OPC_UA_SINK.getPipePluginName());
   }
 }

@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
@@ -234,31 +235,42 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
 
-    // Start opc service on the leader if it's not started.
-    // This must be prior to the load service to avoid missing the leader change
-    // notification.
-    try {
-      PipeTaskInfo pipeTaskinfo =
-          configManager.getPipeManager().getPipeTaskCoordinator().tryLock().get();
+    ////////////////////////////// Opc Ua handling logic //////////////////////////////
 
-      Map<String, String> connectorAttributes = new HashMap<>();
-      connectorAttributes.put("sink", "opc_ua_sink");
-      pipeTaskinfo.checkBeforeCreatePipe(new TCreatePipeReq("__opc_security", connectorAttributes));
+    final String opcName = "__opc_security";
 
-      // The LeaderMap can be null since the configNode does not know the leader yet.
-      // The map will be filled when configNode has chosen a leader.
-      pipeTaskinfo.createPipe(
-          new CreatePipePlanV2(
-              new PipeStaticMeta(
-                  "__opc_security",
-                  System.currentTimeMillis(),
-                  new HashMap<>(),
-                  new HashMap<>(),
-                  connectorAttributes),
-              new PipeRuntimeMeta()));
-    } catch (PipeException ignore) {
-      // Skip if there are check failure
+    PipeTaskInfo pipeTaskinfo =
+        configManager.getPipeManager().getPipeTaskCoordinator().tryLock().get();
+    if (CommonDescriptor.getInstance().getConfig().isEnableOpcUaService()) {
+      // Start opc service on the leader if it's not started.
+      // This must be prior to the load service to avoid missing the leader change
+      // notification.
+      try {
+        Map<String, String> connectorAttributes = new HashMap<>();
+        connectorAttributes.put("sink", "opc_ua_sink");
+        pipeTaskinfo.checkBeforeCreatePipe(new TCreatePipeReq(opcName, connectorAttributes));
+
+        // The LeaderMap can be null since the configNode does not know the leader yet.
+        // The map will be filled when configNode has chosen a leader.
+        pipeTaskinfo.createPipe(
+            new CreatePipePlanV2(
+                new PipeStaticMeta(
+                    opcName,
+                    System.currentTimeMillis(),
+                    new HashMap<>(),
+                    new HashMap<>(),
+                    connectorAttributes),
+                new PipeRuntimeMeta()));
+      } catch (PipeException ignore) {
+        // Skip if there are check failure
+      }
+    } else {
+      // Drop opc service
+      pipeTaskinfo.checkBeforeDropPipe(opcName);
+      pipeTaskinfo.dropPipe(new DropPipePlanV2(opcName));
     }
+
+    ////////////////////////////// End Opc Ua logic //////////////////////////////
 
     // Then start load services first
     configManager.getLoadManager().startLoadServices();
