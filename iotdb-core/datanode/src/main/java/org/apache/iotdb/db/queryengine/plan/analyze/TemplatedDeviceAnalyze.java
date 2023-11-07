@@ -294,17 +294,17 @@ public class TemplatedDeviceAnalyze {
               new MeasurementPath(new String[] {measurementName}, measurementSchema));
       // analyzeExpression(analysis, measurementPath);
       outputExpressions.add(new Pair<>(measurementPath, null));
-      for (PartialPath devicePath : deviceList) {
-        // TODO how to determine whether a device is aligned device
-        TimeSeriesOperand fullPath =
-            new TimeSeriesOperand(
-                new MeasurementPath(
-                    devicePath.concatNode(measurementName), measurementSchema, true));
-        // analyzeExpression(analysis, fullPath);
-        deviceToSelectExpressions
-            .computeIfAbsent(devicePath.getFullPath(), k -> new LinkedHashSet<>())
-            .add(fullPath);
-      }
+      //      for (PartialPath devicePath : deviceList) {
+      //        // TODO how to determine whether a device is aligned device
+      //        TimeSeriesOperand fullPath =
+      //            new TimeSeriesOperand(
+      //                new MeasurementPath(
+      //                    devicePath.concatNode(measurementName), measurementSchema, true));
+      //        // analyzeExpression(analysis, fullPath);
+      //        deviceToSelectExpressions
+      //            .computeIfAbsent(devicePath.getFullPath(), k -> new LinkedHashSet<>())
+      //            .add(fullPath);
+      //      }
     }
 
     Set<Expression> selectExpressions = new LinkedHashSet<>();

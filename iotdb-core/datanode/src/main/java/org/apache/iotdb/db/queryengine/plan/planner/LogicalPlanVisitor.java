@@ -145,6 +145,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       return planBuilder.getRoot();
     }
 
+    if (queryStatement.isAlignByDevice() && !queryStatement.isAggregationQuery()) {
+      return new TemplatedLogicalPlan(analysis, queryStatement, context).visitQuery();
+    }
+
     if (queryStatement.isAlignByDevice()) {
       Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
       for (PartialPath device : analysis.getDeviceList()) {

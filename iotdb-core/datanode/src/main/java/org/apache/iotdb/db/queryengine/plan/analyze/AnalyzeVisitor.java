@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
+import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
@@ -423,25 +424,48 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // request schema fetch API
     long startTime = System.nanoTime();
-    ISchemaTree schemaTree;
+    ISchemaTree schemaTree = null;
+    Template template = null;
     try {
       logger.debug("[StartFetchSchema]");
       if (queryStatement.isGroupByTag()) {
         schemaTree =
             schemaFetcher.fetchSchemaWithTags(concatPathRewriter.getPatternTree(), context);
       } else {
-        schemaTree = schemaFetcher.fetchSchema(concatPathRewriter.getPatternTree(), context);
+        // TODO reinforce the judgement condition
+        //        if (queryStatement.isAlignByDevice() && !queryStatement.isAggregationQuery()) {
+        //          for (PartialPath partialPath :
+        // concatPathRewriter.getPatternTree().getAllDevicePaths()) {
+        //            Pair<Template, PartialPath> templateSetInfo =
+        // schemaFetcher.checkTemplateSetInfo(partialPath);
+        //            if (templateSetInfo != null) {
+        //              if (template == null) {
+        //                template = templateSetInfo.getLeft();
+        //              } else if (templateSetInfo.getLeft().getId() != template.getId()) {
+        //                template = null;
+        //                break;
+        //              }
+        //            }
+        //          }
+        //        }
+
+        if (template == null) {
+          schemaTree = schemaFetcher.fetchSchema(concatPathRewriter.getPatternTree(), context);
+        }
       }
 
       // make sure paths in logical view is fetched
-      updateSchemaTreeByViews(analysis, schemaTree);
+      if (template == null) {
+        updateSchemaTreeByViews(analysis, schemaTree);
+      }
     } finally {
       logger.debug("[EndFetchSchema]");
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     }
+
     analysis.setSchemaTree(schemaTree);
-    return schemaTree;
+    return schemaTree == null ? new ClusterSchemaTree() : schemaTree;
   }
 
   private Analysis finishQuery(QueryStatement queryStatement, Analysis analysis) {
