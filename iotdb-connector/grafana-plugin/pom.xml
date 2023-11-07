@@ -87,7 +87,7 @@
                 <artifactId>maven-antrun-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>test</id>
+                        <id>build-backend</id>
                         <goals>
                             <goal>run</goal>
                         </goals>
