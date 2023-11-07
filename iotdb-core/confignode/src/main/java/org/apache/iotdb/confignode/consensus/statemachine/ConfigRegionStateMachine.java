@@ -28,13 +28,18 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -42,6 +47,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.utils.writelog.LogWriter;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -53,6 +59,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -226,7 +234,33 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
 
-    // Always start load services first
+    // Start opc service on the leader if it's not started.
+    // This must be prior to the load service to avoid missing the leader change
+    // notification.
+    try {
+      PipeTaskInfo pipeTaskinfo =
+          configManager.getPipeManager().getPipeTaskCoordinator().tryLock().get();
+
+      Map<String, String> connectorAttributes = new HashMap<>();
+      connectorAttributes.put("sink", "opc_ua_sink");
+      pipeTaskinfo.checkBeforeCreatePipe(new TCreatePipeReq("__opc_security", connectorAttributes));
+
+      // The LeaderMap can be null since the configNode does not know the leader yet.
+      // The map will be filled when configNode has chosen a leader.
+      pipeTaskinfo.createPipe(
+          new CreatePipePlanV2(
+              new PipeStaticMeta(
+                  "__opc_security",
+                  System.currentTimeMillis(),
+                  new HashMap<>(),
+                  new HashMap<>(),
+                  connectorAttributes),
+              new PipeRuntimeMeta()));
+    } catch (PipeException ignore) {
+      // Skip if there are check failure
+    }
+
+    // Then start load services first
     configManager.getLoadManager().startLoadServices();
 
     // Start leader scheduling services
