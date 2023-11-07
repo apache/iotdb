@@ -77,14 +77,14 @@ public class SessionExample2 {
 
     // set session fetchSize
 //    session.setFetchSize(10000);
-    //     createTemplate();
+//     createTemplate();
 //    createTimeseries();
 //    createMultiTimeseries();
 //    insertRecord();
 //    insertTablet();
     //    insertTabletWithNullValues();
     //    insertTablets();
-        insertRecords();
+    insertRecords();
     //    insertText();
     //    selectInto();
     //    createAndDropContinuousQueries();
@@ -315,6 +315,11 @@ public class SessionExample2 {
   }
 
   private static void insertRecords() throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < 10; i++) {
+      for (int j = 0; j < 100; j++) {
+        session.createTimeseries(String.format("root.sg1.d_%s.s_%s",j, i), TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY);
+      }
+    }
     List<String> measurements = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       measurements.add("s_"+i);
@@ -331,7 +336,7 @@ public class SessionExample2 {
         values.add(j);
         types.add(TSDataType.INT32);
       }
-      deviceIds.add("root.sg1.a_"+i);
+      deviceIds.add("root.sg1.d_"+i);
         measurementsList.add(measurements);
         valuesList.add(values);
         typesList.add(types);

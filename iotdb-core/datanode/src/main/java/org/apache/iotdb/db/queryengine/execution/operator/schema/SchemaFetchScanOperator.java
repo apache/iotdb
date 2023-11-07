@@ -108,7 +108,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     long startTime = System.currentTimeMillis();
     schemaTree.appendMeasurementPaths(
-        schemaRegion.fetchSchema(patternTree, templateMap, withTags, !write));
+        schemaRegion.fetchSchema(patternTree, templateMap, withTags, false));
     System.out.println("fetch schema time cost: " + (System.currentTimeMillis() - startTime));
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

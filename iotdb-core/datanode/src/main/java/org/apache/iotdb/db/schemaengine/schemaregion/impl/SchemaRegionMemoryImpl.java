@@ -925,12 +925,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       boolean containWildcard)
       throws MetadataException {
     if (containWildcard) {
+      System.out.println("fetchSchema without optimize");
       List<MeasurementPath> res = new ArrayList<>();
       for (PartialPath path : patternTree.getAllPathPatterns()) {
         res.addAll(mtree.fetchSchema(path, templateMap, withTags));
       }
       return res;
     } else {
+      System.out.println("fetchSchema with optimize");
       return mtree.fetchSchemaWithoutWildcard(patternTree, templateMap, withTags);
     }
   }
