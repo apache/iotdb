@@ -86,7 +86,7 @@ public class PipeConnectorSubtaskManager {
           new BoundedBlockingPendingQueue<>(
               PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
 
-      for (int i = 0; i < connectorNum; i++) {
+      for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
         final PipeConnector pipeConnector =
             CONNECTOR_CONSTRUCTORS
                 .getOrDefault(
@@ -110,7 +110,13 @@ public class PipeConnectorSubtaskManager {
         final PipeConnectorSubtask pipeConnectorSubtask =
             new PipeConnectorSubtask(
                 String.format(
-                    "%s_%s_%s", attributeSortedString, pipeRuntimeEnvironment.getCreationTime(), i),
+                    "%s_%s_%s",
+                    attributeSortedString,
+                    pipeRuntimeEnvironment.getCreationTime(),
+                    connectorIndex),
+                pipeRuntimeEnvironment.getCreationTime(),
+                attributeSortedString,
+                connectorIndex,
                 pendingQueue,
                 pipeConnector);
         final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =

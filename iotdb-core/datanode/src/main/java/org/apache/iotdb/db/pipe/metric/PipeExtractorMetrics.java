@@ -75,69 +75,106 @@ public class PipeExtractorMetrics implements IMetricSet {
   }
 
   private void createAutoGauge(String taskID) {
+    IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
     // pending event count
     metricService.createAutoGauge(
         Metric.UNPROCESSED_HISTORICAL_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        extractorMap.get(taskID),
+        extractor,
         IoTDBDataRegionExtractor::getHistoricalTsFileInsertionEventCount,
         Tag.NAME.toString(),
-        taskID);
+        extractor.getPipeName(),
+        Tag.REGION.toString(),
+        String.valueOf(extractor.getDataRegionId()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(extractor.getCreationTime()));
     metricService.createAutoGauge(
         Metric.UNPROCESSED_REALTIME_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        extractorMap.get(taskID),
+        extractor,
         IoTDBDataRegionExtractor::getRealtimeTsFileInsertionEventCount,
         Tag.NAME.toString(),
-        taskID);
+        extractor.getPipeName(),
+        Tag.REGION.toString(),
+        String.valueOf(extractor.getDataRegionId()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(extractor.getCreationTime()));
     metricService.createAutoGauge(
         Metric.UNPROCESSED_TABLET_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        extractorMap.get(taskID),
+        extractor,
         IoTDBDataRegionExtractor::getTabletInsertionEventCount,
         Tag.NAME.toString(),
-        taskID);
+        extractor.getPipeName(),
+        Tag.REGION.toString(),
+        String.valueOf(extractor.getDataRegionId()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(extractor.getCreationTime()));
     metricService.createAutoGauge(
         Metric.UNPROCESSED_HEARTBEAT_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        extractorMap.get(taskID),
+        extractor,
         IoTDBDataRegionExtractor::getPipeHeartbeatEventCount,
         Tag.NAME.toString(),
-        taskID);
+        extractor.getPipeName(),
+        Tag.REGION.toString(),
+        String.valueOf(extractor.getDataRegionId()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(extractor.getCreationTime()));
   }
 
   private void createRate(String taskID) {
+    IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
+    // supply event rate
     tabletRateMap.put(
         taskID,
         metricService.getOrCreateRate(
             Metric.PIPE_EXTRACTOR_TABLET_SUPPLY.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            taskID));
+            extractor.getPipeName(),
+            Tag.REGION.toString(),
+            String.valueOf(extractor.getDataRegionId()),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(extractor.getCreationTime())));
     tsFileRateMap.put(
         taskID,
         metricService.getOrCreateRate(
             Metric.PIPE_EXTRACTOR_TSFILE_SUPPLY.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            taskID));
+            extractor.getPipeName(),
+            Tag.REGION.toString(),
+            String.valueOf(extractor.getDataRegionId()),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(extractor.getCreationTime())));
     pipeHeartbeatRateMap.put(
         taskID,
         metricService.getOrCreateRate(
             Metric.PIPE_EXTRACTOR_HEARTBEAT_SUPPLY.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            taskID));
+            extractor.getPipeName(),
+            Tag.REGION.toString(),
+            String.valueOf(extractor.getDataRegionId()),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(extractor.getCreationTime())));
   }
 
   private void createGauge(String taskID) {
+    IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
+    // tsfile epoch state
     recentProcessedTsFileEpochStateMap.put(
         taskID,
         metricService.getOrCreateGauge(
             Metric.PIPE_EXTRACTOR_TSFILE_EPOCH_STATE.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            taskID));
+            extractor.getPipeName(),
+            Tag.REGION.toString(),
+            String.valueOf(extractor.getDataRegionId()),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(extractor.getCreationTime())));
   }
 
   @Override
@@ -158,56 +195,93 @@ public class PipeExtractorMetrics implements IMetricSet {
   }
 
   private void removeAutoGauge(String taskID) {
+    IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
     // pending event count
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNPROCESSED_HISTORICAL_TSFILE_COUNT.toString(),
         Tag.NAME.toString(),
-        taskID);
+        extractor.getPipeName(),
+        Tag.REGION.toString(),
+        String.valueOf(extractor.getDataRegionId()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(extractor.getCreationTime()));
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNPROCESSED_REALTIME_TSFILE_COUNT.toString(),
         Tag.NAME.toString(),
-        taskID);
+        extractor.getPipeName(),
+        Tag.REGION.toString(),
+        String.valueOf(extractor.getDataRegionId()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(extractor.getCreationTime()));
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNPROCESSED_TABLET_COUNT.toString(),
         Tag.NAME.toString(),
-        taskID);
+        extractor.getPipeName(),
+        Tag.REGION.toString(),
+        String.valueOf(extractor.getDataRegionId()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(extractor.getCreationTime()));
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNPROCESSED_HEARTBEAT_COUNT.toString(),
         Tag.NAME.toString(),
-        taskID);
+        extractor.getPipeName(),
+        Tag.REGION.toString(),
+        String.valueOf(extractor.getDataRegionId()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(extractor.getCreationTime()));
   }
 
   private void removeRate(String taskID) {
+    IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
+    // supply event rate
     metricService.remove(
         MetricType.RATE,
         Metric.PIPE_EXTRACTOR_TABLET_SUPPLY.toString(),
         Tag.NAME.toString(),
-        taskID);
+        extractor.getPipeName(),
+        Tag.REGION.toString(),
+        String.valueOf(extractor.getDataRegionId()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(extractor.getCreationTime()));
     metricService.remove(
         MetricType.RATE,
         Metric.PIPE_EXTRACTOR_TSFILE_SUPPLY.toString(),
         Tag.NAME.toString(),
-        taskID);
+        extractor.getPipeName(),
+        Tag.REGION.toString(),
+        String.valueOf(extractor.getDataRegionId()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(extractor.getCreationTime()));
     metricService.remove(
         MetricType.RATE,
         Metric.PIPE_EXTRACTOR_HEARTBEAT_SUPPLY.toString(),
         Tag.NAME.toString(),
-        taskID);
+        extractor.getPipeName(),
+        Tag.REGION.toString(),
+        String.valueOf(extractor.getDataRegionId()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(extractor.getCreationTime()));
     tabletRateMap.remove(taskID);
     tsFileRateMap.remove(taskID);
     pipeHeartbeatRateMap.remove(taskID);
   }
 
   private void removeGauge(String taskID) {
+    IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
+    // tsfile epoch state
     metricService.remove(
         MetricType.GAUGE,
         Metric.PIPE_EXTRACTOR_TSFILE_EPOCH_STATE.toString(),
         Tag.NAME.toString(),
-        taskID);
+        extractor.getPipeName(),
+        Tag.REGION.toString(),
+        String.valueOf(extractor.getDataRegionId()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(extractor.getCreationTime()));
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////

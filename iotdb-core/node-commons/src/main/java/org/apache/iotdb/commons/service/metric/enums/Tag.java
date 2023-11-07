@@ -28,7 +28,9 @@ public enum Tag {
   FROM("from"),
   STAGE("stage"),
   OPERATION("operation"),
-  INTERFACE("interface");
+  INTERFACE("interface"),
+  CREATION_TIME("creation_time"),
+  INDEX("index");
 
   final String value;
 
