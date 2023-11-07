@@ -250,6 +250,15 @@ public class IoTDBConstant {
   public static final String MQTT_PAYLOAD_FORMATTER_NAME = "mqtt_payload_formatter";
   public static final String MQTT_MAX_MESSAGE_SIZE = "mqtt_max_message_size";
 
+  // opcUa
+  public static final String ENABLE_OPC_UA = "enable_opc_ua_service";
+  public static final String OPC_UA_HTTPS_PORT = "opc_ua_https_port";
+  public static final String OPC_UA_TCP_PORT = "opc_ua_tcp_port";
+  public static final String ENABLE_OPC_UA_ANONYMOUS_ACCESS = "enable_opc_ua_anonymous_access";
+  public static final String OPC_UA_USER = "opc_ua_user";
+  public static final String OPC_UA_PASSWORD = "opc_ua_password";
+  public static final String OPC_UA_SECURITY_DIR = "opc_ua_security_dir";
+
   // thrift
   public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
   public static final int DEFAULT_FETCH_SIZE = 5000;

@@ -62,6 +62,7 @@ import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.connector.protocol.opcua.OpcUaService;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -892,6 +893,9 @@ public class DataNode implements DataNodeMBean {
   private void initProtocols() throws StartupException {
     if (config.isEnableMQTTService()) {
       registerManager.register(MQTTService.getInstance());
+    }
+    if (CommonDescriptor.getInstance().getConfig().isEnableOpcUaService()) {
+      registerManager.register(OpcUaService.getInstance());
     }
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
       registerManager.register(RestService.getInstance());

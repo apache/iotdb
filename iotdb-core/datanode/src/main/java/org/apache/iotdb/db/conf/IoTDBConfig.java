@@ -111,6 +111,27 @@ public class IoTDBConfig {
   /** Max mqtt message size. Unit: byte */
   private int mqttMaxMessageSize = 1048576;
 
+  /** The https port of the Opc Ua server. */
+  private int opcUaHttpsPort = 8443;
+
+  /** The tcp port of the Opc Ua server. */
+  private int opcUaTcpPort = 12686;
+
+  /** Whether to enable the opc ua anonymous access. */
+  private boolean enableOpcUaAnonymousAccess = true;
+
+  /** The user of the Opc Ua server. */
+  private String opcUaUser = "root";
+
+  /** The user password of the Opc Ua server. */
+  private String opcUaPassword = "root";
+
+  /** The security dir of the Opc Ua server. */
+  private String opcUaSecurityDir =
+      IoTDBDescriptor.getInstance().getConfDir() != null
+          ? IoTDBDescriptor.getInstance().getConfDir() + File.separatorChar + "opc_security"
+          : System.getProperty("user.home") + File.separatorChar + "iotdb_opc_security";
+
   /** Rpc binding address. */
   private String rpcAddress = "0.0.0.0";
 
@@ -2494,6 +2515,54 @@ public class IoTDBConfig {
 
   public void setMqttMaxMessageSize(int mqttMaxMessageSize) {
     this.mqttMaxMessageSize = mqttMaxMessageSize;
+  }
+
+  public int getOpcUaHttpsPort() {
+    return opcUaHttpsPort;
+  }
+
+  public void setOpcUaHttpsPort(int opcUaHttpsPort) {
+    this.opcUaHttpsPort = opcUaHttpsPort;
+  }
+
+  public int getOpcUaTcpPort() {
+    return opcUaTcpPort;
+  }
+
+  public void setOpcUaTcpPort(int opcUaTcpPort) {
+    this.opcUaTcpPort = opcUaTcpPort;
+  }
+
+  public boolean isEnableOpcUaAnonymousAccess() {
+    return enableOpcUaAnonymousAccess;
+  }
+
+  public void setEnableOpcUaAnonymousAccess(boolean enableOpcUaAnonymousAccess) {
+    this.enableOpcUaAnonymousAccess = enableOpcUaAnonymousAccess;
+  }
+
+  public String getOpcUaUser() {
+    return opcUaUser;
+  }
+
+  public void setOpcUaUser(String opcUaUser) {
+    this.opcUaUser = opcUaUser;
+  }
+
+  public String getOpcUaPassword() {
+    return opcUaPassword;
+  }
+
+  public void setOpcUaPassword(String opcUaPassword) {
+    this.opcUaPassword = opcUaPassword;
+  }
+
+  public String getOpcUaSecurityDir() {
+    return opcUaSecurityDir;
+  }
+
+  public void setOpcUaSecurityDir(String opcUaSecurityDir) {
+    this.opcUaSecurityDir = opcUaSecurityDir;
   }
 
   public int getTagAttributeFlushInterval() {

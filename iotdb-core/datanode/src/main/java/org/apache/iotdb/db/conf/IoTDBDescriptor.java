@@ -876,6 +876,9 @@ public class IoTDBDescriptor {
     // mqtt
     loadMqttProps(properties);
 
+    // opcUa
+    loadOpcUaProps(properties);
+
     conf.setIntoOperationBufferSizeInByte(
         Long.parseLong(
             properties.getProperty(
@@ -1469,6 +1472,35 @@ public class IoTDBDescriptor {
     if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
       conf.setMqttMaxMessageSize(
           Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE)));
+    }
+  }
+
+  private void loadOpcUaProps(Properties properties) {
+    if (properties.getProperty(IoTDBConstant.OPC_UA_HTTPS_PORT) != null) {
+      conf.setOpcUaHttpsPort(
+          Integer.parseInt(properties.getProperty(IoTDBConstant.OPC_UA_HTTPS_PORT)));
+    }
+
+    if (properties.getProperty(IoTDBConstant.OPC_UA_TCP_PORT) != null) {
+      conf.setOpcUaTcpPort(Integer.parseInt(properties.getProperty(IoTDBConstant.OPC_UA_TCP_PORT)));
+    }
+
+    if (properties.getProperty(IoTDBConstant.ENABLE_OPC_UA_ANONYMOUS_ACCESS) != null) {
+      conf.setEnableOpcUaAnonymousAccess(
+          Boolean.parseBoolean(
+              properties.getProperty(IoTDBConstant.ENABLE_OPC_UA_ANONYMOUS_ACCESS)));
+    }
+
+    if (properties.getProperty(IoTDBConstant.OPC_UA_USER) != null) {
+      conf.setOpcUaUser(properties.getProperty(IoTDBConstant.OPC_UA_USER));
+    }
+
+    if (properties.getProperty(IoTDBConstant.OPC_UA_PASSWORD) != null) {
+      conf.setOpcUaPassword(properties.getProperty(IoTDBConstant.OPC_UA_PASSWORD));
+    }
+
+    if (properties.getProperty(IoTDBConstant.OPC_UA_SECURITY_DIR) != null) {
+      conf.setOpcUaSecurityDir(properties.getProperty(IoTDBConstant.OPC_UA_SECURITY_DIR));
     }
   }
 

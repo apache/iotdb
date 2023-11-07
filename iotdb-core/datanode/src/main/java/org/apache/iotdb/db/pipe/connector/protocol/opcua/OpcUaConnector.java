@@ -28,11 +28,9 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
@@ -45,27 +43,7 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_SECURITY_DIR_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_USER_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_OPC_UA_HTTPS_BIND_PORT_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_OPC_UA_SECURITY_DIR_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_OPC_UA_TCP_BIND_PORT_KEY;
 
 /**
  * Send data in IoTDB based on Opc Ua protocol, using Eclipse Milo. All data are converted into
@@ -76,12 +54,6 @@ public class OpcUaConnector implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaConnector.class);
 
-  private static final Map<String, Pair<AtomicInteger, OpcUaServer>>
-      SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP = new ConcurrentHashMap<>();
-
-  private String serverKey;
-  private OpcUaServer server;
-
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     // All the parameters are optional
@@ -90,54 +62,7 @@ public class OpcUaConnector implements PipeConnector {
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    int tcpBindPort =
-        parameters.getIntOrDefault(
-            Arrays.asList(CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY, SINK_OPC_UA_TCP_BIND_PORT_KEY),
-            CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE);
-    int httpsBindPort =
-        parameters.getIntOrDefault(
-            Arrays.asList(CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY, SINK_OPC_UA_HTTPS_BIND_PORT_KEY),
-            CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE);
-
-    String user =
-        parameters.getStringOrDefault(
-            Arrays.asList(CONNECTOR_IOTDB_USER_KEY, SINK_IOTDB_USER_KEY),
-            CONNECTOR_IOTDB_USER_DEFAULT_VALUE);
-    String password =
-        parameters.getStringOrDefault(
-            Arrays.asList(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY),
-            CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
-    String securityDir =
-        parameters.getStringOrDefault(
-            Arrays.asList(CONNECTOR_OPC_UA_SECURITY_DIR_KEY, SINK_OPC_UA_SECURITY_DIR_KEY),
-            CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE);
-
-    synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
-      serverKey = httpsBindPort + ":" + tcpBindPort;
-
-      server =
-          SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP
-              .computeIfAbsent(
-                  serverKey,
-                  key -> {
-                    try {
-                      final OpcUaServer newServer =
-                          new OpcUaServerBuilder()
-                              .setTcpBindPort(tcpBindPort)
-                              .setHttpsBindPort(httpsBindPort)
-                              .setUser(user)
-                              .setPassword(password)
-                              .setSecurityDir(securityDir)
-                              .build();
-                      newServer.startup();
-                      return new Pair<>(new AtomicInteger(0), newServer);
-                    } catch (Exception e) {
-                      throw new PipeException("Failed to build and startup OpcUaServer", e);
-                    }
-                  })
-              .getRight();
-      SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP.get(serverKey).getLeft().incrementAndGet();
-    }
+    // Do nothing
   }
 
   @Override
@@ -170,10 +95,12 @@ public class OpcUaConnector implements PipeConnector {
 
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       transferTablet(
-          server, ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
+          OpcUaService.getInstance().getServer(),
+          ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
     } else {
       transferTablet(
-          server, ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
+          OpcUaService.getInstance().getServer(),
+          ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
     }
   }
 
@@ -285,24 +212,6 @@ public class OpcUaConnector implements PipeConnector {
 
   @Override
   public void close() throws Exception {
-    if (serverKey == null) {
-      return;
-    }
-
-    synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP) {
-      final Pair<AtomicInteger, OpcUaServer> pair =
-          SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP.get(serverKey);
-      if (pair == null) {
-        return;
-      }
-
-      if (pair.getLeft().decrementAndGet() <= 0) {
-        try {
-          pair.getRight().shutdown();
-        } finally {
-          SERVER_KEY_TO_REFERENCE_COUNT_AND_SERVER_MAP.remove(serverKey);
-        }
-      }
-    }
+    // Do nothing
   }
 }

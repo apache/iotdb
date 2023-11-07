@@ -191,6 +191,9 @@ public class CommonConfig {
   private long pipeMemoryAllocateMinSizeInBytes = 32;
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = 2 * 1024 * 1024; // 2MB
 
+  /** Whether to enable the Opc Ua service. */
+  private boolean enableOpcUaService = false;
+
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
 
@@ -778,6 +781,14 @@ public class CommonConfig {
 
   public void setPipeMemoryAllocateMinSizeInBytes(long pipeMemoryAllocateMinSizeInBytes) {
     this.pipeMemoryAllocateMinSizeInBytes = pipeMemoryAllocateMinSizeInBytes;
+  }
+
+  public boolean isEnableOpcUaService() {
+    return enableOpcUaService;
+  }
+
+  public void setEnableOpcUaService(boolean enableOpcUaService) {
+    this.enableOpcUaService = enableOpcUaService;
   }
 
   public String getSchemaEngineMode() {

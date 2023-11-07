@@ -418,6 +418,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_memory_allocate_for_tsfile_sequence_reader_in_bytes",
                 String.valueOf(config.getPipeMemoryAllocateForTsFileSequenceReaderInBytes()))));
+
+    // The opc ua service is based on pipe
+    if (properties.getProperty(IoTDBConstant.ENABLE_OPC_UA) != null) {
+      config.setEnableOpcUaService(
+          Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_OPC_UA)));
+    }
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

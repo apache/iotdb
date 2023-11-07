@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
-import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
@@ -69,146 +73,131 @@ import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.
  * OPC UA Server builder for IoTDB to send data. The coding style referenced ExampleServer.java in
  * Eclipse Milo.
  */
-public class OpcUaServerBuilder {
+public class OpcUaService implements IService {
 
   private static final String WILD_CARD_ADDRESS = "0.0.0.0";
-  private final Logger logger = LoggerFactory.getLogger(OpcUaServerBuilder.class);
+  private final Logger logger = LoggerFactory.getLogger(OpcUaService.class);
 
-  private int tcpBindPort;
-  private int httpsBindPort;
-  private String user;
-  private String password;
-  private Path securityDir;
+  private final boolean anonymousAccessAllowed;
+  private final int tcpBindPort;
+  private final int httpsBindPort;
+  private final String user;
+  private final String password;
+  private final Path securityDir;
+  private OpcUaServer server;
 
-  public OpcUaServerBuilder() {
-    tcpBindPort = PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
-    httpsBindPort = PipeConnectorConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
-    user = PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
-    password = PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
-    securityDir = Paths.get(PipeConnectorConstant.CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE);
+  public OpcUaService() {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    tcpBindPort = config.getOpcUaTcpPort();
+    httpsBindPort = config.getOpcUaHttpsPort();
+    anonymousAccessAllowed = config.isEnableOpcUaAnonymousAccess();
+    user = config.getOpcUaUser();
+    password = config.getOpcUaPassword();
+    securityDir = Paths.get(config.getOpcUaSecurityDir());
   }
 
-  public OpcUaServerBuilder setTcpBindPort(int tcpBindPort) {
-    this.tcpBindPort = tcpBindPort;
-    return this;
-  }
+  private void buildServer() throws StartupException {
+    try {
+      Files.createDirectories(securityDir);
+      if (!Files.exists(securityDir)) {
+        throw new PipeException("Unable to create security dir: " + securityDir);
+      }
 
-  public OpcUaServerBuilder setHttpsBindPort(int httpsBindPort) {
-    this.httpsBindPort = httpsBindPort;
-    return this;
-  }
+      File pkiDir = securityDir.resolve("pki").toFile();
 
-  public OpcUaServerBuilder setUser(String user) {
-    this.user = user;
-    return this;
-  }
+      LoggerFactory.getLogger(OpcUaService.class)
+          .info("Security dir: {}", securityDir.toAbsolutePath());
+      LoggerFactory.getLogger(OpcUaService.class)
+          .info("Security pki dir: {}", pkiDir.getAbsolutePath());
 
-  public OpcUaServerBuilder setPassword(String password) {
-    this.password = password;
-    return this;
-  }
+      OpcUaKeyStoreLoader loader =
+          new OpcUaKeyStoreLoader().load(securityDir, password.toCharArray());
 
-  public OpcUaServerBuilder setSecurityDir(String securityDir) {
-    this.securityDir = Paths.get(securityDir);
-    return this;
-  }
+      DefaultCertificateManager certificateManager =
+          new DefaultCertificateManager(loader.getServerKeyPair(), loader.getServerCertificate());
 
-  public OpcUaServer build() throws Exception {
-    Files.createDirectories(securityDir);
-    if (!Files.exists(securityDir)) {
-      throw new PipeException("Unable to create security dir: " + securityDir);
+      DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
+      logger.info(
+          "Certificate directory is: {}, Please move certificates from the reject dir to the trusted directory to allow encrypted access",
+          pkiDir.getAbsolutePath());
+
+      KeyPair httpsKeyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
+
+      SelfSignedHttpsCertificateBuilder httpsCertificateBuilder =
+          new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
+      httpsCertificateBuilder.setCommonName(HostnameUtil.getHostname());
+      HostnameUtil.getHostnames(WILD_CARD_ADDRESS).forEach(httpsCertificateBuilder::addDnsName);
+      X509Certificate httpsCertificate = httpsCertificateBuilder.build();
+
+      DefaultServerCertificateValidator certificateValidator =
+          new DefaultServerCertificateValidator(trustListManager);
+
+      UsernameIdentityValidator identityValidator =
+          new UsernameIdentityValidator(
+              anonymousAccessAllowed,
+              authChallenge -> {
+                String inputUsername = authChallenge.getUsername();
+                String inputPassword = authChallenge.getPassword();
+
+                return inputUsername.equals(user) && inputPassword.equals(password);
+              });
+
+      X509IdentityValidator x509IdentityValidator = new X509IdentityValidator(c -> true);
+
+      X509Certificate certificate =
+          certificateManager.getCertificates().stream()
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new UaRuntimeException(
+                          StatusCodes.Bad_ConfigurationError, "No certificate found"));
+
+      String applicationUri =
+          CertificateUtil.getSanUri(certificate)
+              .orElseThrow(
+                  () ->
+                      new UaRuntimeException(
+                          StatusCodes.Bad_ConfigurationError,
+                          "Certificate is missing the application URI"));
+
+      Set<EndpointConfiguration> endpointConfigurations =
+          createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort);
+
+      OpcUaServerConfig serverConfig =
+          OpcUaServerConfig.builder()
+              .setApplicationUri(applicationUri)
+              .setApplicationName(LocalizedText.english("Apache IoTDB OPC UA server"))
+              .setEndpoints(endpointConfigurations)
+              .setBuildInfo(
+                  new BuildInfo(
+                      "urn:apache:iotdb:opc-ua-server",
+                      "apache",
+                      "Apache IoTDB OPC UA server",
+                      OpcUaServer.SDK_VERSION,
+                      "",
+                      DateTime.now()))
+              .setCertificateManager(certificateManager)
+              .setTrustListManager(trustListManager)
+              .setCertificateValidator(certificateValidator)
+              .setHttpsKeyPair(httpsKeyPair)
+              .setHttpsCertificateChain(new X509Certificate[] {httpsCertificate})
+              .setIdentityValidator(
+                  new CompositeValidator(identityValidator, x509IdentityValidator))
+              .setProductUri("urn:apache:iotdb:opc-ua-server")
+              .build();
+
+      // Setup server to enable event posting
+      OpcUaServer opcServer = new OpcUaServer(serverConfig);
+      UaNode serverNode =
+          opcServer.getAddressSpaceManager().getManagedNode(Identifiers.Server).orElse(null);
+      if (serverNode instanceof ServerTypeNode) {
+        ((ServerTypeNode) serverNode).setEventNotifier(ubyte(1));
+      }
+      server = opcServer;
+    } catch (Exception e) {
+      logger.warn("Meets error when starting IoTDB OPC UA Service.");
+      throw new StartupException(e);
     }
-
-    File pkiDir = securityDir.resolve("pki").toFile();
-
-    LoggerFactory.getLogger(OpcUaServerBuilder.class)
-        .info("Security dir: {}", securityDir.toAbsolutePath());
-    LoggerFactory.getLogger(OpcUaServerBuilder.class)
-        .info("Security pki dir: {}", pkiDir.getAbsolutePath());
-
-    OpcUaKeyStoreLoader loader =
-        new OpcUaKeyStoreLoader().load(securityDir, password.toCharArray());
-
-    DefaultCertificateManager certificateManager =
-        new DefaultCertificateManager(loader.getServerKeyPair(), loader.getServerCertificate());
-
-    DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
-    logger.info(
-        "Certificate directory is: {}, Please move certificates from the reject dir to the trusted directory to allow encrypted access",
-        pkiDir.getAbsolutePath());
-
-    KeyPair httpsKeyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
-
-    SelfSignedHttpsCertificateBuilder httpsCertificateBuilder =
-        new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
-    httpsCertificateBuilder.setCommonName(HostnameUtil.getHostname());
-    HostnameUtil.getHostnames(WILD_CARD_ADDRESS).forEach(httpsCertificateBuilder::addDnsName);
-    X509Certificate httpsCertificate = httpsCertificateBuilder.build();
-
-    DefaultServerCertificateValidator certificateValidator =
-        new DefaultServerCertificateValidator(trustListManager);
-
-    UsernameIdentityValidator identityValidator =
-        new UsernameIdentityValidator(
-            true,
-            authChallenge -> {
-              String inputUsername = authChallenge.getUsername();
-              String inputPassword = authChallenge.getPassword();
-
-              return inputUsername.equals(user) && inputPassword.equals(password);
-            });
-
-    X509IdentityValidator x509IdentityValidator = new X509IdentityValidator(c -> true);
-
-    X509Certificate certificate =
-        certificateManager.getCertificates().stream()
-            .findFirst()
-            .orElseThrow(
-                () ->
-                    new UaRuntimeException(
-                        StatusCodes.Bad_ConfigurationError, "No certificate found"));
-
-    String applicationUri =
-        CertificateUtil.getSanUri(certificate)
-            .orElseThrow(
-                () ->
-                    new UaRuntimeException(
-                        StatusCodes.Bad_ConfigurationError,
-                        "Certificate is missing the application URI"));
-
-    Set<EndpointConfiguration> endpointConfigurations =
-        createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort);
-
-    OpcUaServerConfig serverConfig =
-        OpcUaServerConfig.builder()
-            .setApplicationUri(applicationUri)
-            .setApplicationName(LocalizedText.english("Apache IoTDB OPC UA server"))
-            .setEndpoints(endpointConfigurations)
-            .setBuildInfo(
-                new BuildInfo(
-                    "urn:apache:iotdb:opc-ua-server",
-                    "apache",
-                    "Apache IoTDB OPC UA server",
-                    OpcUaServer.SDK_VERSION,
-                    "",
-                    DateTime.now()))
-            .setCertificateManager(certificateManager)
-            .setTrustListManager(trustListManager)
-            .setCertificateValidator(certificateValidator)
-            .setHttpsKeyPair(httpsKeyPair)
-            .setHttpsCertificateChain(new X509Certificate[] {httpsCertificate})
-            .setIdentityValidator(new CompositeValidator(identityValidator, x509IdentityValidator))
-            .setProductUri("urn:apache:iotdb:opc-ua-server")
-            .build();
-
-    // Setup server to enable event posting
-    OpcUaServer server = new OpcUaServer(serverConfig);
-    UaNode serverNode =
-        server.getAddressSpaceManager().getManagedNode(Identifiers.Server).orElse(null);
-    if (serverNode instanceof ServerTypeNode) {
-      ((ServerTypeNode) serverNode).setEventNotifier(ubyte(1));
-    }
-    return server;
   }
 
   private Set<EndpointConfiguration> createEndpointConfigurations(
@@ -289,5 +278,36 @@ public class OpcUaServerBuilder {
         .setTransportProfile(TransportProfile.HTTPS_UABINARY)
         .setBindPort(httpsBindPort)
         .build();
+  }
+
+  public OpcUaServer getServer() {
+    return server;
+  }
+
+  @Override
+  public void start() throws StartupException {
+    buildServer();
+    server.startup();
+  }
+
+  @Override
+  public void stop() {
+    server.shutdown();
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.OPC_UA_SERVICE;
+  }
+
+  public static OpcUaService getInstance() {
+    return OpcUaService.IoTDBOpcUaServiceHolder.INSTANCE;
+  }
+
+  private static class IoTDBOpcUaServiceHolder {
+
+    private static final OpcUaService INSTANCE = new OpcUaService();
+
+    private IoTDBOpcUaServiceHolder() {}
   }
 }

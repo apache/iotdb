@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
@@ -67,6 +68,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ConfigNode implements ConfigNodeMBean {
 
@@ -121,6 +123,8 @@ public class ConfigNode implements ConfigNodeMBean {
       setUpInternalServices();
       // Init ConfigManager
       initConfigManager();
+      // Set up opc pipe services
+      setUpOpcUaService();
 
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
@@ -299,6 +303,12 @@ public class ConfigNode implements ConfigNodeMBean {
       stop();
     }
     LOGGER.info("Successfully initialize ConfigManager.");
+  }
+
+  private void setUpOpcUaService() {
+    final AtomicReference<PipeTaskInfo> pipeTaskInfo =
+            configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
+    
   }
 
   /**
