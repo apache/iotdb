@@ -67,6 +67,12 @@ public class LRUCacheManager extends CacheManager {
 
   @Override
   protected void addToNodeCache(CacheEntry cacheEntry, ICachedMNode node) {
+    if(node.getName().equals("v")){
+      StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+      for (StackTraceElement element : stackTrace) {
+        System.out.println(element);
+      }
+    }
     LRUCacheEntry lruCacheEntry = getAsLRUCacheEntry(cacheEntry);
     getTargetCacheList(lruCacheEntry).addToCacheList(lruCacheEntry, node);
   }

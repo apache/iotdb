@@ -220,11 +220,28 @@ public abstract class CacheManager implements ICacheManager {
       synchronized (cacheEntry) {
         if (!cacheEntry.isVolatile()) {
           nodeBuffer.put(cacheEntry, parent);
+          System.out.println(isInNodeCache(cacheEntry));
         }
       }
     }
 
     nodeBuffer.remove(getCacheEntry(node));
+  }
+
+
+  private void addItselfAndAncestorToCache(ICachedMNode node){
+    // the volatile subtree of this node has been deleted, thus there's no need to flush it
+    // add the node and its ancestors to cache
+    // if there's flush failure, such node and ancestors will be removed from cache again by
+    // #updateCacheStatusAfterFlushFailure
+    ICachedMNode tmp = node;
+    while (!tmp.isDatabase()
+            && !isInNodeCache(getCacheEntry(tmp))
+            && !getCachedMNodeContainer(tmp).hasChildrenInBuffer() && !getCacheEntry(tmp).isVolatile()) {
+      nodeBuffer.remove(getCacheEntry(tmp));
+      addToNodeCache(getCacheEntry(tmp), tmp);
+      tmp = tmp.getParent();
+    }
   }
 
   /**
@@ -274,17 +291,7 @@ public abstract class CacheManager implements ICacheManager {
             nextSubtree = node;
             return;
           } else if (!node.isDatabase()) {
-            // the volatile subtree of this node has been deleted, thus there's no need to flush it
-            // add the node and its ancestors to cache
-            // if there's flush failure, such node and ancestors will be removed from cache again by
-            // #updateCacheStatusAfterFlushFailure
-            ICachedMNode tmp = node;
-            while (!tmp.isDatabase()
-                && !isInNodeCache(getCacheEntry(tmp))
-                && !getCachedMNodeContainer(tmp).hasChildrenInBuffer()) {
-              addToNodeCache(getCacheEntry(tmp), tmp);
-              tmp = tmp.getParent();
-            }
+            addItselfAndAncestorToCache(node);
           }
         }
       }
@@ -376,13 +383,20 @@ public abstract class CacheManager implements ICacheManager {
   @Override
   public void remove(ICachedMNode node) {
     removeRecursively(node);
+    addItselfAndAncestorToCache(node.getParent());
   }
 
   private void removeOne(CacheEntry cacheEntry, ICachedMNode node) {
-    if (cacheEntry.isVolatile()) {
-      nodeBuffer.remove(cacheEntry);
-    } else {
+    int a = 0;
+    if(isInNodeCache(cacheEntry)){
+      a=1;
+      if(isInNodeCache(cacheEntry)&&nodeBuffer.maps[nodeBuffer.getLoc(cacheEntry)].containsKey(cacheEntry)){
+        a=3;
+      }
       removeFromNodeCache(cacheEntry);
+    }else {
+      a=2;
+      nodeBuffer.remove(cacheEntry);
     }
 
     node.setCacheEntry(null);
@@ -621,6 +635,12 @@ public abstract class CacheManager implements ICacheManager {
     }
 
     void put(CacheEntry cacheEntry, ICachedMNode node) {
+        if(node.getName().equals("v")){
+          StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+          for (StackTraceElement element : stackTrace) {
+            System.out.println(element);
+          }
+        }
       maps[getLoc(cacheEntry)].put(cacheEntry, node);
       if (!currentIteratorMap.isEmpty()) {
         for (NodeBufferIterator nodeBufferIterator : currentIteratorMap.values()) {
