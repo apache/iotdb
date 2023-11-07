@@ -55,17 +55,6 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
   @Test
   public void testActivateSchemaTemplate() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
-    schemaRegion.createTimeseries(
-        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.status"),
-            TSDataType.BOOLEAN,
-            TSEncoding.PLAIN,
-            CompressionType.SNAPPY,
-            null,
-            null,
-            null,
-            null),
-        -1);
     int templateId = 1;
     Template template =
         new Template(
@@ -115,17 +104,6 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
   @Test
   public void testDeactivateTemplate() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
-    schemaRegion.createTimeseries(
-        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.status"),
-            TSDataType.BOOLEAN,
-            TSEncoding.PLAIN,
-            CompressionType.SNAPPY,
-            null,
-            null,
-            null,
-            null),
-        -1);
     int templateId = 1;
     Template template =
         new Template(
@@ -188,17 +166,11 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-            new PartialPath("root.sg.wf01.wt01"), 3, templateId),
-        template);
-    schemaRegion.activateSchemaTemplate(
-        SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
             new PartialPath("root.sg.wf02"), 2, templateId),
         template);
     Map<Integer, Template> templateMap = Collections.singletonMap(templateId, template);
     List<String> expectedTimeseries =
         Arrays.asList(
-            "root.sg.wf01.wt01.s1",
-            "root.sg.wf01.wt01.s2",
             "root.sg.wf01.wt01.status",
             "root.sg.wf01.wt01.temperature",
             "root.sg.wf02.s1",
@@ -239,22 +211,10 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
             new PartialPath("root.db.d1"), 3, templateId),
         template);
 
-    schemaRegion.createTimeseries(
-        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.db.d1.s3"),
-            TSDataType.BOOLEAN,
-            TSEncoding.PLAIN,
-            CompressionType.SNAPPY,
-            null,
-            null,
-            null,
-            null),
-        -1);
-
     Assert.assertEquals(
         0, SchemaRegionTestUtil.deleteTimeSeries(schemaRegion, new PartialPath("root.db.d1.s1")));
     Assert.assertEquals(
-        1, SchemaRegionTestUtil.deleteTimeSeries(schemaRegion, new PartialPath("root.db.d1.s3")));
+        0, SchemaRegionTestUtil.deleteTimeSeries(schemaRegion, new PartialPath("root.db.d1.s3")));
 
     Assert.assertEquals(
         1,

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.opcua.OpcUaConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.websocket.WebSocketConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.writeback.WriteBackConnector;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -76,16 +77,21 @@ public class PipeConnectorSubtaskManager {
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
+      // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase for matching in
+      // `CONNECTOR_CONSTRUCTORS`
       final String connectorKey =
-          pipeConnectorParameters.getStringOrDefault(
-              Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
-              BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
+          pipeConnectorParameters
+              .getStringOrDefault(
+                  Arrays.asList(
+                      PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                  BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+              .toLowerCase();
       // Shared pending queue for all subtasks
       final BoundedBlockingPendingQueue<Event> pendingQueue =
           new BoundedBlockingPendingQueue<>(
               PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
 
-      for (int i = 0; i < connectorNum; i++) {
+      for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
         final PipeConnector pipeConnector =
             CONNECTOR_CONSTRUCTORS
                 .getOrDefault(
@@ -109,7 +115,13 @@ public class PipeConnectorSubtaskManager {
         final PipeConnectorSubtask pipeConnectorSubtask =
             new PipeConnectorSubtask(
                 String.format(
-                    "%s_%s_%s", attributeSortedString, pipeRuntimeEnvironment.getCreationTime(), i),
+                    "%s_%s_%s",
+                    attributeSortedString,
+                    pipeRuntimeEnvironment.getCreationTime(),
+                    connectorIndex),
+                pipeRuntimeEnvironment.getCreationTime(),
+                attributeSortedString,
+                connectorIndex,
                 pendingQueue,
                 pipeConnector);
         final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
@@ -202,6 +214,8 @@ public class PipeConnectorSubtaskManager {
         BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName(), OpcUaConnector::new);
     CONNECTOR_CONSTRUCTORS.put(
         BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName(), DoNothingConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName(), WriteBackConnector::new);
 
     CONNECTOR_CONSTRUCTORS.put(
         BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(), IoTDBThriftAsyncConnector::new);
@@ -222,6 +236,8 @@ public class PipeConnectorSubtaskManager {
         BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName(), OpcUaConnector::new);
     CONNECTOR_CONSTRUCTORS.put(
         BuiltinPipePlugin.DO_NOTHING_SINK.getPipePluginName(), DoNothingConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName(), WriteBackConnector::new);
   }
 
   private static class PipeSubtaskManagerHolder {

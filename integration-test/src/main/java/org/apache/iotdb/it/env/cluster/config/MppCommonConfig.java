@@ -22,6 +22,7 @@ package org.apache.iotdb.it.env.cluster.config;
 import org.apache.iotdb.itbase.env.CommonConfig;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
@@ -223,6 +224,21 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   public CommonConfig setTimestampPrecision(String timestampPrecision) {
     setProperty("timestamp_precision", timestampPrecision);
     return this;
+  }
+
+  @Override
+  public TimeUnit getTimestampPrecision() {
+    String precision = properties.getProperty("timestamp_precision", "ms");
+    switch (precision) {
+      case "ms":
+        return TimeUnit.MILLISECONDS;
+      case "us":
+        return TimeUnit.MICROSECONDS;
+      case "ns":
+        return TimeUnit.NANOSECONDS;
+      default:
+        throw new UnsupportedOperationException(precision);
+    }
   }
 
   @Override

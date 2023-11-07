@@ -21,6 +21,8 @@ package org.apache.iotdb.it.env.remote.config;
 
 import org.apache.iotdb.itbase.env.CommonConfig;
 
+import java.util.concurrent.TimeUnit;
+
 public class RemoteCommonConfig implements CommonConfig {
   @Override
   public CommonConfig setMaxNumberOfPointsInPage(int maxNumberOfPointsInPage) {
@@ -161,6 +163,11 @@ public class RemoteCommonConfig implements CommonConfig {
   @Override
   public CommonConfig setTimestampPrecision(String timestampPrecision) {
     return this;
+  }
+
+  @Override
+  public TimeUnit getTimestampPrecision() {
+    return TimeUnit.MILLISECONDS;
   }
 
   @Override

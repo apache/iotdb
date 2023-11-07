@@ -76,7 +76,7 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
         LOGGER.error("Meet error when doing start checking", e);
         return -1;
       }
-      ConfigNode.getInstance().active();
+      activeConfigNodeInstance();
     } else if (MODE_REMOVE.equals(mode)) {
       // remove ConfigNode
       try {
@@ -93,7 +93,11 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
     return 0;
   }
 
-  private void doRemoveConfigNode(String[] args) throws IOException {
+  protected void activeConfigNodeInstance() {
+    ConfigNode.getInstance().active();
+  }
+
+  protected void doRemoveConfigNode(String[] args) throws IOException {
 
     if (args.length != 2) {
       LOGGER.info(REMOVE_CONFIGNODE_USAGE);

@@ -29,7 +29,12 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
@@ -47,6 +52,10 @@ public interface BaseEnv {
    */
   void initClusterEnvironment(int configNodesNum, int dataNodesNum);
 
+  default void addClusterDataNodes(int dataNodesNum) throws IOException, InterruptedException {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Init a cluster with the specified number of ConfigNodes and DataNodes.
    *
@@ -61,6 +70,33 @@ public interface BaseEnv {
 
   /** Return the {@link ClusterConfig} for developers to set values before test. */
   ClusterConfig getConfig();
+
+  default String getUrlContent(String urlStr) {
+    StringBuilder sb = new StringBuilder();
+    try {
+      URL url = new URL(urlStr);
+      HttpURLConnection httpConnection = (HttpURLConnection) url.openConnection();
+      if (httpConnection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+        InputStream in = httpConnection.getInputStream();
+        InputStreamReader isr = new InputStreamReader(in);
+        BufferedReader bufr = new BufferedReader(isr);
+        String str;
+        while ((str = bufr.readLine()) != null) {
+          sb.append(str);
+        }
+        bufr.close();
+      } else {
+        return null;
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      return null;
+    }
+    return sb.toString();
+  }
+
+  /** Return the content of prometheus */
+  List<String> getMetricPrometheusReporterContents();
 
   default Connection getConnection() throws SQLException {
     return getConnection("root", "root");
@@ -93,6 +129,10 @@ public interface BaseEnv {
 
   IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
       throws ClientManagerException, IOException, InterruptedException;
+
+  default IConfigNodeRPCService.Iface getConfigNodeConnection(int index) throws Exception {
+    throw new UnsupportedOperationException();
+  }
 
   ISessionPool getSessionPool(int maxSize);
 
