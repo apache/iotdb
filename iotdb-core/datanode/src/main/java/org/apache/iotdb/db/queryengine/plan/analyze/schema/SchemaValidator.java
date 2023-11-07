@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class SchemaValidator {
@@ -65,5 +66,27 @@ public class SchemaValidator {
       MPPQueryContext context) {
     return schemaFetcher.fetchSchemaListWithAutoCreate(
         devicePaths, measurements, dataTypes, encodings, compressionTypes, isAlignedList, context);
+  }
+
+  public static ISchemaTree validate(
+      ISchemaFetcher schemaFetcher, ValidatingSchema validatingSchema, MPPQueryContext context) {
+    return schemaFetcher.fetchSchemaListWithAutoCreate(
+        validatingSchema.devicePaths,
+        validatingSchema.measurements,
+        validatingSchema.dataTypes,
+        validatingSchema.encodings,
+        validatingSchema.compressionTypes,
+        validatingSchema.isAlignedList,
+        context);
+  }
+
+  public static class ValidatingSchema {
+
+    public List<PartialPath> devicePaths = new ArrayList<>();
+    public List<String[]> measurements = new ArrayList<>();
+    public List<TSDataType[]> dataTypes = new ArrayList<>();
+    public List<TSEncoding[]> encodings = new ArrayList<>();
+    public List<CompressionType[]> compressionTypes = new ArrayList<>();
+    public List<Boolean> isAlignedList = new ArrayList<>();
   }
 }

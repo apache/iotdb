@@ -53,6 +53,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,9 +67,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 import static org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileDispatcherImpl.NODE_CONNECTION_ERROR;
 
 public class TsFileSplitSender {
@@ -84,13 +87,13 @@ public class TsFileSplitSender {
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
   // All consensus groups accessed in Phase1 should be notified in Phase2
-  private final Set<TRegionReplicaSet> allReplicaSets = new ConcurrentSkipListSet<>();
+  private final Set<TDataNodeLocation> allReplicaSets = new ConcurrentSkipListSet<>();
   private String uuid;
   private LocationStatistics locationStatistics = new LocationStatistics();
   private boolean isGeneratedByPipe;
   private Map<Pair<LoadTsFilePieceNode, TRegionReplicaSet>, Exception> phaseOneFailures =
       new ConcurrentHashMap<>();
-  private Map<TRegionReplicaSet, Exception> phaseTwoFailures = new HashMap<>();
+  private Map<TDataNodeLocation, Exception> phaseTwoFailures = new HashMap<>();
   private long maxSplitSize;
   private PieceNodeSplitter pieceNodeSplitter = new ClusteringMeasurementSplitter(1.0, 10);
   //        private PieceNodeSplitter pieceNodeSplitter = new OrderedMeasurementSplitter();
@@ -100,6 +103,7 @@ public class TsFileSplitSender {
   private Queue<Pair<Future<List<LoadTsFilePieceNode>>, TRegionReplicaSet>> splitFutures;
   private int maxConcurrentFileNum;
   private String userName;
+  private String password;
 
   public TsFileSplitSender(
       LoadTsFileNode loadTsFileNode,
@@ -109,7 +113,8 @@ public class TsFileSplitSender {
       boolean isGeneratedByPipe,
       long maxSplitSize,
       int maxConcurrentFileNum,
-      String userName) {
+      String userName,
+      String password) {
     this.loadTsFileNode = loadTsFileNode;
     this.targetPartitionFetcher = targetPartitionFetcher;
     this.targetPartitionInterval = targetPartitionInterval;
@@ -120,6 +125,9 @@ public class TsFileSplitSender {
     this.splitFutures = new ArrayDeque<>(MAX_PENDING_PIECE_NODE);
     this.maxConcurrentFileNum = maxConcurrentFileNum;
     this.userName = userName;
+    this.password = password;
+
+    this.statistic.totalSize = loadTsFileNode.getTotalSize();
   }
 
   public void start() throws IOException {
@@ -127,6 +135,7 @@ public class TsFileSplitSender {
     // skip files without data
     loadTsFileNode.getResources().removeIf(f -> f.getDevices().isEmpty());
     uuid = UUID.randomUUID().toString();
+    logger.info("Start to split {}", loadTsFileNode);
 
     boolean isFirstPhaseSuccess = firstPhase(loadTsFileNode);
     boolean isSecondPhaseSuccess = secondPhase(isFirstPhaseSuccess);
@@ -176,58 +185,79 @@ public class TsFileSplitSender {
         tsFileDataManager.sendAllTsFileData()
             && processRemainingPieceNodes()
             && phaseOneFailures.isEmpty();
-    logger.info("Cleanup ends after {}ms", System.currentTimeMillis() - start);
+    statistic.p1TimeMs = System.currentTimeMillis() - start;
+    logger.info("Cleanup ends after {}ms", statistic.p1TimeMs);
     return success;
   }
 
   private boolean secondPhase(boolean isFirstPhaseSuccess) {
-    logger.info("Start dispatching Load command for uuid {}", uuid);
     TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
             (isFirstPhaseSuccess ? LoadCommand.EXECUTE : LoadCommand.ROLLBACK).ordinal(), uuid);
     loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
 
-    for (TRegionReplicaSet replicaSet : allReplicaSets) {
-      loadCommandReq.setUseConsensus(true);
-      for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
-        TEndPoint endPoint = dataNodeLocation.getInternalEndPoint();
-        Exception groupException = null;
-        loadCommandReq.setConsensusGroupId(replicaSet.getRegionId());
+    long p2StartMS = System.currentTimeMillis();
+    List<Pair<TDataNodeLocation, Future<Void>>> loadFutures = new ArrayList<>();
+    AtomicBoolean hasTimeout = new AtomicBoolean();
+    for (TDataNodeLocation dataNodeLocation : allReplicaSets) {
+      loadFutures.add(
+          new Pair<>(
+              dataNodeLocation,
+              splitNodeService.submit(
+                  () -> {
+                    logger.info(
+                        "Start dispatching Load command for uuid {} to {}", uuid, dataNodeLocation);
+                    TEndPoint endPoint = dataNodeLocation.getInternalEndPoint();
+                    Exception locationException = null;
 
-        for (int i = 0; i < MAX_RETRY; i++) {
-          try (SyncDataNodeInternalServiceClient client =
-              internalServiceClientManager.borrowClient(endPoint)) {
-            TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
-            if (!loadResp.isAccepted()) {
-              logger.warn(loadResp.message);
-              groupException = new FragmentInstanceDispatchException(loadResp.status);
-            }
-            break;
-          } catch (ClientManagerException | TException e) {
-            logger.warn(NODE_CONNECTION_ERROR, endPoint, e);
-            TSStatus status = new TSStatus();
-            status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-            status.setMessage(
-                "can't connect to node {}, please reset longer dn_connection_timeout_ms "
-                    + "in iotdb-common.properties and restart iotdb."
-                    + endPoint);
-            groupException = new FragmentInstanceDispatchException(status);
-          }
-          try {
-            Thread.sleep(RETRY_INTERVAL_MS);
-          } catch (InterruptedException e) {
-            groupException = e;
-            break;
-          }
-        }
+                    for (int i = 0; i < MAX_RETRY; i++) {
+                      long timeout = 0;
+                      try (SyncDataNodeInternalServiceClient client =
+                          internalServiceClientManager.borrowClient(endPoint)) {
+                        timeout = client.getTimeout();
+                        TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
+                        if (!loadResp.isAccepted()) {
+                          logger.warn(loadResp.message);
+                          locationException =
+                              new FragmentInstanceDispatchException(loadResp.status);
+                        } else {
+                          locationException = null;
+                        }
+                        break;
+                      } catch (ClientManagerException | TException e) {
+                        TSStatus status = new TSStatus();
+                        status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
+                        status.setMessage(
+                            "can't connect to node {}, please reset longer dn_connection_timeout_ms "
+                                + "in iotdb-common.properties and restart iotdb."
+                                + endPoint);
+                        locationException = new FragmentInstanceDispatchException(status);
+                        hasTimeout.set(true);
+                        statistic.p2Timeout = timeout;
+                      }
+                      try {
+                        Thread.sleep(RETRY_INTERVAL_MS);
+                      } catch (InterruptedException e) {
+                        locationException = e;
+                        break;
+                      }
+                    }
 
-        if (groupException != null) {
-          phaseTwoFailures.put(replicaSet, groupException);
-        } else {
-          break;
-        }
+                    if (locationException != null) {
+                      phaseTwoFailures.put(dataNodeLocation, locationException);
+                    }
+                    return null;
+                  })));
+    }
+    for (Pair<TDataNodeLocation, Future<Void>> loadFuture : loadFutures) {
+      try {
+        loadFuture.right.get();
+      } catch (InterruptedException | ExecutionException e) {
+        phaseTwoFailures.put(loadFuture.left, e);
       }
     }
+    statistic.p2TimeMS = System.currentTimeMillis() - p2StartMS;
+    statistic.hasP2Timeout = hasTimeout.get();
 
     return phaseTwoFailures.isEmpty();
   }
@@ -280,10 +310,6 @@ public class TsFileSplitSender {
 
   private boolean dispatchPieceNodes(
       List<LoadTsFilePieceNode> subNodes, TRegionReplicaSet replicaSet) {
-    AtomicLong minDispatchTime = new AtomicLong(Long.MAX_VALUE);
-    AtomicLong maxDispatchTime = new AtomicLong(Long.MIN_VALUE);
-    AtomicLong sumDispatchTime = new AtomicLong();
-    AtomicLong sumCompressingTime = new AtomicLong();
 
     long start = System.nanoTime();
     List<Boolean> subNodeResults =
@@ -303,12 +329,12 @@ public class TsFileSplitSender {
                     return false;
                   }
                   long compressingTime = System.nanoTime() - startTime;
-                  sumCompressingTime.addAndGet(compressingTime);
-                  statistic.compressingTime.addAndGet(compressingTime);
+                  statistic.compressingTimeNs.addAndGet(compressingTime);
 
                   TTsFilePieceReq loadTsFileReq =
                       new TTsFilePieceReq(buffer, uuid, replicaSet.getRegionId());
-                  loadTsFileReq.isRelay = true;
+                  loadTsFileReq.setUsername(userName);
+                  loadTsFileReq.setPassword(password);
                   loadTsFileReq.setCompressionType(compressionType.serialize());
                   loadTsFileReq.setUncompressedLength(uncompressedLength);
                   LocationSequencer locationSequencer = createLocationSequencer(replicaSet);
@@ -317,6 +343,11 @@ public class TsFileSplitSender {
                   Exception lastConnectionError = null;
                   TDataNodeLocation currLocation = null;
                   for (TDataNodeLocation location : locationSequencer) {
+                    TRegionReplicaSet relaySet = new TRegionReplicaSet(replicaSet);
+                    relaySet.getDataNodeLocations().remove(location);
+                    loadTsFileReq.setRelayTargets(relaySet);
+                    loadTsFileReq.setNeedSchemaRegistration(true);
+
                     if (location.getDataNodeId() == 0 && logger.isDebugEnabled()) {
                       locationStatistics.logLocationStatistics();
                       logger.info("Chose location {}", location.getDataNodeId());
@@ -370,52 +401,22 @@ public class TsFileSplitSender {
                   locationStatistics.updateThroughput(
                       currLocation, node.getDataSize(), timeConsumption);
 
-                  synchronized (maxDispatchTime) {
-                    if (maxDispatchTime.get() < timeConsumption) {
-                      maxDispatchTime.set(timeConsumption);
-                    }
-                  }
-                  synchronized (minDispatchTime) {
-                    if (minDispatchTime.get() > timeConsumption) {
-                      minDispatchTime.set(timeConsumption);
-                    }
-                  }
-                  sumDispatchTime.addAndGet(timeConsumption);
                   return true;
                 })
             .collect(Collectors.toList());
     long elapsedTime = System.nanoTime() - start;
-    statistic.dispatchNodesTime.addAndGet(elapsedTime);
-    logger.debug(
-        "Dispatched one node after {}ms, min/maxDispatching time: {}/{}ns, avg: {}ns, sum: {}ns, compressing: {}ns",
-        elapsedTime / 1_000_000L,
-        minDispatchTime.get(),
-        maxDispatchTime.get(),
-        sumDispatchTime.get() / subNodes.size(),
-        sumDispatchTime.get(),
-        sumCompressingTime.get());
+    statistic.dispatchNodesTimeNS.addAndGet(elapsedTime);
     return !subNodeResults.contains(false);
   }
 
   public boolean dispatchOnePieceNode(LoadTsFilePieceNode pieceNode, TRegionReplicaSet replicaSet) {
     long allStart = System.nanoTime();
-    allReplicaSets.add(replicaSet);
-    if (false) {
-      long start = System.nanoTime();
-      List<LoadTsFilePieceNode> split = pieceNodeSplitter.split(pieceNode);
-      long elapsedTime = System.nanoTime() - start;
-      statistic.splitTime.addAndGet(elapsedTime);
-      statistic.pieceNodeNum.incrementAndGet();
-      logger.debug("{} splits are generated after {}ms", split.size(), elapsedTime / 1_000_000L);
-      boolean success = dispatchPieceNodes(split, replicaSet);
-      statistic.dispatchNodeTime.addAndGet(System.nanoTime() - allStart);
-      return success;
-    }
+    allReplicaSets.addAll(replicaSet.dataNodeLocations);
 
     List<LoadTsFilePieceNode> subNodes;
     if (splitFutures.size() < MAX_PENDING_PIECE_NODE) {
       splitFutures.add(new Pair<>(submitSplitPieceNode(pieceNode), replicaSet));
-      statistic.dispatchNodeTime.addAndGet(System.nanoTime() - allStart);
+      statistic.dispatchNodeTimeNS.addAndGet(System.nanoTime() - allStart);
       return true;
     } else {
       long start = System.nanoTime();
@@ -434,7 +435,7 @@ public class TsFileSplitSender {
         return false;
       }
       boolean success = dispatchPieceNodes(subNodes, pair.right);
-      statistic.dispatchNodeTime.addAndGet(System.nanoTime() - allStart);
+      statistic.dispatchNodeTimeNS.addAndGet(System.nanoTime() - allStart);
       return success;
     }
   }
@@ -447,24 +448,42 @@ public class TsFileSplitSender {
     public AtomicLong compressedSize = new AtomicLong();
     public AtomicLong splitTime = new AtomicLong();
     public AtomicLong pieceNodeNum = new AtomicLong();
-    public AtomicLong dispatchNodesTime = new AtomicLong();
-    public AtomicLong dispatchNodeTime = new AtomicLong();
-    public AtomicLong compressingTime = new AtomicLong();
+    public AtomicLong dispatchNodesTimeNS = new AtomicLong();
+    public AtomicLong dispatchNodeTimeNS = new AtomicLong();
+    public AtomicLong compressingTimeNs = new AtomicLong();
+    public long p1TimeMs;
+    public long p2TimeMS;
+    public long totalSize;
+    public boolean hasP2Timeout;
+    public long p2Timeout;
 
     public void logStatistic() {
-      logger.info("Time consumption: {}ms", taskEndTime - taskStartTime);
+      logger.info(
+          "Time consumption: {}ms, totalSize: {}MB",
+          taskEndTime - taskStartTime,
+          totalSize * 1.0 / MB);
       logger.info(
           "Generated {} piece nodes, splitTime: {}, dispatchSplitsTime: {}, dispatchNodeTime: {}",
           pieceNodeNum.get(),
           splitTime.get() / 1_000_000L,
-          dispatchNodesTime.get() / 1_000_000L,
-          dispatchNodeTime.get() / 1_000_000L);
+          dispatchNodesTimeNS.get() / 1_000_000L,
+          dispatchNodeTimeNS.get() / 1_000_000L);
       logger.info(
           "Transmission size: {}/{} ({}), compressionTime: {}ms",
           compressedSize.get(),
           rawSize.get(),
           compressedSize.get() * 1.0 / rawSize.get(),
-          compressingTime.get() / 1_000_000L);
+          compressingTimeNs.get() / 1_000_000L);
+      logger.info("Sync TsFile time: {}ms ({})", p1TimeMs, p1ThroughputMBPS());
+      logger.info("Load command execution time: {}ms ({})", p2TimeMS, p2ThroughputMBPS());
+    }
+
+    public double p2ThroughputMBPS() {
+      return totalSize * 1.0 / MB / (p2TimeMS / 1000.0);
+    }
+
+    public double p1ThroughputMBPS() {
+      return totalSize * 1.0 / MB / (p1TimeMS / 1000.0);
     }
   }
 

@@ -76,8 +76,11 @@ import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -88,6 +91,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXTERNAL_CONFIG_NODES_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXTERNAL_USER_NAME_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXTERNAL_USER_NAME_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXTERNAL_USER_PASSWORD_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXTERNAL_USER_PASSWORD_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOCAL_SPLIT_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_KEY;
@@ -134,6 +139,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   private int splitMaxSize;
   private int maxConcurrentFileNum;
   private String targetUserName;
+  private String targetPassword;
 
   public IoTDBThriftAsyncConnector() {
     if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
@@ -189,6 +195,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       targetUserName =
           parameters.getStringOrDefault(
               CONNECTOR_EXTERNAL_USER_NAME_KEY, CONNECTOR_EXTERNAL_USER_NAME_DEFAULT_VALUE);
+      targetPassword =
+          parameters.getStringOrDefault(
+              CONNECTOR_EXTERNAL_USER_PASSWORD_KEY, CONNECTOR_EXTERNAL_USER_PASSWORD_DEFAULT_VALUE);
     }
 
     if (isTabletBatchModeEnabled) {
@@ -452,13 +461,29 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
             false,
             splitMaxSize,
             maxConcurrentFileNum,
-            targetUserName);
+            targetUserName,
+            targetPassword);
     splitSender.start();
     LOGGER.info(
-        "Sending {} files to {} complete: {}",
+        "Sending {} files to {} complete",
         pipeTsFileInsertionEvent.getTsFiles().size(),
-        targetConfigNodes,
-        splitSender.getStatistic());
+        targetConfigNodes);
+
+    if (splitSender.getStatistic().hasP2Timeout) {
+      double throughput = splitSender.getStatistic().p2ThroughputMBPS();
+      Map<String, Object> param = new HashMap<>(2);
+      param.put(
+          PipeBatchTsFileInsertionEvent.CONNECTOR_TIMEOUT_MS, splitSender.getStatistic().p2Timeout);
+      param.put(PipeBatchTsFileInsertionEvent.CONNECTOR_THROUGHPUT_MBPS_KEY, throughput);
+      pipeTsFileInsertionEvent.getExtractorOnConnectorTimeout().apply(param);
+    } else {
+      double throughput = splitSender.getStatistic().p2ThroughputMBPS();
+      pipeTsFileInsertionEvent
+          .getExtractorOnConnectorSuccess()
+          .apply(
+              Collections.singletonMap(
+                  PipeBatchTsFileInsertionEvent.CONNECTOR_THROUGHPUT_MBPS_KEY, throughput));
+    }
   }
 
   private void transfer(

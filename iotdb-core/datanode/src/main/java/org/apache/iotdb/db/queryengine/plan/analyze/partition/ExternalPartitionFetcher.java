@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.partition;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
 
 import org.apache.thrift.TException;
 
@@ -40,7 +41,9 @@ public class ExternalPartitionFetcher extends BasicPartitionFetcher {
       List<TEndPoint> externalConfigNodes,
       ThriftClientProperty property,
       int seriesPartitionSlotNum) {
-    super(seriesPartitionSlotNum);
+    super(
+        seriesPartitionSlotNum,
+        new PartitionCache(() -> new ConfigNodeClient(externalConfigNodes, property, null)));
     this.externalConfigNodes = externalConfigNodes;
     this.property = property;
   }

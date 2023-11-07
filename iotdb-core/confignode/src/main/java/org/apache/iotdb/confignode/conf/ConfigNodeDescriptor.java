@@ -429,6 +429,14 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.getProcedureCoreWorkerThreadsCount()))
                 .trim()));
 
+    conf.setEnableAutoCreateDatabase(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "procedure_core_worker_thread_count",
+                    String.valueOf(conf.isEnableAutoCreateDatabase()))
+                .trim()));
+
     loadRatisConsensusConfig(properties);
     loadCQConfig(properties);
   }

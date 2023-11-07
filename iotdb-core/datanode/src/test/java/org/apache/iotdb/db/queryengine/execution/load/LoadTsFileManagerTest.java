@@ -87,6 +87,7 @@ public class LoadTsFileManagerTest extends TestBase {
             false,
             maxSplitSize,
             100,
+            "root",
             "root");
     long start = System.currentTimeMillis();
     splitSender.start();
@@ -156,9 +157,9 @@ public class LoadTsFileManagerTest extends TestBase {
         dataRegionMap.get(req.consensusGroupId), pieceNode, req.uuid);
 
     // forward to other replicas in the group
-    if (req.isRelay) {
-      req.isRelay = false;
-      TRegionReplicaSet regionReplicaSet = groupId2ReplicaSetMap.get(groupId);
+    if (req.relayTargets != null) {
+      TRegionReplicaSet regionReplicaSet = req.relayTargets;
+      req.relayTargets = null;
       regionReplicaSet.getDataNodeLocations().stream()
           .parallel()
           .forEach(

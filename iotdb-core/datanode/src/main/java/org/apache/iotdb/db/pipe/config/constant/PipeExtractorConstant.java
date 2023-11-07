@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.config.constant;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.GB;
+
 public class PipeExtractorConstant {
 
   public static final String EXTRACTOR_KEY = "extractor";
@@ -53,6 +55,13 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_REALTIME_MODE_FILE_VALUE = "file";
   public static final String EXTRACTOR_REALTIME_MODE_LOG_VALUE = "log";
   public static final String EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE = "forced-log";
+  public static final String EXTRACTOR_LOCAL_SPLIT_ENABLE_KEY = "extractor.local-split.enable";
+  public static final String EXTRACTOR_SPLIT_MAX_CONCURRENT_FILE_KEY =
+      "extractor.split.max-concurrent-file";
+  public static final int EXTRACTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE = 16;
+  public static final String EXTRACTOR_SPLIT_MAX_FILE_BATCH_SIZE_KEY =
+      "extractor.split.max-file-batch-size";
+  public static final long EXTRACTOR_SPLIT_MAX_FILE_BATCH_SIZE_DEFAULT_VALUE = 4 * GB;
 
   private PipeExtractorConstant() {
     throw new IllegalStateException("Utility class");

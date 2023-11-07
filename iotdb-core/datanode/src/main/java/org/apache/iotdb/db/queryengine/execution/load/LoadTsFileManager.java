@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -76,6 +77,7 @@ public class LoadTsFileManager {
 
   private final ScheduledExecutorService cleanupExecutors;
   private final Map<String, ScheduledFuture<?>> uuid2Future;
+  private final Set<String> completedTasks;
 
   public LoadTsFileManager() {
     this.loadDir = SystemFileFactory.INSTANCE.getFile(CONFIG.getLoadTsFileDir());
@@ -83,6 +85,7 @@ public class LoadTsFileManager {
     this.cleanupExecutors =
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, LoadTsFileManager.class.getName());
     this.uuid2Future = new ConcurrentHashMap<>();
+    this.completedTasks = new ConcurrentSkipListSet<>();
 
     recover();
   }
@@ -137,16 +140,24 @@ public class LoadTsFileManager {
 
   public boolean loadAll(String uuid, boolean isGeneratedByPipe)
       throws IOException, LoadFileException {
-    if (!uuid2WriterManager.containsKey(uuid)) {
+    TsFileWriterManager tsFileWriterManager = uuid2WriterManager.get(uuid);
+    if (completedTasks.contains(uuid)) {
+      return true;
+    }
+    if (tsFileWriterManager == null) {
       return false;
     }
-    uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe);
+    tsFileWriterManager.loadAll(isGeneratedByPipe);
     clean(uuid);
     return true;
   }
 
   public boolean deleteAll(String uuid) {
-    if (!uuid2WriterManager.containsKey(uuid)) {
+    TsFileWriterManager tsFileWriterManager = uuid2WriterManager.get(uuid);
+    if (completedTasks.contains(uuid)) {
+      return true;
+    }
+    if (tsFileWriterManager == null) {
       return false;
     }
     clean(uuid);
@@ -154,10 +165,17 @@ public class LoadTsFileManager {
   }
 
   private void clean(String uuid) {
-    uuid2WriterManager.get(uuid).close();
-    uuid2WriterManager.remove(uuid);
-    uuid2Future.get(uuid).cancel(true);
-    uuid2Future.remove(uuid);
+    // record completed tasks for second phase retry
+    completedTasks.add(uuid);
+
+    TsFileWriterManager writerManager = uuid2WriterManager.remove(uuid);
+    if (writerManager != null) {
+      writerManager.close();
+    }
+    ScheduledFuture<?> future = uuid2Future.remove(uuid);
+    if (future != null) {
+      future.cancel(true);
+    }
 
     final Path loadDirPath = loadDir.toPath();
     if (!Files.exists(loadDirPath)) {
@@ -267,20 +285,25 @@ public class LoadTsFileManager {
       receivedSplitIds.add(deletionData.getSplitId());
     }
 
-    private void loadAll(boolean isGeneratedByPipe) throws IOException, LoadFileException {
+    private synchronized void loadAll(boolean isGeneratedByPipe)
+        throws IOException, LoadFileException {
       if (isClosed) {
-        throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
+        // this command is a retry and the previous command has loaded the task
+        // treat this one as a success
+        return;
       }
       for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
         TsFileIOWriter writer = entry.getValue();
         if (writer.isWritingChunkGroup()) {
           writer.endChunkGroup();
         }
-        writer.endFile();
-        entry
-            .getKey()
-            .getDataRegion()
-            .loadNewTsFile(generateResource(writer), true, isGeneratedByPipe);
+        if (writer.canWrite()) {
+          writer.endFile();
+          entry
+              .getKey()
+              .getDataRegion()
+              .loadNewTsFile(generateResource(writer), true, isGeneratedByPipe);
+        }
       }
     }
 
@@ -290,7 +313,7 @@ public class LoadTsFileManager {
       return tsFileResource;
     }
 
-    private void close() {
+    private synchronized void close() {
       if (isClosed) {
         return;
       }

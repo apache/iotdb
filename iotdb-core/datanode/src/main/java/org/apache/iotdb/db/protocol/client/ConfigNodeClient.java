@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
@@ -1088,5 +1089,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
           .map(TTransport::isOpen)
           .orElse(false);
     }
+  }
+
+  @FunctionalInterface
+  public interface ConfigNodeClientProvider {
+    ConfigNodeClient supply() throws ClientManagerException, TException;
   }
 }

@@ -39,10 +39,14 @@ import java.util.Objects;
 public class LoadTsFileNode extends WritePlanNode {
 
   private final List<TsFileResource> resources;
+  private long totalSize;
 
   public LoadTsFileNode(PlanNodeId id, List<TsFileResource> resources) {
     super(id);
     this.resources = resources;
+    for (TsFileResource resource : resources) {
+      totalSize += resource.getTsFileSize();
+    }
   }
 
   @Override
@@ -118,5 +122,9 @@ public class LoadTsFileNode extends WritePlanNode {
 
   public TsFileResource lastResource() {
     return resources.get(resources.size() - 1);
+  }
+
+  public long getTotalSize() {
+    return totalSize;
   }
 }

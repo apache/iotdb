@@ -24,11 +24,14 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSettleReq;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -61,11 +64,14 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.protocol.session.ExternalClientSession;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
+import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
@@ -73,6 +79,10 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceFailur
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState;
+import org.apache.iotdb.db.queryengine.execution.load.AlignedChunkData;
+import org.apache.iotdb.db.queryengine.execution.load.ChunkData;
+import org.apache.iotdb.db.queryengine.execution.load.NonAlignedChunkData;
+import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.ISchemaSource;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -82,6 +92,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaC
 import org.apache.iotdb.db.queryengine.plan.analyze.partition.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator.ValidatingSchema;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -204,9 +216,13 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TsFileUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import com.google.common.collect.ImmutableList;
@@ -218,6 +234,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -384,27 +401,151 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     throw new UnsupportedOperationException();
   }
 
+  private ValidatingSchema extractValidatingSchema(LoadTsFilePieceNode pieceNode)
+      throws IllegalPathException {
+    ValidatingSchema validatingSchema = new ValidatingSchema();
+    String currDevice = null;
+    String currMeasurement = null;
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    boolean isAligned = false;
+    for (TsFileData data : pieceNode.getAllTsFileData()) {
+      if (data.isModification()) {
+        continue;
+      }
+
+      ChunkData chunkData = (ChunkData) data;
+      String device = chunkData.getDevice();
+      String measurement = chunkData.firstMeasurement();
+      if (currDevice == null) {
+        currDevice = device;
+        currMeasurement = measurement;
+      } else if (!currDevice.equals(device)) {
+        validatingSchema.devicePaths.add(new PartialPath(currDevice));
+        validatingSchema.measurements.add(measurements.toArray(new String[0]));
+        validatingSchema.dataTypes.add(dataTypes.toArray(new TSDataType[0]));
+        validatingSchema.encodings.add(encodings.toArray(new TSEncoding[0]));
+        validatingSchema.compressionTypes.add(compressionTypes.toArray(new CompressionType[0]));
+        validatingSchema.isAlignedList.add(isAligned);
+        currDevice = device;
+        currMeasurement = measurement;
+        measurements.clear();
+        ;
+        dataTypes.clear();
+        encodings.clear();
+        compressionTypes.clear();
+      } else if (currMeasurement.equals(measurement)) {
+        continue;
+      }
+
+      if (chunkData.isAligned()) {
+        AlignedChunkData alignedChunkData = (AlignedChunkData) chunkData;
+        for (ChunkHeader header : alignedChunkData.getChunkHeaderList()) {
+          measurements.add(header.getMeasurementID());
+          dataTypes.add(header.getDataType());
+          encodings.add(header.getEncodingType());
+          compressionTypes.add(header.getCompressionType());
+        }
+        isAligned = true;
+      } else {
+        NonAlignedChunkData nonAlignedChunkData = (NonAlignedChunkData) chunkData;
+        ChunkHeader header = nonAlignedChunkData.getChunkHeader();
+        measurements.add(header.getMeasurementID());
+        dataTypes.add(header.getDataType());
+        encodings.add(header.getEncodingType());
+        compressionTypes.add(header.getCompressionType());
+        isAligned = false;
+      }
+    }
+
+    validatingSchema.devicePaths.add(new PartialPath(currDevice));
+    validatingSchema.measurements.add(measurements.toArray(new String[0]));
+    validatingSchema.dataTypes.add(dataTypes.toArray(new TSDataType[0]));
+    validatingSchema.encodings.add(encodings.toArray(new TSEncoding[0]));
+    validatingSchema.compressionTypes.add(compressionTypes.toArray(new CompressionType[0]));
+    validatingSchema.isAlignedList.add(isAligned);
+    return validatingSchema;
+  }
+
   @Override
-  public TLoadResp sendTsFilePieceNode(TTsFilePieceReq req) {
-    LOGGER.info("Receive load node from uuid {}.", req.uuid);
+  public TLoadResp sendTsFilePieceNode(TTsFilePieceReq req) throws TException {
+    LOGGER.debug("Receive load node from uuid {} of {}.", req.uuid, req.consensusGroupId);
 
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
-    LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
-    if (pieceNode == null) {
-      return createTLoadResp(
-          new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
+
+    IClientSession session = new ExternalClientSession(req.uuid);
+    try {
+      ByteBuffer buffer =
+          req.isSetCompressionType()
+              ? TsFileUtils.uncompress(
+                  req.uncompressedLength,
+                  CompressionType.deserialize(req.compressionType),
+                  req.body)
+              : req.body.slice();
+      LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(buffer);
+      if (pieceNode == null) {
+        return createTLoadResp(
+            new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
+      }
+
+      if (req.needSchemaRegistration
+          && IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+        TSStatus status = AuthorityChecker.checkUser(req.getUsername(), req.getPassword());
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return createTLoadResp(status);
+        }
+
+        try {
+          ValidatingSchema validatingSchema = extractValidatingSchema(pieceNode);
+          SESSION_MANAGER.registerSession(session);
+          SESSION_MANAGER.supplySession(
+              session, req.getUsername(), ZoneId.systemDefault().getId(), ClientVersion.V_1_0);
+
+          MPPQueryContext queryContext =
+              new MPPQueryContext(
+                  "",
+                  COORDINATOR.createQueryId(),
+                  SESSION_MANAGER.getSessionInfo(session),
+                  DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+                  DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
+          SchemaValidator.validate(schemaFetcher, validatingSchema, queryContext);
+        } catch (IllegalPathException e) {
+          throw new TException(e);
+        }
+      }
+
+      TSStatus resultStatus =
+          StorageEngine.getInstance()
+              .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, req.uuid);
+
+      if (req.relayTargets != null) {
+        TRegionReplicaSet replicaSet = req.relayTargets;
+        req.relayTargets = null;
+        req.needSchemaRegistration = false;
+        for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
+          TEndPoint internalEndPoint = dataNodeLocation.getInternalEndPoint();
+          try (SyncDataNodeInternalServiceClient client =
+              COORDINATOR.getInternalServiceClientManager().borrowClient(internalEndPoint)) {
+            client.sendTsFilePieceNode(req);
+          }
+        }
+      }
+      return createTLoadResp(resultStatus);
+    } catch (ClientManagerException | IOException e) {
+      throw new TException(e);
+    } finally {
+      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
+      SESSION_MANAGER.removeCurrSession();
     }
-
-    TSStatus resultStatus =
-        StorageEngine.getInstance()
-            .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, req.uuid);
-
-    return createTLoadResp(resultStatus);
   }
 
   @Override
   public TLoadResp sendLoadCommand(TLoadCommandReq req) {
+    LOGGER.info("Receive load command for {}", req.getUuid());
+
     return createTLoadResp(
         StorageEngine.getInstance()
             .executeLoadCommand(

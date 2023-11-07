@@ -25,9 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -50,6 +48,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient.ConfigNodeClientProvider;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
@@ -75,6 +74,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class PartitionCache {
+
   private static final Logger logger = LoggerFactory.getLogger(PartitionCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
@@ -107,8 +107,8 @@ public class PartitionCache {
 
   private final ReentrantReadWriteLock regionReplicaSetLock = new ReentrantReadWriteLock();
 
-  private final IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
-      ConfigNodeClientManager.getInstance();
+  private ConfigNodeClientProvider configNodeClientProvider =
+      () -> ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID);
   private final CacheMetrics cacheMetrics;
 
   public PartitionCache() {
@@ -118,6 +118,11 @@ public class PartitionCache {
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
             this.seriesSlotExecutorName, this.seriesPartitionSlotNum);
     this.cacheMetrics = new CacheMetrics();
+  }
+
+  public PartitionCache(ConfigNodeClientProvider configNodeClientProvider) {
+    this();
+    this.configNodeClientProvider = configNodeClientProvider;
   }
 
   // region database cache
@@ -191,8 +196,7 @@ public class PartitionCache {
   private void fetchStorageGroupAndUpdateCache(
       StorageGroupCacheResult<?> result, List<String> devicePaths)
       throws ClientManagerException, TException {
-    try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+    try (ConfigNodeClient client = configNodeClientProvider.supply()) {
       storageGroupCacheLock.writeLock().lock();
       result.reset();
       getStorageGroupMap(result, devicePaths, true);
@@ -222,8 +226,7 @@ public class PartitionCache {
   private void createStorageGroupAndUpdateCache(
       StorageGroupCacheResult<?> result, List<String> devicePaths, String userName)
       throws ClientManagerException, MetadataException, TException {
-    try (ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+    try (ConfigNodeClient client = configNodeClientProvider.supply()) {
       storageGroupCacheLock.writeLock().lock();
       // try to check whether database need to be created
       result.reset();
@@ -416,6 +419,7 @@ public class PartitionCache {
   // endregion
 
   // region replicaSet cache
+
   /**
    * get regionReplicaSet from local and confignode
    *
@@ -439,8 +443,7 @@ public class PartitionCache {
         regionReplicaSetLock.writeLock().lock();
         // verify that there are not hit in cache
         if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
-          try (ConfigNodeClient client =
-              configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+          try (ConfigNodeClient client = configNodeClientProvider.supply()) {
             TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
             if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
               updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());

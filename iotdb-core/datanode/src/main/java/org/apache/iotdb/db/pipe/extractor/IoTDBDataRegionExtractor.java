@@ -49,11 +49,9 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOCAL_SPLIT_ENABLE_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_LOCAL_SPLIT_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_FILE_VALUE;
@@ -61,6 +59,10 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXT
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_HYBRID_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_LOG_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_SPLIT_MAX_CONCURRENT_FILE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_SPLIT_MAX_FILE_BATCH_SIZE_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_SPLIT_MAX_FILE_BATCH_SIZE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_MODE_KEY;
@@ -133,13 +135,18 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
   private void constructHistoricalExtractor(PipeParameters parameters) {
     // Enable historical extractor by default
-    if (parameters.getBooleanOrDefault(CONNECTOR_LOCAL_SPLIT_ENABLE_KEY, false)) {
+    if (parameters.getBooleanOrDefault(EXTRACTOR_LOCAL_SPLIT_ENABLE_KEY, false)) {
+      LOGGER.info("Use batched extractor.");
       historicalExtractor =
           new BatchedTsFileExtractor(
               parameters.getIntOrDefault(
-                  CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_KEY,
-                  CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE));
+                  EXTRACTOR_SPLIT_MAX_CONCURRENT_FILE_KEY,
+                  EXTRACTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE),
+              parameters.getLongOrDefault(
+                  EXTRACTOR_SPLIT_MAX_FILE_BATCH_SIZE_KEY,
+                  EXTRACTOR_SPLIT_MAX_FILE_BATCH_SIZE_DEFAULT_VALUE));
     } else {
+      LOGGER.info("Use single extractor.");
       historicalExtractor = new PipeHistoricalDataRegionTsFileExtractor();
     }
   }

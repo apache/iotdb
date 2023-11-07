@@ -285,8 +285,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return configManager.showVariables();
   }
 
-  @Override
-  public TSStatus setDatabase(TDatabaseSchema databaseSchema) {
+  public static TSStatus validateDatabaseSchema(TDatabaseSchema databaseSchema) {
     TSStatus errorResp = null;
     boolean isSystemDatabase = databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
 
@@ -362,6 +361,15 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     // The maxRegionGroupNum is equal to the minRegionGroupNum when initialize
     databaseSchema.setMaxSchemaRegionGroupNum(databaseSchema.getMinSchemaRegionGroupNum());
     databaseSchema.setMaxDataRegionGroupNum(databaseSchema.getMinDataRegionGroupNum());
+    return errorResp;
+  }
+
+  @Override
+  public TSStatus setDatabase(TDatabaseSchema databaseSchema) {
+    TSStatus errorResp = validateDatabaseSchema(databaseSchema);
+    if (errorResp != null) {
+      return errorResp;
+    }
 
     DatabaseSchemaPlan setPlan =
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema);

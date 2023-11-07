@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
 
 public class ClusterPartitionFetcher extends BasicPartitionFetcher {
   private final IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
@@ -42,7 +43,7 @@ public class ClusterPartitionFetcher extends BasicPartitionFetcher {
   }
 
   private ClusterPartitionFetcher() {
-    super(config.getSeriesPartitionSlotNum());
+    super(config.getSeriesPartitionSlotNum(), new PartitionCache());
   }
 
   @Override

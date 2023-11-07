@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
@@ -53,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlo
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
@@ -81,10 +83,12 @@ import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDelete
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
+import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
@@ -212,14 +216,27 @@ public class PartitionManager {
     // Check if the related Databases exist
     for (String database : req.getPartitionSlotsMap().keySet()) {
       if (!isDatabaseExist(database)) {
-        return new SchemaPartitionResp(
-            new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-                .setMessage(
-                    String.format(
-                        "Create SchemaPartition failed because the database: %s is not exists",
-                        database)),
-            false,
-            null);
+        if (!CONF.isEnableAutoCreateDatabase()) {
+          return new SchemaPartitionResp(
+              new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                  .setMessage(
+                      String.format(
+                          "Create SchemaPartition failed because the database: %s is not exists",
+                          database)),
+              false,
+              null);
+        } else {
+          TDatabaseSchema databaseSchema = new TDatabaseSchema(database);
+          ConfigNodeRPCServiceProcessor.validateDatabaseSchema(databaseSchema);
+          DatabaseSchemaPlan databaseSchemaPlan =
+              new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema);
+          TSStatus tsStatus = consensusWritePartitionResult(databaseSchemaPlan);
+          LOGGER.info("Auto create database {}: {}", database, tsStatus);
+          if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && !isDatabaseExist(database)) {
+            return new SchemaPartitionResp(tsStatus, false, null);
+          }
+        }
       }
     }
 
@@ -335,14 +352,27 @@ public class PartitionManager {
     // Check if the related Databases exist
     for (String database : req.getPartitionSlotsMap().keySet()) {
       if (!isDatabaseExist(database)) {
-        return new DataPartitionResp(
-            new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-                .setMessage(
-                    String.format(
-                        "Create DataPartition failed because the database: %s is not exists",
-                        database)),
-            false,
-            null);
+        if (!CONF.isEnableAutoCreateDatabase()) {
+          return new DataPartitionResp(
+              new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                  .setMessage(
+                      String.format(
+                          "Create DataPartition failed because the database: %s is not exists",
+                          database)),
+              false,
+              null);
+        } else {
+          TDatabaseSchema databaseSchema = new TDatabaseSchema(database);
+          ConfigNodeRPCServiceProcessor.validateDatabaseSchema(databaseSchema);
+          DatabaseSchemaPlan databaseSchemaPlan =
+              new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema);
+          TSStatus tsStatus = consensusWritePartitionResult(databaseSchemaPlan);
+          LOGGER.info("Auto create database {}: {}", database, tsStatus);
+          if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && !isDatabaseExist(database)) {
+            return new DataPartitionResp(tsStatus, false, null);
+          }
+        }
       }
     }
 

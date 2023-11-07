@@ -107,6 +107,8 @@ public class PipeConnectorConstant {
   public static final int CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE = 16;
   public static final String CONNECTOR_EXTERNAL_USER_NAME_KEY = "connector.external.user-name";
   public static final String CONNECTOR_EXTERNAL_USER_NAME_DEFAULT_VALUE = "root";
+  public static final String CONNECTOR_EXTERNAL_USER_PASSWORD_KEY = "connector.external.password";
+  public static final String CONNECTOR_EXTERNAL_USER_PASSWORD_DEFAULT_VALUE = "root";
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");

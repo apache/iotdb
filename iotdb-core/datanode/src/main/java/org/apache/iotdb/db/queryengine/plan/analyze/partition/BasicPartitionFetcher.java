@@ -66,11 +66,11 @@ public abstract class BasicPartitionFetcher implements IPartitionFetcher {
 
   protected final PartitionCache partitionCache;
 
-  protected BasicPartitionFetcher(int seriesPartitionSlotNum) {
+  protected BasicPartitionFetcher(int seriesPartitionSlotNum, PartitionCache partitionCache) {
     this.partitionExecutor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
             config.getSeriesPartitionExecutorClass(), seriesPartitionSlotNum);
-    this.partitionCache = new PartitionCache();
+    this.partitionCache = partitionCache;
   }
 
   protected abstract ConfigNodeClient getClient() throws ClientManagerException, TException;

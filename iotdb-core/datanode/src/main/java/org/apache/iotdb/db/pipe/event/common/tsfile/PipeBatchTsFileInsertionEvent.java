@@ -37,7 +37,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
@@ -59,6 +61,17 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
   private final AtomicBoolean[] isClosed;
 
   private TsFileListInsertionDataContainer dataContainer;
+  private long totalSize;
+
+  /**
+   * If the event times out when being transferred, the connector uses this call back to inform the
+   * extractor that the task size should be reduced or to start throttling.
+   */
+  private Function<Map<String, Object>, Void> extractorOnConnectorTimeout;
+
+  private Function<Map<String, Object>, Void> extractorOnConnectorSuccess;
+  public static final String CONNECTOR_THROUGHPUT_MBPS_KEY = "connector.throughput_MBPS";
+  public static final String CONNECTOR_TIMEOUT_MS = "connector.timeout_MS";
 
   public PipeBatchTsFileInsertionEvent(
       List<TsFileResource> resources, boolean isLoaded, boolean isGeneratedByPipe) {
@@ -86,6 +99,9 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
 
     this.resources = resources;
     tsFiles = resources.stream().map(TsFileResource::getTsFile).collect(Collectors.toList());
+    for (TsFileResource resource : resources) {
+      totalSize += resource.getTsFileSize();
+    }
     isClosed = new AtomicBoolean[resources.size()];
 
     this.isLoaded = isLoaded;
@@ -242,13 +258,13 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
 
   @Override
   public String toString() {
-    return "PipeTsFileInsertionEvent{"
+    return "PipeBatchTsFileInsertionEvent{"
         + "resources="
         + resources
         + ", tsFiles="
         + tsFiles
-        + ", isClosed="
-        + isClosed
+        + ", totalSize="
+        + totalSize
         + '}';
   }
 
@@ -271,5 +287,23 @@ public class PipeBatchTsFileInsertionEvent extends EnrichedEvent
 
   protected boolean isTsFileResourceCoveredByTimeRange(TsFileResource resource) {
     return startTime <= resource.getFileStartTime() && endTime >= resource.getFileEndTime();
+  }
+
+  public Function<Map<String, Object>, Void> getExtractorOnConnectorTimeout() {
+    return extractorOnConnectorTimeout;
+  }
+
+  public void setExtractorOnConnectorTimeout(
+      Function<Map<String, Object>, Void> extractorOnConnectorTimeout) {
+    this.extractorOnConnectorTimeout = extractorOnConnectorTimeout;
+  }
+
+  public Function<Map<String, Object>, Void> getExtractorOnConnectorSuccess() {
+    return extractorOnConnectorSuccess;
+  }
+
+  public void setExtractorOnConnectorSuccess(
+      Function<Map<String, Object>, Void> extractorOnConnectorSuccess) {
+    this.extractorOnConnectorSuccess = extractorOnConnectorSuccess;
   }
 }

@@ -120,6 +120,7 @@ public class TsFileSplitSenderTest extends TestBase {
             false,
             maxSplitSize,
             100,
+            "root",
             "root");
     long start = System.currentTimeMillis();
     splitSender.start();
@@ -143,16 +144,16 @@ public class TsFileSplitSenderTest extends TestBase {
     long handleStart = System.nanoTime();
     if ((tEndpoint.getPort() - 10000) % 3 == 0
         && random.nextDouble() < packetLossRatio
-        && req.isRelay) {
+        && req.relayTargets != null) {
       throw new TException("Packet lost");
     }
     if ((tEndpoint.getPort() - 10000) % 3 == 1
         && random.nextDouble() < packetLossRatio / 2
-        && req.isRelay) {
+        && req.relayTargets != null) {
       throw new TException("Packet lost");
     }
 
-    if ((tEndpoint.getPort() - 10000) % 3 == 0 && req.isRelay && stuckDurationMS > 0) {
+    if ((tEndpoint.getPort() - 10000) % 3 == 0 && req.relayTargets != null && stuckDurationMS > 0) {
       Pair<Long, Long> nextStuckTime =
           nextStuckTimeMap.computeIfAbsent(
               tEndpoint,
@@ -216,14 +217,14 @@ public class TsFileSplitSenderTest extends TestBase {
             .collect(Collectors.toList()));
 
     if (dummyDelayMS > 0) {
-      if ((tEndpoint.getPort() - 10000) % 3 == 0 && req.isRelay) {
+      if ((tEndpoint.getPort() - 10000) % 3 == 0 && req.relayTargets != null) {
         try {
           Thread.sleep(dummyDelayMS);
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
       }
-      if ((tEndpoint.getPort() - 10000) % 3 == 1 && req.isRelay) {
+      if ((tEndpoint.getPort() - 10000) % 3 == 1 && req.relayTargets != null) {
         try {
           Thread.sleep(dummyDelayMS / 2);
         } catch (InterruptedException e) {
@@ -233,10 +234,10 @@ public class TsFileSplitSenderTest extends TestBase {
     }
 
     // forward to other replicas in the group
-    if (req.isRelay) {
+    if (req.relayTargets != null) {
       long relayStart = System.nanoTime();
-      req.isRelay = false;
-      TRegionReplicaSet regionReplicaSet = groupId2ReplicaSetMap.get(groupId);
+      TRegionReplicaSet regionReplicaSet = req.relayTargets;
+      req.relayTargets = null;
       regionReplicaSet.getDataNodeLocations().stream()
           .parallel()
           .forEach(
