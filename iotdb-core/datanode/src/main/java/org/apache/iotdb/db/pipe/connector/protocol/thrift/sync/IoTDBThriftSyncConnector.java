@@ -257,13 +257,18 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       return;
     }
 
+    final long requestCommitId = commitIdGenerator.incrementAndGet();
+    // Increase reference count here, and will decrease after it is committed
+    ((EnrichedEvent) tabletInsertionEvent)
+        .increaseReferenceCount(IoTDBThriftSyncConnector.class.getName());
+
     final int clientIndex = nextClientIndex();
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
     try {
       if (isTabletBatchModeEnabled) {
-        if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
-          doTransfer(client);
+        if (tabletBatchBuilder.onEvent(tabletInsertionEvent, requestCommitId)) {
+          doTransfer(client); // committed in doTransfer()
         }
       } else {
         if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -271,6 +276,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
         } else {
           doTransfer(client, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
         }
+        commit(requestCommitId, (EnrichedEvent) tabletInsertionEvent);
       }
     } catch (TException e) {
       isClientAlive.set(clientIndex, false);
@@ -307,6 +313,11 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       return;
     }
 
+    final long requestCommitId = commitIdGenerator.incrementAndGet();
+    // Increase reference count here, and will decrease after it is committed
+    ((EnrichedEvent) tsFileInsertionEvent)
+        .increaseReferenceCount(IoTDBThriftSyncConnector.class.getName());
+
     final int clientIndex = nextClientIndex();
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
@@ -317,6 +328,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       }
 
       doTransfer(client, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
+      commit(requestCommitId, (EnrichedEvent) tsFileInsertionEvent);
     } catch (TException e) {
       isClientAlive.set(clientIndex, false);
 
@@ -353,7 +365,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
               "Transfer PipeTransferTabletBatchReq error, result status %s", resp.status));
     }
 
-    tabletBatchBuilder.onSuccess();
+    tabletBatchBuilder.onSuccess(this);
   }
 
   private void doTransfer(

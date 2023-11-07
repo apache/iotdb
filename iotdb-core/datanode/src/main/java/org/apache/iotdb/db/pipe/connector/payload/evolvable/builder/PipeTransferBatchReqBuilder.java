@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
@@ -53,6 +54,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   protected final List<TPipeTransferReq> reqs = new ArrayList<>();
   protected final List<Event> events = new ArrayList<>();
+  protected final List<Long> requestCommitIds = new ArrayList<>();
 
   // limit in delayed time
   protected final int maxDelayInMs;
@@ -82,6 +84,37 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
           requestMaxBatchSizeInBytes,
           maxBatchSizeInBytes);
     }
+  }
+
+  /**
+   * Try offer event into cache if the given event is not duplicated.
+   *
+   * @param event the given event
+   * @return true if the batch can be transferred
+   */
+  public boolean onEvent(TabletInsertionEvent event, long requestCommitId)
+      throws IOException, WALPipeException {
+    final TPipeTransferReq req = buildTabletInsertionReq(event);
+
+    if (requestCommitIds.isEmpty()
+        || !requestCommitIds.get(requestCommitIds.size() - 1).equals(requestCommitId)) {
+      reqs.add(req);
+
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName());
+      }
+      events.add(event);
+      requestCommitIds.add(requestCommitId);
+
+      if (firstEventProcessingTime == Long.MIN_VALUE) {
+        firstEventProcessingTime = System.currentTimeMillis();
+      }
+
+      bufferSize += req.getBody().length;
+    }
+
+    return bufferSize >= maxBatchSizeInBytes
+        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
   public List<TPipeTransferReq> getTPipeTransferReqs() {

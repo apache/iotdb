@@ -59,16 +59,11 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Optional;
-import java.util.PriorityQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
@@ -91,11 +86,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   private final IoTDBThriftSyncConnector retryConnector = new IoTDBThriftSyncConnector();
   private final PriorityBlockingQueue<Pair<Long, Event>> retryEventQueue =
       new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left));
-
-  private final AtomicLong commitIdGenerator = new AtomicLong(0);
-  private final AtomicLong lastCommitId = new AtomicLong(0);
-  private final PriorityQueue<Pair<Long, Runnable>> commitQueue =
-      new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
   private IoTDBThriftAsyncPipeTransferBatchReqBuilder tabletBatchBuilder;
 
@@ -519,42 +509,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     transfer(requestCommitId, pipeTransferTabletBatchEventHandler);
 
     tabletBatchBuilder.onSuccess();
-  }
-
-  /**
-   * Commit the event. Decrease the reference count of the event. If the reference count is 0, the
-   * progress index of the event will be recalculated and the resources of the event will be
-   * released.
-   *
-   * <p>The synchronization is necessary because the commit order must be the same as the order of
-   * the events. Concurrent commit may cause the commit order to be inconsistent with the order of
-   * the events.
-   *
-   * @param requestCommitId commit id of the request
-   * @param enrichedEvent event to commit
-   */
-  public synchronized void commit(long requestCommitId, @Nullable EnrichedEvent enrichedEvent) {
-    commitQueue.offer(
-        new Pair<>(
-            requestCommitId,
-            () ->
-                Optional.ofNullable(enrichedEvent)
-                    .ifPresent(
-                        event ->
-                            event.decreaseReferenceCount(
-                                IoTDBThriftAsyncConnector.class.getName(), true))));
-
-    while (!commitQueue.isEmpty()) {
-      final Pair<Long, Runnable> committer = commitQueue.peek();
-      if (lastCommitId.get() + 1 != committer.left) {
-        break;
-      }
-
-      committer.right.run();
-      lastCommitId.incrementAndGet();
-
-      commitQueue.poll();
-    }
   }
 
   /**

@@ -19,54 +19,16 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
 
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class IoTDBThriftAsyncPipeTransferBatchReqBuilder extends PipeTransferBatchReqBuilder {
 
-  protected final List<Long> requestCommitIds = new ArrayList<>();
-
   public IoTDBThriftAsyncPipeTransferBatchReqBuilder(PipeParameters parameters) {
     super(parameters);
-  }
-
-  /**
-   * Try offer event into cache if the given event is not duplicated.
-   *
-   * @param event the given event
-   * @return true if the batch can be transferred
-   */
-  public boolean onEvent(TabletInsertionEvent event, long requestCommitId)
-      throws IOException, WALPipeException {
-    final TPipeTransferReq req = buildTabletInsertionReq(event);
-
-    if (requestCommitIds.isEmpty()
-        || !requestCommitIds.get(requestCommitIds.size() - 1).equals(requestCommitId)) {
-      reqs.add(req);
-
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName());
-      }
-      events.add(event);
-      requestCommitIds.add(requestCommitId);
-
-      if (firstEventProcessingTime == Long.MIN_VALUE) {
-        firstEventProcessingTime = System.currentTimeMillis();
-      }
-
-      bufferSize += req.getBody().length;
-    }
-
-    return bufferSize >= maxBatchSizeInBytes
-        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
   public void onSuccess() {

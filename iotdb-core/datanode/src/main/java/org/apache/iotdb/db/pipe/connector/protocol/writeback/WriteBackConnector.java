@@ -26,6 +26,7 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -46,15 +47,27 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.time.ZoneId;
+import java.util.Comparator;
+import java.util.Optional;
+import java.util.PriorityQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class WriteBackConnector implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WriteBackConnector.class);
+
+  protected final AtomicLong commitIdGenerator = new AtomicLong(0);
+  protected final AtomicLong lastCommitId = new AtomicLong(0);
+  protected final PriorityQueue<Pair<Long, Runnable>> commitQueue =
+      new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -100,11 +113,17 @@ public class WriteBackConnector implements PipeConnector {
       return;
     }
 
+    final long requestCommitId = commitIdGenerator.incrementAndGet();
+    // Increase reference count here, and will decrease after it is committed
+    ((EnrichedEvent) tabletInsertionEvent)
+        .increaseReferenceCount(WriteBackConnector.class.getName());
+
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
     } else {
       doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
     }
+    commit(requestCommitId, (EnrichedEvent) tabletInsertionEvent);
   }
 
   @Override
@@ -167,6 +186,41 @@ public class WriteBackConnector implements PipeConnector {
             ClusterSchemaFetcher.getInstance(),
             IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
         .status;
+  }
+
+  /**
+   * Commit the event. Decrease the reference count of the event. If the reference count is 0, the
+   * progress index of the event will be recalculated and the resources of the event will be
+   * released.
+   *
+   * <p>The synchronization is necessary because the commit order must be the same as the order of
+   * the events. Concurrent commit may cause the commit order to be inconsistent with the order of
+   * the events.
+   *
+   * @param requestCommitId commit id of the request
+   * @param enrichedEvent event to commit
+   */
+  public synchronized void commit(long requestCommitId, @Nullable EnrichedEvent enrichedEvent) {
+    commitQueue.offer(
+        new Pair<>(
+            requestCommitId,
+            () ->
+                Optional.ofNullable(enrichedEvent)
+                    .ifPresent(
+                        event ->
+                            event.decreaseReferenceCount(IoTDBConnector.class.getName(), true))));
+
+    while (!commitQueue.isEmpty()) {
+      final Pair<Long, Runnable> committer = commitQueue.peek();
+      if (lastCommitId.get() + 1 != committer.left) {
+        break;
+      }
+
+      committer.right.run();
+      lastCommitId.incrementAndGet();
+
+      commitQueue.poll();
+    }
   }
 
   @Override
