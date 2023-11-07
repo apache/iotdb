@@ -919,7 +919,7 @@ public abstract class AlignedTVList extends TVList {
       while (nextRowIndex < rowCount && rowBitMap.isMarked(nextRowIndex)) {
         nextRowIndex++;
       }
-      if (sortedRowIndex == rowCount - 1 || getTime(sortedRowIndex) != getTime(nextRowIndex)) {
+      if (nextRowIndex == rowCount || getTime(sortedRowIndex) != getTime(nextRowIndex)) {
         timeBuilder.writeLong(getTime(sortedRowIndex));
         validRowCount++;
       } else {
