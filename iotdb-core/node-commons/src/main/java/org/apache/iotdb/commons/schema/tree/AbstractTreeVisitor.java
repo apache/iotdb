@@ -146,7 +146,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
       N root, PathPatternTree patternTree, boolean isPrefixMatch, PathPatternTree scope) {
     this.root = root;
     this.patternFA =
-             new IPatternFA.Builder().patternTree(patternTree).isPrefixMatch(isPrefixMatch).buildDFA();
+        new IPatternFA.Builder().patternTree(patternTree).isPrefixMatch(isPrefixMatch).buildDFA();
     this.scopeDFA =
         scope == null
             ? SchemaConstant.ALL_MATCH_DFA

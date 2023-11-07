@@ -827,7 +827,13 @@ public class OperatorMemoryTest {
 
       SchemaFetchScanOperator operator =
           new SchemaFetchScanOperator(
-              planNodeId, driverContext.getOperatorContexts().get(0), null, null, null, false, false);
+              planNodeId,
+              driverContext.getOperatorContexts().get(0),
+              null,
+              null,
+              null,
+              false,
+              false);
 
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());

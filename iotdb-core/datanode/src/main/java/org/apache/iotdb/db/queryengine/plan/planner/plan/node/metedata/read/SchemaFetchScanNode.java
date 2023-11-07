@@ -158,7 +158,8 @@ public class SchemaFetchScanNode extends SourceNode {
     boolean withTags = ReadWriteIOUtils.readBool(byteBuffer);
     boolean wrire = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SchemaFetchScanNode(planNodeId, storageGroup, patternTree, templateMap, withTags, wrire);
+    return new SchemaFetchScanNode(
+        planNodeId, storageGroup, patternTree, templateMap, withTags, wrire);
   }
 
   @Override

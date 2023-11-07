@@ -843,28 +843,28 @@ public class MTreeBelowSGCachedImpl {
   }
 
   public List<MeasurementPath> fetchSchemaWithoutWildcard(
-          PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
-          throws MetadataException {
+      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
+      throws MetadataException {
     List<MeasurementPath> result = new LinkedList<>();
     try (MeasurementCollector<Void, ICachedMNode> collector =
-                 new MeasurementCollector<Void, ICachedMNode>(
-                         rootNode, patternTree, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
-                   protected Void collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
-                     if (node.isPreDeleted()) {
-                       return null;
-                     }
-                     MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
-                     if (nodes[nodes.length - 1].equals(node.getAlias())) {
-                       // only when user query with alias, the alias in path will be set
-                       path.setMeasurementAlias(node.getAlias());
-                     }
-                     if (withTags) {
-                       path.setTagMap(tagGetter.apply(node));
-                     }
-                     result.add(path);
-                     return null;
-                   }
-                 }) {
+        new MeasurementCollector<Void, ICachedMNode>(
+            rootNode, patternTree, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+          protected Void collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
+            if (node.isPreDeleted()) {
+              return null;
+            }
+            MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
+            if (nodes[nodes.length - 1].equals(node.getAlias())) {
+              // only when user query with alias, the alias in path will be set
+              path.setMeasurementAlias(node.getAlias());
+            }
+            if (withTags) {
+              path.setTagMap(tagGetter.apply(node));
+            }
+            result.add(path);
+            return null;
+          }
+        }) {
       collector.setTemplateMap(templateMap, nodeFactory);
       collector.traverse();
     }

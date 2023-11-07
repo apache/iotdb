@@ -918,14 +918,19 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public List<MeasurementPath> fetchSchema(PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags, boolean containWildcard) throws MetadataException {
-    if(containWildcard) {
+  public List<MeasurementPath> fetchSchema(
+      PathPatternTree patternTree,
+      Map<Integer, Template> templateMap,
+      boolean withTags,
+      boolean containWildcard)
+      throws MetadataException {
+    if (containWildcard) {
       List<MeasurementPath> res = new ArrayList<>();
-      for(PartialPath path : patternTree.getAllPathPatterns()) {
+      for (PartialPath path : patternTree.getAllPathPatterns()) {
         res.addAll(mtree.fetchSchema(path, templateMap, withTags));
       }
       return res;
-    }else {
+    } else {
       return mtree.fetchSchemaWithoutWildcard(patternTree, templateMap, withTags);
     }
   }

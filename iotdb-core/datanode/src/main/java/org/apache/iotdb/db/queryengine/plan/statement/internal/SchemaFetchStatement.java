@@ -37,7 +37,10 @@ public class SchemaFetchStatement extends Statement {
   private final boolean write;
 
   public SchemaFetchStatement(
-      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags, boolean write) {
+      PathPatternTree patternTree,
+      Map<Integer, Template> templateMap,
+      boolean withTags,
+      boolean write) {
     super();
     this.patternTree = patternTree;
     this.templateMap = templateMap;

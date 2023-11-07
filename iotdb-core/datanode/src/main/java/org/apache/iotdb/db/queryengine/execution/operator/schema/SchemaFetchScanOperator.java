@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -37,7 +36,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -108,7 +106,10 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   private TsBlock fetchSchema() throws MetadataException {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    schemaTree.appendMeasurementPaths(schemaRegion.fetchSchema(patternTree, templateMap, withTags, !write));
+    long startTime = System.currentTimeMillis();
+    schemaTree.appendMeasurementPaths(
+        schemaRegion.fetchSchema(patternTree, templateMap, withTags, !write));
+    System.out.println("fetch schema time cost: " + (System.currentTimeMillis() - startTime));
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {

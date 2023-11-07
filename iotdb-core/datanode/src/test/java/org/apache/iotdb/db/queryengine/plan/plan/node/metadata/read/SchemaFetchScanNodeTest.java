@@ -44,7 +44,8 @@ public class SchemaFetchScanNodeTest {
             new PartialPath("root.sg"),
             patternTree,
             Collections.emptyMap(),
-            true, true);
+            true,
+            true);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
     schemaFetchScanNode.serialize(byteBuffer);
     byteBuffer.flip();

@@ -841,7 +841,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             storageGroupList,
             schemaFetchStatement.getPatternTree(),
             schemaFetchStatement.getTemplateMap(),
-            schemaFetchStatement.isWithTags(), schemaFetchStatement.isWrite())
+            schemaFetchStatement.isWithTags(),
+            schemaFetchStatement.isWrite())
         .getRoot();
   }
 

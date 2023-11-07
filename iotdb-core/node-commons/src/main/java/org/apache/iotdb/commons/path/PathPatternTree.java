@@ -136,7 +136,7 @@ public class PathPatternTree {
       PathPatternNode<Void, VoidSerializer> newNode =
           new PathPatternNode<>(pathNodes[i], VoidSerializer.getInstance());
       curNode.addChild(newNode);
-      if(!containWildcard){
+      if (!containWildcard) {
         containWildcard = PathPatternUtil.hasWildcard(pathNodes[i]);
       }
       curNode = newNode;
