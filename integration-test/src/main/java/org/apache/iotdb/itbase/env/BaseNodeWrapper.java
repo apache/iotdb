@@ -35,6 +35,8 @@ public interface BaseNodeWrapper {
 
   int getPort();
 
+  int getMetricPort();
+
   String getId();
 
   String getIpAndPortString();

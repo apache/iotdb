@@ -22,6 +22,7 @@ package org.apache.iotdb.it.env.cluster.config;
 import org.apache.iotdb.itbase.env.DataNodeConfig;
 
 import java.io.IOException;
+import java.util.List;
 
 public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
 
@@ -47,5 +48,11 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
           "MppDataNodeConfig can't be override by an instance of "
               + persistentConfig.getClass().getCanonicalName());
     }
+  }
+
+  @Override
+  public DataNodeConfig setMetricReporterType(List<String> metricReporterTypes) {
+    properties.setProperty("dn_metric_reporter_list", String.join(",", metricReporterTypes));
+    return this;
   }
 }

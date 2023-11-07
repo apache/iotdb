@@ -20,4 +20,11 @@ package org.apache.iotdb.it.env.remote.config;
 
 import org.apache.iotdb.itbase.env.DataNodeConfig;
 
-public class RemoteDataNodeConfig implements DataNodeConfig {}
+import java.util.List;
+
+public class RemoteDataNodeConfig implements DataNodeConfig {
+  @Override
+  public DataNodeConfig setMetricReporterType(List<String> metricReporterTypes) {
+    return this;
+  }
+}

@@ -62,6 +62,11 @@ public class IoTDBConstant {
   public static final String CN_INTERNAL_ADDRESS = "cn_internal_address";
   public static final String DN_INTERNAL_ADDRESS = "dn_internal_address";
 
+  public static final String CN_METRIC_PROMETHEUS_REPORTER_PORT =
+      "cn_metric_prometheus_reporter_port";
+  public static final String DN_METRIC_PROMETHEUS_REPORTER_PORT =
+      "dn_metric_prometheus_reporter_port";
+
   public static final String CN_INTERNAL_PORT = "cn_internal_port";
   public static final String DN_INTERNAL_PORT = "dn_internal_port";
   public static final String CN_CONSENSUS_PORT = "cn_consensus_port";
