@@ -26,6 +26,7 @@ public class RetryPolicy<RESP> {
   private final Function<RESP, Boolean> retryHandler;
   /** -1 means retry indefinitely */
   private final int maxAttempts;
+
   private final TimeDuration waitTime;
 
   public RetryPolicy(Function<RESP, Boolean> retryHandler, int maxAttempts, TimeDuration waitTime) {
