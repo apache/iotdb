@@ -38,7 +38,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 4, unit: 'HOURS')
+        timeout(time: 8, unit: 'HOURS')
         // When we have test-fails e.g. we don't need to run the remaining steps
         skipStagesAfterUnstable()
     }
