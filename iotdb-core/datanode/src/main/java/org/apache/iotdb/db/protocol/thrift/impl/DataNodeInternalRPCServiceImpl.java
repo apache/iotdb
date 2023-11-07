@@ -110,7 +110,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -126,7 +125,6 @@ import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaMana
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
-import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -153,7 +151,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
@@ -203,8 +200,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -225,7 +222,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -260,6 +256,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private final DataNodeThrottleQuotaManager throttleQuotaManager =
       DataNodeThrottleQuotaManager.getInstance();
+
+  private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private static final String SYSTEM = "system";
 
@@ -1096,34 +1094,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteModelMetrics(TDeleteModelMetricsReq req) {
-    IClientSession session = new InternalClientSession(req.getModelId());
-    SESSION_MANAGER.registerSession(session);
-    SESSION_MANAGER.supplySession(
-        session, "MLNode", TimeZone.getDefault().getID(), ClientVersion.V_1_0);
-
-    try {
-      DeleteTimeSeriesStatement deleteTimeSeriesStatement = StatementGenerator.createStatement(req);
-
-      long queryId = SESSION_MANAGER.requestQueryId();
-      ExecutionResult result =
-          COORDINATOR.execute(
-              deleteTimeSeriesStatement,
-              queryId,
-              SESSION_MANAGER.getSessionInfo(session),
-              "",
-              partitionFetcher,
-              schemaFetcher);
-      return result.status;
-    } catch (Exception e) {
-      return ErrorHandlingUtils.onQueryException(e, OperationType.DELETE_TIMESERIES);
-    } finally {
-      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
-      SESSION_MANAGER.removeCurrSession();
-    }
-  }
-
-  @Override
   public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) throws TException {
     return spaceQuotaManager.setSpaceQuota(req);
   }
@@ -1169,7 +1139,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   MetricLevel.CORE,
                   Tag.NAME.toString(),
                   SYSTEM)
-              .value();
+              .getValue();
       if (cpuLoad != 0) {
         loadSample.setCpuUsageRate(cpuLoad);
       }
@@ -1188,15 +1158,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
     AuthorityChecker.getAuthorityFetcher().refreshToken();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
-    resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
-    if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {
-      resp.setStatusReason(CommonDescriptor.getInstance().getConfig().getStatusReason());
+    resp.setStatus(commonConfig.getNodeStatus().getStatus());
+    if (commonConfig.getStatusReason() != null) {
+      resp.setStatusReason(commonConfig.getStatusReason());
     }
     if (req.getSchemaRegionIds() != null) {
       spaceQuotaManager.updateSpaceQuotaUsage(req.getSpaceQuotaUsage());
-      resp.setRegionDeviceNumMap(
+      resp.setRegionDeviceUsageMap(
           schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaRegionIds()));
-      resp.setRegionTimeSeriesNumMap(
+      resp.setRegionSeriesUsageMap(
           schemaEngine.countTimeSeriesNumBySchemaRegion(req.getSchemaRegionIds()));
     }
     if (req.getDataRegionIds() != null) {
@@ -1204,7 +1174,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp.setRegionDisk(spaceQuotaManager.getRegionDisk());
     }
     // Update schema quota if necessary
-    SchemaEngine.getInstance().updateAndFillSchemaCountMap(req.schemaQuotaCount, resp);
+    SchemaEngine.getInstance().updateAndFillSchemaCountMap(req, resp);
 
     // Update pipe meta if necessary
     if (req.isNeedPipeMetaList()) {
@@ -1256,13 +1226,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         AutoGauge gauge =
             MetricService.getInstance()
                 .getAutoGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "heap");
-        result += gauge.value();
+        result += gauge.getValue();
       }
       for (String id : noHeapIds) {
         AutoGauge gauge =
             MetricService.getInstance()
                 .getAutoGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "noheap");
-        result += gauge.value();
+        result += gauge.getValue();
       }
     } catch (Exception e) {
       LOGGER.warn("Failed to get memory from metric because: ", e);
@@ -1272,8 +1242,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   private void sampleDiskLoad(TLoadSample loadSample) {
-    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
-
     double availableDisk =
         MetricService.getInstance()
             .getAutoGauge(
@@ -1281,7 +1249,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
                 SYSTEM)
-            .value();
+            .getValue();
     double totalDisk =
         MetricService.getInstance()
             .getAutoGauge(
@@ -1289,7 +1257,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
                 SYSTEM)
-            .value();
+            .getValue();
 
     if (availableDisk != 0 && totalDisk != 0) {
       double freeDiskRatio = availableDisk / totalDisk;
@@ -1367,7 +1335,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus setSystemStatus(String status) throws TException {
     try {
-      final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
       commonConfig.setNodeStatus(NodeStatus.parse(status));
       if (commonConfig.getNodeStatus().equals(NodeStatus.Removing)) {
         PipeAgent.runtime().stop();

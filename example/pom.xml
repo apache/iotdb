@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <artifactId>iotdb-examples</artifactId>
     <packaging>pom</packaging>
@@ -39,6 +39,7 @@
         <module>flink</module>
         <module>mqtt</module>
         <module>mqtt-customize</module>
+        <module>pipe-opc-ua-sink</module>
         <module>pulsar</module>
         <module>udf</module>
         <module>trigger</module>
@@ -46,6 +47,7 @@
         <module>rest-java-example</module>
         <module>flink-sql</module>
         <module>schema</module>
+        <module>pipe-count-point-processor</module>
     </modules>
     <build>
         <pluginManagement>

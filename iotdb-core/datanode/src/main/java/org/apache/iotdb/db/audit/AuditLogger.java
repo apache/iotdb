@@ -37,7 +37,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.slf4j.Logger;
@@ -88,7 +89,11 @@ public class AuditLogger {
     insertStatement.setMeasurements(new String[] {LOG, USERNAME, ADDRESS});
     insertStatement.setAligned(false);
     insertStatement.setValues(
-        new Object[] {new Binary(log), new Binary(username), new Binary(address)});
+        new Object[] {
+          new Binary(log, TSFileConfig.STRING_CHARSET),
+          new Binary(username, TSFileConfig.STRING_CHARSET),
+          new Binary(address, TSFileConfig.STRING_CHARSET)
+        });
     insertStatement.setDataTypes(
         new TSDataType[] {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT});
     return insertStatement;

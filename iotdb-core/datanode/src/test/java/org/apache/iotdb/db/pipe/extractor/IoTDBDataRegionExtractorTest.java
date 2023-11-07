@@ -41,10 +41,12 @@ public class IoTDBDataRegionExtractorTest {
                       put(
                           PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
                           Boolean.TRUE.toString());
-                      put(PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE, Boolean.TRUE.toString());
                       put(
-                          PipeExtractorConstant.EXTRACTOR_REALTIME_MODE,
-                          PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_HYBRID);
+                          PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_KEY,
+                          Boolean.TRUE.toString());
+                      put(
+                          PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_KEY,
+                          PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_HYBRID_VALUE);
                     }
                   })));
     } catch (Exception e) {

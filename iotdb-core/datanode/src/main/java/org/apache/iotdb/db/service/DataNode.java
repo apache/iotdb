@@ -166,9 +166,14 @@ public class DataNode implements DataNodeMBean {
       // Check if this DataNode is start for the first time and do other pre-checks
       isFirstStart = prepareDataNode();
 
-      // Set target ConfigNodeList from iotdb-datanode.properties file
-      ConfigNodeInfo.getInstance()
-          .updateConfigNodeList(Collections.singletonList(config.getSeedConfigNode()));
+      if (isFirstStart) {
+        // Set target ConfigNodeList from iotdb-datanode.properties file
+        ConfigNodeInfo.getInstance()
+            .updateConfigNodeList(Collections.singletonList(config.getSeedConfigNode()));
+      } else {
+        // Load registered ConfigNodes from system.properties
+        ConfigNodeInfo.getInstance().loadConfigNodeList();
+      }
 
       // Pull and check system configurations from ConfigNode-leader
       pullAndCheckSystemConfigurations();
@@ -251,11 +256,9 @@ public class DataNode implements DataNodeMBean {
         configurationResp = configNodeClient.getSystemConfiguration();
         break;
       } catch (TException | ClientManagerException e) {
-        // Read ConfigNodes from system.properties and retry
         logger.warn(
             "Cannot pull system configurations from ConfigNode-leader, because: {}",
             e.getMessage());
-        ConfigNodeInfo.getInstance().loadConfigNodeList();
         retry--;
       }
 
@@ -375,9 +378,7 @@ public class DataNode implements DataNodeMBean {
         dataNodeRegisterResp = configNodeClient.registerDataNode(req);
         break;
       } catch (TException | ClientManagerException e) {
-        // Read ConfigNodes from system.properties and retry
         logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
-        ConfigNodeInfo.getInstance().loadConfigNodeList();
         retry--;
       }
 
@@ -435,10 +436,8 @@ public class DataNode implements DataNodeMBean {
         dataNodeRestartResp = configNodeClient.restartDataNode(req);
         break;
       } catch (TException | ClientManagerException e) {
-        // Read ConfigNodes from system.properties and retry
         logger.warn(
             "Cannot send restart request to the ConfigNode-leader, because: {}", e.getMessage());
-        ConfigNodeInfo.getInstance().loadConfigNodeList();
         retry--;
       }
 
@@ -567,10 +566,6 @@ public class DataNode implements DataNodeMBean {
   private void setUpRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
     registerManager.register(DataNodeInternalRPCService.getInstance());
-    // Start InternalRPCService to indicate that the current DataNode can accept request from MLNode
-    if (config.isEnableMLNodeService()) {
-      registerManager.register(MLNodeRPCService.getInstance());
-    }
 
     // Notice: During the period between starting the internal RPC service
     // and starting the client RPC service , some requests may fail because
@@ -619,11 +614,11 @@ public class DataNode implements DataNodeMBean {
   }
 
   /**
-   * Generate dataNodeConfiguration.
+   * Generate dataNodeConfiguration. Warning: Don't private this method !!!
    *
    * @return TDataNodeConfiguration
    */
-  private TDataNodeConfiguration generateDataNodeConfiguration() {
+  public TDataNodeConfiguration generateDataNodeConfiguration() {
     // Set DataNodeLocation
     TDataNodeLocation location = generateDataNodeLocation();
 

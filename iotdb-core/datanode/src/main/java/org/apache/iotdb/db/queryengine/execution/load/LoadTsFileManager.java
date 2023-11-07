@@ -23,6 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -33,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.L
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -260,10 +264,21 @@ public class LoadTsFileManager {
           writer.endChunkGroup();
         }
         writer.endFile();
-        entry
-            .getKey()
-            .getDataRegion()
-            .loadNewTsFile(generateResource(writer), true, isGeneratedByPipe);
+
+        DataRegion dataRegion = entry.getKey().getDataRegion();
+        dataRegion.loadNewTsFile(generateResource(writer), true, isGeneratedByPipe);
+
+        MetricService.getInstance()
+            .count(
+                getTsFileWritePointCount(writer),
+                Metric.QUANTITY.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                Metric.POINTS_IN.toString(),
+                Tag.DATABASE.toString(),
+                dataRegion.getDatabaseName(),
+                Tag.REGION.toString(),
+                dataRegion.getDataRegionId());
       }
     }
 
@@ -271,6 +286,13 @@ public class LoadTsFileManager {
       TsFileResource tsFileResource = FileLoaderUtils.generateTsFileResource(writer);
       tsFileResource.serialize();
       return tsFileResource;
+    }
+
+    private long getTsFileWritePointCount(TsFileIOWriter writer) {
+      return writer.getChunkGroupMetadataList().stream()
+          .flatMap(chunkGroupMetadata -> chunkGroupMetadata.getChunkMetadataList().stream())
+          .mapToLong(chunkMetadata -> chunkMetadata.getStatistics().getCount())
+          .sum();
     }
 
     private void close() {

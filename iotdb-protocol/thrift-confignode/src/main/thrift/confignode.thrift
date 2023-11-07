@@ -40,6 +40,7 @@ struct TGlobalConfig {
   8: optional string timestampPrecision
   9: optional string schemaEngineMode
   10: optional i32 tagAttributeTotalSize
+  11: optional bool isEnterprise
 }
 
 struct TRatisConfig {
@@ -406,6 +407,17 @@ struct TConfigNodeRegisterResp {
   2: optional i32 configNodeId
 }
 
+struct TConfigNodeHeartbeatReq {
+    1: required i64 timestamp
+    2: optional common.TLicense licence
+}
+
+struct TConfigNodeHeartbeatResp {
+    1: required i64 timestamp
+    2: optional string activateStatus
+    3: optional common.TLicense license
+}
+
 struct TAddConsensusGroupReq {
   1: required list<common.TConfigNodeLocation> configNodeList
 }
@@ -517,6 +529,10 @@ struct TShowClusterResp {
 struct TNodeVersionInfo {
   1: required string version;
   2: required string buildInfo;
+}
+
+struct TNodeActivateInfo {
+  1: required string status
 }
 
 struct TShowVariablesResp {
@@ -763,58 +779,6 @@ struct TUnsetSchemaTemplateReq{
   3: required string path
 }
 
-struct TCreateModelReq {
-  1: required string modelId
-  2: required common.TaskType taskType
-  3: required map<string, string> options
-  4: required map<string, string> hyperparameters
-  5: required string datasetFetchSQL
-}
-
-struct TDropModelReq {
-  1: required string modelId
-}
-
-struct TShowModelReq {
-  1: optional string modelId
-}
-
-struct TShowModelResp {
-  1: required common.TSStatus status
-  2: required list<binary> modelInfoList
-}
-
-struct TShowTrialReq {
-  1: required string modelId
-  2: optional string trialId
-}
-
-struct TGetModelInfoReq {
-  1: required string modelId
-}
-
-struct TShowTrialResp {
-  1: required common.TSStatus status
-  2: required list<binary> trialInfoList
-}
-
-struct TUpdateModelInfoReq {
-  1: required string modelId
-  2: required string trialId
-  3: required map<string, string> modelInfo
-}
-
-struct TUpdateModelStateReq {
-  1: required string modelId
-  2: required common.TrainingState state
-  3: optional string bestTrialId
-}
-
-struct TGetModelInfoResp {
-  1: required common.TSStatus status
-  2: optional binary modelInfo
-}
-
 // ====================================================
 // Quota
 // ====================================================
@@ -832,6 +796,15 @@ struct TThrottleQuotaResp{
 struct TShowThrottleReq{
   1: optional string userName;
 }
+
+// ====================================================
+// Activation
+// ====================================================
+struct TLicenseContentResp {
+    1: required common.TSStatus status
+    2: optional common.TLicense licenseContent
+}
+
 
 service IConfigNodeRPCService {
 
@@ -1107,7 +1080,7 @@ service IConfigNodeRPCService {
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /** The ConfigNode-leader will ping other ConfigNodes periodically */
-  i64 getConfigNodeHeartBeat(i64 timestamp)
+  TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq req)
 
   // ======================================================
   // UDF
@@ -1398,53 +1371,6 @@ service IConfigNodeRPCService {
    * Return the cq table of config leader
    */
   TShowCQResp showCQ()
-
-  // ====================================================
-  // ML Model
-  // ====================================================
-
-  /**
-   * Create a model
-   *
-   * @return SUCCESS_STATUS if the model was created successfully
-   */
-  common.TSStatus createModel(TCreateModelReq req)
-
-  /**
-   * Drop a model
-   *
-   * @return SUCCESS_STATUS if the model was removed successfully
-   */
-  common.TSStatus dropModel(TDropModelReq req)
-
-  /**
-   * Return the model table
-   */
-  TShowModelResp showModel(TShowModelReq req)
-
-  /**
-   * Return the trial table
-   */
-  TShowTrialResp showTrial(TShowTrialReq req)
-
-  /**
-   * Update the model info
-   *
-   * @return SUCCESS_STATUS if the model was removed successfully
-   */
-  common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
-
-  /**
-   * Update the model state
-   *
-   * @return SUCCESS_STATUS if the model was removed successfully
-   */
-  common.TSStatus updateModelState(TUpdateModelStateReq req)
-
-   /**
-   * Return the model info by model_id
-   */
-  TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
 
   // ======================================================
   // Quota

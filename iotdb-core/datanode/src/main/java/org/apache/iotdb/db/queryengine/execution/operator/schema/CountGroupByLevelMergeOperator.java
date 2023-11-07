@@ -22,7 +22,8 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -116,7 +117,8 @@ public class CountGroupByLevelMergeOperator implements ProcessOperator {
 
   private void consumeChildrenTsBlock(TsBlock tsBlock) {
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-      String columnName = tsBlock.getColumn(0).getBinary(i).getStringValue();
+      String columnName =
+          tsBlock.getColumn(0).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
       long count = tsBlock.getColumn(1).getLong(i);
       countMap.put(columnName, countMap.getOrDefault(columnName, 0L) + count);
     }
@@ -129,7 +131,9 @@ public class CountGroupByLevelMergeOperator implements ProcessOperator {
             Arrays.asList(TSDataType.TEXT, TSDataType.INT64),
             (entry, tsBlockBuilder) -> {
               tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-              tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(entry.getKey()));
+              tsBlockBuilder
+                  .getColumnBuilder(0)
+                  .writeBinary(new Binary(entry.getKey(), TSFileConfig.STRING_CHARSET));
               tsBlockBuilder.getColumnBuilder(1).writeLong(entry.getValue());
               tsBlockBuilder.declarePosition();
             });

@@ -193,7 +193,7 @@ public class StorageEngine implements IService {
     isAllSgReady.set(allSgReady);
   }
 
-  public void recover() throws StartupException {
+  public void asyncRecover() throws StartupException {
     setAllSgReady(false);
     cachedThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.STORAGE_ENGINE_CACHED_POOL.getName());
@@ -295,7 +295,7 @@ public class StorageEngine implements IService {
       throw new StorageEngineFailureException(e);
     }
 
-    recover();
+    asyncRecover();
 
     ttlCheckThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.TTL_CHECK.getName());
@@ -552,7 +552,7 @@ public class StorageEngine implements IService {
   public void operateFlush(TFlushReq req) {
     if (req.storageGroups == null) {
       StorageEngine.getInstance().syncCloseAllProcessor();
-      WALManager.getInstance().deleteOutdatedWALFiles();
+      WALManager.getInstance().deleteOutdatedFilesInWALNodes();
     } else {
       for (String storageGroup : req.storageGroups) {
         if (req.isSeq == null) {

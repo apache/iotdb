@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
@@ -56,8 +56,6 @@ public interface IChunkMetadata {
   boolean needSetChunkLoader();
 
   void setChunkLoader(IChunkLoader chunkLoader);
-
-  void setFilePath(String filePath);
 
   void setClosed(boolean closed);
 

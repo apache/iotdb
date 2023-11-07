@@ -20,10 +20,10 @@
 package org.apache.iotdb.tsfile.file.header;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
@@ -31,12 +31,20 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.openjdk.jol.info.ClassLayout;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public class ChunkHeader {
+
+  public static final int INSTANCE_SIZE =
+      ClassLayout.parseClass(ChunkHeader.class).instanceSize()
+          + ClassLayout.parseClass(TSDataType.class).instanceSize()
+          + ClassLayout.parseClass(CompressionType.class).instanceSize()
+          + ClassLayout.parseClass(TSEncoding.class).instanceSize();
 
   /**
    * 1 means this chunk has more than one page, so each page has its own page statistic. 5 means
@@ -49,13 +57,13 @@ public class ChunkHeader {
 
   private String measurementID;
   private int dataSize;
-  private TSDataType dataType;
-  private CompressionType compressionType;
-  private TSEncoding encodingType;
+  private final TSDataType dataType;
+  private final CompressionType compressionType;
+  private final TSEncoding encodingType;
 
   // the following fields do not need to be serialized.
   private int numOfPages;
-  private int serializedSize;
+  private final int serializedSize;
 
   public ChunkHeader(
       String measurementID,
@@ -130,7 +138,7 @@ public class ChunkHeader {
         + ReadWriteForEncodingUtils.varIntSize(measurementIdLength) // measurementID length
         + measurementIdLength // measurementID
         + ReadWriteForEncodingUtils.uVarIntSize(dataSize) // dataSize
-        + TSDataType.getSerializedSize() // dataType
+        + TSDataType.getSerializedSize() // dataTypex
         + CompressionType.getSerializedSize() // compressionType
         + TSEncoding.getSerializedSize(); // encodingType
   }
@@ -178,27 +186,39 @@ public class ChunkHeader {
    *
    * @param input TsFileInput
    * @param offset offset
-   * @param chunkHeaderSize the estimated size of chunk's header
    * @return CHUNK_HEADER object
    * @throws IOException IOException
    */
-  public static ChunkHeader deserializeFrom(TsFileInput input, long offset, int chunkHeaderSize)
-      throws IOException {
+  public static ChunkHeader deserializeFrom(TsFileInput input, long offset) throws IOException {
 
-    // read chunk header from input to buffer
-    ByteBuffer buffer = ByteBuffer.allocate(chunkHeaderSize);
+    ByteBuffer buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + 1);
     input.read(buffer, offset);
     buffer.flip();
 
+    // read chunk header from input to buffer
     byte chunkType = buffer.get();
+    int strLength = ReadWriteForEncodingUtils.readVarInt(buffer);
+    int alreadyReadLength = buffer.position();
+
+    int remainingBytes =
+        strLength
+            + Integer.BYTES
+            + 1 // uVarInt dataSize
+            + TSDataType.getSerializedSize() // dataType
+            + CompressionType.getSerializedSize() // compressionType
+            + TSEncoding.getSerializedSize();
+    buffer = ByteBuffer.allocate(remainingBytes);
+
+    input.read(buffer, offset + alreadyReadLength);
+    buffer.flip();
+
     // read measurementID
-    String measurementID = ReadWriteIOUtils.readVarIntString(buffer);
+    String measurementID = ReadWriteIOUtils.readStringWithLength(buffer, strLength);
     int dataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
     CompressionType type = ReadWriteIOUtils.readCompressionType(buffer);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(buffer);
-    chunkHeaderSize =
-        chunkHeaderSize - Integer.BYTES - 1 + ReadWriteForEncodingUtils.uVarIntSize(dataSize);
+    int chunkHeaderSize = alreadyReadLength + buffer.position();
     return new ChunkHeader(
         chunkType, measurementID, dataSize, chunkHeaderSize, dataType, type, encoding);
   }
@@ -223,6 +243,10 @@ public class ChunkHeader {
 
   public String getMeasurementID() {
     return measurementID;
+  }
+
+  public void setMeasurementID(String measurementID) {
+    this.measurementID = measurementID;
   }
 
   public int getDataSize() {

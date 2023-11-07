@@ -73,8 +73,12 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     this.shouldPrintMessage = shouldPrintMessage;
   }
 
-  public PipeHeartbeatEvent(String dataRegionId, long timePublished, boolean shouldPrintMessage) {
-    super(null, null);
+  public PipeHeartbeatEvent(
+      PipeTaskMeta pipeTaskMeta,
+      String dataRegionId,
+      long timePublished,
+      boolean shouldPrintMessage) {
+    super(pipeTaskMeta, null);
     this.dataRegionId = dataRegionId;
     this.timePublished = timePublished;
     this.shouldPrintMessage = shouldPrintMessage;
@@ -103,7 +107,8 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
-    return new PipeHeartbeatEvent(dataRegionId, timePublished, shouldPrintMessage);
+    // Should record PipeTaskMeta, for sometimes HeartbeatEvents should report exceptions.
+    return new PipeHeartbeatEvent(pipeTaskMeta, dataRegionId, timePublished, shouldPrintMessage);
   }
 
   @Override
@@ -174,13 +179,13 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public void recordBufferQueueSize(EnrichedDeque<Event> bufferQueue) {
     if (shouldPrintMessage) {
       bufferQueueTabletSize = bufferQueue.getTabletInsertionEventCount();
+      bufferQueueTsFileSize = bufferQueue.getTsFileInsertionEventCount();
       bufferQueueSize = bufferQueue.size();
     }
 
-    bufferQueueTsFileSize = bufferQueue.getTsFileInsertionEventCount();
     if (extractor instanceof PipeRealtimeDataRegionHybridExtractor) {
       ((PipeRealtimeDataRegionHybridExtractor) extractor)
-          .informEventCollectorQueueTsFileSize(bufferQueueTsFileSize);
+          .informEventCollectorQueueTsFileSize(bufferQueue.getTsFileInsertionEventCount());
     }
   }
 

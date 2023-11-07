@@ -29,9 +29,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -62,28 +62,30 @@ public class ShowTriggersTask implements IConfigTask {
         builder.getTimeColumnBuilder().writeLong(0L);
         builder
             .getColumnBuilder(0)
-            .writeBinary(Binary.valueOf(triggerInformation.getTriggerName()));
+            .writeBinary(BytesUtils.valueOf(triggerInformation.getTriggerName()));
         builder
             .getColumnBuilder(1)
-            .writeBinary(Binary.valueOf(triggerInformation.getEvent().toString()));
+            .writeBinary(BytesUtils.valueOf(triggerInformation.getEvent().toString()));
         builder
             .getColumnBuilder(2)
             .writeBinary(
-                Binary.valueOf(
+                BytesUtils.valueOf(
                     triggerInformation.isStateful()
                         ? TriggerType.STATEFUL.toString()
                         : TriggerType.STATELESS.toString()));
         builder
             .getColumnBuilder(3)
-            .writeBinary(Binary.valueOf(triggerInformation.getTriggerState().toString()));
+            .writeBinary(BytesUtils.valueOf(triggerInformation.getTriggerState().toString()));
         builder
             .getColumnBuilder(4)
-            .writeBinary(Binary.valueOf(triggerInformation.getPathPattern().toString()));
-        builder.getColumnBuilder(5).writeBinary(Binary.valueOf(triggerInformation.getClassName()));
+            .writeBinary(BytesUtils.valueOf(triggerInformation.getPathPattern().toString()));
+        builder
+            .getColumnBuilder(5)
+            .writeBinary(BytesUtils.valueOf(triggerInformation.getClassName()));
         builder
             .getColumnBuilder(6)
             .writeBinary(
-                Binary.valueOf(
+                BytesUtils.valueOf(
                     !triggerInformation.isStateful()
                         ? "ALL"
                         : String.valueOf(

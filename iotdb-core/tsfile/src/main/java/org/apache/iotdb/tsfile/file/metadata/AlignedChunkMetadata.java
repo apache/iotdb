@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
@@ -142,16 +142,6 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   @Override
   public void setChunkLoader(IChunkLoader chunkLoader) {
     this.chunkLoader = chunkLoader;
-  }
-
-  @Override
-  public void setFilePath(String filePath) {
-    timeChunkMetadata.setFilePath(filePath);
-    for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
-      if (chunkMetadata != null) {
-        chunkMetadata.setFilePath(filePath);
-      }
-    }
   }
 
   @Override

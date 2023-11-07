@@ -24,7 +24,8 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -154,7 +155,9 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
                   if (null == value) {
                     tsBlockBuilder.getColumnBuilder(i).appendNull();
                   } else {
-                    tsBlockBuilder.getColumnBuilder(i).writeBinary(new Binary(value.toString()));
+                    tsBlockBuilder
+                        .getColumnBuilder(i)
+                        .writeBinary(new Binary(value.toString(), TSFileConfig.STRING_CHARSET));
                   }
                 }
                 tsBlockBuilder.declarePosition();

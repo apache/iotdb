@@ -54,22 +54,21 @@ import java.util.function.Function;
 public class LoadSingleTsFileNode extends WritePlanNode {
   private static final Logger logger = LoggerFactory.getLogger(LoadSingleTsFileNode.class);
 
-  private File tsFile;
-  private TsFileResource resource;
+  private final File tsFile;
+  private final TsFileResource resource;
+  private final boolean deleteAfterLoad;
+  private final long writePointCount;
   private boolean needDecodeTsFile;
-  private boolean deleteAfterLoad;
 
   private TRegionReplicaSet localRegionReplicaSet;
 
-  public LoadSingleTsFileNode(PlanNodeId id) {
-    super(id);
-  }
-
-  public LoadSingleTsFileNode(PlanNodeId id, TsFileResource resource, boolean deleteAfterLoad) {
+  public LoadSingleTsFileNode(
+      PlanNodeId id, TsFileResource resource, boolean deleteAfterLoad, long writePointCount) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
     this.deleteAfterLoad = deleteAfterLoad;
+    this.writePointCount = writePointCount;
   }
 
   public boolean isTsFileEmpty() {
@@ -100,7 +99,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       needDecodeTsFile = !isDispatchedToLocal(new HashSet<>(partitionFetcher.apply(slotList)));
     }
 
-    PipeAgent.runtime().assignRecoverProgressIndexForTsFileRecovery(resource);
+    PipeAgent.runtime().assignProgressIndexForTsFileLoad(resource);
 
     // we serialize the resource file even if the tsfile does not need to be decoded
     // or the resource file is already existed because we need to serialize the
@@ -136,6 +135,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public boolean isDeleteAfterLoad() {
     return deleteAfterLoad;
+  }
+
+  public long getWritePointCount() {
+    return writePointCount;
   }
 
   /**

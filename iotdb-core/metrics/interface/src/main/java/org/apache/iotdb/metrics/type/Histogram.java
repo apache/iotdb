@@ -27,14 +27,14 @@ public interface Histogram extends IMetric {
   void update(long value);
 
   /** Get the value of histogram. */
-  long count();
+  long getCount();
 
   /** Take snapshot of histogram. */
   HistogramSnapshot takeSnapshot();
 
   @Override
   default void constructValueMap(Map<String, Object> result) {
-    result.put("count", count());
+    result.put("count", getCount());
     takeSnapshot().constructValueMap(result);
   }
 }

@@ -25,10 +25,12 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 
@@ -37,6 +39,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
@@ -136,5 +139,86 @@ public class LastFlushTimeMapTest {
     }
     Assert.assertEquals(
         10000, dataRegion.getLastFlushTimeMap().getFlushedTime(0, "root.vehicle.d0"));
+  }
+
+  @Test
+  public void testRecoverDeviceLastFlushedTimeWhenLargestTimestampInUnSeqSpace() {
+    String seqDirPath =
+        TestConstant.BASE_OUTPUT_PATH
+            + "data"
+            + File.separator
+            + "sequence"
+            + File.separator
+            + "root.testsg"
+            + File.separator
+            + "0"
+            + File.separator
+            + "0";
+    String unseqDirPath =
+        TestConstant.BASE_OUTPUT_PATH
+            + "data"
+            + File.separator
+            + "unsequence"
+            + File.separator
+            + "root.testsg"
+            + File.separator
+            + "0"
+            + File.separator
+            + "0";
+    String device = "root.testsg.d1";
+    File seqResourceFile1 = new File(seqDirPath + File.separator + "1-1-0-0.tsfile.resource");
+    TsFileResource seqResource1 = new TsFileResource();
+    seqResource1.setFile(seqResourceFile1);
+    seqResource1.setTimeIndex(new DeviceTimeIndex());
+    seqResource1.updateStartTime(device, 10);
+    seqResource1.updateEndTime(device, 20);
+
+    File seqResourceFile2 = new File(seqDirPath + File.separator + "2-2-0-0.tsfile.resource");
+    TsFileResource seqResource2 = new TsFileResource();
+    seqResource2.setTimeIndex(new DeviceTimeIndex());
+    seqResource2.setFile(seqResourceFile2);
+    seqResource2.updateStartTime(device, 30);
+    seqResource2.updateEndTime(device, 40);
+
+    File seqResourceFile3 = new File(seqDirPath + File.separator + "3-3-0-0.tsfile.resource");
+    TsFileResource seqResource3 = new TsFileResource();
+    seqResource3.setTimeIndex(new DeviceTimeIndex());
+    seqResource3.setFile(seqResourceFile3);
+    seqResource3.updateStartTime(device, 50);
+    seqResource3.updateEndTime(device, 60);
+
+    File unseqResourceFile1 = new File(unseqDirPath + File.separator + "4-4-0-0.tsfile.resource");
+    TsFileResource unseqResource1 = new TsFileResource();
+    unseqResource1.setTimeIndex(new DeviceTimeIndex());
+    unseqResource1.setFile(unseqResourceFile1);
+    unseqResource1.updateStartTime(device, 1);
+    unseqResource1.updateEndTime(device, 100);
+
+    File unseqResourceFile2 = new File(unseqDirPath + File.separator + "5-5-0-0.tsfile.resource");
+    TsFileResource unseqResource2 = new TsFileResource();
+    unseqResource2.setTimeIndex(new DeviceTimeIndex());
+    unseqResource2.setFile(unseqResourceFile2);
+    unseqResource2.updateStartTime(device, 1);
+    unseqResource2.updateEndTime(device, 10);
+
+    File unseqResourceFile3 = new File(unseqDirPath + File.separator + "6-6-0-0.tsfile.resource");
+    TsFileResource unseqResource3 = new TsFileResource();
+    unseqResource3.setTimeIndex(new DeviceTimeIndex());
+    unseqResource3.setFile(unseqResourceFile3);
+    unseqResource3.updateStartTime(device, 1);
+    unseqResource3.updateEndTime(device, 70);
+
+    TsFileManager tsFileManager = dataRegion.getTsFileManager();
+    tsFileManager.add(seqResource1, true);
+    tsFileManager.add(seqResource2, true);
+    tsFileManager.add(seqResource3, true);
+    tsFileManager.add(unseqResource1, false);
+    tsFileManager.add(unseqResource2, false);
+    tsFileManager.add(unseqResource3, false);
+
+    dataRegion.getLastFlushTimeMap().checkAndCreateFlushedTimePartition(0);
+
+    Assert.assertEquals(100, dataRegion.getLastFlushTimeMap().getFlushedTime(0, device));
+    tsFileManager.clear();
   }
 }

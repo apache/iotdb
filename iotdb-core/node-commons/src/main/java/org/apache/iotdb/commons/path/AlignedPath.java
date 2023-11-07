@@ -21,7 +21,8 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -121,10 +122,13 @@ public class AlignedPath extends PartialPath {
    * @param comparator
    */
   public void sortMeasurement(Comparator<Binary> comparator) {
-    measurementList.sort(Comparator.comparing(Binary::new, comparator));
+    measurementList.sort(
+        Comparator.comparing(s -> new Binary(s, TSFileConfig.STRING_CHARSET), comparator));
     schemaList.sort(
         Comparator.comparing(
-            iMeasurementSchema -> new Binary(iMeasurementSchema.getMeasurementId()), comparator));
+            iMeasurementSchema ->
+                new Binary(iMeasurementSchema.getMeasurementId(), TSFileConfig.STRING_CHARSET),
+            comparator));
   }
 
   @Override

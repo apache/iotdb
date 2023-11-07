@@ -105,7 +105,7 @@ public class SessionConnection {
     endPointList.add(endPoint);
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     try {
-      init(endPoint);
+      init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
     } catch (IoTDBConnectionException e) {
       throw new IoTDBConnectionException(logForReconnectionFailure());
     }
@@ -118,14 +118,25 @@ public class SessionConnection {
     initClusterConn();
   }
 
-  private void init(TEndPoint endPoint) throws IoTDBConnectionException {
+  private void init(TEndPoint endPoint, boolean useSSL, String trustStore, String trustStorePwd)
+      throws IoTDBConnectionException {
     RpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     RpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
     try {
-      transport =
-          RpcTransportFactory.INSTANCE.getTransport(
-              // as there is a try-catch already, we do not need to use TSocket.wrap
-              endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs);
+      if (useSSL) {
+        transport =
+            RpcTransportFactory.INSTANCE.getTransport(
+                endPoint.getIp(),
+                endPoint.getPort(),
+                session.connectionTimeoutInMs,
+                trustStore,
+                trustStorePwd);
+      } else {
+        transport =
+            RpcTransportFactory.INSTANCE.getTransport(
+                // as there is a try-catch already, we do not need to use TSocket.wrap
+                endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs);
+      }
       if (!transport.isOpen()) {
         transport.open();
       }
@@ -180,7 +191,7 @@ public class SessionConnection {
     for (TEndPoint tEndPoint : endPointList) {
       try {
         session.defaultEndPoint = tEndPoint;
-        init(tEndPoint);
+        init(tEndPoint, session.useSSL, session.trustStore, session.trustStorePwd);
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
           logger.error("Cluster has no nodes to connect");
@@ -958,7 +969,7 @@ public class SessionConnection {
           }
           tryHostNum++;
           try {
-            init(endPoint);
+            init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
             connectedSuccess = true;
           } catch (IoTDBConnectionException e) {
             logger.error("The current node may have been down {},try next node", endPoint);

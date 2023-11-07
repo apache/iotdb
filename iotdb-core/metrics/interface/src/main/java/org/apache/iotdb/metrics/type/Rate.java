@@ -32,12 +32,6 @@ public interface Rate extends IMetric {
   /** Get mean rate. */
   double getMeanRate();
 
-  /** Get five minute rate. */
-  double getFiveMinuteRate();
-
-  /** Get fifteen minute rate. */
-  double getFifteenMinuteRate();
-
   /** Mark in rate. */
   void mark();
 
@@ -49,7 +43,5 @@ public interface Rate extends IMetric {
     result.put("count", getCount());
     result.put("mean", getMeanRate());
     result.put("m1", getOneMinuteRate());
-    result.put("m5", getFiveMinuteRate());
-    result.put("m15", getFifteenMinuteRate());
   }
 }

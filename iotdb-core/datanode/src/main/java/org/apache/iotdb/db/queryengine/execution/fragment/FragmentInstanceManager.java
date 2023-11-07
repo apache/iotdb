@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -79,7 +78,6 @@ public class FragmentInstanceManager {
   private final CounterStat failedInstances = new CounterStat();
 
   private final ExecutorService intoOperationExecutor;
-  private final ExecutorService modelInferenceExecutor;
 
   private final MPPDataExchangeManager exchangeManager =
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
@@ -117,11 +115,6 @@ public class FragmentInstanceManager {
         IoTDBThreadPoolFactory.newFixedThreadPool(
             IoTDBDescriptor.getInstance().getConfig().getIntoOperationExecutionThreadCount(),
             "into-operation-executor");
-
-    this.modelInferenceExecutor =
-        IoTDBThreadPoolFactory.newFixedThreadPool(
-            CommonDescriptor.getInstance().getConfig().getModelInferenceExecutionThreadCount(),
-            "model-inference-executor");
   }
 
   public int getInstanceContextSize() {
@@ -365,10 +358,6 @@ public class FragmentInstanceManager {
 
   public ExecutorService getIntoOperationExecutor() {
     return intoOperationExecutor;
-  }
-
-  public ExecutorService getModelInferenceExecutor() {
-    return modelInferenceExecutor;
   }
 
   private static class InstanceHolder {

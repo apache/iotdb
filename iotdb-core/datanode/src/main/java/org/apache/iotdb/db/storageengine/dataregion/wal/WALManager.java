@@ -44,9 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -150,38 +148,13 @@ public class WALManager implements IService {
         config.getDeleteWalFilesPeriodInMs());
   }
 
-  /** Submit delete outdated wal files task and wait for result. */
-  public void deleteOutdatedWALFiles() {
-    if (config.getWalMode() == WALMode.DISABLE) {
-      return;
-    }
-
-    if (walDeleteThread == null) {
-      return;
-    }
-
-    Future<?> future = walDeleteThread.submit(this::deleteOutdatedFiles);
-    try {
-      future.get();
-    } catch (ExecutionException e) {
-      logger.warn("Exception occurs when deleting wal files", e);
-    } catch (InterruptedException e) {
-      logger.warn("Interrupted when deleting wal files", e);
-      Thread.currentThread().interrupt();
-    }
-  }
-
   private void deleteOutdatedFiles() {
     // Normally, only need to delete the expired file once. When the WAL disk file size exceeds the
     // threshold, the system continues to delete expired files until the disk size is smaller than
     // the threshold.
     boolean firstLoop = true;
     while (firstLoop || shouldThrottle()) {
-      List<WALNode> walNodes = walNodesManager.getNodesSnapshot();
-      walNodes.sort((node1, node2) -> Long.compare(node2.getDiskUsage(), node1.getDiskUsage()));
-      for (WALNode walNode : walNodes) {
-        walNode.deleteOutdatedFiles();
-      }
+      deleteOutdatedFilesInWALNodes();
       if (firstLoop && shouldThrottle()) {
         logger.warn(
             "WAL disk usage {} is larger than the iot_consensus_throttle_threshold_in_byte {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
@@ -189,6 +162,17 @@ public class WALManager implements IService {
             getThrottleThreshold());
       }
       firstLoop = false;
+    }
+  }
+
+  public void deleteOutdatedFilesInWALNodes() {
+    if (config.getWalMode() == WALMode.DISABLE) {
+      return;
+    }
+    List<WALNode> walNodes = walNodesManager.getNodesSnapshot();
+    walNodes.sort((node1, node2) -> Long.compare(node2.getDiskUsage(), node1.getDiskUsage()));
+    for (WALNode walNode : walNodes) {
+      walNode.deleteOutdatedFiles();
     }
   }
 

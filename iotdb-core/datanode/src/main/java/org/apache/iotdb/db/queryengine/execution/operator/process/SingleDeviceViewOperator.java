@@ -21,11 +21,12 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.NullColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -63,7 +64,9 @@ public class SingleDeviceViewOperator implements ProcessOperator {
     this.deviceOperator = deviceOperator;
     this.deviceColumnIndex = deviceColumnIndex;
     this.dataTypes = dataTypes;
-    this.binaryColumn = new BinaryColumn(1, Optional.empty(), new Binary[] {new Binary(device)});
+    this.binaryColumn =
+        new BinaryColumn(
+            1, Optional.empty(), new Binary[] {new Binary(device, TSFileConfig.STRING_CHARSET)});
   }
 
   @Override

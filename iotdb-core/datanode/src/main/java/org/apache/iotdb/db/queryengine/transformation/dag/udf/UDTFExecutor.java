@@ -22,7 +22,9 @@ package org.apache.iotdb.db.queryengine.transformation.dag.udf;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -127,6 +129,14 @@ public class UDTFExecutor {
       udtf.transform(rowWindow, collector);
     } catch (Exception e) {
       onError("transform(RowWindow, PointCollector)", e);
+    }
+  }
+
+  public void execute(Column[] columns, ColumnBuilder builder) {
+    try {
+      udtf.transform(columns, builder);
+    } catch (Exception e) {
+      onError("transform(TsBlock, ColumnBuilder)", e);
     }
   }
 

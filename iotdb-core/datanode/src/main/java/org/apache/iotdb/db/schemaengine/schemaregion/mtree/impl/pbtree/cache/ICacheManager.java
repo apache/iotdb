@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
-import java.util.List;
+import java.util.Iterator;
 
 public interface ICacheManager {
 
@@ -37,11 +37,13 @@ public interface ICacheManager {
 
   void updateCacheStatusAfterUpdate(ICachedMNode node);
 
-  void updateCacheStatusAfterPersist(ICachedMNode node);
-
   IDatabaseMNode<ICachedMNode> collectUpdatedStorageGroupMNodes();
 
-  List<ICachedMNode> collectVolatileMNodes();
+  Iterator<ICachedMNode> collectVolatileSubtrees();
+
+  Iterator<ICachedMNode> updateCacheStatusAndRetrieveSubtreeAfterPersist(ICachedMNode subtreeRoot);
+
+  void updateCacheStatusAfterFlushFailure(ICachedMNode subtreeRoot);
 
   void remove(ICachedMNode node);
 
