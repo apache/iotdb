@@ -220,7 +220,6 @@ public abstract class CacheManager implements ICacheManager {
       synchronized (cacheEntry) {
         if (!cacheEntry.isVolatile()) {
           nodeBuffer.put(cacheEntry, parent);
-          System.out.println(isInNodeCache(cacheEntry));
         }
       }
     }
@@ -228,16 +227,16 @@ public abstract class CacheManager implements ICacheManager {
     nodeBuffer.remove(getCacheEntry(node));
   }
 
-
-  private void addItselfAndAncestorToCache(ICachedMNode node){
+  private void addItselfAndAncestorToCache(ICachedMNode node) {
     // the volatile subtree of this node has been deleted, thus there's no need to flush it
     // add the node and its ancestors to cache
     // if there's flush failure, such node and ancestors will be removed from cache again by
     // #updateCacheStatusAfterFlushFailure
     ICachedMNode tmp = node;
     while (!tmp.isDatabase()
-            && !isInNodeCache(getCacheEntry(tmp))
-            && !getCachedMNodeContainer(tmp).hasChildrenInBuffer() && !getCacheEntry(tmp).isVolatile()) {
+        && !isInNodeCache(getCacheEntry(tmp))
+        && !getCachedMNodeContainer(tmp).hasChildrenInBuffer()
+        && !getCacheEntry(tmp).isVolatile()) {
       nodeBuffer.remove(getCacheEntry(tmp));
       addToNodeCache(getCacheEntry(tmp), tmp);
       tmp = tmp.getParent();
@@ -387,15 +386,9 @@ public abstract class CacheManager implements ICacheManager {
   }
 
   private void removeOne(CacheEntry cacheEntry, ICachedMNode node) {
-    int a = 0;
-    if(isInNodeCache(cacheEntry)){
-      a=1;
-      if(isInNodeCache(cacheEntry)&&nodeBuffer.maps[nodeBuffer.getLoc(cacheEntry)].containsKey(cacheEntry)){
-        a=3;
-      }
+    if (isInNodeCache(cacheEntry)) {
       removeFromNodeCache(cacheEntry);
-    }else {
-      a=2;
+    } else {
       nodeBuffer.remove(cacheEntry);
     }
 
@@ -635,12 +628,6 @@ public abstract class CacheManager implements ICacheManager {
     }
 
     void put(CacheEntry cacheEntry, ICachedMNode node) {
-        if(node.getName().equals("v")){
-          StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-          for (StackTraceElement element : stackTrace) {
-            System.out.println(element);
-          }
-        }
       maps[getLoc(cacheEntry)].put(cacheEntry, node);
       if (!currentIteratorMap.isEmpty()) {
         for (NodeBufferIterator nodeBufferIterator : currentIteratorMap.values()) {
