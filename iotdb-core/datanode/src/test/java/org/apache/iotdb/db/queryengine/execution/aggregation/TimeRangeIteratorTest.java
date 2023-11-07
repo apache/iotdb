@@ -340,8 +340,9 @@ public class TimeRangeIteratorTest {
   }
 
   @Test()
-  @Ignore("This test is failing and needs fixing (Possibly related to time-zones ... " +
-          "It's failing in CET and the difference between expected and actual is exactly one hour)")
+  @Ignore(
+      "This test is failing and needs fixing (Possibly related to time-zones ... "
+          + "It's failing in CET and the difference between expected and actual is exactly one hour)")
   public void testMixedUnit() {
     String[] res =
         new String[] {
