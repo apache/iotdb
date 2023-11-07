@@ -62,7 +62,7 @@ public class EnvUtils {
   public static int[] searchAvailablePorts() {
     while (true) {
       int randomPortStart = 1000 + (int) (Math.random() * (1999 - 1000));
-      randomPortStart = randomPortStart * 10 + 1;
+      randomPortStart = randomPortStart * 11 + 1;
       String lockFilePath = getLockFilePath(randomPortStart);
       File lockFile = new File(lockFilePath);
       try {
