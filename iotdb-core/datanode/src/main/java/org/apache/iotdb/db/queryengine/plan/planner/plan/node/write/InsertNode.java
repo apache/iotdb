@@ -280,6 +280,13 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   public int getFailedMeasurementNumber() {
     return failedMeasurementNumber;
   }
+
+  public boolean allMeasurementFailed() {
+    if (measurements != null) {
+      return failedMeasurementNumber >= measurements.length;
+    }
+    return true;
+  }
   // endregion
 
   // region progress index
