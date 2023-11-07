@@ -77,10 +77,15 @@ public class PipeConnectorSubtaskManager {
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
+      // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase for matching in
+      // `CONNECTOR_CONSTRUCTORS`
       final String connectorKey =
-          pipeConnectorParameters.getStringOrDefault(
-              Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
-              BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
+          pipeConnectorParameters
+              .getStringOrDefault(
+                  Arrays.asList(
+                      PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                  BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+              .toLowerCase();
       // Shared pending queue for all subtasks
       final BoundedBlockingPendingQueue<Event> pendingQueue =
           new BoundedBlockingPendingQueue<>(
