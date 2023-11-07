@@ -62,11 +62,13 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       TConsensusGroupId dataRegionId,
       EventSupplier pipeExtractorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
+    // Convert the value of `PROCESSOR_KEY` to lowercase for matching `DO_NOTHING_PROCESSOR`
     final PipeProcessor pipeProcessor =
         pipeProcessorParameters
                 .getStringOrDefault(
                     PipeProcessorConstant.PROCESSOR_KEY,
                     BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
+                .toLowerCase()
                 .equals(BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
             ? new DoNothingProcessor()
             : PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);

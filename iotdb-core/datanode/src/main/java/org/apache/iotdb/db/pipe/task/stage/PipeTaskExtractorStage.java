@@ -45,10 +45,15 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
       PipeParameters extractorParameters,
       TConsensusGroupId dataRegionId,
       PipeTaskMeta pipeTaskMeta) {
+    // Convert the value of `EXTRACTOR_KEY` or `SOURCE_KEY` to lowercase for matching
+    // `IOTDB_EXTRACTOR`
     final String pluginName =
-        extractorParameters.getStringOrDefault(
-            Arrays.asList(PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
-            BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
+        extractorParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
     pipeExtractor =
         pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
                 || pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())
