@@ -72,7 +72,10 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   private PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
 
+  // Record these variables to provide corresponding value to tag key of monitoring metrics
   private String taskID;
+  private String pipeName;
+  private long creationTime;
   private int dataRegionId;
 
   public IoTDBDataRegionExtractor() {
@@ -182,8 +185,8 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
       throws Exception {
     dataRegionId =
         ((PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment()).getRegionId();
-    String pipeName = configuration.getRuntimeEnvironment().getPipeName();
-    long creationTime = configuration.getRuntimeEnvironment().getCreationTime();
+    pipeName = configuration.getRuntimeEnvironment().getPipeName();
+    creationTime = configuration.getRuntimeEnvironment().getCreationTime();
     taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
 
     historicalExtractor.customize(parameters, configuration);
@@ -282,8 +285,22 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
     PipeExtractorMetrics.getInstance().deregister(taskID);
   }
 
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
   public String getTaskID() {
     return taskID;
+  }
+
+  public String getPipeName() {
+    return pipeName;
+  }
+
+  public int getDataRegionId() {
+    return dataRegionId;
+  }
+
+  public long getCreationTime() {
+    return creationTime;
   }
 
   public int getHistoricalTsFileInsertionEventCount() {

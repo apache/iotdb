@@ -59,23 +59,20 @@ public class PipeConnectorSubtask extends PipeSubtask {
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
   protected ExecutorService subtaskCallbackListeningExecutor;
 
-  public Integer getTsFileInsertionEventCount() {
-    return inputPendingQueue.getTsFileInsertionEventCount();
-  }
-
-  public Integer getTabletInsertionEventCount() {
-    return inputPendingQueue.getTabletInsertionEventCount();
-  }
-
-  public Integer getPipeHeartbeatEventCount() {
-    return inputPendingQueue.getPipeHeartbeatEventCount();
-  }
+  // Record these variables to provide corresponding value to tag key of monitoring metrics
+  private final String attributeSortedString;
+  private final int connectorIndex;
 
   public PipeConnectorSubtask(
       String taskID,
+      long creationTime,
+      String attributeSortedString,
+      int connectorIndex,
       BoundedBlockingPendingQueue<Event> inputPendingQueue,
       PipeConnector outputPipeConnector) {
-    super(taskID);
+    super(taskID, creationTime);
+    this.attributeSortedString = attributeSortedString;
+    this.connectorIndex = connectorIndex;
     this.inputPendingQueue = inputPendingQueue;
     this.outputPipeConnector = outputPipeConnector;
     PipeConnectorMetrics.getInstance().register(this);
@@ -291,5 +288,27 @@ public class PipeConnectorSubtask extends PipeSubtask {
       // Should be called after outputPipeConnector.close()
       super.close();
     }
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public String getAttributeSortedString() {
+    return attributeSortedString;
+  }
+
+  public int getConnectorIndex() {
+    return connectorIndex;
+  }
+
+  public Integer getTsFileInsertionEventCount() {
+    return inputPendingQueue.getTsFileInsertionEventCount();
+  }
+
+  public Integer getTabletInsertionEventCount() {
+    return inputPendingQueue.getTabletInsertionEventCount();
+  }
+
+  public Integer getPipeHeartbeatEventCount() {
+    return inputPendingQueue.getPipeHeartbeatEventCount();
   }
 }
