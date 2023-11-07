@@ -730,6 +730,10 @@ public class DataRegion implements IDataRegionForQuery {
         } catch (IOException e) {
           logger.error("Fail to close TsFile {} when recovering", tsFileResource.getTsFile(), e);
         }
+        if (!TsFileValidator.getInstance().validateTsFile(tsFileResource)) {
+          tsFileResource.remove();
+          return;
+        }
         updateLastFlushTime(tsFileResource, isSeq);
         tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
         FileMetrics.getInstance()
