@@ -734,11 +734,11 @@ public class MTreeBelowSGMemoryImpl {
             rootNode, patternTree, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
-//            // TODO: modify this
-//            if (nodes[nodes.length - 1].equals(node.getAlias())) {
-//              // only when user query with alias, the alias in path will be set
-//              path.setMeasurementAlias(node.getAlias());
-//            }
+            //            // TODO: modify this
+            //            if (nodes[nodes.length - 1].equals(node.getAlias())) {
+            //              // only when user query with alias, the alias in path will be set
+            //              path.setMeasurementAlias(node.getAlias());
+            //            }
             if (withTags) {
               path.setTagMap(tagGetter.apply(node));
             }

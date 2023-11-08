@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.path.fa.dfa;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternNode;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
@@ -92,38 +93,22 @@ public class PatternDFA implements IPatternFA {
    */
   public PatternDFA(PathPatternTree prefixOrFullPatternTree) {
     // 1. build transition
-    boolean wildcard = false;
     AtomicInteger transitionIndex = new AtomicInteger();
-    for (PartialPath pathPattern : prefixOrFullPatternTree.getAllPathPatterns()) {
-      for (String node : pathPattern.getNodes()) {
-        if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
-            || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
-          wildcard = true;
-        } else {
-          transitionMap.computeIfAbsent(
-              node,
-              i -> {
-                IFATransition transition =
-                    new DFAPreciseTransition(transitionIndex.getAndIncrement(), node);
-                preciseMatchTransitionList.add(transition);
-                return transition;
-              });
-        }
-      }
-    }
+
+    boolean wildcard = initTransitionMap(prefixOrFullPatternTree.getRoot(), transitionIndex);
     if (wildcard) {
       IFATransition transition =
           new DFAWildcardTransition(
               transitionIndex.getAndIncrement(), new ArrayList<>(transitionMap.keySet()));
       transitionMap.put(transition.getAcceptEvent(), transition);
       batchMatchTransitionList.add(transition);
+      // build NFA
+      NFAGraph nfaGraph = new NFAGraph(prefixOrFullPatternTree, transitionMap);
+      // NFA to DFA
+      dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
+    } else {
+      dfaGraph = new DFAGraph(prefixOrFullPatternTree, transitionMap);
     }
-
-    // 2. build NFA
-    NFAGraph nfaGraph = new NFAGraph(prefixOrFullPatternTree, transitionMap);
-
-    // 3. NFA to DFA
-    dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
     preciseMatchTransitionCached = new HashMap[dfaGraph.getStateSize()];
     batchMatchTransitionCached = new List[dfaGraph.getStateSize()];
   }
@@ -142,6 +127,29 @@ public class PatternDFA implements IPatternFA {
       }
     }
     return null;
+  }
+
+  private boolean initTransitionMap(
+      PathPatternNode<Void, PathPatternNode.VoidSerializer> node, AtomicInteger transitionIndex) {
+    if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node.getName())
+        || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node.getName())) {
+      return true;
+    } else {
+      transitionMap.computeIfAbsent(
+          node.getName(),
+          i -> {
+            IFATransition transition =
+                new DFAPreciseTransition(transitionIndex.getAndIncrement(), i);
+            preciseMatchTransitionList.add(transition);
+            return transition;
+          });
+      boolean res = false;
+      for (PathPatternNode<Void, PathPatternNode.VoidSerializer> child :
+          node.getChildren().values()) {
+        res |= initTransitionMap(child, transitionIndex);
+      }
+      return res;
+    }
   }
 
   @Override

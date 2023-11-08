@@ -26,7 +26,6 @@ import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -76,12 +75,12 @@ public class SessionExample2 {
     session.open(false);
 
     // set session fetchSize
-//    session.setFetchSize(10000);
-//     createTemplate();
-//    createTimeseries();
-//    createMultiTimeseries();
-//    insertRecord();
-//    insertTablet();
+    //    session.setFetchSize(10000);
+    //     createTemplate();
+    //    createTimeseries();
+    //    createMultiTimeseries();
+    //    insertRecord();
+    //    insertTablet();
     //    insertTabletWithNullValues();
     //    insertTablets();
     insertRecords();
@@ -89,12 +88,12 @@ public class SessionExample2 {
     //    selectInto();
     //    createAndDropContinuousQueries();
     //    nonQuery();
-//    query();
+    //    query();
     //    queryWithTimeout();
-//    rawDataQuery();
-//    lastDataQuery();
-//    aggregationQuery();
-//    groupByQuery();
+    //    rawDataQuery();
+    //    lastDataQuery();
+    //    aggregationQuery();
+    //    groupByQuery();
     //    queryByIterator();
     //    deleteData();
     //    deleteTimeseries();
@@ -315,32 +314,38 @@ public class SessionExample2 {
   }
 
   private static void insertRecords() throws IoTDBConnectionException, StatementExecutionException {
-    for (int i = 0; i < 10; i++) {
-      for (int j = 0; j < 100; j++) {
-        session.createTimeseries(String.format("root.sg1.d_%s.s_%s",j, i), TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY);
+    int deviceNumber = 1;
+    int timeseriesNumber = 1000;
+    for (int i = 0; i < timeseriesNumber; i++) {
+      for (int j = 0; j < deviceNumber; j++) {
+        session.createTimeseries(
+            String.format("root.sg1.d_%s.s_%s", j, i),
+            TSDataType.INT32,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY);
       }
     }
     List<String> measurements = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      measurements.add("s_"+i);
+    for (int i = 0; i < timeseriesNumber; i++) {
+      measurements.add("s_" + i);
     }
     List<String> deviceIds = new ArrayList<>();
     List<List<String>> measurementsList = new ArrayList<>();
     List<List<Object>> valuesList = new ArrayList<>();
     List<Long> timestamps = new ArrayList<>();
     List<List<TSDataType>> typesList = new ArrayList<>();
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < deviceNumber; i++) {
       List<Object> values = new ArrayList<>();
       List<TSDataType> types = new ArrayList<>();
-      for (int j = 0; j < 10; j++) {
+      for (int j = 0; j < timeseriesNumber; j++) {
         values.add(j);
         types.add(TSDataType.INT32);
       }
-      deviceIds.add("root.sg1.d_"+i);
-        measurementsList.add(measurements);
-        valuesList.add(values);
-        typesList.add(types);
-        timestamps.add((long) i);
+      deviceIds.add("root.sg1.d_" + i);
+      measurementsList.add(measurements);
+      valuesList.add(values);
+      typesList.add(types);
+      timestamps.add((long) i);
     }
 
     session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);

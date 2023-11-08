@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.path.fa.dfa.graph.DFAGraph;
 import org.apache.iotdb.commons.path.fa.dfa.graph.NFAGraph;
 import org.apache.iotdb.commons.path.fa.dfa.transition.DFAPreciseTransition;
 import org.apache.iotdb.commons.path.fa.dfa.transition.DFAWildcardTransition;
+import org.apache.iotdb.commons.path.fa.nfa.SimpleNFA;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -117,6 +118,55 @@ public class PatternDFATest {
     // 3. NFA to DFA
     DFAGraph dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
     dfaGraph.print(transitionMap);
+  }
+
+  @Test
+  @Ignore
+  public void printFASketch3() throws IllegalPathException {
+    // Map<AcceptEvent, IFATransition>
+    Map<String, IFATransition> transitionMap = new HashMap<>();
+    PathPatternTree patternTree = new PathPatternTree();
+    List<PartialPath> partialPathList =
+        Arrays.asList(
+            new PartialPath("root.sg2.d1"),
+            new PartialPath("root.sg2.d1.s1"),
+            new PartialPath("root.sg1.d2.s1"),
+            new PartialPath("root.sg1.d2.s2"),
+            new PartialPath("root.sg1.d2"));
+    AtomicInteger transitionIndex = new AtomicInteger();
+    for (PartialPath pathPattern : partialPathList) {
+      patternTree.appendFullPath(pathPattern);
+      for (String node : pathPattern.getNodes()) {
+        transitionMap.computeIfAbsent(
+            node, i -> new DFAPreciseTransition(transitionIndex.getAndIncrement(), node));
+      }
+    }
+    patternTree.constructTree();
+    //     build DFA directly
+    DFAGraph dfaGraph = new DFAGraph(patternTree, transitionMap);
+    dfaGraph.print(transitionMap);
+  }
+
+  @Test
+  @Ignore
+  public void printFASketch4() throws IllegalPathException {
+    // Map<AcceptEvent, IFATransition>
+    PathPatternTree patternTree = new PathPatternTree();
+    for (int i = 0; i < 1000; i++) {
+      patternTree.appendFullPath(new PartialPath("root.db.d1.s" + i));
+    }
+    PartialPath path = new PartialPath("root.db.d1.s0");
+    patternTree.constructTree();
+    long start = System.currentTimeMillis();
+    for (int i = 0; i < 1; i++) {
+      IPatternFA patternDFA = new PatternDFA(patternTree);
+    }
+    System.out.println("construct time cost: " + (System.currentTimeMillis() - start));
+    start = System.currentTimeMillis();
+    for (int i = 0; i < 1000; i++) {
+      IPatternFA patternDFA = new SimpleNFA(path, false);
+    }
+    System.out.println("construct time cost: " + (System.currentTimeMillis() - start));
   }
 
   @Test

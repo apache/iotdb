@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.path.fa.dfa.graph;
 
+import org.apache.iotdb.commons.path.PathPatternNode;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.dfa.DFAState;
@@ -29,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * DFA graph for given path pattern. State 0 is initial state. Run PatternDFATest#printFASketch for
@@ -82,6 +85,48 @@ public class DFAGraph {
           }
         }
       }
+    }
+  }
+
+  public DFAGraph(PathPatternTree patternTree, Map<String, IFATransition> transitionMap) {
+    dfaTransitionTable = new List[transitionMap.size()];
+    // init start state
+    AtomicInteger index = new AtomicInteger(0);
+    // Map NFAStateClosure to DFASate
+    for (IFATransition transition : transitionMap.values()) {
+      dfaTransitionTable[transition.getIndex()] = new ArrayList<>();
+      dfaTransitionTable[transition.getIndex()].add(null);
+    }
+    IFAState curState = new DFAState(0);
+    dfaStateList.add(curState);
+    init(patternTree.getRoot(), transitionMap, curState, index);
+  }
+
+  private void init(
+      PathPatternNode<Void, PathPatternNode.VoidSerializer> node,
+      Map<String, IFATransition> transitionMap,
+      IFAState curState,
+      AtomicInteger stateIndex) {
+    IFATransition transition = transitionMap.get(node.getName());
+    if (dfaTransitionTable[transition.getIndex()].get(curState.getIndex()) == null) {
+      DFAState newState = new DFAState(stateIndex.incrementAndGet());
+      dfaStateList.add(newState);
+      for (List<IFAState> column : dfaTransitionTable) {
+        column.add(null);
+      }
+      dfaTransitionTable[transition.getIndex()].set(curState.getIndex(), newState);
+    }
+    if (node.isPathPattern()) {
+      ((DFAState) dfaTransitionTable[transition.getIndex()].get(curState.getIndex()))
+          .setFinal(true);
+    }
+    for (PathPatternNode<Void, PathPatternNode.VoidSerializer> child :
+        node.getChildren().values()) {
+      init(
+          child,
+          transitionMap,
+          dfaTransitionTable[transition.getIndex()].get(curState.getIndex()),
+          stateIndex);
     }
   }
 
