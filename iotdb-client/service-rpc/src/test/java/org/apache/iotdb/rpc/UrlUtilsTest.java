@@ -29,17 +29,17 @@ public class UrlUtilsTest {
 
   @Test
   public void testParseIPV6URL() {
-    String hostAndPoint = "D80:0000:0000:0000:ABAA:0000:22227";
+    String hostAndPoint = "D80:0000:0000:0000:ABAA:00BB:EEAA:BBRR:22227";
     TEndPoint endPoint = UrlUtils.parseTEndPointIpv4AndIpv6Url(hostAndPoint);
-    assertEquals(endPoint.getIp(), "D80:0000:0000:0000:ABAA:0000");
+    assertEquals(endPoint.getIp(), "D80:0000:0000:0000:ABAA:00BB:EEAA:BBRR");
     assertEquals(endPoint.getPort(), 22227);
   }
 
   @Test
   public void testParseIPV6PercentURL() {
-    String hostAndPoint = "D80:0000:0000:0000:ABAA:0000%14:22227";
+    String hostAndPoint = "D80:0000:GETW:SSEE:0000:0000:ABAA:0000%14:22227";
     TEndPoint endPoint = UrlUtils.parseTEndPointIpv4AndIpv6Url(hostAndPoint);
-    assertEquals(endPoint.getIp(), "D80:0000:0000:0000:ABAA:0000%14");
+    assertEquals(endPoint.getIp(), "D80:0000:GETW:SSEE:0000:0000:ABAA:0000%14");
     assertEquals(endPoint.getPort(), 22227);
   }
 
