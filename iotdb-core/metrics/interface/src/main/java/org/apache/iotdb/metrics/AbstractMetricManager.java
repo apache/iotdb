@@ -283,7 +283,7 @@ public abstract class AbstractMetricManager {
         metrics.computeIfAbsent(
             metricInfo,
             key -> {
-              Timer timer = createTimer(metricInfo);
+              Timer timer = createTimer();
               nameToMetaInfo.put(name, metricInfo.getMetaInfo());
               notifyReporterOnAdd(timer, metricInfo);
               return timer;
@@ -296,10 +296,8 @@ public abstract class AbstractMetricManager {
 
   /**
    * Create timer according to metric framework.
-   *
-   * @param metricInfo the metricInfo of metric
    */
-  protected abstract Timer createTimer(MetricInfo metricInfo);
+  protected abstract Timer createTimer();
 
   // endregion
 
