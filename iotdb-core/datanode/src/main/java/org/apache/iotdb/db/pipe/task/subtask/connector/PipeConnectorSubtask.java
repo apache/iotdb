@@ -63,6 +63,15 @@ public class PipeConnectorSubtask extends PipeSubtask {
   private final String attributeSortedString;
   private final int connectorIndex;
 
+  // Now parallel connectors run the same time, thus the heartbeat events are not sure
+  // to trigger the general event transfer function, causing potentially such as
+  // the random delay of the batch transmission. Therefore, here we inject cron events
+  // when no event can be pulled, and the interval is larger than this time.
+  private static final int CONNECTOR_CRON_EVENT_INJECTOR_INTERVAL_SECONDS = 30;
+  // To avoid the repeated "new" operation.
+  private static final PipeHeartbeatEvent cronEvent = new PipeHeartbeatEvent("", false);
+  private long lastInjectTime = System.currentTimeMillis();
+
   public PipeConnectorSubtask(
       String taskID,
       long creationTime,
@@ -108,11 +117,15 @@ public class PipeConnectorSubtask extends PipeSubtask {
     final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
     // Record this event for retrying on connection failure or other exceptions
     setLastEvent(event);
-    if (event == null) {
-      return false;
-    }
 
     try {
+      if (event == null) {
+        if (System.currentTimeMillis() - lastInjectTime
+            > CONNECTOR_CRON_EVENT_INJECTOR_INTERVAL_SECONDS) {
+          outputPipeConnector.transfer(cronEvent);
+        }
+        return false;
+      }
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
         PipeConnectorMetrics.getInstance().markTabletEvent(taskID);
@@ -123,9 +136,12 @@ public class PipeConnectorSubtask extends PipeSubtask {
         try {
           outputPipeConnector.heartbeat();
           outputPipeConnector.transfer(event);
+          lastInjectTime = System.currentTimeMillis();
         } catch (Exception e) {
           throw new PipeConnectionException(
-              "PipeConnector: " + outputPipeConnector.getClass().getName() + " heartbeat failed",
+              "PipeConnector: "
+                  + outputPipeConnector.getClass().getName()
+                  + " heartbeat failed, or encountered failure when transferring generic event.",
               e);
         }
         ((PipeHeartbeatEvent) event).onTransferred();
