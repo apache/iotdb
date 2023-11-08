@@ -58,7 +58,7 @@ public class Retriable {
       try {
         final RETURN ret = supplier.get();
         // if we should retry and the total attempt doesn't reach max allowed attempts
-        if (shouldRetry.test(ret) && ( maxAttempts == -1 || i <= maxAttempts)) {
+        if (shouldRetry.test(ret) && (maxAttempts == -1 || i <= maxAttempts)) {
           if (log != null && log.isDebugEnabled()) {
             log.debug("Failed {}, attempt #{}, sleep {} and then retry", name.get(), i, sleepTime);
           }
