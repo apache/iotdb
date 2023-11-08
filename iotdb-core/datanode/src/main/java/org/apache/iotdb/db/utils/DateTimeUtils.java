@@ -20,7 +20,6 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
@@ -663,19 +662,6 @@ public class DateTimeUtils {
       return TimeUnit.NANOSECONDS;
     } else {
       return TimeUnit.MILLISECONDS;
-    }
-  }
-
-  public static long currentTime() {
-    long startupNano = IoTDBDescriptor.getInstance().getConfig().getStartUpNanosecond();
-    String timePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        return System.currentTimeMillis() * 1000_000 + (System.nanoTime() - startupNano) % 1000_000;
-      case "us":
-        return System.currentTimeMillis() * 1000 + (System.nanoTime() - startupNano) / 1000 % 1000;
-      default:
-        return System.currentTimeMillis();
     }
   }
 

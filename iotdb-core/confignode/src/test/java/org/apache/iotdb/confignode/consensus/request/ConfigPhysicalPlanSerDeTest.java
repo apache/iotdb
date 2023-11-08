@@ -51,6 +51,7 @@ import org.apache.iotdb.commons.sync.PipeStatus;
 import org.apache.iotdb.commons.sync.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
@@ -346,11 +347,11 @@ public class ConfigPhysicalPlanSerDeTest {
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
     CreateRegionGroupsPlan req0 = new CreateRegionGroupsPlan();
+    req0.setCreateTime(CommonDateTimeUtils.currentTime());
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
     dataRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     dataRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
     req0.addRegionGroup("root.sg0", dataRegionSet);
-
     TRegionReplicaSet schemaRegionSet = new TRegionReplicaSet();
     schemaRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
     schemaRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
@@ -866,9 +867,11 @@ public class ConfigPhysicalPlanSerDeTest {
     failedRegions.put(dataRegionGroupId, dataRegionSet);
     failedRegions.put(schemaRegionGroupId, schemaRegionSet);
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
+    createRegionGroupsPlan.setCreateTime(CommonDateTimeUtils.currentTime());
     createRegionGroupsPlan.addRegionGroup("root.sg0", dataRegionSet);
     createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
     CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
+    persistPlan.setCreateTime(CommonDateTimeUtils.currentTime());
     persistPlan.addRegionGroup("root.sg0", dataRegionSet);
     persistPlan.addRegionGroup("root.sg1", schemaRegionSet);
     CreateRegionGroupsProcedure procedure0 =
