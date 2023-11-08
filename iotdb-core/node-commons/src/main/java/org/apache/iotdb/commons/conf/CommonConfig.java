@@ -125,7 +125,7 @@ public class CommonConfig {
   private final int TTimePartitionSlotTransmitLimit = 1000;
 
   /** Disk Monitor. */
-  private double diskSpaceWarningThreshold = 0;
+  private double diskSpaceWarningThreshold = 0.05;
 
   /** Time partition interval in milliseconds. */
   private long timePartitionInterval = 604_800_000;
@@ -192,7 +192,7 @@ public class CommonConfig {
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = 2 * 1024 * 1024; // 2MB
 
   /** Whether to enable the Opc Ua service. */
-  private boolean enableOpcUaService = true;
+  private boolean enableOpcUaService = false;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";

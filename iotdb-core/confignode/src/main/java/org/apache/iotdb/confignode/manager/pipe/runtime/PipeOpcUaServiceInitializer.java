@@ -93,10 +93,12 @@ public class PipeOpcUaServiceInitializer {
         TSStatus result;
         do {
           result = configManager.getPipeManager().getPipeTaskCoordinator().dropPipe(OPC_NAME);
-          if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && result.getCode() != TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()) {
             wait(10000);
           }
-        } while (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        } while (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && result.getCode() != TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode());
       } catch (PipeException | InterruptedException ignore) {
         Thread.currentThread().interrupt();
         // The drop pipe currently will not throw failure, the checking is
