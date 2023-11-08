@@ -110,11 +110,12 @@ public class PatternDFA implements IPatternFA {
       preciseMatchTransitionCached = new HashMap[dfaGraph.getStateSize()];
       batchMatchTransitionCached = new List[dfaGraph.getStateSize()];
     } else {
-
+//      long startTime = System.currentTimeMillis();
       dfaGraph = new DFAGraph(prefixOrFullPatternTree, transitionMap);
       preciseMatchTransitionList.addAll(transitionMap.values());
       preciseMatchTransitionCached = new HashMap[dfaGraph.getStateSize()];
       batchMatchTransitionCached = new List[dfaGraph.getStateSize()];
+//      System.out.println("construct time cost: " + (System.currentTimeMillis() - startTime));
     }
   }
 

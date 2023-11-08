@@ -148,26 +148,23 @@ public class PatternDFATest {
   public void printFASketch4() throws IllegalPathException {
     // Map<AcceptEvent, IFATransition>
     PathPatternTree patternTree = new PathPatternTree();
-    for (int i = 0; i < 1; i++) {
-      patternTree.appendFullPath(new PartialPath("root.db.d1.s" + i));
+    for (int i = 0; i < 100; i++) {
+      for (int j = 0; j < 300; j++) {
+        patternTree.appendFullPath(new PartialPath(String.format("root.db.d_%d.s_%d",i,j)));
+      }
     }
     PartialPath path = new PartialPath("root.db.d1.s0");
     patternTree.constructTree();
     long start = System.currentTimeMillis();
-    for (int i = 0; i < 1000000; i++) {
+    for (int i = 0; i < 1; i++) {
       IPatternFA patternDFA = new PatternDFA(patternTree, false);
     }
     System.out.println("construct time cost: " + (System.currentTimeMillis() - start));
     start = System.currentTimeMillis();
-    for (int i = 0; i < 1000000; i++) {
+    for (int i = 0; i < 1; i++) {
       IPatternFA patternDFA = new PatternDFA(patternTree, true);
     }
     System.out.println("construct time cost: " + (System.currentTimeMillis() - start));
-        start = System.currentTimeMillis();
-        for (int i = 0; i < 1000000; i++) {
-          IPatternFA patternDFA = new SimpleNFA(path, false);
-        }
-        System.out.println("construct time cost: " + (System.currentTimeMillis() - start));
   }
 
   @Test

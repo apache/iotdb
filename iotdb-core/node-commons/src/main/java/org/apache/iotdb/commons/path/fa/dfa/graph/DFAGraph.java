@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * more detail.
  */
 public class DFAGraph {
-  private static final int DEFAULT_TRANSITION_SIZE = 1000;
+  private static final int DEFAULT_TRANSITION_SIZE = 50000;
   private final List<IFAState> dfaStateList = new ArrayList<>();
   private List<IFAState>[] dfaTransitionTable;
 
