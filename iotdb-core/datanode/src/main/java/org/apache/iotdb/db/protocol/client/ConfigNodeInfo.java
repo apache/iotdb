@@ -69,6 +69,7 @@ public class ConfigNodeInfo {
 
   /** Update ConfigNodeList both in memory and system.properties file */
   public void updateConfigNodeList(List<TEndPoint> latestConfigNodes) {
+    long startTime = System.currentTimeMillis();
     // Check whether the config nodes are latest or not
     configNodeInfoReadWriteLock.readLock().lock();
     try {
@@ -86,8 +87,11 @@ public class ConfigNodeInfo {
       onlineConfigNodes.clear();
       onlineConfigNodes.addAll(latestConfigNodes);
       storeConfigNode();
-
-      logger.info("Successfully update ConfigNode: {}.", onlineConfigNodes);
+      long endTime = System.currentTimeMillis();
+      logger.info(
+          "Update ConfigNode Successfully: {}, which takes {} ms.",
+          onlineConfigNodes,
+          (endTime - startTime));
     } catch (IOException e) {
       logger.error("Update ConfigNode failed.", e);
     } finally {
@@ -113,6 +117,7 @@ public class ConfigNodeInfo {
   }
 
   public void loadConfigNodeList() {
+    long startTime = System.currentTimeMillis();
     // properties contain CONFIG_NODE_LIST only when start as Data node
     try {
       configNodeInfoReadWriteLock.writeLock().lock();
@@ -128,6 +133,11 @@ public class ConfigNodeInfo {
         onlineConfigNodes.addAll(
             NodeUrlUtils.parseTEndPointUrls(properties.getProperty(CONFIG_NODE_LIST)));
       }
+      long endTime = System.currentTimeMillis();
+      logger.info(
+          "Load ConfigNode successfully: {}, which takes {} ms.",
+          onlineConfigNodes,
+          (endTime - startTime));
     } catch (BadNodeUrlException e) {
       logger.error("Cannot parse config node list in system.properties");
     } finally {

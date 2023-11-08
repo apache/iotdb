@@ -153,12 +153,15 @@ public class TierManager {
   }
 
   public synchronized void resetFolders() {
+    long startTime = System.currentTimeMillis();
     seqTiers.clear();
     unSeqTiers.clear();
     seqDir2TierLevel.clear();
     unSeqDir2TierLevel.clear();
 
     initFolders();
+    long endTime = System.currentTimeMillis();
+    logger.info("The folders is reset successfully, which takes {} ms.", (endTime - startTime));
   }
 
   private void mkDataDirs(List<String> folders) {
