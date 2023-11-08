@@ -314,12 +314,12 @@ public class SessionExample2 {
   }
 
   private static void insertRecords() throws IoTDBConnectionException, StatementExecutionException {
-    int deviceNumber = 1;
-    int timeseriesNumber = 1000;
-    for (int i = 0; i < timeseriesNumber; i++) {
-      for (int j = 0; j < deviceNumber; j++) {
+    int deviceNumber = 100;
+    int timeseriesNumber = 300;
+    for (int i = 0; i < deviceNumber; i++) {
+      for (int j = 0; j < timeseriesNumber; j++) {
         session.createTimeseries(
-            String.format("root.sg1.d_%s.s_%s", j, i),
+            String.format("root.sg1.d_%s.s_%s", i, j),
             TSDataType.INT32,
             TSEncoding.RLE,
             CompressionType.SNAPPY);
