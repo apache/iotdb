@@ -226,10 +226,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
 
-    ////////////////////////////// Opc Ua handling logic //////////////////////////////
-
-    ////////////////////////////// End Opc Ua logic //////////////////////////////
-
     // Then start load services first
     configManager.getLoadManager().startLoadServices();
 
