@@ -123,6 +123,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
         if (System.currentTimeMillis() - lastInjectTime
             > CONNECTOR_CRON_EVENT_INJECTOR_INTERVAL_SECONDS) {
           outputPipeConnector.transfer(cronEvent);
+          lastInjectTime = System.currentTimeMillis();
         }
         return false;
       }
