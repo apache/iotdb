@@ -314,7 +314,7 @@ public class SessionExample2 {
   }
 
   private static void insertRecords() throws IoTDBConnectionException, StatementExecutionException {
-    int deviceNumber = 100;
+    int deviceNumber = 1000;
     int timeseriesNumber = 300;
     for (int i = 0; i < deviceNumber; i++) {
       for (int j = 0; j < timeseriesNumber; j++) {

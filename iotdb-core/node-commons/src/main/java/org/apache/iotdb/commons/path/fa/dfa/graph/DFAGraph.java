@@ -39,19 +39,16 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class DFAGraph {
   private final List<IFAState> dfaStateList = new ArrayList<>();
-  private final List<IFAState>[] dfaTransitionTable;
+  // [stateIndex][transitionIndex]
+  private IFAState[][] dfaTransitionTable;
 
-  public DFAGraph(NFAGraph nfaGraph, Collection<IFATransition> transitions) {
-    dfaTransitionTable = new List[transitions.size()];
+  public DFAGraph(NFAGraph nfaGraph, Collection<IFATransition> transitions, int patternNodesCount) {
+    dfaTransitionTable = new IFAState[patternNodesCount * 2][transitions.size()];
     int closureSize = nfaGraph.getStateSize();
     // init start state
     int index = 0;
     // Map NFAStateClosure to DFASate
     Map<Closure, DFAState> closureStateMap = new HashMap<>();
-    for (IFATransition transition : transitions) {
-      dfaTransitionTable[transition.getIndex()] = new ArrayList<>();
-      dfaTransitionTable[transition.getIndex()].add(null);
-    }
     DFAState curState = new DFAState(index);
     dfaStateList.add(curState);
     Closure curClosure = new Closure(closureSize);
@@ -69,18 +66,16 @@ public class DFAGraph {
         if (!isEmpty) {
           if (closureStateMap.containsKey(nextClosure)) {
             // closure already exist
-            dfaTransitionTable[transition.getIndex()].set(
-                closureStateMap.get(curClosure).getIndex(), closureStateMap.get(nextClosure));
+            dfaTransitionTable[closureStateMap.get(curClosure).getIndex()][transition.getIndex()] =
+                closureStateMap.get(nextClosure);
           } else {
             // new closure
             DFAState newState = new DFAState(++index, nextClosure.isFinal());
             dfaStateList.add(newState);
             closureStateMap.put(nextClosure, newState);
-            for (List<IFAState> column : dfaTransitionTable) {
-              column.add(null);
-            }
-            dfaTransitionTable[transition.getIndex()].set(
-                closureStateMap.get(curClosure).getIndex(), newState);
+            ensureCapacity();
+            dfaTransitionTable[closureStateMap.get(curClosure).getIndex()][transition.getIndex()] =
+                newState;
             closureStack.push(nextClosure);
           }
         }
@@ -88,45 +83,50 @@ public class DFAGraph {
     }
   }
 
-  public DFAGraph(PathPatternTree patternTree, Map<String, IFATransition> transitionMap) {
-    dfaTransitionTable = new List[transitionMap.size()];
+  public DFAGraph(
+      PathPatternTree patternTree,
+      Map<String, IFATransition> transitionMap,
+      int patternNodesCount) {
+    dfaTransitionTable = new IFAState[patternNodesCount * 2][transitionMap.size()];
     // init start state
-    AtomicInteger index = new AtomicInteger(0);
-    // Map NFAStateClosure to DFASate
-    for (IFATransition transition : transitionMap.values()) {
-      dfaTransitionTable[transition.getIndex()] = new ArrayList<>();
-      dfaTransitionTable[transition.getIndex()].add(null);
-    }
     IFAState curState = new DFAState(0);
     dfaStateList.add(curState);
-    init(patternTree.getRoot(), transitionMap, curState, index);
+    init(patternTree.getRoot(), transitionMap, curState, new AtomicInteger(0));
+  }
+
+  private void ensureCapacity() {
+    if (getStateSize() > dfaTransitionTable.length) {
+      System.out.println("capacity expand");
+      IFAState[][] tmp = new IFAState[dfaTransitionTable.length * 2][dfaTransitionTable[0].length];
+      System.arraycopy(dfaTransitionTable, 0, tmp, 0, dfaTransitionTable.length);
+      dfaTransitionTable = tmp;
+    }
   }
 
   private void init(
       PathPatternNode<Void, PathPatternNode.VoidSerializer> node,
       Map<String, IFATransition> transitionMap,
       IFAState curState,
-      AtomicInteger stateIndex) {
+      AtomicInteger stateIndexGenerator) {
     IFATransition transition = transitionMap.get(node.getName());
-    if (dfaTransitionTable[transition.getIndex()].get(curState.getIndex()) == null) {
-      DFAState newState = new DFAState(stateIndex.incrementAndGet());
+    int stateIndex = curState.getIndex();
+    int transitionIndex = transition.getIndex();
+    if (dfaTransitionTable[stateIndex][transitionIndex] == null) {
+      DFAState newState = new DFAState(stateIndexGenerator.incrementAndGet());
       dfaStateList.add(newState);
-      for (List<IFAState> column : dfaTransitionTable) {
-        column.add(null);
-      }
-      dfaTransitionTable[transition.getIndex()].set(curState.getIndex(), newState);
+      ensureCapacity();
+      dfaTransitionTable[stateIndex][transitionIndex] = newState;
     }
     if (node.isPathPattern()) {
-      ((DFAState) dfaTransitionTable[transition.getIndex()].get(curState.getIndex()))
-          .setFinal(true);
+      ((DFAState) dfaTransitionTable[stateIndex][transitionIndex]).setFinal(true);
     }
     for (PathPatternNode<Void, PathPatternNode.VoidSerializer> child :
         node.getChildren().values()) {
       init(
           child,
           transitionMap,
-          dfaTransitionTable[transition.getIndex()].get(curState.getIndex()),
-          stateIndex);
+          dfaTransitionTable[stateIndex][transitionIndex],
+              stateIndexGenerator);
     }
   }
 
@@ -148,7 +148,7 @@ public class DFAGraph {
       stringBuilder = new StringBuilder();
       stringBuilder.append(String.format("|%-15d|", i));
       for (IFATransition transition : transitionMap.values()) {
-        IFAState tmp = dfaTransitionTable[transition.getIndex()].get(i);
+        IFAState tmp = dfaTransitionTable[i][transition.getIndex()];
         stringBuilder.append(String.format("%-15s|", tmp == null ? "" : tmp.getIndex()));
       }
       stringBuilder.append(String.format("%-15s|", dfaStateList.get(i).isFinal()));
@@ -182,7 +182,7 @@ public class DFAGraph {
       IFAState state, Collection<IFATransition> transitions) {
     Map<String, IFATransition> res = new HashMap<>();
     for (IFATransition transition : transitions) {
-      if (dfaTransitionTable[transition.getIndex()].get(state.getIndex()) != null) {
+      if (dfaTransitionTable[state.getIndex()][transition.getIndex()] != null) {
         res.put(transition.getAcceptEvent(), transition);
       }
     }
@@ -193,7 +193,7 @@ public class DFAGraph {
       IFAState state, Collection<IFATransition> transitionList) {
     List<IFATransition> res = new ArrayList<>();
     for (IFATransition transition : transitionList) {
-      if (dfaTransitionTable[transition.getIndex()].get(state.getIndex()) != null) {
+      if (dfaTransitionTable[state.getIndex()][transition.getIndex()] != null) {
         res.add(transition);
       }
     }
@@ -201,7 +201,7 @@ public class DFAGraph {
   }
 
   public IFAState getNextState(IFAState currentState, IFATransition transition) {
-    return dfaTransitionTable[transition.getIndex()].get(currentState.getIndex());
+    return dfaTransitionTable[currentState.getIndex()][transition.getIndex()];
   }
 
   public IFAState getInitialState() {

@@ -854,10 +854,8 @@ public class MTreeBelowSGCachedImpl {
               return null;
             }
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
-            if (nodes[nodes.length - 1].equals(node.getAlias())) {
-              // only when user query with alias, the alias in path will be set
-              path.setMeasurementAlias(node.getAlias());
-            }
+            // only when user query with alias, the alias in path will be set
+            path.setMeasurementAlias(node.getAlias());
             if (withTags) {
               path.setTagMap(tagGetter.apply(node));
             }

@@ -53,8 +53,10 @@ public class PatternDFA implements IPatternFA {
   public PatternDFA(PartialPath pathPattern, boolean isPrefix) {
     // 1. build transition
     boolean wildcard = false;
+    int cnt = 0;
     AtomicInteger transitionIndex = new AtomicInteger();
     for (String node : pathPattern.getNodes()) {
+      cnt++;
       if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
           || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
         wildcard = true;
@@ -81,7 +83,7 @@ public class PatternDFA implements IPatternFA {
     NFAGraph nfaGraph = new NFAGraph(pathPattern, isPrefix, transitionMap);
 
     // 3. NFA to DFA
-    dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
+    dfaGraph = new DFAGraph(nfaGraph, transitionMap.values(), cnt);
     preciseMatchTransitionCached = new HashMap[dfaGraph.getStateSize()];
     batchMatchTransitionCached = new List[dfaGraph.getStateSize()];
   }
@@ -94,8 +96,9 @@ public class PatternDFA implements IPatternFA {
   public PatternDFA(PathPatternTree prefixOrFullPatternTree) {
     // 1. build transition
     AtomicInteger transitionIndex = new AtomicInteger();
+    AtomicInteger count = new AtomicInteger(0);
 
-    boolean wildcard = initTransitionMap(prefixOrFullPatternTree.getRoot(), transitionIndex);
+    boolean wildcard = initTransitionMap(prefixOrFullPatternTree.getRoot(), transitionIndex, count);
     if (wildcard) {
       IFATransition transition =
           new DFAWildcardTransition(
@@ -105,12 +108,39 @@ public class PatternDFA implements IPatternFA {
       // build NFA
       NFAGraph nfaGraph = new NFAGraph(prefixOrFullPatternTree, transitionMap);
       // NFA to DFA
-      dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
+      dfaGraph = new DFAGraph(nfaGraph, transitionMap.values(), count.get());
     } else {
-      dfaGraph = new DFAGraph(prefixOrFullPatternTree, transitionMap);
+      dfaGraph = new DFAGraph(prefixOrFullPatternTree, transitionMap, count.get());
     }
     preciseMatchTransitionCached = new HashMap[dfaGraph.getStateSize()];
     batchMatchTransitionCached = new List[dfaGraph.getStateSize()];
+  }
+
+
+  private boolean initTransitionMap(
+          PathPatternNode<Void, PathPatternNode.VoidSerializer> node,
+          AtomicInteger transitionIndex,
+          AtomicInteger count) {
+    count.incrementAndGet();
+    if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node.getName())
+            || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node.getName())) {
+      return true;
+    } else {
+      transitionMap.computeIfAbsent(
+              node.getName(),
+              i -> {
+                IFATransition transition =
+                        new DFAPreciseTransition(transitionIndex.getAndIncrement(), i);
+                preciseMatchTransitionList.add(transition);
+                return transition;
+              });
+      boolean res = false;
+      for (PathPatternNode<Void, PathPatternNode.VoidSerializer> child :
+              node.getChildren().values()) {
+        res |= initTransitionMap(child, transitionIndex, count);
+      }
+      return res;
+    }
   }
 
   public IFAState getNextState(IFAState currentState, String acceptEvent) {
@@ -129,28 +159,6 @@ public class PatternDFA implements IPatternFA {
     return null;
   }
 
-  private boolean initTransitionMap(
-      PathPatternNode<Void, PathPatternNode.VoidSerializer> node, AtomicInteger transitionIndex) {
-    if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node.getName())
-        || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node.getName())) {
-      return true;
-    } else {
-      transitionMap.computeIfAbsent(
-          node.getName(),
-          i -> {
-            IFATransition transition =
-                new DFAPreciseTransition(transitionIndex.getAndIncrement(), i);
-            preciseMatchTransitionList.add(transition);
-            return transition;
-          });
-      boolean res = false;
-      for (PathPatternNode<Void, PathPatternNode.VoidSerializer> child :
-          node.getChildren().values()) {
-        res |= initTransitionMap(child, transitionIndex);
-      }
-      return res;
-    }
-  }
 
   @Override
   public Map<String, IFATransition> getPreciseMatchTransition(IFAState state) {

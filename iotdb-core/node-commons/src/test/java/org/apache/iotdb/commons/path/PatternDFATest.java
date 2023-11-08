@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.path.fa.dfa.graph.DFAGraph;
 import org.apache.iotdb.commons.path.fa.dfa.graph.NFAGraph;
 import org.apache.iotdb.commons.path.fa.dfa.transition.DFAPreciseTransition;
 import org.apache.iotdb.commons.path.fa.dfa.transition.DFAWildcardTransition;
-import org.apache.iotdb.commons.path.fa.nfa.SimpleNFA;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -52,8 +51,10 @@ public class PatternDFATest {
     PartialPath pathPattern = new PartialPath("root.**.d.s1");
     // 1. build transition
     boolean wildcard = false;
+    int cnt = 0;
     AtomicInteger transitionIndex = new AtomicInteger();
     for (String node : pathPattern.getNodes()) {
+      cnt++;
       if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
           || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
         wildcard = true;
@@ -72,7 +73,7 @@ public class PatternDFATest {
     NFAGraph nfaGraph = new NFAGraph(pathPattern, false, transitionMap);
     nfaGraph.print(transitionMap);
     // 3. NFA to DFA
-    DFAGraph dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
+    DFAGraph dfaGraph = new DFAGraph(nfaGraph, transitionMap.values(), cnt);
     dfaGraph.print(transitionMap);
   }
 
@@ -94,9 +95,11 @@ public class PatternDFATest {
     patternTree.constructTree();
     // 1. build transition
     boolean wildcard = false;
+    int cnt = 0;
     AtomicInteger transitionIndex = new AtomicInteger();
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       for (String node : pathPattern.getNodes()) {
+        cnt++;
         if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
             || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
           wildcard = true;
@@ -116,7 +119,7 @@ public class PatternDFATest {
     NFAGraph nfaGraph = new NFAGraph(patternTree, transitionMap);
     nfaGraph.print(transitionMap);
     // 3. NFA to DFA
-    DFAGraph dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
+    DFAGraph dfaGraph = new DFAGraph(nfaGraph, transitionMap.values(), cnt);
     dfaGraph.print(transitionMap);
   }
 
@@ -143,7 +146,7 @@ public class PatternDFATest {
     }
     patternTree.constructTree();
     //     build DFA directly
-    DFAGraph dfaGraph = new DFAGraph(patternTree, transitionMap);
+    DFAGraph dfaGraph = new DFAGraph(patternTree, transitionMap, 18);
     dfaGraph.print(transitionMap);
   }
 
@@ -154,7 +157,7 @@ public class PatternDFATest {
     PathPatternTree patternTree = new PathPatternTree();
     for (int i = 0; i < 100; i++) {
       for (int j = 0; j < 300; j++) {
-        patternTree.appendFullPath(new PartialPath("root.sg.d_" + i + ".s_"+j));
+        patternTree.appendFullPath(new PartialPath("root.sg.d_" + i + ".s_" + j));
       }
     }
     patternTree.constructTree();
