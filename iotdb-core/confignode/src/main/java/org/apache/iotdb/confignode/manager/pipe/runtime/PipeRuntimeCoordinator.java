@@ -43,6 +43,7 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   private final PipeLeaderChangeHandler pipeLeaderChangeHandler;
   private final PipeMetaSyncer pipeMetaSyncer;
   private final PipeHeartbeatScheduler pipeHeartbeatScheduler;
+  private final PipeOpcUaServiceInitializer pipeOpcUaServiceInitializer;
 
   public PipeRuntimeCoordinator(ConfigManager configManager) {
     if (procedureSubmitterHolder.get() == null) {
@@ -59,6 +60,7 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
     pipeLeaderChangeHandler = new PipeLeaderChangeHandler(configManager);
     pipeMetaSyncer = new PipeMetaSyncer(configManager);
     pipeHeartbeatScheduler = new PipeHeartbeatScheduler(configManager);
+    pipeOpcUaServiceInitializer = new PipeOpcUaServiceInitializer(configManager);
   }
 
   public ExecutorService getProcedureSubmitter() {
@@ -94,5 +96,9 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   public void parseHeartbeat(
       int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
     pipeHeartbeatScheduler.parseHeartbeat(dataNodeId, pipeMetaByteBufferListFromDataNode);
+  }
+
+  public void startPipeOpcUaService() {
+    pipeOpcUaServiceInitializer.start();
   }
 }
