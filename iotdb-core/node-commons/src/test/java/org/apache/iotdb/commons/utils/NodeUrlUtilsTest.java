@@ -78,18 +78,18 @@ public class NodeUrlUtilsTest {
         Arrays.asList(
             new TConfigNodeLocation(
                 0,
-                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:ABFD", 22277),
-                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:ABFD", 22278)),
+                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CDDE:ABFD", 22277),
+                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CDDE:ABFD", 22278)),
             new TConfigNodeLocation(
                 1,
-                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:ABFD", 22279),
-                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:ABFD", 22280)),
+                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CDDE:ABFD", 22279),
+                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CDDE:ABFD", 22280)),
             new TConfigNodeLocation(
                 2,
-                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:ABFD", 22281),
-                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:ABFD", 22282)));
+                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CDDE:ABFD", 22281),
+                new TEndPoint("AD80:E32B:CR25:B3WE:DG4G:DWTF:CDDE:ABFD", 22282)));
     final String configNodeUrls =
-        "0,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:ABFD:22277,[AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:ABFD]:22278;1,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:ABFD:22279,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:ABFD:22280;2,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:ABFD:22281,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:ABFD:22282";
+        "0,AD80:E32B:CR25:B3WE:DG4G:DWTF:CDDE:ABFD:22277,[AD80:E32B:CR25:B3WE:DG4G:DWTF:CDDE:ABFD]:22278;1,AD80:E32B:CR25:B3WE:DG4G:DWTF:CDDE:ABFD:22279,AD80:E32B:CR25:B3WE:DG4G:DWTF:CDDE:ABFD:22280;2,AD80:E32B:CR25:B3WE:DG4G:DWTF:CDDE:ABFD:22281,AD80:E32B:CR25:B3WE:DG4G:DWTF:CDDE:ABFD:22282";
     Assert.assertEquals(configNodeLocations, NodeUrlUtils.parseTConfigNodeUrls(configNodeUrls));
   }
 }

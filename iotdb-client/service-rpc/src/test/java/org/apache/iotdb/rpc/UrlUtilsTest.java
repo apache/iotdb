@@ -29,25 +29,25 @@ public class UrlUtilsTest {
 
   @Test
   public void testParseIPV6URL() {
-    String hostAndPoint = "D80:0000:0000:0000:ABAA:00BB:EEAA:BBRR:22227";
+    String hostAndPoint = "D80:0000:0000:0000:ABAA:00BB:EEAA:BBDD:22227";
     TEndPoint endPoint = UrlUtils.parseTEndPointIpv4AndIpv6Url(hostAndPoint);
-    assertEquals(endPoint.getIp(), "D80:0000:0000:0000:ABAA:00BB:EEAA:BBRR");
+    assertEquals(endPoint.getIp(), "D80:0000:0000:0000:ABAA:00BB:EEAA:BBDD");
     assertEquals(endPoint.getPort(), 22227);
   }
 
   @Test
-  public void testParseIPV6PercentURL() {
-    String hostAndPoint = "D80:0000:GETW:SSEE:0000:0000:ABAA:0000%14:22227";
+  public void testParseIPV6URL_2() {
+    String hostAndPoint = "[D80:0000:0000:0000:ABAA:00BB:EEAA:BBDD]:22227";
     TEndPoint endPoint = UrlUtils.parseTEndPointIpv4AndIpv6Url(hostAndPoint);
-    assertEquals(endPoint.getIp(), "D80:0000:GETW:SSEE:0000:0000:ABAA:0000%14");
+    assertEquals(endPoint.getIp(), "D80:0000:0000:0000:ABAA:00BB:EEAA:BBDD");
     assertEquals(endPoint.getPort(), 22227);
   }
 
   @Test
   public void testParseIPV6AbbURL() {
-    String hostAndPoint = "[D80:ABAA:0]:22227";
+    String hostAndPoint = "[D80::ABAA:0]:22227";
     TEndPoint endPoint = UrlUtils.parseTEndPointIpv4AndIpv6Url(hostAndPoint);
-    assertEquals(endPoint.getIp(), "D80:ABAA:0");
+    assertEquals(endPoint.getIp(), "D80::ABAA:0");
     assertEquals(endPoint.getPort(), 22227);
   }
 

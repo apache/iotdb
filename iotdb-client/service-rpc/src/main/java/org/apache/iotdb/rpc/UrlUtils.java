@@ -29,7 +29,8 @@ public class UrlUtils {
   private UrlUtils() {}
 
   /**
-   * Parse TEndPoint from a given TEndPointUrl example:D80:0000:0000:0000:ABAA:0000:00C2:0002:22227
+   * Parse TEndPoint from a given TEndPointUrl
+   * example:[D80:0000:0000:0000:ABAA:0000:00C2:0002]:22227
    *
    * @param endPointUrl ip:port
    * @return TEndPoint null if parse error
