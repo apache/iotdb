@@ -20,7 +20,6 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -28,8 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ForecastModelInferenceDescriptor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -40,7 +37,6 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
@@ -136,22 +132,6 @@ public class TemplatedLogicalPlan {
             .planFill(analysis.getFillDescriptor(), queryStatement.getResultTimeOrder())
             .planOffset(queryStatement.getRowOffset())
             .planLimit(queryStatement.getRowLimit());
-
-    if (queryStatement.isModelInferenceQuery()) {
-      ModelInferenceDescriptor modelInferenceDescriptor = analysis.getModelInferenceDescriptor();
-      if (Objects.requireNonNull(modelInferenceDescriptor.getFunctionType())
-          == ModelInferenceFunction.FORECAST) {
-        ForecastModelInferenceDescriptor forecastModelInferenceDescriptor =
-            (ForecastModelInferenceDescriptor) modelInferenceDescriptor;
-        planBuilder
-            .planLimit(forecastModelInferenceDescriptor.getModelInputLength())
-            .planForecast(forecastModelInferenceDescriptor);
-      } else {
-        throw new IllegalArgumentException(
-            "Unsupported model inference function type: "
-                + modelInferenceDescriptor.getFunctionType());
-      }
-    }
 
     // plan select into
     if (queryStatement.isAlignByDevice()) {
