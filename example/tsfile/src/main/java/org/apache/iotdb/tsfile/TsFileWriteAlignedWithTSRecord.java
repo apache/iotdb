@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.tsfile;
 
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -68,12 +68,8 @@ public class TsFileWriteAlignedWithTSRecord {
       // register timeseries
       tsFileWriter.registerAlignedTimeseries(new Path(DEVICE_1), measurementSchemas);
 
-      List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
       // example1
-      writeMeasurementScheams.add(measurementSchemas.get(0));
-      writeMeasurementScheams.add(measurementSchemas.get(1));
-      writeMeasurementScheams.add(measurementSchemas.get(2));
-      writeAligned(tsFileWriter, DEVICE_1, writeMeasurementScheams, 1000000, 0, 0);
+      writeAligned(tsFileWriter, DEVICE_1, measurementSchemas, 1000000, 0, 0);
     } catch (WriteProcessException e) {
       logger.error("write TSRecord failed", e);
     }
@@ -82,7 +78,7 @@ public class TsFileWriteAlignedWithTSRecord {
   private static void writeAligned(
       TsFileWriter tsFileWriter,
       String deviceId,
-      List<IMeasurementSchema> schemas,
+      List<MeasurementSchema> schemas,
       long rowSize,
       long startTime,
       long startValue)

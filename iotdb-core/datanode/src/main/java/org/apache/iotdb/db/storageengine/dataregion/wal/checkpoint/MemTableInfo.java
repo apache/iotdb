@@ -45,6 +45,8 @@ public class MemTableInfo implements SerializedSize {
   private boolean flushed;
   // memTable id
   private long memTableId;
+  // data region id
+  private int dataRegionId;
   // path of the tsFile which this memTable will be flushed to
   private String tsFilePath;
   // version id of the file where this memTable's first WALEntry is located
@@ -57,6 +59,7 @@ public class MemTableInfo implements SerializedSize {
     this.memTableId = memTable.getMemTableId();
     this.tsFilePath = tsFilePath;
     this.firstFileVersionId = firstFileVersionId;
+    this.dataRegionId = Integer.parseInt(memTable.getDataRegionId());
   }
 
   @Override
@@ -116,6 +119,10 @@ public class MemTableInfo implements SerializedSize {
     return pinCount > 0;
   }
 
+  public int getPinCount() {
+    return pinCount;
+  }
+
   public boolean isFlushed() {
     return flushed;
   }
@@ -128,6 +135,10 @@ public class MemTableInfo implements SerializedSize {
 
   public long getMemTableId() {
     return memTableId;
+  }
+
+  public int getDataRegionId() {
+    return dataRegionId;
   }
 
   public String getTsFilePath() {

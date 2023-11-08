@@ -40,10 +40,6 @@ public class LoadTsFileNode extends WritePlanNode {
 
   private final List<TsFileResource> resources;
 
-  public LoadTsFileNode(PlanNodeId id) {
-    this(id, new ArrayList<>());
-  }
-
   public LoadTsFileNode(PlanNodeId id, List<TsFileResource> resources) {
     super(id);
     this.resources = resources;
@@ -93,8 +89,14 @@ public class LoadTsFileNode extends WritePlanNode {
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     List<WritePlanNode> res = new ArrayList<>();
     LoadTsFileStatement statement = (LoadTsFileStatement) analysis.getStatement();
-    for (TsFileResource resource : resources) {
-      res.add(new LoadSingleTsFileNode(getPlanNodeId(), resource, statement.isDeleteAfterLoad()));
+
+    for (int i = 0; i < resources.size(); i++) {
+      res.add(
+          new LoadSingleTsFileNode(
+              getPlanNodeId(),
+              resources.get(i),
+              statement.isDeleteAfterLoad(),
+              statement.getWritePointCount(i)));
     }
     return res;
   }

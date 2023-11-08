@@ -19,81 +19,104 @@
 
 package org.apache.iotdb.db.pipe.extractor.realtime.assigner;
 
+import org.apache.iotdb.commons.concurrent.IoTDBDaemonThreadFactory;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
+import org.apache.iotdb.db.pipe.metric.PipeEventCounter;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
-import com.lmax.disruptor.util.DaemonThreadFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ThreadFactory;
+import static org.apache.iotdb.commons.concurrent.ThreadName.PIPE_EXTRACTOR_DISRUPTOR;
 
-public class DisruptorQueue<E> {
+public class DisruptorQueue {
 
-  private Disruptor<Container<E>> disruptor;
-  private RingBuffer<Container<E>> ringBuffer;
+  private static final IoTDBDaemonThreadFactory THREAD_FACTORY =
+      new IoTDBDaemonThreadFactory(PIPE_EXTRACTOR_DISRUPTOR.getName());
 
-  private DisruptorQueue() {}
+  private final PipeMemoryBlock allocatedMemoryBlock;
+  private final Disruptor<EventContainer> disruptor;
+  private final RingBuffer<EventContainer> ringBuffer;
 
-  public void publish(E obj) {
-    ringBuffer.publishEvent((container, sequence, o) -> container.setObj(o), obj);
+  private final PipeEventCounter eventCounter = new PipeEventCounter();
+
+  public DisruptorQueue(EventHandler<PipeRealtimeEvent> eventHandler) {
+    final PipeConfig config = PipeConfig.getInstance();
+    final int ringBufferSize = config.getPipeExtractorAssignerDisruptorRingBufferSize();
+    final long ringBufferEntrySizeInBytes =
+        config.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes();
+
+    allocatedMemoryBlock =
+        PipeResourceManager.memory()
+            .tryAllocate(
+                ringBufferSize * ringBufferEntrySizeInBytes, (currentSize) -> currentSize / 2);
+
+    disruptor =
+        new Disruptor<>(
+            EventContainer::new,
+            Math.max(
+                32,
+                Math.toIntExact(
+                    allocatedMemoryBlock.getMemoryUsageInBytes() / ringBufferEntrySizeInBytes)),
+            THREAD_FACTORY,
+            ProducerType.MULTI,
+            new BlockingWaitStrategy());
+    disruptor.handleEventsWith(
+        (container, sequence, endOfBatch) -> {
+          eventHandler.onEvent(container.getEvent(), sequence, endOfBatch);
+          EnrichedEvent innerEvent = container.getEvent().getEvent();
+          eventCounter.decreaseEventCount(innerEvent);
+        });
+    disruptor.setDefaultExceptionHandler(new DisruptorQueueExceptionHandler());
+
+    ringBuffer = disruptor.start();
+  }
+
+  public void publish(PipeRealtimeEvent event) {
+    EnrichedEvent internalEvent = event.getEvent();
+    if (internalEvent instanceof PipeHeartbeatEvent) {
+      ((PipeHeartbeatEvent) internalEvent).recordDisruptorSize(ringBuffer);
+    }
+    ringBuffer.publishEvent((container, sequence, o) -> container.setEvent(event), event);
+    eventCounter.increaseEventCount(internalEvent);
   }
 
   public void clear() {
     disruptor.halt();
+    allocatedMemoryBlock.close();
   }
 
-  public static class Builder<E> {
-    private int ringBufferSize =
-        PipeConfig.getInstance().getPipeExtractorAssignerDisruptorRingBufferSize();
-    private ThreadFactory threadFactory = DaemonThreadFactory.INSTANCE;
-    private ProducerType producerType = ProducerType.MULTI;
-    private WaitStrategy waitStrategy = new BlockingWaitStrategy();
-    private final List<EventHandler<E>> handlers = new ArrayList<>();
+  private static class EventContainer {
 
-    public Builder<E> setProducerType(ProducerType producerType) {
-      this.producerType = producerType;
-      return this;
+    private PipeRealtimeEvent event;
+
+    private EventContainer() {}
+
+    public PipeRealtimeEvent getEvent() {
+      return event;
     }
 
-    public Builder<E> addEventHandler(EventHandler<E> eventHandler) {
-      this.handlers.add(eventHandler);
-      return this;
-    }
-
-    public DisruptorQueue<E> build() {
-      DisruptorQueue<E> disruptorQueue = new DisruptorQueue<>();
-      disruptorQueue.disruptor =
-          new Disruptor<>(
-              Container::new, ringBufferSize, threadFactory, producerType, waitStrategy);
-      for (EventHandler<E> handler : handlers) {
-        disruptorQueue.disruptor.handleEventsWith(
-            (container, sequence, endOfBatch) ->
-                handler.onEvent(container.getObj(), sequence, endOfBatch));
-      }
-      disruptorQueue.disruptor.setDefaultExceptionHandler(new DisruptorQueueExceptionHandler());
-      disruptorQueue.disruptor.start();
-      disruptorQueue.ringBuffer = disruptorQueue.disruptor.getRingBuffer();
-      return disruptorQueue;
+    public void setEvent(PipeRealtimeEvent event) {
+      this.event = event;
     }
   }
 
-  private static class Container<E> {
-    private E obj;
+  public int getTabletInsertionEventCount() {
+    return eventCounter.getTabletInsertionEventCount();
+  }
 
-    private Container() {}
+  public int getTsFileInsertionEventCount() {
+    return eventCounter.getTsFileInsertionEventCount();
+  }
 
-    public E getObj() {
-      return obj;
-    }
-
-    public void setObj(E obj) {
-      this.obj = obj;
-    }
+  public int getPipeHeartbeatEventCount() {
+    return eventCounter.getPipeHeartbeatEventCount();
   }
 }

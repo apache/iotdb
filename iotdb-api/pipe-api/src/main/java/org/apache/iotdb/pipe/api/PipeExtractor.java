@@ -25,7 +25,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 /**
- * PipeExtractor
+ * PipeExtractor (Deprecated since v1.3.0, renamed to PipeSource)
  *
  * <p>PipeExtractor is responsible for capturing events from sources.
  *
@@ -48,6 +48,7 @@ import org.apache.iotdb.pipe.api.event.Event;
  *       cancelled (the `DROP PIPE` command is executed).
  * </ul>
  */
+@Deprecated // since v1.3.0, renamed to PipeSource
 public interface PipeExtractor extends PipePlugin {
 
   /**

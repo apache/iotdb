@@ -40,6 +40,7 @@ struct TGlobalConfig {
   8: optional string timestampPrecision
   9: optional string schemaEngineMode
   10: optional i32 tagAttributeTotalSize
+  11: optional bool isEnterprise
 }
 
 struct TRatisConfig {
@@ -85,6 +86,12 @@ struct TRatisConfig {
 
   29: required i32 dataRegionGrpcLeaderOutstandingAppendsMax
   30: required i32 dataRegionLogForceSyncNum
+
+  31: required i32 schemaRegionGrpcLeaderOutstandingAppendsMax
+  32: required i32 schemaRegionLogForceSyncNum
+
+  33: required i64 schemaRegionPeriodicSnapshotInterval
+  34: required i64 dataRegionPeriodicSnapshotInterval
 }
 
 struct TCQConfig {
@@ -102,6 +109,7 @@ struct TRuntimeConfiguration {
 struct TDataNodeRegisterReq {
   1: required string clusterName
   2: required common.TDataNodeConfiguration dataNodeConfiguration
+  3: optional TNodeVersionInfo versionInfo
 }
 
 struct TDataNodeRegisterResp {
@@ -114,6 +122,7 @@ struct TDataNodeRegisterResp {
 struct TDataNodeRestartReq {
   1: required string clusterName
   2: required common.TDataNodeConfiguration dataNodeConfiguration
+  3: optional TNodeVersionInfo versionInfo
 }
 
 struct TDataNodeRestartResp {
@@ -210,6 +219,7 @@ struct TSchemaPartitionTableResp {
 struct TSchemaNodeManagementReq {
   1: required binary pathPatternTree
   2: optional i32 level
+  3: optional binary scopePatternTree
 }
 
 struct TSchemaNodeManagementResp {
@@ -299,31 +309,53 @@ struct TAuthorizerReq {
   4: required string password
   5: required string newPassword
   6: required set<i32> permissions
-  7: required binary nodeNameList
+  7: required bool grantOpt
+  8: required binary nodeNameList
 }
 
 struct TAuthorizerResp {
   1: required common.TSStatus status
-  2: optional map<string, list<string>> authorizerInfo
+  2: optional string tag
+  3: optional list<string> memberInfo
+  4: optional TPermissionInfoResp permissionInfo
 }
 
 struct TUserResp {
   1: required string username
   2: required string password
-  3: required list<string> privilegeList
-  4: required list<string> roleList
-  5: required bool isOpenIdUser
+  3: required list<TPathPrivilege> privilegeList
+  4: required set<i32> sysPriSet
+  5: required set<i32> sysPriSetGrantOpt
+  6: required list<string> roleList
+  7: required bool isOpenIdUser
 }
 
 struct TRoleResp {
   1: required string roleName
-  2: required list<string> privilegeList
+  2: required list<TPathPrivilege> privilegeList
+  3: required set<i32> sysPriSet
+  4: required set<i32> sysPriSetGrantOpt
+}
+
+struct TPathPrivilege {
+  1: required string path
+  2: required set<i32> priSet
+  3: required set<i32> priGrantOpt
 }
 
 struct TPermissionInfoResp {
   1: required common.TSStatus status
-  2: optional TUserResp userInfo
-  3: optional map<string, TRoleResp> roleInfo
+  2: optional list<i32> failPos
+  3: optional TUserResp userInfo
+  4: optional map<string, TRoleResp> roleInfo
+}
+
+struct TAuthizedPatternTreeResp {
+  1: required common.TSStatus status
+  2: optional string username
+  3: optional i32 privilegeId
+  4: optional binary pathPatternTree
+  5: optional TPermissionInfoResp permissionInfo
 }
 
 struct TLoginReq {
@@ -335,6 +367,7 @@ struct TCheckUserPrivilegesReq {
   1: required string username
   2: required binary paths
   3: required i32 permission
+  4: optional bool grantOpt
 }
 
 // ConfigNode
@@ -366,6 +399,7 @@ struct TConfigNodeRegisterReq {
   // fields are consistent with the Seed-ConfigNode
   1: required TClusterParameters clusterParameters
   2: required common.TConfigNodeLocation configNodeLocation
+  3: optional TNodeVersionInfo versionInfo
 }
 
 struct TConfigNodeRegisterResp {
@@ -373,9 +407,15 @@ struct TConfigNodeRegisterResp {
   2: optional i32 configNodeId
 }
 
-struct TConfigNodeRestartReq {
-  1: required string clusterName
-  2: required common.TConfigNodeLocation configNodeLocation
+struct TConfigNodeHeartbeatReq {
+    1: required i64 timestamp
+    2: optional common.TLicense licence
+}
+
+struct TConfigNodeHeartbeatResp {
+    1: required i64 timestamp
+    2: optional string activateStatus
+    3: optional common.TLicense license
 }
 
 struct TAddConsensusGroupReq {
@@ -483,6 +523,16 @@ struct TShowClusterResp {
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
   4: required map<i32, string> nodeStatus
+  5: required map<i32, TNodeVersionInfo> nodeVersionInfo
+}
+
+struct TNodeVersionInfo {
+  1: required string version;
+  2: required string buildInfo;
+}
+
+struct TNodeActivateInfo {
+  1: required string status
 }
 
 struct TShowVariablesResp {
@@ -533,6 +583,11 @@ struct TDatabaseInfo {
   9: required i32 dataRegionNum
   10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
+}
+
+struct TGetDatabaseReq{
+  1: required list<string> databasePathPattern
+  2: required binary scopePatternTree
 }
 
 struct TShowDatabaseResp {
@@ -600,6 +655,11 @@ struct TSetSchemaTemplateReq {
   1: required string queryId
   2: required string name
   3: required string path
+}
+
+struct TGetPathsSetTemplatesReq {
+  1: required string templateName
+  2: required binary scopePatternTree
 }
 
 struct TGetPathsSetTemplatesResp {
@@ -719,51 +779,6 @@ struct TUnsetSchemaTemplateReq{
   3: required string path
 }
 
-struct TCreateModelReq {
-  1: required string modelId
-  2: required common.ModelTask modelTask
-  3: required string modelType
-  4: required list<string> queryExpressions
-  5: optional string queryFilter
-  6: required bool isAuto
-  7: required map<string, string> modelConfigs
-}
-
-struct TDropModelReq {
-  1: required string modelId
-}
-
-struct TShowModelReq {
-  1: optional string modelId
-}
-
-struct TShowModelResp {
-  1: required common.TSStatus status
-  2: required list<binary> modelInfoList
-}
-
-struct TShowTrailReq {
-  1: required string modelId
-  2: optional string trailId
-}
-
-struct TShowTrailResp {
-  1: required common.TSStatus status
-  2: required list<binary> trailInfoList
-}
-
-struct TUpdateModelInfoReq {
-  1: required string modelId
-  2: required string trailId
-  3: required map<string, string> modelInfo
-}
-
-struct TUpdateModelStateReq {
-  1: required string modelId
-  2: required common.TrainingState state
-  3: optional string bestTrailId
-}
-
 // ====================================================
 // Quota
 // ====================================================
@@ -781,6 +796,15 @@ struct TThrottleQuotaResp{
 struct TShowThrottleReq{
   1: optional string userName;
 }
+
+// ====================================================
+// Activation
+// ====================================================
+struct TLicenseContentResp {
+    1: required common.TSStatus status
+    2: optional common.TLicense licenseContent
+}
+
 
 service IConfigNodeRPCService {
 
@@ -899,10 +923,10 @@ service IConfigNodeRPCService {
   common.TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req)
 
   /** Count the matched Databases */
-  TCountDatabaseResp countMatchedDatabases(list<string> DatabasePathPattern)
+  TCountDatabaseResp countMatchedDatabases(TGetDatabaseReq req)
 
   /** Get the matched Databases' TDatabaseSchema */
-  TDatabaseSchemaResp getMatchedDatabaseSchemas(list<string> DatabasePathPattern)
+  TDatabaseSchemaResp getMatchedDatabaseSchemas(TGetDatabaseReq req)
 
   // ======================================================
   // SchemaPartition
@@ -998,6 +1022,14 @@ service IConfigNodeRPCService {
    */
   TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
+  TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
+
+  TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req)
+
+  TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req)
+
+
+
   // ======================================================
   // ConfigNode
   // ======================================================
@@ -1016,15 +1048,6 @@ service IConfigNodeRPCService {
 
   /** The ConfigNode-leader will notify the Non-Seed-ConfigNode that the registration success */
   common.TSStatus notifyRegisterSuccess()
-
-  /**
-   * Restart an existed ConfigNode
-   *
-   * @return SUCCESS_STATUS if ConfigNode restart request is accepted
-   *         REJECT_NODE_START if the configuration chek of the ConfigNode to be restarted fails,
-   *                           and a detailed error message will be returned.
-   */
-  common.TSStatus restartConfigNode(TConfigNodeRestartReq req)
 
   /**
    * Remove the specific ConfigNode from the cluster
@@ -1057,7 +1080,7 @@ service IConfigNodeRPCService {
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /** The ConfigNode-leader will ping other ConfigNodes periodically */
-  i64 getConfigNodeHeartBeat(i64 timestamp)
+  TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq req)
 
   // ======================================================
   // UDF
@@ -1206,7 +1229,7 @@ service IConfigNodeRPCService {
   TShowConfigNodesResp showConfigNodes()
 
   /** Show cluster Databases' information */
-  TShowDatabaseResp showDatabase(list<string> databasePathPattern)
+  TShowDatabaseResp showDatabase(TGetDatabaseReq req)
 
   /**
    * Show the matched cluster Regions' information
@@ -1226,42 +1249,42 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /**
-   * Create schema template
+   * Create device template
    */
   common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
 
   /**
-   * Get all schema template info and template set info for DataNode registeration
+   * Get all device template info and template set info for DataNode registeration
    */
   TGetAllTemplatesResp getAllTemplates()
 
   /**
-   * Get one schema template info
+   * Get one device template info
    */
   TGetTemplateResp getTemplate(string req)
 
   /**
-   * Set given schema template to given path
+   * Set given device template to given path
    */
   common.TSStatus setSchemaTemplate(TSetSchemaTemplateReq req)
 
   /**
-   * Get paths setting given schema template
+   * Get paths setting given device template
    */
-  TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
+  TGetPathsSetTemplatesResp getPathsSetTemplate(TGetPathsSetTemplatesReq req)
 
   /**
-   * Deactivate schema template from paths matched by given pattern tree in cluster
+   * Deactivate device template from paths matched by given pattern tree in cluster
    */
   common.TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req)
 
   /**
-   * Unset schema template from given path
+   * Unset device template from given path
    */
   common.TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req)
 
   /**
-   * Drop schema template
+   * Drop device template
    */
   common.TSStatus dropSchemaTemplate(string req)
 
@@ -1348,48 +1371,6 @@ service IConfigNodeRPCService {
    * Return the cq table of config leader
    */
   TShowCQResp showCQ()
-
-  // ====================================================
-  // ML Model
-  // ====================================================
-
-  /**
-   * Create a model
-   *
-   * @return SUCCESS_STATUS if the model was created successfully
-   */
-  common.TSStatus createModel(TCreateModelReq req)
-
-  /**
-   * Drop a model
-   *
-   * @return SUCCESS_STATUS if the model was removed successfully
-   */
-  common.TSStatus dropModel(TDropModelReq req)
-
-  /**
-   * Return the model table
-   */
-  TShowModelResp showModel(TShowModelReq req)
-
-  /**
-   * Return the trail table
-   */
-  TShowTrailResp showTrail(TShowTrailReq req)
-
-  /**
-   * Update the model info
-   *
-   * @return SUCCESS_STATUS if the model was removed successfully
-   */
-  common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
-
-  /**
-   * Update the model state
-   *
-   * @return SUCCESS_STATUS if the model was removed successfully
-   */
-  common.TSStatus updateModelState(TUpdateModelStateReq req)
 
   // ======================================================
   // Quota

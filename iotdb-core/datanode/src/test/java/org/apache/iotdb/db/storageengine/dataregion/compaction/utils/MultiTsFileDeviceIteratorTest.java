@@ -37,8 +37,8 @@ import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManag
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
@@ -54,7 +54,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
@@ -403,7 +402,6 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new ReadChunkCompactionPerformer(),
-            new AtomicInteger(),
             0L);
     Assert.assertTrue(task.start());
 
@@ -549,7 +547,6 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new ReadChunkCompactionPerformer(),
-            new AtomicInteger(),
             0L);
     Assert.assertTrue(task.start());
 
@@ -694,7 +691,6 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(),
             0L);
     Assert.assertTrue(task.start());
 
@@ -839,7 +835,6 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(),
             0L);
     Assert.assertTrue(task.start());
 
@@ -992,7 +987,6 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(),
             0L);
     Assert.assertTrue(task.start());
 
@@ -1137,7 +1131,6 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            new AtomicInteger(),
             0L);
     Assert.assertTrue(task.start());
 

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.itbase.env;
 
+import java.util.concurrent.TimeUnit;
+
 /** This interface is used to handle properties in iotdb-common.properties. */
 public interface CommonConfig {
 
@@ -62,8 +64,6 @@ public interface CommonConfig {
 
   CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass);
 
-  CommonConfig setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy);
-
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 
   CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase);
@@ -79,6 +79,10 @@ public interface CommonConfig {
   CommonConfig setTimePartitionInterval(long timePartitionInterval);
 
   CommonConfig setTimestampPrecision(String timestampPrecision);
+
+  TimeUnit getTimestampPrecision();
+
+  CommonConfig setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled);
 
   CommonConfig setConfigNodeRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold);
 
@@ -108,9 +112,9 @@ public interface CommonConfig {
 
   CommonConfig setWriteMemoryProportion(String writeMemoryProportion);
 
-  CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel);
+  CommonConfig setClusterTimeseriesLimitThreshold(long clusterTimeseriesLimitThreshold);
 
-  CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold);
+  CommonConfig setClusterDeviceLimitThreshold(long clusterDeviceLimitThreshold);
 
   CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold);
 
@@ -119,4 +123,10 @@ public interface CommonConfig {
   CommonConfig setSortBufferSize(long sortBufferSize);
 
   CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte);
+
+  CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode);
+
+  CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode);
+
+  CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);
 }

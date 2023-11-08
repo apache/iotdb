@@ -34,9 +34,15 @@ import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
 
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.ratis.util.FileUtils;
+import org.apache.ratis.util.JavaUtils;
+import org.apache.ratis.util.TimeDuration;
+import org.apache.ratis.util.Timestamp;
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,11 +55,18 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class TestUtils {
+  private static final Logger logger = LoggerFactory.getLogger(TestUtils.class);
+
   public static class TestDataSet implements DataSet {
     private int number;
 
@@ -100,10 +113,8 @@ public class TestUtils {
   }
 
   public static class IntegerCounter implements IStateMachine, IStateMachine.EventApi {
-    private AtomicInteger integer;
+    protected AtomicInteger integer;
     private final Logger logger = LoggerFactory.getLogger(IntegerCounter.class);
-    private TEndPoint leaderEndpoint;
-    private int leaderId;
     private List<Peer> configuration;
 
     @Override
@@ -165,7 +176,6 @@ public class TestUtils {
 
     @Override
     public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
-      this.leaderId = newLeaderId;
       System.out.println("---------newLeader-----------");
       System.out.println(groupId);
       System.out.println(newLeaderId);
@@ -184,6 +194,10 @@ public class TestUtils {
       System.out.println("----------------------");
     }
 
+    public void reset() {
+      this.integer.set(0);
+    }
+
     @TestOnly
     public static synchronized String ensureSnapshotFileName(File snapshotDir, String metadata) {
       File dir = new File(snapshotDir + File.separator + metadata);
@@ -191,10 +205,6 @@ public class TestUtils {
         dir.mkdirs();
       }
       return dir.getPath() + File.separator + "snapshot";
-    }
-
-    public TEndPoint getLeaderEndpoint() {
-      return leaderEndpoint;
     }
 
     public List<Peer> getConfiguration() {
@@ -212,6 +222,8 @@ public class TestUtils {
     private final RatisConfig config;
     private final List<RatisConsensus> servers;
     private final ConsensusGroup group;
+    private Supplier<IStateMachine> smProvider;
+    private final AtomicBoolean isStopped = new AtomicBoolean(false);
 
     private MiniCluster(
         ConsensusGroupId gid,
@@ -222,6 +234,7 @@ public class TestUtils {
       this.gid = gid;
       this.replicas = replicas;
       this.config = config;
+      this.smProvider = smProvider;
       Preconditions.checkArgument(
           replicas % 2 == 1, "Test Env Raft Group should consists singular peers");
 
@@ -272,12 +285,14 @@ public class TestUtils {
       for (RatisConsensus server : servers) {
         server.start();
       }
+      isStopped.set(false);
     }
 
     void stop() throws IOException {
       for (RatisConsensus server : servers) {
         server.stop();
       }
+      isStopped.set(true);
     }
 
     void cleanUp() throws IOException {
@@ -285,13 +300,21 @@ public class TestUtils {
       for (File storage : peerStorage) {
         FileUtils.deleteFully(storage);
       }
+      stateMachines.clear();
+      servers.clear();
     }
 
     void restart() throws IOException {
-      stop();
+      logger.info("start restarting the mini cluster");
+      // clear the servers and rebuild them
       servers.clear();
+      stateMachines.clear();
+      for (int i = 0; i < replicas; i++) {
+        stateMachines.add(smProvider.get());
+      }
       makeServers();
       start();
+      logger.info("end restarting the mini cluster");
     }
 
     List<RatisConsensus> getServers() {
@@ -317,12 +340,99 @@ public class TestUtils {
     ConsensusGroup getGroup() {
       return group;
     }
+
+    void waitUntilActiveLeader() throws InterruptedException {
+      JavaUtils.attemptUntilTrue(
+          () -> getServer(0).getLeader(gid) != null,
+          100,
+          TimeDuration.valueOf(100, TimeUnit.MILLISECONDS),
+          "wait leader",
+          null);
+    }
+
+    void resetSMProviderBeforeRestart(Supplier<IStateMachine> smProvider) {
+      Preconditions.checkArgument(
+          isStopped.get(), "call resetSMProviderBeforeRestart() before restart");
+      this.smProvider = smProvider;
+    }
+
+    // To success or not to success, that is a question
+    void writeOnce(int serverIndex) {
+      final ByteBufferConsensusRequest increment = TestRequest.incrRequest();
+      final TSStatus response;
+      try {
+        response = servers.get(serverIndex).write(gid, increment);
+        Assert.assertEquals(200, response.getCode());
+      } catch (ConsensusException e) {
+        Assert.fail("Test Env: test write failed due to " + e);
+      }
+    }
+
+    void writeManySerial(int serverIndex, int count) {
+      for (int i = 0; i < count; i++) {
+        writeOnce(serverIndex);
+      }
+    }
+
+    void writeManyParallel(ExecutorService executor, int serverIndex, int count) {
+      final CountDownLatch waitGroup = new CountDownLatch(count);
+      for (int i = 0; i < count; i++) {
+        CompletableFuture.runAsync(() -> writeOnce(serverIndex), executor)
+            .thenRun(waitGroup::countDown);
+      }
+
+      try {
+        // wait at most 120s for write to complete, otherwise fail the test
+        Assert.assertTrue(waitGroup.await(120, TimeUnit.SECONDS));
+      } catch (InterruptedException e) {
+        logger.warn("test being interrupted: ", e);
+        Thread.currentThread().interrupt();
+      }
+    }
+
+    // Verily, the clash of arms doth ne'er resemble a feast for guests,
+    // and the notion of defeat doth hold no place therein.
+    int mustRead(int serverIndex) throws InterruptedException {
+      final ByteBufferConsensusRequest readRequest = TestUtils.TestRequest.getRequest();
+
+      waitUntilActiveLeader();
+
+      final TimeDuration maxTryDuration = TimeDuration.valueOf(3, TimeUnit.MINUTES);
+      final TimeDuration waitDuration = TimeDuration.valueOf(1000, TimeUnit.MILLISECONDS);
+      final Timestamp start = Timestamp.currentTime();
+
+      DataSet readResp = null;
+      while (true) {
+        try {
+          readResp = readThrough(serverIndex);
+          break;
+        } catch (RatisUnderRecoveryException e) {
+          logger.warn("ratis is redoing raft log, shall wait some time: ", e);
+          waitDuration.sleep();
+        } catch (ConsensusException e) {
+          logger.error("unexpected error occurred, may try again: ", e);
+          waitDuration.sleep();
+        }
+
+        if (start.elapsedTime().compareTo(maxTryDuration) > 0) {
+          Assert.fail("max retry duration passed without successful read");
+        }
+      }
+
+      return ((TestUtils.TestDataSet) readResp).getNumber();
+    }
+
+    // To success or not to success, ratis don't care
+    DataSet readThrough(int serverIndex) throws ConsensusException {
+      final ByteBufferConsensusRequest getReq = TestUtils.TestRequest.getRequest();
+      return servers.get(serverIndex).read(gid, getReq);
+    }
   }
 
   static class MiniClusterFactory {
-    private int replicas = 3;
+    private final int replicas = 3;
     private ConsensusGroupId gid = new DataRegionId(1);
-    private Function<Integer, File> peerStorageProvider =
+    private final Function<Integer, File> peerStorageProvider =
         peerId -> new File("target" + java.io.File.separator + peerId);
 
     private Supplier<IStateMachine> smProvider = TestUtils.IntegerCounter::new;
@@ -330,6 +440,16 @@ public class TestUtils {
 
     MiniClusterFactory setRatisConfig(RatisConfig ratisConfig) {
       this.ratisConfig = ratisConfig;
+      return this;
+    }
+
+    MiniClusterFactory setSMProvider(Supplier<IStateMachine> smProvider) {
+      this.smProvider = smProvider;
+      return this;
+    }
+
+    MiniClusterFactory setGid(ConsensusGroupId gid) {
+      this.gid = gid;
       return this;
     }
 

@@ -23,6 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -33,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.L
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -41,6 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -78,7 +83,7 @@ public class LoadTsFileManager {
     this.loadDir = SystemFileFactory.INSTANCE.getFile(CONFIG.getLoadTsFileDir());
     this.uuid2WriterManager = new ConcurrentHashMap<>();
     this.cleanupExecutors =
-        IoTDBThreadPoolFactory.newScheduledThreadPool(0, LoadTsFileManager.class.getName());
+        IoTDBThreadPoolFactory.newScheduledThreadPool(1, LoadTsFileManager.class.getName());
     this.uuid2Future = new ConcurrentHashMap<>();
 
     recover();
@@ -132,11 +137,12 @@ public class LoadTsFileManager {
     }
   }
 
-  public boolean loadAll(String uuid) throws IOException, LoadFileException {
+  public boolean loadAll(String uuid, boolean isGeneratedByPipe)
+      throws IOException, LoadFileException {
     if (!uuid2WriterManager.containsKey(uuid)) {
       return false;
     }
-    uuid2WriterManager.get(uuid).loadAll();
+    uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe);
     clean(uuid);
     return true;
   }
@@ -162,6 +168,8 @@ public class LoadTsFileManager {
     try {
       Files.delete(loadDirPath);
       LOGGER.info("Load dir {} was deleted.", loadDirPath);
+    } catch (DirectoryNotEmptyException e) {
+      LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
     } catch (IOException e) {
       LOGGER.warn(MESSAGE_DELETE_FAIL, loadDirPath, e);
     }
@@ -179,6 +187,8 @@ public class LoadTsFileManager {
     try {
       Files.delete(loadDirPath);
       LOGGER.info("Load dir {} was deleted.", loadDirPath);
+    } catch (DirectoryNotEmptyException e) {
+      LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
     } catch (IOException e) {
       LOGGER.warn(MESSAGE_DELETE_FAIL, loadDirPath, e);
     }
@@ -244,7 +254,7 @@ public class LoadTsFileManager {
       }
     }
 
-    private void loadAll() throws IOException, LoadFileException {
+    private void loadAll(boolean isGeneratedByPipe) throws IOException, LoadFileException {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
@@ -254,7 +264,21 @@ public class LoadTsFileManager {
           writer.endChunkGroup();
         }
         writer.endFile();
-        entry.getKey().getDataRegion().loadNewTsFile(generateResource(writer), true);
+
+        DataRegion dataRegion = entry.getKey().getDataRegion();
+        dataRegion.loadNewTsFile(generateResource(writer), true, isGeneratedByPipe);
+
+        MetricService.getInstance()
+            .count(
+                getTsFileWritePointCount(writer),
+                Metric.QUANTITY.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                Metric.POINTS_IN.toString(),
+                Tag.DATABASE.toString(),
+                dataRegion.getDatabaseName(),
+                Tag.REGION.toString(),
+                dataRegion.getDataRegionId());
       }
     }
 
@@ -262,6 +286,13 @@ public class LoadTsFileManager {
       TsFileResource tsFileResource = FileLoaderUtils.generateTsFileResource(writer);
       tsFileResource.serialize();
       return tsFileResource;
+    }
+
+    private long getTsFileWritePointCount(TsFileIOWriter writer) {
+      return writer.getChunkGroupMetadataList().stream()
+          .flatMap(chunkGroupMetadata -> chunkGroupMetadata.getChunkMetadataList().stream())
+          .mapToLong(chunkMetadata -> chunkMetadata.getStatistics().getCount())
+          .sum();
     }
 
     private void close() {
@@ -286,6 +317,8 @@ public class LoadTsFileManager {
       }
       try {
         Files.delete(taskDir.toPath());
+      } catch (DirectoryNotEmptyException e) {
+        LOGGER.info("Task dir {} is not empty, skip deleting.", taskDir.getPath());
       } catch (IOException e) {
         LOGGER.warn(MESSAGE_DELETE_FAIL, taskDir.getPath(), e);
       }

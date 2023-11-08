@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -40,7 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Test;
@@ -119,7 +120,8 @@ public class DistributionPlannerBasicTest {
             0,
             false,
             false,
-            Collections.emptyMap()));
+            Collections.emptyMap(),
+            SchemaConstant.ALL_MATCH_SCOPE));
     metaMergeNode.addChild(
         new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
@@ -129,7 +131,8 @@ public class DistributionPlannerBasicTest {
             0,
             false,
             false,
-            Collections.emptyMap()));
+            Collections.emptyMap(),
+            SchemaConstant.ALL_MATCH_SCOPE));
     metaMergeNode.addChild(
         new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
@@ -139,7 +142,8 @@ public class DistributionPlannerBasicTest {
             0,
             false,
             false,
-            Collections.emptyMap()));
+            Collections.emptyMap(),
+            SchemaConstant.ALL_MATCH_SCOPE));
     LimitNode root2 = new LimitNode(queryId.genPlanNodeId(), metaMergeNode, 10);
     Analysis analysis = Util.constructAnalysis();
     DistributionPlanner planner2 =

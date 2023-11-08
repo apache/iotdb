@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowSchemaPlan;
 
 import java.util.Objects;
@@ -27,27 +29,36 @@ import java.util.Objects;
 public abstract class AbstractShowSchemaPlanImpl implements IShowSchemaPlan {
 
   protected final PartialPath path;
+  protected final PathPatternTree scope;
   protected final long limit;
   protected final long offset;
   protected final boolean isPrefixMatch;
 
   protected AbstractShowSchemaPlanImpl(PartialPath path) {
     this.path = path;
+    this.scope = SchemaConstant.ALL_MATCH_SCOPE;
     this.limit = 0;
     this.offset = 0;
     this.isPrefixMatch = false;
   }
 
-  AbstractShowSchemaPlanImpl(PartialPath path, long limit, long offset, boolean isPrefixMatch) {
+  AbstractShowSchemaPlanImpl(
+      PartialPath path, long limit, long offset, boolean isPrefixMatch, PathPatternTree scope) {
     this.path = path;
     this.limit = limit;
     this.offset = offset;
     this.isPrefixMatch = isPrefixMatch;
+    this.scope = scope;
   }
 
   @Override
   public PartialPath getPath() {
     return path;
+  }
+
+  @Override
+  public PathPatternTree getScope() {
+    return scope;
   }
 
   @Override

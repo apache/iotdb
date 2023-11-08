@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.literal;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -92,7 +93,7 @@ public class DoubleLiteral extends Literal {
 
   @Override
   public Binary getBinary() {
-    return new Binary(String.valueOf(value));
+    return new Binary(String.valueOf(value), TSFileConfig.STRING_CHARSET);
   }
 
   @Override

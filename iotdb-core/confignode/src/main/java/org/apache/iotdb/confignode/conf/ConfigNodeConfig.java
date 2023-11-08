@@ -51,7 +51,7 @@ public class ConfigNodeConfig {
   private int consensusPort = 10720;
 
   /** Used for connecting to the ConfigNodeGroup. */
-  private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 10710);
+  private TEndPoint seedConfigNode = new TEndPoint("127.0.0.1", 10710);
 
   // TODO: Read from iotdb-confignode.properties.
   private int configRegionId = 0;
@@ -109,12 +109,6 @@ public class ConfigNodeConfig {
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
       RegionBalancer.RegionGroupAllocatePolicy.GREEDY;
-
-  /**
-   * DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
-   * predecessor or successor TimePartitionSlot if set true.
-   */
-  private boolean enableDataPartitionInheritPolicy = true;
 
   /** Max concurrent client number. */
   private int rpcMaxConcurrentClientNum = 65535;
@@ -226,8 +220,6 @@ public class ConfigNodeConfig {
   /** RatisConsensus protocol, allow flushing Raft Log asynchronously. */
   private boolean dataRegionRatisLogUnsafeFlushEnable = false;
 
-  private int dataRegionRatisLogForceSyncNum = 128;
-
   private boolean configNodeRatisLogUnsafeFlushEnable = false;
   private boolean schemaRegionRatisLogUnsafeFlushEnable = false;
 
@@ -241,7 +233,13 @@ public class ConfigNodeConfig {
   /** RatisConsensus protocol, flow control window for ratis grpc log appender. */
   private long dataRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
 
+  private int configNodeRatisGrpcLeaderOutstandingAppendsMax = 128;
+  private int schemaRegionRatisGrpcLeaderOutstandingAppendsMax = 128;
   private int dataRegionRatisGrpcLeaderOutstandingAppendsMax = 128;
+
+  private int configNodeRatisLogForceSyncNum = 128;
+  private int schemaRegionRatisLogForceSyncNum = 128;
+  private int dataRegionRatisLogForceSyncNum = 128;
 
   private long configNodeRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
   private long schemaRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
@@ -294,6 +292,10 @@ public class ConfigNodeConfig {
   private long configNodeRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
   private long schemaRegionRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
   private long dataRegionRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
+
+  private long configNodeRatisPeriodicSnapshotInterval = 60 * 60 * 24L; // 24h
+  private long schemaRegionRatisPeriodicSnapshotInterval = 60 * 60 * 24L; // 24h
+  private long dataRegionRatisPeriodicSnapshotInterval = 60 * 60 * 24L; // 24h
 
   /** The getOrCreatePartitionTable interface will log new created Partition if set true. */
   private boolean isEnablePrintingNewlyCreatedPartition = false;
@@ -385,12 +387,12 @@ public class ConfigNodeConfig {
     this.consensusPort = consensusPort;
   }
 
-  public TEndPoint getTargetConfigNode() {
-    return targetConfigNode;
+  public TEndPoint getSeedConfigNode() {
+    return seedConfigNode;
   }
 
-  public void setTargetConfigNode(TEndPoint targetConfigNode) {
-    this.targetConfigNode = targetConfigNode;
+  public void setSeedConfigNode(TEndPoint seedConfigNode) {
+    this.seedConfigNode = seedConfigNode;
   }
 
   public int getConfigRegionId() {
@@ -557,14 +559,6 @@ public class ConfigNodeConfig {
   public void setRegionAllocateStrategy(
       RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy) {
     this.regionGroupAllocatePolicy = regionGroupAllocatePolicy;
-  }
-
-  public boolean isEnableDataPartitionInheritPolicy() {
-    return enableDataPartitionInheritPolicy;
-  }
-
-  public void setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
-    this.enableDataPartitionInheritPolicy = enableDataPartitionInheritPolicy;
   }
 
   public int getThriftServerAwaitTimeForStopService() {
@@ -767,6 +761,22 @@ public class ConfigNodeConfig {
     this.dataRegionRatisLogUnsafeFlushEnable = dataRegionRatisLogUnsafeFlushEnable;
   }
 
+  public int getConfigNodeRatisLogForceSyncNum() {
+    return configNodeRatisLogForceSyncNum;
+  }
+
+  public void setConfigNodeRatisLogForceSyncNum(int configNodeRatisLogForceSyncNum) {
+    this.configNodeRatisLogForceSyncNum = configNodeRatisLogForceSyncNum;
+  }
+
+  public int getSchemaRegionRatisLogForceSyncNum() {
+    return schemaRegionRatisLogForceSyncNum;
+  }
+
+  public void setSchemaRegionRatisLogForceSyncNum(int schemaRegionRatisLogForceSyncNum) {
+    this.schemaRegionRatisLogForceSyncNum = schemaRegionRatisLogForceSyncNum;
+  }
+
   public int getDataRegionRatisLogForceSyncNum() {
     return dataRegionRatisLogForceSyncNum;
   }
@@ -789,6 +799,26 @@ public class ConfigNodeConfig {
 
   public void setDataRegionRatisGrpcFlowControlWindow(long dataRegionRatisGrpcFlowControlWindow) {
     this.dataRegionRatisGrpcFlowControlWindow = dataRegionRatisGrpcFlowControlWindow;
+  }
+
+  public int getConfigNodeRatisGrpcLeaderOutstandingAppendsMax() {
+    return configNodeRatisGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public void setConfigNodeRatisGrpcLeaderOutstandingAppendsMax(
+      int configNodeRatisGrpcLeaderOutstandingAppendsMax) {
+    this.configNodeRatisGrpcLeaderOutstandingAppendsMax =
+        configNodeRatisGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public int getSchemaRegionRatisGrpcLeaderOutstandingAppendsMax() {
+    return schemaRegionRatisGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public void setSchemaRegionRatisGrpcLeaderOutstandingAppendsMax(
+      int schemaRegionRatisGrpcLeaderOutstandingAppendsMax) {
+    this.schemaRegionRatisGrpcLeaderOutstandingAppendsMax =
+        schemaRegionRatisGrpcLeaderOutstandingAppendsMax;
   }
 
   public int getDataRegionRatisGrpcLeaderOutstandingAppendsMax() {
@@ -1174,5 +1204,32 @@ public class ConfigNodeConfig {
       }
     }
     return configMessage.toString();
+  }
+
+  public long getConfigNodeRatisPeriodicSnapshotInterval() {
+    return configNodeRatisPeriodicSnapshotInterval;
+  }
+
+  public void setConfigNodeRatisPeriodicSnapshotInterval(
+      long configNodeRatisPeriodicSnapshotInterval) {
+    this.configNodeRatisPeriodicSnapshotInterval = configNodeRatisPeriodicSnapshotInterval;
+  }
+
+  public long getSchemaRegionRatisPeriodicSnapshotInterval() {
+    return schemaRegionRatisPeriodicSnapshotInterval;
+  }
+
+  public void setSchemaRegionRatisPeriodicSnapshotInterval(
+      long schemaRegionRatisPeriodicSnapshotInterval) {
+    this.schemaRegionRatisPeriodicSnapshotInterval = schemaRegionRatisPeriodicSnapshotInterval;
+  }
+
+  public long getDataRegionRatisPeriodicSnapshotInterval() {
+    return dataRegionRatisPeriodicSnapshotInterval;
+  }
+
+  public void setDataRegionRatisPeriodicSnapshotInterval(
+      long dataRegionRatisPeriodicSnapshotInterval) {
+    this.dataRegionRatisPeriodicSnapshotInterval = dataRegionRatisPeriodicSnapshotInterval;
   }
 }

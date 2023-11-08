@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
+import org.apache.iotdb.tsfile.access.Column;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -49,7 +49,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   // Used for batch writing
   private long remainingPointsNumber;
 
-  /** @param schema schema of this measurement */
+  // TestOnly
   public AlignedChunkWriterImpl(VectorMeasurementSchema schema) {
     timeChunkWriter =
         new TimeChunkWriter(
@@ -110,7 +110,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   }
 
   /**
-   * This is used to write 0-level file. The compression of the time column is 'SNAPPY' in the
+   * This is used to write 0-level file. The compression of the time column is 'LZ4' in the
    * configuration by default. The encoding of the time column is 'TS_2DIFF' in the configuration by
    * default.
    *

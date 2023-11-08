@@ -25,7 +25,7 @@ import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -62,7 +62,8 @@ public class DataMigrationExample {
       throws IoTDBConnectionException, StatementExecutionException, ExecutionException,
           InterruptedException {
 
-    ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENCY + 1);
+    // the thread used for dataMigration must be smaller than session pool size
+    ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENCY);
 
     String path = "root.**";
 

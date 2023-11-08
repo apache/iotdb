@@ -18,6 +18,10 @@
 @REM
 
 @echo off
+
+@REM You can set datanode memory size, example '2G' or '2048M'
+set MEMORY_SIZE=
+
 @REM true or false
 @REM DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (%IOTDB_CONF%\jmx.password and %{IOTDB_CONF%\jmx.access)
 set JMX_LOCAL="true"
@@ -60,48 +64,65 @@ for /f "tokens=*" %%a in ('cscript //nologo %IOTDB_HOME%\sbin\tmp.vbs') do set s
 del %IOTDB_HOME%\sbin\tmp.vbs
 set system_memory_in_mb=%system_memory_in_mb:,=%
 
-set /a half_=%system_memory_in_mb%/2
-set /a quarter_=%half_%/2
+set /a suggest_=%system_memory_in_mb%/2
 
-if %half_% GTR 1024 set half_=1024
-if %quarter_% GTR 65536 set quarter_=65536
+if "%MEMORY_SIZE%"=="" (
+  set /a memory_size_in_mb=%suggest_%
+) else (
+  if "%MEMORY_SIZE:~-1%"=="M" (
+    set /a memory_size_in_mb=%MEMORY_SIZE:~0,-1%
+  ) else if "%MEMORY_SIZE:~-1%"=="G" (
+    set /a memory_size_in_mb=%MEMORY_SIZE:~0,-1%*1024
+  ) else (
+    echo "Invalid format of MEMORY_SIZE, please use the format like 2048M or 2G."
+    exit /b 1
+  )
+)
 
-if %half_% GTR %quarter_% (
-	set max_heap_size_in_mb=%half_%
-) else set max_heap_size_in_mb=%quarter_%
+@REM set on heap memory size
+@REM when memory_size_in_mb is less than 4 * 1024, we will set on heap memory size to memory_size_in_mb / 4 * 3
+@REM when memory_size_in_mb is greater than 4 * 1024 and less than 16 * 1024, we will set on heap memory size to memory_size_in_mb / 5 * 4
+@REM when memory_size_in_mb is greater than 16 * 1024 and less than 128 * 1024, we will set on heap memory size to memory_size_in_mb / 8 * 7
+@REM when memory_size_in_mb is greater than 128 * 1024, we will set on heap memory size to memory_size_in_mb - 16 * 1024
+if %memory_size_in_mb% LSS 4096 (
+  set /a on_heap_memory_size_in_mb=%memory_size_in_mb%/4*3
+) else if %memory_size_in_mb% LSS 16384 (
+  set /a on_heap_memory_size_in_mb=%memory_size_in_mb%/5*4
+) else if %memory_size_in_mb% LSS 131072 (
+  set /a on_heap_memory_size_in_mb=%memory_size_in_mb%/8*7
+) else (
+  set /a on_heap_memory_size_in_mb=%memory_size_in_mb%-16384
+)
+set /a off_heap_memory_size_in_mb=%memory_size_in_mb%-%on_heap_memory_size_in_mb%
 
-set MAX_HEAP_SIZE=%max_heap_size_in_mb%M
-set max_sensible_yg_per_core_in_mb=100
-set /a max_sensible_yg_in_mb=%max_sensible_yg_per_core_in_mb%*%system_cpu_cores%
-set /a desired_yg_in_mb=%max_heap_size_in_mb%/4
+set ON_HEAP_MEMORY=%on_heap_memory_size_in_mb%M
+set OFF_HEAP_MEMORY=%off_heap_memory_size_in_mb%M
 
-if %desired_yg_in_mb% GTR %max_sensible_yg_in_mb% (
-	set HEAP_NEWSIZE=%max_sensible_yg_in_mb%M
-) else set HEAP_NEWSIZE=%desired_yg_in_mb%M
+set IOTDB_ALLOW_HEAP_DUMP="true"
 
-@REM if the heap size is larger than 16GB, we will forbid writing the heap dump file
-if %desired_yg_in_mb% GTR 16384 (
-	set IOTDB_ALLOW_HEAP_DUMP="false"
-) else set IOTDB_ALLOW_HEAP_DUMP="true"
+@REM on heap memory size
+@REM set ON_HEAP_MEMORY=2G
+@REM off heap memory size
+@REM set OFF_HEAP_MEMORY=512M
 
-@REM Maximum heap size
-@REM set MAX_HEAP_SIZE="2G"
-@REM Minimum heap size
-@REM set HEAP_NEWSIZE="2G"
+if "%OFF_HEAP_MEMORY:~-1%"=="M" (
+    set /a off_heap_memory_size_in_mb=%OFF_HEAP_MEMORY:~0,-1%
+  ) else if "%OFF_HEAP_MEMORY:~-1%"=="G" (
+    set /a off_heap_memory_size_in_mb=%OFF_HEAP_MEMORY:~0,-1%*1024
+  ) 
 
-@REM maximum direct memory size
-set MAX_DIRECT_MEMORY_SIZE=%MAX_HEAP_SIZE%
-@REM threads number that may use direct memory, including query threads(8) + merge threads(4) + space left for system(4)
-set threads_number=16
-@REM the size of buffer cache pool(IOV_MAX) depends on operating system
-set temp_buffer_pool_size=1024
+@REM threads number of io
+set IO_THREADS_NUMBER=1000
 @REM Max cached buffer size, Note: unit can only be B!
-@REM which equals DIRECT_MEMORY_SIZE / threads_number / temp_buffer_pool_size
-set MAX_CACHED_BUFFER_SIZE=%max_heap_size_in_mb%*1024*1024/%threads_number%/%temp_buffer_pool_size%
+@REM which equals OFF_HEAP_MEMORY / IO_THREADS_NUMBER
+set /a MAX_CACHED_BUFFER_SIZE=%off_heap_memory_size_in_mb%/%IO_THREADS_NUMBER%*1024*1024
 
-set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE%
-set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE%
+set IOTDB_HEAP_OPTS=-Xmx%ON_HEAP_MEMORY% -Xms%ON_HEAP_MEMORY%
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%OFF_HEAP_MEMORY%
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Djdk.nio.maxCachedBufferSize=%MAX_CACHED_BUFFER_SIZE%
+
+@REM if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
+@REM IOTDB_JMX_OPTS=%IOTDB_HEAP_OPTS% -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=\tmp\heapdump.hprof
 
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%
@@ -129,5 +150,5 @@ IF "%JAVA_VERSION%" == "8" (
      --add-opens=java.base/java.net=ALL-UNNAMED
 )
 
-echo Maximum memory allocation pool = %MAX_HEAP_SIZE%, initial memory allocation pool = %HEAP_NEWSIZE%
+echo DataNode on heap memory size = %ON_HEAP_MEMORY%B, off heap memory size = %OFF_HEAP_MEMORY%B
 echo If you want to change this configuration, please check conf\datanode-env.bat.

@@ -22,19 +22,19 @@ package org.apache.iotdb.tsfile.read.reader.chunk;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
 
 import java.io.IOException;
@@ -92,7 +92,8 @@ public class AlignedChunkReader implements IChunkReader {
    *
    * @param filter filter
    */
-  public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList, Filter filter)
+  public AlignedChunkReader(
+      Chunk timeChunk, List<Chunk> valueChunkList, Filter filter, boolean queryAllSensors)
       throws IOException {
     this.filter = filter;
     this.timeChunkDataBuffer = timeChunk.getData();
@@ -108,7 +109,7 @@ public class AlignedChunkReader implements IChunkReader {
           valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
           valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
         });
-    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
+    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList, queryAllSensors);
   }
 
   /**
@@ -132,12 +133,14 @@ public class AlignedChunkReader implements IChunkReader {
           valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
           valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
         });
-    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
+    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList, false);
   }
 
   /** construct all the page readers in this chunk */
   private void initAllPageReaders(
-      Statistics timeChunkStatistics, List<Statistics> valueChunkStatisticsList)
+      Statistics timeChunkStatistics,
+      List<Statistics> valueChunkStatisticsList,
+      boolean queryAllSensors)
       throws IOException {
     // construct next satisfied page header
     while (timeChunkDataBuffer.remaining() > 0) {
@@ -145,7 +148,7 @@ public class AlignedChunkReader implements IChunkReader {
       PageHeader timePageHeader;
       List<PageHeader> valuePageHeaderList = new ArrayList<>();
 
-      boolean exits = false;
+      boolean exits = valueChunkDataBufferList.isEmpty();
       // this chunk has only one page
       if ((timeChunkHeader.getChunkType() & 0x3F) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
         timePageHeader = PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkStatistics);
@@ -176,7 +179,7 @@ public class AlignedChunkReader implements IChunkReader {
       // if the current page satisfies
       if (exits && timePageSatisfied(timePageHeader)) {
         AlignedPageReader alignedPageReader =
-            constructPageReaderForNextPage(timePageHeader, valuePageHeaderList);
+            constructPageReaderForNextPage(timePageHeader, valuePageHeaderList, queryAllSensors);
         if (alignedPageReader != null) {
           pageReaderList.add(alignedPageReader);
         }
@@ -213,7 +216,8 @@ public class AlignedChunkReader implements IChunkReader {
   }
 
   private AlignedPageReader constructPageReaderForNextPage(
-      PageHeader timePageHeader, List<PageHeader> valuePageHeader) throws IOException {
+      PageHeader timePageHeader, List<PageHeader> valuePageHeader, boolean queryAllSensors)
+      throws IOException {
     PageInfo timePageInfo = new PageInfo();
     getPageInfo(timePageHeader, timeChunkDataBuffer, timeChunkHeader, timePageInfo);
     PageInfo valuePageInfo = new PageInfo();
@@ -221,7 +225,7 @@ public class AlignedChunkReader implements IChunkReader {
     List<ByteBuffer> valuePageDataList = new ArrayList<>();
     List<TSDataType> valueDataTypeList = new ArrayList<>();
     List<Decoder> valueDecoderList = new ArrayList<>();
-    boolean exist = false;
+    boolean exist = valuePageHeader.isEmpty();
     for (int i = 0; i < valuePageHeader.size(); i++) {
       if (valuePageHeader.get(i) == null
           || valuePageHeader.get(i).getUncompressedSize() == 0) { // Empty Page
@@ -266,13 +270,14 @@ public class AlignedChunkReader implements IChunkReader {
             valuePageDataList,
             valueDataTypeList,
             valueDecoderList,
-            filter);
+            filter,
+            queryAllSensors);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
     return alignedPageReader;
   }
 
   /** Read data from compressed page data. Uncompress the page and decode it to tsblock data. */
-  public TsBlock readPageData(
+  public IPointReader getPagePointReader(
       PageHeader timePageHeader,
       List<PageHeader> valuePageHeaders,
       ByteBuffer compressedTimePageData,
@@ -314,10 +319,11 @@ public class AlignedChunkReader implements IChunkReader {
             uncompressedValuePageDatas,
             valueTypes,
             valueDecoders,
-            null);
+            null,
+            false);
     alignedPageReader.initTsBlockBuilder(valueTypes);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
-    return alignedPageReader.getAllSatisfiedData();
+    return alignedPageReader.getLazyPointReader();
   }
 
   private ByteBuffer uncompressPageData(

@@ -31,9 +31,9 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.DescPrior
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -49,16 +49,32 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
 
   private final List<TSDataType> dataTypes;
 
+  // only used for limit and offset push down optimizer, if we select all columns from aligned
+  // device, we
+  // can use statistics to skip.
+  // it's only exact while using limit & offset push down
+  private final boolean queryAllSensors;
+
   public AlignedSeriesScanUtil(
       PartialPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
+    this(seriesPath, scanOrder, scanOptions, context, false);
+  }
+
+  public AlignedSeriesScanUtil(
+      PartialPath seriesPath,
+      Ordering scanOrder,
+      SeriesScanOptions scanOptions,
+      FragmentInstanceContext context,
+      boolean queryAllSensors) {
     super(seriesPath, scanOrder, scanOptions, context);
     dataTypes =
         ((AlignedPath) seriesPath)
             .getSchemaList().stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
     isAligned = true;
+    this.queryAllSensors = queryAllSensors;
   }
 
   @SuppressWarnings("squid:S3740")
@@ -122,7 +138,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       Set<String> allSensors)
       throws IOException {
     return FileLoaderUtils.loadTimeSeriesMetadata(
-        resource, (AlignedPath) seriesPath, context, filter);
+        resource, (AlignedPath) seriesPath, context, filter, queryAllSensors);
   }
 
   @Override
@@ -141,30 +157,41 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
         && !isFileOverlapped()
         && !firstTimeSeriesMetadata.isModified()) {
       Filter queryFilter = scanOptions.getQueryFilter();
-      if (queryFilter != null) {
-        if (!queryFilter.satisfy(firstTimeSeriesMetadata.getStatistics())) {
-          skipCurrentFile();
-        }
-      } else {
+      Statistics statistics = firstTimeSeriesMetadata.getStatistics();
+      if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
         skipOffsetByTimeSeriesMetadata();
+      } else if (!queryFilter.satisfy(statistics)) {
+        skipCurrentFile();
       }
     }
   }
 
   @SuppressWarnings("squid:S3740")
   private void skipOffsetByTimeSeriesMetadata() {
-    // For aligned series, When we only query some measurements under an aligned device, if the
-    // values of these queried measurements at a timestamp are all null, the timestamp will not
-    // be selected.
+    // For aligned series, When we only query some measurements under an aligned device, if any
+    // values of these queried measurements has the same value count as the time column, the
+    // timestamp will be selected.
     // NOTE: if we change the query semantic in the future for aligned series, we need to remove
     // this check here.
     long rowCount =
         ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics().getCount();
-    for (Statistics statistics :
-        ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getValueStatisticsList()) {
-      if (statistics == null || statistics.hasNullValue(rowCount)) {
-        return;
+    boolean canUse =
+        queryAllSensors
+            || ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata)
+                .getValueStatisticsList()
+                .isEmpty();
+    if (!canUse) {
+      for (Statistics statistics :
+          ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getValueStatisticsList()) {
+        if (statistics != null && !statistics.hasNullValue(rowCount)) {
+          canUse = true;
+          break;
+        }
       }
+    }
+
+    if (!canUse) {
+      return;
     }
     // When the number of points in all value chunk groups is the same as that in the time chunk
     // group, it means that there is no null value, and all timestamps will be selected.
@@ -178,29 +205,37 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   protected void filterFirstChunkMetadata() throws IOException {
     if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
       Filter queryFilter = scanOptions.getQueryFilter();
-      if (queryFilter != null) {
-        if (!queryFilter.satisfy(firstChunkMetadata.getStatistics())) {
-          skipCurrentChunk();
-        }
-      } else {
+      Statistics statistics = firstChunkMetadata.getStatistics();
+      if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
         skipOffsetByChunkMetadata();
+      } else if (!queryFilter.satisfy(statistics)) {
+        skipCurrentChunk();
       }
     }
   }
 
   @SuppressWarnings("squid:S3740")
   private void skipOffsetByChunkMetadata() {
-    // For aligned series, When we only query some measurements under an aligned device, if the
-    // values of these queried measurements at a timestamp are all null, the timestamp will not
-    // be selected.
+    // For aligned series, When we only query some measurements under an aligned device, if any
+    // values of these queried measurements has the same value count as the time column, the
+    // timestamp will be selected.
     // NOTE: if we change the query semantic in the future for aligned series, we need to remove
     // this check here.
     long rowCount = firstChunkMetadata.getStatistics().getCount();
-    for (Statistics statistics :
-        ((AlignedChunkMetadata) firstChunkMetadata).getValueStatisticsList()) {
-      if (statistics == null || statistics.hasNullValue(rowCount)) {
-        return;
+    boolean canUse =
+        queryAllSensors
+            || ((AlignedChunkMetadata) firstChunkMetadata).getValueStatisticsList().isEmpty();
+    if (!canUse) {
+      for (Statistics statistics :
+          ((AlignedChunkMetadata) firstChunkMetadata).getValueStatisticsList()) {
+        if (statistics != null && !statistics.hasNullValue(rowCount)) {
+          canUse = true;
+          break;
+        }
       }
+    }
+    if (!canUse) {
+      return;
     }
     // When the number of points in all value chunks is the same as that in the time chunk, it
     // means that there is no null value, and all timestamps will be selected.

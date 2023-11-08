@@ -21,7 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -30,8 +30,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.PageException;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
@@ -39,7 +40,6 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -271,8 +271,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
         }
       }
     }
-    return StorageEngine.getTimePartition(pageHeader.getStartTime())
-        != StorageEngine.getTimePartition(pageHeader.getEndTime());
+    return TimePartitionUtils.getTimePartitionId(pageHeader.getStartTime())
+        != TimePartitionUtils.getTimePartitionId(pageHeader.getEndTime());
   }
 
   /**
@@ -358,7 +358,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       ByteBuffer pageData,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
       throws PageException {
-    long partitionId = StorageEngine.getTimePartition(pageHeader.getStartTime());
+    long partitionId = TimePartitionUtils.getTimePartitionId(pageHeader.getStartTime());
     getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
     ChunkWriterImpl chunkWriter =
         partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));
@@ -413,7 +413,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
       Object value = batchData.currentValue();
-      long partitionId = StorageEngine.getTimePartition(time);
+      long partitionId = TimePartitionUtils.getTimePartitionId(time);
 
       ChunkWriterImpl chunkWriter =
           partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));

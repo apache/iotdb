@@ -31,8 +31,20 @@ public class PipeConfig {
 
   /////////////////////////////// File ///////////////////////////////
 
+  public String getPipeHardlinkBaseDirName() {
+    return COMMON_CONFIG.getPipeHardlinkBaseDirName();
+  }
+
   public String getPipeHardlinkTsFileDirName() {
     return COMMON_CONFIG.getPipeHardlinkTsFileDirName();
+  }
+
+  public String getPipeHardlinkWALDirName() {
+    return COMMON_CONFIG.getPipeHardlinkWALDirName();
+  }
+
+  public boolean getPipeHardLinkWALEnabled() {
+    return COMMON_CONFIG.getPipeHardLinkWALEnabled();
   }
 
   /////////////////////////////// Tablet ///////////////////////////////
@@ -65,19 +77,19 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeExtractorAssignerDisruptorRingBufferSize();
   }
 
+  public long getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes() {
+    return COMMON_CONFIG.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes();
+  }
+
   public int getPipeExtractorMatcherCacheSize() {
     return COMMON_CONFIG.getPipeExtractorMatcherCacheSize();
   }
 
-  public int getPipeExtractorPendingQueueCapacity() {
-    return COMMON_CONFIG.getPipeExtractorPendingQueueCapacity();
-  }
-
-  public int getPipeExtractorPendingQueueTabletLimit() {
-    return COMMON_CONFIG.getPipeExtractorPendingQueueTabletLimit();
-  }
-
   /////////////////////////////// Connector ///////////////////////////////
+
+  public long getPipeConnectorTimeoutMs() {
+    return COMMON_CONFIG.getPipeConnectorTimeoutMs();
+  }
 
   public int getPipeConnectorReadFileBufferSize() {
     return COMMON_CONFIG.getPipeConnectorReadFileBufferSize();
@@ -89,6 +101,22 @@ public class PipeConfig {
 
   public int getPipeConnectorPendingQueueSize() {
     return COMMON_CONFIG.getPipeConnectorPendingQueueSize();
+  }
+
+  public boolean isPipeConnectorRPCThriftCompressionEnabled() {
+    return COMMON_CONFIG.isPipeConnectorRPCThriftCompressionEnabled();
+  }
+
+  public int getPipeAsyncConnectorSelectorNumber() {
+    return COMMON_CONFIG.getPipeAsyncConnectorSelectorNumber();
+  }
+
+  public int getPipeAsyncConnectorCoreClientNumber() {
+    return COMMON_CONFIG.getPipeAsyncConnectorCoreClientNumber();
+  }
+
+  public int getPipeAsyncConnectorMaxClientNumber() {
+    return COMMON_CONFIG.getPipeAsyncConnectorMaxClientNumber();
   }
 
   /////////////////////////////// Meta Consistency ///////////////////////////////
@@ -117,12 +145,55 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAutoRestartEnabled();
   }
 
+  /////////////////////////////// Air Gap Receiver ///////////////////////////////
+
+  public boolean getPipeAirGapReceiverEnabled() {
+    return COMMON_CONFIG.getPipeAirGapReceiverEnabled();
+  }
+
+  public int getPipeAirGapReceiverPort() {
+    return COMMON_CONFIG.getPipeAirGapReceiverPort();
+  }
+
+  /////////////////////////////// Hybrid Mode ///////////////////////////////
+
+  public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
+    return COMMON_CONFIG.getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
+  }
+
+  /////////////////////////////// Memory ///////////////////////////////
+
+  public boolean getPipeMemoryManagementEnabled() {
+    return COMMON_CONFIG.getPipeMemoryManagementEnabled();
+  }
+
+  public int getPipeMemoryAllocateMaxRetries() {
+    return COMMON_CONFIG.getPipeMemoryAllocateMaxRetries();
+  }
+
+  public long getPipeMemoryAllocateRetryIntervalInMs() {
+    return COMMON_CONFIG.getPipeMemoryAllocateRetryIntervalInMs();
+  }
+
+  public long getPipeMemoryAllocateMinSizeInBytes() {
+    return COMMON_CONFIG.getPipeMemoryAllocateMinSizeInBytes();
+  }
+
+  public long getPipeMemoryAllocateForTsFileSequenceReaderInBytes() {
+    return COMMON_CONFIG.getPipeMemoryAllocateForTsFileSequenceReaderInBytes();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
 
   public void printAllConfigs() {
+    LOGGER.info("PipeHardlinkBaseDirName: {}", getPipeHardlinkBaseDirName());
     LOGGER.info("PipeHardlinkTsFileDirName: {}", getPipeHardlinkTsFileDirName());
+    LOGGER.info("PipeHardlinkWALDirName: {}", getPipeHardlinkWALDirName());
+    LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
+
+    LOGGER.info("PipeDataStructureTabletRowSize: {}", getPipeDataStructureTabletRowSize());
 
     LOGGER.info("PipeSubtaskExecutorMaxThreadNum: {}", getPipeSubtaskExecutorMaxThreadNum());
     LOGGER.info(
@@ -138,14 +209,22 @@ public class PipeConfig {
     LOGGER.info(
         "PipeExtractorAssignerDisruptorRingBufferSize: {}",
         getPipeExtractorAssignerDisruptorRingBufferSize());
-    LOGGER.info("PipeExtractorMatcherCacheSize: {}", getPipeExtractorMatcherCacheSize());
-    LOGGER.info("PipeExtractorPendingQueueCapacity: {}", getPipeExtractorPendingQueueCapacity());
     LOGGER.info(
-        "PipeExtractorPendingQueueTabletLimit: {}", getPipeExtractorPendingQueueTabletLimit());
+        "PipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes: {}",
+        getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes());
+    LOGGER.info("PipeExtractorMatcherCacheSize: {}", getPipeExtractorMatcherCacheSize());
 
+    LOGGER.info("PipeConnectorTimeoutMs: {}", getPipeConnectorTimeoutMs());
     LOGGER.info("PipeConnectorReadFileBufferSize: {}", getPipeConnectorReadFileBufferSize());
     LOGGER.info("PipeConnectorRetryIntervalMs: {}", getPipeConnectorRetryIntervalMs());
     LOGGER.info("PipeConnectorPendingQueueSize: {}", getPipeConnectorPendingQueueSize());
+    LOGGER.info(
+        "PipeConnectorRPCThriftCompressionEnabled: {}",
+        isPipeConnectorRPCThriftCompressionEnabled());
+
+    LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
+    LOGGER.info("PipeAsyncConnectorCoreClientNumber: {}", getPipeAsyncConnectorCoreClientNumber());
+    LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());
 
     LOGGER.info("SeperatedPipeHeartbeatEnabled: {}", isSeperatedPipeHeartbeatEnabled());
     LOGGER.info(
@@ -154,6 +233,26 @@ public class PipeConfig {
     LOGGER.info(
         "PipeMetaSyncerInitialSyncDelayMinutes: {}", getPipeMetaSyncerInitialSyncDelayMinutes());
     LOGGER.info("PipeMetaSyncerSyncIntervalMinutes: {}", getPipeMetaSyncerSyncIntervalMinutes());
+    LOGGER.info(
+        "PipeMetaSyncerAutoRestartPipeCheckIntervalRound: {}",
+        getPipeMetaSyncerAutoRestartPipeCheckIntervalRound());
+    LOGGER.info("PipeAutoRestartEnabled: {}", getPipeAutoRestartEnabled());
+
+    LOGGER.info("PipeAirGapReceiverEnabled: {}", getPipeAirGapReceiverEnabled());
+    LOGGER.info("PipeAirGapReceiverPort: {}", getPipeAirGapReceiverPort());
+
+    LOGGER.info(
+        "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
+        getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
+
+    LOGGER.info("PipeMemoryManagementEnabled: {}", getPipeMemoryManagementEnabled());
+    LOGGER.info("PipeMemoryAllocateMaxRetries: {}", getPipeMemoryAllocateMaxRetries());
+    LOGGER.info(
+        "PipeMemoryAllocateRetryIntervalInMs: {}", getPipeMemoryAllocateRetryIntervalInMs());
+    LOGGER.info("PipeMemoryAllocateMinSizeInBytes: {}", getPipeMemoryAllocateMinSizeInBytes());
+    LOGGER.info(
+        "PipeMemoryAllocateForTsFileSequenceReaderInBytes: {}",
+        getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

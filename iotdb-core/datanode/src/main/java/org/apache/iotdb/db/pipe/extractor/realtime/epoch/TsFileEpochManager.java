@@ -29,8 +29,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 public class TsFileEpochManager {
@@ -39,7 +39,7 @@ public class TsFileEpochManager {
 
   private static final String[] EMPTY_MEASUREMENT_ARRAY = new String[0];
 
-  private final Map<String, TsFileEpoch> filePath2Epoch = new HashMap<>();
+  private final ConcurrentMap<String, TsFileEpoch> filePath2Epoch = new ConcurrentHashMap<>();
 
   public PipeRealtimeEvent bindPipeTsFileInsertionEvent(
       PipeTsFileInsertionEvent event, TsFileResource resource) {
@@ -53,9 +53,15 @@ public class TsFileEpochManager {
           return new TsFileEpoch(path);
         });
 
+    final TsFileEpoch epoch = filePath2Epoch.remove(filePath);
+    // When all data corresponding to this TsFileEpoch have been extracted, update the state
+    // of the extractors processing this TsFileEpoch.
+    epoch.setExtractorsRecentProcessedTsFileEpochState();
+
+    LOGGER.info("All data in TsFileEpoch {} was extracted", epoch);
     return new PipeRealtimeEvent(
         event,
-        filePath2Epoch.remove(filePath),
+        epoch,
         resource.getDevices().stream()
             .collect(Collectors.toMap(device -> device, device -> EMPTY_MEASUREMENT_ARRAY)),
         event.getPattern());

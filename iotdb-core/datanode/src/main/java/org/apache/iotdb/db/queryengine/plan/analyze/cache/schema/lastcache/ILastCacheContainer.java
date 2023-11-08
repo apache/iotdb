@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 /** this interface declares the operations of LastCache data */
 public interface ILastCacheContainer {
 
-  // get lastCache of monad timseries
+  // get lastCache of monad timeseries
   TimeValuePair getCachedLast();
 
   /**
@@ -33,8 +33,9 @@ public interface ILastCacheContainer {
    * @param timeValuePair last point
    * @param highPriorityUpdate whether it's a high priority update
    * @param latestFlushedTime latest flushed time
+   * @return increasing of memory usage
    */
-  void updateCachedLast(
+  int updateCachedLast(
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
 
   int estimateSize();

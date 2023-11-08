@@ -32,8 +32,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.util.InputRowUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.LayerCacheUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
@@ -519,15 +519,17 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       @Override
       public YieldableState yield() throws Exception {
         if (isFirstIteration) {
-          if (rowRecordList.size() == 0 && nextWindowTimeBegin == Long.MIN_VALUE) {
+          if (rowRecordList.size() == 0) {
             final YieldableState yieldableState =
                 LayerCacheUtils.yieldRow(udfInputDataSet, rowRecordList);
             if (yieldableState != YieldableState.YIELDABLE) {
               return yieldableState;
             }
-            // display window begin should be set to the same as the min timestamp of the query
-            // result set
-            nextWindowTimeBegin = rowRecordList.getTime(0);
+            if (nextWindowTimeBegin == Long.MIN_VALUE) {
+              // display window begin should be set to the same as the min timestamp of the query
+              // result set
+              nextWindowTimeBegin = rowRecordList.getTime(0);
+            }
           }
           hasAtLeastOneRow = rowRecordList.size() != 0;
           isFirstIteration = false;

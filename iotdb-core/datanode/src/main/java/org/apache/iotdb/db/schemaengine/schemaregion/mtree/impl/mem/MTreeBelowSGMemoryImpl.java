@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
@@ -41,10 +42,8 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
-import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.LogicalViewInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
@@ -69,8 +68,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.DeviceFilterVi
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -348,7 +347,7 @@ public class MTreeBelowSGMemoryImpl {
         }
       }
 
-      // create a non-aligned timeseries
+      // create a aligned timeseries
       if (entityMNode.isAlignedNullable() == null) {
         entityMNode.setAligned(true);
       }
@@ -479,6 +478,29 @@ public class MTreeBelowSGMemoryImpl {
     }
     return failingMeasurementMap;
   }
+
+  public boolean changeAlias(String alias, PartialPath fullPath) throws MetadataException {
+    IMeasurementMNode<IMemMNode> measurementMNode = getMeasurementMNode(fullPath);
+    // upsert alias
+    if (alias != null && !alias.equals(measurementMNode.getAlias())) {
+      synchronized (this) {
+        IDeviceMNode<IMemMNode> device = measurementMNode.getParent().getAsDeviceMNode();
+        IMemMNode memMNode = store.getChild(device.getAsMNode(), alias);
+        if (memMNode != null) {
+          throw new MetadataException(
+              "The alias is duplicated with the name or alias of other measurement.");
+        }
+        if (measurementMNode.getAlias() != null) {
+          device.deleteAliasChild(measurementMNode.getAlias());
+        }
+        device.addAlias(alias, measurementMNode);
+        setAlias(measurementMNode, alias);
+      }
+      return true;
+    }
+    return false;
+  }
+
   /**
    * Delete path. The path should be a full path from root to leaf node
    *
@@ -555,7 +577,8 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     List<PartialPath> result = new ArrayList<>();
     try (MeasurementUpdater<IMemMNode> updater =
-        new MeasurementUpdater<IMemMNode>(rootNode, pathPattern, store, false) {
+        new MeasurementUpdater<IMemMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           protected void updateMeasurement(IMeasurementMNode<IMemMNode> node) {
             node.setPreDeleted(true);
@@ -571,7 +594,8 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     List<PartialPath> result = new ArrayList<>();
     try (MeasurementUpdater<IMemMNode> updater =
-        new MeasurementUpdater<IMemMNode>(rootNode, pathPattern, store, false) {
+        new MeasurementUpdater<IMemMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           protected void updateMeasurement(IMeasurementMNode<IMemMNode> node) {
             node.setPreDeleted(false);
@@ -587,7 +611,8 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
     try (MeasurementCollector<Void, IMemMNode> collector =
-        new MeasurementCollector<Void, IMemMNode>(rootNode, pathPattern, store, false) {
+        new MeasurementCollector<Void, IMemMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             if (node.isPreDeleted()) {
@@ -601,11 +626,13 @@ public class MTreeBelowSGMemoryImpl {
     return result;
   }
 
+  // TODO: seems useless
   public Set<PartialPath> getDevicesOfPreDeletedTimeseries(PartialPath pathPattern)
       throws MetadataException {
     Set<PartialPath> result = new HashSet<>();
     try (MeasurementCollector<Void, IMemMNode> collector =
-        new MeasurementCollector<Void, IMemMNode>(rootNode, pathPattern, store, false) {
+        new MeasurementCollector<Void, IMemMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             if (node.isPreDeleted()) {
@@ -674,7 +701,8 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     List<MeasurementPath> result = new LinkedList<>();
     try (MeasurementCollector<Void, IMemMNode> collector =
-        new MeasurementCollector<Void, IMemMNode>(rootNode, pathPattern, store, false) {
+        new MeasurementCollector<Void, IMemMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
@@ -781,7 +809,8 @@ public class MTreeBelowSGMemoryImpl {
     Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       try (EntityUpdater<?> updater =
-          new EntityUpdater<IMemMNode>(rootNode, entry.getKey(), store, false) {
+          new EntityUpdater<IMemMNode>(
+              rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
             protected void updateEntity(IDeviceMNode<IMemMNode> node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())) {
@@ -802,7 +831,8 @@ public class MTreeBelowSGMemoryImpl {
     Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       try (EntityUpdater<IMemMNode> updater =
-          new EntityUpdater<IMemMNode>(rootNode, entry.getKey(), store, false) {
+          new EntityUpdater<IMemMNode>(
+              rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
             protected void updateEntity(IDeviceMNode<IMemMNode> node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())
@@ -824,7 +854,8 @@ public class MTreeBelowSGMemoryImpl {
     Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       try (EntityUpdater<?> collector =
-          new EntityUpdater<IMemMNode>(rootNode, entry.getKey(), store, false) {
+          new EntityUpdater<IMemMNode>(
+              rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
             protected void updateEntity(IDeviceMNode<IMemMNode> node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())
@@ -872,7 +903,7 @@ public class MTreeBelowSGMemoryImpl {
   public long countPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
     try (EntityCounter<IMemMNode> counter =
-        new EntityCounter<>(rootNode, pathPattern, store, false)) {
+        new EntityCounter<>(rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE)) {
       counter.setSchemaTemplateFilter(templateId);
       return counter.count();
     }
@@ -887,7 +918,11 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
         new EntityCollector<IDeviceSchemaInfo, IMemMNode>(
-            rootNode, showDevicesPlan.getPath(), store, showDevicesPlan.isPrefixMatch()) {
+            rootNode,
+            showDevicesPlan.getPath(),
+            store,
+            showDevicesPlan.isPrefixMatch(),
+            showDevicesPlan.getScope()) {
 
           protected IDeviceSchemaInfo collectEntity(IDeviceMNode<IMemMNode> node) {
             PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
@@ -952,7 +987,11 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     MeasurementCollector<ITimeSeriesSchemaInfo, IMemMNode> collector =
         new MeasurementCollector<ITimeSeriesSchemaInfo, IMemMNode>(
-            rootNode, showTimeSeriesPlan.getPath(), store, showTimeSeriesPlan.isPrefixMatch()) {
+            rootNode,
+            showTimeSeriesPlan.getPath(),
+            store,
+            showTimeSeriesPlan.isPrefixMatch(),
+            showTimeSeriesPlan.getScope()) {
 
           protected ITimeSeriesSchemaInfo collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             return new ITimeSeriesSchemaInfo() {
@@ -1024,7 +1063,11 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     MNodeCollector<INodeSchemaInfo, IMemMNode> collector =
         new MNodeCollector<INodeSchemaInfo, IMemMNode>(
-            rootNode, showNodesPlan.getPath(), store, showNodesPlan.isPrefixMatch()) {
+            rootNode,
+            showNodesPlan.getPath(),
+            store,
+            showNodesPlan.isPrefixMatch(),
+            showNodesPlan.getScope()) {
 
           protected INodeSchemaInfo collectMNode(IMemMNode node) {
             return new ShowNodesResult(
@@ -1081,7 +1124,7 @@ public class MTreeBelowSGMemoryImpl {
       String leafName = path.getMeasurement();
       IMeasurementMNode<IMemMNode> measurementMNode =
           nodeFactory.createLogicalViewMNode(
-              null, leafName, new LogicalViewInfo(new LogicalViewSchema(leafName, viewExpression)));
+              null, leafName, new LogicalViewSchema(leafName, viewExpression));
       IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
 
       // no need to check alias, because logical view has no alias
@@ -1124,7 +1167,8 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     List<PartialPath> result = new ArrayList<>();
     try (MeasurementUpdater<IMemMNode> updater =
-        new MeasurementUpdater<IMemMNode>(rootNode, pathPattern, store, false) {
+        new MeasurementUpdater<IMemMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           protected void updateMeasurement(IMeasurementMNode<IMemMNode> node) {
             if (node.isLogicalView()) {
@@ -1142,7 +1186,8 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     List<PartialPath> result = new ArrayList<>();
     try (MeasurementUpdater<IMemMNode> updater =
-        new MeasurementUpdater<IMemMNode>(rootNode, pathPattern, store, false) {
+        new MeasurementUpdater<IMemMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           protected void updateMeasurement(IMeasurementMNode<IMemMNode> node) {
             if (node.isLogicalView()) {
@@ -1160,7 +1205,8 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
     try (MeasurementCollector<Void, IMemMNode> collector =
-        new MeasurementCollector<Void, IMemMNode>(rootNode, pathPattern, store, false) {
+        new MeasurementCollector<Void, IMemMNode>(
+            rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             if (node.isLogicalView() && node.isPreDeleted()) {

@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 import org.apache.iotdb.tsfile.exception.TsFileStatisticsMistakesException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -42,7 +43,6 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -228,12 +228,20 @@ public class TsFileSequenceReader implements AutoCloseable {
     return fileMetadataSize;
   }
 
+  /** Return the tsfile meta data size of this tsfile. */
+  public long getFileMetadataSize() throws IOException {
+    return tsFileInput.size() - getFileMetadataPos();
+  }
+
   /**
    * Return the whole meta data size of this tsfile, including ChunkMetadata, TimeseriesMetadata and
    * etc.
    */
-  public long getFileMetadataSize() throws IOException {
-    return tsFileInput.size() - getFileMetadataPos();
+  public long getAllMetadataSize() throws IOException {
+    if (tsFileMetaData == null) {
+      readFileMetadata();
+    }
+    return tsFileInput.size() - tsFileMetaData.getMetaOffset();
   }
 
   /** this function does not modify the position of the file reader. */
@@ -354,17 +362,25 @@ public class TsFileSequenceReader implements AutoCloseable {
     return deviceMetadata;
   }
 
+  /** @deprecated Use {@link #readTimeseriesMetadata(String, String, boolean)} instead. */
+  @Deprecated
+  @SuppressWarnings("java:S1133") // suppress warn of deprecation
   public TimeseriesMetadata readTimeseriesMetadata(Path path, boolean ignoreNotExists)
       throws IOException {
+    return readTimeseriesMetadata(path.getDevice(), path.getMeasurement(), ignoreNotExists);
+  }
+
+  public TimeseriesMetadata readTimeseriesMetadata(
+      String device, String measurement, boolean ignoreNotExists) throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffset(deviceMetadataIndexNode, path.getDevice(), true, true);
+        getMetadataAndEndOffset(deviceMetadataIndexNode, device, true, true);
     if (metadataIndexPair == null) {
       if (ignoreNotExists) {
         return null;
       }
-      throw new IOException("Device {" + path.getDevice() + "} is not in tsFileMetaData");
+      throw new IOException("Device {" + device + "} is not in tsFileMetaData");
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
@@ -375,8 +391,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
         throw e;
       }
-      metadataIndexPair =
-          getMetadataAndEndOffset(metadataIndexNode, path.getMeasurement(), false, false);
+      metadataIndexPair = getMetadataAndEndOffset(metadataIndexNode, measurement, false, false);
     }
     if (metadataIndexPair == null) {
       return null;
@@ -393,8 +408,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
     }
     // return null if path does not exist in the TsFile
-    int searchResult =
-        binarySearchInTimeseriesMetadataList(timeseriesMetadataList, path.getMeasurement());
+    int searchResult = binarySearchInTimeseriesMetadataList(timeseriesMetadataList, measurement);
     return searchResult >= 0 ? timeseriesMetadataList.get(searchResult) : null;
   }
 
@@ -456,9 +470,10 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /* Find the leaf node that contains path, return all the sensors in that leaf node which are also in allSensors set */
-  public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, Set<String> allSensors)
-      throws IOException {
-    Pair<MetadataIndexEntry, Long> metadataIndexPair = getLeafMetadataIndexPair(path);
+  public List<TimeseriesMetadata> readTimeseriesMetadata(
+      String device, String measurement, Set<String> allSensors) throws IOException {
+    Pair<MetadataIndexEntry, Long> metadataIndexPair =
+        getLeafMetadataIndexPair(device, measurement);
     if (metadataIndexPair == null) {
       return Collections.emptyList();
     }
@@ -482,11 +497,12 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /* Get leaf MetadataIndexPair which contains path */
-  private Pair<MetadataIndexEntry, Long> getLeafMetadataIndexPair(Path path) throws IOException {
+  private Pair<MetadataIndexEntry, Long> getLeafMetadataIndexPair(String device, String measurement)
+      throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffset(deviceMetadataIndexNode, path.getDevice(), true, true);
+        getMetadataAndEndOffset(deviceMetadataIndexNode, device, true, true);
     if (metadataIndexPair == null) {
       return null;
     }
@@ -499,8 +515,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
         throw e;
       }
-      metadataIndexPair =
-          getMetadataAndEndOffset(metadataIndexNode, path.getMeasurement(), false, false);
+      metadataIndexPair = getMetadataAndEndOffset(metadataIndexNode, measurement, false, false);
     }
     return metadataIndexPair;
   }
@@ -1912,7 +1927,8 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public List<ChunkMetadata> getChunkMetadataList(Path path, boolean ignoreNotExists)
       throws IOException {
-    TimeseriesMetadata timeseriesMetaData = readTimeseriesMetadata(path, ignoreNotExists);
+    TimeseriesMetadata timeseriesMetaData =
+        readTimeseriesMetadata(path.getDevice(), path.getMeasurement(), ignoreNotExists);
     if (timeseriesMetaData == null) {
       return Collections.emptyList();
     }

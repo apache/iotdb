@@ -41,8 +41,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOpt
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
@@ -127,7 +127,8 @@ public class AlignedSeriesScanOperatorTest {
               planNodeId,
               alignedPath,
               Ordering.ASC,
-              getDefaultSeriesScanOptions(alignedPath));
+              getDefaultSeriesScanOptions(alignedPath),
+              false);
       seriesScanOperator.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator
           .getOperatorContext()
@@ -220,7 +221,8 @@ public class AlignedSeriesScanOperatorTest {
               planNodeId1,
               alignedPath1,
               Ordering.ASC,
-              getDefaultSeriesScanOptions(alignedPath1));
+              getDefaultSeriesScanOptions(alignedPath1),
+              false);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
@@ -241,7 +243,8 @@ public class AlignedSeriesScanOperatorTest {
               planNodeId2,
               alignedPath2,
               Ordering.ASC,
-              getDefaultSeriesScanOptions(alignedPath2));
+              getDefaultSeriesScanOptions(alignedPath2),
+              false);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
@@ -395,6 +398,7 @@ public class AlignedSeriesScanOperatorTest {
                   new SingleColumnMerger(new InputLocation(6, 0), new AscTimeComparator()),
                   new SingleColumnMerger(new InputLocation(7, 0), new AscTimeComparator())),
               new AscTimeComparator());
+      timeJoinOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       int count = 0;
       while (timeJoinOperator.isBlocked().isDone() && timeJoinOperator.hasNext()) {
         TsBlock tsBlock = timeJoinOperator.next();
@@ -509,7 +513,8 @@ public class AlignedSeriesScanOperatorTest {
               planNodeId1,
               alignedPath1,
               Ordering.DESC,
-              getDefaultSeriesScanOptions(alignedPath1));
+              getDefaultSeriesScanOptions(alignedPath1),
+              false);
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
@@ -530,7 +535,8 @@ public class AlignedSeriesScanOperatorTest {
               planNodeId2,
               alignedPath2,
               Ordering.DESC,
-              getDefaultSeriesScanOptions(alignedPath2));
+              getDefaultSeriesScanOptions(alignedPath2),
+              false);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
@@ -683,6 +689,7 @@ public class AlignedSeriesScanOperatorTest {
                   new SingleColumnMerger(new InputLocation(6, 0), new DescTimeComparator()),
                   new SingleColumnMerger(new InputLocation(7, 0), new DescTimeComparator())),
               new DescTimeComparator());
+      timeJoinOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       int count = 499;
       while (timeJoinOperator.isBlocked().isDone() && timeJoinOperator.hasNext()) {

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -30,8 +31,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IDeviceID;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -76,6 +77,8 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   protected TRegionReplicaSet dataRegionReplicaSet;
 
   protected ProgressIndex progressIndex;
+
+  protected boolean isGeneratedByPipe = false;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -167,6 +170,14 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
+  }
+
+  public void markAsGeneratedByPipe() {
+    isGeneratedByPipe = true;
   }
 
   // region Serialization methods for WAL
@@ -269,12 +280,19 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   public int getFailedMeasurementNumber() {
     return failedMeasurementNumber;
   }
+
+  public boolean allMeasurementFailed() {
+    if (measurements != null) {
+      return failedMeasurementNumber >= measurements.length;
+    }
+    return true;
+  }
   // endregion
 
   // region progress index
 
   @Override
-  public final ProgressIndex getProgressIndex() {
+  public ProgressIndex getProgressIndex() {
     return progressIndex;
   }
 

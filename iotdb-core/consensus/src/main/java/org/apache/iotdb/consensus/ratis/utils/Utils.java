@@ -39,6 +39,7 @@ import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
+import org.apache.ratis.util.TimeDuration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TByteBuffer;
@@ -46,6 +47,7 @@ import org.apache.thrift.transport.TByteBuffer;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class Utils {
@@ -207,6 +209,24 @@ public class Utils {
     return config.isReadOnly() && !config.isStopping();
   }
 
+  /** return the max wait duration for retry */
+  static TimeDuration getMaxRetrySleepTime(RatisConfig.Client config) {
+    final int maxAttempts = config.getClientMaxRetryAttempt();
+    final long baseSleepMs = config.getClientRetryInitialSleepTimeMs();
+    final long maxSleepMs = config.getClientRetryMaxSleepTimeMs();
+    final long timeoutMs = config.getClientRequestTimeoutMillis();
+
+    long maxWaitMs = 0L;
+    long currentSleepMs = baseSleepMs;
+    for (int i = 0; i < maxAttempts; i++) {
+      maxWaitMs += timeoutMs;
+      maxWaitMs += currentSleepMs;
+      currentSleepMs = Math.min(2 * currentSleepMs, maxSleepMs);
+    }
+
+    return TimeDuration.valueOf(maxWaitMs, TimeUnit.MILLISECONDS);
+  }
+
   public static void initRatisConfig(RaftProperties properties, RatisConfig config) {
     GrpcConfigKeys.setMessageSizeMax(properties, config.getGrpc().getMessageSizeMax());
     GrpcConfigKeys.setFlowControlWindow(properties, config.getGrpc().getFlowControlWindow());
@@ -221,6 +241,7 @@ public class Utils {
     RaftServerConfigKeys.Rpc.setTimeoutMin(properties, config.getRpc().getTimeoutMin());
     RaftServerConfigKeys.Rpc.setTimeoutMax(properties, config.getRpc().getTimeoutMax());
     RaftServerConfigKeys.Rpc.setSleepTime(properties, config.getRpc().getSleepTime());
+    RaftServerConfigKeys.Rpc.setRequestTimeout(properties, config.getRpc().getRequestTimeout());
     RaftClientConfigKeys.Rpc.setRequestTimeout(properties, config.getRpc().getRequestTimeout());
 
     RaftServerConfigKeys.LeaderElection.setLeaderStepDownWaitTime(
@@ -269,6 +290,8 @@ public class Utils {
     RaftServerConfigKeys.Log.setForceSyncNum(properties, config.getLog().getForceSyncNum());
     RaftServerConfigKeys.Log.setUnsafeFlushEnabled(
         properties, config.getLog().isUnsafeFlushEnabled());
+    RaftServerConfigKeys.Log.setCorruptionPolicy(
+        properties, RaftServerConfigKeys.Log.CorruptionPolicy.WARN_AND_RETURN);
 
     RaftServerConfigKeys.Log.Appender.setBufferByteLimit(
         properties, config.getLeaderLogAppender().getBufferByteLimit());
@@ -282,5 +305,18 @@ public class Utils {
         properties, config.getRpc().getFirstElectionTimeoutMin());
     RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMax(
         properties, config.getRpc().getFirstElectionTimeoutMax());
+
+    RaftServerConfigKeys.Read.Option option =
+        config.getRead().getReadOption() == RatisConfig.Read.Option.DEFAULT
+            ? RaftServerConfigKeys.Read.Option.DEFAULT
+            : RaftServerConfigKeys.Read.Option.LINEARIZABLE;
+    RaftServerConfigKeys.Read.setOption(properties, option);
+    RaftServerConfigKeys.Read.setTimeout(properties, config.getRead().getReadTimeout());
+
+    RaftServerConfigKeys.setSleepDeviationThreshold(
+        properties, config.getUtils().getSleepDeviationThresholdMs());
+
+    final TimeDuration clientMaxRetryGap = getMaxRetrySleepTime(config.getClient());
+    RaftServerConfigKeys.RetryCache.setExpiryTime(properties, clientMaxRetryGap);
   }
 }

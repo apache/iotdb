@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
@@ -37,7 +38,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
+import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * <b>Optimization phase:</b> Distributed plan planning
@@ -238,5 +245,118 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     public Analysis getAnalysis() {
       return analysis;
     }
+  }
+
+  // following methods are used to push down limit/offset in group by time
+
+  // 1. push down limit/offset to group by time in align by time
+
+  public static boolean canPushDownLimitOffsetToGroupByTime(QueryStatement queryStatement) {
+    if (queryStatement.isGroupByTime()
+        && !queryStatement.isAlignByDevice()
+        && !queryStatement.hasHaving()
+        && !queryStatement.hasFill()) {
+      return !queryStatement.hasOrderBy() || queryStatement.isOrderByBasedOnTime();
+    }
+    return false;
+  }
+
+  public static void pushDownLimitOffsetToTimeParameter(QueryStatement queryStatement) {
+    GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
+    long startTime = groupByTimeComponent.getStartTime();
+    long endTime = groupByTimeComponent.getEndTime();
+    long step = groupByTimeComponent.getSlidingStep().nonMonthDuration;
+    long interval = groupByTimeComponent.getInterval().nonMonthDuration;
+
+    long size = (endTime - startTime + step - 1) / step;
+    if (size > queryStatement.getRowOffset()) {
+      long limitSize = queryStatement.getRowLimit();
+      long offsetSize = queryStatement.getRowOffset();
+      if (queryStatement.getResultTimeOrder() == Ordering.ASC) {
+        startTime = startTime + offsetSize * step;
+      } else {
+        startTime = startTime + (size - offsetSize - limitSize) * step;
+      }
+      endTime =
+          limitSize == 0
+              ? endTime
+              : Math.min(endTime, startTime + (limitSize - 1) * step + interval);
+      groupByTimeComponent.setEndTime(endTime);
+      groupByTimeComponent.setStartTime(startTime);
+    } else {
+      // finish the query, resultSet is empty
+      queryStatement.setResultSetEmpty(true);
+    }
+    queryStatement.setRowLimit(0);
+    queryStatement.setRowOffset(0);
+  }
+
+  // 2. push down limit/offset to group by time in align by device
+  public static boolean canPushDownLimitOffsetInGroupByTimeForDevice(
+      QueryStatement queryStatement) {
+    if (!hasLimitOffset(queryStatement)) {
+      return false;
+    }
+
+    if (queryStatement.isGroupByTime()
+        && queryStatement.isAlignByDevice()
+        && !queryStatement.hasHaving()
+        && !queryStatement.hasFill()) {
+      return !queryStatement.hasOrderBy() || queryStatement.isOrderByBasedOnDevice();
+    }
+    return false;
+  }
+
+  public static List<PartialPath> pushDownLimitOffsetInGroupByTimeForDevice(
+      List<PartialPath> deviceNames, QueryStatement queryStatement) {
+    GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
+    if (groupByTimeComponent.getInterval().containsMonth()
+        || groupByTimeComponent.getSlidingStep().containsMonth()) {
+      return Collections.emptyList();
+    }
+    long startTime = groupByTimeComponent.getStartTime();
+    long endTime = groupByTimeComponent.getEndTime();
+    long slidingStep = groupByTimeComponent.getSlidingStep().nonMonthDuration;
+    long size = (endTime - startTime + slidingStep - 1) / slidingStep;
+    if (size == 0 || size * deviceNames.size() <= queryStatement.getRowOffset()) {
+      // resultSet is empty
+      queryStatement.setResultSetEmpty(true);
+      return deviceNames;
+    }
+
+    long limitSize = queryStatement.getRowLimit();
+    long offsetSize = queryStatement.getRowOffset();
+    List<PartialPath> optimizedDeviceNames = new ArrayList<>();
+    int startDeviceIndex = (int) (offsetSize / size);
+    int endDeviceIndex =
+        limitSize == 0
+            ? deviceNames.size() - 1
+            : (int)
+                ((limitSize - ((startDeviceIndex + 1) * size - offsetSize) + size - 1) / size
+                    + startDeviceIndex);
+
+    int index = 0;
+    while (index < startDeviceIndex) {
+      index++;
+    }
+    queryStatement.setRowOffset(offsetSize - startDeviceIndex * size);
+
+    // if only refer to one device, optimize the time parameter
+    if (startDeviceIndex == endDeviceIndex) {
+      optimizedDeviceNames.add(deviceNames.get(startDeviceIndex));
+      if (hasLimitOffset(queryStatement) && queryStatement.isOrderByTimeInDevices()) {
+        pushDownLimitOffsetToTimeParameter(queryStatement);
+      }
+    } else {
+      while (index <= endDeviceIndex && index < deviceNames.size()) {
+        optimizedDeviceNames.add(deviceNames.get(index));
+        index++;
+      }
+    }
+    return optimizedDeviceNames;
+  }
+
+  private static boolean hasLimitOffset(QueryStatement queryStatement) {
+    return queryStatement.hasLimit() || queryStatement.hasOffset();
   }
 }

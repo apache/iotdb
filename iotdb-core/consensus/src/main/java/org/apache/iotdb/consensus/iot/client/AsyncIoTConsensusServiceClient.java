@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.consensus.iot.thrift.IoTConsensusIService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
@@ -56,6 +57,7 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
         tAsyncClientManager,
         TNonblockingSocketWrapper.wrap(
             endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+    setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
@@ -109,7 +111,10 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
       checkReady();
       return true;
     } catch (Exception e) {
-      logger.info("Unexpected exception occurs in {} :", this, e);
+      logger.info(
+          "Unexpected exception occurs in {}, error msg is {}",
+          this,
+          ExceptionUtils.getRootCause(e).toString());
       return false;
     }
   }

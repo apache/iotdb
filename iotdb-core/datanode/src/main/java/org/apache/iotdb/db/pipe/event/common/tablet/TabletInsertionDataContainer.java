@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -28,8 +30,8 @@ import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -45,6 +47,9 @@ import java.util.stream.IntStream;
 
 public class TabletInsertionDataContainer {
 
+  private final PipeTaskMeta pipeTaskMeta; // used to report progress
+  private final EnrichedEvent sourceEvent; // used to report progress
+
   private String deviceId;
   private boolean isAligned;
   private MeasurementSchema[] measurementSchemaList;
@@ -52,7 +57,7 @@ public class TabletInsertionDataContainer {
 
   private long[] timestampColumn;
   private TSDataType[] valueColumnTypes;
-  // each column of Object[] is a column of primitive type array
+  // Each column of Object[] is a column of primitive type array
   private Object[] valueColumns;
   private BitMap[] nullValueColumnBitmaps;
   private int rowCount;
@@ -60,6 +65,14 @@ public class TabletInsertionDataContainer {
   private Tablet tablet;
 
   public TabletInsertionDataContainer(InsertNode insertNode, String pattern) {
+    this(null, null, insertNode, pattern);
+  }
+
+  public TabletInsertionDataContainer(
+      PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent, InsertNode insertNode, String pattern) {
+    this.pipeTaskMeta = pipeTaskMeta;
+    this.sourceEvent = sourceEvent;
+
     if (insertNode instanceof InsertRowNode) {
       parse((InsertRowNode) insertNode, pattern);
     } else if (insertNode instanceof InsertTabletNode) {
@@ -70,7 +83,15 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  public TabletInsertionDataContainer(Tablet tablet, boolean isAligned, String pattern) {
+  public TabletInsertionDataContainer(
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      Tablet tablet,
+      boolean isAligned,
+      String pattern) {
+    this.pipeTaskMeta = pipeTaskMeta;
+    this.sourceEvent = sourceEvent;
+
     parse(tablet, isAligned, pattern);
   }
 
@@ -305,7 +326,7 @@ public class TabletInsertionDataContainer {
       return Collections.emptyList();
     }
 
-    final PipeRowCollector rowCollector = new PipeRowCollector();
+    final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
     for (int i = 0; i < rowCount; i++) {
       consumer.accept(
           new PipeRow(
@@ -324,7 +345,7 @@ public class TabletInsertionDataContainer {
   }
 
   public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
-    final PipeRowCollector rowCollector = new PipeRowCollector();
+    final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
     consumer.accept(convertToTablet(), rowCollector);
     return rowCollector.convertToTabletInsertionEvents();
   }

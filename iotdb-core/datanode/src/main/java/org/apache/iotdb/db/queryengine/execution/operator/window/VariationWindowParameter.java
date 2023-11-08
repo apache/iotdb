@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.window;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 
 public class VariationWindowParameter extends WindowParameter {
 

@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.tsfile.read.common.block;
 
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
+import org.apache.iotdb.tsfile.access.TsBlockBuilderStatus;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.FloatColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
@@ -37,7 +39,6 @@ import java.util.List;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class TsBlockBuilder {
 
@@ -47,8 +48,11 @@ public class TsBlockBuilder {
   // This could be any other small number.
   private static final int DEFAULT_INITIAL_EXPECTED_ENTRIES = 8;
 
-  private static final int MAX_LINE_NUMBER =
+  public static final int MAX_LINE_NUMBER =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private TimeColumnBuilder timeColumnBuilder;
   private ColumnBuilder[] valueColumnBuilders;
@@ -82,6 +86,7 @@ public class TsBlockBuilder {
     res.timeColumnBuilder =
         new TimeColumnBuilder(
             res.tsBlockBuilderStatus.createColumnBuilderStatus(), DEFAULT_INITIAL_EXPECTED_ENTRIES);
+    res.valueColumnBuilders = new ColumnBuilder[0];
     return res;
   }
 
@@ -286,9 +291,6 @@ public class TsBlockBuilder {
   }
 
   public TsBlock build() {
-    if (valueColumnBuilders.length == 0) {
-      return new TsBlock(declaredPositions);
-    }
     TimeColumn timeColumn = (TimeColumn) timeColumnBuilder.build();
     if (timeColumn.getPositionCount() != declaredPositions) {
       throw new IllegalStateException(
@@ -322,7 +324,7 @@ public class TsBlockBuilder {
     if (value == null) {
       getColumnBuilder(columnIndex).appendNull();
     } else {
-      getColumnBuilder(columnIndex).writeBinary(new Binary(value));
+      getColumnBuilder(columnIndex).writeBinary(new Binary(value, TSFileConfig.STRING_CHARSET));
     }
   }
 

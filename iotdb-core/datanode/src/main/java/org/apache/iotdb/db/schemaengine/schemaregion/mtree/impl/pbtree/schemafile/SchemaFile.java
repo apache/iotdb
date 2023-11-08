@@ -21,12 +21,14 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafi
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
-import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr.BTreePageManager;
@@ -141,7 +143,11 @@ public class SchemaFile implements ISchemaFile {
     return new SchemaFile(
         sgName,
         schemaRegionId,
-        !pmtFile.exists(),
+        !pmtFile.exists()
+            || IoTDBDescriptor.getInstance()
+                .getConfig()
+                .getSchemaRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.RATIS_CONSENSUS),
         CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
         false);
   }
@@ -223,11 +229,18 @@ public class SchemaFile implements ISchemaFile {
       setNodeAddress(node, lastSGAddr);
     } else {
       if (curSegAddr < 0L) {
+        if (node.isDevice() && node.getAsDeviceMNode().isUseTemplate()) {
+          throw new MetadataException(
+              String.format(
+                  "Adding or updating children of device using template [%s] is NOT allowed.",
+                  node.getFullPath()));
+        }
+
         // now only 32 bits page index is allowed
         throw new MetadataException(
             String.format(
-                "Cannot store a node with segment address [%s] except for StorageGroupNode.",
-                curSegAddr));
+                "Cannot flush any node with negative address [%s] except for DatabaseNode.",
+                node.getFullPath()));
       }
     }
 
@@ -470,11 +483,19 @@ public class SchemaFile implements ISchemaFile {
     File schemaFile =
         SystemFileFactory.INSTANCE.getFile(
             getDirPath(sgName, schemaRegionId), SchemaConstant.PBTREE_FILE_NAME);
-    File schemaLogFile =
-        SystemFileFactory.INSTANCE.getFile(
-            getDirPath(sgName, schemaRegionId), SchemaConstant.PBTREE_LOG_FILE_NAME);
     Files.deleteIfExists(schemaFile.toPath());
-    Files.deleteIfExists(schemaLogFile.toPath());
+
+    if (!IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getSchemaRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      // schemaFileLog disabled with RATIS consensus
+      File schemaLogFile =
+          SystemFileFactory.INSTANCE.getFile(
+              getDirPath(sgName, schemaRegionId), SchemaConstant.PBTREE_LOG_FILE_NAME);
+      Files.deleteIfExists(schemaLogFile.toPath());
+    }
+
     Files.copy(snapshot.toPath(), schemaFile.toPath());
     return new SchemaFile(
         sgName,

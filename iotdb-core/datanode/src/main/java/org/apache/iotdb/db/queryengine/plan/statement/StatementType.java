@@ -64,6 +64,7 @@ public enum StatementType {
   BATCH_INSERT_ROWS,
   BATCH_INSERT_ONE_DEVICE,
   MULTI_BATCH_INSERT,
+  PIPE_ENRICHED_INSERT,
 
   DELETE,
 
@@ -83,6 +84,7 @@ public enum StatementType {
 
   SHOW,
   SHOW_MERGE_STATUS,
+  SHOW_QUERIES,
 
   CREATE_INDEX,
   DROP_INDEX,

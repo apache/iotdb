@@ -27,10 +27,11 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.ShowPipesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -63,16 +64,30 @@ public class ShowPipeTask implements IConfigTask {
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (TShowPipeInfo tPipeInfo : pipeInfoList) {
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder.getColumnBuilder(0).writeBinary(new Binary(tPipeInfo.getId()));
+      builder
+          .getColumnBuilder(0)
+          .writeBinary(new Binary(tPipeInfo.getId(), TSFileConfig.STRING_CHARSET));
       builder
           .getColumnBuilder(1)
           .writeBinary(
-              new Binary(DateTimeUtils.convertLongToDate(tPipeInfo.getCreationTime(), "ms")));
-      builder.getColumnBuilder(2).writeBinary(new Binary(tPipeInfo.getState()));
-      builder.getColumnBuilder(3).writeBinary(new Binary(tPipeInfo.getPipeExtractor()));
-      builder.getColumnBuilder(4).writeBinary(new Binary(tPipeInfo.getPipeProcessor()));
-      builder.getColumnBuilder(5).writeBinary(new Binary(tPipeInfo.getPipeConnector()));
-      builder.getColumnBuilder(6).writeBinary(new Binary(tPipeInfo.getExceptionMessage()));
+              new Binary(
+                  DateTimeUtils.convertLongToDate(tPipeInfo.getCreationTime(), "ms"),
+                  TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(2)
+          .writeBinary(new Binary(tPipeInfo.getState(), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(3)
+          .writeBinary(new Binary(tPipeInfo.getPipeExtractor(), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(4)
+          .writeBinary(new Binary(tPipeInfo.getPipeProcessor(), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(5)
+          .writeBinary(new Binary(tPipeInfo.getPipeConnector(), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(6)
+          .writeBinary(new Binary(tPipeInfo.getExceptionMessage(), TSFileConfig.STRING_CHARSET));
       builder.declarePosition();
     }
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeHeader();

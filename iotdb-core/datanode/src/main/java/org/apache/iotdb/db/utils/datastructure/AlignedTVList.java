@@ -23,13 +23,13 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -854,6 +854,52 @@ public abstract class AlignedTVList extends TVList {
     return size;
   }
 
+  /**
+   * Get the single alignedTVList array mem cost by give types.
+   *
+   * @param types the types in the vector
+   * @return AlignedTvListArrayMemSize
+   */
+  public static long alignedTvListArrayMemCost(List<TSDataType> types) {
+    long size = 0;
+    // value array mem size
+    for (TSDataType type : types) {
+      if (type != null) {
+        size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+      }
+    }
+    // size is 0 when all types are null
+    if (size == 0) {
+      return size;
+    }
+    // time array mem size
+    size += PrimitiveArrayManager.ARRAY_SIZE * 8L;
+    // index array mem size
+    size += PrimitiveArrayManager.ARRAY_SIZE * 4L;
+    // array headers mem size
+    size += (long) NUM_BYTES_ARRAY_HEADER * (2 + types.size());
+    // Object references size in ArrayList
+    size += (long) NUM_BYTES_OBJECT_REF * (2 + types.size());
+    return size;
+  }
+
+  /**
+   * Get the single column array mem cost by give type.
+   *
+   * @param type the type of the value column
+   * @return valueListArrayMemCost
+   */
+  public static long valueListArrayMemCost(TSDataType type) {
+    long size = 0;
+    // value array mem size
+    size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+    // array headers mem size
+    size += NUM_BYTES_ARRAY_HEADER;
+    // Object references size in ArrayList
+    size += NUM_BYTES_OBJECT_REF;
+    return size;
+  }
+
   /** Build TsBlock by column. */
   public TsBlock buildTsBlock(
       int floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
@@ -1021,7 +1067,17 @@ public abstract class AlignedTVList extends TVList {
         switch (dataTypes.get(columnIndex)) {
           case TEXT:
             Binary valueT = ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
-            WALWriteUtils.write(valueT, buffer);
+            // In some scenario, the Binary in AlignedTVList will be null if this field is empty in
+            // current row. We need to handle this scenario to get rid of NPE. See the similar issue
+            // here: https://github.com/apache/iotdb/pull/9884
+            // Furthermore, we use an empty Binary as a placeholder here. It won't lead to data
+            // error because whether this field is null or not is decided by the bitMap rather than
+            // the object's value here.
+            if (valueT != null) {
+              WALWriteUtils.write(valueT, buffer);
+            } else {
+              WALWriteUtils.write(new Binary(new byte[0]), buffer);
+            }
             break;
           case FLOAT:
             float valueF = ((float[]) columnValues.get(arrayIndex))[elementIndex];

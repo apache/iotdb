@@ -44,6 +44,8 @@ import java.util.Objects;
 public class PartitionMetrics implements IMetricSet {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionMetrics.class);
+  private static final String DATA = "data";
+  private static final String SCHEMA = "schema";
 
   private final IManager configManager;
 
@@ -55,15 +57,125 @@ public class PartitionMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     bindRegionPartitionMetrics(metricService);
     bindDataNodePartitionMetrics(metricService);
-    bindDatabasePartitionMetrics(metricService);
+    bindDatabaseRelatedMetrics(metricService);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     unbindRegionPartitionMetrics(metricService);
     unbindDataNodePartitionMetrics(metricService);
-    unbindDatabasePartitionMetrics(metricService);
+    unbindDatabaseRelatedMetrics(metricService);
   }
+
+  // region DataNode Partition Metrics
+
+  private void bindDataNodePartitionMetrics(AbstractMetricService metricService) {
+    List<TDataNodeConfiguration> registerDataNodes = getNodeManager().getRegisteredDataNodes();
+    for (TDataNodeConfiguration dataNodeConfiguration : registerDataNodes) {
+      int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
+      bindDataNodePartitionMetricsWhenUpdate(metricService, configManager, dataNodeId);
+    }
+  }
+
+  private void unbindDataNodePartitionMetrics(AbstractMetricService metricService) {
+    List<TDataNodeConfiguration> registerDataNodes = getNodeManager().getRegisteredDataNodes();
+    for (TDataNodeConfiguration dataNodeConfiguration : registerDataNodes) {
+      String dataNodeName =
+          NodeUrlUtils.convertTEndPointUrl(
+              dataNodeConfiguration.getLocation().getClientRpcEndPoint());
+      unbindDataNodePartitionMetricsWhenUpdate(metricService, dataNodeName);
+    }
+  }
+
+  public static void bindDataNodePartitionMetricsWhenUpdate(
+      AbstractMetricService metricService, IManager configManager, int dataNodeId) {
+    NodeManager nodeManager = configManager.getNodeManager();
+    PartitionManager partitionManager = configManager.getPartitionManager();
+    LoadManager loadManager = configManager.getLoadManager();
+
+    String dataNodeName =
+        NodeUrlUtils.convertTEndPointUrl(
+            nodeManager.getRegisteredDataNode(dataNodeId).getLocation().getClientRpcEndPoint());
+
+    // Count the number of Regions in the specified DataNode
+    metricService.createAutoGauge(
+        Metric.REGION_NUM_IN_DATA_NODE.toString(),
+        MetricLevel.CORE,
+        partitionManager,
+        obj -> obj.getRegionCount(dataNodeId, TConsensusGroupType.SchemaRegion),
+        Tag.NAME.toString(),
+        dataNodeName,
+        Tag.TYPE.toString(),
+        TConsensusGroupType.SchemaRegion.toString());
+    metricService.createAutoGauge(
+        Metric.REGION_NUM_IN_DATA_NODE.toString(),
+        MetricLevel.CORE,
+        partitionManager,
+        obj -> obj.getRegionCount(dataNodeId, TConsensusGroupType.DataRegion),
+        Tag.NAME.toString(),
+        dataNodeName,
+        Tag.TYPE.toString(),
+        TConsensusGroupType.DataRegion.toString());
+
+    // Count the number of RegionGroup-leaders in the specified DataNode
+    metricService.createAutoGauge(
+        Metric.REGION_GROUP_LEADER_NUM_IN_DATA_NODE.toString(),
+        MetricLevel.CORE,
+        loadManager,
+        obj -> obj.getRegionGroupLeaderCount(dataNodeId, TConsensusGroupType.SchemaRegion),
+        Tag.NAME.toString(),
+        dataNodeName,
+        Tag.TYPE.toString(),
+        TConsensusGroupType.SchemaRegion.toString());
+    metricService.createAutoGauge(
+        Metric.REGION_GROUP_LEADER_NUM_IN_DATA_NODE.toString(),
+        MetricLevel.CORE,
+        loadManager,
+        obj -> obj.getRegionGroupLeaderCount(dataNodeId, TConsensusGroupType.DataRegion),
+        Tag.NAME.toString(),
+        dataNodeName,
+        Tag.TYPE.toString(),
+        TConsensusGroupType.DataRegion.toString());
+  }
+
+  public static void unbindDataNodePartitionMetricsWhenUpdate(
+      AbstractMetricService metricService, String dataNodeName) {
+    // Remove the number of Regions in the specified DataNode
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.REGION_NUM_IN_DATA_NODE.toString(),
+        Tag.NAME.toString(),
+        dataNodeName,
+        Tag.TYPE.toString(),
+        TConsensusGroupType.SchemaRegion.toString());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.REGION_NUM_IN_DATA_NODE.toString(),
+        Tag.NAME.toString(),
+        dataNodeName,
+        Tag.TYPE.toString(),
+        TConsensusGroupType.DataRegion.toString());
+
+    // Remove the number of RegionGroup-leaders in the specified DataNode
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.REGION_GROUP_LEADER_NUM_IN_DATA_NODE.toString(),
+        Tag.NAME.toString(),
+        dataNodeName,
+        Tag.TYPE.toString(),
+        TConsensusGroupType.SchemaRegion.toString());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.REGION_GROUP_LEADER_NUM_IN_DATA_NODE.toString(),
+        Tag.NAME.toString(),
+        dataNodeName,
+        Tag.TYPE.toString(),
+        TConsensusGroupType.DataRegion.toString());
+  }
+
+  // endregion
+
+  // region Region Partition Metrics
 
   private void bindRegionPartitionMetrics(AbstractMetricService metricService) {
     for (RegionStatus status : RegionStatus.values()) {
@@ -115,111 +227,58 @@ public class PartitionMetrics implements IMetricSet {
     }
   }
 
-  public static void bindDataNodePartitionMetrics(
-      AbstractMetricService metricService, IManager configManager, int dataNodeId) {
-    NodeManager nodeManager = configManager.getNodeManager();
-    PartitionManager partitionManager = configManager.getPartitionManager();
-    LoadManager loadManager = configManager.getLoadManager();
+  // endregion
 
-    String dataNodeName =
-        NodeUrlUtils.convertTEndPointUrl(
-            nodeManager.getRegisteredDataNode(dataNodeId).getLocation().getClientRpcEndPoint());
+  // region Database Partition Metrics
 
-    // Count the number of Regions in the specified DataNode
+  private void bindDatabaseRelatedMetrics(AbstractMetricService metricService) {
+    ClusterSchemaManager clusterSchemaManager = getClusterSchemaManager();
+    // Count the number of Databases
     metricService.createAutoGauge(
-        Metric.REGION_NUM_IN_DATA_NODE.toString(),
+        Metric.DATABASE_NUM.toString(),
         MetricLevel.CORE,
-        partitionManager,
-        obj -> obj.getRegionCount(dataNodeId, TConsensusGroupType.SchemaRegion),
-        Tag.NAME.toString(),
-        dataNodeName,
-        Tag.TYPE.toString(),
-        TConsensusGroupType.SchemaRegion.toString());
-    metricService.createAutoGauge(
-        Metric.REGION_NUM_IN_DATA_NODE.toString(),
-        MetricLevel.CORE,
-        partitionManager,
-        obj -> obj.getRegionCount(dataNodeId, TConsensusGroupType.DataRegion),
-        Tag.NAME.toString(),
-        dataNodeName,
-        Tag.TYPE.toString(),
-        TConsensusGroupType.DataRegion.toString());
+        clusterSchemaManager,
+        c -> c.getDatabaseNames().size());
 
-    // Count the number of RegionGroup-leaders in the specified DataNode
-    metricService.createAutoGauge(
-        Metric.REGION_GROUP_LEADER_NUM_IN_DATA_NODE.toString(),
-        MetricLevel.CORE,
-        loadManager,
-        obj -> obj.getRegionGroupLeaderCount(dataNodeId, TConsensusGroupType.SchemaRegion),
-        Tag.NAME.toString(),
-        dataNodeName,
-        Tag.TYPE.toString(),
-        TConsensusGroupType.SchemaRegion.toString());
-    metricService.createAutoGauge(
-        Metric.REGION_GROUP_LEADER_NUM_IN_DATA_NODE.toString(),
-        MetricLevel.CORE,
-        loadManager,
-        obj -> obj.getRegionGroupLeaderCount(dataNodeId, TConsensusGroupType.DataRegion),
-        Tag.NAME.toString(),
-        dataNodeName,
-        Tag.TYPE.toString(),
-        TConsensusGroupType.DataRegion.toString());
-  }
-
-  private void bindDataNodePartitionMetrics(AbstractMetricService metricService) {
-    List<TDataNodeConfiguration> registerDataNodes = getNodeManager().getRegisteredDataNodes();
-    for (TDataNodeConfiguration dataNodeConfiguration : registerDataNodes) {
-      int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
-      bindDataNodePartitionMetrics(metricService, configManager, dataNodeId);
+    List<String> databases = clusterSchemaManager.getDatabaseNames();
+    for (String database : databases) {
+      int dataReplicationFactor = 1;
+      int schemaReplicationFactor = 1;
+      try {
+        dataReplicationFactor =
+            clusterSchemaManager.getReplicationFactor(database, TConsensusGroupType.DataRegion);
+        schemaReplicationFactor =
+            clusterSchemaManager.getReplicationFactor(database, TConsensusGroupType.SchemaRegion);
+      } catch (DatabaseNotExistsException e) {
+        // ignore
+      }
+      bindDatabaseRelatedMetricsWhenUpdate(
+          metricService, configManager, database, dataReplicationFactor, schemaReplicationFactor);
     }
   }
 
-  public static void unbindDataNodePartitionMetrics(
-      AbstractMetricService metricService, String dataNodeName) {
-    // Remove the number of Regions in the specified DataNode
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.REGION_NUM_IN_DATA_NODE.toString(),
-        Tag.NAME.toString(),
-        dataNodeName,
-        Tag.TYPE.toString(),
-        TConsensusGroupType.SchemaRegion.toString());
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.REGION_NUM_IN_DATA_NODE.toString(),
-        Tag.NAME.toString(),
-        dataNodeName,
-        Tag.TYPE.toString(),
-        TConsensusGroupType.DataRegion.toString());
+  private void unbindDatabaseRelatedMetrics(AbstractMetricService metricService) {
+    // Remove the number of Databases
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.DATABASE_NUM.toString());
 
-    // Remove the number of RegionGroup-leaders in the specified DataNode
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.REGION_GROUP_LEADER_NUM_IN_DATA_NODE.toString(),
-        Tag.NAME.toString(),
-        dataNodeName,
-        Tag.TYPE.toString(),
-        TConsensusGroupType.SchemaRegion.toString());
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.REGION_GROUP_LEADER_NUM_IN_DATA_NODE.toString(),
-        Tag.NAME.toString(),
-        dataNodeName,
-        Tag.TYPE.toString(),
-        TConsensusGroupType.DataRegion.toString());
-  }
-
-  private void unbindDataNodePartitionMetrics(AbstractMetricService metricService) {
-    List<TDataNodeConfiguration> registerDataNodes = getNodeManager().getRegisteredDataNodes();
-    for (TDataNodeConfiguration dataNodeConfiguration : registerDataNodes) {
-      String dataNodeName =
-          NodeUrlUtils.convertTEndPointUrl(
-              dataNodeConfiguration.getLocation().getClientRpcEndPoint());
-      unbindDataNodePartitionMetrics(metricService, dataNodeName);
+    List<String> databases = getClusterSchemaManager().getDatabaseNames();
+    for (String database : databases) {
+      unbindDatabaseRelatedMetricsWhenUpdate(metricService, database);
     }
   }
 
-  public static void bindDatabasePartitionMetrics(
+  public static void bindDatabaseRelatedMetricsWhenUpdate(
+      AbstractMetricService metricService,
+      IManager configManager,
+      String database,
+      int dataReplicationFactor,
+      int schemaReplicationFactor) {
+    bindDatabasePartitionMetricsWhenUpdate(metricService, configManager, database);
+    bindDatabaseReplicationFactorMetricsWhenUpdate(
+        metricService, database, dataReplicationFactor, schemaReplicationFactor);
+  }
+
+  private static void bindDatabasePartitionMetricsWhenUpdate(
       AbstractMetricService metricService, IManager configManager, String database) {
     PartitionManager partitionManager = configManager.getPartitionManager();
 
@@ -276,21 +335,7 @@ public class PartitionMetrics implements IMetricSet {
         TConsensusGroupType.DataRegion.toString());
   }
 
-  private void bindDatabasePartitionMetrics(AbstractMetricService metricService) {
-    // Count the number of Databases
-    metricService.createAutoGauge(
-        Metric.DATABASE_NUM.toString(),
-        MetricLevel.CORE,
-        getClusterSchemaManager(),
-        clusterSchemaManager -> clusterSchemaManager.getDatabaseNames().size());
-
-    List<String> databases = getClusterSchemaManager().getDatabaseNames();
-    for (String database : databases) {
-      bindDatabasePartitionMetrics(metricService, configManager, database);
-    }
-  }
-
-  public static void unbindDatabasePartitionMetrics(
+  public static void unbindDatabaseRelatedMetricsWhenUpdate(
       AbstractMetricService metricService, String database) {
     // Remove the number of SeriesSlots in the specified Database
     metricService.remove(
@@ -321,17 +366,50 @@ public class PartitionMetrics implements IMetricSet {
         database,
         Tag.TYPE.toString(),
         TConsensusGroupType.DataRegion.toString());
+
+    // Remove database replication factor metric
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.REPLICATION_FACTOR.toString(),
+        Tag.TYPE.toString(),
+        DATA,
+        Tag.DATABASE.toString(),
+        database);
+    metricService.remove(
+        MetricType.GAUGE,
+        Metric.REPLICATION_FACTOR.toString(),
+        Tag.TYPE.toString(),
+        SCHEMA,
+        Tag.DATABASE.toString(),
+        database);
   }
 
-  private void unbindDatabasePartitionMetrics(AbstractMetricService metricService) {
-    // Remove the number of Databases
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.DATABASE_NUM.toString());
-
-    List<String> databases = getClusterSchemaManager().getDatabaseNames();
-    for (String database : databases) {
-      unbindDatabasePartitionMetrics(metricService, database);
-    }
+  public static void bindDatabaseReplicationFactorMetricsWhenUpdate(
+      AbstractMetricService metricService,
+      String database,
+      int dataReplicationFactor,
+      int schemaReplicationFactor) {
+    metricService
+        .getOrCreateGauge(
+            Metric.REPLICATION_FACTOR.toString(),
+            MetricLevel.CORE,
+            Tag.TYPE.toString(),
+            DATA,
+            Tag.DATABASE.toString(),
+            database)
+        .set(dataReplicationFactor);
+    metricService
+        .getOrCreateGauge(
+            Metric.REPLICATION_FACTOR.toString(),
+            MetricLevel.CORE,
+            Tag.TYPE.toString(),
+            SCHEMA,
+            Tag.DATABASE.toString(),
+            database)
+        .set(schemaReplicationFactor);
   }
+
+  // endregion
 
   private NodeManager getNodeManager() {
     return configManager.getNodeManager();

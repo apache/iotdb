@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.IntoProcessException;
+import org.apache.iotdb.db.exception.runtime.IntoProcessException;
 import org.apache.iotdb.db.protocol.client.DataNodeInternalClient;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -31,10 +31,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -55,7 +56,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public abstract class AbstractIntoOperator implements ProcessOperator {
 
@@ -65,8 +65,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   protected TsBlock cachedTsBlock;
 
   protected List<InsertTabletStatementGenerator> insertTabletStatementGenerators;
-
-  protected final Map<String, InputLocation> sourceColumnToInputLocationMap;
 
   private DataNodeInternalClient client;
 
@@ -81,11 +79,13 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   protected final List<Type> typeConvertors;
 
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
   protected AbstractIntoOperator(
       OperatorContext operatorContext,
       Operator child,
       List<TSDataType> inputColumnTypes,
-      Map<String, InputLocation> sourceColumnToInputLocationMap,
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
     this.operatorContext = operatorContext;
@@ -93,7 +93,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     this.typeConvertors =
         inputColumnTypes.stream().map(TypeFactory::getType).collect(Collectors.toList());
 
-    this.sourceColumnToInputLocationMap = sourceColumnToInputLocationMap;
     this.writeOperationExecutor = intoOperationExecutor;
     initMemoryEstimates(statementSizePerLine);
   }

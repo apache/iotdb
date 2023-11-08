@@ -21,6 +21,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.read.req;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
@@ -38,6 +39,8 @@ public interface IShowSchemaPlan extends ISchemaRegionPlan {
   }
 
   PartialPath getPath();
+
+  PathPatternTree getScope();
 
   long getLimit();
 

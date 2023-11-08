@@ -31,9 +31,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import com.google.common.collect.Sets;
 import org.junit.Test;
@@ -50,7 +51,7 @@ public class AggregationNodeSerdeTest {
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException {
     GroupByTimeParameter groupByTimeParameter =
-        new GroupByTimeParameter(1, 100, 1, 1, false, false, false);
+        new GroupByTimeParameter(1, 100, new TimeDuration(0, 1), new TimeDuration(0, 1), false);
     SeriesAggregationScanNode seriesAggregationScanNode =
         new SeriesAggregationScanNode(
             new PlanNodeId("TestSeriesAggregateScanNode"),

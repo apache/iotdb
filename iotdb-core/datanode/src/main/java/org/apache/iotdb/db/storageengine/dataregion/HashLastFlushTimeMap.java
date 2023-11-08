@@ -20,13 +20,11 @@
 package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class HashLastFlushTimeMap implements ILastFlushTimeMap {
@@ -88,9 +86,10 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
     }
     long memIncr = 0;
     for (Map.Entry<String, Long> entry : flushedTimeMap.entrySet()) {
-      if (flushTimeMapForPartition.put(entry.getKey(), entry.getValue()) == null) {
+      if (!flushTimeMapForPartition.containsKey(entry.getKey())) {
         memIncr += HASHMAP_NODE_BASIC_SIZE + 2L * entry.getKey().length();
       }
+      flushTimeMapForPartition.merge(entry.getKey(), entry.getValue(), Math::max);
     }
     long finalMemIncr = memIncr;
     memCostForEachPartition.compute(
@@ -113,7 +112,9 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
   @Override
   public void setMultiDeviceGlobalFlushedTime(Map<String, Long> globalFlushedTimeMap) {
-    globalLatestFlushedTimeForEachDevice.putAll(globalFlushedTimeMap);
+    for (Map.Entry<String, Long> entry : globalFlushedTimeMap.entrySet()) {
+      globalLatestFlushedTimeForEachDevice.merge(entry.getKey(), entry.getValue(), Math::max);
+    }
   }
 
   @Override
@@ -132,6 +133,9 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
         path,
         (k, v) -> {
           if (v == null) {
+            v = recoverFlushTime(timePartitionId, path);
+          }
+          if (v == Long.MIN_VALUE) {
             long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * path.length();
             memCostForEachPartition.compute(
                 timePartitionId, (k1, v1) -> v1 == null ? memCost : v1 + memCost);
@@ -227,18 +231,9 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   }
 
   private long recoverFlushTime(long partitionId, String devicePath) {
-    List<TsFileResource> tsFileResourceList =
-        tsFileManager.getOrCreateSequenceListByTimePartition(partitionId);
-
-    for (int i = tsFileResourceList.size() - 1; i >= 0; i--) {
-      if (tsFileResourceList.get(i).timeIndex.mayContainsDevice(devicePath)) {
-        return tsFileResourceList.get(i).timeIndex.getEndTime(devicePath);
-      }
-    }
-
     long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * devicePath.length();
     memCostForEachPartition.compute(partitionId, (k, v) -> v == null ? memCost : v + memCost);
-    return Long.MIN_VALUE;
+    return tsFileManager.recoverFlushTimeFromTsFileResource(partitionId, devicePath);
   }
 
   @Override

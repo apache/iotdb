@@ -74,6 +74,7 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -163,8 +164,10 @@ public class PartitionInfo implements SnapshotProcessor {
 
     plan.getRegionGroupMap()
         .forEach(
-            (storageGroup, regionReplicaSets) -> {
-              databasePartitionTables.get(storageGroup).createRegionGroups(regionReplicaSets);
+            (database, regionReplicaSets) -> {
+              databasePartitionTables
+                  .get(database)
+                  .createRegionGroups(regionReplicaSets, plan.getCreateTime());
               regionReplicaSets.forEach(
                   regionReplicaSet ->
                       maxRegionId.set(
@@ -385,24 +388,42 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Checks whether the specified DataPartition has a predecessor or successor and returns if it
-   * does.
+   * Checks whether the specified DataPartition has a successor and returns if it does.
    *
    * @param database DatabaseName
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
-   * @param timePartitionInterval Time partition interval
-   * @return The specific DataPartition's predecessor if exists, null otherwise
+   * @return The specific DataPartition's successor if exists, null otherwise
    */
-  public TConsensusGroupId getAdjacentDataPartition(
+  public TConsensusGroupId getSuccessorDataPartition(
       String database,
       TSeriesPartitionSlot seriesPartitionSlot,
-      TTimePartitionSlot timePartitionSlot,
-      long timePartitionInterval) {
-    if (databasePartitionTables.containsKey(database)) {
+      TTimePartitionSlot timePartitionSlot) {
+    if (isDatabaseExisted(database)) {
       return databasePartitionTables
           .get(database)
-          .getAdjacentDataPartition(seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
+          .getSuccessorDataPartition(seriesPartitionSlot, timePartitionSlot);
+    } else {
+      return null;
+    }
+  }
+
+  /**
+   * Checks whether the specified DataPartition has a predecessor and returns if it does.
+   *
+   * @param database DatabaseName
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPredecessorDataPartition(
+      String database,
+      TSeriesPartitionSlot seriesPartitionSlot,
+      TTimePartitionSlot timePartitionSlot) {
+    if (isDatabaseExisted(database)) {
+      return databasePartitionTables
+          .get(database)
+          .getPredecessorDataPartition(seriesPartitionSlot, timePartitionSlot);
     } else {
       return null;
     }
@@ -725,6 +746,25 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Only leader use this interface.
    *
+   * <p>Get all the RegionGroups currently owned by the specified Database
+   *
+   * @param database DatabaseName
+   * @param type SchemaRegion or DataRegion
+   * @return List of TConsensusGroupId
+   * @throws DatabaseNotExistsException When the specified Database doesn't exist
+   */
+  public List<TConsensusGroupId> getAllRegionGroupIds(String database, TConsensusGroupType type)
+      throws DatabaseNotExistsException {
+    if (!isDatabaseExisted(database)) {
+      throw new DatabaseNotExistsException(database);
+    }
+
+    return databasePartitionTables.get(database).getAllRegionGroupIds(type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
    * <p>Get the assigned SeriesPartitionSlots count in the specified Database
    *
    * @param database The specified Database
@@ -761,14 +801,14 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Only leader use this interface.
    *
-   * @param storageGroup StorageGroupName
+   * @param database DatabaseName
    * @param type SchemaRegion or DataRegion
    * @return The StorageGroup's Running or Available Regions that sorted by the number of allocated
    *     slots
    */
   public List<Pair<Long, TConsensusGroupId>> getRegionGroupSlotsCounter(
-      String storageGroup, TConsensusGroupType type) {
-    return databasePartitionTables.get(storageGroup).getRegionGroupSlotsCounter(type);
+      String database, TConsensusGroupType type) {
+    return databasePartitionTables.get(database).getRegionGroupSlotsCounter(type);
   }
 
   /**
@@ -782,6 +822,19 @@ public class PartitionInfo implements SnapshotProcessor {
         .values()
         .forEach(i -> schemaPartitionSet.addAll(i.getSchemaRegionIds()));
     return schemaPartitionSet;
+  }
+
+  /**
+   * Get the last DataAllotTable of the specified Database.
+   *
+   * @param database The specified Database
+   * @return The last DataAllotTable
+   */
+  public Map<TSeriesPartitionSlot, TConsensusGroupId> getLastDataAllotTable(String database) {
+    if (isDatabaseExisted(database)) {
+      return databasePartitionTables.get(database).getLastDataAllotTable();
+    }
+    return Collections.emptyMap();
   }
 
   @Override
@@ -799,32 +852,36 @@ public class PartitionInfo implements SnapshotProcessor {
     // snapshot operation.
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
-    try (BufferedOutputStream fileOutputStream =
-            new BufferedOutputStream(
-                Files.newOutputStream(tmpFile.toPath()), PARTITION_TABLE_BUFFER_SIZE);
-        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
+    try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
+        BufferedOutputStream bufferedOutputStream =
+            new BufferedOutputStream(fileOutputStream, PARTITION_TABLE_BUFFER_SIZE);
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(bufferedOutputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
       // serialize nextRegionGroupId
-      ReadWriteIOUtils.write(nextRegionGroupId.get(), fileOutputStream);
+      ReadWriteIOUtils.write(nextRegionGroupId.get(), bufferedOutputStream);
 
       // serialize StorageGroupPartitionTable
-      ReadWriteIOUtils.write(databasePartitionTables.size(), fileOutputStream);
+      ReadWriteIOUtils.write(databasePartitionTables.size(), bufferedOutputStream);
       for (Map.Entry<String, DatabasePartitionTable> storageGroupPartitionTableEntry :
           databasePartitionTables.entrySet()) {
-        ReadWriteIOUtils.write(storageGroupPartitionTableEntry.getKey(), fileOutputStream);
-        storageGroupPartitionTableEntry.getValue().serialize(fileOutputStream, protocol);
+        ReadWriteIOUtils.write(storageGroupPartitionTableEntry.getKey(), bufferedOutputStream);
+        storageGroupPartitionTableEntry.getValue().serialize(bufferedOutputStream, protocol);
       }
 
       // serialize regionCleanList
-      ReadWriteIOUtils.write(regionMaintainTaskList.size(), fileOutputStream);
+      ReadWriteIOUtils.write(regionMaintainTaskList.size(), bufferedOutputStream);
       for (RegionMaintainTask task : regionMaintainTaskList) {
-        task.serialize(fileOutputStream, protocol);
+        task.serialize(bufferedOutputStream, protocol);
       }
 
       // write to file
-      fileOutputStream.flush();
-      fileOutputStream.close();
+      tioStreamTransport.flush();
+      fileOutputStream.getFD().sync();
+
+      // The tmpFile can be renamed only after the stream is closed
+      tioStreamTransport.close();
+
       // rename file
       return tmpFile.renameTo(snapshotFile);
     } finally {

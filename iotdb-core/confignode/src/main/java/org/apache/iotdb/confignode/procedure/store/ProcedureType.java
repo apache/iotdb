@@ -58,9 +58,7 @@ public enum ProcedureType {
   UNSET_TEMPLATE_PROCEDURE((short) 701),
   SET_TEMPLATE_PROCEDURE((short) 702),
 
-  /** Ml Model */
-  CREATE_MODEL_PROCEDURE((short) 800),
-  DROP_MODEL_PROCEDURE((short) 801),
+  // ProcedureId 800-899 is used by IoTDB-Ml
 
   /** Pipe Plugin */
   CREATE_PIPE_PLUGIN_PROCEDURE((short) 900),
@@ -79,7 +77,10 @@ public enum ProcedureType {
 
   /** logical view */
   DELETE_LOGICAL_VIEW_PROCEDURE((short) 1200),
-  ALTER_LOGICAL_VIEW_PROCEDURE((short) 12001);
+  ALTER_LOGICAL_VIEW_PROCEDURE((short) 12001),
+
+  /** Auth privilege */
+  AUTH_OPERATE_PROCEDURE((short) 1300);
 
   private final short typeCode;
 

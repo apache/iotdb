@@ -24,12 +24,10 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-examples</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <artifactId>rocketmq-example</artifactId>
-    <name>IoTDB-RocketMQ Examples</name>
-    <packaging>jar</packaging>
+    <name>IoTDB: Example: Apache RocketMQ</name>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -41,8 +39,8 @@
             <artifactId>rocketmq-client</artifactId>
             <exclusions>
                 <exclusion>
-                    <artifactId>fastjson</artifactId>
                     <groupId>com.alibaba</groupId>
+                    <artifactId>fastjson</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

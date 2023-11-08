@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.realtime.epoch;
 
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -49,6 +50,13 @@ public class TsFileEpoch {
         .getAndUpdate(visitor::migrate);
   }
 
+  public void setExtractorsRecentProcessedTsFileEpochState() {
+    dataRegionExtractor2State.forEach(
+        (extractor, state) ->
+            PipeExtractorMetrics.getInstance()
+                .setRecentProcessedTsFileEpochState(extractor.getTaskID(), state.get()));
+  }
+
   @Override
   public String toString() {
     return "TsFileEpoch{"
@@ -61,8 +69,19 @@ public class TsFileEpoch {
   }
 
   public enum State {
-    EMPTY,
-    USING_TABLET,
-    USING_TSFILE
+    EMPTY(0),
+    USING_TABLET(1),
+    USING_BOTH(2),
+    USING_TSFILE(3);
+
+    private final int id;
+
+    State(int id) {
+      this.id = id;
+    }
+
+    public int getId() {
+      return id;
+    }
   }
 }

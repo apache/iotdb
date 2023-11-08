@@ -38,7 +38,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 4, unit: 'HOURS')
+        timeout(time: 8, unit: 'HOURS')
         // When we have test-fails e.g. we don't need to run the remaining steps
         skipStagesAfterUnstable()
     }
@@ -87,7 +87,7 @@ pipeline {
             }
             steps {
                 echo 'Building and Unit Test...'
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} clean install -pl '!integration-test' -DskipITs"
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} clean install -DskipITs"
             }
             post {
                 always {
@@ -105,7 +105,7 @@ pipeline {
             }
             steps {
                 echo 'Integration Test...'
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=3 -DintegrationTest.forkCount=3"
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT,with-integration-tests -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=3 -DintegrationTest.forkCount=3"
             }
             post {
                 always {
@@ -138,22 +138,22 @@ pipeline {
             }
         }
 
-        stage('Code Quality') {
-            when {
-                branch 'master'
-            }
-            steps {
-                echo 'Checking Code Quality on SonarCloud'
-                // Main parameters
-                script {
-                    // Then run the analysis
-                    // 'my-sonarcloud-token' needs to be defined for this job and contains the user token
-                    withCredentials([string(credentialsId: 'xiangdong-iotdb-sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                        sh "mvn verify sonar:sonar -Dsonar.branch.name=master -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -Dsonar.login=${SONAR_TOKEN} -DskipTests"
-                    }
-                }
-            }
-        }
+        // stage('Code Quality') {
+        //     when {
+        //         branch 'master'
+        //     }
+        //     steps {
+        //         echo 'Checking Code Quality on SonarCloud'
+        //         // Main parameters
+        //         script {
+        //             // Then run the analysis
+        //             // 'my-sonarcloud-token' needs to be defined for this job and contains the user token
+        //             withCredentials([string(credentialsId: 'xiangdong-iotdb-sonarcloud-token', variable: 'SONAR_TOKEN')]) {
+        //                 sh "mvn verify sonar:sonar -Dsonar.branch.name=master -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -Dsonar.login=${SONAR_TOKEN} -DskipTests"
+        //             }
+        //         }
+        //     }
+        // }
 
 
         stage('Deploy') {
@@ -190,7 +190,7 @@ BUILD-FAILURE: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]':
 
 Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]</a>"
 """,
-                        to: "dev@iotdb.apache.org"
+                        to: "notifications@iotdb.apache.org"
                     )
                 }
             }
@@ -207,7 +207,7 @@ BUILD-UNSTABLE: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]'
 
 Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]</a>"
 """,
-                        to: "dev@iotdb.apache.org"
+                        to: "notifications@iotdb.apache.org"
                     )
                 }
             }
@@ -224,7 +224,7 @@ BUILD-STABLE: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]':
 
 Is back to normal.
 """,
-                        to: "dev@iotdb.apache.org"
+                        to: "notifications@iotdb.apache.org"
                     )
                 }
             }

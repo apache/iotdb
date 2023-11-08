@@ -24,24 +24,23 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <artifactId>iotdb-code-coverage</artifactId>
     <packaging>pom</packaging>
+    <name>IoTDB: Code-Coverage</name>
     <build>
         <plugins>
             <plugin>
-                <artifactId>exec-maven-plugin</artifactId>
                 <groupId>org.codehaus.mojo</groupId>
-                <version>1.6.0</version>
+                <artifactId>exec-maven-plugin</artifactId>
                 <executions>
                     <execution>
                         <id>make-cmake-executable</id>
-                        <phase>process-resources</phase>
                         <goals>
                             <goal>exec</goal>
                         </goals>
+                        <phase>process-resources</phase>
                         <configuration>
                             <basedir>${project.basedir}</basedir>
                             <executable>chmod</executable>
@@ -52,20 +51,20 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <phase>post-integration-test</phase>
+                        <id>collect-code-coverage-results</id>
                         <goals>
                             <goal>exec</goal>
                         </goals>
+                        <phase>post-integration-test</phase>
+                        <configuration>
+                            <executable>${project.basedir}/copy-code-coverage-sources.sh</executable>
+                        </configuration>
                     </execution>
                 </executions>
-                <configuration>
-                    <executable>${project.basedir}/copy-code-coverage-sources.sh</executable>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.7</version>
                 <configuration>
                     <excludes>
                         <exclude>org/apache/iotdb/service/sync/thrift/*</exclude>
@@ -105,10 +104,10 @@
                     <!-- see https://natritmeyer.com/howto/reporting-aggregated-unit-and-integration-test-coverage-with-jacoco/-->
                     <execution>
                         <id>merge-unit-and-integration-final</id>
-                        <phase>post-integration-test</phase>
                         <goals>
                             <goal>merge</goal>
                         </goals>
+                        <phase>post-integration-test</phase>
                         <configuration>
                             <fileSets>
                                 <fileSet>
@@ -123,11 +122,11 @@
                     </execution>
                     <execution>
                         <id>create-merged-report-final</id>
-                        <phase>post-integration-test</phase>
                         <goals>
                             <goal>report</goal>
                             <goal>check</goal>
                         </goals>
+                        <phase>post-integration-test</phase>
                         <configuration>
                             <dataFile>${project.build.directory}/merged.exec</dataFile>
                             <outputDirectory>${project.build.directory}/jacoco-merged-reports</outputDirectory>

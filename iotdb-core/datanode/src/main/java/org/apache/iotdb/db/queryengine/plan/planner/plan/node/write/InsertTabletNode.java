@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -33,10 +34,9 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -190,29 +190,23 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (times.length == 0) {
       return Collections.emptyList();
     }
-    long startTime =
-        (times[0] / TimePartitionUtils.timePartitionInterval)
-            * TimePartitionUtils.timePartitionInterval; // included
-    long endTime = startTime + TimePartitionUtils.timePartitionInterval; // excluded
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(times[0]);
+    long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
     int startLoc = 0; // included
 
     List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
     // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
     List<Integer> ranges = new ArrayList<>();
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
-      if (times[i] >= endTime) {
+      if (times[i] >= upperBoundOfTimePartition) {
         // a new range.
         ranges.add(startLoc); // included
         ranges.add(i); // excluded
         timePartitionSlots.add(timePartitionSlot);
         // next init
         startLoc = i;
-        startTime = endTime;
-        endTime =
-            (times[i] / TimePartitionUtils.timePartitionInterval + 1)
-                * TimePartitionUtils.timePartitionInterval;
-        timePartitionSlot = TimePartitionUtils.getTimePartition(times[i]);
+        upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);
+        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
       }
     }
 
@@ -264,7 +258,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         BitMap[] bitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
         System.arraycopy(times, start, subTimes, destLoc, end - start);
         for (int k = 0; k < values.length; k++) {
-          System.arraycopy(columns[k], start, values[k], destLoc, end - start);
+          if (dataTypes[k] != null) {
+            System.arraycopy(columns[k], start, values[k], destLoc, end - start);
+          }
           if (bitMaps != null && this.bitMaps[k] != null) {
             BitMap.copyOfRange(this.bitMaps[k], start, bitMaps[k], destLoc, end - start);
           }
@@ -281,6 +277,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
                 bitMaps,
                 values,
                 subTimes.length);
+        subNode.setFailedMeasurementNumber(getFailedMeasurementNumber());
         subNode.setRange(locs);
         subNode.setDataRegionReplicaSet(entry.getKey());
         result.add(subNode);
@@ -292,19 +289,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   @TestOnly
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     List<TTimePartitionSlot> result = new ArrayList<>();
-    long startTime =
-        (times[0] / TimePartitionUtils.timePartitionInterval)
-            * TimePartitionUtils.timePartitionInterval; // included
-    long endTime = startTime + TimePartitionUtils.timePartitionInterval; // excluded
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(times[0]);
+    long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
-      if (times[i] >= endTime) {
+      if (times[i] >= upperBoundOfTimePartition) {
         result.add(timePartitionSlot);
         // next init
-        endTime =
-            (times[i] / TimePartitionUtils.timePartitionInterval + 1)
-                * TimePartitionUtils.timePartitionInterval;
-        timePartitionSlot = TimePartitionUtils.getTimePartition(times[i]);
+        upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);
+        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
       }
     }
     result.add(timePartitionSlot);
@@ -314,25 +306,27 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   private Object[] initTabletValues(int columnSize, int rowSize, TSDataType[] dataTypes) {
     Object[] values = new Object[columnSize];
     for (int i = 0; i < values.length; i++) {
-      switch (dataTypes[i]) {
-        case TEXT:
-          values[i] = new Binary[rowSize];
-          break;
-        case FLOAT:
-          values[i] = new float[rowSize];
-          break;
-        case INT32:
-          values[i] = new int[rowSize];
-          break;
-        case INT64:
-          values[i] = new long[rowSize];
-          break;
-        case DOUBLE:
-          values[i] = new double[rowSize];
-          break;
-        case BOOLEAN:
-          values[i] = new boolean[rowSize];
-          break;
+      if (dataTypes[i] != null) {
+        switch (dataTypes[i]) {
+          case TEXT:
+            values[i] = new Binary[rowSize];
+            break;
+          case FLOAT:
+            values[i] = new float[rowSize];
+            break;
+          case INT32:
+            values[i] = new int[rowSize];
+            break;
+          case INT64:
+            values[i] = new long[rowSize];
+            break;
+          case DOUBLE:
+            values[i] = new double[rowSize];
+            break;
+          case BOOLEAN:
+            values[i] = new boolean[rowSize];
+            break;
+        }
       }
     }
     return values;

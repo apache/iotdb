@@ -18,6 +18,9 @@
 # under the License.
 #
 
+# You can set DataNode memory size, example '2G' or '2048M'
+MEMORY_SIZE=
+
 # You can put your env variable here
 # export JAVA_HOME=$JAVA_HOME
 
@@ -60,7 +63,7 @@ esac
 # whether we allow enable heap dump files
 IOTDB_ALLOW_HEAP_DUMP="true"
 
-calculate_heap_sizes()
+calculate_memory_sizes()
 {
     case "`uname`" in
         Linux)
@@ -95,48 +98,48 @@ calculate_heap_sizes()
         system_cpu_cores="1"
     fi
 
-    # set max heap size based on the following
-    # max(min(1/2 ram, 1024MB), min(1/4 ram, 64GB))
-    # calculate 1/2 ram and cap to 1024MB
-    # calculate 1/4 ram and cap to 65536MB
-    # pick the max
-    half_system_memory_in_mb=`expr $system_memory_in_mb / 2`
-    quarter_system_memory_in_mb=`expr $half_system_memory_in_mb / 2`
-    if [ "$half_system_memory_in_mb" -gt "1024" ]
+    # suggest using memory, system memory 1 / 2
+    suggest_using_memory_in_mb=`expr $system_memory_in_mb / 2`
+
+    if [ -n "$MEMORY_SIZE" ]
     then
-        half_system_memory_in_mb="1024"
-    fi
-    if [ "$quarter_system_memory_in_mb" -gt "65536" ]
-    then
-        quarter_system_memory_in_mb="65536"
-    fi
-    if [ "$half_system_memory_in_mb" -gt "$quarter_system_memory_in_mb" ]
-    then
-        max_heap_size_in_mb="$half_system_memory_in_mb"
+        if [ "${MEMORY_SIZE%"G"}" != "$MEMORY_SIZE" ] || [ "${MEMORY_SIZE%"M"}" != "$MEMORY_SIZE" ]
+        then
+          if [ "${MEMORY_SIZE%"G"}" != "$MEMORY_SIZE" ]
+          then
+              memory_size_in_mb=`expr ${MEMORY_SIZE%"G"} "*" 1024`
+          else
+              memory_size_in_mb=`expr ${MEMORY_SIZE%"M"}`
+          fi
+        else
+            echo "Invalid format of MEMORY_SIZE, please use the format like 2048M or 2G"
+            exit 1
+        fi
     else
-        max_heap_size_in_mb="$quarter_system_memory_in_mb"
-    fi
-    MAX_HEAP_SIZE="${max_heap_size_in_mb}M"
-
-    # if the heap size is larger than 16GB, we will forbid writing the heap dump file
-    if [ "$max_heap_size_in_mb" -gt "16384" ]
-    then
-       echo "IoTDB memory is too large ($max_heap_size_in_mb MB), will forbid writing heap dump file"
-       IOTDB_ALLOW_HEAP_DUMP="false"
+        memory_size_in_mb=$suggest_using_memory_in_mb
     fi
 
-    # Young gen: min(max_sensible_per_modern_cpu_core * num_cores, 1/4 * heap size)
-    max_sensible_yg_per_core_in_mb="100"
-    max_sensible_yg_in_mb=`expr $max_sensible_yg_per_core_in_mb "*" $system_cpu_cores`
-
-    desired_yg_in_mb=`expr $max_heap_size_in_mb / 4`
-
-    if [ "$desired_yg_in_mb" -gt "$max_sensible_yg_in_mb" ]
+    # set on heap memory size
+    # when memory_size_in_mb is less than 4 * 1024, we will set on heap memory size to memory_size_in_mb / 4 * 3
+    # when memory_size_in_mb is greater than 4 * 1024 and less than 16 * 1024, we will set on heap memory size to memory_size_in_mb / 5 * 4
+    # when memory_size_in_mb is greater than 16 * 1024 and less than 128 * 1024, we will set on heap memory size to memory_size_in_mb / 8 * 7
+    # when memory_size_in_mb is greater than 128 * 1024, we will set on heap memory size to memory_size_in_mb - 16 * 1024
+    if [ "$memory_size_in_mb" -lt "4096" ]
     then
-        HEAP_NEWSIZE="${max_sensible_yg_in_mb}M"
+        on_heap_memory_size_in_mb=`expr $memory_size_in_mb / 4 \* 3`
+    elif [ "$memory_size_in_mb" -lt "16384" ]
+    then
+        on_heap_memory_size_in_mb=`expr $memory_size_in_mb / 5 \* 4`
+    elif [ "$memory_size_in_mb" -lt "131072" ]
+    then
+        on_heap_memory_size_in_mb=`expr $memory_size_in_mb / 8 \* 7`
     else
-        HEAP_NEWSIZE="${desired_yg_in_mb}M"
+        on_heap_memory_size_in_mb=`expr $memory_size_in_mb - 16384`
     fi
+    off_heap_memory_size_in_mb=`expr $memory_size_in_mb - $on_heap_memory_size_in_mb`
+
+    ON_HEAP_MEMORY="${on_heap_memory_size_in_mb}M"
+    OFF_HEAP_MEMORY="${off_heap_memory_size_in_mb}M"
 }
 
 
@@ -210,29 +213,26 @@ else
 fi
 
 
+calculate_memory_sizes
 
-calculate_heap_sizes
+# on heap memory size
+#ON_HEAP_MEMORY="2G"
+# off heap memory size
+#OFF_HEAP_MEMORY="512M"
 
-## Set heap size by percentage of total memory
-#max_percentage=90
-#min_percentage=50
-#MAX_HEAP_SIZE="`expr $system_memory_in_mb \* $max_percentage / 100`M"
-#HEAP_NEWSIZE="`expr $system_memory_in_mb \* $min_percentage / 100`M"
 
-# Maximum heap size
-#MAX_HEAP_SIZE="2G"
-# Minimum heap size
-#HEAP_NEWSIZE="2G"
-# Maximum direct memory size
-MAX_DIRECT_MEMORY_SIZE=${MAX_HEAP_SIZE}
+if [ "${OFF_HEAP_MEMORY%"G"}" != "$OFF_HEAP_MEMORY" ]
+then
+    off_heap_memory_size_in_mb=`expr ${OFF_HEAP_MEMORY%"G"} "*" 1024`
+else
+    off_heap_memory_size_in_mb=`expr ${OFF_HEAP_MEMORY%"M"}`
+fi
 
-# threads number that may use direct memory, including query threads(8) + merge threads(4) + space left for system(4)
-threads_number="16"
-# the size of buffer cache pool(IOV_MAX) depends on operating system
-temp_buffer_pool_size="1024"
+# threads number for io
+IO_THREADS_NUMBER="1000"
 # Max cached buffer size, Note: unit can only be B!
-# which equals DIRECT_MEMORY_SIZE / threads_number / temp_buffer_pool_size
-MAX_CACHED_BUFFER_SIZE=`expr $max_heap_size_in_mb \* 1024 \* 1024 / $threads_number / $temp_buffer_pool_size`
+# which equals OFF_HEAP_MEMORY / IO_THREADS_NUMBER 
+MAX_CACHED_BUFFER_SIZE=`expr $off_heap_memory_size_in_mb \* 1024 \* 1024 / $IO_THREADS_NUMBER`
 
 #true or false
 #DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (${IOTDB_CONF}/jmx.password and ${IOTDB_CONF}/jmx.access)
@@ -264,11 +264,14 @@ else
 fi
 
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Diotdb.jmx.local=$JMX_LOCAL"
-IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${HEAP_NEWSIZE}"
-IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${MAX_HEAP_SIZE}"
-IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${MAX_DIRECT_MEMORY_SIZE}"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${ON_HEAP_MEMORY}"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${ON_HEAP_MEMORY}"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFER_SIZE}"
+# if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
+#IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.hprof"
 
-echo "Maximum memory allocation pool = ${MAX_HEAP_SIZE}B, initial memory allocation pool = ${HEAP_NEWSIZE}B"
+
+echo "DataNode on heap memory size = ${ON_HEAP_MEMORY}B, off heap memory size = ${OFF_HEAP_MEMORY}B"
 echo "If you want to change this configuration, please check conf/datanode-env.sh."
 

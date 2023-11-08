@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -29,7 +30,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -53,23 +55,52 @@ public class ShowClusterDetailsTask implements IConfigTask {
   private static void buildConfigNodesTsBlock(
       TsBlockBuilder builder,
       int nodeId,
-      String nodeType,
       String nodeStatus,
       String internalAddress,
       int internalPort,
-      int configConsensusPort) {
+      int configConsensusPort,
+      TNodeVersionInfo versionInfo) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(nodeId);
-    builder.getColumnBuilder(1).writeBinary(new Binary(nodeType));
-    builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
-    builder.getColumnBuilder(3).writeBinary(new Binary(internalAddress));
+    builder
+        .getColumnBuilder(1)
+        .writeBinary(new Binary(NODE_TYPE_CONFIG_NODE, TSFileConfig.STRING_CHARSET));
+    if (nodeStatus == null) {
+      builder.getColumnBuilder(2).appendNull();
+    } else {
+      builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus, TSFileConfig.STRING_CHARSET));
+    }
+    if (internalAddress == null) {
+      builder.getColumnBuilder(3).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(3)
+          .writeBinary(new Binary(internalAddress, TSFileConfig.STRING_CHARSET));
+    }
     builder.getColumnBuilder(4).writeInt(internalPort);
-    builder.getColumnBuilder(5).writeBinary(new Binary(Integer.toString(configConsensusPort)));
-    builder.getColumnBuilder(6).writeBinary(new Binary(""));
-    builder.getColumnBuilder(7).writeBinary(new Binary(""));
-    builder.getColumnBuilder(8).writeBinary(new Binary(""));
-    builder.getColumnBuilder(9).writeBinary(new Binary(""));
-    builder.getColumnBuilder(10).writeBinary(new Binary(""));
+    builder
+        .getColumnBuilder(5)
+        .writeBinary(
+            new Binary(Integer.toString(configConsensusPort), TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(6).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(7).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(8).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(9).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(10).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    if (versionInfo == null || versionInfo.getVersion() == null) {
+      builder.getColumnBuilder(11).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(11)
+          .writeBinary(new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
+    }
+    if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+      builder.getColumnBuilder(12).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(12)
+          .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
+    }
     builder.declarePosition();
   }
 
@@ -77,7 +108,6 @@ public class ShowClusterDetailsTask implements IConfigTask {
   private static void buildDataNodesTsBlock(
       TsBlockBuilder builder,
       int nodeId,
-      String nodeType,
       String nodeStatus,
       String internalAddress,
       int internalPort,
@@ -85,19 +115,59 @@ public class ShowClusterDetailsTask implements IConfigTask {
       int rpcPort,
       int dataConsensusPort,
       int schemaConsensusPort,
-      int mppPort) {
+      int mppPort,
+      TNodeVersionInfo versionInfo) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(nodeId);
-    builder.getColumnBuilder(1).writeBinary(new Binary(nodeType));
-    builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
-    builder.getColumnBuilder(3).writeBinary(new Binary(internalAddress));
+    builder
+        .getColumnBuilder(1)
+        .writeBinary(new Binary(NODE_TYPE_DATA_NODE, TSFileConfig.STRING_CHARSET));
+    if (nodeStatus == null) {
+      builder.getColumnBuilder(2).appendNull();
+    } else {
+      builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus, TSFileConfig.STRING_CHARSET));
+    }
+    if (internalAddress == null) {
+      builder.getColumnBuilder(3).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(3)
+          .writeBinary(new Binary(internalAddress, TSFileConfig.STRING_CHARSET));
+    }
     builder.getColumnBuilder(4).writeInt(internalPort);
-    builder.getColumnBuilder(5).writeBinary(new Binary(""));
-    builder.getColumnBuilder(6).writeBinary(new Binary(rpcAddress));
-    builder.getColumnBuilder(7).writeBinary(new Binary(Integer.toString(rpcPort)));
-    builder.getColumnBuilder(8).writeBinary(new Binary(Integer.toString(dataConsensusPort)));
-    builder.getColumnBuilder(9).writeBinary(new Binary(Integer.toString(schemaConsensusPort)));
-    builder.getColumnBuilder(10).writeBinary(new Binary(Integer.toString(mppPort)));
+    builder.getColumnBuilder(5).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    if (rpcAddress == null) {
+      builder.getColumnBuilder(6).appendNull();
+    } else {
+      builder.getColumnBuilder(6).writeBinary(new Binary(rpcAddress, TSFileConfig.STRING_CHARSET));
+    }
+    builder
+        .getColumnBuilder(7)
+        .writeBinary(new Binary(Integer.toString(rpcPort), TSFileConfig.STRING_CHARSET));
+    builder
+        .getColumnBuilder(8)
+        .writeBinary(new Binary(Integer.toString(dataConsensusPort), TSFileConfig.STRING_CHARSET));
+    builder
+        .getColumnBuilder(9)
+        .writeBinary(
+            new Binary(Integer.toString(schemaConsensusPort), TSFileConfig.STRING_CHARSET));
+    builder
+        .getColumnBuilder(10)
+        .writeBinary(new Binary(Integer.toString(mppPort), TSFileConfig.STRING_CHARSET));
+    if (versionInfo == null || versionInfo.getVersion() == null) {
+      builder.getColumnBuilder(11).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(11)
+          .writeBinary(new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
+    }
+    if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+      builder.getColumnBuilder(12).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(12)
+          .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
+    }
     builder.declarePosition();
   }
 
@@ -116,11 +186,11 @@ public class ShowClusterDetailsTask implements IConfigTask {
                 buildConfigNodesTsBlock(
                     builder,
                     e.getConfigNodeId(),
-                    NODE_TYPE_CONFIG_NODE,
                     clusterNodeInfos.getNodeStatus().get(e.getConfigNodeId()),
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort(),
-                    e.getConsensusEndPoint().getPort()));
+                    e.getConsensusEndPoint().getPort(),
+                    clusterNodeInfos.getNodeVersionInfo().get(e.getConfigNodeId())));
 
     clusterNodeInfos
         .getDataNodeList()
@@ -129,7 +199,6 @@ public class ShowClusterDetailsTask implements IConfigTask {
                 buildDataNodesTsBlock(
                     builder,
                     e.getDataNodeId(),
-                    NODE_TYPE_DATA_NODE,
                     clusterNodeInfos.getNodeStatus().get(e.getDataNodeId()),
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort(),
@@ -137,7 +206,8 @@ public class ShowClusterDetailsTask implements IConfigTask {
                     e.getClientRpcEndPoint().getPort(),
                     e.getMPPDataExchangeEndPoint().getPort(),
                     e.getSchemaRegionConsensusEndPoint().getPort(),
-                    e.getDataRegionConsensusEndPoint().getPort()));
+                    e.getDataRegionConsensusEndPoint().getPort(),
+                    clusterNodeInfos.getNodeVersionInfo().get(e.getDataNodeId())));
 
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterDetailsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

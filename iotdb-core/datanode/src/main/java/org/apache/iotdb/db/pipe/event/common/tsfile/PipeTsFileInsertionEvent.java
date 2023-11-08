@@ -44,31 +44,47 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   // used to filter data
   private final long startTime;
   private final long endTime;
+  private final boolean needParseTime;
+  private boolean isTsFileFormatValid = true;
 
   private final TsFileResource resource;
   private File tsFile;
 
-  private final AtomicBoolean isClosed;
+  private final boolean isLoaded;
+  private final boolean isGeneratedByPipe;
 
+  private final AtomicBoolean isClosed;
   private TsFileInsertionDataContainer dataContainer;
 
-  public PipeTsFileInsertionEvent(TsFileResource resource) {
-    this(resource, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+  public PipeTsFileInsertionEvent(
+      TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
+    this(resource, isLoaded, isGeneratedByPipe, null, null, Long.MIN_VALUE, Long.MAX_VALUE, false);
   }
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource,
+      boolean isLoaded,
+      boolean isGeneratedByPipe,
       PipeTaskMeta pipeTaskMeta,
       String pattern,
       long startTime,
-      long endTime) {
+      long endTime,
+      boolean needParseTime) {
     super(pipeTaskMeta, pattern);
 
     this.startTime = startTime;
     this.endTime = endTime;
+    this.needParseTime = needParseTime;
+
+    if (needParseTime) {
+      isTimeParsed = false;
+    }
 
     this.resource = resource;
     tsFile = resource.getTsFile();
+
+    this.isLoaded = isLoaded;
+    this.isGeneratedByPipe = isGeneratedByPipe;
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // register close listener if TsFile is not closed
@@ -78,15 +94,22 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         processor.addCloseFileListener(
             o -> {
               synchronized (isClosed) {
+                isTsFileFormatValid = o.isTsFileFormatValidForPipe();
                 isClosed.set(true);
                 isClosed.notifyAll();
               }
             });
       }
     }
+    // check again after register close listener in case TsFile is closed during the process
+    isClosed.set(resource.isClosed());
   }
 
-  public void waitForTsFileClose() throws InterruptedException {
+  /**
+   * @return {@code false} if this file can't be sent by pipe due to format violations. {@code true}
+   *     otherwise.
+   */
+  public boolean waitForTsFileClose() throws InterruptedException {
     if (!isClosed.get()) {
       synchronized (isClosed) {
         while (!isClosed.get()) {
@@ -94,14 +117,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         }
       }
     }
+    return isTsFileFormatValid;
   }
 
   public File getTsFile() {
     return tsFile;
   }
 
-  public boolean hasTimeFilter() {
-    return startTime != Long.MIN_VALUE || endTime != Long.MAX_VALUE;
+  public boolean getIsLoaded() {
+    return isLoaded;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -109,7 +133,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
-      tsFile = PipeResourceManager.file().increaseFileReference(tsFile, true);
+      tsFile = PipeResourceManager.tsfile().increaseFileReference(tsFile, true);
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -124,7 +148,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
-      PipeResourceManager.file().decreaseFileReference(tsFile);
+      PipeResourceManager.tsfile().decreaseFileReference(tsFile);
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -146,14 +170,27 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath()));
       Thread.currentThread().interrupt();
-      return new MinimumProgressIndex();
+      return MinimumProgressIndex.INSTANCE;
     }
   }
 
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
-    return new PipeTsFileInsertionEvent(resource, pipeTaskMeta, pattern, startTime, endTime);
+    return new PipeTsFileInsertionEvent(
+        resource,
+        isLoaded,
+        isGeneratedByPipe,
+        pipeTaskMeta,
+        pattern,
+        startTime,
+        endTime,
+        needParseTime);
+  }
+
+  @Override
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
@@ -163,20 +200,35 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     try {
       if (dataContainer == null) {
         waitForTsFileClose();
-        dataContainer = new TsFileInsertionDataContainer(tsFile, getPattern(), startTime, endTime);
+        dataContainer =
+            new TsFileInsertionDataContainer(
+                tsFile, getPattern(), startTime, endTime, pipeTaskMeta, this);
       }
       return dataContainer.toTabletInsertionEvents();
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      close();
+
       final String errorMsg =
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
-      Thread.currentThread().interrupt();
       throw new PipeException(errorMsg);
     } catch (IOException e) {
+      close();
+
       final String errorMsg = String.format("Read TsFile %s error.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
+    }
+  }
+
+  /** Release the resource of data container. */
+  @Override
+  public void close() {
+    if (dataContainer != null) {
+      dataContainer.close();
+      dataContainer = null;
     }
   }
 

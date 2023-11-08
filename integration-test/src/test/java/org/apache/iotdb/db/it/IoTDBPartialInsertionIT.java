@@ -18,12 +18,21 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -35,6 +44,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -125,6 +136,66 @@ public class IoTDBPartialInsertionIT {
         assertNotNull(resultSet);
         assertFalse(resultSet.next());
       }
+    }
+  }
+
+  @Test
+  public void testPartialInsertTablet() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.createTimeseries(
+          "root.sg1.d1.s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
+      session.createTimeseries(
+          "root.sg1.d1.s2", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
+      List<MeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+      schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+      schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
+      Tablet tablet = new Tablet("root.sg1.d1", schemaList, 300);
+      long timestamp = 0;
+      for (long row = 0; row < 100; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp);
+        for (int s = 0; s < 3; s++) {
+          long value = timestamp;
+          tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        }
+        timestamp++;
+      }
+      timestamp = System.currentTimeMillis();
+      for (long row = 0; row < 100; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp);
+        for (int s = 0; s < 3; s++) {
+          long value = timestamp;
+          tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        }
+        timestamp++;
+      }
+      try {
+        session.insertTablet(tablet);
+      } catch (Exception e) {
+        if (!e.getMessage().contains("507")) {
+          fail(e.getMessage());
+        }
+      }
+      try (SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM root.sg1.d1")) {
+        assertEquals(dataSet.getColumnNames().size(), 3);
+        assertEquals(dataSet.getColumnNames().get(0), "Time");
+        assertEquals(dataSet.getColumnNames().get(1), "root.sg1.d1.s1");
+        assertEquals(dataSet.getColumnNames().get(2), "root.sg1.d1.s2");
+        int cnt = 0;
+        while (dataSet.hasNext()) {
+          RowRecord rowRecord = dataSet.next();
+          long time = rowRecord.getTimestamp();
+          assertEquals(time, rowRecord.getFields().get(0).getLongV());
+          assertEquals(time, rowRecord.getFields().get(1).getLongV());
+          cnt++;
+        }
+        Assert.assertEquals(200, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 }

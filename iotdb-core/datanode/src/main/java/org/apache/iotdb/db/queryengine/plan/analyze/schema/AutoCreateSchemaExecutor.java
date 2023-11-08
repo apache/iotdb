@@ -20,10 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -47,8 +50,8 @@ import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -193,12 +196,44 @@ class AutoCreateSchemaExecutor {
       List<String> measurementList,
       List<TSDataType> dataTypeList,
       MPPQueryContext context) {
+    long startTime = System.nanoTime();
+    try {
+      String userName = context.getSession().getUserName();
+      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+        TSStatus status =
+            AuthorityChecker.getTSStatus(
+                AuthorityChecker.checkSystemPermission(
+                    userName, PrivilegeType.EXTEND_TEMPLATE.ordinal()),
+                PrivilegeType.EXTEND_TEMPLATE);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+        }
+      }
+    } finally {
+      PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    }
     internalExtendTemplate(templateName, measurementList, dataTypeList, null, null, context);
   }
 
   // Used for insert records or tablets
   void autoExtendTemplate(
       Map<String, TemplateExtendInfo> templateExtendInfoMap, MPPQueryContext context) {
+    long startTime = System.nanoTime();
+    try {
+      String userName = context.getSession().getUserName();
+      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+        TSStatus status =
+            AuthorityChecker.getTSStatus(
+                AuthorityChecker.checkSystemPermission(
+                    userName, PrivilegeType.EXTEND_TEMPLATE.ordinal()),
+                PrivilegeType.EXTEND_TEMPLATE);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+        }
+      }
+    } finally {
+      PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
+    }
     TemplateExtendInfo templateExtendInfo;
     for (Map.Entry<String, TemplateExtendInfo> entry : templateExtendInfoMap.entrySet()) {
       templateExtendInfo = entry.getValue().deduplicate();
@@ -485,6 +520,11 @@ class AutoCreateSchemaExecutor {
   // Auto create timeseries and return the existing timeseries info
   private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
       Statement statement, MPPQueryContext context) {
+    TSStatus status =
+        AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+    }
 
     ExecutionResult executionResult = executeStatement(statement, context);
 

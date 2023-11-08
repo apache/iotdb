@@ -26,9 +26,16 @@ import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.ReloadLevel;
+import org.apache.iotdb.metrics.core.IoTDBMetricManager;
+import org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.reporter.JmxReporter;
+import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.IoTDBSessionReporter;
+import org.apache.iotdb.metrics.reporter.prometheus.PrometheusReporter;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,10 +44,53 @@ public class MetricService extends AbstractMetricService implements MetricServic
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricService.class);
   private final String mbeanName =
       String.format(
-          "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
+          "%s:%s=%s",
+          IoTDBConstant.IOTDB_SERVICE_JMX_NAME, IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
   private MetricService() {
     // empty constructor
+  }
+
+  @Override
+  protected void loadManager() {
+    metricManager = IoTDBMetricManager.getInstance();
+  }
+
+  @Override
+  protected void loadReporter() {
+    LOGGER.info("Load metric reporters, type: {}", METRIC_CONFIG.getMetricReporterList());
+    compositeReporter.clearReporter();
+    if (METRIC_CONFIG.getMetricReporterList() == null) {
+      return;
+    }
+    boolean hasJmxReporter = false;
+    for (ReporterType reporterType : METRIC_CONFIG.getMetricReporterList()) {
+      Reporter reporter = null;
+      switch (reporterType) {
+        case JMX:
+          reporter = IoTDBJmxReporter.getInstance();
+          metricManager.setBindJmxReporter((JmxReporter) reporter);
+          hasJmxReporter = true;
+          break;
+        case PROMETHEUS:
+          reporter = new PrometheusReporter(metricManager);
+          break;
+        case IOTDB:
+          reporter = new IoTDBSessionReporter(metricManager);
+          break;
+        default:
+          break;
+      }
+      if (reporter == null) {
+        LOGGER.warn("Failed to load reporter which type is {}", reporterType);
+        continue;
+      }
+      compositeReporter.addReporter(reporter);
+    }
+    if (!hasJmxReporter) {
+      // in hot-loading scenario, we need to ensure that JmxReporter is null
+      metricManager.setBindJmxReporter(null);
+    }
   }
 
   @Override

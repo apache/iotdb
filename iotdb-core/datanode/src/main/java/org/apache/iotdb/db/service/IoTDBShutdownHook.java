@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -41,6 +42,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 public class IoTDBShutdownHook extends Thread {
 
@@ -65,10 +68,13 @@ public class IoTDBShutdownHook extends Thread {
     WALManager.getInstance().waitAllWALFlushed();
 
     // flush data to Tsfile and remove WAL log files
-    if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+    if (!IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     }
-    WALManager.getInstance().deleteOutdatedWALFiles();
+    WALManager.getInstance().deleteOutdatedFilesInWALNodes();
 
     // We did this work because the RatisConsensus recovery mechanism is different from other
     // consensus algorithms, which will replace the underlying storage engine based on its
@@ -83,18 +89,24 @@ public class IoTDBShutdownHook extends Thread {
       DataRegionConsensusImpl.getInstance()
           .getAllConsensusGroupIds()
           .parallelStream()
-          .forEach(id -> DataRegionConsensusImpl.getInstance().triggerSnapshot(id));
+          .forEach(
+              id -> {
+                try {
+                  DataRegionConsensusImpl.getInstance().triggerSnapshot(id);
+                } catch (ConsensusException e) {
+                  logger.warn(
+                      "Something wrong happened while calling consensus layer's "
+                          + "triggerSnapshot API.",
+                      e);
+                }
+              });
     }
 
     // close consensusImpl
     try {
-      if (SchemaRegionConsensusImpl.getInstance() != null) {
-        SchemaRegionConsensusImpl.getInstance().stop();
-      }
-      if (DataRegionConsensusImpl.getInstance() != null) {
-        DataRegionConsensusImpl.getInstance().stop();
-      }
-    } catch (Exception e) {
+      SchemaRegionConsensusImpl.getInstance().stop();
+      DataRegionConsensusImpl.getInstance().stop();
+    } catch (IOException e) {
       logger.error("Stop ConsensusImpl error in IoTDBShutdownHook", e);
     }
 

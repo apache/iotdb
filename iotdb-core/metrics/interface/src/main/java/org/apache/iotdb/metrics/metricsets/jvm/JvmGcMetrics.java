@@ -25,6 +25,7 @@ import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.SystemMetric;
 
 import com.sun.management.GarbageCollectionNotificationInfo;
 import com.sun.management.GcInfo;
@@ -44,6 +45,7 @@ import java.lang.management.MemoryUsage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -51,22 +53,61 @@ import java.util.concurrent.atomic.AtomicLong;
 /** This file is modified from io.micrometer.core.instrument.binder.jvm.JvmGcMetrics */
 public class JvmGcMetrics implements IMetricSet, AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(JvmGcMetrics.class);
-  private String youngGenPoolName;
+  private final List<Runnable> notificationListenerCleanUpRunnables = new CopyOnWriteArrayList<>();
+  private String firstYoungGenPoolName;
   private String oldGenPoolName;
   private String nonGenerationalMemoryPool;
-  private final List<Runnable> notificationListenerCleanUpRunnables = new CopyOnWriteArrayList<>();
+  private final Map<String, AtomicLong> lastGcTotalDurationMap = new ConcurrentHashMap<>();
 
   public JvmGcMetrics() {
     for (MemoryPoolMXBean mbean : ManagementFactory.getMemoryPoolMXBeans()) {
       String name = mbean.getName();
-      if (isYoungGenPool(name)) {
-        youngGenPoolName = name;
+      if (isFirstYoungGenPool(name)) {
+        firstYoungGenPoolName = name;
       } else if (isOldGenPool(name)) {
         oldGenPoolName = name;
       } else if (isNonGenerationalHeapPool(name)) {
         nonGenerationalMemoryPool = name;
       }
     }
+  }
+
+  private static boolean isPartiallyConcurrentGC(GarbageCollectorMXBean gc) {
+    switch (gc.getName()) {
+        // First two are from the 'serial' collector which are not concurrent, obviously.
+      case "Copy":
+      case "MarkSweepCompact":
+        // The following 4 GCs do not contain concurrent execution phase.
+      case "PS MarkSweep":
+      case "PS Scavenge":
+      case "G1 Young Generation":
+      case "ParNew":
+        return false;
+
+        // The following 2 GCs' execution process consists of concurrent phase, which means they can
+        // run simultaneously with the user thread in some phases.
+
+        // Concurrent mark and concurrent sweep
+      case "ConcurrentMarkSweep":
+        // Concurrent mark
+      case "G1 Old Generation":
+        return true;
+      default:
+        // Assume possibly concurrent if unsure
+        return true;
+    }
+  }
+
+  private static boolean isFirstYoungGenPool(String name) {
+    return name != null && name.endsWith("Eden Space");
+  }
+
+  private static boolean isOldGenPool(String name) {
+    return name != null && (name.endsWith("Old Gen") || name.endsWith("Tenured Gen"));
+  }
+
+  private static boolean isNonGenerationalHeapPool(String name) {
+    return "Shenandoah".equals(name) || "ZHeap".equals(name);
   }
 
   @Override
@@ -85,23 +126,47 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
 
     AtomicLong maxDataSize = new AtomicLong((long) maxLongLivedPoolBytes);
     metricService.createAutoGauge(
-        "jvm_gc_max_data_size_bytes", MetricLevel.CORE, maxDataSize, AtomicLong::get);
+        SystemMetric.JVM_GC_MAX_DATA_SIZE_BYTES.toString(),
+        MetricLevel.CORE,
+        maxDataSize,
+        AtomicLong::get);
 
     AtomicLong liveDataSize = new AtomicLong();
     metricService.createAutoGauge(
-        "jvm_gc_live_data_size_bytes", MetricLevel.CORE, liveDataSize, AtomicLong::get);
-
-    Counter allocatedBytes =
-        metricService.getOrCreateCounter("jvm_gc_memory_allocated_bytes", MetricLevel.CORE);
+        SystemMetric.JVM_GC_LIVE_DATA_SIZE_BYTES.toString(),
+        MetricLevel.CORE,
+        liveDataSize,
+        AtomicLong::get);
 
     Counter promotedBytes =
         (oldGenPoolName == null)
             ? null
-            : metricService.getOrCreateCounter("jvm_gc_memory_promoted_bytes", MetricLevel.CORE);
+            : metricService.getOrCreateCounter(
+                SystemMetric.JVM_GC_MEMORY_PROMOTED_BYTES.toString(), MetricLevel.CORE);
+
+    Counter nonGenAllocatedBytes =
+        (nonGenerationalMemoryPool == null)
+            ? null
+            : metricService.getOrCreateCounter(
+                SystemMetric.JVM_GC_NON_GEN_MEMORY_ALLOCATED_BYTES.toString(), MetricLevel.CORE);
+
+    Counter oldGenAllocatedBytes =
+        (oldGenPoolName == null)
+            ? null
+            : metricService.getOrCreateCounter(
+                SystemMetric.JVM_GC_OLD_MEMORY_ALLOCATED_BYTES.toString(), MetricLevel.CORE);
+
+    Counter youngGenAllocatedBytes =
+        (firstYoungGenPoolName == null)
+            ? null
+            : metricService.getOrCreateCounter(
+                SystemMetric.JVM_GC_YOUNG_MEMORY_ALLOCATED_BYTES.toString(), MetricLevel.CORE);
+
+    final AtomicLong firstYoungHeapPoolSizeAfterGc = new AtomicLong();
+    // long live heap pool includes old gen heap pool and non-generation heap pool.
+    final AtomicLong longLivedHeapPoolSizeAfterGc = new AtomicLong();
 
     // start watching for GC notifications
-    final AtomicLong heapPoolSizeAfterGc = new AtomicLong();
-
     for (GarbageCollectorMXBean mbean : ManagementFactory.getGarbageCollectorMXBeans()) {
       if (!(mbean instanceof NotificationEmitter)) {
         continue;
@@ -115,17 +180,48 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             String gcCause = notificationInfo.getGcCause();
             String gcAction = notificationInfo.getGcAction();
             GcInfo gcInfo = notificationInfo.getGcInfo();
+
+            // The duration supplied in the notification info includes more than just
+            // application stopped time for concurrent GCs (since the concurrent phase is not
+            // stop-the-world).
+            // E.g. For mixed GC or full GC in collector 'G1 old generation', the duration collected
+            // here is more than the actual pause time (the latter can be accessed by GC
+            // log/-XX:PrintGCDetails)
             long duration = gcInfo.getDuration();
-            String timerName;
-            if (isConcurrentPhase(gcCause, notificationInfo.getGcName())) {
-              timerName = "jvm_gc_concurrent_phase_time";
-            } else {
-              timerName = "jvm_gc_pause";
+
+            // Try and do a better job coming up with a good stopped time
+            // value by asking for and tracking cumulative time spent blocked in GC.
+            if (isPartiallyConcurrentGC(mbean)) {
+              AtomicLong previousTotal =
+                  lastGcTotalDurationMap.computeIfAbsent(mbean.getName(), k -> new AtomicLong());
+              long total = mbean.getCollectionTime();
+              duration = total - previousTotal.get(); // may be zero for a really fast collection
+              previousTotal.set(total);
             }
+
+            // create a timer with tags named by gcCause, which binds gcCause with gcDuration
             Timer timer =
                 metricService.getOrCreateTimer(
-                    timerName, MetricLevel.CORE, "action", gcAction, "cause", gcCause);
+                    SystemMetric.JVM_GC_PAUSE.toString(),
+                    MetricLevel.CORE,
+                    "action",
+                    gcAction,
+                    "cause",
+                    gcCause);
             timer.update(duration, TimeUnit.MILLISECONDS);
+
+            // add support for ZGC
+            if (mbean.getName().equals("ZGC Cycles")) {
+              Counter cyclesCount =
+                  metricService.getOrCreateCounter(
+                      SystemMetric.JVM_ZGC_CYCLES_COUNT.toString(), MetricLevel.CORE);
+              cyclesCount.inc();
+            } else if (mbean.getName().equals("ZGC Pauses")) {
+              Counter pausesCount =
+                  metricService.getOrCreateCounter(
+                      SystemMetric.JVM_ZGC_PAUSES_COUNT.toString(), MetricLevel.CORE);
+              pausesCount.inc();
+            }
 
             // Update promotion and allocation counters
             final Map<String, MemoryUsage> before = gcInfo.getMemoryUsageBeforeGc();
@@ -135,8 +231,8 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
               countPoolSizeDelta(
                   gcInfo.getMemoryUsageBeforeGc(),
                   gcInfo.getMemoryUsageAfterGc(),
-                  allocatedBytes,
-                  heapPoolSizeAfterGc,
+                  nonGenAllocatedBytes,
+                  longLivedHeapPoolSizeAfterGc,
                   nonGenerationalMemoryPool);
               if (after.get(nonGenerationalMemoryPool).getUsed()
                   < before.get(nonGenerationalMemoryPool).getUsed()) {
@@ -144,38 +240,47 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
                 final long longLivedMaxAfter = after.get(nonGenerationalMemoryPool).getMax();
                 maxDataSize.set(longLivedMaxAfter);
               }
-              return;
             }
 
-            if (oldGenPoolName != null) {
-              final long oldBefore = before.get(oldGenPoolName).getUsed();
-              final long oldAfter = after.get(oldGenPoolName).getUsed();
-              final long delta = oldAfter - oldBefore;
-              if (delta > 0L && promotedBytes != null) {
-                promotedBytes.inc(delta);
+            // should add `else` here, since there are only two
+            // cases: generational and non-generational
+            else {
+              if (oldGenPoolName != null) {
+                final long oldBefore = before.get(oldGenPoolName).getUsed();
+                final long oldAfter = after.get(oldGenPoolName).getUsed();
+                final long delta = oldAfter - oldBefore;
+                if (delta > 0L && promotedBytes != null) {
+                  promotedBytes.inc(delta);
+                }
+
+                // Some GC implementations such as G1 can reduce the old gen size as part of a minor
+                // GC (since in JMX, a minor GC of G1 may actually represent mixed GC, which collect
+                // some obj in old gen region). To track the
+                // live data size we record the value if we see a reduction in the old gen heap size
+                // or after a major GC.
+                if (oldAfter < oldBefore
+                    || GcGenerationAge.fromName(notificationInfo.getGcName())
+                        == GcGenerationAge.OLD) {
+                  liveDataSize.set(oldAfter);
+                  final long oldMaxAfter = after.get(oldGenPoolName).getMax();
+                  maxDataSize.set(oldMaxAfter);
+                }
+                countPoolSizeDelta(
+                    gcInfo.getMemoryUsageBeforeGc(),
+                    gcInfo.getMemoryUsageAfterGc(),
+                    oldGenAllocatedBytes,
+                    longLivedHeapPoolSizeAfterGc,
+                    oldGenPoolName);
               }
 
-              // Some GC implementations such as G1 can reduce the old gen size as part of a minor
-              // GC. To track the
-              // live data size we record the value if we see a reduction in the old gen heap size
-              // or
-              // after a major GC.
-              if (oldAfter < oldBefore
-                  || GcGenerationAge.fromName(notificationInfo.getGcName())
-                      == GcGenerationAge.OLD) {
-                liveDataSize.set(oldAfter);
-                final long oldMaxAfter = after.get(oldGenPoolName).getMax();
-                maxDataSize.set(oldMaxAfter);
+              if (firstYoungGenPoolName != null) {
+                countPoolSizeDelta(
+                    gcInfo.getMemoryUsageBeforeGc(),
+                    gcInfo.getMemoryUsageAfterGc(),
+                    youngGenAllocatedBytes,
+                    firstYoungHeapPoolSizeAfterGc,
+                    firstYoungGenPoolName);
               }
-            }
-
-            if (youngGenPoolName != null) {
-              countPoolSizeDelta(
-                  gcInfo.getMemoryUsageBeforeGc(),
-                  gcInfo.getMemoryUsageAfterGc(),
-                  allocatedBytes,
-                  heapPoolSizeAfterGc,
-                  youngGenPoolName);
             }
           };
       NotificationEmitter notificationEmitter = (NotificationEmitter) mbean;
@@ -203,12 +308,25 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
       return;
     }
 
-    metricService.remove(MetricType.AUTO_GAUGE, "jvm_gc_max_data_size_bytes");
-    metricService.remove(MetricType.AUTO_GAUGE, "jvm_gc_live_data_size_bytes");
-    metricService.remove(MetricType.COUNTER, "jvm_gc_memory_allocated_bytes");
+    metricService.remove(MetricType.AUTO_GAUGE, SystemMetric.JVM_GC_MAX_DATA_SIZE_BYTES.toString());
+    metricService.remove(
+        MetricType.AUTO_GAUGE, SystemMetric.JVM_GC_LIVE_DATA_SIZE_BYTES.toString());
 
-    if (oldGenPoolName != null) {
-      metricService.remove(MetricType.COUNTER, "jvm_gc_memory_promoted_bytes");
+    if (nonGenerationalMemoryPool != null) {
+      metricService.remove(
+          MetricType.COUNTER, SystemMetric.JVM_GC_NON_GEN_MEMORY_ALLOCATED_BYTES.toString());
+    } else {
+      if (oldGenPoolName != null) {
+        metricService.remove(
+            MetricType.COUNTER, SystemMetric.JVM_GC_MEMORY_PROMOTED_BYTES.toString());
+        metricService.remove(
+            MetricType.COUNTER, SystemMetric.JVM_GC_OLD_MEMORY_ALLOCATED_BYTES.toString());
+      }
+
+      if (firstYoungGenPoolName != null) {
+        metricService.remove(
+            MetricType.COUNTER, SystemMetric.JVM_GC_YOUNG_MEMORY_ALLOCATED_BYTES.toString());
+      }
     }
 
     // start watching for GC notifications
@@ -224,13 +342,21 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
 
             String gcCause = notificationInfo.getGcCause();
             String gcAction = notificationInfo.getGcAction();
-            String timerName;
-            if (isConcurrentPhase(gcCause, notificationInfo.getGcName())) {
-              timerName = "jvm_gc_concurrent_phase_time";
-            } else {
-              timerName = "jvm_gc_pause";
+            metricService.remove(
+                MetricType.TIMER,
+                SystemMetric.JVM_GC_PAUSE.toString(),
+                "action",
+                gcAction,
+                "cause",
+                gcCause);
+
+            if (mbean.getName().equals("ZGC Cycles")) {
+              metricService.remove(
+                  MetricType.COUNTER, SystemMetric.JVM_ZGC_CYCLES_COUNT.toString());
+            } else if (mbean.getName().equals("ZGC Pauses")) {
+              metricService.remove(
+                  MetricType.COUNTER, SystemMetric.JVM_ZGC_PAUSES_COUNT.toString());
             }
-            metricService.remove(MetricType.TIMER, timerName, "action", gcAction, "cause", gcCause);
           };
       NotificationEmitter notificationEmitter = (NotificationEmitter) mbean;
       notificationEmitter.addNotificationListener(
@@ -299,7 +425,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
     YOUNG,
     UNKNOWN;
 
-    private static Map<String, GcGenerationAge> knownCollectors = new HashMap<>();
+    private static final Map<String, GcGenerationAge> knownCollectors = new HashMap<>();
 
     static {
       knownCollectors.put("ConcurrentMarkSweep", OLD);
@@ -315,21 +441,5 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
     static GcGenerationAge fromName(String name) {
       return knownCollectors.getOrDefault(name, UNKNOWN);
     }
-  }
-
-  private static boolean isConcurrentPhase(String cause, String name) {
-    return "No GC".equals(cause) || "Shenandoah Cycles".equals(name);
-  }
-
-  private static boolean isYoungGenPool(String name) {
-    return name != null && name.endsWith("Eden Space");
-  }
-
-  private static boolean isOldGenPool(String name) {
-    return name != null && (name.endsWith("Old Gen") || name.endsWith("Tenured Gen"));
-  }
-
-  private static boolean isNonGenerationalHeapPool(String name) {
-    return "Shenandoah".equals(name) || "ZHeap".equals(name);
   }
 }

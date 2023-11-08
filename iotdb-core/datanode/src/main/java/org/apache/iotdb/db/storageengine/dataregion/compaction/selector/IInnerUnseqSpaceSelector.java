@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.util.List;
 
 public interface IInnerUnseqSpaceSelector extends ICompactionSelector {
   @Override
-  List<List<TsFileResource>> selectInnerSpaceTask(List<TsFileResource> resources);
+  List<InnerSpaceCompactionTask> selectInnerSpaceTask(List<TsFileResource> resources);
 }

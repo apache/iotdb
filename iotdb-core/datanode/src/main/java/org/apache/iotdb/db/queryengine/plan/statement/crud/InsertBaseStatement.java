@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
@@ -29,7 +32,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -129,6 +133,19 @@ public abstract class InsertBaseStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    List<PartialPath> checkedPaths = getPaths().stream().distinct().collect(Collectors.toList());
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathListPermission(
+            userName, checkedPaths, PrivilegeType.WRITE_DATA.ordinal()),
+        checkedPaths,
+        PrivilegeType.WRITE_DATA);
   }
 
   public abstract ISchemaValidation getSchemaValidation();
@@ -279,8 +296,7 @@ public abstract class InsertBaseStatement extends Statement {
    *
    * @return map from device path to its measurements.
    */
-  protected final Map<PartialPath, List<Pair<String, Integer>>>
-      getMapFromDeviceToMeasurementAndIndex() {
+  protected Map<PartialPath, List<Pair<String, Integer>>> getMapFromDeviceToMeasurementAndIndex() {
     boolean[] isLogicalView = new boolean[this.measurements.length];
     int[] indexMapToLogicalViewList = new int[this.measurements.length];
     Arrays.fill(isLogicalView, false);

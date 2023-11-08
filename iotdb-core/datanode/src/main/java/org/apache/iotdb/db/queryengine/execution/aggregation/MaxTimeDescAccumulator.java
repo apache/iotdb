@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.access.Column;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 public class MaxTimeDescAccumulator extends MaxTimeAccumulator {

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.transformation.dag.adapter;
 import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.type.Binary;
 import org.apache.iotdb.udf.api.type.Type;
@@ -73,7 +74,7 @@ public class LayerPointReaderBackedSingleColumnRow implements Row {
 
   @Override
   public String getString(int columnIndex) throws IOException {
-    return layerPointReader.currentBinary().getStringValue();
+    return layerPointReader.currentBinary().getStringValue(TSFileConfig.STRING_CHARSET);
   }
 
   @Override
@@ -83,7 +84,11 @@ public class LayerPointReaderBackedSingleColumnRow implements Row {
 
   @Override
   public boolean isNull(int columnIndex) {
-    return false;
+    try {
+      return layerPointReader.isCurrentNull();
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
+    }
   }
 
   @Override

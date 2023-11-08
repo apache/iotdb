@@ -29,7 +29,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafil
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.WrappedSegment;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -59,6 +59,21 @@ public class WrappedSegmentTest {
     CommonDescriptor.getInstance()
         .getConfig()
         .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
+  }
+
+  @Test
+  public void testUpdateAlias() throws MetadataException {
+    WrappedSegment sf = new WrappedSegment(500);
+    ICachedMNode node = getMeasurementNode(null, "s1", null);
+    sf.insertRecord("s1", RecordUtils.node2Buffer(node));
+    node.getAsMeasurementMNode().setAlias("alias1");
+    sf.updateRecord("s1", RecordUtils.node2Buffer(node));
+    node.getAsMeasurementMNode().setAlias("alias2");
+    sf.updateRecord("s1", RecordUtils.node2Buffer(node));
+    Assert.assertEquals(null, sf.getRecordByAlias("alias1"));
+    ICachedMNode node1 = sf.getRecordByAlias("alias2");
+    Assert.assertTrue(node1.isMeasurement());
+    Assert.assertEquals("alias2", node1.getAsMeasurementMNode().getAlias());
   }
 
   @Test

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -35,7 +35,7 @@ import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -49,7 +49,7 @@ import static org.junit.Assert.fail;
 public class RegionWriteExecutorTest {
 
   @Test
-  public void testInsertRowNode() {
+  public void testInsertRowNode() throws ConsensusException {
 
     IConsensus dataRegionConsensus = Mockito.mock(IConsensus.class);
     IConsensus schemaRegionConsensus = Mockito.mock(IConsensus.class);
@@ -79,22 +79,17 @@ public class RegionWriteExecutorTest {
     Mockito.when(regionManager.getRegionLock(dataRegionGroupId))
         .thenReturn(new ReentrantReadWriteLock());
 
-    ConsensusWriteResponse writeResponse = Mockito.mock(ConsensusWriteResponse.class);
-    Mockito.when(dataRegionConsensus.write(dataRegionGroupId, planNode)).thenReturn(writeResponse);
+    TSStatus writeResponse = Mockito.mock(TSStatus.class);
+    Mockito.when(writeResponse.getCode()).thenReturn(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
-    Mockito.when(writeResponse.getStatus()).thenReturn(null);
-
+    Mockito.when(triggerFireVisitor.process(planNode, TriggerEvent.BEFORE_INSERT))
+        .thenReturn(TriggerFireResult.TERMINATION);
     RegionExecutionResult res = executor.execute(dataRegionGroupId, planNode);
     assertFalse(res.isAccepted());
 
     Mockito.when(triggerFireVisitor.process(planNode, TriggerEvent.BEFORE_INSERT))
-        .thenReturn(TriggerFireResult.TERMINATION);
-    res = executor.execute(dataRegionGroupId, planNode);
-    assertFalse(res.isAccepted());
-
-    Mockito.when(triggerFireVisitor.process(planNode, TriggerEvent.BEFORE_INSERT))
         .thenReturn(TriggerFireResult.SUCCESS);
-    Mockito.when(writeResponse.isSuccessful()).thenReturn(true);
+    Mockito.when(dataRegionConsensus.write(dataRegionGroupId, planNode)).thenReturn(writeResponse);
     Mockito.when(triggerFireVisitor.process(planNode, TriggerEvent.AFTER_INSERT))
         .thenReturn(TriggerFireResult.TERMINATION);
     res = executor.execute(dataRegionGroupId, planNode);
@@ -102,10 +97,13 @@ public class RegionWriteExecutorTest {
 
     Mockito.when(triggerFireVisitor.process(planNode, TriggerEvent.AFTER_INSERT))
         .thenReturn(TriggerFireResult.SUCCESS);
-    Mockito.when(writeResponse.getStatus())
-        .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     res = executor.execute(dataRegionGroupId, planNode);
     assertTrue(res.isAccepted());
+
+    Mockito.when(dataRegionConsensus.write(dataRegionGroupId, planNode))
+        .thenThrow(new ConsensusException("Error!"));
+    res = executor.execute(dataRegionGroupId, planNode);
+    assertFalse(res.isAccepted());
   }
 
   private InsertRowNode getInsertRowNode() throws IllegalPathException {

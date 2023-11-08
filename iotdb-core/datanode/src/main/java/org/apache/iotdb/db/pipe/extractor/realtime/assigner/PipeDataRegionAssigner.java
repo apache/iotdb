@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.pipe.extractor.realtime.assigner;
 
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.PipeDataRegionMatcher;
-
-import com.lmax.disruptor.dsl.ProducerType;
+import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
 
 public class PipeDataRegionAssigner {
 
@@ -32,20 +33,29 @@ public class PipeDataRegionAssigner {
   private final PipeDataRegionMatcher matcher;
 
   /** The disruptor is used to assign the event to the extractor. */
-  private final DisruptorQueue<PipeRealtimeEvent> disruptor;
+  private final DisruptorQueue disruptor;
 
-  public PipeDataRegionAssigner() {
+  private final String dataRegionId;
+
+  public String getDataRegionId() {
+    return dataRegionId;
+  }
+
+  public PipeDataRegionAssigner(String dataRegionId) {
     this.matcher = new CachedSchemaPatternMatcher();
-    this.disruptor =
-        new DisruptorQueue.Builder<PipeRealtimeEvent>()
-            .setProducerType(ProducerType.SINGLE)
-            .addEventHandler(this::assignToExtractor)
-            .build();
+    this.disruptor = new DisruptorQueue(this::assignToExtractor);
+    this.dataRegionId = dataRegionId;
+    PipeAssignerMetrics.getInstance().register(this);
   }
 
   public void publishToAssign(PipeRealtimeEvent event) {
     event.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
+
     disruptor.publish(event);
+
+    if (event.getEvent() instanceof PipeHeartbeatEvent) {
+      ((PipeHeartbeatEvent) event.getEvent()).onPublished();
+    }
   }
 
   public void assignToExtractor(PipeRealtimeEvent event, long sequence, boolean endOfBatch) {
@@ -53,14 +63,25 @@ public class PipeDataRegionAssigner {
         .match(event)
         .forEach(
             extractor -> {
+              if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
+                return;
+              }
+
               final PipeRealtimeEvent copiedEvent =
                   event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                       extractor.getPipeTaskMeta(), extractor.getPattern());
+
               copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
               extractor.extract(copiedEvent);
+
+              final EnrichedEvent innerEvent = copiedEvent.getEvent();
+              if (innerEvent instanceof PipeHeartbeatEvent) {
+                ((PipeHeartbeatEvent) innerEvent).bindPipeName(extractor.getPipeName());
+                ((PipeHeartbeatEvent) innerEvent).onAssigned();
+              }
             });
     event.gcSchemaInfo();
-    event.decreaseReferenceCount(PipeDataRegionAssigner.class.getName());
+    event.decreaseReferenceCount(PipeDataRegionAssigner.class.getName(), false);
   }
 
   public void startAssignTo(PipeRealtimeDataRegionExtractor extractor) {
@@ -80,7 +101,20 @@ public class PipeDataRegionAssigner {
    * method.
    */
   public void gc() {
+    PipeAssignerMetrics.getInstance().deregister(dataRegionId);
     matcher.clear();
     disruptor.clear();
+  }
+
+  public int getTabletInsertionEventCount() {
+    return disruptor.getTabletInsertionEventCount();
+  }
+
+  public int getTsFileInsertionEventCount() {
+    return disruptor.getTsFileInsertionEventCount();
+  }
+
+  public int getPipeHeartbeatEventCount() {
+    return disruptor.getPipeHeartbeatEventCount();
   }
 }

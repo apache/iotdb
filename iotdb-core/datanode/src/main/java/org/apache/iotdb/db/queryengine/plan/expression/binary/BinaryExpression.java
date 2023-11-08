@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -152,6 +152,10 @@ public abstract class BinaryExpression extends Expression {
     String left = this.getLeftExpression().getOutputSymbol();
     String right = this.getRightExpression().getOutputSymbol();
 
+    return buildExpression(left, right);
+  }
+
+  private String buildExpression(String left, String right) {
     StringBuilder builder = new StringBuilder();
     if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {
       builder.append("(").append(left).append(")");

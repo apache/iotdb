@@ -20,6 +20,8 @@ package org.apache.iotdb.db.auth.user;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -31,6 +33,7 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -65,13 +68,13 @@ public class LocalFileUserManagerTest {
   public void testIllegalInput() throws AuthException {
     // Password contains space
     try {
-      manager.createUser("username1", "password_ ", false);
+      manager.createUser("username1", "password_ ", true);
     } catch (AuthException e) {
       assertTrue(e.getMessage().contains("cannot contain spaces"));
     }
     // Username contains space
     try {
-      assertFalse(manager.createUser("username 2", "password_", false));
+      assertFalse(manager.createUser("username 2", "password_", true));
     } catch (AuthException e) {
       assertTrue(e.getMessage().contains("cannot contain spaces"));
     }
@@ -85,7 +88,7 @@ public class LocalFileUserManagerTest {
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.getPrivileges().add(j);
-        users[i].getPrivilegeList().add(pathPrivilege);
+        users[i].getPathPrivilegeList().add(pathPrivilege);
         users[i].getRoleList().add("role" + j);
       }
     }
@@ -103,20 +106,9 @@ public class LocalFileUserManagerTest {
     }
 
     assertFalse(manager.createUser(users[0].getName(), users[0].getPassword(), false));
-    boolean caught = false;
-    try {
-      manager.createUser("too", "short", false);
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-    caught = false;
-    try {
-      manager.createUser("short", "too", false);
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
+
+    Assert.assertThrows(AuthException.class, () -> manager.createUser("too", "short", true));
+    Assert.assertThrows(AuthException.class, () -> manager.createUser("short", "too", true));
 
     // delete
     assertFalse(manager.deleteUser("not a user"));
@@ -128,45 +120,31 @@ public class LocalFileUserManagerTest {
     user = manager.getUser(users[0].getName());
     PartialPath path = new PartialPath("root.a.b.c");
     int privilegeId = 0;
-    assertFalse(user.hasPrivilege(path, privilegeId));
-    assertTrue(manager.grantPrivilegeToUser(user.getName(), path, privilegeId));
-    assertTrue(manager.grantPrivilegeToUser(user.getName(), path, privilegeId + 1));
-    assertFalse(manager.grantPrivilegeToUser(user.getName(), path, privilegeId));
+
+    assertFalse(user.hasPrivilegeToRevoke(path, privilegeId));
+    assertTrue(manager.grantPrivilegeToUser(user.getName(), path, privilegeId, false));
+    assertTrue(manager.grantPrivilegeToUser(user.getName(), path, privilegeId + 1, false));
+    // grant again will success
+    assertTrue(manager.grantPrivilegeToUser(user.getName(), path, privilegeId, false));
     user = manager.getUser(users[0].getName());
-    assertTrue(user.hasPrivilege(path, privilegeId));
-    caught = false;
-    try {
-      manager.grantPrivilegeToUser("not a user", path, privilegeId);
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-    caught = false;
-    try {
-      manager.grantPrivilegeToUser(user.getName(), path, -1);
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
+    assertTrue(user.hasPrivilegeToRevoke(path, privilegeId));
+
+    Assert.assertThrows(
+        AuthException.class,
+        () -> manager.grantPrivilegeToUser("not a user", path, privilegeId, false));
+    // We will check the privilegeid before we process it.
+    //    Assert.assertThrows(
+    //        AuthException.class,
+    //        () -> manager.grantPrivilegeToUser(users[0].getName(), path, -1, false));
 
     // revoke privilege
     user = manager.getUser(users[0].getName());
     assertTrue(manager.revokePrivilegeFromUser(user.getName(), path, privilegeId));
     assertFalse(manager.revokePrivilegeFromUser(user.getName(), path, privilegeId));
-    caught = false;
-    try {
-      manager.revokePrivilegeFromUser("not a user", path, privilegeId);
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-    caught = false;
-    try {
-      manager.revokePrivilegeFromUser(user.getName(), path, -1);
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
+
+    Assert.assertThrows(
+        AuthException.class,
+        () -> manager.revokePrivilegeFromUser("not a user", path, privilegeId));
 
     // update password
     String newPassword = "newPassword";
@@ -175,13 +153,9 @@ public class LocalFileUserManagerTest {
     assertFalse(manager.updateUserPassword(user.getName(), illegalPW));
     user = manager.getUser(user.getName());
     assertTrue(AuthUtils.validatePassword(newPassword, user.getPassword()));
-    caught = false;
-    try {
-      manager.updateUserPassword("not a user", newPassword);
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
+
+    Assert.assertThrows(
+        AuthException.class, () -> manager.updateUserPassword("not a user", newPassword));
 
     // grant role
     String roleName = "newrole";
@@ -189,26 +163,19 @@ public class LocalFileUserManagerTest {
     assertFalse(manager.grantRoleToUser(roleName, user.getName()));
     user = manager.getUser(user.getName());
     assertTrue(user.hasRole(roleName));
-    caught = false;
-    try {
-      manager.grantRoleToUser("not a user", roleName);
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
+
+    Assert.assertThrows(AuthException.class, () -> manager.grantRoleToUser("not a user", roleName));
+
+    boolean caught = false;
 
     // revoke role
     assertTrue(manager.revokeRoleFromUser(roleName, user.getName()));
     assertFalse(manager.revokeRoleFromUser(roleName, user.getName()));
     user = manager.getUser(user.getName());
     assertFalse(user.hasRole(roleName));
-    caught = false;
-    try {
-      manager.revokeRoleFromUser("not a user", roleName);
-    } catch (AuthException e) {
-      caught = true;
-    }
-    assertTrue(caught);
+
+    Assert.assertThrows(
+        AuthException.class, () -> manager.revokeRoleFromUser("not a user", roleName));
 
     // list users
     List<String> usernames = manager.listAllUsers();
@@ -217,5 +184,51 @@ public class LocalFileUserManagerTest {
     for (int i = 0; i < users.length - 1; i++) {
       assertEquals(users[i].getName(), usernames.get(i + 1));
     }
+  }
+
+  @Test
+  public void testPathCheckForUpgrade() throws AuthException, IllegalPathException {
+    manager.createUser("test", "pwssord", false);
+    manager.setPreVersion(true);
+
+    // turn to root.d.a
+    manager.grantPrivilegeToUser(
+        "test", new PartialPath("root.d.a"), PrivilegeType.READ_SCHEMA.ordinal(), false);
+    // turn to root.**
+    manager.grantPrivilegeToUser(
+        "test", new PartialPath("root.d*.a"), PrivilegeType.READ_DATA.ordinal(), false);
+    // turn to root.**
+    manager.grantPrivilegeToUser(
+        "test", new PartialPath("root.d*.a"), PrivilegeType.READ_SCHEMA.ordinal(), false);
+    // turn to root.**
+    manager.grantPrivilegeToUser(
+        "test", new PartialPath("root.*.a.b"), PrivilegeType.READ_SCHEMA.ordinal(), false);
+    // turn to root.ds.a.**
+    manager.grantPrivilegeToUser(
+        "test", new PartialPath("root.ds.a.b*"), PrivilegeType.READ_SCHEMA.ordinal(), false);
+    // turn to root.ds.a.b
+    manager.grantPrivilegeToUser(
+        "test", new PartialPath("root.ds.a.b"), PrivilegeType.READ_SCHEMA.ordinal(), false);
+    assertFalse(manager.getUser("test").getServiceReady());
+    // after this operation, the user has these privileges:
+    // root.d.a : read_schema
+    // root.** : read_data, read_schema
+    // root.ds.a.** :read_schema
+    // root.ds.a.b : read_schema
+    manager.checkAndRefreshPathPri();
+    Role role = manager.getUser("test");
+    assertTrue(role.getServiceReady());
+    assertEquals(4, role.getPathPrivilegeList().size());
+    manager.revokePrivilegeFromUser(
+        "test", new PartialPath("root.**"), PrivilegeType.READ_SCHEMA.ordinal());
+    manager.revokePrivilegeFromUser(
+        "test", new PartialPath("root.**"), PrivilegeType.READ_DATA.ordinal());
+    assertEquals(3, role.getPathPrivilegeList().size());
+    assertTrue(
+        role.checkPathPrivilege(
+            new PartialPath("root.ds.a.**"), PrivilegeType.READ_SCHEMA.ordinal()));
+    assertFalse(
+        role.checkPathPrivilege(
+            new PartialPath("root.ds.a.**"), PrivilegeType.READ_DATA.ordinal()));
   }
 }

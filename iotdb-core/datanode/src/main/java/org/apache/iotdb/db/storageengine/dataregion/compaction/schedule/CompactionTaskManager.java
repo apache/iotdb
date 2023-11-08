@@ -32,7 +32,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
@@ -71,8 +73,6 @@ public class CompactionTaskManager implements IService {
   // The thread pool that executes the sub compaction task.
   private WrappedThreadPoolExecutor subCompactionTaskExecutionPool;
 
-  public static final AtomicInteger currentTaskNum = new AtomicInteger(0);
-
   private final FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       new FixedPriorityBlockingQueue<>(
           config.getCandidateCompactionTaskQueueSize(), new DefaultCompactionTaskComparatorImpl());
@@ -96,11 +96,12 @@ public class CompactionTaskManager implements IService {
         && IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0
         && (config.isEnableSeqSpaceCompaction()
             || config.isEnableUnseqSpaceCompaction()
-            || config.isEnableCrossSpaceCompaction())) {
+            || config.isEnableCrossSpaceCompaction()
+            || config.isEnableInsertionCrossSpaceCompaction())) {
       initThreadPool();
-      currentTaskNum.set(0);
       candidateCompactionTaskQueue.regsitPollLastHook(
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
+      candidateCompactionTaskQueue.regsitPollLastHook(AbstractCompactionTask::handleTaskCleanup);
       init = true;
     }
     logger.info("Compaction task manager started.");
@@ -351,10 +352,15 @@ public class CompactionTaskManager implements IService {
                     : CompactionTaskType.INNER_UNSEQ,
                 x -> new EnumMap<>(CompactionTaskStatus.class))
             .compute(CompactionTaskStatus.WAITING, (k, v) -> v == null ? 1 : v + 1);
-      } else {
+      } else if (task instanceof CrossSpaceCompactionTask) {
         statistic
             .computeIfAbsent(
                 CompactionTaskType.CROSS, x -> new EnumMap<>(CompactionTaskStatus.class))
+            .compute(CompactionTaskStatus.WAITING, (k, v) -> v == null ? 1 : v + 1);
+      } else if (task instanceof InsertionCrossSpaceCompactionTask) {
+        statistic
+            .computeIfAbsent(
+                CompactionTaskType.INSERTION, x -> new EnumMap<>(CompactionTaskStatus.class))
             .compute(CompactionTaskStatus.WAITING, (k, v) -> v == null ? 1 : v + 1);
       }
     }
@@ -372,10 +378,15 @@ public class CompactionTaskManager implements IService {
                     : CompactionTaskType.INNER_UNSEQ,
                 x -> new EnumMap<>(CompactionTaskStatus.class))
             .compute(CompactionTaskStatus.RUNNING, (k, v) -> v == null ? 1 : v + 1);
-      } else {
+      } else if (task instanceof CrossSpaceCompactionTask) {
         statistic
             .computeIfAbsent(
                 CompactionTaskType.CROSS, x -> new EnumMap<>(CompactionTaskStatus.class))
+            .compute(CompactionTaskStatus.RUNNING, (k, v) -> v == null ? 1 : v + 1);
+      } else if (task instanceof InsertionCrossSpaceCompactionTask) {
+        statistic
+            .computeIfAbsent(
+                CompactionTaskType.INSERTION, x -> new EnumMap<>(CompactionTaskStatus.class))
             .compute(CompactionTaskStatus.RUNNING, (k, v) -> v == null ? 1 : v + 1);
       }
     }
@@ -398,7 +409,6 @@ public class CompactionTaskManager implements IService {
     return storageGroupName + "-" + dataRegionId;
   }
 
-  @TestOnly
   public void restart() throws InterruptedException {
     if (IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0) {
       if (subCompactionTaskExecutionPool != null) {
@@ -425,7 +435,6 @@ public class CompactionTaskManager implements IService {
       candidateCompactionTaskQueue.clear();
       init = true;
     }
-    currentTaskNum.set(0);
     init = true;
     logger.info("Compaction task manager started.");
   }

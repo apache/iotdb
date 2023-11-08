@@ -26,7 +26,9 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -40,7 +42,6 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class NodeManageMemoryMergeOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
@@ -49,6 +50,9 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
   private final Operator child;
   private boolean isReadingMemory;
   private final List<TSDataType> outputDataTypes;
+
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   public NodeManageMemoryMergeOperator(
       OperatorContext operatorContext, Set<TSchemaNode> data, Operator child) {
@@ -114,11 +118,15 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
     sortSet.forEach(
         node -> {
           tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-          tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(node.getNodeName()));
+          tsBlockBuilder
+              .getColumnBuilder(0)
+              .writeBinary(new Binary(node.getNodeName(), TSFileConfig.STRING_CHARSET));
           tsBlockBuilder
               .getColumnBuilder(1)
               .writeBinary(
-                  new Binary(MNodeType.getMNodeType(node.getNodeType()).getNodeTypeName()));
+                  new Binary(
+                      MNodeType.getMNodeType(node.getNodeType()).getNodeTypeName(),
+                      TSFileConfig.STRING_CHARSET));
           tsBlockBuilder.declarePosition();
         });
     return tsBlockBuilder.build();

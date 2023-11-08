@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -259,12 +259,11 @@ public class WrappedSegment extends Segment<ICachedMNode> {
     // update alias-key list accordingly
     if (oriAlias != null) {
       aliasKeyList.remove(binarySearchPairList(aliasKeyList, oriAlias));
-
-      uBuffer.clear();
-      String alias = RecordUtils.getRecordAlias(uBuffer);
-      if (alias != null) {
-        aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, key));
-      }
+    }
+    uBuffer.clear();
+    String alias = RecordUtils.getRecordAlias(uBuffer);
+    if (alias != null) {
+      aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, key));
     }
 
     return idx;

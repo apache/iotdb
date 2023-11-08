@@ -21,8 +21,9 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.binary;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
@@ -44,8 +45,14 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
           flag =
               transform(
                   TransformUtils.compare(
-                      leftTransformer.getType().getBinary(leftColumn, i).getStringValue(),
-                      rightTransformer.getType().getBinary(rightColumn, i).getStringValue()));
+                      leftTransformer
+                          .getType()
+                          .getBinary(leftColumn, i)
+                          .getStringValue(TSFileConfig.STRING_CHARSET),
+                      rightTransformer
+                          .getType()
+                          .getBinary(rightColumn, i)
+                          .getStringValue(TSFileConfig.STRING_CHARSET)));
         } else if (leftTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)) {
           flag =
               transform(

@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
@@ -57,6 +58,8 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
@@ -68,6 +71,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -93,9 +97,6 @@ public class ConfigNodeProcedureEnv {
 
   /** Add or remove node lock. */
   private final LockQueue nodeLock = new LockQueue();
-
-  /** Pipe operation lock. */
-  private final LockQueue pipeLock = new LockQueue();
 
   private final ReentrantLock schedulerLock = new ReentrantLock(true);
 
@@ -262,14 +263,19 @@ public class ConfigNodeProcedureEnv {
     try {
       // Execute removePeer
       if (getConsensusManager().removeConfigNodePeer(tConfigNodeLocation)) {
-        tsStatus =
-            getConsensusManager().write(new RemoveConfigNodePlan(tConfigNodeLocation)).getStatus();
+        tsStatus = getConsensusManager().write(new RemoveConfigNodePlan(tConfigNodeLocation));
       } else {
         tsStatus =
             new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
                 .setMessage(
                     "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
       }
+    } catch (ConsensusException e) {
+      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+      tsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      tsStatus.setMessage(e.getMessage());
+    }
+    try {
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new ProcedureException(tsStatus.getMessage());
       }
@@ -324,10 +330,18 @@ public class ConfigNodeProcedureEnv {
    * Leader will record the new ConfigNode's information.
    *
    * @param configNodeLocation The new ConfigNode
+   * @param versionInfo The new ConfigNode's versionInfo
    */
-  public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
-    configManager.getNodeManager().applyConfigNode(configNodeLocation);
+  public void applyConfigNode(
+      TConfigNodeLocation configNodeLocation, TNodeVersionInfo versionInfo) {
+    configManager.getNodeManager().applyConfigNode(configNodeLocation, versionInfo);
   }
+
+  /**
+   * Leader will record the new Confignode's information.
+   *
+   * @param dataNodeConfiguration The new DataNode
+   */
 
   /**
    * Leader will notify the new ConfigNode that registration success.
@@ -354,7 +368,7 @@ public class ConfigNodeProcedureEnv {
             new TUpdateConfigNodeGroupReq(registeredConfigNodes),
             registeredDataNodes);
 
-    if (registeredDataNodes.size() > 0) {
+    if (!registeredDataNodes.isEmpty()) {
       LOG.info(
           "Begin to broadcast the latest configNodeGroup to DataNodes, ConfigNodeGroups: {}, DataNodes: {}",
           registeredConfigNodes,
@@ -392,6 +406,17 @@ public class ConfigNodeProcedureEnv {
             NodeType.DataNode,
             dataNodeLocation.getDataNodeId(),
             NodeHeartbeatSample.generateDefaultSample(NodeStatus.Removing));
+    // Force update RegionStatus to Removing
+    getPartitionManager()
+        .getAllReplicaSets(dataNodeLocation.getDataNodeId())
+        .forEach(
+            replicaSet ->
+                getLoadManager()
+                    .forceUpdateRegionGroupCache(
+                        replicaSet.getRegionId(),
+                        Collections.singletonMap(
+                            dataNodeLocation.getDataNodeId(),
+                            RegionHeartbeatSample.generateDefaultSample(RegionStatus.Removing))));
   }
 
   /**
@@ -527,7 +552,11 @@ public class ConfigNodeProcedureEnv {
 
   public void persistRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
     // Persist the allocation result
-    getConsensusManager().write(createRegionGroupsPlan);
+    try {
+      getConsensusManager().write(createRegionGroupsPlan);
+    } catch (ConsensusException e) {
+      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+    }
   }
 
   /**
@@ -640,24 +669,55 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseList();
   }
 
-  public Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(
+  public Map<Integer, TPushPipeMetaResp> pushAllPipeMetaToDataNodes(
       List<ByteBuffer> pipeMetaBinaryList) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushPipeMetaReq request = new TPushPipeMetaReq().setPipeMetas(pipeMetaBinaryList);
 
     final AsyncClientHandler<TPushPipeMetaReq, TPushPipeMetaResp> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.PUSH_PIPE_META, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+        new AsyncClientHandler<>(
+            DataNodeRequestType.PIPE_PUSH_ALL_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
+            clientHandler,
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
+    return clientHandler.getResponseMap();
+  }
+
+  public Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes(ByteBuffer pipeMetaBinary) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushSinglePipeMetaReq request = new TPushSinglePipeMetaReq().setPipeMeta(pipeMetaBinary);
+
+    final AsyncClientHandler<TPushSinglePipeMetaReq, TPushPipeMetaResp> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.PIPE_PUSH_SINGLE_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
+            clientHandler,
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2);
+    return clientHandler.getResponseMap();
+  }
+
+  public Map<Integer, TPushPipeMetaResp> dropSinglePipeOnDataNodes(String pipeNameToDrop) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushSinglePipeMetaReq request =
+        new TPushSinglePipeMetaReq().setPipeNameToDrop(pipeNameToDrop);
+
+    final AsyncClientHandler<TPushSinglePipeMetaReq, TPushPipeMetaResp> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.PIPE_PUSH_SINGLE_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
+            clientHandler,
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2);
     return clientHandler.getResponseMap();
   }
 
   public LockQueue getNodeLock() {
     return nodeLock;
-  }
-
-  public LockQueue getPipeLock() {
-    return pipeLock;
   }
 
   public ProcedureScheduler getScheduler() {

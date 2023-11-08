@@ -21,8 +21,9 @@ package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
+import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
-public class DoNothingHistogram implements Histogram, DoNothingMetric {
+public class DoNothingHistogram extends AbstractMetricMBean implements Histogram, DoNothingMetric {
 
   @Override
   public void update(long value) {
@@ -30,7 +31,7 @@ public class DoNothingHistogram implements Histogram, DoNothingMetric {
   }
 
   @Override
-  public long count() {
+  public long getCount() {
     return 0;
   }
 

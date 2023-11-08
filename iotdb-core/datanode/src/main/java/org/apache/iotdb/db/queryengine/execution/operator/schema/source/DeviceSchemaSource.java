@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -29,16 +31,18 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.List;
 
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_MATCH_PATTERN;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 
 public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
 
   private final PartialPath pathPattern;
+  private final PathPatternTree scope;
   private final boolean isPrefixMatch;
 
   private final long limit;
@@ -54,7 +58,8 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
       long limit,
       long offset,
       boolean hasSgCol,
-      SchemaFilter schemaFilter) {
+      SchemaFilter schemaFilter,
+      PathPatternTree scope) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixPath;
 
@@ -63,6 +68,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
 
     this.hasSgCol = hasSgCol;
     this.schemaFilter = schemaFilter;
+    this.scope = scope;
   }
 
   @Override
@@ -70,7 +76,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
     try {
       return schemaRegion.getDeviceReader(
           SchemaRegionReadPlanFactory.getShowDevicesPlan(
-              pathPattern, limit, offset, isPrefixMatch, schemaFilter));
+              pathPattern, limit, offset, isPrefixMatch, schemaFilter, scope));
     } catch (MetadataException e) {
       throw new SchemaExecutionException(e.getMessage(), e);
     }
@@ -87,19 +93,27 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
   public void transformToTsBlockColumns(
       IDeviceSchemaInfo device, TsBlockBuilder builder, String database) {
     builder.getTimeColumnBuilder().writeLong(0L);
-    builder.getColumnBuilder(0).writeBinary(new Binary(device.getFullPath()));
+    builder
+        .getColumnBuilder(0)
+        .writeBinary(new Binary(device.getFullPath(), TSFileConfig.STRING_CHARSET));
     if (hasSgCol) {
-      builder.getColumnBuilder(1).writeBinary(new Binary(database));
-      builder.getColumnBuilder(2).writeBinary(new Binary(String.valueOf(device.isAligned())));
+      builder.getColumnBuilder(1).writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(2)
+          .writeBinary(new Binary(String.valueOf(device.isAligned()), TSFileConfig.STRING_CHARSET));
     } else {
-      builder.getColumnBuilder(1).writeBinary(new Binary(String.valueOf(device.isAligned())));
+      builder
+          .getColumnBuilder(1)
+          .writeBinary(new Binary(String.valueOf(device.isAligned()), TSFileConfig.STRING_CHARSET));
     }
     builder.declarePosition();
   }
 
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
-    return pathPattern.equals(ALL_MATCH_PATTERN);
+    return pathPattern.equals(ALL_MATCH_PATTERN)
+        && (schemaFilter == null)
+        && scope.equals(SchemaConstant.ALL_MATCH_SCOPE);
   }
 
   @Override

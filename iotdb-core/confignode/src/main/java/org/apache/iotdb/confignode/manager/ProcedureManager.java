@@ -27,7 +27,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -37,6 +36,7 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
@@ -47,8 +47,6 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
-import org.apache.iotdb.confignode.procedure.impl.model.CreateModelProcedure;
-import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
@@ -70,6 +68,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -467,7 +466,7 @@ public class ProcedureManager {
    */
   public void addConfigNode(TConfigNodeRegisterReq req) {
     AddConfigNodeProcedure addConfigNodeProcedure =
-        new AddConfigNodeProcedure(req.getConfigNodeLocation());
+        new AddConfigNodeProcedure(req.getConfigNodeLocation(), req.getVersionInfo());
     this.executor.submitProcedure(addConfigNodeProcedure);
   }
 
@@ -704,33 +703,6 @@ public class ProcedureManager {
     return statusList.get(0);
   }
 
-  public TSStatus createModel(ModelInformation modelInformation, Map<String, String> modelConfigs) {
-    long procedureId =
-        executor.submitProcedure(new CreateModelProcedure(modelInformation, modelConfigs));
-    List<TSStatus> statusList = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
-    } else {
-      return new TSStatus(TSStatusCode.CREATE_MODEL_ERROR.getStatusCode())
-          .setMessage(statusList.get(0).getMessage());
-    }
-  }
-
-  public TSStatus dropModel(String modelId) {
-    long procedureId = executor.submitProcedure(new DropModelProcedure(modelId));
-    List<TSStatus> statusList = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
-    } else {
-      return new TSStatus(TSStatusCode.DROP_MODEL_ERROR.getStatusCode())
-          .setMessage(statusList.get(0).getMessage());
-    }
-  }
-
   public TSStatus createPipePlugin(PipePluginMeta pipePluginMeta, byte[] jarFile) {
     final CreatePipePluginProcedure createPipePluginProcedure =
         new CreatePipePluginProcedure(pipePluginMeta, jarFile);
@@ -884,6 +856,24 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus operateAuthPlan(AuthorPlan authorPlan, List<TDataNodeConfiguration> dns) {
+    try {
+      final long procedureId =
+          executor.submitProcedure(new AuthOperationProcedure(authorPlan, dns));
+      List<TSStatus> statusList = new ArrayList<>();
+      boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return RpcUtils.SUCCESS_STATUS;
+      } else {
+        return new TSStatus(statusList.get(0).getCode()).setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.AUTH_OPERATE_EXCEPTION.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
   /**
    * Waiting until the specific procedures finished.
    *
@@ -906,7 +896,9 @@ public class ProcedureManager {
           executor.getResultOrProcedure(procedureId);
       if (!finishedProcedure.isFinished()) {
         // the procedure is still executing
-        statusList.add(RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK));
+        statusList.add(
+            RpcUtils.getStatus(
+                TSStatusCode.OVERLAP_WITH_EXISTING_TASK, "Procedure execution timed out."));
         isSucceed = false;
         continue;
       }

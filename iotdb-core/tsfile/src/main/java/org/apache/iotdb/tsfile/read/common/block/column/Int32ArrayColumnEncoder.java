@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.tsfile.read.common.block.column;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -80,14 +81,26 @@ public class Int32ArrayColumnEncoder implements ColumnEncoder {
     TSDataType dataType = column.getDataType();
     int positionCount = column.getPositionCount();
     if (TSDataType.INT32.equals(dataType)) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
+      if (column.mayHaveNull()) {
+        for (int i = 0; i < positionCount; i++) {
+          if (!column.isNull(i)) {
+            output.writeInt(column.getInt(i));
+          }
+        }
+      } else {
+        for (int i = 0; i < positionCount; i++) {
           output.writeInt(column.getInt(i));
         }
       }
     } else if (TSDataType.FLOAT.equals(dataType)) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
+      if (column.mayHaveNull()) {
+        for (int i = 0; i < positionCount; i++) {
+          if (!column.isNull(i)) {
+            output.writeInt(Float.floatToIntBits(column.getFloat(i)));
+          }
+        }
+      } else {
+        for (int i = 0; i < positionCount; i++) {
           output.writeInt(Float.floatToIntBits(column.getFloat(i)));
         }
       }

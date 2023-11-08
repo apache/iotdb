@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile.common.block;
 
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.access.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoder;
 
 import org.junit.Assert;

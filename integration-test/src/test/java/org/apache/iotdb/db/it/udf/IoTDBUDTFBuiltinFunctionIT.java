@@ -759,8 +759,12 @@ public class IoTDBUDTFBuiltinFunctionIT {
         ResultSet resultSet =
             statement.executeQuery(
                 String.format(
+                    Locale.ENGLISH,
                     "select on_off(s1,'threshold'='%f'), on_off(s2,'threshold'='%f'), on_off(s3,'threshold'='%f'), on_off(s4,'threshold'='%f') from root.sg.d1",
-                    threshold, threshold, threshold, threshold));
+                    threshold,
+                    threshold,
+                    threshold,
+                    threshold));
 
         int columnCount = resultSet.getMetaData().getColumnCount();
         assertEquals(1 + 4, columnCount);
@@ -778,8 +782,12 @@ public class IoTDBUDTFBuiltinFunctionIT {
         resultSet =
             statement.executeQuery(
                 String.format(
+                    Locale.ENGLISH,
                     "select on_off(s1,'threshold'='%f'), on_off(s2,'threshold'='%f'), on_off(s3,'threshold'='%f'), on_off(s4,'threshold'='%f') from root.sg.d1 align by device",
-                    threshold, threshold, threshold, threshold));
+                    threshold,
+                    threshold,
+                    threshold,
+                    threshold));
 
         columnCount = resultSet.getMetaData().getColumnCount();
         assertEquals(2 + 4, columnCount);
@@ -811,9 +819,17 @@ public class IoTDBUDTFBuiltinFunctionIT {
         ResultSet resultSet =
             statement.executeQuery(
                 String.format(
+                    Locale.ENGLISH,
                     "select in_range(s1,'upper'='%f','lower'='%f'), in_range(s2,'upper'='%f','lower'='%f'), "
                         + "in_range(s3,'upper'='%f','lower'='%f'), in_range(s4,'upper'='%f','lower'='%f') from root.sg.d1",
-                    upper, lower, upper, lower, upper, lower, upper, lower));
+                    upper,
+                    lower,
+                    upper,
+                    lower,
+                    upper,
+                    lower,
+                    upper,
+                    lower));
 
         int columnCount = resultSet.getMetaData().getColumnCount();
         assertEquals(1 + 4, columnCount);
@@ -831,9 +847,17 @@ public class IoTDBUDTFBuiltinFunctionIT {
         resultSet =
             statement.executeQuery(
                 String.format(
+                    Locale.ENGLISH,
                     "select in_range(s1,'upper'='%f','lower'='%f'), in_range(s2,'upper'='%f','lower'='%f'), "
                         + "in_range(s3,'upper'='%f','lower'='%f'), in_range(s4,'upper'='%f','lower'='%f') from root.sg.d1 align by device",
-                    upper, lower, upper, lower, upper, lower, upper, lower));
+                    upper,
+                    lower,
+                    upper,
+                    lower,
+                    upper,
+                    lower,
+                    upper,
+                    lower));
 
         columnCount = resultSet.getMetaData().getColumnCount();
         assertEquals(2 + 4, columnCount);
@@ -882,8 +906,10 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
+                  Locale.ENGLISH,
                   "select " + "%s(s1, 'proportion'='%f') from root.sg.d5",
-                  functionName, proportionValue));
+                  functionName,
+                  proportionValue));
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 1, columnCount);
       int count = 0;
@@ -918,17 +944,20 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
     for (int i = 0; i < 100; i++) {
       SQL_FOR_SAMPLE_S1[i] =
-          String.format("insert into root.sg.d4(time, s1) values (%d, %f)", i, i * 1.0);
+          String.format(
+              Locale.ENGLISH, "insert into root.sg.d4(time, s1) values (%d, %f)", i, i * 1.0);
       SQL_FOR_SAMPLE_S2[i] =
-          String.format("insert into root.sg.d4(time, s2) values (%d, %f)", i, i * 1.0);
+          String.format(
+              Locale.ENGLISH, "insert into root.sg.d4(time, s2) values (%d, %f)", i, i * 1.0);
       SQL_FOR_SAMPLE_S3[i] =
-          String.format("insert into root.sg.d4(time, s3) values (%d, %d)", i, i);
+          String.format(Locale.ENGLISH, "insert into root.sg.d4(time, s3) values (%d, %d)", i, i);
       SQL_FOR_SAMPLE_S4[i] =
-          String.format("insert into root.sg.d4(time, s4) values (%d, %d)", i, i);
+          String.format(Locale.ENGLISH, "insert into root.sg.d4(time, s4) values (%d, %d)", i, i);
       SQL_FOR_SAMPLE_S5[i] =
-          String.format("insert into root.sg.d4(time, s5) values (%d, %d)", i, -i);
+          String.format(Locale.ENGLISH, "insert into root.sg.d4(time, s5) values (%d, %d)", i, -i);
       SQL_FOR_SAMPLE_S6[i] =
-          String.format("insert into root.sg.d4(time, s6) values (%d, %f)", i, i * 1.0);
+          String.format(
+              Locale.ENGLISH, "insert into root.sg.d4(time, s6) values (%d, %f)", i, i * 1.0);
     }
     float[] ANSWER1 =
         new float[] {4.5F, 14.5F, 24.5F, 34.5F, 44.5F, 54.5F, 64.5F, 74.5F, 84.5F, 94.5F};
@@ -958,6 +987,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
+                  Locale.ENGLISH,
                   "select "
                       + "%s(s1, 'proportion'='%f'), "
                       + "%s(s2, 'type'='%s', 'proportion'='%f'), "
@@ -1030,8 +1060,11 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
+                  Locale.ENGLISH,
                   "select %s(s1, 'method'='%s', 'proportion'='%f') from root.sg.d3",
-                  functionName, methodName, proportionValue));
+                  functionName,
+                  methodName,
+                  proportionValue));
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 1, columnCount);
       for (int j : ANSWER1) {
@@ -1110,10 +1143,14 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet0 =
           statement.executeQuery(
               String.format(
+                  Locale.ENGLISH,
                   "select "
                       + "%s(s1, 'proportion'='%f', 'type'='%s', 'number'='%d') "
                       + "from root.sg.d6",
-                  functionName, proportionValue, "avg", 2));
+                  functionName,
+                  proportionValue,
+                  "avg",
+                  2));
       int columnCount0 = resultSet0.getMetaData().getColumnCount();
       assertEquals(1 + 1, columnCount0);
       for (int i = 0; i < 10; i++) {
@@ -1124,10 +1161,14 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet1 =
           statement.executeQuery(
               String.format(
+                  Locale.ENGLISH,
                   "select "
                       + "%s(s2, 'proportion'='%f', 'type'='%s', 'number'='%d') "
                       + "from root.sg.d6",
-                  functionName, proportionValue, "stendis", 2));
+                  functionName,
+                  proportionValue,
+                  "stendis",
+                  2));
       int columnCount1 = resultSet1.getMetaData().getColumnCount();
       assertEquals(1 + 1, columnCount1);
       for (int i = 0; i < 10; i++) {
@@ -1138,10 +1179,14 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet2 =
           statement.executeQuery(
               String.format(
+                  Locale.ENGLISH,
                   "select "
                       + "%s(s3, 'proportion'='%f', 'type'='%s', 'number'='%d') "
                       + "from root.sg.d6",
-                  functionName, proportionValue, "cos", 2));
+                  functionName,
+                  proportionValue,
+                  "cos",
+                  2));
       int columnCount2 = resultSet2.getMetaData().getColumnCount();
       assertEquals(1 + 1, columnCount2);
       for (int i = 0; i < 10; i++) {
@@ -1152,10 +1197,14 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet3 =
           statement.executeQuery(
               String.format(
+                  Locale.ENGLISH,
                   "select "
                       + "%s(s4, 'proportion'='%f', 'type'='%s', 'number'='%d') "
                       + "from root.sg.d6",
-                  functionName, proportionValue, "prenextdis", 2));
+                  functionName,
+                  proportionValue,
+                  "prenextdis",
+                  2));
       int columnCount3 = resultSet3.getMetaData().getColumnCount();
       assertEquals(1 + 1, columnCount3);
       for (int i = 0; i < 10; i++) {
@@ -1166,10 +1215,14 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet4 =
           statement.executeQuery(
               String.format(
+                  Locale.ENGLISH,
                   "select "
                       + "%s(s5, 'proportion'='%f', 'type'='%s', 'number'='%d') "
                       + "from root.sg.d6",
-                  functionName, 0.5, "cos", 1));
+                  functionName,
+                  0.5,
+                  "cos",
+                  1));
       int columnCount4 = resultSet4.getMetaData().getColumnCount();
       assertEquals(1 + 1, columnCount4);
       for (int i = 0; i < 10; i++) {
@@ -1237,6 +1290,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
     // query tests
     test_M4_firstWindowEmpty();
     test_M4_slidingTimeWindow();
+    test_M4_slidingTimeWindow_2();
     test_M4_slidingSizeWindow();
     test_M4_constantTimeSeries();
   }
@@ -1296,6 +1350,63 @@ public class IoTDBUDTFBuiltinFunctionIT {
       int count = 0;
       while (resultSet.next()) {
         String str = resultSet.getString(1) + "," + resultSet.getString(2);
+        Assert.assertEquals(res[count], str);
+        count++;
+      }
+      Assert.assertEquals(res.length, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  private void test_M4_slidingTimeWindow_2() {
+    String[] res =
+        new String[] {
+          "0,null,1",
+          "1,5.0,null",
+          "10,30.0,null",
+          "20,20.0,null",
+          "24,null,1",
+          "25,8.0,1",
+          "30,40.0,null",
+          "45,30.0,null",
+          "49,null,1",
+          "50,null,1",
+          "52,8.0,null",
+          "54,18.0,null",
+          "74,null,1",
+          "75,null,1",
+          "99,null,1",
+          "120,8.0,null"
+        };
+
+    String sql =
+        String.format(
+            "select M4(s1, '%s'='%s','%s'='%s','%s'='%s','%s'='%s'), M4(s2, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.m4.d1",
+            TIME_INTERVAL_KEY,
+            25,
+            SLIDING_STEP_KEY,
+            25,
+            DISPLAY_WINDOW_BEGIN_KEY,
+            0,
+            DISPLAY_WINDOW_END_KEY,
+            150,
+            TIME_INTERVAL_KEY,
+            25,
+            SLIDING_STEP_KEY,
+            25,
+            DISPLAY_WINDOW_BEGIN_KEY,
+            0,
+            DISPLAY_WINDOW_END_KEY,
+            150);
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      int count = 0;
+      while (resultSet.next()) {
+        String str =
+            resultSet.getString(1) + "," + resultSet.getString(2) + "," + resultSet.getString(3);
         Assert.assertEquals(res[count], str);
         count++;
       }
@@ -1390,40 +1501,80 @@ public class IoTDBUDTFBuiltinFunctionIT {
     String[] SQL_FOR_SAMPLE_9 = new String[6];
     for (int i = 0; i < 5; i++) {
       SQL_FOR_SAMPLE_1[i] =
-          String.format("insert into root.sg.d7(time, s1) values (%d, %d)", i, i + 1);
+          String.format(
+              Locale.ENGLISH, "insert into root.sg.d7(time, s1) values (%d, %d)", i, i + 1);
       SQL_FOR_SAMPLE_2[i] =
-          String.format("insert into root.sg.d7(time, s2) values (%d, %f)", i, i + 1.0);
+          String.format(
+              Locale.ENGLISH, "insert into root.sg.d7(time, s2) values (%d, %f)", i, i + 1.0);
       SQL_FOR_SAMPLE_3[i] =
-          String.format("insert into root.sg.d7(time, s3) values (%d, %f)", i, i + 1.0);
+          String.format(
+              Locale.ENGLISH, "insert into root.sg.d7(time, s3) values (%d, %f)", i, i + 1.0);
       SQL_FOR_SAMPLE_4[i] =
-          String.format("insert into root.sg.d7(time, s4) values (%d, '%s')", i, "string");
+          String.format(
+              Locale.ENGLISH, "insert into root.sg.d7(time, s4) values (%d, '%s')", i, "string");
       SQL_FOR_SAMPLE_5[i] = String.format("insert into root.sg.d7(time, s5) values (%d, true)", i);
       SQL_FOR_SAMPLE_6[i] =
-          String.format("insert into root.sg.d7(time, s6) values (%d, %d)", i, i + 8);
+          String.format(
+              Locale.ENGLISH, "insert into root.sg.d7(time, s6) values (%d, %d)", i, i + 8);
       SQL_FOR_SAMPLE_7[i] =
-          String.format("insert into root.sg.d7(time, s7) values (%d, %d)", i, i + 1);
+          String.format(
+              Locale.ENGLISH, "insert into root.sg.d7(time, s7) values (%d, %d)", i, i + 1);
       SQL_FOR_SAMPLE_8[i] =
-          String.format("insert into root.sg.d7(time, s8) values (%d, %f)", i, i + 1.0);
+          String.format(
+              Locale.ENGLISH, "insert into root.sg.d7(time, s8) values (%d, %f)", i, i + 1.0);
       SQL_FOR_SAMPLE_9[i] =
-          String.format("insert into root.sg.d7(time, s9) values (%d, '%s')", i, "string");
+          String.format(
+              Locale.ENGLISH, "insert into root.sg.d7(time, s9) values (%d, '%s')", i, "string");
     }
     SQL_FOR_SAMPLE_1[5] =
-        String.format("insert into root.sg.d7(time, s1) values (%d, %d)", 10000000000L, 5 + 1);
+        String.format(
+            Locale.ENGLISH,
+            "insert into root.sg.d7(time, s1) values (%d, %d)",
+            10000000000L,
+            5 + 1);
     SQL_FOR_SAMPLE_2[5] =
-        String.format("insert into root.sg.d7(time, s2) values (%d, %f)", 10000000000L, 5 + 1.0);
+        String.format(
+            Locale.ENGLISH,
+            "insert into root.sg.d7(time, s2) values (%d, %f)",
+            10000000000L,
+            5 + 1.0);
     SQL_FOR_SAMPLE_3[5] =
-        String.format("insert into root.sg.d7(time, s3) values (%d, %f)", 10000000000L, 5 + 1.0);
+        String.format(
+            Locale.ENGLISH,
+            "insert into root.sg.d7(time, s3) values (%d, %f)",
+            10000000000L,
+            5 + 1.0);
     SQL_FOR_SAMPLE_4[5] =
-        String.format("insert into root.sg.d7(time, s4) values (%d, '%s')", 10000000000L, "string");
+        String.format(
+            Locale.ENGLISH,
+            "insert into root.sg.d7(time, s4) values (%d, '%s')",
+            10000000000L,
+            "string");
     SQL_FOR_SAMPLE_5[5] = String.format("insert into root.sg.d7(time, s5) values (%d, true)", 5);
     SQL_FOR_SAMPLE_6[5] =
-        String.format("insert into root.sg.d7(time, s6) values (%d, %d)", 10000000000L, 5 + 8);
+        String.format(
+            Locale.ENGLISH,
+            "insert into root.sg.d7(time, s6) values (%d, %d)",
+            10000000000L,
+            5 + 8);
     SQL_FOR_SAMPLE_7[5] =
-        String.format("insert into root.sg.d7(time, s7) values (%d, %d)", 10000000000L, 5 + 1);
+        String.format(
+            Locale.ENGLISH,
+            "insert into root.sg.d7(time, s7) values (%d, %d)",
+            10000000000L,
+            5 + 1);
     SQL_FOR_SAMPLE_8[5] =
-        String.format("insert into root.sg.d7(time, s8) values (%d, %f)", 10000000000L, 5 + 1.0);
+        String.format(
+            Locale.ENGLISH,
+            "insert into root.sg.d7(time, s8) values (%d, %f)",
+            10000000000L,
+            5 + 1.0);
     SQL_FOR_SAMPLE_9[5] =
-        String.format("insert into root.sg.d7(time, s9) values (%d, '%s')", 10000000000L, "string");
+        String.format(
+            Locale.ENGLISH,
+            "insert into root.sg.d7(time, s9) values (%d, '%s')",
+            10000000000L,
+            "string");
     double[] ANSWER1 = new double[] {2, 4, 6, 8, 10, 12};
     double[] ANSWER2 = new double[] {2, 4, 6, 8, 10, 12};
     double[] ANSWER3 = new double[] {4, 7, 10, 13, 16, 19};

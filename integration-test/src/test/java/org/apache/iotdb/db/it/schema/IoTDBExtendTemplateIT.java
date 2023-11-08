@@ -73,24 +73,24 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
       // create database
       statement.execute("CREATE DATABASE root.db");
 
-      // create schema template
+      // create device template
       statement.execute(
-          "CREATE SCHEMA TEMPLATE t1 (s1 INT64 ENCODING=PLAIN, s2 DOUBLE ENCODING=RLE)");
+          "CREATE DEVICE TEMPLATE t1 (s1 INT64 ENCODING=PLAIN, s2 DOUBLE ENCODING=RLE)");
 
-      statement.execute("SET SCHEMA TEMPLATE t1 to root.db");
+      statement.execute("SET DEVICE TEMPLATE t1 to root.db");
 
-      statement.execute("CREATE TIMESERIES USING SCHEMA TEMPLATE on root.db.d1");
+      statement.execute("CREATE TIMESERIES USING DEVICE TEMPLATE on root.db.d1");
 
       statement.execute(
-          "ALTER SCHEMA TEMPLATE t1 ADD(s3 INT64 ENCODING=RLE, s4 DOUBLE ENCODING=GORILLA)");
+          "ALTER DEVICE TEMPLATE t1 ADD(s3 INT64 ENCODING=RLE, s4 DOUBLE ENCODING=GORILLA)");
 
       try {
         statement.execute(
-            "ALTER SCHEMA TEMPLATE t1 ADD(s5 INT64 ENCODING=RLE, s5 DOUBLE ENCODING=GORILLA)");
+            "ALTER DEVICE TEMPLATE t1 ADD(s5 INT64 ENCODING=RLE, s5 DOUBLE ENCODING=GORILLA)");
       } catch (SQLException e) {
         Assert.assertTrue(
             e.getMessage()
-                .contains("Duplicated measurement [s5] in schema template alter request"));
+                .contains("Duplicated measurement [s5] in device template alter request"));
       }
 
       String[] sqls =
@@ -136,11 +136,11 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
       // create database
       statement.execute("CREATE DATABASE root.db");
 
-      // create schema template
+      // create device template
       statement.execute(
-          "CREATE SCHEMA TEMPLATE t1 (s1 INT64 ENCODING=PLAIN, s2 DOUBLE ENCODING=RLE)");
+          "CREATE DEVICE TEMPLATE t1 (s1 INT64 ENCODING=PLAIN, s2 DOUBLE ENCODING=RLE)");
 
-      statement.execute("SET SCHEMA TEMPLATE t1 to root.db");
+      statement.execute("SET DEVICE TEMPLATE t1 to root.db");
 
       statement.execute("INSERT INTO root.db.d1(time, s1, s3) values(1, 1, 1)");
       statement.execute("INSERT INTO root.db.d2(time, s4, s5) values(1, 1, 1)");
@@ -197,11 +197,11 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
       // create database
       statement.execute("CREATE DATABASE root.db");
 
-      // create schema template
+      // create device template
       statement.execute(
-          "CREATE SCHEMA TEMPLATE t1 (s1 INT64 ENCODING=PLAIN, s2 DOUBLE ENCODING=RLE)");
+          "CREATE DEVICE TEMPLATE t1 (s1 INT64 ENCODING=PLAIN, s2 DOUBLE ENCODING=RLE)");
 
-      statement.execute("SET SCHEMA TEMPLATE t1 to root.db");
+      statement.execute("SET DEVICE TEMPLATE t1 to root.db");
 
       statement.execute("INSERT INTO root.db.d1(time, s1, s2) values(1, 1, 1)");
 

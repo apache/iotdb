@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.tsfile;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -66,12 +67,8 @@ public class TsFileWriteAlignedWithTablet {
       // register align timeseries
       tsFileWriter.registerAlignedTimeseries(new Path(DEVICE_1), measurementSchemas);
 
-      List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
       // example 1
-      writeMeasurementScheams.add(measurementSchemas.get(0));
-      writeMeasurementScheams.add(measurementSchemas.get(1));
-      writeMeasurementScheams.add(measurementSchemas.get(2));
-      writeAlignedWithTablet(tsFileWriter, DEVICE_1, writeMeasurementScheams, 200000, 0, 0);
+      writeAlignedWithTablet(tsFileWriter, DEVICE_1, measurementSchemas, 200000, 0, 0);
 
       writeNonAlignedWithTablet(tsFileWriter); // write nonAligned timeseries
     } catch (WriteProcessException e) {
@@ -97,7 +94,7 @@ public class TsFileWriteAlignedWithTablet {
       timestamps[row] = startTime++;
       for (int i = 0; i < sensorNum; i++) {
         Binary[] textSensor = (Binary[]) values[i];
-        textSensor[row] = new Binary("testString.........");
+        textSensor[row] = new Binary("testString.........", TSFileConfig.STRING_CHARSET);
       }
       // write
       if (tablet.rowSize == tablet.getMaxRowNumber()) {

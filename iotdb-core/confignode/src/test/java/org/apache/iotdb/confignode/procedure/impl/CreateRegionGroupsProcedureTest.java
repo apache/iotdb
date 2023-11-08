@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
@@ -91,12 +92,18 @@ public class CreateRegionGroupsProcedureTest {
     assertEquals(failedRegions0, failedRegions1);
 
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
+    createRegionGroupsPlan.setCreateTime(CommonDateTimeUtils.currentTime());
     createRegionGroupsPlan.addRegionGroup("root.sg0", dataRegionSet);
     createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
 
+    CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
+    persistPlan.setCreateTime(CommonDateTimeUtils.currentTime());
+    persistPlan.addRegionGroup("root.sg0", dataRegionSet);
+    persistPlan.addRegionGroup("root.sg1", schemaRegionSet);
+
     CreateRegionGroupsProcedure procedure0 =
         new CreateRegionGroupsProcedure(
-            TConsensusGroupType.DataRegion, createRegionGroupsPlan, failedRegions0);
+            TConsensusGroupType.DataRegion, createRegionGroupsPlan, persistPlan, failedRegions0);
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 

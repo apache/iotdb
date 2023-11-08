@@ -22,18 +22,12 @@ package org.apache.iotdb.commons.conf;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.Properties;
 
 public class CommonDescriptor {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(CommonDescriptor.class);
 
   private final CommonConfig config = new CommonConfig();
 
@@ -62,7 +56,7 @@ public class CommonDescriptor {
     config.setProcedureWalFolder(systemDir + File.separator + "procedure");
   }
 
-  public void loadCommonProps(Properties properties) {
+  public void loadCommonProps(Properties properties) throws BadNodeUrlException {
     config.setAuthorizerProvider(
         properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()).trim());
     // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
@@ -200,19 +194,17 @@ public class CommonDescriptor {
     config.setTimestampPrecision(
         properties.getProperty("timestamp_precision", config.getTimestampPrecision()).trim());
 
-    String endPointUrl =
-        properties.getProperty(
-            "target_ml_node_endpoint",
-            NodeUrlUtils.convertTEndPointUrl(config.getTargetMLNodeEndPoint()));
+    config.setTimestampPrecisionCheckEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "timestamp_precision_check_enabled",
+                String.valueOf(config.isTimestampPrecisionCheckEnabled()))));
+
+    config.setDatanodeTokenTimeoutMS(
+        Integer.parseInt(
+            properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
 
     loadPipeProps(properties);
-    try {
-      config.setTargetMLNodeEndPoint(NodeUrlUtils.parseTEndPointUrl(endPointUrl));
-    } catch (BadNodeUrlException e) {
-      LOGGER.warn(
-          "Illegal target MLNode endpoint url format in config file: {}, use default configuration.",
-          endPointUrl);
-    }
 
     config.setSchemaEngineMode(
         properties.getProperty("schema_engine_mode", String.valueOf(config.getSchemaEngineMode())));
@@ -238,12 +230,32 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
+    config.setSeriesLimitThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "cluster_timeseries_limit_threshold",
+                String.valueOf(config.getSeriesLimitThreshold()))));
+    config.setDeviceLimitThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "cluster_device_limit_threshold",
+                String.valueOf(config.getDeviceLimitThreshold()))));
   }
 
   private void loadPipeProps(Properties properties) {
+    config.setPipeHardlinkBaseDirName(
+        properties.getProperty("pipe_hardlink_base_dir_name", config.getPipeHardlinkBaseDirName()));
     config.setPipeHardlinkTsFileDirName(
         properties.getProperty(
             "pipe_hardlink_tsfile_dir_name", config.getPipeHardlinkTsFileDirName()));
+    config.setPipeHardlinkWALDirName(
+        properties.getProperty("pipe_hardlink_wal_dir_name", config.getPipeHardlinkWALDirName()));
+    config.setPipeHardLinkWALEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_hardlink_wal_enabled",
+                Boolean.toString(config.getPipeHardLinkWALEnabled()))));
+
     config.setPipeDataStructureTabletRowSize(
         Integer.parseInt(
             properties.getProperty(
@@ -281,22 +293,22 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_extractor_assigner_disruptor_ring_buffer_size",
                 String.valueOf(config.getPipeExtractorAssignerDisruptorRingBufferSize()))));
+    config.setPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes( // 1MB
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_extractor_assigner_disruptor_ring_buffer_entry_size_in_bytes",
+                String.valueOf(
+                    config.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes()))));
     config.setPipeExtractorMatcherCacheSize(
         Integer.parseInt(
             properties.getProperty(
                 "pipe_extractor_matcher_cache_size",
                 String.valueOf(config.getPipeExtractorMatcherCacheSize()))));
-    config.setPipeExtractorPendingQueueCapacity(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_extractor_pending_queue_capacity",
-                String.valueOf(config.getPipeExtractorPendingQueueCapacity()))));
-    config.setPipeExtractorPendingQueueTabletLimit(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_extractor_pending_queue_tablet_limit",
-                String.valueOf(config.getPipeExtractorPendingQueueTabletLimit()))));
 
+    config.setPipeConnectorTimeoutMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_connector_timeout_ms", String.valueOf(config.getPipeConnectorTimeoutMs()))));
     config.setPipeConnectorReadFileBufferSize(
         Integer.parseInt(
             properties.getProperty(
@@ -312,6 +324,27 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_connector_pending_queue_size",
                 String.valueOf(config.getPipeConnectorPendingQueueSize()))));
+    config.setPipeConnectorRPCThriftCompressionEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_connector_rpc_thrift_compression_enabled",
+                String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled()))));
+
+    config.setPipeAsyncConnectorSelectorNumber(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_async_connector_selector_number",
+                String.valueOf(config.getPipeAsyncConnectorSelectorNumber()))));
+    config.setPipeAsyncConnectorCoreClientNumber(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_async_connector_core_client_number",
+                String.valueOf(config.getPipeAsyncConnectorCoreClientNumber()))));
+    config.setPipeAsyncConnectorMaxClientNumber(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_async_connector_max_client_number",
+                String.valueOf(config.getPipeAsyncConnectorMaxClientNumber()))));
 
     config.setSeperatedPipeHeartbeatEnabled(
         Boolean.parseBoolean(
@@ -342,13 +375,56 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_auto_restart_enabled", String.valueOf(config.getPipeAutoRestartEnabled()))));
+
+    config.setPipeAirGapReceiverEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_air_gap_receiver_enabled",
+                Boolean.toString(config.getPipeAirGapReceiverEnabled()))));
+    config.setPipeAirGapReceiverPort(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_air_gap_receiver_port",
+                Integer.toString(config.getPipeAirGapReceiverPort()))));
+
+    config.setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
+                String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
+
+    config.setPipeMemoryManagementEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_memory_management_enabled",
+                String.valueOf(config.getPipeMemoryManagementEnabled()))));
+    config.setPipeMemoryAllocateMaxRetries(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_memory_allocate_max_retries",
+                String.valueOf(config.getPipeMemoryAllocateMaxRetries()))));
+    config.setPipeMemoryAllocateRetryIntervalInMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_memory_allocate_retry_interval_in_ms",
+                String.valueOf(config.getPipeMemoryAllocateRetryIntervalInMs()))));
+    config.setPipeMemoryAllocateMinSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_memory_allocate_min_size_in_bytes",
+                String.valueOf(config.getPipeMemoryAllocateMinSizeInBytes()))));
+    config.setPipeMemoryAllocateForTsFileSequenceReaderInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_memory_allocate_for_tsfile_sequence_reader_in_bytes",
+                String.valueOf(config.getPipeMemoryAllocateForTsFileSequenceReaderInBytes()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
+    config.setTimestampPrecision(globalConfig.timestampPrecision);
     config.setTimePartitionInterval(
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
             globalConfig.timePartitionInterval, config.getTimestampPrecision()));
-    config.setTimestampPrecision(globalConfig.timestampPrecision);
     config.setSchemaEngineMode(globalConfig.schemaEngineMode);
     config.setTagAttributeTotalSize(globalConfig.tagAttributeTotalSize);
     config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());

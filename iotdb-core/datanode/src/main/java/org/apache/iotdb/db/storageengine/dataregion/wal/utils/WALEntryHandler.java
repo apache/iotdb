@@ -28,11 +28,16 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicReference;
+
 /**
  * This handler is used by the Pipe to find the corresponding insert node. Besides, it can try to
  * pin/unpin the wal entries by the memTable id.
  */
 public class WALEntryHandler {
+
   private static final Logger logger = LoggerFactory.getLogger(WALEntryHandler.class);
 
   private long memTableId = -1;
@@ -45,6 +50,9 @@ public class WALEntryHandler {
   private final WALEntryPosition walEntryPosition = new WALEntryPosition();
   // wal node, null when wal is disabled
   private WALNode walNode = null;
+
+  private volatile boolean isHardlink = false;
+  private final AtomicReference<File> hardlinkFile = new AtomicReference<>();
 
   public WALEntryHandler(WALEntryValue value) {
     this.value = value;
@@ -75,12 +83,18 @@ public class WALEntryHandler {
     walNode.unpinMemTable(memTableId);
   }
 
+  public InsertNode getInsertNodeViaCacheIfPossible() {
+    return value instanceof InsertNode
+        ? (InsertNode) value
+        : walEntryPosition.readByteBufferOrInsertNodeViaCacheDirectly().getRight();
+  }
+
   /**
    * Get this handler's value.
    *
    * @throws WALPipeException when failing to get the value.
    */
-  public InsertNode getValue() throws WALPipeException {
+  public InsertNode getInsertNode() throws WALPipeException {
     // return local cache
     WALEntryValue res = value;
     if (res != null) {
@@ -90,6 +104,7 @@ public class WALEntryHandler {
         throw new WALPipeException("Fail to get value because the entry type isn't InsertNode.");
       }
     }
+
     // wait until the position is ready
     while (!walEntryPosition.canRead()) {
       try {
@@ -101,14 +116,8 @@ public class WALEntryHandler {
         Thread.currentThread().interrupt();
       }
     }
-    // read from the wal file
-    InsertNode node = null;
-    try {
-      node = walEntryPosition.readInsertNodeViaCache();
-    } catch (Exception e) {
-      throw new WALPipeException("Fail to get value because the file content isn't correct.", e);
-    }
 
+    final InsertNode node = isHardlink ? readFromHardlinkWALFile() : readFromOriginalWALFile();
     if (node == null) {
       throw new WALPipeException(
           String.format("Fail to get the wal value of the position %s.", walEntryPosition));
@@ -116,29 +125,71 @@ public class WALEntryHandler {
     return node;
   }
 
+  public ByteBuffer getByteBuffer() throws WALPipeException {
+    // wait until the position is ready
+    while (!walEntryPosition.canRead()) {
+      try {
+        synchronized (this) {
+          this.wait();
+        }
+      } catch (InterruptedException e) {
+        logger.warn("Interrupted when waiting for result.", e);
+        Thread.currentThread().interrupt();
+      }
+    }
+
+    final ByteBuffer buffer = readByteBufferFromWALFile();
+    if (buffer == null) {
+      throw new WALPipeException(
+          String.format("Fail to get the wal value of the position %s.", walEntryPosition));
+    }
+    return buffer;
+  }
+
+  private InsertNode readFromOriginalWALFile() throws WALPipeException {
+    try {
+      return walEntryPosition.readInsertNodeViaCacheAfterCanRead();
+    } catch (Exception e) {
+      throw new WALPipeException("Fail to get value because the file content isn't correct.", e);
+    }
+  }
+
+  private InsertNode readFromHardlinkWALFile() throws WALPipeException {
+    try {
+      return walEntryPosition.readInsertNodeViaCacheAfterCanRead();
+    } catch (Exception e) {
+      throw new WALPipeException("Fail to get value because the file content isn't correct.", e);
+    }
+  }
+
+  private ByteBuffer readByteBufferFromWALFile() throws WALPipeException {
+    try {
+      return walEntryPosition.readByteBufferViaCacheAfterCanRead();
+    } catch (Exception e) {
+      throw new WALPipeException("Fail to get value because the file content isn't correct.", e);
+    }
+  }
+
+  public void setWalNode(WALNode walNode, long memTableId) {
+    this.walNode = walNode;
+    this.memTableId = memTableId;
+    walEntryPosition.setWalNode(walNode, memTableId);
+  }
+
   public long getMemTableId() {
     return memTableId;
   }
 
-  public void setMemTableId(long memTableId) {
-    this.memTableId = memTableId;
-  }
-
-  public void setWalNode(WALNode walNode) {
-    this.walNode = walNode;
-    this.walEntryPosition.setWalNode(walNode);
-  }
-
-  public WALEntryPosition getWalEntryPosition() {
-    return walEntryPosition;
-  }
-
   public void setEntryPosition(long walFileVersionId, long position) {
-    this.walEntryPosition.setEntryPosition(walFileVersionId, position);
+    this.walEntryPosition.setEntryPosition(walFileVersionId, position, value);
     this.value = null;
     synchronized (this) {
       this.notifyAll();
     }
+  }
+
+  public WALEntryPosition getWalEntryPosition() {
+    return walEntryPosition;
   }
 
   public int getSize() {
@@ -147,6 +198,11 @@ public class WALEntryHandler {
 
   public void setSize(int size) {
     this.walEntryPosition.setSize(size);
+  }
+
+  public void hardlinkTo(File hardlinkFile) {
+    isHardlink = true;
+    this.hardlinkFile.set(hardlinkFile);
   }
 
   @Override

@@ -23,23 +23,20 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>iotdb-parent</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
+        <artifactId>iotdb-core</artifactId>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <artifactId>iotdb-metrics</artifactId>
     <packaging>pom</packaging>
-    <name>metric module</name>
-    <description>Metrics interface for IoTDB</description>
-    <url>https://github.com/thulab/iotdb/tree/master/tsfile</url>
+    <name>IoTDB: Core: Metrics</name>
+    <description>Metrics interfaces for IoTDB</description>
+    <modules>
+        <module>core</module>
+        <module>interface</module>
+    </modules>
     <properties>
         <metrics.test.skip>false</metrics.test.skip>
     </properties>
-    <modules>
-        <module>interface</module>
-        <module>micrometer-metrics</module>
-        <module>dropwizard-metrics</module>
-    </modules>
     <build>
         <plugins>
             <plugin>

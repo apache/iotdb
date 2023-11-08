@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.tsfile.read.common.block;
 
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -137,14 +138,16 @@ public class TsBlock {
         length, (TimeColumn) timeColumn.getRegion(positionOffset, length), slicedColumns);
   }
 
-  public TsBlock appendValueColumn(Column column) {
-    requireNonNull(column, "Column is null");
-    if (positionCount != column.getPositionCount()) {
-      throw new IllegalArgumentException("Block does not have same position count");
+  public TsBlock appendValueColumns(Column[] columns) {
+    Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + columns.length);
+    int newColumnIndex = valueColumns.length;
+    for (Column column : columns) {
+      requireNonNull(column, "Column is null");
+      if (positionCount != column.getPositionCount()) {
+        throw new IllegalArgumentException("Block does not have same position count");
+      }
+      newBlocks[newColumnIndex++] = column;
     }
-
-    Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + 1);
-    newBlocks[valueColumns.length] = column;
     return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
   }
 
@@ -469,8 +472,8 @@ public class TsBlock {
     }
 
     private boolean isCurrentValueAllNull() {
-      for (int i = 0; i < valueColumns.length; i++) {
-        if (!valueColumns[i].isNull(rowIndex)) {
+      for (Column valueColumn : valueColumns) {
+        if (!valueColumn.isNull(rowIndex)) {
           return false;
         }
       }
@@ -504,5 +507,50 @@ public class TsBlock {
     }
 
     return columns[0].getPositionCount();
+  }
+
+  public void update(int updateIdx, TsBlock sourceTsBlock, int sourceIndex) {
+    timeColumn.getTimes()[updateIdx] = sourceTsBlock.getTimeByIndex(sourceIndex);
+    for (int i = 0; i < getValueColumnCount(); i++) {
+      if (sourceTsBlock.getValueColumns()[i].isNull(sourceIndex)) {
+        valueColumns[i].isNull()[updateIdx] = true;
+        continue;
+      }
+      switch (valueColumns[i].getDataType()) {
+        case BOOLEAN:
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getBooleans()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getBoolean(sourceIndex);
+          break;
+        case INT32:
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getInts()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getInt(sourceIndex);
+          break;
+        case INT64:
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getLongs()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getLong(sourceIndex);
+          break;
+        case FLOAT:
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getFloats()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getFloat(sourceIndex);
+          break;
+        case DOUBLE:
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getDoubles()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getDouble(sourceIndex);
+          break;
+        case TEXT:
+          valueColumns[i].isNull()[updateIdx] = false;
+          valueColumns[i].getBinaries()[updateIdx] =
+              sourceTsBlock.getValueColumns()[i].getBinary(sourceIndex);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              "Unknown datatype: " + valueColumns[i].getDataType());
+      }
+    }
   }
 }

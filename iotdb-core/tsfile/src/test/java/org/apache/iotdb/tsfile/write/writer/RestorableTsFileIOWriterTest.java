@@ -20,11 +20,11 @@
 package org.apache.iotdb.tsfile.write.writer;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.FloatStatistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -253,6 +253,43 @@ public class RestorableTsFileIOWriterTest {
     writer = new TsFileWriter(rWriter);
     writer.close();
     assertNotEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length, rWriter.getTruncatedSize());
+    assertEquals(89, rWriter.getTruncatedSize());
+    rWriter.close();
+
+    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
+    List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1", true));
+    assertNotNull(chunkMetadataList);
+    chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s2", true));
+    assertNotNull(chunkMetadataList);
+    reader.close();
+  }
+
+  @Test
+  public void testAChunkGroupEndWithALotOfZeroBytes() throws Exception {
+    TsFileWriter writer = new TsFileWriter(file);
+    writer.registerTimeseries(
+        new Path("d1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+    writer.registerTimeseries(
+        new Path("d1"), new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+    writer.write(
+        new TSRecord(1, "d1")
+            .addTuple(new FloatDataPoint("s1", 5))
+            .addTuple(new FloatDataPoint("s2", 4)));
+    writer.write(
+        new TSRecord(2, "d1")
+            .addTuple(new FloatDataPoint("s1", 5))
+            .addTuple(new FloatDataPoint("s2", 4)));
+    writer.flushAllChunkGroups();
+    // write 10 Zero bytes
+    for (int i = 0; i < 10; i++) {
+      writer.getIOWriter().writeChunkGroupMarkerForTest();
+    }
+    writer.getIOWriter().close();
+    RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
+    writer = new TsFileWriter(rWriter);
+    writer.close();
+    assertNotEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length, rWriter.getTruncatedSize());
+    assertEquals(89, rWriter.getTruncatedSize());
     rWriter.close();
 
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);

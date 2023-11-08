@@ -60,6 +60,9 @@ public interface IUserAccessor extends SnapshotProcessor {
    */
   List<String> listAllUsers();
 
+  /** Delete user's folders. */
+  void cleanUserFolder();
+
   /** Re-initialize this object. */
   void reset();
 

@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import org.slf4j.Logger;
@@ -28,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -53,19 +59,60 @@ public class CompactionWorker implements Runnable {
         task = compactionTaskQueue.take();
       } catch (InterruptedException e) {
         log.warn("CompactionThread-{} terminates because interruption", threadId);
+        Thread.currentThread().interrupt();
         return;
       }
-      try {
-        if (task != null && task.checkValidAndSetMerging()) {
-          CompactionTaskSummary summary = task.getSummary();
-          CompactionTaskFuture future = new CompactionTaskFuture(summary);
-          CompactionTaskManager.getInstance().recordTask(task, future);
-          task.start();
-        }
-      } catch (Exception e) {
-        log.error("CompactionWorker.run(), Exception.", e);
+      processOneCompactionTask(task);
+    }
+  }
+
+  public boolean processOneCompactionTask(AbstractCompactionTask task) {
+    long estimatedMemoryCost = 0L;
+    boolean memoryAcquired = false;
+    boolean fileHandleAcquired = false;
+    try {
+      if (task == null || !task.isCompactionAllowed()) {
+        log.info("Compaction task is not allowed to be executed by TsFileManager. Task {}", task);
+        return false;
+      }
+      if (!task.isDiskSpaceCheckPassed()) {
+        log.debug(
+            "Compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
+        return false;
+      }
+      task.transitSourceFilesToMerging();
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
+        estimatedMemoryCost = task.getEstimatedMemoryCost();
+        memoryAcquired = SystemInfo.getInstance().addCompactionMemoryCost(estimatedMemoryCost, 60);
+      }
+      fileHandleAcquired =
+          SystemInfo.getInstance().addCompactionFileNum(task.getProcessedFileNum(), 60);
+      CompactionTaskSummary summary = task.getSummary();
+      CompactionTaskFuture future = new CompactionTaskFuture(summary);
+      CompactionTaskManager.getInstance().recordTask(task, future);
+      task.start();
+      return true;
+    } catch (FileCannotTransitToCompactingException
+        | IOException
+        | CompactionMemoryNotEnoughException
+        | CompactionFileCountExceededException e) {
+      log.info("CompactionTask {} cannot be executed. Reason: {}", task, e);
+    } catch (InterruptedException e) {
+      log.warn("InterruptedException occurred when preparing compaction task. {}", task, e);
+      Thread.currentThread().interrupt();
+    } finally {
+      if (task != null) {
+        task.resetCompactionCandidateStatusForAllSourceFiles();
+        task.handleTaskCleanup();
+      }
+      if (memoryAcquired) {
+        SystemInfo.getInstance().resetCompactionMemoryCost(estimatedMemoryCost);
+      }
+      if (fileHandleAcquired) {
+        SystemInfo.getInstance().decreaseCompactionFileNumCost(task.getProcessedFileNum());
       }
     }
+    return false;
   }
 
   static class CompactionTaskFuture implements Future<CompactionTaskSummary> {

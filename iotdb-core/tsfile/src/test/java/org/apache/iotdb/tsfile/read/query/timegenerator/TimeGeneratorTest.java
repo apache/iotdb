@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -67,7 +68,7 @@ public class TimeGeneratorTest {
   public void testTimeGenerator() throws IOException {
     long startTimestamp = 1480562618000L;
     Filter filter = TimeFilter.lt(1480562618100L);
-    Filter filter2 = ValueFilter.gt(new Binary("dog"));
+    Filter filter2 = ValueFilter.gt(new Binary("dog", TSFileConfig.STRING_CHARSET));
     Filter filter3 =
         FilterFactory.and(TimeFilter.gtEq(1480562618000L), TimeFilter.ltEq(1480562618100L));
 

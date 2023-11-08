@@ -71,7 +71,9 @@ public class TimePageWriter {
     for (int i = arrayOffset; i < batchSize + arrayOffset; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
     }
-    statistics.update(timestamps, batchSize, arrayOffset);
+    if (batchSize != 0) {
+      statistics.update(timestamps, batchSize, arrayOffset);
+    }
   }
 
   /** flush all data remained in encoders. */

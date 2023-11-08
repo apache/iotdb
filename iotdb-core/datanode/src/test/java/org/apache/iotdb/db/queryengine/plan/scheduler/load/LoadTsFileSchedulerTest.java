@@ -61,7 +61,8 @@ public class LoadTsFileSchedulerTest {
                 mock(MPPQueryContext.class),
                 mock(QueryStateMachine.class),
                 mock(IClientManager.class),
-                mock(IPartitionFetcher.class)));
+                mock(IPartitionFetcher.class),
+                false));
     t.start();
     Assert.assertNull(t.getTotalCpuTime());
     Assert.assertNull(t.getFragmentInfo());

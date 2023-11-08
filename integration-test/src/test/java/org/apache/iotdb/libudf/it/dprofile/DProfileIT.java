@@ -34,6 +34,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Locale;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
@@ -96,6 +97,7 @@ public class DProfileIT {
                 (int) Math.floor(x + Math.random() * y % (y - x + 1))));
         statement.execute(
             (String.format(
+                Locale.ENGLISH,
                 "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%f,%f)",
                 i * 1000,
                 x + Math.random() * y % (y - x + 1),
@@ -429,8 +431,10 @@ public class DProfileIT {
   public void testHistogram1() {
     String sqlStr =
         String.format(
+            Locale.ENGLISH,
             "select histogram(d1.s1,'min'='%f','max'='%f','count'='20') from root.vehicle",
-            -100d, 100d);
+            -100d,
+            100d);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
@@ -442,7 +446,11 @@ public class DProfileIT {
   @Test
   public void testMinMax1() {
     String sqlStr =
-        String.format("select minmax(d2.s2,'min'='%f','max'='%f') from root.vehicle", -100d, 100d);
+        String.format(
+            Locale.ENGLISH,
+            "select minmax(d2.s2,'min'='%f','max'='%f') from root.vehicle",
+            -100d,
+            100d);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);

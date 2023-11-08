@@ -23,7 +23,7 @@ import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
 import org.apache.iotdb.db.utils.windowing.handler.SlidingTimeWindowEvaluationHandler;
 import org.apache.iotdb.db.utils.windowing.window.EvictableBatchList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 
 import org.junit.After;
 import org.junit.Assert;

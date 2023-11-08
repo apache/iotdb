@@ -77,18 +77,18 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
       statement.execute("CREATE DATABASE root.sg3");
       statement.execute("CREATE DATABASE root.sg4");
 
-      // create schema template
-      statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
-      statement.execute("CREATE SCHEMA TEMPLATE t2 (s1 INT64, s2 DOUBLE)");
+      // create device template
+      statement.execute("CREATE DEVICE TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
+      statement.execute("CREATE DEVICE TEMPLATE t2 (s1 INT64, s2 DOUBLE)");
 
-      // set schema template
-      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1");
-      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg2");
-      statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg3");
-      statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg4");
+      // set device template
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1");
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg2");
+      statement.execute("SET DEVICE TEMPLATE t2 TO root.sg3");
+      statement.execute("SET DEVICE TEMPLATE t2 TO root.sg4");
 
       for (int j = 1; j <= 4; j++) {
-        statement.execute(String.format("create timeseries of schema template on root.sg%d.d1", j));
+        statement.execute(String.format("create timeseries of device template on root.sg%d.d1", j));
       }
     }
   }
@@ -97,14 +97,14 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
   public void deactivateTemplateAndReactivateTest() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.d1");
+      statement.execute("DEACTIVATE DEVICE TEMPLATE t1 FROM root.sg1.d1");
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg1.*")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Assert.assertEquals(1, resultSetMetaData.getColumnCount());
         Assert.assertFalse(resultSet.next());
       }
 
-      statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d1");
+      statement.execute("CREATE TIMESERIES OF DEVICE TEMPLATE ON root.sg1.d1");
 
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg1.*")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -136,7 +136,7 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
   public void deactivateTemplateAndAutoDeleteDeviceTest() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.d1");
+      statement.execute("DEACTIVATE DEVICE TEMPLATE t1 FROM root.sg1.d1");
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg1.*")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Assert.assertEquals(1, resultSetMetaData.getColumnCount());
@@ -160,7 +160,7 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
         }
       }
 
-      statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.sg1.*");
+      statement.execute("DEACTIVATE DEVICE TEMPLATE FROM root.sg1.*");
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg1.**")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Assert.assertEquals(1, resultSetMetaData.getColumnCount());
@@ -180,7 +180,7 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
         }
       }
 
-      statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.*.d1");
+      statement.execute("DEACTIVATE DEVICE TEMPLATE FROM root.*.d1");
       String[] retArray =
           new String[] {"1,1,1.0,1,1.0,", "2,2,2.0,2,2.0,", "3,3,3.0,3,3.0,", "4,4,4.0,4,4.0,"};
       int cnt = 0;
@@ -198,7 +198,7 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
         Assert.assertEquals(retArray.length, cnt);
       }
 
-      statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.**, root.sg1.*");
+      statement.execute("DEACTIVATE DEVICE TEMPLATE FROM root.**, root.sg1.*");
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Assert.assertEquals(1, resultSetMetaData.getColumnCount());
@@ -211,7 +211,7 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
   public void deactivateTemplateWithMultiPatternTest() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.d1, root.sg2.*");
+      statement.execute("DEACTIVATE DEVICE TEMPLATE t1 FROM root.sg1.d1, root.sg2.*");
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg1.*, root.sg2.*")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Assert.assertEquals(1, resultSetMetaData.getColumnCount());
@@ -225,24 +225,24 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
-        statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg5.d1");
+        statement.execute("DEACTIVATE DEVICE TEMPLATE t1 FROM root.sg5.d1");
         Assert.fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             TSStatusCode.TEMPLATE_NOT_SET.getStatusCode()
-                + ": Schema Template t1 is not set on any prefix path of [root.sg5.d1]",
+                + ": Device Template t1 is not set on any prefix path of [root.sg5.d1]",
             e.getMessage());
       }
 
       statement.execute("CREATE DATABASE root.sg5");
-      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg5 ");
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg5 ");
       try {
-        statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg5.d1");
+        statement.execute("DEACTIVATE DEVICE TEMPLATE t1 FROM root.sg5.d1");
         Assert.fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode()
-                + ": Target schema Template is not activated on any path matched by given path pattern",
+                + ": Target Device Template is not activated on any path matched by given path pattern",
             e.getMessage());
       }
     }
@@ -252,21 +252,21 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
   public void multiSyntaxTest() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("DELETE TIMESERIES OF SCHEMA TEMPLATE t1 FROM root.sg1.d1");
+      statement.execute("DELETE TIMESERIES OF DEVICE TEMPLATE t1 FROM root.sg1.d1");
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg1.*")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Assert.assertEquals(1, resultSetMetaData.getColumnCount());
         Assert.assertFalse(resultSet.next());
       }
 
-      statement.execute("DEACTIVATE SCHEMA TEMPLATE t2 FROM root.sg3.d1");
+      statement.execute("DEACTIVATE DEVICE TEMPLATE t2 FROM root.sg3.d1");
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg3.*")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Assert.assertEquals(1, resultSetMetaData.getColumnCount());
         Assert.assertFalse(resultSet.next());
       }
 
-      statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.**");
+      statement.execute("DEACTIVATE DEVICE TEMPLATE FROM root.**");
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Assert.assertEquals(1, resultSetMetaData.getColumnCount());
@@ -283,16 +283,16 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
       statement.execute("create database root.db.factory1");
       statement.execute("create database root.db.factory2");
 
-      statement.execute("set schema template t1 to root.db.factory0");
-      statement.execute("set schema template t1 to root.db.factory1");
+      statement.execute("set device template t1 to root.db.factory0");
+      statement.execute("set device template t1 to root.db.factory1");
 
       try {
-        statement.execute("deactivate schema template from root.db.**");
+        statement.execute("deactivate device template from root.db.**");
       } catch (SQLException e) {
         Assert.assertTrue(
             e.getMessage()
                 .contains(
-                    "Target schema Template is not activated on any path matched by given path pattern"));
+                    "Target Device Template is not activated on any path matched by given path pattern"));
       }
     }
   }

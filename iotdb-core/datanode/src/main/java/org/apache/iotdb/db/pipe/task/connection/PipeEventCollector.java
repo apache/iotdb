@@ -20,27 +20,24 @@
 package org.apache.iotdb.db.pipe.task.connection;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.LinkedList;
-import java.util.Queue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class PipeEventCollector implements EventCollector {
+public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
-  // buffer queue is used to store events that are not offered to pending queue
-  // because the pending queue is full. when pending queue is full, pending queue
-  // will notify tasks to stop extracting events, and buffer queue will be used to store
-  // events before tasks are stopped. when pending queue is not full and tasks are
-  // notified by the pending queue to start extracting events, buffer queue will be used to store
-  // events before events in buffer queue are offered to pending queue.
-  private final Queue<Event> bufferQueue;
+  private final EnrichedDeque<Event> bufferQueue;
+
+  private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue) {
     this.pendingQueue = pendingQueue;
-    bufferQueue = new LinkedList<>();
+    bufferQueue = new EnrichedDeque<>(new LinkedList<>());
   }
 
   @Override
@@ -48,19 +45,79 @@ public class PipeEventCollector implements EventCollector {
     if (event instanceof EnrichedEvent) {
       ((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName());
     }
+    if (event instanceof PipeHeartbeatEvent) {
+      ((PipeHeartbeatEvent) event).recordBufferQueueSize(bufferQueue);
+      ((PipeHeartbeatEvent) event).recordConnectorQueueSize(pendingQueue);
+    }
 
-    while (!bufferQueue.isEmpty()) {
+    while (!isClosed.get() && !bufferQueue.isEmpty()) {
       final Event bufferedEvent = bufferQueue.peek();
-      if (pendingQueue.offer(bufferedEvent)) {
+      // Try to put already buffered events into pending queue, if pending queue is full, wait for
+      // pending queue to be available with timeout.
+      if (pendingQueue.waitedOffer(bufferedEvent)) {
         bufferQueue.poll();
       } else {
-        bufferQueue.offer(event);
+        // We can NOT keep too many PipeHeartbeatEvent in bufferQueue because they may cause OOM.
+        if (event instanceof PipeHeartbeatEvent
+            && bufferQueue.peekLast() instanceof PipeHeartbeatEvent) {
+          ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName(), false);
+        } else {
+          bufferQueue.offer(event);
+        }
         return;
       }
     }
 
-    if (!pendingQueue.offer(event)) {
+    if (!pendingQueue.waitedOffer(event)) {
       bufferQueue.offer(event);
     }
+  }
+
+  public boolean isBufferQueueEmpty() {
+    return bufferQueue.isEmpty();
+  }
+
+  /**
+   * Try to collect buffered events into pending queue.
+   *
+   * @return true if there are still buffered events after this operation, false otherwise.
+   */
+  public synchronized boolean tryCollectBufferedEvents() {
+    while (!isClosed.get() && !bufferQueue.isEmpty()) {
+      final Event bufferedEvent = bufferQueue.peek();
+      if (pendingQueue.waitedOffer(bufferedEvent)) {
+        bufferQueue.poll();
+      } else {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public void close() {
+    isClosed.set(true);
+    doClose();
+  }
+
+  private synchronized void doClose() {
+    bufferQueue.forEach(
+        event -> {
+          if (event instanceof EnrichedEvent) {
+            ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName());
+          }
+        });
+    bufferQueue.clear();
+  }
+
+  public int getTabletInsertionEventCount() {
+    return bufferQueue.getTabletInsertionEventCount();
+  }
+
+  public int getTsFileInsertionEventCount() {
+    return bufferQueue.getTsFileInsertionEventCount();
+  }
+
+  public int getPipeHeartbeatEventCount() {
+    return bufferQueue.getPipeHeartbeatEventCount();
   }
 }

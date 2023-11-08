@@ -26,9 +26,9 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -107,13 +107,7 @@ public class SelectIntoUtils {
       resNode = matcher.replaceFirst(sourceNodes[index]);
       matcher = LEVELED_PATH_TEMPLATE_PATTERN.matcher(resNode);
     }
-    if (!TsFileConstant.NODE_NAME_PATTERN.matcher(resNode).matches()) {
-      throw new SemanticException(
-          String.format(
-              "Parsed node name %s is illegal, unquoted node name can only consist of digits, characters and underscore, or start or end with wildcard",
-              resNode));
-    }
-    return resNode;
+    return ASTVisitor.parseNodeString(resNode);
   }
 
   public static boolean checkIsAllRawSeriesQuery(List<Expression> expressions) {

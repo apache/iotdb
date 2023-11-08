@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.extractor.realtime.listener;
 
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.assigner.PipeDataRegionAssigner;
@@ -55,7 +54,7 @@ public class PipeInsertionDataNodeListener {
   public synchronized void startListenAndAssign(
       String dataRegionId, PipeRealtimeDataRegionExtractor extractor) {
     dataRegionId2Assigner
-        .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner())
+        .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner(dataRegionId))
         .startAssignTo(extractor);
 
     if (extractor.isNeedListenToTsFile()) {
@@ -92,12 +91,14 @@ public class PipeInsertionDataNodeListener {
 
   //////////////////////////// listen to events ////////////////////////////
 
-  public void listenToTsFile(String dataRegionId, TsFileResource tsFileResource) {
-    // wo don't judge whether listenToTsFileExtractorCount.get() == 0 here, because
-    // when using SimpleProgressIndex, the tsfile event needs to be assigned to the
-    // extractor even if listenToTsFileExtractorCount.get() == 0 to record the progress
-
-    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource);
+  public void listenToTsFile(
+      String dataRegionId,
+      TsFileResource tsFileResource,
+      boolean isLoaded,
+      boolean isGeneratedByPipe) {
+    // We don't judge whether listenToTsFileExtractorCount.get() == 0 here on purpose
+    // because extractors may use tsfile events when some exceptions occur in the
+    // insert nodes listening process.
 
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
@@ -106,7 +107,8 @@ public class PipeInsertionDataNodeListener {
       return;
     }
 
-    assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(tsFileResource));
+    assigner.publishToAssign(
+        PipeRealtimeEventFactory.createRealtimeEvent(tsFileResource, isLoaded, isGeneratedByPipe));
   }
 
   public void listenToInsertNode(
@@ -127,6 +129,17 @@ public class PipeInsertionDataNodeListener {
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(walEntryHandler, insertNode, tsFileResource));
+  }
+
+  public void listenToHeartbeat(boolean shouldPrintMessage) {
+    if (listenToInsertNodeExtractorCount.get() == 0 && listenToTsFileExtractorCount.get() == 0) {
+      return;
+    }
+
+    dataRegionId2Assigner.forEach(
+        (key, value) ->
+            value.publishToAssign(
+                PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
   }
 
   /////////////////////////////// singleton ///////////////////////////////

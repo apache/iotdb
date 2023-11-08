@@ -35,8 +35,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -166,7 +167,7 @@ public class DeviceViewOperatorTest {
               count < 500
                   ? DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"
                   : DEVICE_MERGE_OPERATOR_TEST_SG + ".device1",
-              tsBlock.getColumn(0).getBinary(i).getStringValue());
+              tsBlock.getColumn(0).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
           if (expectedTime < 200) {
             if (!tsBlock.getColumn(1).isNull(i)) {
               assertEquals(20000 + expectedTime, tsBlock.getColumn(1).getInt(i));

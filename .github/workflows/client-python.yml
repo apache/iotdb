@@ -7,7 +7,6 @@ on:
     branches:
       - master
       - 'rel/*'
-      - "new_*"
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -28,12 +27,10 @@ concurrency:
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
 jobs:
   unix:
-    strategy:
-      fail-fast: false
-      max-parallel: 20
     runs-on: ubuntu-latest
 
     steps:
@@ -52,6 +49,9 @@ jobs:
           docker images
       - name: Install IoTDB python client requirements
         run: pip3 install -r iotdb-client/client-py/requirements_dev.txt
+      - name: Check code style
+        shell: bash
+        run: black iotdb-client/client-py/ --check --diff
       - name: Integration test
         shell: bash
         run: |

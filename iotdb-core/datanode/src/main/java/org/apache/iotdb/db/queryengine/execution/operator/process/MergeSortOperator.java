@@ -24,11 +24,11 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -130,10 +130,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
       tsBlockBuilder.declarePosition();
       if (mergeSortKey.rowIndex == mergeSortKey.tsBlock.getPositionCount() - 1) {
         inputTsBlocks[mergeSortKey.inputChannelIndex] = null;
-        if (!mergeSortHeap.isEmpty()
-            && comparator.compare(mergeSortHeap.peek(), mergeSortKey) > 0) {
-          break;
-        }
+        break;
       } else {
         mergeSortKey.rowIndex++;
         mergeSortHeap.push(mergeSortKey);
@@ -216,40 +213,36 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
     return currentRetainedSize - minChildReturnSize;
   }
 
+  // region helper function used in prepareInput
+
   /**
-   * Try to cache one result of each child.
-   *
-   * @return true if results of all children are ready or have no more TsBlocks. Return false if
-   *     some children is blocked or return null.
+   * @param currentChildIndex the index of the child
+   * @return true if we can skip the currentChild in prepareInput
    */
   @Override
-  protected boolean prepareInput() throws Exception {
-    boolean allReady = true;
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      if (needCallNext(i)) {
-        continue;
-      }
-      if (canCallNext[i]) {
-        if (children.get(i).hasNextWithTimer()) {
-          inputTsBlocks[i] = getNextTsBlock(i);
-          canCallNext[i] = false;
-          if (isEmpty(i)) {
-            allReady = false;
-          } else {
-            mergeSortHeap.push(new MergeSortKey(inputTsBlocks[i], 0, i));
-          }
-        } else {
-          noMoreTsBlocks[i] = true;
-          inputTsBlocks[i] = null;
-        }
-      } else {
-        allReady = false;
-      }
-    }
-    return allReady;
+  protected boolean canSkipCurrentChild(int currentChildIndex) {
+    return noMoreTsBlocks[currentChildIndex]
+        || !isEmpty(currentChildIndex)
+        || children.get(currentChildIndex) == null;
   }
 
-  private boolean needCallNext(int i) {
-    return noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null;
+  /** @param currentInputIndex index of the input TsBlock */
+  @Override
+  protected void processCurrentInputTsBlock(int currentInputIndex) {
+    mergeSortHeap.push(new MergeSortKey(inputTsBlocks[currentInputIndex], 0, currentInputIndex));
   }
+
+  /**
+   * @param currentChildIndex the index of the child
+   * @throws Exception Potential Exception thrown by Operator.close()
+   */
+  @Override
+  protected void handleFinishedChild(int currentChildIndex) throws Exception {
+    noMoreTsBlocks[currentChildIndex] = true;
+    inputTsBlocks[currentChildIndex] = null;
+    children.get(currentChildIndex).close();
+    children.set(currentChildIndex, null);
+  }
+
+  // endregion
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -29,7 +30,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -62,13 +64,41 @@ public class ShowClusterTask implements IConfigTask {
       String nodeType,
       String nodeStatus,
       String hostAddress,
-      int port) {
+      int port,
+      TNodeVersionInfo versionInfo) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(nodeId);
-    builder.getColumnBuilder(1).writeBinary(new Binary(nodeType));
-    builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
-    builder.getColumnBuilder(3).writeBinary(new Binary(hostAddress));
+    if (nodeType == null) {
+      builder.getColumnBuilder(1).appendNull();
+    } else {
+      builder.getColumnBuilder(1).writeBinary(new Binary(nodeType, TSFileConfig.STRING_CHARSET));
+    }
+    if (nodeStatus == null) {
+      builder.getColumnBuilder(2).appendNull();
+    } else {
+      builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus, TSFileConfig.STRING_CHARSET));
+    }
+    if (hostAddress == null) {
+      builder.getColumnBuilder(3).appendNull();
+    } else {
+      builder.getColumnBuilder(3).writeBinary(new Binary(hostAddress, TSFileConfig.STRING_CHARSET));
+    }
     builder.getColumnBuilder(4).writeInt(port);
+    if (versionInfo == null || versionInfo.getVersion() == null) {
+      builder.getColumnBuilder(5).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(5)
+          .writeBinary(new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
+    }
+    if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+      builder.getColumnBuilder(6).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(6)
+          .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
+    }
+
     builder.declarePosition();
   }
 
@@ -90,7 +120,8 @@ public class ShowClusterTask implements IConfigTask {
                     NODE_TYPE_CONFIG_NODE,
                     clusterNodeInfos.getNodeStatus().get(e.getConfigNodeId()),
                     e.getInternalEndPoint().getIp(),
-                    e.getInternalEndPoint().getPort()));
+                    e.getInternalEndPoint().getPort(),
+                    clusterNodeInfos.getNodeVersionInfo().get(e.getConfigNodeId())));
 
     clusterNodeInfos
         .getDataNodeList()
@@ -102,7 +133,8 @@ public class ShowClusterTask implements IConfigTask {
                     NODE_TYPE_DATA_NODE,
                     clusterNodeInfos.getNodeStatus().get(e.getDataNodeId()),
                     e.getInternalEndPoint().getIp(),
-                    e.getInternalEndPoint().getPort()));
+                    e.getInternalEndPoint().getPort(),
+                    clusterNodeInfos.getNodeVersionInfo().get(e.getDataNodeId())));
 
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

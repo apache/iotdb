@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceCl
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SinkListener;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -58,7 +60,6 @@ import static org.apache.iotdb.db.queryengine.common.FragmentInstanceId.createFu
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER;
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_REMOTE;
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_CALLER;
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class SinkChannel implements ISinkChannel {
 
@@ -81,6 +82,9 @@ public class SinkChannel implements ISinkChannel {
   private final SinkListener sinkListener;
   private final String threadName;
   private long retryIntervalInMs;
+
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   // Use LinkedHashMap to meet 2 needs,
   //   1. Predictable iteration order so that removing buffered TsBlocks can be efficient.
@@ -257,7 +261,7 @@ public class SinkChannel implements ISinkChannel {
     }
     sequenceIdToTsBlock.clear();
     if (blocked != null) {
-      bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryComplete(blocked);
+      bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
     }
     if (bufferRetainedSizeInBytes > 0) {
       localMemoryManager
@@ -306,11 +310,11 @@ public class SinkChannel implements ISinkChannel {
 
   public synchronized ByteBuffer getSerializedTsBlock(int sequenceId) throws IOException {
     if (aborted || closed) {
-      LOGGER.warn(
+      LOGGER.debug(
           "SinkChannel still receive getting TsBlock request after being aborted={} or closed={}",
           aborted,
           closed);
-      throw new IllegalStateException("SinkChannel is aborted or closed. ");
+      throw new GetTsBlockFromClosedOrAbortedChannelException("SinkChannel is aborted or closed. ");
     }
     Pair<TsBlock, Long> pair = sequenceIdToTsBlock.get(sequenceId);
     if (pair == null || pair.left == null) {

@@ -39,6 +39,9 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   private final long memoryCapacity =
       IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
 
+  private final ClusterTemplateManager clusterTemplateManager =
+      ClusterTemplateManager.getInstance();
+
   protected final AtomicLong memoryUsage = new AtomicLong(0);
 
   private final AtomicLong totalSeriesNumber = new AtomicLong(0);
@@ -48,6 +51,10 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   private volatile boolean allowToCreateNewSeries = true;
 
   private final Object allowToCreateNewSeriesLock = new Object();
+
+  // In memory mode, we need log to warn users that the memory capacity has been reached.
+  // In pbtree mode, we only need related log for debug.
+  protected volatile boolean needLog = true;
 
   @Override
   public boolean isAllowToCreateNewSeries() {
@@ -74,7 +81,11 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
     if (memoryUsage.get() >= memoryCapacity) {
       synchronized (allowToCreateNewSeriesLock) {
         if (allowToCreateNewSeries && memoryUsage.get() >= memoryCapacity) {
-          logger.warn("Current series memory {} is too large...", memoryUsage);
+          if (needLog) {
+            logger.warn("Current series memory {} is too large...", memoryUsage);
+          } else {
+            logger.debug("Current series memory {} is too large...", memoryUsage);
+          }
           allowToCreateNewSeries = false;
         }
       }
@@ -86,10 +97,17 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
     if (memoryUsage.get() < memoryCapacity) {
       synchronized (allowToCreateNewSeriesLock) {
         if (!allowToCreateNewSeries && memoryUsage.get() < memoryCapacity) {
-          logger.info(
-              "Current series memory {} come back to normal level, total series number is {}.",
-              memoryUsage,
-              totalSeriesNumber);
+          if (needLog) {
+            logger.info(
+                "Current series memory {} come back to normal level, total series number is {}.",
+                memoryUsage,
+                totalSeriesNumber);
+          } else {
+            logger.debug(
+                "Current series memory {} come back to normal level, total series number is {}.",
+                memoryUsage,
+                totalSeriesNumber);
+          }
           allowToCreateNewSeries = true;
         }
       }
@@ -108,13 +126,22 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   @Override
   public long getTemplateSeriesNumber() {
-    ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
     return templateUsage.entrySet().stream()
         .mapToLong(
             i ->
                 (long) clusterTemplateManager.getTemplate(i.getKey()).getMeasurementNumber()
                     * i.getValue())
         .sum();
+  }
+
+  @Override
+  public int getTemplateUsingNumber(String templateName) {
+    Integer templateId = clusterTemplateManager.getTemplateId(templateName);
+    if (templateId == null) {
+      return 0;
+    } else {
+      return templateUsage.getOrDefault(templateId, 0);
+    }
   }
 
   public void activateTemplate(int templateId) {

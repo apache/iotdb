@@ -2282,7 +2282,7 @@ std::vector<std::string> Session::showMeasurementsInTemplate(const string &templ
 
 bool Session::checkTemplateExists(const string& template_name) {
     try {
-        std::unique_ptr<SessionDataSet> dataset = executeQueryStatement("SHOW NODES IN SCHEMA TEMPLATE " + template_name);
+        std::unique_ptr<SessionDataSet> dataset = executeQueryStatement("SHOW NODES IN DEVICE TEMPLATE " + template_name);
         bool isExisted = dataset->hasNext();
         dataset->closeOperationHandle();
         return isExisted;

@@ -688,10 +688,10 @@ public class BytesUtils {
    */
   public static byte[] subBytes(byte[] src, int start, int length) {
     if ((start + length) > src.length) {
-      return null;
+      return new byte[0];
     }
     if (length <= 0) {
-      return null;
+      return new byte[0];
     }
     byte[] result = new byte[length];
     System.arraycopy(src, start, result, 0, length);
@@ -916,5 +916,9 @@ public class BytesUtils {
     s1 <<= 8;
     short s = (short) (s0 | s1);
     return s;
+  }
+
+  public static Binary valueOf(String value) {
+    return new Binary(stringToBytes(value));
   }
 }

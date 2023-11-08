@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.realtime;
 
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpochManager;
@@ -30,18 +31,28 @@ public class PipeRealtimeEventFactory {
 
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
 
-  public static PipeRealtimeEvent createRealtimeEvent(TsFileResource resource) {
+  public static PipeRealtimeEvent createRealtimeEvent(
+      TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
-        new PipeTsFileInsertionEvent(resource), resource);
+        new PipeTsFileInsertionEvent(resource, isLoaded, isGeneratedByPipe), resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
       WALEntryHandler walEntryHandler, InsertNode insertNode, TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
         new PipeInsertNodeTabletInsertionEvent(
-            walEntryHandler, insertNode.getProgressIndex(), insertNode.isAligned()),
+            walEntryHandler,
+            insertNode.getProgressIndex(),
+            insertNode.isAligned(),
+            insertNode.isGeneratedByPipe()),
         insertNode,
         resource);
+  }
+
+  public static PipeRealtimeEvent createRealtimeEvent(
+      String dataRegionId, boolean shouldPrintMessage) {
+    return new PipeRealtimeEvent(
+        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null);
   }
 
   private PipeRealtimeEventFactory() {

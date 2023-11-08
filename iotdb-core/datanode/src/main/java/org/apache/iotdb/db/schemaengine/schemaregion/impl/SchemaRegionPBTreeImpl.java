@@ -25,10 +25,11 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
-import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
@@ -85,8 +85,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogica
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -329,8 +329,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaRegionMetric createSchemaRegionMetric() {
-    return new SchemaRegionCachedMetric(regionStatistics);
+  public ISchemaRegionMetric createSchemaRegionMetric(String database) {
+    return new SchemaRegionCachedMetric(regionStatistics, database);
   }
 
   /** Init from metadata log file. */
@@ -761,12 +761,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @Override
   public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
       throws SchemaQuotaExceededException {
-    if (schemaQuotaManager.getLevel().equals(ClusterSchemaQuotaLevel.TIMESERIES)) {
-      schemaQuotaManager.checkMeasurementLevel(timeSeriesNum);
-    } else if (schemaQuotaManager.getLevel().equals(ClusterSchemaQuotaLevel.DEVICE)) {
-      if (!mtree.checkDeviceNodeExists(devicePath)) {
-        schemaQuotaManager.checkDeviceLevel();
-      }
+    if (!mtree.checkDeviceNodeExists(devicePath)) {
+      schemaQuotaManager.check(timeSeriesNum, 1);
+    } else {
+      schemaQuotaManager.check(timeSeriesNum, 0);
     }
   }
 
@@ -837,30 +835,89 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public void createLogicalView(ICreateLogicalViewPlan createLogicalViewPlan)
-      throws MetadataException {
-    throw new UnsupportedOperationException("createLogicalView is unsupported.");
+  public void createLogicalView(ICreateLogicalViewPlan plan) throws MetadataException {
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
+      CacheMemoryManager.getInstance().waitIfReleasing();
+    }
+    try {
+      List<PartialPath> pathList = plan.getViewPathList();
+      Map<PartialPath, ViewExpression> viewPathToSourceMap =
+          plan.getViewPathToSourceExpressionMap();
+      for (PartialPath path : pathList) {
+        ViewExpression viewExpression = viewPathToSourceMap.get(path);
+        mtree.createLogicalView(path, viewExpression);
+        // write log
+        if (!isRecovering) {
+          writeToMLog(SchemaRegionWritePlanFactory.getCreateLogicalViewPlan(path, viewExpression));
+        }
+        regionStatistics.addTimeseries(1L);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
 
   @Override
   public long constructLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException();
+    long preDeletedNum = 0;
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      // Given pathPatterns may match one logical view multi times, which may results in the
+      // preDeletedNum larger than the actual num of logical view. It doesn't matter since the main
+      // purpose is to check whether there's logical view to be deleted.
+      List<PartialPath> paths = mtree.constructLogicalViewBlackList(pathPattern);
+      preDeletedNum += paths.size();
+      for (PartialPath path : paths) {
+        try {
+          writeToMLog(SchemaRegionWritePlanFactory.getPreDeleteLogicalViewPlan(path));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
+    return preDeletedNum;
   }
 
   @Override
   public void rollbackLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException();
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      List<PartialPath> paths = mtree.rollbackLogicalViewBlackList(pathPattern);
+      for (PartialPath path : paths) {
+        try {
+          writeToMLog(SchemaRegionWritePlanFactory.getRollbackPreDeleteLogicalViewPlan(path));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
   }
 
   @Override
   public void deleteLogicalView(PathPatternTree patternTree) throws MetadataException {
-    throw new UnsupportedOperationException();
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (PartialPath path : mtree.getPreDeletedLogicalView(pathPattern)) {
+        try {
+          deleteSingleTimeseriesInBlackList(path);
+          writeToMLog(SchemaRegionWritePlanFactory.getDeleteLogicalViewPlan(path));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
   }
 
   @Override
   public void alterLogicalView(IAlterLogicalViewPlan alterLogicalViewPlan)
       throws MetadataException {
-    throw new UnsupportedOperationException();
+    mtree.alterLogicalView(
+        alterLogicalViewPlan.getViewPath(), alterLogicalViewPlan.getSourceExpression());
+    // write log
+    if (!isRecovering) {
+      try {
+        writeToMLog(alterLogicalViewPlan);
+      } catch (IOException e) {
+        throw new MetadataException(e);
+      }
+    }
   }
 
   private void deleteSingleTimeseriesInBlackList(PartialPath path)
@@ -954,26 +1011,6 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     }
   }
 
-  private void changeAlias(PartialPath path, String alias) throws MetadataException {
-    IMeasurementMNode<ICachedMNode> leafMNode = mtree.getMeasurementMNode(path);
-    try {
-      IDeviceMNode<ICachedMNode> device = leafMNode.getParent().getAsDeviceMNode();
-      if (leafMNode.getAlias() != null) {
-        device.deleteAliasChild(leafMNode.getAlias());
-      }
-      device.addAlias(alias, leafMNode);
-      mtree.setAlias(leafMNode, alias);
-    } finally {
-      mtree.unPinMNode(leafMNode.getAsMNode());
-    }
-
-    try {
-      writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(path, alias));
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
-  }
-
   /**
    * Upsert tags and attributes key-value for the timeseries if the key has existed, just use the
    * new value to update it.
@@ -991,15 +1028,13 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       Map<String, String> attributesMap,
       PartialPath fullPath)
       throws MetadataException, IOException {
+    // upsert alias
+    upsertAlias(alias, fullPath);
     IMeasurementMNode<ICachedMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     try {
-      // upsert alias
-      upsertAlias(alias, fullPath, leafMNode);
-
       if (tagsMap == null && attributesMap == null) {
         return;
       }
-
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(tagsMap, attributesMap);
@@ -1020,21 +1055,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     }
   }
 
-  private void upsertAlias(
-      String alias, PartialPath fullPath, IMeasurementMNode<ICachedMNode> leafMNode)
+  private void upsertAlias(String alias, PartialPath fullPath)
       throws MetadataException, IOException {
-    // upsert alias
-    if (alias != null && !alias.equals(leafMNode.getAlias())) {
-      IDeviceMNode<ICachedMNode> device = leafMNode.getParent().getAsDeviceMNode();
-      if (!device.addAlias(alias, leafMNode)) {
-        throw new MetadataException("The alias already exists.");
-      }
-
-      if (leafMNode.getAlias() != null) {
-        device.deleteAliasChild(leafMNode.getAlias());
-      }
-
-      mtree.setAlias(leafMNode, alias);
+    if (mtree.changeAlias(alias, fullPath)) {
       // persist to WAL
       writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(fullPath, alias));
     }
@@ -1357,9 +1380,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     public RecoverOperationResult visitChangeAlias(
         IChangeAliasPlan changeAliasPlan, SchemaRegionPBTreeImpl context) {
       try {
-        changeAlias(changeAliasPlan.getPath(), changeAliasPlan.getAlias());
+        upsertAlias(changeAliasPlan.getAlias(), changeAliasPlan.getPath());
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (MetadataException | IOException e) {
         return new RecoverOperationResult(e);
       }
     }

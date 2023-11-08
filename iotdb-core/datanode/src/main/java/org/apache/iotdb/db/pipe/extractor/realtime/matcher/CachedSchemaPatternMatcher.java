@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.realtime.matcher;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
@@ -45,7 +47,10 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   public CachedSchemaPatternMatcher() {
     this.lock = new ReentrantReadWriteLock();
-    this.extractors = new HashSet<>();
+    // Should be thread-safe because the extractors will be returned by {@link #match} and
+    // iterated by {@link #assignToExtractor}, at the same time the extractors may be added or
+    // removed by {@link #register} and {@link #deregister}.
+    this.extractors = new CopyOnWriteArraySet<>();
     this.deviceToExtractorsCache =
         Caffeine.newBuilder()
             .maximumSize(PipeConfig.getInstance().getPipeExtractorMatcherCacheSize())
@@ -92,6 +97,11 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     try {
       if (extractors.isEmpty()) {
         return matchedExtractors;
+      }
+
+      // HeartbeatEvent will be assigned to all extractors
+      if (event.getEvent() instanceof PipeHeartbeatEvent) {
+        return extractors;
       }
 
       for (final Map.Entry<String, String[]> entry : event.getSchemaInfo().entrySet()) {

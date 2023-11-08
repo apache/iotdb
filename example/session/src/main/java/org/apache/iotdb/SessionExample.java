@@ -29,8 +29,9 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.template.MeasurementNode;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -626,7 +627,7 @@ public class SessionExample {
   private static void insertText() throws IoTDBConnectionException, StatementExecutionException {
     String device = "root.sg1.text";
     // the first data is String type and the second data is Binary type
-    List<Object> datas = Arrays.asList("String", new Binary("Binary"));
+    List<Object> datas = Arrays.asList("String", new Binary("Binary", TSFileConfig.STRING_CHARSET));
     // insertRecord example
     for (int i = 0; i < datas.size(); i++) {
       // write data of String type or Binary type

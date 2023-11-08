@@ -56,8 +56,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -362,7 +362,8 @@ public class Util {
       }
 
       @Override
-      public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
+      public SchemaPartition getOrCreateSchemaPartition(
+          PathPatternTree patternTree, String userName) {
         return ANALYSIS.getSchemaPartitionInfo();
       }
 
@@ -386,13 +387,13 @@ public class Util {
 
       @Override
       public DataPartition getOrCreateDataPartition(
-          List<DataPartitionQueryParam> dataPartitionQueryParams) {
+          List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
         return ANALYSIS.getDataPartitionInfo();
       }
 
       @Override
       public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-          PathPatternTree patternTree, Integer level) {
+          PathPatternTree patternTree, PathPatternTree scope, Integer level) {
         return null;
       }
 

@@ -48,7 +48,7 @@ public class SelectComponent extends StatementNode {
     return zoneId;
   }
 
-  public boolean isHasBuiltInAggregationFunction() {
+  public boolean hasBuiltInAggregationFunction() {
     return hasBuiltInAggregationFunction;
   }
 

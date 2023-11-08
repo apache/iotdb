@@ -27,6 +27,7 @@ public enum ConfigPhysicalPlanType {
   /** ConfigNode. */
   ApplyConfigNode((short) 0),
   RemoveConfigNode((short) 1),
+  UpdateVersionInfo((short) 2),
 
   /** DataNode. */
   RegisterDataNode((short) 100),
@@ -76,25 +77,48 @@ public enum ConfigPhysicalPlanType {
 
   /** Authority. */
   Author((short) 600),
-  CreateUser((short) 601),
-  CreateRole((short) 602),
-  DropUser((short) 603),
-  DropRole((short) 604),
-  GrantRole((short) 605),
-  GrantUser((short) 606),
-  GrantRoleToUser((short) 607),
-  RevokeUser((short) 608),
-  RevokeRole((short) 609),
-  RevokeRoleFromUser((short) 610),
-  UpdateUser((short) 611),
-  ListUser((short) 612),
-  ListRole((short) 613),
-  ListUserPrivilege((short) 614),
-  ListRolePrivilege((short) 615),
+
+  // For version earlier than 1.2. Dep for Deprecated.
+  CreateUserDep((short) 601),
+  CreateRoleDep((short) 602),
+  DropUserDep((short) 603),
+  DropRoleDep((short) 604),
+  GrantRoleDep((short) 605),
+  GrantUserDep((short) 606),
+  GrantRoleToUserDep((short) 607),
+  RevokeUserDep((short) 608),
+  RevokeRoleDep((short) 609),
+  RevokeRoleFromUserDep((short) 610),
+  UpdateUserDep((short) 611),
+  ListUserDep((short) 612),
+  ListRoleDep((short) 613),
+  ListUserPrivilegeDep((short) 614),
+  ListRolePrivilegeDep((short) 615),
   @Deprecated
-  ListUserRoles((short) 616),
+  ListUserRolesDep((short) 616),
   @Deprecated
-  ListRoleUsers((short) 617),
+  ListRoleUsersDep((short) 617),
+
+  // For version after and equal 1.2
+  CreateUser((short) 621),
+  CreateRole((short) 622),
+  DropUser((short) 623),
+  DropRole((short) 624),
+  GrantRole((short) 625),
+  GrantUser((short) 626),
+  GrantRoleToUser((short) 627),
+  RevokeUser((short) 628),
+  RevokeRole((short) 629),
+  RevokeRoleFromUser((short) 630),
+  UpdateUser((short) 631),
+  ListUser((short) 632),
+  ListRole((short) 633),
+  ListUserPrivilege((short) 634),
+  ListRolePrivilege((short) 635),
+  @Deprecated
+  ListUserRoles((short) 636),
+  @Deprecated
+  ListRoleUsers((short) 637),
 
   /** Function. */
   CreateFunction((short) 700),
@@ -155,13 +179,7 @@ public enum ConfigPhysicalPlanType {
   UPDATE_CQ_LAST_EXEC_TIME((short) 1103),
   SHOW_CQ((short) 1104),
 
-  /** Ml model. */
-  CreateModel((short) 1200),
-  UpdateModelInfo((short) 1201),
-  UpdateModelState((short) 1202),
-  DropModel((short) 1203),
-  ShowModel((short) 1204),
-  ShowTrail((short) 1205),
+  // 1200-1299 planId is used by IoTDB-ML.
 
   /** Pipe Plugin. */
   CreatePipePlugin((short) 1300),

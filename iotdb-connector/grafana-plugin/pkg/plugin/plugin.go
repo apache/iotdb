@@ -52,12 +52,12 @@ var (
 )
 
 // ApacheIoTDBDatasource creates a new datasource instance.
-func ApacheIoTDBDatasource(d backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+func ApacheIoTDBDatasource(ctx context.Context, d backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 	var dm dataSourceModel
 	if err := json.Unmarshal(d.JSONData, &dm); err != nil {
 		return nil, err
 	}
-	ops, err := d.HTTPClientOptions()
+	ops, err := d.HTTPClientOptions(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("http client options: %w", err)
 	}
@@ -94,7 +94,6 @@ func (d *IoTDBDataSource) Dispose() {
 // The QueryDataResponse contains a map of RefID to the response for each query, and each response
 // contains Frames ([]*Frame).
 func (d *IoTDBDataSource) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
-	log.DefaultLogger.Info("QueryData called", "request", req)
 	// create response struct
 	response := backend.NewQueryDataResponse()
 
@@ -304,7 +303,7 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 		}
 		times := make([]time.Time, len(queryDataResp.Timestamps))
 		for c := 0; c < len(queryDataResp.Timestamps); c++ {
-			times[c] = time.Unix(0,queryDataResp.Timestamps[c]*1000000)
+			times[c] = time.Unix(0, queryDataResp.Timestamps[c]*1000000)
 		}
 		values := recoverType(queryDataResp.Values[i])
 		frame.Fields = append(frame.Fields,
@@ -376,7 +375,6 @@ func DataSourceUrlHandler(url string) string {
 // datasource configuration page which allows users to verify that
 // a datasource is working as expected.
 func (d *IoTDBDataSource) CheckHealth(_ context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
-	log.DefaultLogger.Info("CheckHealth called", "request", req)
 
 	var status = backend.HealthStatusOk
 	var message = "Data source is working"

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.snapshot;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseDeviceMNode;
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
@@ -31,11 +32,10 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
-import org.apache.iotdb.db.schemaengine.SchemaConstant;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MemMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.LogicalViewInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -51,18 +51,17 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.function.Consumer;
 
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ENTITY_MNODE_TYPE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.INTERNAL_MNODE_TYPE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.LOGICAL_VIEW_MNODE_TYPE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.MEASUREMENT_MNODE_TYPE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.isStorageGroupType;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ENTITY_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.LOGICAL_VIEW_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
 
 public class MemMTreeSnapshotUtil {
 
@@ -81,11 +80,16 @@ public class MemMTreeSnapshotUtil {
     File snapshot = SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT);
 
     try {
-      try (BufferedOutputStream outputStream =
-          new BufferedOutputStream(new FileOutputStream(snapshotTmp))) {
+      FileOutputStream fileOutputStream = new FileOutputStream(snapshotTmp);
+      BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
+      try {
         serializeTo(store, outputStream);
+      } finally {
+        outputStream.flush();
+        fileOutputStream.getFD().sync();
+        outputStream.close();
       }
-      if (snapshot.exists() && !deleteFile(snapshot)) {
+      if (snapshot.exists() && !FileUtils.deleteFileIfExist(snapshot)) {
         logger.error(
             "Failed to delete old snapshot {} while creating mtree snapshot.", snapshot.getName());
         return false;
@@ -95,27 +99,17 @@ public class MemMTreeSnapshotUtil {
             "Failed to rename {} to {} while creating mtree snapshot.",
             snapshotTmp.getName(),
             snapshot.getName());
-        deleteFile(snapshot);
+        FileUtils.deleteFileIfExist(snapshot);
         return false;
       }
 
       return true;
     } catch (IOException e) {
       logger.error("Failed to create mtree snapshot due to {}", e.getMessage(), e);
-      deleteFile(snapshot);
+      FileUtils.deleteFileIfExist(snapshot);
       return false;
     } finally {
-      deleteFile(snapshotTmp);
-    }
-  }
-
-  private static boolean deleteFile(File snapshot) {
-    try {
-      Files.deleteIfExists(snapshot.toPath());
-      return true;
-    } catch (IOException e) {
-      logger.error(e.getMessage(), e);
-      return false;
+      FileUtils.deleteFileIfExist(snapshotTmp);
     }
   }
 
@@ -432,7 +426,7 @@ public class MemMTreeSnapshotUtil {
       LogicalViewSchema logicalViewSchema = LogicalViewSchema.deserializeFrom(inputStream);
       long tagOffset = ReadWriteIOUtils.readLong(inputStream);
       IMeasurementMNode<IMemMNode> node =
-          nodeFactory.createLogicalViewMNode(null, name, new LogicalViewInfo(logicalViewSchema));
+          nodeFactory.createLogicalViewMNode(null, name, logicalViewSchema);
       node.setOffset(tagOffset);
       node.setPreDeleted(ReadWriteIOUtils.readBool(inputStream));
       return node.getAsMNode();

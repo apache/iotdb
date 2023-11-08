@@ -48,162 +48,159 @@ import java.util.concurrent.TimeUnit;
  */
 public class DataRegionConsensusImpl {
 
-  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-
-  private static IConsensus INSTANCE = null;
-
   private DataRegionConsensusImpl() {
     // do nothing
   }
 
-  // need to create instance before calling this method
   public static IConsensus getInstance() {
-    return INSTANCE;
+    return DataRegionConsensusImplHolder.INSTANCE;
   }
 
-  public static synchronized IConsensus setupAndGetInstance() {
-    if (INSTANCE == null) {
-      INSTANCE =
-          ConsensusFactory.getConsensusImpl(
-                  conf.getDataRegionConsensusProtocolClass(),
-                  ConsensusConfig.newBuilder()
-                      .setThisNodeId(conf.getDataNodeId())
-                      .setThisNode(
-                          new TEndPoint(
-                              conf.getInternalAddress(), conf.getDataRegionConsensusPort()))
-                      .setStorageDir(conf.getDataRegionConsensusDir())
-                      .setConsensusGroupType(TConsensusGroupType.DataRegion)
-                      .setIoTConsensusConfig(
-                          IoTConsensusConfig.newBuilder()
-                              .setRpc(
-                                  RPC.newBuilder()
-                                      .setConnectionTimeoutInMs(conf.getConnectionTimeoutInMS())
-                                      .setRpcSelectorThreadNum(conf.getRpcSelectorThreadCount())
-                                      .setRpcMinConcurrentClientNum(
-                                          conf.getRpcMinConcurrentClientNum())
-                                      .setRpcMaxConcurrentClientNum(
-                                          conf.getRpcMaxConcurrentClientNum())
-                                      .setRpcThriftCompressionEnabled(
-                                          conf.isRpcThriftCompressionEnable())
-                                      .setSelectorNumOfClientManager(
-                                          conf.getSelectorNumOfClientManager())
-                                      .setThriftServerAwaitTimeForStopService(
-                                          conf.getThriftServerAwaitTimeForStopService())
-                                      .setThriftMaxFrameSize(conf.getThriftMaxFrameSize())
-                                      .setCoreClientNumForEachNode(
-                                          conf.getCoreClientNumForEachNode())
-                                      .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
-                                      .build())
-                              .setReplication(
-                                  IoTConsensusConfig.Replication.newBuilder()
-                                      .setWalThrottleThreshold(conf.getThrottleThreshold())
-                                      .setAllocateMemoryForConsensus(
-                                          conf.getAllocateMemoryForConsensus())
-                                      .setMaxLogEntriesNumPerBatch(
-                                          conf.getMaxLogEntriesNumPerBatch())
-                                      .setMaxSizePerBatch(conf.getMaxSizePerBatch())
-                                      .setMaxPendingBatchesNum(conf.getMaxPendingBatchesNum())
-                                      .setMaxMemoryRatioForQueue(conf.getMaxMemoryRatioForQueue())
-                                      .build())
-                              .build())
-                      .setRatisConfig(
-                          RatisConfig.newBuilder()
-                              // An empty log is committed after each restart, even if no data is
-                              // written. This setting ensures that compaction work is not discarded
-                              // even if there are frequent restarts
-                              .setSnapshot(
-                                  Snapshot.newBuilder()
-                                      .setCreationGap(1)
-                                      .setAutoTriggerThreshold(
-                                          conf.getDataRatisConsensusSnapshotTriggerThreshold())
-                                      .build())
-                              .setLog(
-                                  RatisConfig.Log.newBuilder()
-                                      .setUnsafeFlushEnabled(
-                                          conf.isDataRatisConsensusLogUnsafeFlushEnable())
-                                      .setForceSyncNum(conf.getDataRatisConsensusLogForceSyncNum())
-                                      .setSegmentSizeMax(
-                                          SizeInBytes.valueOf(
-                                              conf.getDataRatisConsensusLogSegmentSizeMax()))
-                                      .setPreserveNumsWhenPurge(
-                                          conf.getDataRatisConsensusPreserveWhenPurge())
-                                      .build())
-                              .setGrpc(
-                                  RatisConfig.Grpc.newBuilder()
-                                      .setFlowControlWindow(
-                                          SizeInBytes.valueOf(
-                                              conf.getDataRatisConsensusGrpcFlowControlWindow()))
-                                      .setLeaderOutstandingAppendsMax(
-                                          conf
-                                              .getDataRatisConsensusGrpcLeaderOutstandingAppendsMax())
-                                      .build())
-                              .setRpc(
-                                  RatisConfig.Rpc.newBuilder()
-                                      .setTimeoutMin(
-                                          TimeDuration.valueOf(
-                                              conf
-                                                  .getDataRatisConsensusLeaderElectionTimeoutMinMs(),
-                                              TimeUnit.MILLISECONDS))
-                                      .setTimeoutMax(
-                                          TimeDuration.valueOf(
-                                              conf
-                                                  .getDataRatisConsensusLeaderElectionTimeoutMaxMs(),
-                                              TimeUnit.MILLISECONDS))
-                                      .setRequestTimeout(
-                                          TimeDuration.valueOf(
-                                              conf.getDataRatisConsensusRequestTimeoutMs(),
-                                              TimeUnit.MILLISECONDS))
-                                      .setFirstElectionTimeoutMin(
-                                          TimeDuration.valueOf(
-                                              conf.getRatisFirstElectionTimeoutMinMs(),
-                                              TimeUnit.MILLISECONDS))
-                                      .setFirstElectionTimeoutMax(
-                                          TimeDuration.valueOf(
-                                              conf.getRatisFirstElectionTimeoutMaxMs(),
-                                              TimeUnit.MILLISECONDS))
-                                      .build())
-                              .setClient(
-                                  RatisConfig.Client.newBuilder()
-                                      .setClientRequestTimeoutMillis(
-                                          conf.getDataRatisConsensusRequestTimeoutMs())
-                                      .setClientMaxRetryAttempt(
-                                          conf.getDataRatisConsensusMaxRetryAttempts())
-                                      .setClientRetryInitialSleepTimeMs(
-                                          conf.getDataRatisConsensusInitialSleepTimeMs())
-                                      .setClientRetryMaxSleepTimeMs(
-                                          conf.getDataRatisConsensusMaxSleepTimeMs())
-                                      .setCoreClientNumForEachNode(
-                                          conf.getCoreClientNumForEachNode())
-                                      .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
-                                      .build())
-                              .setImpl(
-                                  RatisConfig.Impl.newBuilder()
-                                      .setTriggerSnapshotFileSize(conf.getDataRatisLogMax())
-                                      .build())
-                              .setLeaderLogAppender(
-                                  RatisConfig.LeaderLogAppender.newBuilder()
-                                      .setBufferByteLimit(
-                                          conf.getDataRatisConsensusLogAppenderBufferSizeMax())
-                                      .build())
-                              .build())
-                      .build(),
-                  DataRegionConsensusImpl::createDataRegionStateMachine)
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          String.format(
-                              ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                              conf.getDataRegionConsensusProtocolClass())));
-    }
-    return INSTANCE;
-  }
+  private static class DataRegionConsensusImplHolder {
 
-  private static DataRegionStateMachine createDataRegionStateMachine(ConsensusGroupId gid) {
-    DataRegion dataRegion = StorageEngine.getInstance().getDataRegion((DataRegionId) gid);
-    if (ConsensusFactory.IOT_CONSENSUS.equals(conf.getDataRegionConsensusProtocolClass())) {
-      return new IoTConsensusDataRegionStateMachine(dataRegion);
-    } else {
-      return new DataRegionStateMachine(dataRegion);
+    private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
+
+    private static final IConsensus INSTANCE =
+        ConsensusFactory.getConsensusImpl(
+                CONF.getDataRegionConsensusProtocolClass(),
+                ConsensusConfig.newBuilder()
+                    .setThisNodeId(CONF.getDataNodeId())
+                    .setThisNode(
+                        new TEndPoint(CONF.getInternalAddress(), CONF.getDataRegionConsensusPort()))
+                    .setStorageDir(CONF.getDataRegionConsensusDir())
+                    .setConsensusGroupType(TConsensusGroupType.DataRegion)
+                    .setIoTConsensusConfig(
+                        IoTConsensusConfig.newBuilder()
+                            .setRpc(
+                                RPC.newBuilder()
+                                    .setConnectionTimeoutInMs(CONF.getConnectionTimeoutInMS())
+                                    .setRpcSelectorThreadNum(CONF.getRpcSelectorThreadCount())
+                                    .setRpcMinConcurrentClientNum(
+                                        CONF.getRpcMinConcurrentClientNum())
+                                    .setRpcMaxConcurrentClientNum(
+                                        CONF.getRpcMaxConcurrentClientNum())
+                                    .setRpcThriftCompressionEnabled(
+                                        CONF.isRpcThriftCompressionEnable())
+                                    .setSelectorNumOfClientManager(
+                                        CONF.getSelectorNumOfClientManager())
+                                    .setThriftServerAwaitTimeForStopService(
+                                        CONF.getThriftServerAwaitTimeForStopService())
+                                    .setThriftMaxFrameSize(CONF.getThriftMaxFrameSize())
+                                    .setCoreClientNumForEachNode(CONF.getCoreClientNumForEachNode())
+                                    .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                                    .build())
+                            .setReplication(
+                                IoTConsensusConfig.Replication.newBuilder()
+                                    .setWalThrottleThreshold(CONF.getThrottleThreshold())
+                                    .setAllocateMemoryForConsensus(
+                                        CONF.getAllocateMemoryForConsensus())
+                                    .setMaxLogEntriesNumPerBatch(CONF.getMaxLogEntriesNumPerBatch())
+                                    .setMaxSizePerBatch(CONF.getMaxSizePerBatch())
+                                    .setMaxPendingBatchesNum(CONF.getMaxPendingBatchesNum())
+                                    .setMaxMemoryRatioForQueue(CONF.getMaxMemoryRatioForQueue())
+                                    .build())
+                            .build())
+                    .setRatisConfig(
+                        RatisConfig.newBuilder()
+                            // An empty log is committed after each restart, even if no data is
+                            // written. This setting ensures that compaction work is not discarded
+                            // even if there are frequent restarts
+                            .setSnapshot(
+                                Snapshot.newBuilder()
+                                    .setCreationGap(1)
+                                    .setAutoTriggerThreshold(
+                                        CONF.getDataRatisConsensusSnapshotTriggerThreshold())
+                                    .build())
+                            .setLog(
+                                RatisConfig.Log.newBuilder()
+                                    .setUnsafeFlushEnabled(
+                                        CONF.isDataRatisConsensusLogUnsafeFlushEnable())
+                                    .setForceSyncNum(CONF.getDataRatisConsensusLogForceSyncNum())
+                                    .setSegmentSizeMax(
+                                        SizeInBytes.valueOf(
+                                            CONF.getDataRatisConsensusLogSegmentSizeMax()))
+                                    .setPreserveNumsWhenPurge(
+                                        CONF.getDataRatisConsensusPreserveWhenPurge())
+                                    .build())
+                            .setGrpc(
+                                RatisConfig.Grpc.newBuilder()
+                                    .setFlowControlWindow(
+                                        SizeInBytes.valueOf(
+                                            CONF.getDataRatisConsensusGrpcFlowControlWindow()))
+                                    .setLeaderOutstandingAppendsMax(
+                                        CONF.getDataRatisConsensusGrpcLeaderOutstandingAppendsMax())
+                                    .build())
+                            .setRpc(
+                                RatisConfig.Rpc.newBuilder()
+                                    .setTimeoutMin(
+                                        TimeDuration.valueOf(
+                                            CONF.getDataRatisConsensusLeaderElectionTimeoutMinMs(),
+                                            TimeUnit.MILLISECONDS))
+                                    .setTimeoutMax(
+                                        TimeDuration.valueOf(
+                                            CONF.getDataRatisConsensusLeaderElectionTimeoutMaxMs(),
+                                            TimeUnit.MILLISECONDS))
+                                    .setRequestTimeout(
+                                        TimeDuration.valueOf(
+                                            CONF.getDataRatisConsensusRequestTimeoutMs(),
+                                            TimeUnit.MILLISECONDS))
+                                    .setFirstElectionTimeoutMin(
+                                        TimeDuration.valueOf(
+                                            CONF.getRatisFirstElectionTimeoutMinMs(),
+                                            TimeUnit.MILLISECONDS))
+                                    .setFirstElectionTimeoutMax(
+                                        TimeDuration.valueOf(
+                                            CONF.getRatisFirstElectionTimeoutMaxMs(),
+                                            TimeUnit.MILLISECONDS))
+                                    .build())
+                            .setClient(
+                                RatisConfig.Client.newBuilder()
+                                    .setClientRequestTimeoutMillis(
+                                        CONF.getDataRatisConsensusRequestTimeoutMs())
+                                    .setClientMaxRetryAttempt(
+                                        CONF.getDataRatisConsensusMaxRetryAttempts())
+                                    .setClientRetryInitialSleepTimeMs(
+                                        CONF.getDataRatisConsensusInitialSleepTimeMs())
+                                    .setClientRetryMaxSleepTimeMs(
+                                        CONF.getDataRatisConsensusMaxSleepTimeMs())
+                                    .setCoreClientNumForEachNode(CONF.getCoreClientNumForEachNode())
+                                    .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                                    .build())
+                            .setImpl(
+                                RatisConfig.Impl.newBuilder()
+                                    .setRaftLogSizeMaxThreshold(CONF.getDataRatisLogMax())
+                                    .setForceSnapshotInterval(
+                                        CONF.getDataRatisPeriodicSnapshotInterval())
+                                    .build())
+                            .setLeaderLogAppender(
+                                RatisConfig.LeaderLogAppender.newBuilder()
+                                    .setBufferByteLimit(
+                                        CONF.getDataRatisConsensusLogAppenderBufferSizeMax())
+                                    .build())
+                            .setRead(
+                                RatisConfig.Read.newBuilder()
+                                    // use thrift connection timeout to unify read timeout
+                                    .setReadTimeout(
+                                        TimeDuration.valueOf(
+                                            CONF.getConnectionTimeoutInMS(), TimeUnit.MILLISECONDS))
+                                    .build())
+                            .build())
+                    .build(),
+                DataRegionConsensusImplHolder::createDataRegionStateMachine)
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        String.format(
+                            ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                            CONF.getDataRegionConsensusProtocolClass())));
+
+    private static DataRegionStateMachine createDataRegionStateMachine(ConsensusGroupId gid) {
+      DataRegion dataRegion = StorageEngine.getInstance().getDataRegion((DataRegionId) gid);
+      if (ConsensusFactory.IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
+        return new IoTConsensusDataRegionStateMachine(dataRegion);
+      } else {
+        return new DataRegionStateMachine(dataRegion);
+      }
     }
   }
 }

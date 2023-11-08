@@ -88,7 +88,7 @@ public class CheckpointManager implements AutoCloseable {
     logHeader();
   }
 
-  private List<MemTableInfo> snapshotMemTableInfos() {
+  public List<MemTableInfo> snapshotMemTableInfos() {
     infoLock.lock();
     try {
       return new ArrayList<>(memTableId2Info.values());
@@ -259,7 +259,7 @@ public class CheckpointManager implements AutoCloseable {
       }
       MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
       if (!memTableInfo.isPinned()) {
-        WALInsertNodeCache.getInstance().addMemTable(memTableId);
+        WALInsertNodeCache.getInstance(memTableInfo.getDataRegionId()).addMemTable(memTableId);
       }
       memTableInfo.pin();
     } finally {
@@ -289,7 +289,7 @@ public class CheckpointManager implements AutoCloseable {
       MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
       memTableInfo.unpin();
       if (!memTableInfo.isPinned()) {
-        WALInsertNodeCache.getInstance().removeMemTable(memTableId);
+        WALInsertNodeCache.getInstance(memTableInfo.getDataRegionId()).removeMemTable(memTableId);
         if (memTableInfo.isFlushed()) {
           memTableId2Info.remove(memTableId);
         }
@@ -347,6 +347,15 @@ public class CheckpointManager implements AutoCloseable {
     }
 
     return totalCost;
+  }
+
+  public int getRegionId(long memtableId) {
+    final MemTableInfo info = memTableId2Info.get(memtableId);
+    if (info == null) {
+      logger.warn("memtableId {} not found in MemTableId2Info", memtableId);
+      return -1;
+    }
+    return Integer.parseInt(info.getMemTable().getDataRegionId());
   }
 
   @Override

@@ -34,7 +34,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.cq.CreateCQState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -64,6 +64,9 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
   private String md5;
 
   private long firstExecutionTime;
+
+  private static final String CONSENSUS_WRITE_ERROR =
+      "Failed in the write API executing the consensus layer due to: ";
 
   public CreateCQProcedure(ScheduledExecutorService executor) {
     super();
@@ -119,51 +122,47 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
   }
 
   private void addCQ(ConfigNodeProcedureEnv env) {
-    ConsensusWriteResponse response =
-        env.getConfigManager()
-            .getConsensusManager()
-            .write(new AddCQPlan(req, md5, firstExecutionTime));
-    TSStatus res = response.getStatus();
-    if (res != null) {
-      if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.debug("Finish init CQ {} successfully", req.cqId);
-        setNextState(INACTIVE);
-      } else if (res.code == TSStatusCode.CQ_ALREADY_EXIST.getStatusCode()) {
-        LOGGER.info("Failed to init CQ {} because such cq already exists", req.cqId);
-        setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
-      } else {
-        LOGGER.warn("Failed to init CQ {} because of unknown reasons {}", req.cqId, res);
-        setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
-      }
+    TSStatus res;
+    try {
+      res =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new AddCQPlan(req, md5, firstExecutionTime));
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+    }
+    if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.debug("Finish init CQ {} successfully", req.cqId);
+      setNextState(INACTIVE);
+    } else if (res.code == TSStatusCode.CQ_ALREADY_EXIST.getStatusCode()) {
+      LOGGER.info("Failed to init CQ {} because such cq already exists", req.cqId);
+      setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
     } else {
-      LOGGER.warn(
-          "Failed to init CQ {} because of unexpected exception: ",
-          req.cqId,
-          response.getException());
-      setFailure(new ProcedureException(response.getException()));
+      LOGGER.warn("Failed to init CQ {} because of unknown reasons {}", req.cqId, res);
+      setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
     }
   }
 
   private void activeCQ(ConfigNodeProcedureEnv env) {
-    ConsensusWriteResponse response =
-        env.getConfigManager().getConsensusManager().write(new ActiveCQPlan(req.cqId, md5));
-    TSStatus res = response.getStatus();
-    if (res != null) {
-      if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.debug("Finish Scheduling CQ {} successfully", req.cqId);
-      } else if (res.code == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
-        LOGGER.warn("Failed to active CQ {} because of no such cq: {}", req.cqId, res.message);
-      } else if (res.code == TSStatusCode.CQ_ALREADY_ACTIVE.getStatusCode()) {
-        LOGGER.warn("Failed to active CQ {} because this cq has already been active", req.cqId);
-      } else {
-        LOGGER.warn(
-            "Failed to active CQ {} successfully because of unknown reasons {}", req.cqId, res);
-      }
+    TSStatus res;
+    try {
+      res = env.getConfigManager().getConsensusManager().write(new ActiveCQPlan(req.cqId, md5));
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+    }
+    if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.debug("Finish Scheduling CQ {} successfully", req.cqId);
+    } else if (res.code == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
+      LOGGER.warn("Failed to active CQ {} because of no such cq: {}", req.cqId, res.message);
+    } else if (res.code == TSStatusCode.CQ_ALREADY_ACTIVE.getStatusCode()) {
+      LOGGER.warn("Failed to active CQ {} because this cq has already been active", req.cqId);
     } else {
       LOGGER.warn(
-          "Failed to active CQ {} successfully because of unexpected exception: ",
-          req.cqId,
-          response.getException());
+          "Failed to active CQ {} successfully because of unknown reasons {}", req.cqId, res);
     }
   }
 
@@ -177,28 +176,26 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
         break;
       case INACTIVE:
         LOGGER.info("Start [INACTIVE] rollback of CQ {}", req.cqId);
-        ConsensusWriteResponse response =
-            env.getConfigManager().getConsensusManager().write(new DropCQPlan(req.cqId, md5));
-        TSStatus res = response.getStatus();
-        if (res != null) {
-          if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            LOGGER.info("Finish [INACTIVE] rollback of CQ {} successfully", req.cqId);
-          } else if (res.code == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
-            LOGGER.warn(
-                "Failed to do [INACTIVE] rollback of CQ {} because of no such cq: {}",
-                req.cqId,
-                res.message);
-          } else {
-            LOGGER.warn(
-                "Failed to do [INACTIVE] rollback of CQ {} because of unknown reasons {}",
-                req.cqId,
-                res);
-          }
+        TSStatus res;
+        try {
+          res = env.getConfigManager().getConsensusManager().write(new DropCQPlan(req.cqId, md5));
+        } catch (ConsensusException e) {
+          LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+          res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+          res.setMessage(e.getMessage());
+        }
+        if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          LOGGER.info("Finish [INACTIVE] rollback of CQ {} successfully", req.cqId);
+        } else if (res.code == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
+          LOGGER.warn(
+              "Failed to do [INACTIVE] rollback of CQ {} because of no such cq: {}",
+              req.cqId,
+              res.message);
         } else {
           LOGGER.warn(
-              "Failed to do [INACTIVE] rollback of CQ {} because of unexpected exception: ",
+              "Failed to do [INACTIVE] rollback of CQ {} because of unknown reasons {}",
               req.cqId,
-              response.getException());
+              res);
         }
 
         break;

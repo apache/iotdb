@@ -26,9 +26,9 @@ import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -278,11 +278,9 @@ public class ExportTsFile extends AbstractTsFileTool {
    */
   private static void dumpResult(String sql, int index) {
     final String path = targetDirectory + targetFile + index + ".tsfile";
-    try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout);
+    try (SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout)) {
       long start = System.currentTimeMillis();
       writeTsFileFile(sessionDataSet, path);
-      sessionDataSet.closeOperationHandle();
       long end = System.currentTimeMillis();
       IoTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
     } catch (StatementExecutionException
@@ -317,10 +315,12 @@ public class ExportTsFile extends AbstractTsFileTool {
         TSDataType tsDataType = getTsDataType(columnTypes.get(i));
         Path path = new Path(column, true);
         String deviceId = path.getDevice();
-        List<Field> deviceList =
-            session.executeQueryStatement("show devices " + deviceId, timeout).next().getFields();
-        if (deviceList.size() > 1 && "true".equals(deviceList.get(1).getStringValue())) {
-          deviceFilterSet.add(deviceId);
+        try (SessionDataSet deviceDataSet =
+            session.executeQueryStatement("show devices " + deviceId, timeout)) {
+          List<Field> deviceList = deviceDataSet.next().getFields();
+          if (deviceList.size() > 1 && "true".equals(deviceList.get(1).getStringValue())) {
+            deviceFilterSet.add(deviceId);
+          }
         }
         MeasurementSchema measurementSchema =
             new MeasurementSchema(path.getMeasurement(), tsDataType);

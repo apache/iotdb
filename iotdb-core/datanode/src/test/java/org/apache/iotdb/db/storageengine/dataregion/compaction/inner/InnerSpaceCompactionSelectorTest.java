@@ -23,21 +23,25 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.util.List;
@@ -85,11 +89,14 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
-                List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
-                if (taskResource.size() != 2) {
+                List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+                    selector.selectInnerSpaceTask(resources);
+                if (innerSpaceCompactionTasks.size() != 2) {
                   throw new RuntimeException("task num is not 2");
                 }
-                if (taskResource.get(0).size() != 2 || taskResource.get(1).size() != 2) {
+                if (innerSpaceCompactionTasks.get(0).getSelectedTsFileResourceList().size() != 2
+                    || innerSpaceCompactionTasks.get(1).getSelectedTsFileResourceList().size()
+                        != 2) {
                   throw new RuntimeException("selected file num is not 2");
                 }
               } catch (Exception e) {
@@ -147,18 +154,20 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
-                List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
+                List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+                    selector.selectInnerSpaceTask(resources);
 
                 // the other thread holds write lock and delete files successfully before setting
                 // status to COMPACTION_CANDIDATE
                 cd1.countDown();
                 cd2.await();
 
-                if (taskResource.size() != 3) {
+                if (innerSpaceCompactionTasks.size() != 3) {
                   throw new RuntimeException("task num is not 3");
                 }
-                for (int idx = 0; idx < taskResource.size(); idx++) {
-                  List<TsFileResource> task = taskResource.get(idx);
+                for (int idx = 0; idx < innerSpaceCompactionTasks.size(); idx++) {
+                  List<TsFileResource> task =
+                      innerSpaceCompactionTasks.get(idx).getSelectedTsFileResourceList();
                   if (task.size() != 2) {
                     throw new RuntimeException("selected file num is not 2");
                   }
@@ -169,7 +178,6 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          CompactionTaskManager.currentTaskNum,
                           tsFileManager.getNextCompactionTaskId());
                   // set file status to COMPACTION_CANDIDATE
                   if (idx == 0) {
@@ -252,13 +260,14 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
-                List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
+                List<InnerSpaceCompactionTask> taskResource =
+                    selector.selectInnerSpaceTask(resources);
 
                 if (taskResource.size() != 3) {
                   throw new RuntimeException("task num is not 3");
                 }
                 for (int idx = 0; idx < taskResource.size(); idx++) {
-                  List<TsFileResource> task = taskResource.get(idx);
+                  List<TsFileResource> task = taskResource.get(idx).getSelectedTsFileResourceList();
                   if (task.size() != 2) {
                     throw new RuntimeException("selected file num is not 2");
                   }
@@ -269,7 +278,6 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          CompactionTaskManager.currentTaskNum,
                           tsFileManager.getNextCompactionTaskId());
 
                   if (!innerSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
@@ -283,9 +291,19 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     cd1.countDown();
                     cd2.await();
 
-                    if (innerSpaceCompactionTask.checkValidAndSetMerging()) {
-                      throw new RuntimeException("cross space compaction task should be invalid.");
-                    }
+                    Assert.assertThrows(
+                        "inner space compaction task should be invalid.",
+                        FileCannotTransitToCompactingException.class,
+                        innerSpaceCompactionTask::transitSourceFilesToMerging);
+
+                    FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
+                        Mockito.mock(FixedPriorityBlockingQueue.class);
+                    Mockito.when(mockQueue.take())
+                        .thenReturn(innerSpaceCompactionTask)
+                        .thenThrow(new InterruptedException());
+                    CompactionWorker worker = new CompactionWorker(0, mockQueue);
+                    worker.run();
+
                     for (int i = 0; i < task.size(); i++) {
                       TsFileResource resource = task.get(i);
                       if (i == 1) {
@@ -297,8 +315,10 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                       }
                     }
                   } else {
-                    if (!innerSpaceCompactionTask.checkValidAndSetMerging()) {
-                      throw new RuntimeException("cross space compaction task should be valid.");
+                    try {
+                      innerSpaceCompactionTask.transitSourceFilesToMerging();
+                    } catch (FileCannotTransitToCompactingException e) {
+                      Assert.fail("inner space compaction task should be valid.");
                     }
                     for (int i = 0; i < task.size(); i++) {
                       TsFileResource resource = task.get(i);
@@ -366,11 +386,14 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
-                List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
-                if (taskResource.size() != 2) {
+                List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+                    selector.selectInnerSpaceTask(resources);
+                if (innerSpaceCompactionTasks.size() != 2) {
                   throw new RuntimeException("task num is not 2");
                 }
-                if (taskResource.get(0).size() != 2 || taskResource.get(1).size() != 2) {
+                if (innerSpaceCompactionTasks.get(0).getSelectedTsFileResourceList().size() != 2
+                    || innerSpaceCompactionTasks.get(1).getSelectedTsFileResourceList().size()
+                        != 2) {
                   throw new RuntimeException("selected file num is not 2");
                 }
               } catch (Exception e) {
@@ -432,18 +455,20 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
-                List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
+                List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+                    selector.selectInnerSpaceTask(resources);
 
                 // the other thread holds write lock and delete files successfully before setting
                 // status to COMPACTION_CANDIDATE
                 cd1.countDown();
                 cd2.await();
 
-                if (taskResource.size() != 3) {
+                if (innerSpaceCompactionTasks.size() != 3) {
                   throw new RuntimeException("task num is not 3");
                 }
-                for (int idx = 0; idx < taskResource.size(); idx++) {
-                  List<TsFileResource> task = taskResource.get(idx);
+                for (int idx = 0; idx < innerSpaceCompactionTasks.size(); idx++) {
+                  List<TsFileResource> task =
+                      innerSpaceCompactionTasks.get(idx).getSelectedTsFileResourceList();
                   if (task.size() != 2) {
                     throw new RuntimeException("selected file num is not 2");
                   }
@@ -454,7 +479,6 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          CompactionTaskManager.currentTaskNum,
                           tsFileManager.getNextCompactionTaskId());
                   // set file status to COMPACTION_CANDIDATE
                   if (idx == 0) {
@@ -540,13 +564,15 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
-                List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
+                List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+                    selector.selectInnerSpaceTask(resources);
 
-                if (taskResource.size() != 3) {
+                if (innerSpaceCompactionTasks.size() != 3) {
                   throw new RuntimeException("task num is not 3");
                 }
-                for (int idx = 0; idx < taskResource.size(); idx++) {
-                  List<TsFileResource> task = taskResource.get(idx);
+                for (int idx = 0; idx < innerSpaceCompactionTasks.size(); idx++) {
+                  List<TsFileResource> task =
+                      innerSpaceCompactionTasks.get(idx).getSelectedTsFileResourceList();
                   if (task.size() != 2) {
                     throw new RuntimeException("selected file num is not 2");
                   }
@@ -557,7 +583,6 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          CompactionTaskManager.currentTaskNum,
                           tsFileManager.getNextCompactionTaskId());
 
                   if (!innerSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
@@ -571,9 +596,19 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     cd1.countDown();
                     cd2.await();
 
-                    if (innerSpaceCompactionTask.checkValidAndSetMerging()) {
-                      throw new RuntimeException("cross space compaction task should be invalid.");
-                    }
+                    Assert.assertThrows(
+                        "inner space compaction task should be invalid.",
+                        FileCannotTransitToCompactingException.class,
+                        innerSpaceCompactionTask::transitSourceFilesToMerging);
+
+                    FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
+                        Mockito.mock(FixedPriorityBlockingQueue.class);
+                    Mockito.when(mockQueue.take())
+                        .thenReturn(innerSpaceCompactionTask)
+                        .thenThrow(new InterruptedException());
+                    CompactionWorker worker = new CompactionWorker(0, mockQueue);
+                    worker.run();
+
                     for (int i = 0; i < task.size(); i++) {
                       TsFileResource resource = task.get(i);
                       if (i == 1) {
@@ -585,8 +620,10 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                       }
                     }
                   } else {
-                    if (!innerSpaceCompactionTask.checkValidAndSetMerging()) {
-                      throw new RuntimeException("cross space compaction task should be valid.");
+                    try {
+                      innerSpaceCompactionTask.transitSourceFilesToMerging();
+                    } catch (FileCannotTransitToCompactingException e) {
+                      Assert.fail("inner space compaction task should be valid.");
                     }
                     for (int i = 0; i < task.size(); i++) {
                       TsFileResource resource = task.get(i);
@@ -652,8 +689,9 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
         new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
     // copy candidate source file list
     List<TsFileResource> resources = tsFileManager.getOrCreateSequenceListByTimePartition(0);
-    List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
-    Assert.assertEquals(1, taskResource.size());
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+        selector.selectInnerSpaceTask(resources);
+    Assert.assertEquals(1, innerSpaceCompactionTasks.size());
     modFile.remove();
   }
 }

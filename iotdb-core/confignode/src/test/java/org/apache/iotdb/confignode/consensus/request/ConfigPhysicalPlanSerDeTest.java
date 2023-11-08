@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -33,7 +34,6 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
@@ -51,6 +51,7 @@ import org.apache.iotdb.commons.sync.PipeStatus;
 import org.apache.iotdb.commons.sync.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
@@ -146,8 +147,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -168,6 +170,7 @@ import java.util.Set;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegion;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.junit.Assert.assertEquals;
 
 public class ConfigPhysicalPlanSerDeTest {
@@ -319,7 +322,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void CountStorageGroupPlanTest() throws IOException {
-    CountDatabasePlan req0 = new CountDatabasePlan(Arrays.asList("root", "sg"));
+    CountDatabasePlan req0 = new CountDatabasePlan(Arrays.asList("root", "sg"), ALL_MATCH_SCOPE);
     CountDatabasePlan req1 =
         (CountDatabasePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -327,7 +330,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetStorageGroupPlanTest() throws IOException {
-    GetDatabasePlan req0 = new GetDatabasePlan(Arrays.asList("root", "sg"));
+    GetDatabasePlan req0 = new GetDatabasePlan(Arrays.asList("root", "sg"), ALL_MATCH_SCOPE);
     CountDatabasePlan req1 =
         (CountDatabasePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -344,11 +347,11 @@ public class ConfigPhysicalPlanSerDeTest {
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
     CreateRegionGroupsPlan req0 = new CreateRegionGroupsPlan();
+    req0.setCreateTime(CommonDateTimeUtils.currentTime());
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
     dataRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     dataRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
     req0.addRegionGroup("root.sg0", dataRegionSet);
-
     TRegionReplicaSet schemaRegionSet = new TRegionReplicaSet();
     schemaRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
     schemaRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
@@ -539,7 +542,6 @@ public class ConfigPhysicalPlanSerDeTest {
     AuthorPlan req0;
     AuthorPlan req1;
     Set<Integer> permissions = new HashSet<>();
-    permissions.add(PrivilegeType.GRANT_PRIVILEGE.ordinal());
 
     // create user
     req0 =
@@ -550,6 +552,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "passwd",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -563,6 +566,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -576,6 +580,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "newpwd",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -586,7 +591,14 @@ public class ConfigPhysicalPlanSerDeTest {
     nodeNameList.add(new PartialPath("root.abc.**"));
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.GrantUser, "tempuser", "", "", "", permissions, nodeNameList);
+            ConfigPhysicalPlanType.GrantUser,
+            "tempuser",
+            "",
+            "",
+            "",
+            permissions,
+            false,
+            nodeNameList);
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
@@ -599,6 +611,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             permissions,
+            false,
             nodeNameList);
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -612,6 +625,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -619,14 +633,28 @@ public class ConfigPhysicalPlanSerDeTest {
     // revoke user
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.RevokeUser, "tempuser", "", "", "", permissions, nodeNameList);
+            ConfigPhysicalPlanType.RevokeUser,
+            "tempuser",
+            "",
+            "",
+            "",
+            permissions,
+            false,
+            nodeNameList);
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // revoke role
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.RevokeRole, "", "temprole", "", "", permissions, nodeNameList);
+            ConfigPhysicalPlanType.RevokeRole,
+            "",
+            "temprole",
+            "",
+            "",
+            permissions,
+            false,
+            nodeNameList);
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
@@ -639,6 +667,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -652,6 +681,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -665,6 +695,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -672,14 +703,28 @@ public class ConfigPhysicalPlanSerDeTest {
     // list user
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.ListUser, "", "", "", "", new HashSet<>(), new ArrayList<>());
+            ConfigPhysicalPlanType.ListUser,
+            "",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            false,
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // list role
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.ListRole, "", "", "", "", new HashSet<>(), new ArrayList<>());
+            ConfigPhysicalPlanType.ListRole,
+            "",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            false,
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
@@ -692,6 +737,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -705,6 +751,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -718,6 +765,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -731,6 +779,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -744,6 +793,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -757,6 +807,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -816,11 +867,16 @@ public class ConfigPhysicalPlanSerDeTest {
     failedRegions.put(dataRegionGroupId, dataRegionSet);
     failedRegions.put(schemaRegionGroupId, schemaRegionSet);
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
+    createRegionGroupsPlan.setCreateTime(CommonDateTimeUtils.currentTime());
     createRegionGroupsPlan.addRegionGroup("root.sg0", dataRegionSet);
     createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
+    CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
+    persistPlan.setCreateTime(CommonDateTimeUtils.currentTime());
+    persistPlan.addRegionGroup("root.sg0", dataRegionSet);
+    persistPlan.addRegionGroup("root.sg1", schemaRegionSet);
     CreateRegionGroupsProcedure procedure0 =
         new CreateRegionGroupsProcedure(
-            TConsensusGroupType.DataRegion, createRegionGroupsPlan, failedRegions);
+            TConsensusGroupType.DataRegion, createRegionGroupsPlan, persistPlan, failedRegions);
 
     updateProcedurePlan0.setProcedure(procedure0);
     updateProcedurePlan1 =
@@ -919,6 +975,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void GetNodePathsPartitionPlanTest() throws IOException, IllegalPathException {
     GetNodePathsPartitionPlan getNodePathsPartitionPlan0 = new GetNodePathsPartitionPlan();
     getNodePathsPartitionPlan0.setPartialPath(new PartialPath("root.sg1.**"));
+    getNodePathsPartitionPlan0.setScope(ALL_MATCH_SCOPE);
     GetNodePathsPartitionPlan getNodePathsPartitionPlan1 =
         (GetNodePathsPartitionPlan)
             ConfigPhysicalPlan.Factory.create(getNodePathsPartitionPlan0.serializeToByteBuffer());
@@ -948,7 +1005,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void ShowPathSetTemplatePlanTest() throws IOException {
     GetPathsSetTemplatePlan getPathsSetTemplatePlan0 =
-        new GetPathsSetTemplatePlan("template_name_test");
+        new GetPathsSetTemplatePlan("template_name_test", ALL_MATCH_SCOPE);
     GetPathsSetTemplatePlan getPathsSetTemplatePlan1 =
         (GetPathsSetTemplatePlan)
             ConfigPhysicalPlan.Factory.create(getPathsSetTemplatePlan0.serializeToByteBuffer());
@@ -1056,7 +1113,7 @@ public class ConfigPhysicalPlanSerDeTest {
     extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(new MinimumProgressIndex(), 1);
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
     pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
@@ -1109,7 +1166,7 @@ public class ConfigPhysicalPlanSerDeTest {
     CreatePipePluginPlan createPipePluginPlan =
         new CreatePipePluginPlan(
             new PipePluginMeta("testPlugin", "org.apache.iotdb.TestJar", false, "test.jar", "???"),
-            new Binary("123"));
+            new Binary("123", TSFileConfig.STRING_CHARSET));
     CreatePipePluginPlan createPipePluginPlan1 =
         (CreatePipePluginPlan)
             ConfigPhysicalPlan.Factory.create(createPipePluginPlan.serializeToByteBuffer());
@@ -1170,11 +1227,11 @@ public class ConfigPhysicalPlanSerDeTest {
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
                     new PipeTaskMeta(
-                        new MinimumProgressIndex(), 987)); // TODO: replace with IoTConsensus
+                        MinimumProgressIndex.INSTANCE, 987)); // TODO: replace with IoTConsensus
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
                     new PipeTaskMeta(
-                        new MinimumProgressIndex(), 789)); // TODO: replace with IoTConsensus
+                        MinimumProgressIndex.INSTANCE, 789)); // TODO: replace with IoTConsensus
               }
             });
     pipeMetaList.add(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta));

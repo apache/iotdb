@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncClient
     implements ThriftClient {
@@ -42,12 +44,17 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AsyncPipeDataTransferServiceClient.class);
 
+  private static final AtomicInteger idGenerator = new AtomicInteger(0);
+  private final int id = idGenerator.incrementAndGet();
+
   private final boolean printLogWhenEncounterException;
 
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager;
 
   private final AtomicBoolean shouldReturnSelf = new AtomicBoolean(true);
+
+  private final AtomicBoolean isHandshakeFinished = new AtomicBoolean(false);
 
   public AsyncPipeDataTransferServiceClient(
       ThriftClientProperty property,
@@ -60,6 +67,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
         tClientManager,
         TNonblockingSocketWrapper.wrap(
             endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+    setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
@@ -81,7 +89,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   @Override
   public void invalidate() {
     if (!hasError()) {
-      super.onError(new Exception("This client has been invalidated"));
+      super.onError(new Exception(String.format("This client %d has been invalidated", id)));
     }
   }
 
@@ -120,15 +128,27 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
       return true;
     } catch (Exception e) {
       if (printLogWhenEncounterException) {
-        LOGGER.error("Unexpected exception occurs in {} : {}", this, e.getMessage());
+        LOGGER.error(
+            "Unexpected exception occurs in {}, error msg is {}",
+            this,
+            ExceptionUtils.getRootCause(e).toString());
       }
       return false;
     }
   }
 
+  public boolean isHandshakeFinished() {
+    return isHandshakeFinished.get();
+  }
+
+  public void markHandshakeFinished() {
+    isHandshakeFinished.set(true);
+    LOGGER.info("Handshake finished for client {}", this);
+  }
+
   @Override
   public String toString() {
-    return String.format("AsyncPipeDataTransferServiceClient{%s}", endpoint);
+    return String.format("AsyncPipeDataTransferServiceClient{%s}, id = {%d}", endpoint, id);
   }
 
   public static class Factory

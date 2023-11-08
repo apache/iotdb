@@ -19,20 +19,24 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -50,6 +54,7 @@ public class RecordUtils {
       (short) 1 + 2 + 8 + 4 + 1; // always fixed length record
   private static final short MEASUREMENT_BASIC_LENGTH =
       (short) 1 + 2 + 8 + 8; // final length depends on its alias and props
+  private static final short VIEW_BASIC_LENGTH = (short) 1 + 2 + 8 + 1;
 
   /** These offset rather than magic number may also be used to track usage of related field. */
   private static final short LENGTH_OFFSET = 1;
@@ -62,13 +67,19 @@ public class RecordUtils {
   private static final byte INTERNAL_TYPE = 0;
   private static final byte ENTITY_TYPE = 1;
   private static final byte MEASUREMENT_TYPE = 4;
+  private static final byte VIEW_TYPE = 5;
 
   private static final IMNodeFactory<ICachedMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
 
   public static ByteBuffer node2Buffer(ICachedMNode node) {
     if (node.isMeasurement()) {
-      return measurement2Buffer(node.getAsMeasurementMNode());
+      IMeasurementMNode<ICachedMNode> measurementMNode = node.getAsMeasurementMNode();
+      if (measurementMNode.isLogicalView()) {
+        return view2Buffer(measurementMNode);
+      } else {
+        return measurement2Buffer(measurementMNode);
+      }
     } else {
       return internal2Buffer(node);
     }
@@ -90,7 +101,7 @@ public class RecordUtils {
    *
    * <ul>
    *   <li>1 bit : usingTemplate, whether using template
-   *   <li>1 bit : isAligned
+   *   <li>2 bit : isAligned (00 for not aligned, 01 for aligned, 10 for null)
    * </ul>
    *
    * @param node
@@ -98,13 +109,13 @@ public class RecordUtils {
    */
   private static ByteBuffer internal2Buffer(ICachedMNode node) {
     byte nodeType = INTERNAL_TYPE;
-    boolean isAligned = false;
+    Boolean isAligned = null;
     int schemaTemplateIdWithState = SchemaConstant.NON_TEMPLATE;
     boolean isUseTemplate = false;
 
     if (node.isDevice()) {
       nodeType = ENTITY_TYPE;
-      isAligned = node.getAsDeviceMNode().isAligned();
+      isAligned = node.getAsDeviceMNode().isAlignedNullable();
       schemaTemplateIdWithState = node.getAsDeviceMNode().getSchemaTemplateIdWithState();
       isUseTemplate = node.getAsDeviceMNode().isUseTemplate();
     }
@@ -154,15 +165,49 @@ public class RecordUtils {
         bufferLength += 8 + e.getKey().getBytes().length + e.getValue().length();
       }
     }
-
+    // normal measurement
     ByteBuffer buffer = ByteBuffer.allocate(bufferLength);
-
     ReadWriteIOUtils.write(MEASUREMENT_TYPE, buffer);
     ReadWriteIOUtils.write((short) bufferLength, buffer);
     ReadWriteIOUtils.write(convertTags2Long(node), buffer);
     ReadWriteIOUtils.write(convertMeasStat2Long(node), buffer);
     ReadWriteIOUtils.write(node.getAlias(), buffer);
     ReadWriteIOUtils.write(node.getSchema().getProps(), buffer);
+    return buffer;
+  }
+
+  /**
+   * LogicalView MNode Record Structure: <br>
+   * (var length record, with length member)
+   *
+   * <ul>
+   *   <li>1 byte: nodeType, as above
+   *   <li>1 short (2 bytes): recLength, length of whole record
+   *   <li>1 long (8 bytes): tagIndex, value of the offset within a measurement
+   *   <li>1 boolean (1 bytes): statusBytes, isPreDeleted
+   *   <li>var length ViewExpression
+   * </ul>
+   */
+  private static ByteBuffer view2Buffer(IMeasurementMNode<ICachedMNode> node) {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    try {
+      ViewExpression.serialize(
+          ((LogicalViewSchema) node.getSchema()).getExpression(), byteArrayOutputStream);
+    } catch (IOException e) {
+      // ByteArrayOutputStream is a memory-based output stream that does not involve disk IO and
+      // will not throw an IOException except for OOM.
+      throw new RuntimeException(e);
+    }
+    byte[] expressionData = byteArrayOutputStream.toByteArray();
+
+    int bufferLength = VIEW_BASIC_LENGTH + expressionData.length;
+
+    ByteBuffer buffer = ByteBuffer.allocate(bufferLength);
+    ReadWriteIOUtils.write(VIEW_TYPE, buffer);
+    ReadWriteIOUtils.write((short) bufferLength, buffer);
+    ReadWriteIOUtils.write(convertTags2Long(node), buffer);
+    ReadWriteIOUtils.write(node.isPreDeleted(), buffer);
+    buffer.put(expressionData);
     return buffer;
   }
 
@@ -193,7 +238,7 @@ public class RecordUtils {
       byte bitFlag = ReadWriteIOUtils.readByte(buffer);
 
       boolean usingTemplate = usingTemplate(bitFlag);
-      boolean isAligned = isAligned(bitFlag);
+      Boolean isAligned = isAligned(bitFlag);
 
       if (nodeType == 0) {
         resNode = nodeFactory.createInternalMNode(null, nodeName);
@@ -207,16 +252,22 @@ public class RecordUtils {
       ICachedMNodeContainer.getCachedMNodeContainer(resNode).setSegmentAddress(segAddr);
 
       return resNode;
-    } else {
+    } else if (nodeType == MEASUREMENT_TYPE) {
       // measurement node
       short recLenth = ReadWriteIOUtils.readShort(buffer);
       long tagIndex = ReadWriteIOUtils.readLong(buffer);
       long schemaByte = ReadWriteIOUtils.readLong(buffer);
       String alias = ReadWriteIOUtils.readString(buffer);
       Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
-
       return paddingMeasurement(nodeName, tagIndex, schemaByte, alias, props);
+    } else if (nodeType == VIEW_TYPE) {
+      short recLenth = ReadWriteIOUtils.readShort(buffer);
+      long tagIndex = ReadWriteIOUtils.readLong(buffer);
+      boolean isPreDeleted = ReadWriteIOUtils.readBool(buffer);
+      ViewExpression viewExpression = ViewExpression.deserialize(buffer);
+      return paddingLogicalView(nodeName, tagIndex, isPreDeleted, viewExpression);
     }
+    throw new MetadataException("Unrecognized node type: " + nodeType);
   }
 
   // region Getter and Setter to Record Buffer
@@ -314,7 +365,9 @@ public class RecordUtils {
     } else if (node.isDevice()) {
       builder.append("entityNode, ");
 
-      if (node.getAsDeviceMNode().isAligned()) {
+      if (node.getAsDeviceMNode().isAlignedNullable() == null) {
+        builder.append("aligned is null, ");
+      } else if (node.getAsDeviceMNode().isAligned()) {
         builder.append("aligned, ");
       } else {
         builder.append("not aligned, ");
@@ -375,23 +428,39 @@ public class RecordUtils {
     return res;
   }
 
+  private static ICachedMNode paddingLogicalView(
+      String nodeName, long tagIndex, boolean isPreDeleted, ViewExpression viewExpression) {
+    IMeasurementSchema schema = new LogicalViewSchema(nodeName, viewExpression);
+    IMeasurementMNode<ICachedMNode> res =
+        nodeFactory.createLogicalViewMNode(null, nodeName, schema);
+    res.setOffset(tagIndex);
+    res.setPreDeleted(isPreDeleted);
+    return res.getAsMNode();
+  }
+
   // endregion
 
   // region codex for bit flag
 
-  private static byte encodeInternalStatus(boolean usingTemplate, boolean isAligned) {
+  private static byte encodeInternalStatus(boolean usingTemplate, Boolean isAligned) {
     byte flag = 0;
     if (usingTemplate) {
       flag |= 0x01;
     }
-    if (isAligned) {
+    if (isAligned == null) {
+      flag |= 0x04;
+    } else if (isAligned) {
       flag |= 0x02;
     }
     return flag;
   }
 
-  private static boolean isAligned(byte flag) {
-    return (flag & 0x02) == 2;
+  private static Boolean isAligned(byte flag) {
+    if ((flag & 0x04) != 0) {
+      return null;
+    } else {
+      return (flag & 0x02) == 2;
+    }
   }
 
   private static boolean usingTemplate(byte flag) {

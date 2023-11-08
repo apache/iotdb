@@ -33,17 +33,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
 
-  /**
-   * The outer key is the path of a ModificationFile, the inner key in the name of a timeseries and
-   * the value is the Modifications of a timeseries in this file.
-   */
-  private final Map<String, Map<String, List<Modification>>> filePathModCache =
-      new ConcurrentHashMap<>();
   /**
    * The key is the path of a ModificationFile and the value is all Modifications in this file. We
    * use this field because each call of Modification.getModifications() return a copy of the
@@ -86,22 +79,17 @@ public class QueryContext {
     if (!modFile.exists()) {
       return Collections.emptyList();
     }
-    Map<String, List<Modification>> fileModifications =
-        filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new ConcurrentHashMap<>());
-    return fileModifications.computeIfAbsent(
-        path.getFullPath(),
-        k -> {
-          PatternTreeMap<Modification, ModsSerializer> allModifications =
-              fileModCache.get(modFile.getFilePath());
-          if (allModifications == null) {
-            allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
-            for (Modification modification : modFile.getModifications()) {
-              allModifications.append(modification.getPath(), modification);
-            }
-            fileModCache.put(modFile.getFilePath(), allModifications);
-          }
-          return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
-        });
+
+    PatternTreeMap<Modification, ModsSerializer> allModifications =
+        fileModCache.get(modFile.getFilePath());
+    if (allModifications == null) {
+      allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
+      for (Modification modification : modFile.getModificationsIter()) {
+        allModifications.append(modification.getPath(), modification);
+      }
+      fileModCache.put(modFile.getFilePath(), allModifications);
+    }
+    return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
   }
 
   /**

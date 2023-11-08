@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -139,8 +139,8 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   private long getTimePartitionWithCheck() {
-    long startPartitionId = StorageEngine.getTimePartition(startTime);
-    long endPartitionId = StorageEngine.getTimePartition(endTime);
+    long startPartitionId = TimePartitionUtils.getTimePartitionId(startTime);
+    long endPartitionId = TimePartitionUtils.getTimePartitionId(endTime);
     if (startPartitionId == endPartitionId) {
       return startPartitionId;
     }
@@ -224,8 +224,8 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean mayContainsDevice(String device) {
-    return true;
+  public boolean definitelyNotContains(String device) {
+    return false;
   }
 
   @Override

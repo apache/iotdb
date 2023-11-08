@@ -23,6 +23,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Iterator;
 
 /** ModificationReader reads all modifications from a persistent medium like file system. */
 public interface ModificationReader {
@@ -34,6 +35,14 @@ public interface ModificationReader {
    * @return a list of modifications contained the medium.
    */
   Collection<Modification> read();
+
+  /**
+   * Get an iterator over this mod file, others keep consistence with {@link #read()}. Please ensure
+   * you have called hasNext() with return of {@code true} before calling next().
+   *
+   * @return the modification iterator.
+   */
+  Iterator<Modification> getModificationIterator();
 
   /** Release resources like streams. */
   void close() throws IOException;

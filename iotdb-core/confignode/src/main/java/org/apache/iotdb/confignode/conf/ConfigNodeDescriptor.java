@@ -23,12 +23,12 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.NodeType;
 
@@ -41,6 +41,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.UnknownHostException;
+import java.util.Collections;
 import java.util.Properties;
 
 public class ConfigNodeDescriptor {
@@ -106,11 +108,14 @@ public class ConfigNodeDescriptor {
         commonProperties.load(inputStream);
 
       } catch (FileNotFoundException e) {
-        LOGGER.warn("Fail to find config file {}", url, e);
+        LOGGER.error("Fail to find config file {}, reject ConfigNode startup.", url, e);
+        System.exit(-1);
       } catch (IOException e) {
-        LOGGER.warn("Cannot load config file, use default configuration", e);
+        LOGGER.error("Cannot load config file, reject ConfigNode startup.", e);
+        System.exit(-1);
       } catch (Exception e) {
-        LOGGER.warn("Incorrect format in config file, use default configuration", e);
+        LOGGER.error("Incorrect format in config file, reject ConfigNode startup.", e);
+        System.exit(-1);
       }
     } else {
       LOGGER.warn(
@@ -127,7 +132,8 @@ public class ConfigNodeDescriptor {
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
       } catch (IOException | BadNodeUrlException e) {
-        LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
+        LOGGER.error("Couldn't load ConfigNode conf file, reject ConfigNode startup.", e);
+        System.exit(-1);
       } finally {
         conf.updatePath();
         commonDescriptor
@@ -137,7 +143,7 @@ public class ConfigNodeDescriptor {
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
             .updateRpcInstance(
-                conf.getClusterName(), NodeType.CONFIGNODE, IoTDBConfig.SYSTEM_DATABASE);
+                conf.getClusterName(), NodeType.CONFIGNODE, SchemaConstant.SYSTEM_DATABASE);
       }
     } else {
       LOGGER.warn(
@@ -168,11 +174,19 @@ public class ConfigNodeDescriptor {
                     IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(conf.getConsensusPort()))
                 .trim()));
 
-    // TODO: Enable multiple target_config_node_list
-    String targetConfigNodes =
-        properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, null);
-    if (targetConfigNodes != null) {
-      conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes.trim()));
+    String seedConfigNode = properties.getProperty(IoTDBConstant.CN_SEED_CONFIG_NODE, null);
+    if (seedConfigNode == null) {
+      seedConfigNode = properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, null);
+      LOGGER.warn(
+          "The parameter cn_target_config_node_list has been abandoned, "
+              + "only the first ConfigNode address will be used to join in the cluster. "
+              + "Please use cn_seed_config_node instead.");
+    }
+    if (seedConfigNode != null) {
+      conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(seedConfigNode.trim()).get(0));
+    } else {
+      throw new IOException(
+          "The parameter dn_seed_config_node is not set, this ConfigNode will not join in any cluster.");
     }
 
     conf.setSeriesSlotNum(
@@ -238,7 +252,7 @@ public class ConfigNodeDescriptor {
             properties
                 .getProperty(
                     "schema_region_per_data_node",
-                    String.valueOf(conf.getSchemaReplicationFactor()))
+                    String.valueOf(conf.getSchemaRegionPerDataNode()))
                 .trim()));
 
     conf.setDataRegionGroupExtensionPolicy(
@@ -268,15 +282,8 @@ public class ConfigNodeDescriptor {
                       "region_group_allocate_policy", conf.getRegionGroupAllocatePolicy().name())
                   .trim()));
     } catch (IllegalArgumentException e) {
-      LOGGER.warn(
-          "The configured region allocate strategy does not exist, use the default: GREEDY!");
+      throw new IOException(e);
     }
-
-    conf.setEnableDataPartitionInheritPolicy(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_data_partition_inherit_policy",
-                String.valueOf(conf.isEnableDataPartitionInheritPolicy()))));
 
     conf.setCnRpcAdvancedCompressionEnable(
         Boolean.parseBoolean(
@@ -485,14 +492,6 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.isDataRegionRatisLogUnsafeFlushEnable()))
                 .trim()));
 
-    conf.setDataRegionRatisLogForceSyncNum(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "data_region_ratis_log_force_sync_num",
-                    String.valueOf(conf.getDataRegionRatisLogForceSyncNum()))
-                .trim()));
-
     conf.setConfigNodeRatisLogUnsafeFlushEnable(
         Boolean.parseBoolean(
             properties
@@ -571,6 +570,46 @@ public class ConfigNodeDescriptor {
                 .getProperty(
                     "data_region_ratis_grpc_leader_outstanding_appends_max",
                     String.valueOf(conf.getDataRegionRatisGrpcLeaderOutstandingAppendsMax()))
+                .trim()));
+
+    conf.setConfigNodeRatisGrpcLeaderOutstandingAppendsMax(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "config_node_ratis_grpc_leader_outstanding_appends_max",
+                    String.valueOf(conf.getConfigNodeRatisGrpcLeaderOutstandingAppendsMax()))
+                .trim()));
+
+    conf.setSchemaRegionRatisGrpcLeaderOutstandingAppendsMax(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "schema_region_ratis_grpc_leader_outstanding_appends_max",
+                    String.valueOf(conf.getSchemaRegionRatisGrpcLeaderOutstandingAppendsMax()))
+                .trim()));
+
+    conf.setDataRegionRatisLogForceSyncNum(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "data_region_ratis_log_force_sync_num",
+                    String.valueOf(conf.getDataRegionRatisLogForceSyncNum()))
+                .trim()));
+
+    conf.setConfigNodeRatisLogForceSyncNum(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "config_node_ratis_log_force_sync_num",
+                    String.valueOf(conf.getConfigNodeRatisLogForceSyncNum()))
+                .trim()));
+
+    conf.setSchemaRegionRatisLogForceSyncNum(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "schema_region_ratis_log_force_sync_num",
+                    String.valueOf(conf.getSchemaRegionRatisLogForceSyncNum()))
                 .trim()));
 
     conf.setDataRegionRatisRpcLeaderElectionTimeoutMinMs(
@@ -773,6 +812,24 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.getDataRegionRatisLogMax()))
                 .trim()));
 
+    conf.setConfigNodeRatisPeriodicSnapshotInterval(
+        Long.parseLong(
+            properties.getProperty(
+                "config_node_ratis_periodic_snapshot_interval",
+                String.valueOf(conf.getConfigNodeRatisPeriodicSnapshotInterval()).trim())));
+
+    conf.setSchemaRegionRatisPeriodicSnapshotInterval(
+        Long.parseLong(
+            properties.getProperty(
+                "schema_region_ratis_periodic_snapshot_interval",
+                String.valueOf(conf.getSchemaRegionRatisPeriodicSnapshotInterval()).trim())));
+
+    conf.setDataRegionRatisPeriodicSnapshotInterval(
+        Long.parseLong(
+            properties.getProperty(
+                "data_region_ratis_periodic_snapshot_interval",
+                String.valueOf(conf.getDataRegionRatisPeriodicSnapshotInterval()).trim())));
+
     conf.setEnablePrintingNewlyCreatedPartition(
         Boolean.parseBoolean(
             properties
@@ -832,13 +889,20 @@ public class ConfigNodeDescriptor {
    *
    * <p>Notice: Only invoke this interface when first startup.
    *
-   * @return True if the target_config_node_list points to itself
+   * @return True if the seed_config_node points to itself
    */
   public boolean isSeedConfigNode() {
-    return (conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
-            || (NodeUrlUtils.isLocalAddress(conf.getInternalAddress())
-                && NodeUrlUtils.isLocalAddress(conf.getTargetConfigNode().getIp())))
-        && conf.getInternalPort() == conf.getTargetConfigNode().getPort();
+    try {
+      return (conf.getInternalAddress().equals(conf.getSeedConfigNode().getIp())
+              || (NodeUrlUtils.containsLocalAddress(
+                      Collections.singletonList(conf.getInternalAddress()))
+                  && NodeUrlUtils.containsLocalAddress(
+                      Collections.singletonList(conf.getSeedConfigNode().getIp()))))
+          && conf.getInternalPort() == conf.getSeedConfigNode().getPort();
+    } catch (UnknownHostException e) {
+      LOGGER.warn("Unknown host when checking seed configNode IP {}", conf.getInternalAddress(), e);
+      return false;
+    }
   }
 
   public static ConfigNodeDescriptor getInstance() {

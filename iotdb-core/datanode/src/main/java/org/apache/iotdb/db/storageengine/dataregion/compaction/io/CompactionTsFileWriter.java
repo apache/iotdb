@@ -23,9 +23,9 @@ import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -62,9 +62,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     long beforeOffset = this.getPos();
     chunkWriter.writeToFileWriter(this);
     long writtenDataSize = this.getPos() - beforeOffset;
-    if (writtenDataSize > 0) {
-      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire((int) writtenDataSize);
-    }
+    acquireWrittenDataSizeWithCompactionWriteRateLimiter(writtenDataSize);
     CompactionMetrics.getInstance()
         .recordWriteInfo(
             type,
@@ -77,9 +75,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     long beforeOffset = this.getPos();
     super.writeChunk(chunk, chunkMetadata);
     long writtenDataSize = this.getPos() - beforeOffset;
-    if (writtenDataSize > 0) {
-      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire((int) writtenDataSize);
-    }
+    acquireWrittenDataSizeWithCompactionWriteRateLimiter(writtenDataSize);
     CompactionMetrics.getInstance()
         .recordWriteInfo(
             type,
@@ -101,17 +97,13 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     long writtenDataSize = this.getPos() - beforeOffset;
     CompactionMetrics.getInstance()
         .recordWriteInfo(type, CompactionIoDataType.ALIGNED, writtenDataSize);
-    if (writtenDataSize > 0) {
-      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire((int) writtenDataSize);
-    }
+    acquireWrittenDataSizeWithCompactionWriteRateLimiter(writtenDataSize);
   }
 
   @Override
   public int checkMetadataSizeAndMayFlush() throws IOException {
     int size = super.checkMetadataSizeAndMayFlush();
-    if (size > 0) {
-      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire(size);
-    }
+    acquireWrittenDataSizeWithCompactionWriteRateLimiter(size);
     CompactionMetrics.getInstance().recordWriteInfo(type, CompactionIoDataType.METADATA, size);
     return size;
   }
@@ -121,10 +113,22 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     long beforeSize = this.getPos();
     super.endFile();
     long writtenDataSize = this.getPos() - beforeSize;
-    if (writtenDataSize > 0) {
-      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire((int) writtenDataSize);
-    }
+    acquireWrittenDataSizeWithCompactionWriteRateLimiter(writtenDataSize);
     CompactionMetrics.getInstance()
         .recordWriteInfo(type, CompactionIoDataType.METADATA, writtenDataSize);
+  }
+
+  private void acquireWrittenDataSizeWithCompactionWriteRateLimiter(long writtenDataSize) {
+    while (writtenDataSize > 0) {
+      if (writtenDataSize > Integer.MAX_VALUE) {
+        CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire(Integer.MAX_VALUE);
+        writtenDataSize -= Integer.MAX_VALUE;
+      } else {
+        CompactionTaskManager.getInstance()
+            .getMergeWriteRateLimiter()
+            .acquire((int) writtenDataSize);
+        return;
+      }
+    }
   }
 }

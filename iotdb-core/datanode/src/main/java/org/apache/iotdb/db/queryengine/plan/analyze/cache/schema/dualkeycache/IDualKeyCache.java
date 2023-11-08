@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
+
 import javax.annotation.concurrent.GuardedBy;
+
+import java.util.List;
 
 /**
  * This interfaces defines the behaviour of a dual key cache. A dual key cache supports manage cache
@@ -36,9 +41,15 @@ public interface IDualKeyCache<FK, SK, V> {
 
   /**
    * Traverse target cache values via given first key and second keys provided in computation and
-   * execute the defined computation logic.
+   * execute the defined computation logic. The computation is read only.
    */
   void compute(IDualKeyCacheComputation<FK, SK, V> computation);
+
+  /**
+   * Traverse target cache values via given first key and second keys provided in computation and
+   * execute the defined computation logic. Value can be updated in this computation.
+   */
+  void update(IDualKeyCacheUpdating<FK, SK, V> updating);
 
   /** put the cache value into cache */
   void put(FK firstKey, SK secondKey, V value);
@@ -51,6 +62,20 @@ public interface IDualKeyCache<FK, SK, V> {
   void invalidateAll();
 
   /**
+   * Invalidate cache values in the cache and clear related cache keys. The cache status and
+   * statistics won't be clear and they can still be accessed via cache.stats().
+   */
+  @GuardedBy("DataNodeSchemaCache#writeLock")
+  void invalidate(String database);
+
+  /**
+   * Invalidate cache values in the cache and clear related cache keys. The cache status and
+   * statistics won't be clear and they can still be accessed via cache.stats().
+   */
+  @GuardedBy("DataNodeSchemaCache#writeLock")
+  void invalidate(List<PartialPath> partialPathList);
+
+  /**
    * Clean up all data and info of this cache, including cache keys, cache values and cache stats.
    */
   @GuardedBy("DataNodeSchemaCache#writeLock")
@@ -58,4 +83,7 @@ public interface IDualKeyCache<FK, SK, V> {
 
   /** Return all the current cache status and statistics. */
   IDualKeyCacheStats stats();
+
+  @TestOnly
+  void evictOneEntry();
 }

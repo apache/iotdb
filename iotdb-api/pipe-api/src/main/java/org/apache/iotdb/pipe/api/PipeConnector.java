@@ -28,7 +28,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
 /**
- * PipeConnector
+ * PipeConnector (Deprecated since v1.3.0, renamed to PipeSink)
  *
  * <p>PipeConnector is responsible for sending events to sinks.
  *
@@ -63,6 +63,7 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
  * will be called to create a new connection with the sink when the method {@link
  * PipeConnector#heartbeat()} throws exceptions.
  */
+@Deprecated // since v1.3.0, renamed to PipeSink
 public interface PipeConnector extends PipePlugin {
 
   /**
@@ -127,10 +128,19 @@ public interface PipeConnector extends PipePlugin {
    * @throws PipeConnectionException if the connection is broken
    * @throws Exception the user can throw errors if necessary
    */
-  void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception;
+  default void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    try {
+      for (final TabletInsertionEvent tabletInsertionEvent :
+          tsFileInsertionEvent.toTabletInsertionEvents()) {
+        transfer(tabletInsertionEvent);
+      }
+    } finally {
+      tsFileInsertionEvent.close();
+    }
+  }
 
   /**
-   * This method is used to transfer the Event.
+   * This method is used to transfer the generic events, including HeartbeatEvent.
    *
    * @param event Event to be transferred
    * @throws PipeConnectionException if the connection is broken

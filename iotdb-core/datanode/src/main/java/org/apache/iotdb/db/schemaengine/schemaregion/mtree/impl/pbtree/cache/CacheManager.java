@@ -29,8 +29,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 
 import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getBelongedContainer;
 import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getCachedMNodeContainer;
@@ -69,7 +69,7 @@ public abstract class CacheManager implements ICacheManager {
   // The nodeBuffer helps to quickly locate the volatile subtree
   private final NodeBuffer nodeBuffer = new NodeBuffer();
 
-  public CacheManager(MemManager memManager) {
+  protected CacheManager(MemManager memManager) {
     this.memManager = memManager;
   }
 
@@ -227,37 +227,20 @@ public abstract class CacheManager implements ICacheManager {
     nodeBuffer.remove(getCacheEntry(node));
   }
 
-  /**
-   * After flush the given node's container to disk, the cache status of the nodes in container and
-   * their ancestors should be updated. All the node should be added to nodeCache and the nodeBuffer
-   * should be cleared after finishing a MTree flush task.
-   *
-   * @param node
-   */
-  @Override
-  public void updateCacheStatusAfterPersist(ICachedMNode node) {
+  private void addItselfAndAncestorToCache(ICachedMNode node) {
+    // the volatile subtree of this node has been deleted, thus there's no need to flush it
+    // add the node and its ancestors to cache
+    // if there's flush failure, such node and ancestors will be removed from cache again by
+    // #updateCacheStatusAfterFlushFailure
     ICachedMNode tmp = node;
-    while (!tmp.isDatabase() && !isInNodeCache(getCacheEntry(tmp))) {
+    while (!tmp.isDatabase()
+        && !isInNodeCache(getCacheEntry(tmp))
+        && !getCachedMNodeContainer(tmp).hasChildrenInBuffer()
+        && !getCacheEntry(tmp).isVolatile()) {
+      nodeBuffer.remove(getCacheEntry(tmp));
       addToNodeCache(getCacheEntry(tmp), tmp);
       tmp = tmp.getParent();
     }
-    ICachedMNodeContainer container = getCachedMNodeContainer(node);
-    Map<String, ICachedMNode> persistedChildren = container.getNewChildBuffer();
-    for (ICachedMNode child : persistedChildren.values()) {
-      updateCacheStatusAfterPersist(child, container);
-    }
-
-    persistedChildren = container.getUpdatedChildBuffer();
-    for (ICachedMNode child : persistedChildren.values()) {
-      updateCacheStatusAfterPersist(child, container);
-    }
-  }
-
-  private void updateCacheStatusAfterPersist(ICachedMNode node, ICachedMNodeContainer container) {
-    CacheEntry cacheEntry = getCacheEntry(node);
-    cacheEntry.setVolatile(false);
-    container.moveMNodeToCache(node.getName());
-    addToNodeCache(cacheEntry, node);
   }
 
   /**
@@ -272,56 +255,141 @@ public abstract class CacheManager implements ICacheManager {
     return storageGroupMNode;
   }
 
-  /**
-   * Collect nodes in all volatile subtrees. All volatile nodes' parents will be collected. The
-   * ancestor will be in front of the descendent in returned list.
-   *
-   * @return
-   */
   @Override
-  public List<ICachedMNode> collectVolatileMNodes() {
-    List<ICachedMNode> nodesToPersist = new ArrayList<>();
-    nodeBuffer.forEachNode(node -> collectVolatileNodes(node, nodesToPersist));
-    nodeBuffer.clear();
-    return nodesToPersist;
+  public Iterator<ICachedMNode> collectVolatileSubtrees() {
+    return new Iterator<ICachedMNode>() {
+
+      private final Iterator<ICachedMNode> nodeBufferIterator = nodeBuffer.iterator();
+
+      private ICachedMNode nextSubtree = null;
+
+      @Override
+      public boolean hasNext() {
+        if (nextSubtree == null) {
+          tryGetNext();
+        }
+        return nextSubtree != null;
+      }
+
+      @Override
+      public ICachedMNode next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        ICachedMNode result = nextSubtree;
+        nextSubtree = null;
+        return result;
+      }
+
+      private void tryGetNext() {
+        ICachedMNode node;
+        while (nodeBufferIterator.hasNext()) {
+          node = nodeBufferIterator.next();
+          nodeBuffer.remove(getCacheEntry(node));
+          if (getCachedMNodeContainer(node).hasChildrenInBuffer()) {
+            nextSubtree = node;
+            return;
+          } else if (!node.isDatabase()) {
+            addItselfAndAncestorToCache(node);
+          }
+        }
+      }
+    };
   }
 
-  private void collectVolatileNodes(ICachedMNode node, List<ICachedMNode> nodesToPersist) {
-    if (node.isMeasurement()) {
+  @Override
+  public Iterator<ICachedMNode> updateCacheStatusAndRetrieveSubtreeAfterPersist(
+      ICachedMNode subtreeRoot) {
+    return new VolatileSubtreeIterator(getCachedMNodeContainer(subtreeRoot));
+  }
+
+  private class VolatileSubtreeIterator implements Iterator<ICachedMNode> {
+
+    private final ICachedMNodeContainer container;
+    private final Iterator<ICachedMNode> bufferedNodeIterator;
+
+    private ICachedMNode nextSubtree = null;
+
+    private VolatileSubtreeIterator(ICachedMNodeContainer container) {
+      this.container = container;
+      this.bufferedNodeIterator = container.getChildrenBufferIterator();
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (nextSubtree == null) {
+        tryGetNext();
+      }
+      return nextSubtree != null;
+    }
+
+    @Override
+    public ICachedMNode next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      ICachedMNode result = nextSubtree;
+      nextSubtree = null;
+      return result;
+    }
+
+    private void tryGetNext() {
+      ICachedMNode node;
+      ICachedMNode tmp;
+      CacheEntry cacheEntry;
+      while (bufferedNodeIterator.hasNext()) {
+        node = bufferedNodeIterator.next();
+
+        // update cache status after persist
+        // when process one node, all of its buffered child should be moved to cache
+        // except those with volatile children
+        cacheEntry = getCacheEntry(node);
+        cacheEntry.setVolatile(false);
+        container.moveMNodeToCache(node.getName());
+
+        if (node.isMeasurement() || !getCachedMNodeContainer(node).hasChildrenInBuffer()) {
+          // there's no volatile subtree under this node, thus there's no need to flush it
+          // add the node and its ancestors to cache
+          // if there's flush failure, such node and ancestors will be removed from cache again by
+          // #updateCacheStatusAfterFlushFailure
+          addToNodeCache(cacheEntry, node);
+          tmp = node.getParent();
+          while (!tmp.isDatabase()
+              && !isInNodeCache(getCacheEntry(tmp))
+              && !getCachedMNodeContainer(tmp).hasChildrenInBuffer()) {
+            addToNodeCache(getCacheEntry(tmp), tmp);
+            tmp = tmp.getParent();
+          }
+        } else {
+          // nodes with volatile children should be treated as root of volatile subtree and return
+          // for flush
+          nextSubtree = node;
+          return;
+        }
+      }
+    }
+  }
+
+  @Override
+  public void updateCacheStatusAfterFlushFailure(ICachedMNode subtreeRoot) {
+    nodeBuffer.put(getCacheEntry(subtreeRoot), subtreeRoot);
+    if (subtreeRoot.isDatabase()) {
       return;
     }
-    Iterator<ICachedMNode> bufferIterator =
-        getCachedMNodeContainer(node).getChildrenBufferIterator();
-    if (bufferIterator.hasNext()) {
-      nodesToPersist.add(node);
-      ICachedMNode child;
-      while (bufferIterator.hasNext()) {
-        child = bufferIterator.next();
-        collectVolatileNodes(child, nodesToPersist);
-      }
-    } else {
-      // add back to cache
-      CacheEntry cacheEntry = getCacheEntry(node);
-      while (!node.isDatabase()) {
-        if (cacheEntry != null && !isInNodeCache(cacheEntry)) {
-          addToNodeCache(cacheEntry, node);
-        }
-        node = node.getParent();
-        cacheEntry = getCacheEntry(node);
-      }
-    }
+    removeAncestorsFromCache(subtreeRoot);
   }
 
   @Override
   public void remove(ICachedMNode node) {
     removeRecursively(node);
+    addItselfAndAncestorToCache(node.getParent());
   }
 
   private void removeOne(CacheEntry cacheEntry, ICachedMNode node) {
-    if (cacheEntry.isVolatile()) {
-      nodeBuffer.remove(cacheEntry);
-    } else {
+    if (isInNodeCache(cacheEntry)) {
       removeFromNodeCache(cacheEntry);
+    } else {
+      nodeBuffer.remove(cacheEntry);
     }
 
     node.setCacheEntry(null);
@@ -486,6 +554,7 @@ public abstract class CacheManager implements ICacheManager {
   public void clear(ICachedMNode root) {
     clearMNodeInMemory(root);
     clearNodeCache();
+    nodeBuffer.setUpdatedStorageGroupMNode(null);
     nodeBuffer.clear();
   }
 
@@ -540,7 +609,9 @@ public abstract class CacheManager implements ICacheManager {
     private static final int MAP_NUM = 17;
 
     private IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode;
-    private Map<CacheEntry, ICachedMNode>[] maps = new Map[MAP_NUM];
+    private final Map<CacheEntry, ICachedMNode>[] maps = new Map[MAP_NUM];
+
+    private final Map<Integer, NodeBufferIterator> currentIteratorMap = new ConcurrentHashMap<>();
 
     NodeBuffer() {
       for (int i = 0; i < MAP_NUM; i++) {
@@ -558,18 +629,15 @@ public abstract class CacheManager implements ICacheManager {
 
     void put(CacheEntry cacheEntry, ICachedMNode node) {
       maps[getLoc(cacheEntry)].put(cacheEntry, node);
+      if (!currentIteratorMap.isEmpty()) {
+        for (NodeBufferIterator nodeBufferIterator : currentIteratorMap.values()) {
+          nodeBufferIterator.checkHasNew(getLoc(cacheEntry));
+        }
+      }
     }
 
     void remove(CacheEntry cacheEntry) {
       maps[getLoc(cacheEntry)].remove(cacheEntry);
-    }
-
-    void forEachNode(Consumer<ICachedMNode> action) {
-      for (Map<CacheEntry, ICachedMNode> map : maps) {
-        for (ICachedMNode node : map.values()) {
-          action.accept(node);
-        }
-      }
     }
 
     long getBufferNodeNum() {
@@ -589,6 +657,85 @@ public abstract class CacheManager implements ICacheManager {
     private int getLoc(CacheEntry cacheEntry) {
       int hash = cacheEntry.hashCode() % MAP_NUM;
       return hash < 0 ? hash + MAP_NUM : hash;
+    }
+
+    Iterator<ICachedMNode> iterator() {
+      NodeBufferIterator iterator = new NodeBufferIterator();
+      currentIteratorMap.put(iterator.hashCode, iterator);
+      return iterator;
+    }
+
+    private class NodeBufferIterator implements Iterator<ICachedMNode> {
+      volatile int mapIndex = 0;
+      Iterator<ICachedMNode> currentIterator = maps[0].values().iterator();
+
+      ICachedMNode nextNode = null;
+
+      volatile boolean hasNew = false;
+
+      private final int hashCode = super.hashCode();
+
+      @Override
+      public boolean hasNext() {
+        if (nextNode == null) {
+          tryGetNext();
+          if (nextNode == null && hasNew) {
+            synchronized (this) {
+              hasNew = false;
+              mapIndex = 0;
+            }
+            currentIterator = maps[0].values().iterator();
+            tryGetNext();
+          }
+        }
+        if (nextNode == null) {
+          currentIteratorMap.remove(hashCode);
+          return false;
+        } else {
+          return true;
+        }
+      }
+
+      @Override
+      public ICachedMNode next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        ICachedMNode result = nextNode;
+        nextNode = null;
+        return result;
+      }
+
+      private void tryGetNext() {
+        if (mapIndex >= maps.length) {
+          return;
+        }
+
+        while (!currentIterator.hasNext()) {
+          currentIterator = null;
+
+          synchronized (this) {
+            mapIndex++;
+          }
+
+          if (mapIndex == maps.length) {
+            return;
+          }
+          currentIterator = maps[mapIndex].values().iterator();
+        }
+
+        nextNode = currentIterator.next();
+      }
+
+      private void checkHasNew(int index) {
+        if (mapIndex >= index) {
+          synchronized (this) {
+            if (mapIndex >= index) {
+              hasNew = true;
+            }
+          }
+        }
+      }
     }
   }
 }

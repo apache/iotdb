@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.lo
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import java.io.File;
@@ -50,12 +52,6 @@ public class TsFileIdentifier {
   public static final int DATA_REGION_OFFSET_IN_LOG = 2;
   public static final int TIME_PARTITION_OFFSET_IN_LOG = 3;
   public static final int FILE_NAME_OFFSET_IN_LOG = 4;
-
-  private static final int LOGICAL_SG_OFFSET_IN_LOG_FROM_OLD = 0;
-  private static final int DATA_REGION_OFFSET_IN_LOG_FROM_OLD = 1;
-  private static final int TIME_PARTITION_OFFSET_IN_LOG_FROM_OLD = 2;
-  private static final int FILE_NAME_OFFSET_IN_LOG_FROM_OLD = 3;
-  private static final int SEQUENCE_OFFSET_IN_LOG_FROM_OLD = 4;
 
   private static final String SEQUENCE_STR = "sequence";
   private static final String UNSEQUENCE_STR = "unsequence";
@@ -99,7 +95,7 @@ public class TsFileIdentifier {
         splittedPath[length - LOGICAL_SG_OFFSET_IN_PATH],
         splittedPath[length - DATA_REGION_OFFSET_IN_PATH],
         splittedPath[length - TIME_PARTITION_OFFSET_IN_PATH],
-        splittedPath[length - SEQUENCE_OFFSET_IN_PATH].equals(IoTDBConstant.SEQUENCE_FLODER_NAME),
+        splittedPath[length - SEQUENCE_OFFSET_IN_PATH].equals(IoTDBConstant.SEQUENCE_FOLDER_NAME),
         splittedPath[length - FILE_NAME_OFFSET_IN_PATH]);
   }
 
@@ -121,30 +117,6 @@ public class TsFileIdentifier {
         splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG],
         splittedFileInfo[SEQUENCE_OFFSET_IN_LOG].equals(SEQUENCE_STR),
         splittedFileInfo[FILE_NAME_OFFSET_IN_LOG]);
-  }
-
-  /**
-   * This function generates an instance of CompactionFileIdentifier by parsing the old info string
-   * from previous version (<0.13) of a tsfile(usually recorded in a compaction.log). Such as
-   * “root.test.sg 0 0 1-1-0-0.tsfile true" from old cross space compaction log and "root.test.sg 0
-   * 0 1-1-0-0.tsfile sequence" from old inner space compaction log.
-   */
-  public static TsFileIdentifier getFileIdentifierFromOldInfoString(String oldInfoString) {
-    String[] splittedFileInfo = oldInfoString.split(INFO_SEPARATOR);
-    int length = splittedFileInfo.length;
-    if (length != 5) {
-      throw new RuntimeException(
-          String.format(
-              "String %s is not a legal file info string from previous version (<0.13)",
-              oldInfoString));
-    }
-    return new TsFileIdentifier(
-        splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG_FROM_OLD],
-        splittedFileInfo[DATA_REGION_OFFSET_IN_LOG_FROM_OLD],
-        splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG_FROM_OLD],
-        splittedFileInfo[SEQUENCE_OFFSET_IN_LOG_FROM_OLD].equals("true")
-            || splittedFileInfo[SEQUENCE_OFFSET_IN_LOG_FROM_OLD].equals(SEQUENCE_STR),
-        splittedFileInfo[FILE_NAME_OFFSET_IN_LOG_FROM_OLD]);
   }
 
   @Override
@@ -187,7 +159,7 @@ public class TsFileIdentifier {
   public File getFileFromDataDirs() {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     String partialFileString =
-        (sequence ? IoTDBConstant.SEQUENCE_FLODER_NAME : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
+        (sequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
             + File.separator
             + logicalStorageGroupName
             + File.separator
@@ -205,6 +177,30 @@ public class TsFileIdentifier {
     return null;
   }
 
+  public File getFileFromDataDirsIfAnyAdjuvantFileExists() {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    String partialFileString =
+        (sequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
+            + File.separator
+            + logicalStorageGroupName
+            + File.separator
+            + dataRegionId
+            + File.separator
+            + timePartitionId
+            + File.separator
+            + filename;
+    for (String dataDir : dataDirs) {
+      File file = FSFactoryProducer.getFSFactory().getFile(dataDir, partialFileString);
+      if (file.exists()
+          || new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
+          || new File(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists()
+          || new File(file.getAbsolutePath() + ModificationFile.COMPACTION_FILE_SUFFIX).exists()) {
+        return file;
+      }
+    }
+    return null;
+  }
+
   public void setFilename(String filename) {
     this.filename = filename;
   }
@@ -214,7 +210,7 @@ public class TsFileIdentifier {
   }
 
   public String getFilePath() {
-    return (sequence ? IoTDBConstant.SEQUENCE_FLODER_NAME : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
+    return (sequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME)
         + File.separator
         + logicalStorageGroupName
         + File.separator

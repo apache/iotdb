@@ -37,8 +37,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -5587,12 +5587,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     deleteTimeseriesInMManager(seriesPaths);
 
-    for (TsFileResource resource : seqResources) {
-      resource.setTimeIndexType((byte) 2);
-    }
-    for (TsFileResource resource : unseqResources) {
-      resource.setTimeIndexType((byte) 2);
-    }
+    seqResources.forEach(TsFileResource::degradeTimeIndex);
+    unseqResources.forEach(TsFileResource::degradeTimeIndex);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;

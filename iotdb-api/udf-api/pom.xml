@@ -20,22 +20,29 @@
 
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <parent>
-        <artifactId>iotdb-parent</artifactId>
-        <groupId>org.apache.iotdb</groupId>
-        <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
-    </parent>
     <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.apache.iotdb</groupId>
+        <artifactId>iotdb-api</artifactId>
+        <version>1.3.1-SNAPSHOT</version>
+    </parent>
     <artifactId>udf-api</artifactId>
+    <name>IoTDB: API: UDF API</name>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>common-api</artifactId>
+            <version>1.3.1-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
     <profiles>
         <profile>
             <id>get-jar-with-dependencies</id>
             <build>
                 <plugins>
                     <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${maven.assembly.version}</version>
                         <configuration>
                             <descriptorRefs>
                                 <descriptorRef>jar-with-dependencies</descriptorRef>
@@ -44,12 +51,12 @@
                         <executions>
                             <execution>
                                 <id>make-assembly</id>
-                                <!-- this is used for inheritance merges -->
-                                <phase>package</phase>
                                 <!-- bind to the packaging phase -->
                                 <goals>
                                     <goal>single</goal>
                                 </goals>
+                                <!-- this is used for inheritance merges -->
+                                <phase>package</phase>
                             </execution>
                         </executions>
                     </plugin>

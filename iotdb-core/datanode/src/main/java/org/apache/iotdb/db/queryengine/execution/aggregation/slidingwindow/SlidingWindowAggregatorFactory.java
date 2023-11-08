@@ -26,8 +26,8 @@ import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -132,6 +132,7 @@ public class SlidingWindowAggregatorFactory {
       case SUM:
       case AVG:
       case COUNT:
+      case COUNT_TIME:
         return new SmoothQueueSlidingWindowAggregator(accumulator, inputLocationList, step);
       case MAX_VALUE:
         return new MonotonicQueueSlidingWindowAggregator(

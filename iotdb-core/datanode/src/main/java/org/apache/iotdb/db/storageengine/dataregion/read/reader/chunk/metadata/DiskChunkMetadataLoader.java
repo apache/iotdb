@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -44,21 +43,25 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOA
 public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
   private final TsFileResource resource;
-  private final PartialPath seriesPath;
   private final QueryContext context;
   // time filter or value filter, only used to check time range
   private final Filter filter;
+
+  private final List<Modification> pathModifications;
 
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
   public DiskChunkMetadataLoader(
-      TsFileResource resource, PartialPath seriesPath, QueryContext context, Filter filter) {
+      TsFileResource resource,
+      QueryContext context,
+      Filter filter,
+      List<Modification> pathModifications) {
     this.resource = resource;
-    this.seriesPath = seriesPath;
     this.context = context;
     this.filter = filter;
+    this.pathModifications = pathModifications;
   }
 
   @Override
@@ -69,8 +72,6 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
           ((TimeseriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
 
       final long t2 = System.nanoTime();
-      List<Modification> pathModifications =
-          context.getPathModifications(resource.getModFile(), seriesPath);
 
       if (context.isDebug()) {
         DEBUG_LOGGER.info(

@@ -34,6 +34,24 @@ else
   exit 1
 fi
 
+force=""
+
+while true; do
+    case "$1" in
+        -f)
+            force="yes"
+            break
+        ;;
+        "")
+            #if we do not use getopt, we then have to process the case that there is no argument.
+            #in some systems, when there is no argument, shift command may throw error, so we skip directly
+            #all others are args to the program
+            PARAMS=$*
+            break
+        ;;
+    esac
+done
+
 PID_VERIFY=$(ps ax | grep -i 'ConfigNode' | grep java | grep -v grep | awk '{print $1}')
 if [ -z "$PID" ]; then
   echo "No ConfigNode to stop"
@@ -42,8 +60,13 @@ if [ -z "$PID" ]; then
   fi
   exit 1
 elif [[ "${PID_VERIFY}" =~ ${PID} ]]; then
-  kill -s TERM "$PID"
-  echo "Close ConfigNode, PID:" "$PID"
+  if [[ "${force}" == "yes" ]]; then
+    kill -9 "$PID"
+    echo "Force to stop ConfigNode, PID:" "$PID"
+  else
+    kill -s TERM "$PID"
+    echo "Stop ConfigNode, PID:" "$PID"
+  fi
 else
   echo "No ConfigNode to stop"
   exit 1

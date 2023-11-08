@@ -21,15 +21,14 @@
 [English](./README.md) | [中文](./README_ZH.md)
 
 # IoTDB
-[![Main Mac and Linux](https://github.com/apache/iotdb/actions/workflows/main-unix.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-unix.yml)
-[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)<!--[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)-->
+[![Unit-Test](https://github.com/apache/iotdb/actions/workflows/unit-test.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/unit-test.yml)
+[![codecov](https://codecov.io/github/apache/iotdb/graph/badge.svg?token=ejF3UGk0Nv)](https://codecov.io/github/apache/iotdb)
 [![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
 ![](https://img.shields.io/badge/platform-win%20%7C%20macos%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/java--language-1.8%20%7C%2011%20%7C%2017-blue.svg)
-[![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
 [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/iotdb)
@@ -97,6 +96,116 @@ To use IoTDB, you need to have:
     # FreeBSD or Darwin
     > sudo sysctl -w kern.ipc.somaxconn=65535
     ```
+### Linux
+
+(This guide is based on an installation of Ubuntu 22.04)
+
+#### Git
+
+Make sure `Git` is installed, if it's missing, simply install it via:
+
+    sudo apt install git
+
+#### Java
+
+Make sure `Java` is installed, if it's missing, simply install it via:
+
+    sudo apt install default-jdk
+
+#### Flex
+
+    sudo apt install flex
+
+#### Bison
+
+    sudo apt install bison
+
+#### Boost
+
+    sudo apt install libboost-all-dev
+
+#### OpenSSL header files
+
+Usually OpenSSL is already installed, however it's missing the header files we need to compile.
+So ensure these are installed:
+
+    sudo apt install libssl-dev
+
+### Mac OS
+
+#### Git
+
+First ensure `git` works.
+
+Usually on a new Mac, as soon as you simply type `git` in a `Terminal` window, a popup will come and ask if you want to finish installing the Mac developer tools. 
+Just say yes.
+As soon as this is finished, you are free to use `git`.
+
+#### Homebrew
+
+Then install `Homebrew` - If this hasn't been installed yet, as we are going to be installing everything using `Homebrew`.
+
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+#### Java
+
+As soon as that's done install `Java`, if this hasn't been installed yet:
+
+    brew install java
+
+Depending on your version of Homebrew, it will tell you to do one of the following (Depending on the type of processor in your device).
+
+Mainly on the Intel-based models:
+
+    sudo ln -sfn /usr/local/opt/openjdk/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk.jdk
+
+Mainly on the ARM-based models:
+
+    sudo ln -sfn /opt/homebrew/opt/openjdk/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk.jdk
+
+#### CPP Prerequisites 
+
+Building `Thrift` requires us to add two more dependencies to the picture.
+
+This however is only needed when enabling the `compile-cpp` profile:
+
+    brew install boost
+    brew install bison
+    brew install openssl
+
+### Windows
+
+#### Chocolatey
+
+Then install `Chocolatey` - If this hasn't been installed yet, as we are going to be installing everything using `Chocolatey`.
+
+https://chocolatey.org/install
+
+#### Git
+
+    choco install git.install
+
+#### Java
+
+    choco install openjdk
+
+#### Visual Studio 19 2022
+
+    choco install visualstudio2022community
+    choco install visualstudio2022buildtools
+    choco install visualstudio2022-workload-nativedesktop
+
+#### FLex / Bison
+
+    choco install winflexbison
+
+#### Boost
+
+    choco install boost-msvc-14.2
+
+#### OpenSSL
+
+    choco install openssl
 
 ## Installation
 
@@ -170,7 +279,7 @@ After being built, the IoTDB distribution is located at the folder: "distributio
 
 ### Only build cli
 
-Under the root path of iotdb:
+Under the iotdb/iotdb-client path:
 
 ```
 > mvn clean package -pl cli -am -DskipTests

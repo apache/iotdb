@@ -67,7 +67,8 @@ public enum DataNodeRequestType {
   DROP_PIPE_PLUGIN,
 
   // Pipe Task
-  PUSH_PIPE_META,
+  PIPE_PUSH_ALL_META,
+  PIPE_PUSH_SINGLE_META,
   PIPE_HEARTBEAT,
 
   // CQ
@@ -100,9 +101,6 @@ public enum DataNodeRequestType {
 
   // TODO Need to migrate to Node Maintenance
   KILL_QUERY_INSTANCE,
-
-  // ML Model
-  DELETE_MODEL_METRICS,
 
   // Quota
   SET_SPACE_QUOTA,

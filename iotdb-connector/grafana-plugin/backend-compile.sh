@@ -24,12 +24,12 @@ if [ $exists_env -eq 0 ]; then
 fi
 work_path=$(pwd | sed 's/\"//g')
 echo $work_path
-go get -u github.com/grafana/grafana-plugin-sdk-go
+go get -u github.com/grafana/grafana-plugin-sdk-go@v0.179.0
 go mod tidy
-check_results=$(go env | grep GOPATH= | sed 's/\"//g')
+check_results=$(go env | grep GOPATH= | sed 's/\"//g' | sed "s/\'//g")
 go_path=${check_results/GOPATH=/}
-cd $go_path/pkg/mod/github.com/magefile/mage@v1.14.0
+cd $go_path/pkg/mod/github.com/magefile/mage@v1.15.0
 chmod 755 $go_path/pkg/mod/github.com/magefile/*
-go run $go_path/pkg/mod/github.com/magefile/mage@v1.14.0/bootstrap.go
+go run $go_path/pkg/mod/github.com/magefile/mage@v1.15.0/bootstrap.go
 cd $work_path
 $go_path/bin/mage -v

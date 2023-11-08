@@ -89,13 +89,13 @@ public class ConfigNodeStartupCheck extends StartupChecks {
    */
   private void checkGlobalConfig() throws ConfigurationException {
     // When the ConfigNode consensus protocol is set to SIMPLE_CONSENSUS,
-    // the target_config_node_list needs to point to itself
+    // the seed_config_node needs to point to itself
     if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
-        && (!CONF.getInternalAddress().equals(CONF.getTargetConfigNode().getIp())
-            || CONF.getInternalPort() != CONF.getTargetConfigNode().getPort())) {
+        && (!CONF.getInternalAddress().equals(CONF.getSeedConfigNode().getIp())
+            || CONF.getInternalPort() != CONF.getSeedConfigNode().getPort())) {
       throw new ConfigurationException(
-          IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST,
-          CONF.getTargetConfigNode().getIp() + ":" + CONF.getTargetConfigNode().getPort(),
+          IoTDBConstant.CN_SEED_CONFIG_NODE,
+          CONF.getSeedConfigNode().getIp() + ":" + CONF.getSeedConfigNode().getPort(),
           CONF.getInternalAddress() + ":" + CONF.getInternalPort(),
           "the config_node_consensus_protocol_class is set to" + ConsensusFactory.SIMPLE_CONSENSUS);
     }
@@ -161,12 +161,6 @@ public class ConfigNodeStartupCheck extends StartupChecks {
           CONF.getRoutePriorityPolicy(),
           "LEADER or GREEDY",
           "an unrecognized route_priority_policy is set");
-    }
-
-    // The ip of target ConfigNode couldn't be 0.0.0.0
-    if (CONF.getTargetConfigNode().getIp().equals("0.0.0.0")) {
-      throw new ConfigurationException(
-          "The ip address of any target_config_node_list couldn't be 0.0.0.0");
     }
 
     // The default RegionGroupNum should be positive

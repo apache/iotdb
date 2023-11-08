@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -25,6 +26,8 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -72,7 +75,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -113,6 +116,12 @@ public class ClusterSchemaManager {
   private final ClusterSchemaQuotaStatistics schemaQuotaStatistics;
   private final ReentrantLock createDatabaseLock = new ReentrantLock();
 
+  private static final String CONSENSUS_READ_ERROR =
+      "Failed in the read API executing the consensus layer due to: ";
+
+  private static final String CONSENSUS_WRITE_ERROR =
+      "Failed in the write API executing the consensus layer due to: ";
+
   public ClusterSchemaManager(
       IManager configManager,
       ClusterSchemaInfo clusterSchemaInfo,
@@ -148,16 +157,24 @@ public class ClusterSchemaManager {
     try {
       createDatabaseLock.lock();
       clusterSchemaInfo.isDatabaseNameValid(databaseSchemaPlan.getSchema().getName());
-      if (!databaseSchemaPlan.getSchema().getName().equals(IoTDBConfig.SYSTEM_DATABASE)) {
+      if (!databaseSchemaPlan.getSchema().getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
         clusterSchemaInfo.checkDatabaseLimit();
       }
       // Cache DatabaseSchema
-      result = getConsensusManager().write(databaseSchemaPlan).getStatus();
+      result = getConsensusManager().write(databaseSchemaPlan);
       // Bind Database metrics
-      PartitionMetrics.bindDatabasePartitionMetrics(
-          MetricService.getInstance(), configManager, databaseSchemaPlan.getSchema().getName());
+      PartitionMetrics.bindDatabaseRelatedMetricsWhenUpdate(
+          MetricService.getInstance(),
+          configManager,
+          databaseSchemaPlan.getSchema().getName(),
+          databaseSchemaPlan.getSchema().getDataReplicationFactor(),
+          databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
       // Adjust the maximum RegionGroup number of each Database
       adjustMaxRegionGroupNum();
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
     } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
       if (metadataException instanceof IllegalPathException) {
@@ -220,12 +237,32 @@ public class ClusterSchemaManager {
     }
 
     // Alter DatabaseSchema
-    return getConsensusManager().write(databaseSchemaPlan).getStatus();
+    try {
+      result = getConsensusManager().write(databaseSchemaPlan);
+      PartitionMetrics.bindDatabaseReplicationFactorMetricsWhenUpdate(
+          MetricService.getInstance(),
+          databaseSchemaPlan.getSchema().getName(),
+          databaseSchemaPlan.getSchema().getDataReplicationFactor(),
+          databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
+      return result;
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   /** Delete DatabaseSchema. */
   public TSStatus deleteDatabase(DeleteDatabasePlan deleteDatabasePlan) {
-    TSStatus result = getConsensusManager().write(deleteDatabasePlan).getStatus();
+    TSStatus result;
+    try {
+      result = getConsensusManager().write(deleteDatabasePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+    }
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       adjustMaxRegionGroupNum();
     }
@@ -240,7 +277,16 @@ public class ClusterSchemaManager {
    * @return CountDatabaseResp
    */
   public CountDatabaseResp countMatchedDatabases(CountDatabasePlan countDatabasePlan) {
-    return (CountDatabaseResp) getConsensusManager().read(countDatabasePlan).getDataset();
+    try {
+      return (CountDatabaseResp) getConsensusManager().read(countDatabasePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      CountDatabaseResp response = new CountDatabaseResp();
+      response.setStatus(res);
+      return response;
+    }
   }
 
   /**
@@ -250,9 +296,17 @@ public class ClusterSchemaManager {
    *
    * @return DatabaseSchemaResp
    */
-  public DatabaseSchemaResp getMatchedDatabaseSchema(GetDatabasePlan getStorageGroupPlan) {
-    DatabaseSchemaResp resp =
-        (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan).getDataset();
+  public DatabaseSchemaResp getMatchedDatabaseSchema(GetDatabasePlan getDatabasePlan) {
+    DatabaseSchemaResp resp;
+    try {
+      resp = (DatabaseSchemaResp) getConsensusManager().read(getDatabasePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      resp = new DatabaseSchemaResp();
+      resp.setStatus(res);
+    }
     List<String> preDeletedDatabaseList = new ArrayList<>();
     for (String database : resp.getSchemaMap().keySet()) {
       if (getPartitionManager().isDatabasePreDeleted(database)) {
@@ -267,8 +321,16 @@ public class ClusterSchemaManager {
 
   /** Only used in cluster tool show Databases. */
   public TShowDatabaseResp showDatabase(GetDatabasePlan getStorageGroupPlan) {
-    DatabaseSchemaResp databaseSchemaResp =
-        (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan).getDataset();
+    DatabaseSchemaResp databaseSchemaResp;
+    try {
+      databaseSchemaResp = (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      databaseSchemaResp = new DatabaseSchemaResp();
+      databaseSchemaResp.setStatus(res);
+    }
     if (databaseSchemaResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Return immediately if some Database doesn't exist
       return new TShowDatabaseResp().setStatus(databaseSchemaResp.getStatus());
@@ -374,25 +436,53 @@ public class ClusterSchemaManager {
     // TODO: Check response
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
 
-    return getConsensusManager().write(setTTLPlan).getStatus();
+    try {
+      return getConsensusManager().write(setTTLPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   public TSStatus setSchemaReplicationFactor(
       SetSchemaReplicationFactorPlan setSchemaReplicationFactorPlan) {
     // TODO: Inform DataNodes
-    return getConsensusManager().write(setSchemaReplicationFactorPlan).getStatus();
+    try {
+      return getConsensusManager().write(setSchemaReplicationFactorPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   public TSStatus setDataReplicationFactor(
       SetDataReplicationFactorPlan setDataReplicationFactorPlan) {
     // TODO: Inform DataNodes
-    return getConsensusManager().write(setDataReplicationFactorPlan).getStatus();
+    try {
+      return getConsensusManager().write(setDataReplicationFactorPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   public TSStatus setTimePartitionInterval(
       SetTimePartitionIntervalPlan setTimePartitionIntervalPlan) {
     // TODO: Inform DataNodes
-    return getConsensusManager().write(setTimePartitionIntervalPlan).getStatus();
+    try {
+      return getConsensusManager().write(setTimePartitionIntervalPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   /**
@@ -413,7 +503,7 @@ public class ClusterSchemaManager {
 
     for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
       if (!isDatabaseExist(databaseSchema.getName())
-          || databaseSchema.getName().equals(IoTDBConfig.SYSTEM_DATABASE)) {
+          || databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
         // filter the pre deleted database and the system database
         databaseNum--;
       }
@@ -421,7 +511,7 @@ public class ClusterSchemaManager {
 
     AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan = new AdjustMaxRegionGroupNumPlan();
     for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
-      if (databaseSchema.getName().equals(IoTDBConfig.SYSTEM_DATABASE)) {
+      if (databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
         // filter the system database
         continue;
       }
@@ -478,7 +568,11 @@ public class ClusterSchemaManager {
         LOGGER.warn("Adjust maxRegionGroupNum failed because StorageGroup doesn't exist", e);
       }
     }
-    getConsensusManager().write(adjustMaxRegionGroupNumPlan);
+    try {
+      getConsensusManager().write(adjustMaxRegionGroupNumPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    }
   }
 
   public static int calcMaxRegionGroupNum(
@@ -632,7 +726,14 @@ public class ClusterSchemaManager {
    * @return TSStatus
    */
   public TSStatus createTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {
-    return getConsensusManager().write(createSchemaTemplatePlan).getStatus();
+    try {
+      return getConsensusManager().write(createSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
+    }
   }
 
   /**
@@ -642,8 +743,16 @@ public class ClusterSchemaManager {
    */
   public TGetAllTemplatesResp getAllTemplates() {
     GetAllSchemaTemplatePlan getAllSchemaTemplatePlan = new GetAllSchemaTemplatePlan();
-    TemplateInfoResp templateResp =
-        (TemplateInfoResp) getConsensusManager().read(getAllSchemaTemplatePlan).getDataset();
+    TemplateInfoResp templateResp;
+    try {
+      templateResp = (TemplateInfoResp) getConsensusManager().read(getAllSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      templateResp = new TemplateInfoResp();
+      templateResp.setStatus(res);
+    }
     TGetAllTemplatesResp resp = new TGetAllTemplatesResp();
     resp.setStatus(templateResp.getStatus());
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -658,8 +767,16 @@ public class ClusterSchemaManager {
   /** show nodes in schemaengine template */
   public TGetTemplateResp getTemplate(String req) {
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(req);
-    TemplateInfoResp templateResp =
-        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    TemplateInfoResp templateResp;
+    try {
+      templateResp = (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      templateResp = new TemplateInfoResp();
+      templateResp.setStatus(res);
+    }
     TGetTemplateResp resp = new TGetTemplateResp();
     if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && templateResp.getTemplateList() != null
@@ -672,10 +789,19 @@ public class ClusterSchemaManager {
   }
 
   /** show path set template xx */
-  public TGetPathsSetTemplatesResp getPathsSetTemplate(String templateName) {
-    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
-    PathInfoResp pathInfoResp =
-        (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
+  public TGetPathsSetTemplatesResp getPathsSetTemplate(String templateName, PathPatternTree scope) {
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan =
+        new GetPathsSetTemplatePlan(templateName, scope);
+    PathInfoResp pathInfoResp;
+    try {
+      pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      pathInfoResp = new PathInfoResp();
+      pathInfoResp.setStatus(res);
+    }
     if (pathInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       TGetPathsSetTemplatesResp resp = new TGetPathsSetTemplatesResp();
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
@@ -691,21 +817,42 @@ public class ClusterSchemaManager {
    * template info won't be taken
    */
   public byte[] getAllTemplateSetInfo() {
-    AllTemplateSetInfoResp resp =
-        (AllTemplateSetInfoResp)
-            getConsensusManager().read(new GetAllTemplateSetInfoPlan()).getDataset();
-    return resp.getTemplateInfo();
+    try {
+      AllTemplateSetInfoResp resp =
+          (AllTemplateSetInfoResp) getConsensusManager().read(new GetAllTemplateSetInfoPlan());
+      return resp.getTemplateInfo();
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      return new byte[0];
+    }
   }
 
   public TemplateSetInfoResp getTemplateSetInfo(List<PartialPath> patternList) {
-    return (TemplateSetInfoResp)
-        getConsensusManager().read(new GetTemplateSetInfoPlan(patternList)).getDataset();
+    try {
+      return (TemplateSetInfoResp)
+          getConsensusManager().read(new GetTemplateSetInfoPlan(patternList));
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      TemplateSetInfoResp response = new TemplateSetInfoResp();
+      response.setStatus(res);
+      return response;
+    }
   }
 
   public Pair<TSStatus, Template> checkIsTemplateSetOnPath(String templateName, String path) {
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
-    TemplateInfoResp templateResp =
-        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    TemplateInfoResp templateResp;
+    try {
+      templateResp = (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      templateResp = new TemplateInfoResp();
+      templateResp.setStatus(res);
+    }
     if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       if (templateResp.getTemplateList() == null || templateResp.getTemplateList().isEmpty()) {
         return new Pair<>(
@@ -718,9 +865,18 @@ public class ClusterSchemaManager {
       return new Pair<>(templateResp.getStatus(), null);
     }
 
-    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
-    PathInfoResp pathInfoResp =
-        (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan =
+        new GetPathsSetTemplatePlan(templateName, SchemaConstant.ALL_MATCH_SCOPE);
+    PathInfoResp pathInfoResp;
+    try {
+      pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      pathInfoResp = new PathInfoResp();
+      pathInfoResp.setStatus(res);
+    }
     if (pathInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       List<String> templateSetPathList = pathInfoResp.getPathList();
       if (templateSetPathList == null
@@ -740,27 +896,52 @@ public class ClusterSchemaManager {
   }
 
   public TSStatus preUnsetSchemaTemplate(int templateId, PartialPath path) {
-    return getConsensusManager()
-        .write(new PreUnsetSchemaTemplatePlan(templateId, path))
-        .getStatus();
+    try {
+      return getConsensusManager().write(new PreUnsetSchemaTemplatePlan(templateId, path));
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   public TSStatus rollbackPreUnsetSchemaTemplate(int templateId, PartialPath path) {
-    return getConsensusManager()
-        .write(new RollbackPreUnsetSchemaTemplatePlan(templateId, path))
-        .getStatus();
+    try {
+      return getConsensusManager().write(new RollbackPreUnsetSchemaTemplatePlan(templateId, path));
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   public TSStatus unsetSchemaTemplateInBlackList(int templateId, PartialPath path) {
-    return getConsensusManager().write(new UnsetSchemaTemplatePlan(templateId, path)).getStatus();
+    try {
+      return getConsensusManager().write(new UnsetSchemaTemplatePlan(templateId, path));
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   public synchronized TSStatus dropSchemaTemplate(String templateName) {
 
     // check template existence
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
-    TemplateInfoResp templateInfoResp =
-        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    TemplateInfoResp templateInfoResp;
+    try {
+      templateInfoResp = (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      templateInfoResp = new TemplateInfoResp();
+      templateInfoResp.setStatus(res);
+    }
     if (templateInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return templateInfoResp.getStatus();
     } else if (templateInfoResp.getTemplateList() == null
@@ -771,9 +952,18 @@ public class ClusterSchemaManager {
     }
 
     // check is template set on some path, block all template set operation
-    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
-    PathInfoResp pathInfoResp =
-        (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan =
+        new GetPathsSetTemplatePlan(templateName, SchemaConstant.ALL_MATCH_SCOPE);
+    PathInfoResp pathInfoResp;
+    try {
+      pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      pathInfoResp = new PathInfoResp();
+      pathInfoResp.setStatus(res);
+    }
     if (pathInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return pathInfoResp.getStatus();
     } else if (pathInfoResp.getPathList() != null && !pathInfoResp.getPathList().isEmpty()) {
@@ -784,7 +974,14 @@ public class ClusterSchemaManager {
     }
 
     // execute drop template
-    return getConsensusManager().write(new DropSchemaTemplatePlan(templateName)).getStatus();
+    try {
+      return getConsensusManager().write(new DropSchemaTemplatePlan(templateName));
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   public synchronized TSStatus extendSchemaTemplate(TemplateExtendInfo templateExtendInfo) {
@@ -824,7 +1021,14 @@ public class ClusterSchemaManager {
 
     ExtendSchemaTemplatePlan extendSchemaTemplatePlan =
         new ExtendSchemaTemplatePlan(templateExtendInfo);
-    TSStatus status = getConsensusManager().write(extendSchemaTemplatePlan).getStatus();
+    TSStatus status;
+    try {
+      status = getConsensusManager().write(extendSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     }
@@ -873,12 +1077,35 @@ public class ClusterSchemaManager {
     }
   }
 
-  public long getSchemaQuotaCount() {
-    return schemaQuotaStatistics.getSchemaQuotaCount(getPartitionManager().getAllSchemaPartition());
+  /**
+   * Only leader use this interface. Get the remain schema quota of specified schema region.
+   *
+   * @return pair of <series quota, device quota>, -1 means no limit
+   */
+  public Pair<Long, Long> getSchemaQuotaRemain() {
+    boolean isDeviceLimit = schemaQuotaStatistics.getDeviceThreshold() != -1;
+    boolean isSeriesLimit = schemaQuotaStatistics.getSeriesThreshold() != -1;
+    if (isSeriesLimit || isDeviceLimit) {
+      Set<Integer> schemaPartitionSet = getPartitionManager().getAllSchemaPartition();
+      return new Pair<>(
+          isSeriesLimit ? schemaQuotaStatistics.getSeriesQuotaRemain(schemaPartitionSet) : -1L,
+          isDeviceLimit ? schemaQuotaStatistics.getDeviceQuotaRemain(schemaPartitionSet) : -1L);
+    } else {
+      return new Pair<>(-1L, -1L);
+    }
   }
 
-  public void updateSchemaQuota(Map<Integer, Long> schemaCountMap) {
-    schemaQuotaStatistics.updateCount(schemaCountMap);
+  public void updateTimeSeriesUsage(Map<Integer, Long> seriesUsage) {
+    schemaQuotaStatistics.updateTimeSeriesUsage(seriesUsage);
+  }
+
+  public void updateDeviceUsage(Map<Integer, Long> deviceUsage) {
+    schemaQuotaStatistics.updateDeviceUsage(deviceUsage);
+  }
+
+  public void updateSchemaQuotaConfiguration(long seriesThreshold, long deviceThreshold) {
+    schemaQuotaStatistics.setDeviceThreshold(deviceThreshold);
+    schemaQuotaStatistics.setSeriesThreshold(seriesThreshold);
   }
 
   public void clearSchemaQuotaCache() {
