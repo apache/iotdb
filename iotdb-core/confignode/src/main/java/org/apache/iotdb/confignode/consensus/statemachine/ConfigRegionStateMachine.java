@@ -226,7 +226,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
 
-    // Then start load services first
+    // Always start load services first
     configManager.getLoadManager().startLoadServices();
 
     // Start leader scheduling services
