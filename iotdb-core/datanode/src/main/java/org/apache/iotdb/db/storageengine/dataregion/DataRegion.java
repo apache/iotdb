@@ -849,7 +849,8 @@ public class DataRegion implements IDataRegionForQuery {
   public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
     // reject insertions that are out of ttl
     if (!isAlive(insertRowNode.getTime())) {
-      throw new OutOfTTLException(insertRowNode.getTime(), (DateTimeUtils.currentTime() - dataTTL));
+      throw new OutOfTTLException(
+          insertRowNode.getTime(), (CommonDateTimeUtils.currentTime() - dataTTL));
     }
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
@@ -930,7 +931,8 @@ public class DataRegion implements IDataRegionForQuery {
                   String.format(
                       "Insertion time [%s] is less than ttl time bound [%s]",
                       DateTimeUtils.convertLongToDate(currTime),
-                      DateTimeUtils.convertLongToDate(DateTimeUtils.currentTime() - dataTTL)));
+                      DateTimeUtils.convertLongToDate(
+                          CommonDateTimeUtils.currentTime() - dataTTL)));
           loc++;
           noFailure = false;
         } else {
@@ -941,7 +943,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (loc == insertTabletNode.getRowCount()) {
         throw new OutOfTTLException(
             insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
-            (DateTimeUtils.currentTime() - dataTTL));
+            (CommonDateTimeUtils.currentTime() - dataTTL));
       }
       // before is first start point
       int before = loc;
@@ -1015,7 +1017,7 @@ public class DataRegion implements IDataRegionForQuery {
    * @return whether the given time falls in ttl
    */
   private boolean isAlive(long time) {
-    return dataTTL == Long.MAX_VALUE || (DateTimeUtils.currentTime() - time) <= dataTTL;
+    return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
   }
 
   /**
@@ -1520,7 +1522,7 @@ public class DataRegion implements IDataRegionForQuery {
       logger.debug("{}: TTL not set, ignore the check", databaseName + "-" + dataRegionId);
       return;
     }
-    long ttlLowerBound = DateTimeUtils.currentTime() - dataTTL;
+    long ttlLowerBound = CommonDateTimeUtils.currentTime() - dataTTL;
     logger.debug(
         "{}: TTL removing files before {}",
         databaseName + "-" + dataRegionId,
@@ -1771,7 +1773,7 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     long timeLowerBound =
-        dataTTL != Long.MAX_VALUE ? DateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
+        dataTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
     context.setQueryTimeLowerBound(timeLowerBound);
 
     for (TsFileResource tsFileResource : tsFileResources) {
@@ -2749,7 +2751,8 @@ public class DataRegion implements IDataRegionForQuery {
                       String.format(
                           "Insertion time [%s] is less than ttl time bound [%s]",
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
-                          DateTimeUtils.convertLongToDate(DateTimeUtils.currentTime() - dataTTL))));
+                          DateTimeUtils.convertLongToDate(
+                              CommonDateTimeUtils.currentTime() - dataTTL))));
           continue;
         }
         // init map
