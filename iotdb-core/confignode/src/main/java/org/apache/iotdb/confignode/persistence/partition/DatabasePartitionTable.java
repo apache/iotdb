@@ -90,12 +90,12 @@ public class DatabasePartitionTable {
    * Cache allocation result of new RegionGroups.
    *
    * @param replicaSets List<TRegionReplicaSet>
+   * @param createTime The creation time of RegionGroups
    */
-  public void createRegionGroups(List<TRegionReplicaSet> replicaSets) {
+  public void createRegionGroups(List<TRegionReplicaSet> replicaSets, long createTime) {
     replicaSets.forEach(
         replicaSet ->
-            regionGroupMap.put(
-                replicaSet.getRegionId(), new RegionGroup(System.currentTimeMillis(), replicaSet)));
+            regionGroupMap.put(replicaSet.getRegionId(), new RegionGroup(createTime, replicaSet)));
   }
 
   /** @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup */

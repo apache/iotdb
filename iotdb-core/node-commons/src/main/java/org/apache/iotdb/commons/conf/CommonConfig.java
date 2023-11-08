@@ -209,6 +209,9 @@ public class CommonConfig {
   private long seriesLimitThreshold = -1;
   private long deviceLimitThreshold = -1;
 
+  // time in nanosecond precision when starting up
+  private final long startUpNanosecond = System.nanoTime();
+
   CommonConfig() {
     // Empty constructor
   }
@@ -834,5 +837,9 @@ public class CommonConfig {
 
   public void setDeviceLimitThreshold(long deviceLimitThreshold) {
     this.deviceLimitThreshold = deviceLimitThreshold;
+  }
+
+  public long getStartUpNanosecond() {
+    return startUpNanosecond;
   }
 }
