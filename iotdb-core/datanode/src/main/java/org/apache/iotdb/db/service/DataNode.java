@@ -211,6 +211,7 @@ public class DataNode implements DataNodeMBean {
         SYSTEM_PROPERTIES.deleteOnExit();
       }
       stop();
+      System.exit(-1);
     }
   }
 

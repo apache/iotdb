@@ -46,6 +46,9 @@ public abstract class PipeSubtask
   // Used for identifying the subtask
   protected final String taskID;
 
+  // Record these variables to provide corresponding value to tag key of monitoring metrics
+  protected long creationTime;
+
   // For thread pool to execute subtasks
   protected ListeningExecutorService subtaskWorkerThreadPoolExecutor;
 
@@ -59,9 +62,10 @@ public abstract class PipeSubtask
   protected final AtomicInteger retryCount = new AtomicInteger(0);
   protected Event lastEvent;
 
-  protected PipeSubtask(String taskID) {
+  protected PipeSubtask(String taskID, long creationTime) {
     super();
     this.taskID = taskID;
+    this.creationTime = creationTime;
   }
 
   public abstract void bindExecutors(
@@ -239,6 +243,10 @@ public abstract class PipeSubtask
 
   public String getTaskID() {
     return taskID;
+  }
+
+  public long getCreationTime() {
+    return creationTime;
   }
 
   public int getRetryCount() {

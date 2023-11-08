@@ -79,6 +79,9 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_IP_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_PORT_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SYNC_CONNECTOR_VERSION_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_USER_KEY;
 
@@ -90,6 +93,10 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   private String ipAddress;
   private int port;
+
+  private boolean useSSL;
+  private String trustStore;
+  private String trustStorePwd;
 
   private String user;
   private String password;
@@ -141,7 +148,17 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
             String.format(
                 "One of the endpoints %s of the receivers is pointing back to the legacy receiver %s on sender itself, or unknown host when checking pipe sink IP.",
                 givenNodeUrls,
-                new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort())));
+                new TEndPoint(ioTDBConfig.getRpcAddress(), ioTDBConfig.getRpcPort())))
+        .validate(
+            args -> !((boolean) args[0]) || ((boolean) args[1] && (boolean) args[2]),
+            String.format(
+                "When %s is specified to true, %s and %s must be specified",
+                SINK_IOTDB_SSL_ENABLE_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY,
+                SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
+            parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
+            parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
+            parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
   }
 
   private Set<TEndPoint> parseNodeUrls(PipeParameters parameters) {
@@ -189,6 +206,10 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
     creationTime = configuration.getRuntimeEnvironment().getCreationTime();
+
+    useSSL = parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false);
+    trustStore = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
+    trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
   }
 
   @Override
@@ -202,7 +223,10 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
                 .setRpcThriftCompressionEnabled(COMMON_CONFIG.isRpcThriftCompressionEnabled())
                 .build(),
             ipAddress,
-            port);
+            port,
+            useSSL,
+            trustStore,
+            trustStorePwd);
 
     try {
       final TSyncIdentityInfo identityInfo =
@@ -231,6 +255,9 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
             .user(user)
             .password(password)
             .maxSize(1)
+            .useSSL(useSSL)
+            .trustStore(trustStore)
+            .trustStorePwd(trustStorePwd)
             .build();
   }
 
@@ -278,7 +305,8 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   @Override
   public void transfer(Event event) throws Exception {
     if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn("IoTDBLegacyPipeConnector does not support transfer generic event: {}.", event);
+      LOGGER.warn(
+          "IoTDBLegacyPipeConnector does not support transferring generic event: {}.", event);
     }
   }
 
