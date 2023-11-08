@@ -59,6 +59,10 @@ public class PipeConnectorSubtask extends PipeSubtask {
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
   protected ExecutorService subtaskCallbackListeningExecutor;
 
+  // For controlling subtask submitting, making sure that a subtask is submitted to only one thread
+  // at a time
+  protected volatile boolean isSubmitted = false;
+
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String attributeSortedString;
   private final int connectorIndex;
@@ -159,7 +163,16 @@ public class PipeConnectorSubtask extends PipeSubtask {
   }
 
   @Override
-  public void onFailure(@NotNull Throwable throwable) {
+  public synchronized void onSuccess(Boolean hasAtLeastOneEventProcessed) {
+    isSubmitted = false;
+
+    super.onSuccess(hasAtLeastOneEventProcessed);
+  }
+
+  @Override
+  public synchronized void onFailure(@NotNull Throwable throwable) {
+    isSubmitted = false;
+
     if (isClosed.get()) {
       LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.");
       releaseLastEvent(false);
@@ -227,8 +240,6 @@ public class PipeConnectorSubtask extends PipeSubtask {
               MAX_RETRY_TIMES,
               taskID,
               throwable);
-
-          // FIXME: non-EnrichedEvent should be reported to the ConfigNode instead of being logged
         }
 
         // Although the pipe task will be stopped, we still don't release the last event here
@@ -250,9 +261,15 @@ public class PipeConnectorSubtask extends PipeSubtask {
     super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
   }
 
+  /**
+   * Submit a subTask to the executor to keep it running. Note that the function will be called when
+   * connector starts or the subTask finishes the last round, Thus the "isRunning" sign is added to
+   * avoid concurrent problem of the two, ensuring two or more submitting threads generates only one
+   * winner.
+   */
   @Override
-  public void submitSelf() {
-    if (shouldStopSubmittingSelf.get()) {
+  public synchronized void submitSelf() {
+    if (shouldStopSubmittingSelf.get() || isSubmitted) {
       return;
     }
 
@@ -260,6 +277,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
     try {
       final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
       Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
+      isSubmitted = true;
     } finally {
       callbackDecoratingLock.markAsDecorated();
     }
