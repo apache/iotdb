@@ -59,6 +59,10 @@ public class PipeConnectorSubtask extends PipeSubtask {
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
   protected ExecutorService subtaskCallbackListeningExecutor;
 
+  // For controlling subtask submitting, making sure that a subtask is submitted to only one thread
+  // at a time
+  protected volatile boolean isSubmitted = false;
+
   public Integer getTsFileInsertionEventCount() {
     return inputPendingQueue.getTsFileInsertionEventCount();
   }
@@ -162,7 +166,16 @@ public class PipeConnectorSubtask extends PipeSubtask {
   }
 
   @Override
+  public void onSuccess(Boolean hasAtLeastOneEventProcessed) {
+    isSubmitted = false;
+
+    super.onSuccess(hasAtLeastOneEventProcessed);
+  }
+
+  @Override
   public void onFailure(@NotNull Throwable throwable) {
+    isSubmitted = false;
+
     if (isClosed.get()) {
       LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.");
       releaseLastEvent(false);
@@ -259,7 +272,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
    */
   @Override
   public synchronized void submitSelf() {
-    if (shouldStopSubmittingSelf.get() || isRunning) {
+    if (shouldStopSubmittingSelf.get() || isSubmitted) {
       return;
     }
 
@@ -267,7 +280,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
     try {
       final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
       Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
-      isRunning = true;
+      isSubmitted = true;
     } finally {
       callbackDecoratingLock.markAsDecorated();
     }

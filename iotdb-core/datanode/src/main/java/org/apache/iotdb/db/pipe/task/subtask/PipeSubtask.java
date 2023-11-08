@@ -52,7 +52,6 @@ public abstract class PipeSubtask
   // For controlling the subtask execution
   protected final AtomicBoolean shouldStopSubmittingSelf = new AtomicBoolean(true);
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
-  protected volatile boolean isRunning = false;
   protected PipeSubtaskScheduler subtaskScheduler;
 
   // For fail-over
@@ -108,15 +107,12 @@ public abstract class PipeSubtask
 
   @Override
   public void onSuccess(Boolean hasAtLeastOneEventProcessed) {
-    isRunning = false;
     retryCount.set(0);
     submitSelf();
   }
 
   @Override
   public void onFailure(@NotNull Throwable throwable) {
-    isRunning = false;
-
     if (isClosed.get()) {
       LOGGER.info("onFailure in pipe subtask, ignored because pipe is dropped.");
       releaseLastEvent(false);
