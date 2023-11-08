@@ -70,7 +70,7 @@ public class UtilsTest {
     String userName = "test";
     String userPwd = "test";
     String host1 =
-        "AD80:E32B:CR25:B3WE:DG4G:DWTF:EEWE:BBBE,AD80:E32B:CR25:B3WE:DG4G:DWTF:CGDE:EEWE:BBBE,AD80:E32B:CR25:B3WE:DG4G:DWTF:EEWE:BBBE";
+        "AD80:E32B:CA25:B3AE:DA4A:DAAF:EEAE:BBBE,AD80:E32B:CA25:B3AE:DAAA:DAAF:CADE:EEAE:BBBE,AD80:E32B:CA25:B3AE:DA4A:DAAF:EEAE:BBBE";
     int port = 6667;
     Properties properties = new Properties();
     properties.setProperty(Config.AUTH_USER, userName);
