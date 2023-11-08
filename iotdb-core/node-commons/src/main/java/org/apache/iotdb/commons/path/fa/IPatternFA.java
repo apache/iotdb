@@ -89,6 +89,7 @@ public interface IPatternFA {
     private PartialPath pathPattern;
     private PathPatternTree patternTree;
     private boolean isPrefixMatch = false;
+    private boolean allFullPath = false;
 
     public Builder() {}
 
@@ -108,6 +109,11 @@ public interface IPatternFA {
       return this;
     }
 
+    public Builder setAllFullPath(boolean allFullPath) {
+      this.allFullPath = allFullPath;
+      return this;
+    }
+
     public PartialPath getPathPattern() {
       return pathPattern;
     }
@@ -118,6 +124,10 @@ public interface IPatternFA {
 
     public boolean isPrefixMatch() {
       return isPrefixMatch;
+    }
+
+    public boolean isAllFullPath() {
+      return allFullPath;
     }
 
     public IPatternFA buildNFA() {

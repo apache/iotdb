@@ -46,10 +46,9 @@ public abstract class MeasurementCollector<R, N extends IMNode<N>>
       N startNode,
       PathPatternTree patternTree,
       IMTreeStore<N> store,
-      boolean isPrefixMatch,
       PathPatternTree scope)
       throws MetadataException {
-    super(startNode, patternTree, store, isPrefixMatch, scope);
+    super(startNode, patternTree, store, scope);
   }
 
   @Override

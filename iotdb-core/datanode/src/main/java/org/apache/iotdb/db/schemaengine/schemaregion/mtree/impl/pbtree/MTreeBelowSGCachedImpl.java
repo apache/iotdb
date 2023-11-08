@@ -848,16 +848,13 @@ public class MTreeBelowSGCachedImpl {
     List<MeasurementPath> result = new LinkedList<>();
     try (MeasurementCollector<Void, ICachedMNode> collector =
         new MeasurementCollector<Void, ICachedMNode>(
-            rootNode, patternTree, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+            rootNode, patternTree, store, SchemaConstant.ALL_MATCH_SCOPE) {
           protected Void collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
             if (node.isPreDeleted()) {
               return null;
             }
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
-            if (nodes[nodes.length - 1].equals(node.getAlias())) {
-              // only when user query with alias, the alias in path will be set
               path.setMeasurementAlias(node.getAlias());
-            }
             if (withTags) {
               path.setTagMap(tagGetter.apply(node));
             }

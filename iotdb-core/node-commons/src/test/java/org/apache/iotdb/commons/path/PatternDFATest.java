@@ -28,8 +28,8 @@ import org.apache.iotdb.commons.path.fa.dfa.graph.DFAGraph;
 import org.apache.iotdb.commons.path.fa.dfa.graph.NFAGraph;
 import org.apache.iotdb.commons.path.fa.dfa.transition.DFAPreciseTransition;
 import org.apache.iotdb.commons.path.fa.dfa.transition.DFAWildcardTransition;
-import org.apache.iotdb.commons.path.fa.nfa.SimpleNFA;
 
+import org.apache.iotdb.commons.path.fa.nfa.SimpleNFA;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -136,10 +136,6 @@ public class PatternDFATest {
     AtomicInteger transitionIndex = new AtomicInteger();
     for (PartialPath pathPattern : partialPathList) {
       patternTree.appendFullPath(pathPattern);
-      for (String node : pathPattern.getNodes()) {
-        transitionMap.computeIfAbsent(
-            node, i -> new DFAPreciseTransition(transitionIndex.getAndIncrement(), node));
-      }
     }
     patternTree.constructTree();
     //     build DFA directly
@@ -152,21 +148,26 @@ public class PatternDFATest {
   public void printFASketch4() throws IllegalPathException {
     // Map<AcceptEvent, IFATransition>
     PathPatternTree patternTree = new PathPatternTree();
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 1; i++) {
       patternTree.appendFullPath(new PartialPath("root.db.d1.s" + i));
     }
     PartialPath path = new PartialPath("root.db.d1.s0");
     patternTree.constructTree();
     long start = System.currentTimeMillis();
-    for (int i = 0; i < 1; i++) {
-      IPatternFA patternDFA = new PatternDFA(patternTree);
+    for (int i = 0; i < 1000000; i++) {
+      IPatternFA patternDFA = new PatternDFA(patternTree, false);
     }
     System.out.println("construct time cost: " + (System.currentTimeMillis() - start));
     start = System.currentTimeMillis();
-    for (int i = 0; i < 1000; i++) {
-      IPatternFA patternDFA = new SimpleNFA(path, false);
+    for (int i = 0; i < 1000000; i++) {
+      IPatternFA patternDFA = new PatternDFA(patternTree, true);
     }
     System.out.println("construct time cost: " + (System.currentTimeMillis() - start));
+        start = System.currentTimeMillis();
+        for (int i = 0; i < 1000000; i++) {
+          IPatternFA patternDFA = new SimpleNFA(path, false);
+        }
+        System.out.println("construct time cost: " + (System.currentTimeMillis() - start));
   }
 
   @Test

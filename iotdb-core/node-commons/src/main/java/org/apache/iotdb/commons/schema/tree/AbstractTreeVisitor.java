@@ -143,10 +143,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
 
   // Notices: PatternTree must not contain any wildcard
   protected AbstractTreeVisitor(
-      N root, PathPatternTree patternTree, boolean isPrefixMatch, PathPatternTree scope) {
+      N root, PathPatternTree patternTree, PathPatternTree scope) {
     this.root = root;
     this.patternFA =
-        new IPatternFA.Builder().patternTree(patternTree).isPrefixMatch(isPrefixMatch).buildDFA();
+        new IPatternFA.Builder().patternTree(patternTree).setAllFullPath(true).buildDFA();
     this.scopeDFA =
         scope == null
             ? SchemaConstant.ALL_MATCH_DFA

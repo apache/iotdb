@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.dfa.DFAState;
+import org.apache.iotdb.commons.path.fa.dfa.transition.DFAPreciseTransition;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.util.ArrayList;
@@ -38,8 +39,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * more detail.
  */
 public class DFAGraph {
+  private static final int DEFAULT_TRANSITION_SIZE = 1000;
   private final List<IFAState> dfaStateList = new ArrayList<>();
-  private final List<IFAState>[] dfaTransitionTable;
+  private List<IFAState>[] dfaTransitionTable;
 
   public DFAGraph(NFAGraph nfaGraph, Collection<IFATransition> transitions) {
     dfaTransitionTable = new List[transitions.size()];
@@ -89,44 +91,58 @@ public class DFAGraph {
   }
 
   public DFAGraph(PathPatternTree patternTree, Map<String, IFATransition> transitionMap) {
-    dfaTransitionTable = new List[transitionMap.size()];
-    // init start state
-    AtomicInteger index = new AtomicInteger(0);
-    // Map NFAStateClosure to DFASate
-    for (IFATransition transition : transitionMap.values()) {
-      dfaTransitionTable[transition.getIndex()] = new ArrayList<>();
-      dfaTransitionTable[transition.getIndex()].add(null);
-    }
+    dfaTransitionTable = new List[DEFAULT_TRANSITION_SIZE];
     IFAState curState = new DFAState(0);
     dfaStateList.add(curState);
-    init(patternTree.getRoot(), transitionMap, curState, index);
+    init(
+        patternTree.getRoot(), transitionMap, curState, new AtomicInteger(1), new AtomicInteger(0));
   }
 
   private void init(
       PathPatternNode<Void, PathPatternNode.VoidSerializer> node,
       Map<String, IFATransition> transitionMap,
       IFAState curState,
-      AtomicInteger stateIndex) {
-    IFATransition transition = transitionMap.get(node.getName());
-    if (dfaTransitionTable[transition.getIndex()].get(curState.getIndex()) == null) {
-      DFAState newState = new DFAState(stateIndex.incrementAndGet());
+      AtomicInteger stateIndexGenerator,
+      AtomicInteger transitionIndexGenerator) {
+    IFATransition transition =
+        transitionMap.computeIfAbsent(
+            node.getName(),
+            i -> {
+              int transitionIndex = transitionIndexGenerator.getAndIncrement();
+              List<IFAState> tmp = new ArrayList<>();
+              for (int j = 0; j < stateIndexGenerator.get(); j++) {
+                tmp.add(null);
+              }
+              if (dfaTransitionTable.length <= transitionIndex) {
+                List<IFAState>[] newDfaTransitionTable = new List[dfaTransitionTable.length * 2];
+                System.arraycopy(
+                        dfaTransitionTable, 0, newDfaTransitionTable, 0, dfaTransitionTable.length);
+                dfaTransitionTable = newDfaTransitionTable;
+              }
+                dfaTransitionTable[transitionIndex] = tmp;
+              return new DFAPreciseTransition(transitionIndex, i);
+            });
+    int transitionIndex = transition.getIndex();
+    int curStateIndex = curState.getIndex();
+    if (dfaTransitionTable[transitionIndex].get(curStateIndex) == null) {
+      DFAState newState = new DFAState(stateIndexGenerator.getAndIncrement());
       dfaStateList.add(newState);
-      for (List<IFAState> column : dfaTransitionTable) {
-        column.add(null);
+      for (int i = 0; i < transitionIndexGenerator.get(); i++) {
+        dfaTransitionTable[i].add(null);
       }
-      dfaTransitionTable[transition.getIndex()].set(curState.getIndex(), newState);
+      dfaTransitionTable[transitionIndex].set(curStateIndex, newState);
     }
     if (node.isPathPattern()) {
-      ((DFAState) dfaTransitionTable[transition.getIndex()].get(curState.getIndex()))
-          .setFinal(true);
+      ((DFAState) dfaTransitionTable[transitionIndex].get(curStateIndex)).setFinal(true);
     }
     for (PathPatternNode<Void, PathPatternNode.VoidSerializer> child :
         node.getChildren().values()) {
       init(
           child,
           transitionMap,
-          dfaTransitionTable[transition.getIndex()].get(curState.getIndex()),
-          stateIndex);
+          dfaTransitionTable[transitionIndex].get(curStateIndex),
+          stateIndexGenerator,
+          transitionIndexGenerator);
     }
   }
 

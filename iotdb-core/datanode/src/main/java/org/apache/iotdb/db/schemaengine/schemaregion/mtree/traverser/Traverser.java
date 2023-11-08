@@ -118,9 +118,8 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
       N startNode,
       PathPatternTree patternTree,
       IMTreeStore<N> store,
-      boolean isPrefixMatch,
       PathPatternTree scope) {
-    super(startNode, patternTree, isPrefixMatch, scope);
+    super(startNode, patternTree, scope);
     this.store = store.getWithReentrantReadLock();
     initStack();
     this.startNode = startNode;

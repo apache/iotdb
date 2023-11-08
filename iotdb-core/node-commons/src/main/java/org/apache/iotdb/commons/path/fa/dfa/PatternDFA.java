@@ -91,42 +91,31 @@ public class PatternDFA implements IPatternFA {
    *
    * @param prefixOrFullPatternTree the included PartialPath must be a prefix or a fullPath
    */
-  public PatternDFA(PathPatternTree prefixOrFullPatternTree) {
-    // 1. build transition
-    AtomicInteger transitionIndex = new AtomicInteger();
-
-    boolean wildcard = initTransitionMap(prefixOrFullPatternTree.getRoot(), transitionIndex);
-    if (wildcard) {
-      IFATransition transition =
-          new DFAWildcardTransition(
-              transitionIndex.getAndIncrement(), new ArrayList<>(transitionMap.keySet()));
-      transitionMap.put(transition.getAcceptEvent(), transition);
-      batchMatchTransitionList.add(transition);
-      // build NFA
-      NFAGraph nfaGraph = new NFAGraph(prefixOrFullPatternTree, transitionMap);
-      // NFA to DFA
-      dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
-    } else {
-      dfaGraph = new DFAGraph(prefixOrFullPatternTree, transitionMap);
-    }
-    preciseMatchTransitionCached = new HashMap[dfaGraph.getStateSize()];
-    batchMatchTransitionCached = new List[dfaGraph.getStateSize()];
-  }
-
-  public IFAState getNextState(IFAState currentState, String acceptEvent) {
-    if (transitionMap.containsKey(acceptEvent)) {
-      return dfaGraph.getNextState(currentState, transitionMap.get(acceptEvent));
-    } else {
-      Iterator<IFATransition> fuzzyMatchTransitionIterator =
-          getFuzzyMatchTransitionIterator(currentState);
-      while (fuzzyMatchTransitionIterator.hasNext()) {
-        IFATransition transition = fuzzyMatchTransitionIterator.next();
-        if (transition.isMatch(acceptEvent)) {
-          return dfaGraph.getNextState(currentState, transition);
-        }
+  public PatternDFA(PathPatternTree prefixOrFullPatternTree, boolean allFullPath) {
+    if (!allFullPath) {
+      // 1. build transition
+      AtomicInteger transitionIndex = new AtomicInteger();
+      boolean wildcard = initTransitionMap(prefixOrFullPatternTree.getRoot(), transitionIndex);
+      if (wildcard) {
+        IFATransition transition =
+            new DFAWildcardTransition(
+                transitionIndex.getAndIncrement(), new ArrayList<>(transitionMap.keySet()));
+        transitionMap.put(transition.getAcceptEvent(), transition);
+        batchMatchTransitionList.add(transition);
       }
+      // 2. build NFA
+      NFAGraph nfaGraph = new NFAGraph(prefixOrFullPatternTree, transitionMap);
+      // 3. NFA to DFA
+      dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
+      preciseMatchTransitionCached = new HashMap[dfaGraph.getStateSize()];
+      batchMatchTransitionCached = new List[dfaGraph.getStateSize()];
+    } else {
+
+      dfaGraph = new DFAGraph(prefixOrFullPatternTree, transitionMap);
+      preciseMatchTransitionList.addAll(transitionMap.values());
+      preciseMatchTransitionCached = new HashMap[dfaGraph.getStateSize()];
+      batchMatchTransitionCached = new List[dfaGraph.getStateSize()];
     }
-    return null;
   }
 
   private boolean initTransitionMap(
@@ -150,6 +139,22 @@ public class PatternDFA implements IPatternFA {
       }
       return res;
     }
+  }
+
+  public IFAState getNextState(IFAState currentState, String acceptEvent) {
+    if (transitionMap.containsKey(acceptEvent)) {
+      return dfaGraph.getNextState(currentState, transitionMap.get(acceptEvent));
+    } else {
+      Iterator<IFATransition> fuzzyMatchTransitionIterator =
+          getFuzzyMatchTransitionIterator(currentState);
+      while (fuzzyMatchTransitionIterator.hasNext()) {
+        IFATransition transition = fuzzyMatchTransitionIterator.next();
+        if (transition.isMatch(acceptEvent)) {
+          return dfaGraph.getNextState(currentState, transition);
+        }
+      }
+    }
+    return null;
   }
 
   @Override

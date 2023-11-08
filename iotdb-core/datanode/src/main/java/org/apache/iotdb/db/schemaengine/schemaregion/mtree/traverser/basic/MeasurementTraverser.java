@@ -61,10 +61,9 @@ public abstract class MeasurementTraverser<R, N extends IMNode<N>> extends Trave
       N startNode,
       PathPatternTree patternTree,
       IMTreeStore<N> store,
-      boolean isPrefixMatch,
       PathPatternTree scope)
       throws MetadataException {
-    super(startNode, patternTree, store, isPrefixMatch, scope);
+    super(startNode, patternTree, store, scope);
   }
 
   @Override

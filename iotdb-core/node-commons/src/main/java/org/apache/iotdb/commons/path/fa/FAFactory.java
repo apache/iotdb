@@ -49,7 +49,7 @@ public class FAFactory {
                       // always return the same instance for root.**
                       return SchemaConstant.ALL_MATCH_DFA;
                     }
-                    return new PatternDFA(builder.getPatternTree());
+                    return new PatternDFA(builder.getPatternTree(),builder.isAllFullPath());
                   } else {
                     return new PatternDFA(builder.getPathPattern(), builder.isPrefixMatch());
                   }
