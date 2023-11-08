@@ -114,7 +114,7 @@ public class IoTDBDescriptor {
     return conf;
   }
 
-  public String getConfDir() {
+  public static String getConfDir() {
     // Check if a config-directory was specified first.
     String confString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     // If it wasn't, check if a home directory was provided (This usually contains a config)

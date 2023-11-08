@@ -128,8 +128,8 @@ public class IoTDBConfig {
 
   /** The security dir of the Opc Ua server. */
   private String opcUaSecurityDir =
-      IoTDBDescriptor.getInstance().getConfDir() != null
-          ? IoTDBDescriptor.getInstance().getConfDir() + File.separatorChar + "opc_security"
+      IoTDBDescriptor.getConfDir() != null
+          ? IoTDBDescriptor.getConfDir() + File.separatorChar + "opc_security"
           : System.getProperty("user.home") + File.separatorChar + "iotdb_opc_security";
 
   /** Rpc binding address. */

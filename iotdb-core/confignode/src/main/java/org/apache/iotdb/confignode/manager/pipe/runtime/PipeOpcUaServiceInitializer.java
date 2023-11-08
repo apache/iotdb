@@ -21,9 +21,11 @@ package org.apache.iotdb.confignode.manager.pipe.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -43,41 +45,60 @@ public class PipeOpcUaServiceInitializer {
   public synchronized void start() {
     PipeTaskInfo pipeTaskinfo =
         configManager.getPipeManager().getPipeTaskCoordinator().tryLock().get();
-    TSStatus result;
+
     if (CommonDescriptor.getInstance().getConfig().isEnableOpcUaService()) {
       // Start opc service on the leader if it's not started.
-      // This must be prior to the load service to avoid missing the leader change
-      // notification.
+      // Create pipe
       try {
         Map<String, String> connectorAttributes = new HashMap<>();
-        connectorAttributes.put("sink", "opc_ua_sink");
+        connectorAttributes.put(
+            PipeConnectorConstant.SINK_KEY, BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName());
         TCreatePipeReq opcCreateReq = new TCreatePipeReq(OPC_NAME, connectorAttributes);
+        opcCreateReq.setExtractorAttributes(new HashMap<>());
+        opcCreateReq.setProcessorAttributes(new HashMap<>());
 
         pipeTaskinfo.checkBeforeCreatePipe(opcCreateReq);
 
+        TSStatus result;
         do {
           result = configManager.getPipeManager().getPipeTaskCoordinator().createPipe(opcCreateReq);
+          if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            wait(10000);
+          }
         } while (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      } catch (PipeException ignore) {
+      } catch (PipeException | InterruptedException ignore) {
+        Thread.currentThread().interrupt();
         // Skip if there are check failure
       }
+      // Start pipe
       try {
         pipeTaskinfo.checkBeforeStartPipe(OPC_NAME);
+
+        TSStatus result;
         do {
           result = configManager.getPipeManager().getPipeTaskCoordinator().startPipe(OPC_NAME);
+          if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            wait(10000);
+          }
         } while (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      } catch (PipeException ignore) {
+      } catch (PipeException | InterruptedException ignore) {
+        Thread.currentThread().interrupt();
         // Skip if there are check failure
       }
     } else {
-      // Drop opc service
+      // Drop opc service if configured to false
       try {
         pipeTaskinfo.checkBeforeDropPipe(OPC_NAME);
+
+        TSStatus result;
         do {
           result = configManager.getPipeManager().getPipeTaskCoordinator().dropPipe(OPC_NAME);
+          if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            wait(10000);
+          }
         } while (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      } catch (Exception ignore) {
-
+      } catch (PipeException | InterruptedException ignore) {
+        Thread.currentThread().interrupt();
       }
     }
   }
