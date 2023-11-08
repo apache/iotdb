@@ -163,14 +163,14 @@ public class PipeConnectorSubtask extends PipeSubtask {
   }
 
   @Override
-  public void onSuccess(Boolean hasAtLeastOneEventProcessed) {
+  public synchronized void onSuccess(Boolean hasAtLeastOneEventProcessed) {
     isSubmitted = false;
 
     super.onSuccess(hasAtLeastOneEventProcessed);
   }
 
   @Override
-  public void onFailure(@NotNull Throwable throwable) {
+  public synchronized void onFailure(@NotNull Throwable throwable) {
     isSubmitted = false;
 
     if (isClosed.get()) {
