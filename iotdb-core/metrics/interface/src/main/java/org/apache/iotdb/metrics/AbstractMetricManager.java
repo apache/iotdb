@@ -294,9 +294,7 @@ public abstract class AbstractMetricManager {
     throw new IllegalArgumentException(metricInfo + ALREADY_EXISTS);
   }
 
-  /**
-   * Create timer according to metric framework.
-   */
+  /** Create timer according to metric framework. */
   protected abstract Timer createTimer();
 
   // endregion
