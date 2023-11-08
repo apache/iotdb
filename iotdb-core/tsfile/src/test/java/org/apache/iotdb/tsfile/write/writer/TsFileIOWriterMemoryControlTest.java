@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.tsfile.write.writer;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -1277,7 +1278,8 @@ public class TsFileIOWriterMemoryControlTest {
             break;
           case 5:
             points[j] =
-                new TsPrimitiveType.TsBinary(new Binary(String.valueOf(random.nextDouble())));
+                new TsPrimitiveType.TsBinary(
+                    new Binary(String.valueOf(random.nextDouble()), TSFileConfig.STRING_CHARSET));
             break;
         }
       }
@@ -1295,7 +1297,7 @@ public class TsFileIOWriterMemoryControlTest {
         new ChunkWriterImpl(new MeasurementSchema(sortedSeriesId.get(idx), TSDataType.TEXT));
     Random random = new Random();
     for (long i = startTime; i < startTime + TEST_CHUNK_SIZE; ++i) {
-      Binary val = new Binary(String.valueOf(random.nextDouble()));
+      Binary val = new Binary(String.valueOf(random.nextDouble()), TSFileConfig.STRING_CHARSET);
       chunkWriter.write(i, val);
       record.add(new Pair<>(i, new TsPrimitiveType.TsBinary(val)));
     }

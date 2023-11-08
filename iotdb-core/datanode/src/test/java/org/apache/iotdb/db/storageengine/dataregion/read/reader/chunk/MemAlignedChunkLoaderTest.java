@@ -20,9 +20,10 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -161,7 +162,7 @@ public class MemAlignedChunkLoaderTest {
     builder.getColumnBuilder(2).writeLong(1L);
     builder.getColumnBuilder(3).writeFloat(1.1f);
     builder.getColumnBuilder(4).appendNull();
-    builder.getColumnBuilder(5).writeBinary(new Binary(BINARY_STR));
+    builder.getColumnBuilder(5).writeBinary(new Binary(BINARY_STR, TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
     builder.getTimeColumnBuilder().writeLong(2L);
     builder.getColumnBuilder(0).appendNull();

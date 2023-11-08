@@ -77,7 +77,7 @@ public class LoadTsFileSchedulerTest extends TestBase {
       TsFileResource tsFileResource = tsFileResources.get(i);
       LoadSingleTsFileNode singleTsFileNode =
           new LoadSingleTsFileNode(
-              new PlanNodeId("load_tsfile_scheduler_test" + (i + 1)), tsFileResource, false);
+              new PlanNodeId("load_tsfile_scheduler_test" + (i + 1)), tsFileResource, false, 0);
       fragmentInstanceList.add(
           new FragmentInstance(
               new PlanFragment(fragmentId, singleTsFileNode),

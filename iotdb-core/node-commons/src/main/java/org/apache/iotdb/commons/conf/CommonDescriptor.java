@@ -22,7 +22,6 @@ package org.apache.iotdb.commons.conf;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
 import java.io.File;
@@ -205,14 +204,7 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
 
-    String endPointUrl =
-        properties.getProperty(
-            "target_ml_node_endpoint",
-            NodeUrlUtils.convertTEndPointUrl(config.getTargetMLNodeEndPoint()));
-
     loadPipeProps(properties);
-
-    config.setTargetMLNodeEndPoint(NodeUrlUtils.parseTEndPointUrl(endPointUrl));
 
     config.setSchemaEngineMode(
         properties.getProperty("schema_engine_mode", String.valueOf(config.getSchemaEngineMode())));
@@ -238,11 +230,16 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
-    config.setModelInferenceExecutionThreadCount(
-        Integer.parseInt(
+    config.setSeriesLimitThreshold(
+        Long.parseLong(
             properties.getProperty(
-                "model_inference_execution_thread_count",
-                String.valueOf(config.getModelInferenceExecutionThreadCount()))));
+                "cluster_timeseries_limit_threshold",
+                String.valueOf(config.getSeriesLimitThreshold()))));
+    config.setDeviceLimitThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "cluster_device_limit_threshold",
+                String.valueOf(config.getDeviceLimitThreshold()))));
   }
 
   private void loadPipeProps(Properties properties) {
@@ -296,6 +293,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_extractor_assigner_disruptor_ring_buffer_size",
                 String.valueOf(config.getPipeExtractorAssignerDisruptorRingBufferSize()))));
+    config.setPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes( // 1MB
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_extractor_assigner_disruptor_ring_buffer_entry_size_in_bytes",
+                String.valueOf(
+                    config.getPipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes()))));
     config.setPipeExtractorMatcherCacheSize(
         Integer.parseInt(
             properties.getProperty(
@@ -390,17 +393,31 @@ public class CommonDescriptor {
                 "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
                 String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
 
+    config.setPipeMemoryManagementEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_memory_management_enabled",
+                String.valueOf(config.getPipeMemoryManagementEnabled()))));
     config.setPipeMemoryAllocateMaxRetries(
         Integer.parseInt(
             properties.getProperty(
                 "pipe_memory_allocate_max_retries",
                 String.valueOf(config.getPipeMemoryAllocateMaxRetries()))));
-
     config.setPipeMemoryAllocateRetryIntervalInMs(
         Long.parseLong(
             properties.getProperty(
                 "pipe_memory_allocate_retry_interval_in_ms",
                 String.valueOf(config.getPipeMemoryAllocateRetryIntervalInMs()))));
+    config.setPipeMemoryAllocateMinSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_memory_allocate_min_size_in_bytes",
+                String.valueOf(config.getPipeMemoryAllocateMinSizeInBytes()))));
+    config.setPipeMemoryAllocateForTsFileSequenceReaderInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_memory_allocate_for_tsfile_sequence_reader_in_bytes",
+                String.valueOf(config.getPipeMemoryAllocateForTsFileSequenceReaderInBytes()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

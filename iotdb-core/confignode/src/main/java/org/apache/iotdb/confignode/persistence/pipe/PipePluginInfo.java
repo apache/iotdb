@@ -161,7 +161,7 @@ public class PipePluginInfo implements SnapshotProcessor {
       throw new PipeException(exceptionMessage);
     }
     final String connectorPluginName =
-        connectorParameters.getString(
+        connectorParameters.getStringByKeys(
             PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY);
     if (!pipePluginMetaKeeper.containsPipePlugin(connectorPluginName)) {
       final String exceptionMessage =

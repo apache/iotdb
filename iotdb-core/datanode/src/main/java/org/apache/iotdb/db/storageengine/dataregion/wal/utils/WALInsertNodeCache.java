@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.PipeWALInsertNodeCacheMetrics;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -51,12 +53,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** This cache is used by {@link WALEntryPosition}. */
 public class WALInsertNodeCache {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(WALInsertNodeCache.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
-  private final LoadingCache<WALEntryPosition, Pair<ByteBuffer, InsertNode>> lruCache;
+  private final PipeMemoryBlock allocatedMemoryBlock;
   private boolean isBatchLoadEnabled;
+  private final LoadingCache<WALEntryPosition, Pair<ByteBuffer, InsertNode>> lruCache;
 
   // ids of all pinned memTables
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
@@ -64,12 +68,18 @@ public class WALInsertNodeCache {
   private volatile boolean hasPipeRunning = false;
 
   private WALInsertNodeCache(Integer dataRegionId) {
-    // TODO: try allocate memory 2 * config.getWalFileSizeThresholdInByte() for the cache
-    // If allocate memory failed, disable batch load
-    isBatchLoadEnabled = true;
+    allocatedMemoryBlock =
+        PipeResourceManager.memory()
+            .tryAllocate(
+                (long)
+                    Math.min(
+                        2 * CONFIG.getWalFileSizeThresholdInByte(),
+                        CONFIG.getAllocateMemoryForPipe() * 0.8 / 5));
+    isBatchLoadEnabled =
+        allocatedMemoryBlock.getMemoryUsageInBytes() >= CONFIG.getWalFileSizeThresholdInByte();
     lruCache =
         Caffeine.newBuilder()
-            .maximumWeight(2 * CONFIG.getWalFileSizeThresholdInByte())
+            .maximumWeight(allocatedMemoryBlock.getMemoryUsageInBytes())
             .weigher(
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
                     (position, pair) -> position.getSize())
@@ -287,6 +297,7 @@ public class WALInsertNodeCache {
   @TestOnly
   public void clear() {
     lruCache.invalidateAll();
+    allocatedMemoryBlock.close();
     memTablesNeedSearch.clear();
   }
 }

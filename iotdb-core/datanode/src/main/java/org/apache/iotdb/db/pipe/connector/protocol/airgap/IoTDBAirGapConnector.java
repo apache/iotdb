@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
@@ -37,6 +41,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -54,9 +59,12 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
@@ -80,6 +88,36 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   private boolean eLanguageEnable;
 
   private long currentClientIndex = 0;
+
+  @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    super.validate(validator);
+    final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
+    final PipeConfig pipeConfig = PipeConfig.getInstance();
+    Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
+
+    validator.validate(
+        empty -> {
+          try {
+            // Ensure the sink doesn't point to the air gap receiver on DataNode itself
+            return !(pipeConfig.getPipeAirGapReceiverEnabled()
+                && NodeUrlUtils.containsLocalAddress(
+                    givenNodeUrls.stream()
+                        .filter(
+                            tEndPoint ->
+                                tEndPoint.getPort() == pipeConfig.getPipeAirGapReceiverPort())
+                        .map(TEndPoint::getIp)
+                        .collect(Collectors.toList())));
+          } catch (UnknownHostException e) {
+            LOGGER.warn("Unknown host when checking pipe sink IP.", e);
+            return false;
+          }
+        },
+        String.format(
+            "One of the endpoints %s of the receivers is pointing back to the air gap receiver %s on sender itself, or unknown host when checking pipe sink IP.",
+            givenNodeUrls,
+            new TEndPoint(ioTDBConfig.getRpcAddress(), pipeConfig.getPipeAirGapReceiverPort())));
+  }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
@@ -240,6 +278,13 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       return;
     }
 
+    if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
+      LOGGER.warn(
+          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+          ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile());
+      return;
+    }
+
     if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
       try {
         for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
@@ -270,7 +315,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   @Override
   public void transfer(Event event) {
     if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn("IoTDBAirGapConnector does not support transfer generic event: {}.", event);
+      LOGGER.warn("IoTDBAirGapConnector does not support transferring generic event: {}.", event);
     }
   }
 
@@ -307,9 +352,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   }
 
   private void doTransfer(Socket socket, PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
-      throws PipeException, InterruptedException, IOException {
-    pipeTsFileInsertionEvent.waitForTsFileClose();
-
+      throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
 
     // 1. Transfer file piece by piece

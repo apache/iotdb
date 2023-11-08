@@ -241,6 +241,7 @@ public class Utils {
     RaftServerConfigKeys.Rpc.setTimeoutMin(properties, config.getRpc().getTimeoutMin());
     RaftServerConfigKeys.Rpc.setTimeoutMax(properties, config.getRpc().getTimeoutMax());
     RaftServerConfigKeys.Rpc.setSleepTime(properties, config.getRpc().getSleepTime());
+    RaftServerConfigKeys.Rpc.setRequestTimeout(properties, config.getRpc().getRequestTimeout());
     RaftClientConfigKeys.Rpc.setRequestTimeout(properties, config.getRpc().getRequestTimeout());
 
     RaftServerConfigKeys.LeaderElection.setLeaderStepDownWaitTime(

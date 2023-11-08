@@ -434,14 +434,6 @@ MIGRATE
     : M I G R A T E
     ;
 
-MODEL
-    : M O D E L
-    ;
-
-MODELS
-    : M O D E L S
-    ;
-
 NAN
     : N A N
     ;
@@ -806,10 +798,6 @@ TRACING
     : T R A C I N G
     ;
 
-TRIALS
-    : T R I A L S
-    ;
-
 TRIGGER
     : T R I G G E R
     ;
@@ -934,6 +922,7 @@ PRIVILEGE_VALUE
     | USE_TRIGGER
     | USE_UDF
     | USE_CQ
+    | USE_MODEL
     | USE_PIPE
     | EXTEND_TEMPLATE
     | MANAGE_DATABASE
@@ -966,6 +955,10 @@ MANAGE_ROLE
 
 USE_TRIGGER
     : U S E '_' T R I G G E R
+    ;
+
+USE_MODEL
+    : U S E '_' M O D E L
     ;
 
 USE_UDF

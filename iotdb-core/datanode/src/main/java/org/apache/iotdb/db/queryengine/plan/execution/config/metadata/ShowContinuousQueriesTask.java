@@ -29,11 +29,11 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -61,10 +61,10 @@ public class ShowContinuousQueriesTask implements IConfigTask {
       ColumnBuilder[] columnBuilders = builder.getValueColumnBuilders();
       for (TCQEntry cqEntry : cqList) {
         timeColumnBuilder.writeLong(0);
-        columnBuilders[0].writeBinary(Binary.valueOf(cqEntry.getCqId()));
-        columnBuilders[1].writeBinary(Binary.valueOf(cqEntry.getSql()));
+        columnBuilders[0].writeBinary(BytesUtils.valueOf(cqEntry.getCqId()));
+        columnBuilders[1].writeBinary(BytesUtils.valueOf(cqEntry.getSql()));
         columnBuilders[2].writeBinary(
-            Binary.valueOf(CQState.values()[cqEntry.getState()].toString()));
+            BytesUtils.valueOf(CQState.values()[cqEntry.getState()].toString()));
         builder.declarePosition();
       }
     }

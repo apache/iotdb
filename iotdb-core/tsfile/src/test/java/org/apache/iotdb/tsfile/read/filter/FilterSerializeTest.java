@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read.filter;
 
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import org.junit.Test;
 
@@ -29,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.TimeZone;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 
@@ -109,8 +111,20 @@ public class FilterSerializeTest {
   public void testGroupByMonthFilter() {
     Filter[] filters =
         new Filter[] {
-          new GroupByMonthFilter(1, 2, 3, 4, true, false, TimeZone.getTimeZone("Asia/Shanghai")),
-          new GroupByMonthFilter(4, 3, 2, 1, false, true, TimeZone.getTimeZone("Atlantic/Faeroe")),
+          new GroupByMonthFilter(
+              new TimeDuration(0, 1),
+              new TimeDuration(0, 2),
+              3,
+              4,
+              TimeZone.getTimeZone("Asia/Shanghai"),
+              TimeUnit.MILLISECONDS),
+          new GroupByMonthFilter(
+              new TimeDuration(0, 4),
+              new TimeDuration(0, 3),
+              2,
+              1,
+              TimeZone.getTimeZone("Atlantic/Faeroe"),
+              TimeUnit.MILLISECONDS),
         };
     for (Filter filter : filters) {
       validateSerialization(filter);

@@ -19,6 +19,7 @@
 package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -212,7 +213,8 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
             break;
           case TEXT:
             mapWritable.put(
-                new Text(measurementIds.get(index)), new Text(field.getBinaryV().getStringValue()));
+                new Text(measurementIds.get(index)),
+                new Text(field.getBinaryV().getStringValue(TSFileConfig.STRING_CHARSET)));
             break;
           default:
             logger.error("The data type is not support {}", field.getDataType());

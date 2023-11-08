@@ -185,8 +185,8 @@ public class TsFileSplitSender {
         tsFileDataManager.sendAllTsFileData()
             && processRemainingPieceNodes()
             && phaseOneFailures.isEmpty();
-    statistic.p1TimeMs = System.currentTimeMillis() - start;
-    logger.info("Cleanup ends after {}ms", statistic.p1TimeMs);
+    statistic.p1TimeMS = System.currentTimeMillis() - start;
+    logger.info("Cleanup ends after {}ms", statistic.p1TimeMS);
     return success;
   }
 
@@ -451,7 +451,7 @@ public class TsFileSplitSender {
     public AtomicLong dispatchNodesTimeNS = new AtomicLong();
     public AtomicLong dispatchNodeTimeNS = new AtomicLong();
     public AtomicLong compressingTimeNs = new AtomicLong();
-    public long p1TimeMs;
+    public long p1TimeMS;
     public long p2TimeMS;
     public long totalSize;
     public boolean hasP2Timeout;
@@ -474,7 +474,7 @@ public class TsFileSplitSender {
           rawSize.get(),
           compressedSize.get() * 1.0 / rawSize.get(),
           compressingTimeNs.get() / 1_000_000L);
-      logger.info("Sync TsFile time: {}ms ({})", p1TimeMs, p1ThroughputMBPS());
+      logger.info("Sync TsFile time: {}ms ({})", p1TimeMS, p1ThroughputMBPS());
       logger.info("Load command execution time: {}ms ({})", p2TimeMS, p2ThroughputMBPS());
     }
 

@@ -46,6 +46,7 @@ public class LoadTsFileStatement extends Statement {
 
   private final List<File> tsFiles;
   private final List<TsFileResource> resources;
+  private final List<Long> writePointCountList;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath);
@@ -55,6 +56,7 @@ public class LoadTsFileStatement extends Statement {
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
+    this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
 
     if (file.isFile()) {
@@ -79,6 +81,7 @@ public class LoadTsFileStatement extends Statement {
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
+    this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
   }
 
@@ -151,6 +154,14 @@ public class LoadTsFileStatement extends Statement {
 
   public List<TsFileResource> getResources() {
     return resources;
+  }
+
+  public void addWritePointCount(long writePointCount) {
+    writePointCountList.add(writePointCount);
+  }
+
+  public long getWritePointCount(int resourceIndex) {
+    return writePointCountList.get(resourceIndex);
   }
 
   @Override

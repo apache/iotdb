@@ -59,7 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatE
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
@@ -197,8 +197,6 @@ public class ExpressionAnalyzer {
           }
         }
         return ResultColumn.ColumnType.AGGREGATION;
-      } else if (((FunctionExpression) expression).isModelInferenceFunction()) {
-        return ResultColumn.ColumnType.MODEL_INFERENCE;
       } else {
         ResultColumn.ColumnType checkedType = null;
         int lastCheckedIndex = 0;

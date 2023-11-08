@@ -19,7 +19,7 @@
 package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
@@ -100,7 +100,7 @@ public class RecordUtils {
               ret.addTuple(new BooleanDataPoint(measurementId, Boolean.parseBoolean(value)));
               break;
             case TEXT:
-              ret.addTuple(new StringDataPoint(measurementId, Binary.valueOf(items[i + 1])));
+              ret.addTuple(new StringDataPoint(measurementId, BytesUtils.valueOf(items[i + 1])));
               break;
             default:
               LOG.warn("unsupported data type:{}", type);

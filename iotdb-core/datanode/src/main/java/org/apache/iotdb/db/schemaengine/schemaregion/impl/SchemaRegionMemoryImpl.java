@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
@@ -86,7 +85,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLo
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -683,12 +682,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
       throws SchemaQuotaExceededException {
-    if (schemaQuotaManager.getLevel().equals(ClusterSchemaQuotaLevel.TIMESERIES)) {
-      schemaQuotaManager.checkMeasurementLevel(timeSeriesNum);
-    } else if (schemaQuotaManager.getLevel().equals(ClusterSchemaQuotaLevel.DEVICE)) {
-      if (!mtree.checkDeviceNodeExists(devicePath)) {
-        schemaQuotaManager.checkDeviceLevel();
-      }
+    if (!mtree.checkDeviceNodeExists(devicePath)) {
+      schemaQuotaManager.check(timeSeriesNum, 1);
+    } else {
+      schemaQuotaManager.check(timeSeriesNum, 0);
     }
   }
 

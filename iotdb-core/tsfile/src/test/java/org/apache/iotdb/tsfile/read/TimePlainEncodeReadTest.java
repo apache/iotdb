@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -274,7 +275,9 @@ public class TimePlainEncodeReadTest {
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path("d1", "s4", true));
     IExpression valFilter =
-        new SingleSeriesExpression(new Path("d1", "s4", true), ValueFilter.gt(new Binary("dog97")));
+        new SingleSeriesExpression(
+            new Path("d1", "s4", true),
+            ValueFilter.gt(new Binary("dog97", TSFileConfig.STRING_CHARSET)));
     IExpression tFilter =
         BinaryExpression.and(
             new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
@@ -298,7 +301,9 @@ public class TimePlainEncodeReadTest {
     pathList = new ArrayList<>();
     pathList.add(new Path("d1", "s4", true));
     valFilter =
-        new SingleSeriesExpression(new Path("d1", "s4", true), ValueFilter.lt(new Binary("dog97")));
+        new SingleSeriesExpression(
+            new Path("d1", "s4", true),
+            ValueFilter.lt(new Binary("dog97", TSFileConfig.STRING_CHARSET)));
     tFilter =
         BinaryExpression.and(
             new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),

@@ -44,7 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSc
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -639,6 +639,10 @@ public class ClusterTemplateManager implements ITemplateManager {
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  public Integer getTemplateId(String templateName) {
+    return templateNameMap.get(templateName);
   }
 
   @TestOnly

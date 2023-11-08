@@ -81,37 +81,8 @@ public abstract class IoTDBConnector implements PipeConnector {
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    final Set<TEndPoint> givenNodeUrls = new HashSet<>(nodeUrls);
-
-    if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)
-        && parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY)) {
-      givenNodeUrls.add(
-          new TEndPoint(
-              parameters.getString(CONNECTOR_IOTDB_IP_KEY),
-              parameters.getInt(CONNECTOR_IOTDB_PORT_KEY)));
-    }
-
-    if (parameters.hasAttribute(SINK_IOTDB_IP_KEY)
-        && parameters.hasAttribute(SINK_IOTDB_PORT_KEY)) {
-      givenNodeUrls.add(
-          new TEndPoint(
-              parameters.getString(SINK_IOTDB_IP_KEY), parameters.getInt(SINK_IOTDB_PORT_KEY)));
-    }
-
-    if (parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)) {
-      givenNodeUrls.addAll(
-          SessionUtils.parseSeedNodeUrls(
-              Arrays.asList(parameters.getString(CONNECTOR_IOTDB_NODE_URLS_KEY).split(","))));
-    }
-
-    if (parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY)) {
-      givenNodeUrls.addAll(
-          SessionUtils.parseSeedNodeUrls(
-              Arrays.asList(parameters.getString(SINK_IOTDB_NODE_URLS_KEY).split(","))));
-    }
-
     nodeUrls.clear();
-    nodeUrls.addAll(givenNodeUrls);
+    nodeUrls.addAll(parseNodeUrls(parameters));
     LOGGER.info("IoTDBConnector nodeUrls: {}", nodeUrls);
 
     isTabletBatchModeEnabled =
@@ -119,5 +90,39 @@ public abstract class IoTDBConnector implements PipeConnector {
             Arrays.asList(CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, SINK_IOTDB_BATCH_MODE_ENABLE_KEY),
             CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
     LOGGER.info("IoTDBConnector isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
+  }
+
+  protected Set<TEndPoint> parseNodeUrls(PipeParameters parameters) {
+    final Set<TEndPoint> givenNodeUrls = new HashSet<>(nodeUrls);
+
+    if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)
+        && parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY)) {
+      givenNodeUrls.add(
+          new TEndPoint(
+              parameters.getStringByKeys(CONNECTOR_IOTDB_IP_KEY),
+              parameters.getIntByKeys(CONNECTOR_IOTDB_PORT_KEY)));
+    }
+
+    if (parameters.hasAttribute(SINK_IOTDB_IP_KEY)
+        && parameters.hasAttribute(SINK_IOTDB_PORT_KEY)) {
+      givenNodeUrls.add(
+          new TEndPoint(
+              parameters.getStringByKeys(SINK_IOTDB_IP_KEY),
+              parameters.getIntByKeys(SINK_IOTDB_PORT_KEY)));
+    }
+
+    if (parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)) {
+      givenNodeUrls.addAll(
+          SessionUtils.parseSeedNodeUrls(
+              Arrays.asList(parameters.getStringByKeys(CONNECTOR_IOTDB_NODE_URLS_KEY).split(","))));
+    }
+
+    if (parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY)) {
+      givenNodeUrls.addAll(
+          SessionUtils.parseSeedNodeUrls(
+              Arrays.asList(parameters.getStringByKeys(SINK_IOTDB_NODE_URLS_KEY).split(","))));
+    }
+
+    return givenNodeUrls;
   }
 }

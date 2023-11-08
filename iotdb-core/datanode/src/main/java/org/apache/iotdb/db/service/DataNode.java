@@ -566,10 +566,6 @@ public class DataNode implements DataNodeMBean {
   private void setUpRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
     registerManager.register(DataNodeInternalRPCService.getInstance());
-    // Start InternalRPCService to indicate that the current DataNode can accept request from MLNode
-    if (config.isEnableMLNodeService()) {
-      registerManager.register(MLNodeRPCService.getInstance());
-    }
 
     // Notice: During the period between starting the internal RPC service
     // and starting the client RPC service , some requests may fail because
@@ -618,11 +614,11 @@ public class DataNode implements DataNodeMBean {
   }
 
   /**
-   * Generate dataNodeConfiguration.
+   * Generate dataNodeConfiguration. Warning: Don't private this method !!!
    *
    * @return TDataNodeConfiguration
    */
-  private TDataNodeConfiguration generateDataNodeConfiguration() {
+  public TDataNodeConfiguration generateDataNodeConfiguration() {
     // Set DataNodeLocation
     TDataNodeLocation location = generateDataNodeLocation();
 

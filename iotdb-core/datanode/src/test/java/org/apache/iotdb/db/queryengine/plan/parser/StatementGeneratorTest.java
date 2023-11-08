@@ -57,9 +57,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSch
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.isession.template.TemplateNode;
-import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
-import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
-import org.apache.iotdb.mpp.rpc.thrift.TRecordModelMetricsReq;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
@@ -80,8 +77,8 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.template.MeasurementNode;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.Assert;
@@ -396,35 +393,6 @@ public class StatementGeneratorTest {
     DeleteTimeSeriesStatement statement =
         StatementGenerator.createDeleteTimeSeriesStatement(Collections.singletonList("root.sg.d1"));
     assertEquals(Collections.singletonList(new PartialPath("root.sg.d1")), statement.getPaths());
-  }
-
-  @Test
-  public void testInsertRecordModelMetrics() throws IllegalPathException {
-    TRecordModelMetricsReq recordModelMetricsReq =
-        new TRecordModelMetricsReq(
-            "modelId",
-            "trialId",
-            Collections.singletonList("metrics"),
-            1L,
-            Collections.singletonList(1.0));
-    InsertRowStatement statement = StatementGenerator.createStatement(recordModelMetricsReq);
-    assertEquals(1L, statement.getTime());
-  }
-
-  @Test
-  public void testFetchTimeseries() {
-    TFetchTimeseriesReq req = new TFetchTimeseriesReq("select * from root.sg.d1.s1");
-    Statement statement = StatementGenerator.createStatement(req, ZonedDateTime.now().getOffset());
-    assertEquals("root.sg.d1.s1.*", statement.getPaths().get(0).getFullPath());
-  }
-
-  @Test
-  public void testDeleteModelMetrics() throws IllegalPathException {
-    TDeleteModelMetricsReq req = new TDeleteModelMetricsReq("model");
-    DeleteTimeSeriesStatement statement = StatementGenerator.createStatement(req);
-    assertEquals(
-        Collections.singletonList(new PartialPath("root.__system.ml.exp.model.**")),
-        statement.getPaths());
   }
 
   private org.apache.iotdb.isession.template.Template getTemplate()

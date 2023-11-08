@@ -160,16 +160,19 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -199,7 +202,6 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 import static org.apache.iotdb.db.utils.QueryDataSetUtils.convertTsBlockByFetchSize;
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
@@ -227,6 +229,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private final DataNodeSchemaCache DATA_NODE_SCHEMA_CACHE = DataNodeSchemaCache.getInstance();
 
   public static Duration DEFAULT_TIME_SLICE = new Duration(60_000, TimeUnit.MILLISECONDS);
+
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   @FunctionalInterface
   public interface SelectResult {
@@ -669,7 +674,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)}));
 
     GroupByTimeParameter groupByTimeParameter =
-        new GroupByTimeParameter(startTime, endTme, interval, interval, true);
+        new GroupByTimeParameter(
+            startTime, endTme, new TimeDuration(0, interval), new TimeDuration(0, interval), true);
 
     IMeasurementSchema measurementSchema = new MeasurementSchema(measurement, dataType);
     AbstractSeriesAggregationScanOperator operator;
@@ -840,7 +846,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             LastQueryUtil.appendLastValue(
                 builder,
                 timeValuePair.getTimestamp(),
-                new Binary(fullPath.getFullPath()),
+                new Binary(fullPath.getFullPath(), TSFileConfig.STRING_CHARSET),
                 timeValuePair.getValue().getStringValue(),
                 timeValuePair.getValue().getDataType().name());
           }
@@ -2321,7 +2327,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           }
           Column column = tsBlock.get().getColumn(0);
           for (int i = 0; i < column.getPositionCount(); i++) {
-            result.add(column.getBinary(i).getStringValue());
+            result.add(column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
           }
         }
         resp.setMeasurements(result);

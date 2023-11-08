@@ -93,11 +93,14 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXTERNAL_USER_NAME_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXTERNAL_USER_PASSWORD_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXTERNAL_USER_PASSWORD_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOCAL_SPLIT_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SPLIT_MAX_CONCURRENT_FILE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SPLIT_MAX_SIZE_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SPLIT_MAX_SIZE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_ENABLE_KEY;
 
 public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
@@ -164,6 +167,12 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   public void validate(PipeParameterValidator validator) throws Exception {
     super.validate(validator);
     retryConnector.validate(validator);
+
+    final PipeParameters parameters = validator.getParameters();
+    validator.validate(
+        useSSL -> !((boolean) useSSL),
+        "IoTDBThriftAsyncConnector does not support SSL transmission currently",
+        parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false));
   }
 
   @Override
@@ -171,7 +180,11 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       throws Exception {
     super.customize(parameters, configuration);
 
-    retryConnector.customize(parameters, configuration);
+    // Disable batch mode for retry connector, in case retry events are never sent again
+    PipeParameters retryParameters = new PipeParameters(new HashMap<>(parameters.getAttribute()));
+    retryParameters.getAttribute().put(SINK_IOTDB_BATCH_MODE_ENABLE_KEY, "false");
+    retryParameters.getAttribute().put(CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, "false");
+    retryConnector.customize(retryParameters, configuration);
 
     useLocalSplit = parameters.getBooleanOrDefault(CONNECTOR_LOCAL_SPLIT_ENABLE_KEY, false);
 
@@ -379,26 +392,32 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePatternOrTime()) {
+    final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
+        (PipeTsFileInsertionEvent) tsFileInsertionEvent;
+    if (!pipeTsFileInsertionEvent.waitForTsFileClose()) {
+      LOGGER.warn(
+          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+          pipeTsFileInsertionEvent.getTsFile());
+      return;
+    }
+
+    if ((pipeTsFileInsertionEvent).shouldParsePatternOrTime()) {
       try {
-        for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+        for (final TabletInsertionEvent event :
+            pipeTsFileInsertionEvent.toTabletInsertionEvents()) {
           transfer(event);
         }
       } finally {
-        tsFileInsertionEvent.close();
+        pipeTsFileInsertionEvent.close();
       }
       return;
     }
 
     final long requestCommitId = commitIdGenerator.incrementAndGet();
-
-    final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
-        (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
         new PipeTransferTsFileInsertionEventHandler(
             requestCommitId, pipeTsFileInsertionEvent, this);
 
-    pipeTsFileInsertionEvent.waitForTsFileClose();
     transfer(requestCommitId, pipeTransferTsFileInsertionEventHandler);
   }
 
@@ -518,7 +537,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     transferBatchedEventsIfNecessary();
 
     if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn("IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
+      LOGGER.warn(
+          "IoTDBThriftAsyncConnector does not support transferring generic event: {}.", event);
     }
   }
 
@@ -721,5 +741,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   // synchronized to avoid close connector when transfer event
   public synchronized void close() throws Exception {
     retryConnector.close();
+
+    if (tabletBatchBuilder != null) {
+      tabletBatchBuilder.close();
+    }
   }
 }

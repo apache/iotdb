@@ -55,6 +55,8 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_REALTIME_MODE_FILE_VALUE = "file";
   public static final String EXTRACTOR_REALTIME_MODE_LOG_VALUE = "log";
   public static final String EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE = "forced-log";
+  public static final String EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE = "stream";
+  public static final String EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE = "batch";
   public static final String EXTRACTOR_LOCAL_SPLIT_ENABLE_KEY = "extractor.local-split.enable";
   public static final String EXTRACTOR_SPLIT_MAX_CONCURRENT_FILE_KEY =
       "extractor.split.max-concurrent-file";

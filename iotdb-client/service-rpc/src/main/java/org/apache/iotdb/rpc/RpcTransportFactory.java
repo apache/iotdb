@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TMemoryInputTransport;
+import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -76,6 +77,16 @@ public class RpcTransportFactory extends TTransportFactory {
 
   public TTransport getTransportWithNoTimeout(String ip, int port) throws TTransportException {
     return inner.getTransport(new TSocket(TConfigurationConst.defaultTConfiguration, ip, port));
+  }
+
+  public TTransport getTransport(
+      String ip, int port, int timeout, String trustStore, String trustStorePwd)
+      throws TTransportException {
+    TSSLTransportFactory.TSSLTransportParameters params =
+        new TSSLTransportFactory.TSSLTransportParameters();
+    params.setTrustStore(trustStore, trustStorePwd);
+    TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
+    return inner.getTransport(transport);
   }
 
   public TTransport getTransport(String ip, int port, int timeout) throws TTransportException {

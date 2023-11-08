@@ -132,7 +132,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 && parameters.hasAnyAttributes(
                     EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY)
             ? DateTimeUtils.convertDatetimeStrToLong(
-                parameters.getString(
+                parameters.getStringByKeys(
                     EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY),
                 ZoneId.systemDefault())
             : Long.MIN_VALUE;
@@ -141,7 +141,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 && parameters.hasAnyAttributes(
                     EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY)
             ? DateTimeUtils.convertDatetimeStrToLong(
-                parameters.getString(EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY),
+                parameters.getStringByKeys(
+                    EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY),
                 ZoneId.systemDefault())
             : Long.MAX_VALUE;
 

@@ -60,6 +60,7 @@ public enum PriPrivilegeType {
       PrivilegeType.USE_PIPE,
       PrivilegeType.USE_UDF,
       PrivilegeType.USE_CQ,
+      PrivilegeType.USE_MODEL,
       PrivilegeType.USE_TRIGGER,
       PrivilegeType.MANAGE_USER,
       PrivilegeType.MANAGE_ROLE,

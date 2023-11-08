@@ -600,6 +600,24 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public IConfigNodeRPCService.Iface getConfigNodeConnection(int index) throws Exception {
+    Exception lastException = null;
+    ConfigNodeWrapper configNodeWrapper = configNodeWrapperList.get(index);
+    for (int i = 0; i < 30; i++) {
+      try {
+        return clientManager.borrowClient(
+            new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()));
+      } catch (Exception e) {
+        lastException = e;
+      }
+      // Sleep 1s before next retry
+      TimeUnit.SECONDS.sleep(1);
+    }
+    throw new IOException(
+        "Failed to get connection to this ConfigNode. Last error: " + lastException);
+  }
+
+  @Override
   public int getLeaderConfigNodeIndex() throws IOException, InterruptedException {
     Exception lastException = null;
     ConfigNodeWrapper lastErrorNode = null;

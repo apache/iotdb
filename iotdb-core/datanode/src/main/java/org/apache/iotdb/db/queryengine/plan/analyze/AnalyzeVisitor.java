@@ -26,8 +26,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.model.ForecastModeInformation;
-import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -39,7 +37,6 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -79,8 +76,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByVariationParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ForecastModelInferenceDescriptor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -92,7 +87,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.GroupBySessionCo
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByVariationComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent;
-import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
@@ -143,9 +137,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
@@ -182,7 +177,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ALLOWED_SCHEMA_PROPS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEADBAND;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction.FORECAST;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
@@ -202,7 +196,6 @@ import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushD
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor.getSourcePaths;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME_HEADER;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.MODEL_ID;
 
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
 public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
@@ -222,7 +215,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
-  private final IModelFetcher modelFetcher;
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
@@ -230,7 +222,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public AnalyzeVisitor(IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
-    this.modelFetcher = ModelFetcher.getInstance();
   }
 
   @Override
@@ -254,10 +245,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     try {
       // check for semantic errors
       queryStatement.semanticCheck();
-
-      if (queryStatement.isModelInferenceQuery()) {
-        analyzeModelInference(analysis, queryStatement);
-      }
 
       ISchemaTree schemaTree = analyzeSchema(queryStatement, analysis, context);
       // If there is no leaf node in the schema tree, the query should be completed immediately
@@ -354,47 +341,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           "Meet error when analyzing the query statement: " + e.getMessage());
     }
     return analysis;
-  }
-
-  private void analyzeModelInference(Analysis analysis, QueryStatement queryStatement) {
-    FunctionExpression modelInferenceExpression =
-        (FunctionExpression)
-            queryStatement.getSelectComponent().getResultColumns().get(0).getExpression();
-    String modelId = modelInferenceExpression.getFunctionAttributes().get(MODEL_ID);
-
-    ModelInformation modelInformation = modelFetcher.getModelInformation(modelId);
-    if (modelInformation == null || !modelInformation.available()) {
-      throw new SemanticException("Model " + modelId + " is not available");
-    }
-
-    ModelInferenceFunction functionType =
-        ModelInferenceFunction.valueOf(modelInferenceExpression.getFunctionName().toUpperCase());
-    if (functionType == FORECAST) {
-      ForecastModelInferenceDescriptor modelInferenceDescriptor =
-          new ForecastModelInferenceDescriptor(
-              functionType, (ForecastModeInformation) modelInformation);
-      Map<String, String> modelInferenceAttributes =
-          modelInferenceExpression.getFunctionAttributes();
-      if (modelInferenceAttributes.containsKey("predict_length")) {
-        modelInferenceDescriptor.setExpectedPredictLength(
-            Integer.parseInt(modelInferenceAttributes.get("predict_length")));
-      }
-      analysis.setModelInferenceDescriptor(modelInferenceDescriptor);
-
-      List<ResultColumn> newResultColumns = new ArrayList<>();
-      for (Expression inputExpression : modelInferenceExpression.getExpressions()) {
-        newResultColumns.add(
-            new ResultColumn(inputExpression, ResultColumn.ColumnType.MODEL_INFERENCE));
-      }
-      queryStatement.getSelectComponent().setResultColumns(newResultColumns);
-
-      OrderByComponent descTimeOrder = new OrderByComponent();
-      descTimeOrder.addSortItem(new SortItem("TIME", Ordering.DESC));
-      queryStatement.setOrderByComponent(descTimeOrder);
-    } else {
-      throw new IllegalArgumentException(
-          "Unsupported model inference function type " + functionType);
-    }
   }
 
   private ISchemaTree analyzeSchema(
@@ -1495,58 +1441,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
 
-    if (queryStatement.isModelInferenceQuery()) {
-      List<ColumnHeader> columnHeaders = new ArrayList<>();
-
-      ModelInferenceDescriptor modelInferenceDescriptor = analysis.getModelInferenceDescriptor();
-      if (Objects.requireNonNull(modelInferenceDescriptor.getFunctionType()) == FORECAST) {
-        ForecastModelInferenceDescriptor forecastModelInferenceDescriptor =
-            (ForecastModelInferenceDescriptor) modelInferenceDescriptor;
-
-        List<TSDataType> inputTypeList = forecastModelInferenceDescriptor.getInputTypeList();
-        if (outputExpressions.size() != inputTypeList.size()) {
-          throw new SemanticException(
-              String.format(
-                  "The number of input expressions does not match the number of input types [%d] when training",
-                  inputTypeList.size()));
-        }
-        for (int i = 0; i < inputTypeList.size(); i++) {
-          Expression inputExpression = outputExpressions.get(i).left;
-          TSDataType inputDataType = analysis.getType(inputExpression);
-          if (inputDataType != inputTypeList.get(i)) {
-            throw new SemanticException(
-                String.format(
-                    "The type of input expression [%s] does not match the type of input type [%s] when training",
-                    inputDataType, inputTypeList.get(i)));
-          }
-        }
-
-        List<FunctionExpression> modelInferenceOutputExpressions = new ArrayList<>();
-        for (int predictIndex : forecastModelInferenceDescriptor.getPredictIndexList()) {
-          Expression inputExpression = outputExpressions.get(predictIndex).left;
-          FunctionExpression modelInferenceOutputExpression =
-              new FunctionExpression(
-                  FORECAST.getFunctionName(),
-                  forecastModelInferenceDescriptor.getOutputAttributes(),
-                  Collections.singletonList(inputExpression));
-          analyzeExpression(analysis, modelInferenceOutputExpression);
-          modelInferenceOutputExpressions.add(modelInferenceOutputExpression);
-          columnHeaders.add(
-              new ColumnHeader(
-                  modelInferenceOutputExpression.toString(),
-                  analysis.getType(modelInferenceOutputExpression)));
-        }
-        forecastModelInferenceDescriptor.setModelInferenceOutputExpressions(
-            modelInferenceOutputExpressions);
-      } else {
-        throw new SemanticException(
-            "Unsupported model inference function type "
-                + modelInferenceDescriptor.getFunctionType());
-      }
-      analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, false));
-      return;
-    }
-
     boolean isIgnoreTimestamp = queryStatement.isAggregationQuery() && !queryStatement.isGroupBy();
     List<ColumnHeader> columnHeaders = new ArrayList<>();
     if (queryStatement.isAlignByDevice()) {
@@ -1859,7 +1753,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
-    if ((groupByTimeComponent.isIntervalByMonth() || groupByTimeComponent.isSlidingStepByMonth())
+    if ((groupByTimeComponent.getInterval().containsMonth()
+            || groupByTimeComponent.getSlidingStep().containsMonth())
         && queryStatement.getResultTimeOrder() == Ordering.DESC) {
       throw new SemanticException("Group by month doesn't support order by time desc now.");
     }
@@ -3092,19 +2987,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         groupByTimeComponent.isLeftCRightO()
             ? groupByTimeComponent.getEndTime()
             : groupByTimeComponent.getEndTime() + 1;
-    if (groupByTimeComponent.isIntervalByMonth() || groupByTimeComponent.isSlidingStepByMonth()) {
+    if (groupByTimeComponent.getInterval().containsMonth()
+        || groupByTimeComponent.getSlidingStep().containsMonth()) {
       return new GroupByMonthFilter(
           groupByTimeComponent.getInterval(),
           groupByTimeComponent.getSlidingStep(),
           startTime,
           endTime,
-          groupByTimeComponent.isSlidingStepByMonth(),
-          groupByTimeComponent.isIntervalByMonth(),
-          TimeZone.getTimeZone("+00:00"));
+          TimeZone.getTimeZone("+00:00"),
+          TimestampPrecisionUtils.currPrecision);
     } else {
       return new GroupByFilter(
-          groupByTimeComponent.getInterval(),
-          groupByTimeComponent.getSlidingStep(),
+          groupByTimeComponent.getInterval().nonMonthDuration,
+          groupByTimeComponent.getSlidingStep().nonMonthDuration,
           startTime,
           endTime);
     }
