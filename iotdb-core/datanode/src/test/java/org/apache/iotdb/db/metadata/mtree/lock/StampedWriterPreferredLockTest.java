@@ -217,4 +217,47 @@ public class StampedWriterPreferredLockTest {
     Awaitility.await().atMost(1, TimeUnit.SECONDS).until(() -> counter.get() == 4);
     Assert.assertEquals(4, counter.get());
   }
+
+  @Test
+  public void testConcurrent() throws InterruptedException {
+    StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
+    Semaphore semaphore = new Semaphore(0);
+    AtomicInteger counter1 = new AtomicInteger();
+    AtomicInteger counter2 = new AtomicInteger();
+    // main thread get read lock by stamp
+    new Thread(
+            () -> {
+              // writer thread will be blocked util main thread release read lock.
+              lock.writeLock();
+              try {
+                semaphore.acquire();
+              } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+              }
+              lock.unlockWrite();
+              lock.writeLock();
+              counter1.incrementAndGet();
+              try {
+                Thread.sleep(500);
+              } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+              }
+              counter2.incrementAndGet();
+              lock.unlockWrite();
+            })
+        .start();
+    new Thread(
+            () -> {
+              try {
+                Thread.sleep(500);
+              } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+              }
+              semaphore.release();
+            })
+        .start();
+    lock.threadReadLock();
+    Assert.assertEquals(counter2.get(), counter1.get());
+    lock.threadReadUnlock();
+  }
 }

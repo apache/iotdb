@@ -70,51 +70,79 @@ public class PipeConnectorMetrics implements IMetricSet {
   }
 
   private void createAutoGauge(String taskID) {
+    PipeConnectorSubtask connector = connectorMap.get(taskID);
+    // pending event count
     metricService.createAutoGauge(
         Metric.UNTRANSFERRED_TABLET_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        connectorMap.get(taskID),
+        connector,
         PipeConnectorSubtask::getTabletInsertionEventCount,
         Tag.NAME.toString(),
-        taskID);
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
     metricService.createAutoGauge(
         Metric.UNTRANSFERRED_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        connectorMap.get(taskID),
+        connector,
         PipeConnectorSubtask::getTsFileInsertionEventCount,
         Tag.NAME.toString(),
-        taskID);
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
     metricService.createAutoGauge(
         Metric.UNTRANSFERRED_HEARTBEAT_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        connectorMap.get(taskID),
+        connector,
         PipeConnectorSubtask::getPipeHeartbeatEventCount,
         Tag.NAME.toString(),
-        taskID);
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
   }
 
   private void createRate(String taskID) {
+    PipeConnectorSubtask connector = connectorMap.get(taskID);
+    // transfer event rate
     tabletRateMap.put(
         taskID,
         metricService.getOrCreateRate(
             Metric.PIPE_CONNECTOR_TABLET_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            taskID));
+            connector.getAttributeSortedString(),
+            Tag.INDEX.toString(),
+            String.valueOf(connector.getConnectorIndex()),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(connector.getCreationTime())));
     tsFileRateMap.put(
         taskID,
         metricService.getOrCreateRate(
             Metric.PIPE_CONNECTOR_TSFILE_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            taskID));
+            connector.getAttributeSortedString(),
+            Tag.INDEX.toString(),
+            String.valueOf(connector.getConnectorIndex()),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(connector.getCreationTime())));
     pipeHeartbeatRateMap.put(
         taskID,
         metricService.getOrCreateRate(
             Metric.PIPE_CONNECTOR_HEARTBEAT_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            taskID));
+            connector.getAttributeSortedString(),
+            Tag.INDEX.toString(),
+            String.valueOf(connector.getConnectorIndex()),
+            Tag.CREATION_TIME.toString(),
+            String.valueOf(connector.getCreationTime())));
   }
 
   @Override
@@ -134,39 +162,67 @@ public class PipeConnectorMetrics implements IMetricSet {
   }
 
   private void removeAutoGauge(String taskID) {
+    PipeConnectorSubtask connector = connectorMap.get(taskID);
+    // pending event count
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNTRANSFERRED_TABLET_COUNT.toString(),
         Tag.NAME.toString(),
-        taskID);
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNTRANSFERRED_TSFILE_COUNT.toString(),
         Tag.NAME.toString(),
-        taskID);
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNTRANSFERRED_HEARTBEAT_COUNT.toString(),
         Tag.NAME.toString(),
-        taskID);
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
   }
 
   private void removeRate(String taskID) {
+    PipeConnectorSubtask connector = connectorMap.get(taskID);
+    // transfer event rate
     metricService.remove(
         MetricType.RATE,
         Metric.PIPE_CONNECTOR_TABLET_TRANSFER.toString(),
         Tag.NAME.toString(),
-        taskID);
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
     metricService.remove(
         MetricType.RATE,
         Metric.PIPE_CONNECTOR_TSFILE_TRANSFER.toString(),
         Tag.NAME.toString(),
-        taskID);
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
     metricService.remove(
         MetricType.RATE,
         Metric.PIPE_CONNECTOR_HEARTBEAT_TRANSFER.toString(),
         Tag.NAME.toString(),
-        taskID);
+        connector.getAttributeSortedString(),
+        Tag.INDEX.toString(),
+        String.valueOf(connector.getConnectorIndex()),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(connector.getCreationTime()));
     tabletRateMap.remove(taskID);
     tsFileRateMap.remove(taskID);
     pipeHeartbeatRateMap.remove(taskID);

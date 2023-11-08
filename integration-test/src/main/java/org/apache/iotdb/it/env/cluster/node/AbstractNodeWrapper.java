@@ -123,6 +123,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   private Process instance;
   private final String nodeAddress;
   private int nodePort;
+  private int metricPort;
   private long startTime;
 
   /**
@@ -161,6 +162,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     this.portList = portList;
     this.nodeAddress = "127.0.0.1";
     this.nodePort = portList[0];
+    this.metricPort = portList[portList.length - 2];
     jmxPort = this.portList[portList.length - 1];
     // these properties can't be mutated.
     immutableCommonProperties.setProperty(UDF_LIB_DIR, MppBaseConfig.NULL_VALUE);
@@ -489,6 +491,11 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   @Override
   public final int getPort() {
     return this.nodePort;
+  }
+
+  @Override
+  public final int getMetricPort() {
+    return this.metricPort;
   }
 
   public void setPort(int port) {

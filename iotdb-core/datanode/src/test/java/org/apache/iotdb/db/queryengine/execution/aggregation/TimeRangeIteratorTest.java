@@ -22,13 +22,15 @@ package org.apache.iotdb.db.queryengine.execution.aggregation;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-public class TimeRangeIteratorTest {
+import java.sql.Timestamp;
 
-  private static final long MS_TO_MONTH = 30 * 86400_000L;
+public class TimeRangeIteratorTest {
+  private static final long MS_TO_DAY = 86400_000L;
 
   @Test
   public void testNotSplitTimeRange() {
@@ -46,17 +48,18 @@ public class TimeRangeIteratorTest {
       "[ 30 : 31 ]"
     };
 
-    long startTime = 0, endTime = 32, interval = 4, slidingStep = 3;
+    long startTime = 0, endTime = 32;
+    TimeDuration interval = new TimeDuration(0, 4), slidingStep = new TimeDuration(0, 3);
 
     ITimeRangeIterator timeRangeIterator =
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            startTime, endTime, interval, slidingStep, true, false, false, true, false);
+            startTime, endTime, interval, slidingStep, true, true, false);
 
     checkRes(timeRangeIterator, res);
 
     ITimeRangeIterator descTimeRangeIterator =
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            startTime, endTime, interval, slidingStep, false, false, false, true, false);
+            startTime, endTime, interval, slidingStep, false, true, false);
 
     checkRes(descTimeRangeIterator, res);
   }
@@ -162,41 +165,54 @@ public class TimeRangeIteratorTest {
       "[ 0 : 3 ]", "[ 6 : 9 ]", "[ 12 : 15 ]", "[ 18 : 21 ]", "[ 24 : 27 ]", "[ 30 : 31 ]"
     };
 
+    TimeDuration interval = new TimeDuration(0, 4);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 1, true, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, interval, new TimeDuration(0, 1), true, true, true),
         res4_1);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 2, true, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, interval, new TimeDuration(0, 2), true, true, true),
         res4_2);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 3, true, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, interval, new TimeDuration(0, 3), true, true, true),
         res4_3);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 4, true, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, interval, new TimeDuration(0, 4), true, true, true),
         res4_4);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 5, true, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, interval, new TimeDuration(0, 5), true, true, true),
         res4_5);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 6, true, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, interval, new TimeDuration(0, 6), true, true, true),
         res4_6);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 1, false, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, interval, new TimeDuration(0, 1), false, true, true),
         res4_1);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 2, false, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, interval, new TimeDuration(0, 2), false, true, true),
         res4_2);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 3, false, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, interval, new TimeDuration(0, 3), false, true, true),
         res4_3);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 4, false, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, interval, new TimeDuration(0, 4), false, true, true),
         res4_4);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 5, false, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, interval, new TimeDuration(0, 5), false, true, true),
         res4_5);
     checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(0, 32, 4, 6, false, false, false, true, true),
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            0, 32, interval, new TimeDuration(0, 6), false, true, true),
         res4_6);
   }
 
@@ -264,34 +280,149 @@ public class TimeRangeIteratorTest {
         TimeRangeIteratorFactory.getTimeRangeIterator(
             1604102400000L,
             1617148800000L,
-            MS_TO_MONTH,
-            MS_TO_MONTH,
-            true,
-            true,
+            new TimeDuration(1, 0),
+            new TimeDuration(1, 0),
             true,
             true,
             false),
         res1);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, MS_TO_MONTH, MS_TO_MONTH, true, true, true, true, true),
+            1604102400000L,
+            1617148800000L,
+            new TimeDuration(1, 0),
+            new TimeDuration(1, 0),
+            true,
+            true,
+            true),
         res1);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, 864000000, MS_TO_MONTH, true, false, true, true, false),
+            1604102400000L,
+            1617148800000L,
+            new TimeDuration(0, 10 * MS_TO_DAY),
+            new TimeDuration(1, 0),
+            true,
+            true,
+            false),
         res2);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, 864000000, MS_TO_MONTH, true, false, true, true, true),
+            1604102400000L,
+            1617148800000L,
+            new TimeDuration(0, 10 * MS_TO_DAY),
+            new TimeDuration(1, 0),
+            true,
+            true,
+            true),
         res2);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, MS_TO_MONTH, 864000000, true, true, false, true, false),
+            1604102400000L,
+            1617148800000L,
+            new TimeDuration(1, 0),
+            new TimeDuration(0, 10 * MS_TO_DAY),
+            true,
+            true,
+            false),
         res3);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, MS_TO_MONTH, 864000000, true, true, false, true, true),
+            1604102400000L,
+            1617148800000L,
+            new TimeDuration(1, 0),
+            new TimeDuration(0, 10 * MS_TO_DAY),
+            true,
+            true,
+            true),
         res4);
+  }
+
+  @Test
+  public void testMixedUnit() {
+    String[] res =
+        new String[] {
+          "[ "
+              + Timestamp.valueOf("2023-01-28 00:00:00").getTime()
+              + " : "
+              + (Timestamp.valueOf("2023-03-01 00:00:00").getTime() - 1L)
+              + " ]",
+          "[ "
+              + Timestamp.valueOf("2023-03-01 00:00:00").getTime()
+              + " : "
+              + (Timestamp.valueOf("2023-04-02 00:00:00").getTime() - 1L)
+              + " ]",
+          "[ "
+              + Timestamp.valueOf("2023-04-02 00:00:00").getTime()
+              + " : "
+              + (Timestamp.valueOf("2023-05-03 00:00:00").getTime() - 1L)
+              + " ]",
+          "[ "
+              + Timestamp.valueOf("2023-05-03 00:00:00").getTime()
+              + " : "
+              + (Timestamp.valueOf("2023-05-29 00:00:00").getTime() - 1L)
+              + " ]"
+        };
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            Timestamp.valueOf("2023-01-28 00:00:00").getTime(),
+            Timestamp.valueOf("2023-05-29 00:00:00").getTime(),
+            new TimeDuration(1, MS_TO_DAY),
+            new TimeDuration(1, MS_TO_DAY),
+            true,
+            true,
+            true),
+        res);
+
+    res =
+        new String[] {
+          "[ "
+              + Timestamp.valueOf("2023-01-28 00:00:00").getTime()
+              + " : "
+              + (Timestamp.valueOf("2023-03-01 00:00:00").getTime() - 1L)
+              + " ]",
+          "[ "
+              + Timestamp.valueOf("2023-03-01 00:00:00").getTime()
+              + " : "
+              + (Timestamp.valueOf("2023-03-02 00:00:00").getTime() - 1L)
+              + " ]",
+          "[ "
+              + Timestamp.valueOf("2023-03-02 00:00:00").getTime()
+              + " : "
+              + (Timestamp.valueOf("2023-04-02 00:00:00").getTime() - 1L)
+              + " ]",
+          "[ "
+              + Timestamp.valueOf("2023-04-02 00:00:00").getTime()
+              + " : "
+              + (Timestamp.valueOf("2023-04-03 00:00:00").getTime() - 1L)
+              + " ]",
+          "[ "
+              + Timestamp.valueOf("2023-04-03 00:00:00").getTime()
+              + " : "
+              + (Timestamp.valueOf("2023-05-03 00:00:00").getTime() - 1L)
+              + " ]",
+          "[ "
+              + Timestamp.valueOf("2023-05-03 00:00:00").getTime()
+              + " : "
+              + (Timestamp.valueOf("2023-05-04 00:00:00").getTime() - 1L)
+              + " ]",
+          "[ "
+              + Timestamp.valueOf("2023-05-04 00:00:00").getTime()
+              + " : "
+              + (Timestamp.valueOf("2023-05-29 00:00:00").getTime() - 1L)
+              + " ]",
+        };
+    // slidingStep has overlap with interval
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            Timestamp.valueOf("2023-01-28 00:00:00").getTime(),
+            Timestamp.valueOf("2023-05-29 00:00:00").getTime(),
+            new TimeDuration(1, 2 * MS_TO_DAY),
+            new TimeDuration(1, MS_TO_DAY),
+            true,
+            true,
+            true),
+        res);
   }
 
   private void checkRes(ITimeRangeIterator timeRangeIterator, String[] res) {
