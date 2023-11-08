@@ -95,8 +95,7 @@ public class DFAGraph {
   }
 
   private void ensureCapacity() {
-    if (getStateSize() > dfaTransitionTable.length) {
-      System.out.println("capacity expand");
+    if (dfaStateList.size() > dfaTransitionTable.length) {
       IFAState[][] tmp = new IFAState[dfaTransitionTable.length * 2][dfaTransitionTable[0].length];
       System.arraycopy(dfaTransitionTable, 0, tmp, 0, dfaTransitionTable.length);
       dfaTransitionTable = tmp;
@@ -126,7 +125,7 @@ public class DFAGraph {
           child,
           transitionMap,
           dfaTransitionTable[stateIndex][transitionIndex],
-              stateIndexGenerator);
+          stateIndexGenerator);
     }
   }
 

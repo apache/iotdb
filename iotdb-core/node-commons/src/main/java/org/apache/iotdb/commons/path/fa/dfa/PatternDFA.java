@@ -116,27 +116,26 @@ public class PatternDFA implements IPatternFA {
     batchMatchTransitionCached = new List[dfaGraph.getStateSize()];
   }
 
-
   private boolean initTransitionMap(
-          PathPatternNode<Void, PathPatternNode.VoidSerializer> node,
-          AtomicInteger transitionIndex,
-          AtomicInteger count) {
+      PathPatternNode<Void, PathPatternNode.VoidSerializer> node,
+      AtomicInteger transitionIndex,
+      AtomicInteger count) {
     count.incrementAndGet();
     if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node.getName())
-            || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node.getName())) {
+        || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node.getName())) {
       return true;
     } else {
       transitionMap.computeIfAbsent(
-              node.getName(),
-              i -> {
-                IFATransition transition =
-                        new DFAPreciseTransition(transitionIndex.getAndIncrement(), i);
-                preciseMatchTransitionList.add(transition);
-                return transition;
-              });
+          node.getName(),
+          i -> {
+            IFATransition transition =
+                new DFAPreciseTransition(transitionIndex.getAndIncrement(), i);
+            preciseMatchTransitionList.add(transition);
+            return transition;
+          });
       boolean res = false;
       for (PathPatternNode<Void, PathPatternNode.VoidSerializer> child :
-              node.getChildren().values()) {
+          node.getChildren().values()) {
         res |= initTransitionMap(child, transitionIndex, count);
       }
       return res;
@@ -158,7 +157,6 @@ public class PatternDFA implements IPatternFA {
     }
     return null;
   }
-
 
   @Override
   public Map<String, IFATransition> getPreciseMatchTransition(IFAState state) {
