@@ -378,7 +378,6 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     }
     TsFileResource seqFile3 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile3)) {
-      writer.endChunkGroup();
       writer.endFile();
     }
     seqResources.add(seqFile1);
@@ -442,6 +441,6 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
   }
 }
