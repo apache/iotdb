@@ -99,6 +99,8 @@ public class PipeOpcUaServiceInitializer {
         } while (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } catch (PipeException | InterruptedException ignore) {
         Thread.currentThread().interrupt();
+        // The drop pipe currently will not throw failure, the checking is
+        // prepared for unification and potential extension
       }
     }
   }
