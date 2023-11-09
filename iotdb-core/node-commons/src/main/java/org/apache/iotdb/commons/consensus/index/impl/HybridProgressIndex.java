@@ -91,7 +91,8 @@ public class HybridProgressIndex extends ProgressIndex {
     lock.readLock().lock();
     try {
       if (progressIndex instanceof MinimumProgressIndex) {
-        return true;
+        return type2Index.size() > 1
+            || !type2Index.containsKey(ProgressIndexType.MINIMUM_PROGRESS_INDEX.getType());
       }
 
       if (!(progressIndex instanceof HybridProgressIndex)) {
