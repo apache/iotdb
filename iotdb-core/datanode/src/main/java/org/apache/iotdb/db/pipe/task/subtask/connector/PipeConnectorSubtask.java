@@ -70,11 +70,12 @@ public class PipeConnectorSubtask extends PipeSubtask {
   // Now parallel connectors run the same time, thus the heartbeat events are not sure
   // to trigger the general event transfer function, causing potentially such as
   // the random delay of the batch transmission. Therefore, here we inject cron events
-  // when no event can be pulled, and the interval is larger than this time.
-  private static final int CONNECTOR_CRON_EVENT_INJECTOR_INTERVAL_SECONDS = 30;
-  // To avoid the repeated "new" operation.
-  private static final PipeHeartbeatEvent cronEvent = new PipeHeartbeatEvent("", false);
-  private long lastInjectTime = System.currentTimeMillis();
+  // when no event can be pulled.
+  private static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
+      new PipeHeartbeatEvent("cron", false);
+  private static final long CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_SECONDS =
+      PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
+  private long lastHeartbeatEventInjectTime = System.currentTimeMillis();
 
   public PipeConnectorSubtask(
       String taskID,
@@ -124,13 +125,13 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
     try {
       if (event == null) {
-        if (System.currentTimeMillis() - lastInjectTime
-            > CONNECTOR_CRON_EVENT_INJECTOR_INTERVAL_SECONDS) {
-          outputPipeConnector.transfer(cronEvent);
-          lastInjectTime = System.currentTimeMillis();
+        if (System.currentTimeMillis() - lastHeartbeatEventInjectTime
+            > CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_SECONDS) {
+          transferHeartbeatEvent(CRON_HEARTBEAT_EVENT);
         }
         return false;
       }
+
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
         PipeConnectorMetrics.getInstance().markTabletEvent(taskID);
@@ -138,19 +139,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
         PipeConnectorMetrics.getInstance().markTsFileEvent(taskID);
       } else if (event instanceof PipeHeartbeatEvent) {
-        try {
-          outputPipeConnector.heartbeat();
-          outputPipeConnector.transfer(event);
-          lastInjectTime = System.currentTimeMillis();
-        } catch (Exception e) {
-          throw new PipeConnectionException(
-              "PipeConnector: "
-                  + outputPipeConnector.getClass().getName()
-                  + " heartbeat failed, or encountered failure when transferring generic event.",
-              e);
-        }
-        ((PipeHeartbeatEvent) event).onTransferred();
-        PipeConnectorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
+        transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else {
         outputPipeConnector.transfer(event);
       }
@@ -177,6 +166,24 @@ public class PipeConnectorSubtask extends PipeSubtask {
     }
 
     return true;
+  }
+
+  private void transferHeartbeatEvent(PipeHeartbeatEvent event) {
+    try {
+      outputPipeConnector.heartbeat();
+      outputPipeConnector.transfer(event);
+    } catch (Exception e) {
+      throw new PipeConnectionException(
+          "PipeConnector: "
+              + outputPipeConnector.getClass().getName()
+              + " heartbeat failed, or encountered failure when transferring generic event.",
+          e);
+    }
+
+    lastHeartbeatEventInjectTime = System.currentTimeMillis();
+
+    event.onTransferred();
+    PipeConnectorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
   }
 
   @Override
