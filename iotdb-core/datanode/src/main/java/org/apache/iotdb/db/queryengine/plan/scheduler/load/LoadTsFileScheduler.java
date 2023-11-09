@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.StorageExecutor;
@@ -36,6 +37,7 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -325,8 +327,13 @@ public class LoadTsFileScheduler implements IScheduler {
     return true;
   }
 
-  private boolean loadLocally(LoadSingleTsFileNode node) {
+  private boolean loadLocally(LoadSingleTsFileNode node) throws IoTDBException {
     logger.info("Start load TsFile {} locally.", node.getTsFileResource().getTsFile().getPath());
+
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new LoadReadOnlyException();
+    }
+
     try {
       FragmentInstance instance =
           new FragmentInstance(

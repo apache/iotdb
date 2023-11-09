@@ -20,4 +20,11 @@ package org.apache.iotdb.it.env.remote.config;
 
 import org.apache.iotdb.itbase.env.ConfigNodeConfig;
 
-public class RemoteConfigNodeConfig implements ConfigNodeConfig {}
+import java.util.List;
+
+public class RemoteConfigNodeConfig implements ConfigNodeConfig {
+  @Override
+  public ConfigNodeConfig setMetricReporterType(List<String> metricReporterTypes) {
+    return this;
+  }
+}
