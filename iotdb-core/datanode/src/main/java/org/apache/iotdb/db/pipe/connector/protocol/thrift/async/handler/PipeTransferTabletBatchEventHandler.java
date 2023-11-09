@@ -73,10 +73,8 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     }
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      for (int i = 0; i < events.size(); ++i) {
-        connector.commit(
-            requestCommitIds.get(i),
-            events.get(i) instanceof EnrichedEvent ? (EnrichedEvent) events.get(i) : null);
+      for (Event event : events) {
+        connector.commit(event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
       }
     } else {
       onError(new PipeException(response.getStatus().getMessage()));
@@ -91,8 +89,8 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
         requestCommitIds,
         exception);
 
-    for (int i = 0; i < events.size(); ++i) {
-      connector.addFailureEventToRetryQueue(requestCommitIds.get(i), events.get(i));
+    for (Event event : events) {
+      connector.addFailureEventToRetryQueue(event);
     }
   }
 }

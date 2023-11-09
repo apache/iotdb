@@ -70,6 +70,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private static final Map<Integer, Long> DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP = new HashMap<>();
   private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
 
+  private String pipeName;
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
 
@@ -98,6 +99,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
+    pipeName = environment.getPipeName();
     pipeTaskMeta = environment.getPipeTaskMeta();
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
@@ -342,6 +344,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             resource,
             false,
             false,
+            pipeName,
             pipeTaskMeta,
             pattern,
             historicalDataExtractionStartTime,

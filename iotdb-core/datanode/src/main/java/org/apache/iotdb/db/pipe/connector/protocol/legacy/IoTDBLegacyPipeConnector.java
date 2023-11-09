@@ -31,9 +31,8 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.legacy.TsFilePipeData;
-import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.CommittableConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnectorClient;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -53,7 +52,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.apache.commons.lang3.NotImplementedException;
@@ -61,20 +59,14 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Optional;
-import java.util.PriorityQueue;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
@@ -94,7 +86,7 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SIN
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SYNC_CONNECTOR_VERSION_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_USER_KEY;
 
-public class IoTDBLegacyPipeConnector implements PipeConnector {
+public class IoTDBLegacyPipeConnector extends CommittableConnector implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLegacyPipeConnector.class);
 
@@ -118,11 +110,6 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   private IoTDBThriftSyncConnectorClient client;
 
   private SessionPool sessionPool;
-
-  protected final AtomicLong commitIdGenerator = new AtomicLong(0);
-  protected final AtomicLong lastCommitId = new AtomicLong(0);
-  protected final PriorityQueue<Pair<Long, Runnable>> commitQueue =
-      new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -283,19 +270,13 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      final long requestCommitId = commitIdGenerator.incrementAndGet();
-      // Increase reference count here, and will decrease after it is committed
-      ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
-          .increaseReferenceCount(IoTDBLegacyPipeConnector.class.getName());
+      generateCommitId((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
       doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
-      commit(requestCommitId, (EnrichedEvent) tabletInsertionEvent);
+      commit((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      final long requestCommitId = commitIdGenerator.incrementAndGet();
-      // Increase reference count here, and will decrease after it is committed
-      ((PipeRawTabletInsertionEvent) tabletInsertionEvent)
-          .increaseReferenceCount(IoTDBLegacyPipeConnector.class.getName());
+      generateCommitId((PipeRawTabletInsertionEvent) tabletInsertionEvent);
       doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
-      commit(requestCommitId, (EnrichedEvent) tabletInsertionEvent);
+      commit((PipeRawTabletInsertionEvent) tabletInsertionEvent);
     } else {
       throw new NotImplementedException(
           "IoTDBLegacyPipeConnector only support "
@@ -316,13 +297,10 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
       return;
     }
 
-    final long requestCommitId = commitIdGenerator.incrementAndGet();
-    // Increase reference count here, and will decrease after it is committed
-    ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
-        .increaseReferenceCount(IoTDBLegacyPipeConnector.class.getName());
     try {
+      generateCommitId((PipeTsFileInsertionEvent) tsFileInsertionEvent);
       doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
-      commit(requestCommitId, (EnrichedEvent) tsFileInsertionEvent);
+      commit((PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
       throw new PipeConnectionException(
           String.format(
@@ -405,41 +383,6 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
               "Cannot send pipe data to receiver %s:%s, because: %s.",
               ipAddress, port, e.getMessage()),
           e);
-    }
-  }
-
-  /**
-   * Commit the event. Decrease the reference count of the event. If the reference count is 0, the
-   * progress index of the event will be recalculated and the resources of the event will be
-   * released.
-   *
-   * <p>The synchronization is necessary because the commit order must be the same as the order of
-   * the events. Concurrent commit may cause the commit order to be inconsistent with the order of
-   * the events.
-   *
-   * @param requestCommitId commit id of the request
-   * @param enrichedEvent event to commit
-   */
-  public synchronized void commit(long requestCommitId, @Nullable EnrichedEvent enrichedEvent) {
-    commitQueue.offer(
-        new Pair<>(
-            requestCommitId,
-            () ->
-                Optional.ofNullable(enrichedEvent)
-                    .ifPresent(
-                        event ->
-                            event.decreaseReferenceCount(IoTDBConnector.class.getName(), true))));
-
-    while (!commitQueue.isEmpty()) {
-      final Pair<Long, Runnable> committer = commitQueue.peek();
-      if (lastCommitId.get() + 1 != committer.left) {
-        break;
-      }
-
-      committer.right.run();
-      lastCommitId.incrementAndGet();
-
-      commitQueue.poll();
     }
   }
 

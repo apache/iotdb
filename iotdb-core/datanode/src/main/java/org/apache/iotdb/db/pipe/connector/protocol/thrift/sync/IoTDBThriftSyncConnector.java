@@ -257,17 +257,15 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       return;
     }
 
-    final long requestCommitId = commitIdGenerator.incrementAndGet();
-    // Increase reference count here, and will decrease after it is committed
-    ((EnrichedEvent) tabletInsertionEvent)
-        .increaseReferenceCount(IoTDBThriftSyncConnector.class.getName());
+    generateCommitId((EnrichedEvent) tabletInsertionEvent);
 
     final int clientIndex = nextClientIndex();
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
     try {
       if (isTabletBatchModeEnabled) {
-        if (tabletBatchBuilder.onEvent(tabletInsertionEvent, requestCommitId)) {
+        if (tabletBatchBuilder.onEvent(
+            tabletInsertionEvent, ((EnrichedEvent) tabletInsertionEvent).getCommitId())) {
           doTransfer(client); // committed in doTransfer()
         }
       } else {
@@ -276,7 +274,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
         } else {
           doTransfer(client, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
         }
-        commit(requestCommitId, (EnrichedEvent) tabletInsertionEvent);
+        commit((EnrichedEvent) tabletInsertionEvent);
       }
     } catch (TException e) {
       isClientAlive.set(clientIndex, false);
@@ -313,10 +311,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       return;
     }
 
-    final long requestCommitId = commitIdGenerator.incrementAndGet();
-    // Increase reference count here, and will decrease after it is committed
-    ((EnrichedEvent) tsFileInsertionEvent)
-        .increaseReferenceCount(IoTDBThriftSyncConnector.class.getName());
+    generateCommitId((EnrichedEvent) tsFileInsertionEvent);
 
     final int clientIndex = nextClientIndex();
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
@@ -328,7 +323,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       }
 
       doTransfer(client, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
-      commit(requestCommitId, (EnrichedEvent) tsFileInsertionEvent);
+      commit((EnrichedEvent) tsFileInsertionEvent);
     } catch (TException e) {
       isClientAlive.set(clientIndex, false);
 

@@ -141,14 +141,14 @@ public class PipeConnectorSubtaskManager {
     return attributeSortedString;
   }
 
-  public synchronized void deregister(String attributeSortedString) {
+  public synchronized void deregister(String pipeName, String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
     final List<PipeConnectorSubtaskLifeCycle> lifeCycles =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
-    lifeCycles.removeIf(PipeConnectorSubtaskLifeCycle::deregister);
+    lifeCycles.removeIf(o -> o.deregister(pipeName));
 
     if (lifeCycles.isEmpty()) {
       attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);

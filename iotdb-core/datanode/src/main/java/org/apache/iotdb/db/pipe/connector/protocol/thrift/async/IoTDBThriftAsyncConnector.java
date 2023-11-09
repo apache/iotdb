@@ -52,7 +52,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -83,9 +82,13 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
       asyncPipeDataTransferClientManager;
 
-  private final IoTDBThriftSyncConnector retryConnector = new IoTDBThriftSyncConnector();
-  private final PriorityBlockingQueue<Pair<Long, Event>> retryEventQueue =
-      new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left));
+  private final IoTDBThriftSyncConnector retryConnector;
+  private final PriorityBlockingQueue<Event> retryEventQueue =
+      new PriorityBlockingQueue<>(
+          11,
+          Comparator.comparing(
+              e ->
+                  e instanceof EnrichedEvent ? ((EnrichedEvent) e).getCommitId() : Long.MAX_VALUE));
 
   private IoTDBThriftAsyncPipeTransferBatchReqBuilder tabletBatchBuilder;
 
@@ -100,6 +103,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
         }
       }
     }
+    retryConnector = new IoTDBThriftSyncConnector();
+    retryConnector.disableCommit();
     asyncPipeDataTransferClientManager = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get();
   }
 
@@ -165,14 +170,14 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    final long requestCommitId = commitIdGenerator.incrementAndGet();
-
+    generateCommitId((EnrichedEvent) tabletInsertionEvent);
+    long commitId = ((EnrichedEvent) tabletInsertionEvent).getCommitId();
     if (isTabletBatchModeEnabled) {
-      if (tabletBatchBuilder.onEvent(tabletInsertionEvent, requestCommitId)) {
+      if (tabletBatchBuilder.onEvent(tabletInsertionEvent, commitId)) {
         final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler =
             new PipeTransferTabletBatchEventHandler(tabletBatchBuilder, this);
 
-        transfer(requestCommitId, pipeTransferTabletBatchEventHandler);
+        transfer(commitId, pipeTransferTabletBatchEventHandler);
 
         tabletBatchBuilder.onSuccess();
       }
@@ -188,9 +193,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
                     pipeInsertNodeTabletInsertionEvent.getInsertNode());
         final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
             new PipeTransferTabletInsertNodeEventHandler(
-                requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
+                pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
 
-        transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
+        transfer(commitId, pipeTransferInsertNodeReqHandler);
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
         final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
             (PipeRawTabletInsertionEvent) tabletInsertionEvent;
@@ -200,9 +205,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
                 pipeRawTabletInsertionEvent.isAligned());
         final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
             new PipeTransferTabletRawEventHandler(
-                requestCommitId, pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
+                pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
 
-        transfer(requestCommitId, pipeTransferTabletReqHandler);
+        transfer(commitId, pipeTransferTabletReqHandler);
       }
     }
   }
@@ -317,12 +322,11 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    final long requestCommitId = commitIdGenerator.incrementAndGet();
+    generateCommitId(pipeTsFileInsertionEvent);
     final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
-        new PipeTransferTsFileInsertionEventHandler(
-            requestCommitId, pipeTsFileInsertionEvent, this);
+        new PipeTransferTsFileInsertionEventHandler(pipeTsFileInsertionEvent, this);
 
-    transfer(requestCommitId, pipeTransferTsFileInsertionEventHandler);
+    transfer(pipeTsFileInsertionEvent.getCommitId(), pipeTransferTsFileInsertionEventHandler);
   }
 
   private void transfer(
@@ -470,9 +474,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
    */
   private synchronized void transferQueuedEventsIfNecessary() throws Exception {
     while (!retryEventQueue.isEmpty()) {
-      final Pair<Long, Event> queuedEventPair = retryEventQueue.peek();
-      final long requestCommitId = queuedEventPair.getLeft();
-      final Event event = queuedEventPair.getRight();
+      final Event event = retryEventQueue.peek();
 
       if (event instanceof PipeInsertNodeTabletInsertionEvent) {
         retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) event);
@@ -486,7 +488,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       }
 
       if (event instanceof EnrichedEvent) {
-        commit(requestCommitId, (EnrichedEvent) event);
+        commit((EnrichedEvent) event);
       }
 
       retryEventQueue.poll();
@@ -514,11 +516,20 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   /**
    * Add failure event to retry queue.
    *
-   * @param requestCommitId commit id of the request
    * @param event event to retry
    */
-  public void addFailureEventToRetryQueue(long requestCommitId, Event event) {
-    retryEventQueue.offer(new Pair<>(requestCommitId, event));
+  public void addFailureEventToRetryQueue(Event event) {
+    retryEventQueue.offer(event);
+  }
+
+  /**
+   * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
+   * its queued events in the output pipe connector.
+   */
+  public synchronized void discardEventsOfPipe(String pipeNameToDrop) {
+    retryEventQueue.removeIf(
+        o ->
+            o instanceof EnrichedEvent && ((EnrichedEvent) o).getPipeName().equals(pipeNameToDrop));
   }
 
   @Override

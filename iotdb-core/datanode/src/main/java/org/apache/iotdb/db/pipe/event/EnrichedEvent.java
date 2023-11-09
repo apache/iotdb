@@ -42,15 +42,19 @@ public abstract class EnrichedEvent implements Event {
 
   private final AtomicInteger referenceCount;
 
+  protected final String pipeName;
   protected final PipeTaskMeta pipeTaskMeta;
+  public static final long NO_COMMIT_ID = -1;
+  private long commitId = NO_COMMIT_ID;
 
   private final String pattern;
 
   protected boolean isPatternParsed;
   protected boolean isTimeParsed = true;
 
-  protected EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
+  protected EnrichedEvent(String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
     referenceCount = new AtomicInteger(0);
+    this.pipeName = pipeName;
     this.pipeTaskMeta = pipeTaskMeta;
     this.pattern = pattern;
     isPatternParsed = getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
@@ -154,6 +158,10 @@ public abstract class EnrichedEvent implements Event {
     return referenceCount.get();
   }
 
+  public final String getPipeName() {
+    return pipeName;
+  }
+
   /**
    * Get the pattern of this event.
    *
@@ -176,7 +184,7 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern);
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern);
 
   public void reportException(PipeRuntimeException pipeRuntimeException) {
     if (pipeTaskMeta != null) {
@@ -187,4 +195,12 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public abstract boolean isGeneratedByPipe();
+
+  public void setCommitId(long commitId) {
+    this.commitId = commitId;
+  }
+
+  public long getCommitId() {
+    return commitId;
+  }
 }

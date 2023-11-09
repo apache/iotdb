@@ -45,7 +45,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
     // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
-    super(null, pattern);
+    super(event.getPipeName(), null, pattern);
 
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
@@ -61,7 +61,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
     // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
-    super(pipeTaskMeta, pattern);
+    super(event.getPipeName(), pipeTaskMeta, pattern);
 
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
@@ -136,9 +136,9 @@ public class PipeRealtimeEvent extends EnrichedEvent {
 
   @Override
   public PipeRealtimeEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern) {
+      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeRealtimeEvent(
-        event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(pipeTaskMeta, pattern),
+        event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(pipeName, pipeTaskMeta, pattern),
         this.tsFileEpoch,
         this.device2Measurements,
         pipeTaskMeta,
