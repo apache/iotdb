@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.DoubleConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.IntPreviousFill;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -236,7 +237,11 @@ public class FillOperatorTest {
       driverContext.addOperatorContext(1, planNodeId1, FillOperator.class.getSimpleName());
 
       IFill[] fillArray =
-          new IFill[] {new IntPreviousFill(), new IntPreviousFill(), new IntPreviousFill()};
+          new IFill[] {
+            new IntPreviousFill(IFillFilter.TRUE),
+            new IntPreviousFill(IFillFilter.TRUE),
+            new IntPreviousFill(IFillFilter.TRUE)
+          };
       FillOperator fillOperator =
           new FillOperator(
               driverContext.getOperatorContexts().get(0),

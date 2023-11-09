@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.tsfile.read.common.block.column.${type.column};
 import org.apache.iotdb.tsfile.access.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 <#if type.dataType == "Binary">
 import org.apache.iotdb.tsfile.utils.Binary;
 </#if>
