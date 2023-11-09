@@ -457,8 +457,6 @@ public class LoadTsFileScheduler implements IScheduler {
         }
       }
 
-      replicaSet2Piece.clear();
-
       return true;
     }
 
@@ -509,6 +507,8 @@ public class LoadTsFileScheduler implements IScheduler {
           return false;
         }
       }
+
+      replicaSet2Piece.clear();
       return true;
     }
   }
