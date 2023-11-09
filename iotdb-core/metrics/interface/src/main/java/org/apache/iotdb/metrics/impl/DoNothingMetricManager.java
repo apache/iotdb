@@ -67,7 +67,7 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public Timer createTimer(MetricInfo metricInfo) {
+  public Timer createTimer() {
     return DO_NOTHING_TIMER;
   }
 
