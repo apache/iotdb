@@ -370,6 +370,11 @@ public class ChunkWriterImpl implements IChunkWriter {
         || statistics.getCount() + pageWriter.getPointNumber() >= pointNum;
   }
 
+  @Override
+  public boolean isEmpty() {
+    return statistics.getCount() + pageWriter.getPointNumber() == 0;
+  }
+
   public TSDataType getDataType() {
     return measurementSchema.getType();
   }

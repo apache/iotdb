@@ -41,6 +41,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   CompactionType type;
 
   private volatile boolean isWritingAligned = false;
+  private boolean isEmptyTargetFile = true;
 
   public CompactionTsFileWriter(
       File file, boolean enableMemoryControl, long maxMetadataSize, CompactionType type)
@@ -60,6 +61,9 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   public void writeChunk(IChunkWriter chunkWriter) throws IOException {
     boolean isAligned = chunkWriter instanceof AlignedChunkWriterImpl;
     long beforeOffset = this.getPos();
+    if (!chunkWriter.isEmpty()) {
+      isEmptyTargetFile = false;
+    }
     chunkWriter.writeToFileWriter(this);
     long writtenDataSize = this.getPos() - beforeOffset;
     acquireWrittenDataSizeWithCompactionWriteRateLimiter(writtenDataSize);
@@ -73,6 +77,9 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   @Override
   public void writeChunk(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
     long beforeOffset = this.getPos();
+    if (chunkMetadata.getNumOfPoints() != 0) {
+      isEmptyTargetFile = false;
+    }
     super.writeChunk(chunk, chunkMetadata);
     long writtenDataSize = this.getPos() - beforeOffset;
     acquireWrittenDataSizeWithCompactionWriteRateLimiter(writtenDataSize);
@@ -130,5 +137,9 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
         return;
       }
     }
+  }
+
+  public boolean isEmptyTargetFile() {
+    return isEmptyTargetFile;
   }
 }

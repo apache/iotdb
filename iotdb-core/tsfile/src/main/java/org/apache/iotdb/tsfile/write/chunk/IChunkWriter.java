@@ -52,6 +52,9 @@ public interface IChunkWriter {
    */
   boolean checkIsChunkSizeOverThreshold(long size, long pointNum, boolean returnTrueIfChunkEmpty);
 
+  /** Return true if the chunk writer is empty */
+  boolean isEmpty();
+
   /**
    * used for compaction to check whether the unsealed page is over threshold or not. Return true if
    * there is no unsealed page.

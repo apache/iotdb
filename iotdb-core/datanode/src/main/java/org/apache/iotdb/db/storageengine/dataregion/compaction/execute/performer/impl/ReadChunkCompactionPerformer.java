@@ -92,6 +92,9 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         targetResource.updatePlanIndexes(tsFileResource);
       }
       writer.endFile();
+      if (writer.isEmptyTargetFile()) {
+        targetResource.forceMarkDeleted();
+      }
     }
   }
 
