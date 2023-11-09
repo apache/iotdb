@@ -31,7 +31,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class FastCompactionPerformerWithManyAlignedSeriesTest extends AbstractCompactionTest {
 
@@ -54,13 +53,7 @@ public class FastCompactionPerformerWithManyAlignedSeriesTest extends AbstractCo
 
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     try {
       boolean success = task.start();
       Assert.assertTrue(success);
