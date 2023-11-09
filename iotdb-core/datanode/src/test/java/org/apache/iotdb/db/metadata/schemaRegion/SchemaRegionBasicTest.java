@@ -173,19 +173,19 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     }
     patternTree.constructTree();
 
-    schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false, true);
-    schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false, false);
+    schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false);
+    schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false);
 
     long startTime;
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 1000; i++) {
-      schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false, true);
+      schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false);
     }
     System.out.println(
         "cost time without optimization: " + (System.currentTimeMillis() - startTime));
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 1000; i++) {
-      schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false, false);
+      schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false);
     }
     System.out.println("cost time with optimization: " + (System.currentTimeMillis() - startTime));
   }
