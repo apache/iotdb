@@ -92,7 +92,7 @@ import java.util.stream.IntStream;
  */
 public class LoadTsFileScheduler implements IScheduler {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileScheduler.class);
-  public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 5184000L; // one day
+  public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 900L; // 15min
   private static final long MAX_MEMORY_SIZE;
   private static final int TRANSMIT_LIMIT;
 
@@ -456,6 +456,8 @@ public class LoadTsFileScheduler implements IScheduler {
           }
         }
       }
+
+      replicaSet2Piece.clear();
 
       return true;
     }

@@ -174,6 +174,8 @@ public class LoadTsfileAnalyzer {
     }
 
     schemaAutoCreatorAndVerifier.flush();
+    schemaAutoCreatorAndVerifier.clear();
+
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
 
     // data partition will be queried in the scheduler
@@ -654,6 +656,12 @@ public class LoadTsfileAnalyzer {
           }
         }
       }
+    }
+
+    public void clear() {
+      tsfileDevice2IsAligned.clear();
+      currentBatchDevice2TimeseriesSchemas.clear();
+      alreadySetDatabases.clear();
     }
   }
 }
