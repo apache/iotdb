@@ -175,11 +175,18 @@ public abstract class ProgressIndex {
    * This method maintains the relationship of progress index in the isAfter relationship. It is
    * mainly used for topologically sorting the progress index.
    *
-   * <p>Notice:
+   * <p>Notice:TotalOrderSumTuple is an ordered tuple, the larger the subscript the higher the
+   * weight of the element when comparing sizes, e.g. (1, 2) is larger than (2, 1).
    */
   protected static class TotalOrderSumTuple implements Comparable<TotalOrderSumTuple> {
     private final ImmutableList<Long> tuple;
 
+    /**
+     * ATTENTION: the order of the args is important, the larger the subscript the higher the weight
+     * of the element when comparing sizes, e.g. (1, 2) is larger than (2, 1).
+     *
+     * @param args input args
+     */
     public TotalOrderSumTuple(Long... args) {
       tuple = ImmutableList.copyOf(args);
     }
