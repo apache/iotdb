@@ -1677,9 +1677,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.interval != null) {
       if (fillComponent.getFillPolicy() != FillPolicy.PREVIOUS) {
-        throw new SemanticException("Only FILL(PREVIOUS) support specifying the time duration threshold.");
+        throw new SemanticException(
+            "Only FILL(PREVIOUS) support specifying the time duration threshold.");
       }
-      fillComponent.setTimeDurationThreshold(DateTimeUtils.constructTimeDuration(ctx.interval.getText()));
+      fillComponent.setTimeDurationThreshold(
+          DateTimeUtils.constructTimeDuration(ctx.interval.getText()));
     }
     return fillComponent;
   }

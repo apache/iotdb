@@ -21,19 +21,34 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
 
-public class FixedIntervalFillFilter implements IFillFilter {
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 
-  // the time precision of this field is same as the system time_precision configuration.
-  private final long timeInterval;
+public abstract class AbstractMonthIntervalFillFilter implements IFillFilter {
 
-  public FixedIntervalFillFilter(long timeInterval) {
-    this.timeInterval = timeInterval;
+  // month part of time duration
+  public final int monthDuration;
+  // non-month part of time duration, its precision is same as current time_precision
+  public final long nonMonthDuration;
+
+  public final ZoneId zone;
+
+  public AbstractMonthIntervalFillFilter(int monthDuration, long nonMonthDuration, ZoneId zone) {
+    this.monthDuration = monthDuration;
+    this.nonMonthDuration = nonMonthDuration;
+    this.zone = zone;
   }
 
   @Override
   public boolean needFill(long time, long previousTime) {
-    // the reason that we use Math.abs is that we may use order by time desc which will cause
-    // previousTime is larger than time
-    return Math.abs(time - previousTime) <= timeInterval;
+
+    long smaller = Math.min(time, previousTime);
+    long greater = Math.max(time, previousTime);
+    Instant instant = Instant.ofEpochSecond(smaller, smaller);
+    LocalDateTime localDateTime = LocalDateTime.ofInstant(instant, zone);
+    return needFill(localDateTime, greater);
   }
+
+  abstract boolean needFill(LocalDateTime smaller, long greater);
 }

@@ -40,7 +40,8 @@ public class FillDescriptor {
   // if
   private final TimeDuration timeDurationThreshold;
 
-  public FillDescriptor(FillPolicy fillPolicy, Literal fillValue, TimeDuration timeDurationThreshold) {
+  public FillDescriptor(
+      FillPolicy fillPolicy, Literal fillValue, TimeDuration timeDurationThreshold) {
     this.fillPolicy = fillPolicy;
     this.fillValue = fillValue;
     this.timeDurationThreshold = timeDurationThreshold;

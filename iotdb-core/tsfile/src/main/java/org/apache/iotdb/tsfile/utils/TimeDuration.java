@@ -194,9 +194,9 @@ public class TimeDuration implements Serializable {
 
   @Override
   public String toString() {
-    return "TimeDuration{" +
-        (monthDuration > 0 ?  monthDuration + "mo, " : "") +
-        (nonMonthDuration > 0 ? nonMonthDuration : "")+
-        '}';
+    return "TimeDuration{"
+        + (monthDuration > 0 ? monthDuration + "mo, " : "")
+        + (nonMonthDuration > 0 ? nonMonthDuration : "")
+        + '}';
   }
 }
