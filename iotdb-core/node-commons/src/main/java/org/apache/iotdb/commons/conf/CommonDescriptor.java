@@ -392,6 +392,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
                 String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
+    config.setPipeMaxAllowedPinnedMemTableCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_pinned_memtable_count",
+                String.valueOf(config.getPipeMaxAllowedPinnedMemTableCount()))));
 
     config.setPipeMemoryManagementEnabled(
         Boolean.parseBoolean(
