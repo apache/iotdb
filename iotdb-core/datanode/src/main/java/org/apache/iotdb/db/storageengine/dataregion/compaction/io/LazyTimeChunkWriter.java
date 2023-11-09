@@ -50,10 +50,6 @@ public class LazyTimeChunkWriter extends TimeChunkWriter {
   }
 
   @Override
-  public void sealCurrentPage() {
-    super.sealCurrentPage();
-  }
-
   public void writePageToPageBuffer() {
     try {
       if (numOfPages == 0) { // record the firstPageStatistics
