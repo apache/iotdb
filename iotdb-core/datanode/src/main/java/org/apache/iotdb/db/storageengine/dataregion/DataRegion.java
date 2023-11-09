@@ -2086,11 +2086,13 @@ public class DataRegion implements IDataRegionForQuery {
   // TODO please consider concurrency with read and insert method.
   private void closeUnsealedTsFileProcessorCallBack(TsFileProcessor tsFileProcessor)
       throws TsFileProcessorException {
+    boolean tsFileNotValid =
+        tsFileProcessor.isEmpty()
+            || !TsFileValidator.getInstance().validateTsFile(tsFileProcessor.getTsFileResource());
     closeQueryLock.writeLock().lock();
     try {
       tsFileProcessor.close();
-      if (tsFileProcessor.isEmpty()
-          || !TsFileValidator.getInstance().validateTsFile(tsFileProcessor.getTsFileResource())) {
+      if (tsFileNotValid) {
         tsFileProcessor.getTsFileResource().remove();
         tsFileManager.remove(tsFileProcessor.getTsFileResource(), tsFileProcessor.isSequence());
       } else {
@@ -2108,14 +2110,16 @@ public class DataRegion implements IDataRegionForQuery {
     synchronized (closeStorageGroupCondition) {
       closeStorageGroupCondition.notifyAll();
     }
-    TsFileResource tsFileResource = tsFileProcessor.getTsFileResource();
-    FileMetrics.getInstance()
-        .addTsFile(
-            tsFileResource.getDatabaseName(),
-            tsFileResource.getDataRegionId(),
-            tsFileResource.getTsFileSize(),
-            tsFileProcessor.isSequence(),
-            tsFileResource.getTsFile().getName());
+    if (!tsFileNotValid) {
+      TsFileResource tsFileResource = tsFileProcessor.getTsFileResource();
+      FileMetrics.getInstance()
+          .addTsFile(
+              tsFileResource.getDatabaseName(),
+              tsFileResource.getDataRegionId(),
+              tsFileResource.getTsFileSize(),
+              tsFileProcessor.isSequence(),
+              tsFileResource.getTsFile().getName());
+    }
     logger.info("signal closing database condition in {}", databaseName + "-" + dataRegionId);
   }
 
