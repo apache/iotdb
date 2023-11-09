@@ -103,12 +103,7 @@ class ClusterSchemaFetchExecutor {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
     }
     return executeSchemaFetchQuery(
-        new SchemaFetchStatement(
-            patternTree,
-            templateMap,
-            withTags,
-            context != null && QueryType.WRITE.equals(context.getQueryType())),
-        context);
+        new SchemaFetchStatement(patternTree, templateMap, withTags, false), context);
   }
 
   /**
@@ -123,11 +118,7 @@ class ClusterSchemaFetchExecutor {
       List<PartialPath> fullPathList, PathPatternTree rawPatternTree, MPPQueryContext context) {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
-            new SchemaFetchStatement(
-                rawPatternTree,
-                analyzeTemplate(fullPathList),
-                false,
-                context != null && QueryType.WRITE.equals(context.getQueryType())),
+            new SchemaFetchStatement(rawPatternTree, analyzeTemplate(fullPathList), false, false),
             context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);
@@ -135,7 +126,7 @@ class ClusterSchemaFetchExecutor {
     return schemaTree;
   }
 
-  ClusterSchemaTree fetchSchemaOfOneDevice(
+  ClusterSchemaTree fetchPreciseSchemaOfOneDevice(
       PartialPath devicePath,
       String[] measurements,
       List<Integer> indexOfTargetMeasurements,
@@ -148,7 +139,7 @@ class ClusterSchemaFetchExecutor {
     return fetchSchemaAndCacheResult(patternTree, context);
   }
 
-  ClusterSchemaTree fetchSchemaOfMultiDevices(
+  ClusterSchemaTree fetchPreciseSchemaOfMultiDevices(
       List<PartialPath> devicePathList,
       List<String[]> measurementsList,
       List<Integer> indexOfTargetDevices,
@@ -167,7 +158,8 @@ class ClusterSchemaFetchExecutor {
     return fetchSchemaAndCacheResult(patternTree, context);
   }
 
-  ClusterSchemaTree fetchSchemaWithFullPaths(List<String> fullPathList, MPPQueryContext context) {
+  ClusterSchemaTree fetchPreciseSchemaWithFullPaths(
+      List<String> fullPathList, MPPQueryContext context) {
     PathPatternTree patternTree = new PathPatternTree();
     for (String fullPath : fullPathList) {
       try {
@@ -180,7 +172,7 @@ class ClusterSchemaFetchExecutor {
     return fetchSchemaAndCacheResult(patternTree, context);
   }
 
-  ClusterSchemaTree fetchSchemaWithPatternTreeAndCache(
+  ClusterSchemaTree fetchPreciseSchemaWithPatternTreeAndCache(
       PathPatternTree patternTree, MPPQueryContext context) {
     patternTree.constructTree();
     return fetchSchemaAndCacheResult(patternTree, context);
@@ -191,10 +183,7 @@ class ClusterSchemaFetchExecutor {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
             new SchemaFetchStatement(
-                patternTree,
-                analyzeTemplate(patternTree.getAllPathPatterns()),
-                false,
-                context != null && QueryType.WRITE.equals(context.getQueryType())),
+                patternTree, analyzeTemplate(patternTree.getAllPathPatterns()), false, false),
             context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);

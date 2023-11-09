@@ -257,7 +257,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
       // try fetch the missing schema from remote and cache fetched schema
       ClusterSchemaTree remoteSchemaTree =
-          clusterSchemaFetchExecutor.fetchSchemaOfMultiDevices(
+          clusterSchemaFetchExecutor.fetchPreciseSchemaOfMultiDevices(
               devicePathList,
               measurementsList,
               indexOfDevicesWithMissingMeasurements,

@@ -92,7 +92,7 @@ class TemplateSchemaFetcher {
     // not activated or not cached
     // try fetch the missing schema from remote and cache fetched schema
     ClusterSchemaTree remoteSchemaTree =
-        clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(
+        clusterSchemaFetchExecutor.fetchPreciseSchemaOfOneDevice(
             schemaComputationWithAutoCreation.getDevicePath(),
             schemaComputationWithAutoCreation.getMeasurements(),
             indexOfMissingMeasurements,
@@ -172,7 +172,7 @@ class TemplateSchemaFetcher {
 
     // try fetch the missing schema from remote
     ClusterSchemaTree remoteSchemaTree =
-        clusterSchemaFetchExecutor.fetchSchemaOfMultiDevices(
+        clusterSchemaFetchExecutor.fetchPreciseSchemaOfMultiDevices(
             schemaComputationWithAutoCreationList.stream()
                 .map(ISchemaComputationWithAutoCreation::getDevicePath)
                 .collect(Collectors.toList()),

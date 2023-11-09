@@ -200,7 +200,7 @@ public interface ISchemaRegion {
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       boolean withTags,
-      boolean containWildcard)
+      boolean fuzzy)
       throws MetadataException;
 
   // endregion

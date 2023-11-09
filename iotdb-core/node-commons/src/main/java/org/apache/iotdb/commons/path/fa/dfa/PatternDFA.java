@@ -121,10 +121,9 @@ public class PatternDFA implements IPatternFA {
       AtomicInteger transitionIndex,
       AtomicInteger count) {
     count.incrementAndGet();
-    if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node.getName())
-        || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node.getName())) {
-      return true;
-    } else {
+    boolean wildcard = true;
+    if (!IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node.getName())
+        && !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node.getName())) {
       transitionMap.computeIfAbsent(
           node.getName(),
           i -> {
@@ -133,13 +132,13 @@ public class PatternDFA implements IPatternFA {
             preciseMatchTransitionList.add(transition);
             return transition;
           });
-      boolean res = false;
-      for (PathPatternNode<Void, PathPatternNode.VoidSerializer> child :
-          node.getChildren().values()) {
-        res |= initTransitionMap(child, transitionIndex, count);
-      }
-      return res;
+      wildcard = false;
     }
+    for (PathPatternNode<Void, PathPatternNode.VoidSerializer> child :
+        node.getChildren().values()) {
+      wildcard |= initTransitionMap(child, transitionIndex, count);
+    }
+    return wildcard;
   }
 
   public IFAState getNextState(IFAState currentState, String acceptEvent) {

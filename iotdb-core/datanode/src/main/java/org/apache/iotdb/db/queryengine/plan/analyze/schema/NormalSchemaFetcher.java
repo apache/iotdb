@@ -127,7 +127,7 @@ class NormalSchemaFetcher {
     ClusterSchemaTree remoteSchemaTree;
     if (missedPathStringOfLogicalView.isEmpty()) {
       remoteSchemaTree =
-          clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(
+          clusterSchemaFetchExecutor.fetchPreciseSchemaOfOneDevice(
               schemaComputationWithAutoCreation.getDevicePath(),
               schemaComputationWithAutoCreation.getMeasurements(),
               indexOfMissingMeasurements,
@@ -140,7 +140,8 @@ class NormalSchemaFetcher {
               indexOfMissingMeasurements,
               missedPathStringOfLogicalView);
       remoteSchemaTree =
-          clusterSchemaFetchExecutor.fetchSchemaWithPatternTreeAndCache(patternTree, context);
+          clusterSchemaFetchExecutor.fetchPreciseSchemaWithPatternTreeAndCache(
+              patternTree, context);
     }
     // make sure all missed views are computed.
     remoteSchemaTree.computeSourceOfLogicalView(
@@ -157,7 +158,7 @@ class NormalSchemaFetcher {
     missedPathStringOfLogicalView = missedIndexAndPathString.right;
     if (!missedPathStringOfLogicalView.isEmpty()) {
       ClusterSchemaTree viewSchemaTree =
-          clusterSchemaFetchExecutor.fetchSchemaWithFullPaths(
+          clusterSchemaFetchExecutor.fetchPreciseSchemaWithFullPaths(
               missedPathStringOfLogicalView, context);
       viewSchemaTree.computeSourceOfLogicalView(
           schemaComputationWithAutoCreation, indexOfMissingLogicalView);
@@ -240,7 +241,7 @@ class NormalSchemaFetcher {
     ClusterSchemaTree remoteSchemaTree;
     if (!hasUnFetchedLogicalView) {
       remoteSchemaTree =
-          clusterSchemaFetchExecutor.fetchSchemaOfMultiDevices(
+          clusterSchemaFetchExecutor.fetchPreciseSchemaOfMultiDevices(
               schemaComputationWithAutoCreationList.stream()
                   .map(ISchemaComputationWithAutoCreation::getDevicePath)
                   .collect(Collectors.toList()),
@@ -267,7 +268,8 @@ class NormalSchemaFetcher {
       }
       computePatternTreeNeededReFetch(patternTree, fullPathsNeedReFetch);
       remoteSchemaTree =
-          clusterSchemaFetchExecutor.fetchSchemaWithPatternTreeAndCache(patternTree, context);
+          clusterSchemaFetchExecutor.fetchPreciseSchemaWithPatternTreeAndCache(
+              patternTree, context);
     }
     // make sure all missed views are computed.
     for (int i = 0; i < schemaComputationWithAutoCreationList.size(); i++) {
@@ -308,7 +310,7 @@ class NormalSchemaFetcher {
         fullPathsNeedRefetch.addAll(pair.right);
       }
       ClusterSchemaTree viewSchemaTree =
-          clusterSchemaFetchExecutor.fetchSchemaWithFullPaths(fullPathsNeedRefetch, context);
+          clusterSchemaFetchExecutor.fetchPreciseSchemaWithFullPaths(fullPathsNeedRefetch, context);
       for (int i = 0, size = schemaComputationWithAutoCreationList.size(); i < size; i++) {
         schemaComputationWithAutoCreation = schemaComputationWithAutoCreationList.get(i);
         viewSchemaTree.computeSourceOfLogicalView(

@@ -922,9 +922,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       boolean withTags,
-      boolean containWildcard)
+      boolean fuzzy)
       throws MetadataException {
-    if (containWildcard) {
+    if (fuzzy) {
       List<MeasurementPath> res = new ArrayList<>();
       for (PartialPath path : patternTree.getAllPathPatterns()) {
         res.addAll(mtree.fetchSchema(path, templateMap, withTags));

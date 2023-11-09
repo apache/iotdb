@@ -50,7 +50,7 @@ public class SchemaFetchScanNode extends SourceNode {
   private final Map<Integer, Template> templateMap;
   private final boolean withTags;
   private TRegionReplicaSet schemaRegionReplicaSet;
-  private final boolean write;
+  private final boolean fuzzy;
 
   public SchemaFetchScanNode(
       PlanNodeId id,
@@ -58,14 +58,14 @@ public class SchemaFetchScanNode extends SourceNode {
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       boolean withTags,
-      boolean write) {
+      boolean fuzzy) {
     super(id);
     this.storageGroup = storageGroup;
     this.patternTree = patternTree;
     this.patternTree.constructTree();
     this.templateMap = templateMap;
     this.withTags = withTags;
-    this.write = write;
+    this.fuzzy = fuzzy;
   }
 
   public PartialPath getStorageGroup() {
@@ -80,8 +80,8 @@ public class SchemaFetchScanNode extends SourceNode {
     return templateMap;
   }
 
-  public boolean isWrite() {
-    return write;
+  public boolean isFuzzy() {
+    return fuzzy;
   }
 
   @Override
@@ -95,7 +95,7 @@ public class SchemaFetchScanNode extends SourceNode {
   @Override
   public PlanNode clone() {
     return new SchemaFetchScanNode(
-        getPlanNodeId(), storageGroup, patternTree, templateMap, withTags, write);
+        getPlanNodeId(), storageGroup, patternTree, templateMap, withTags, fuzzy);
   }
 
   @Override
@@ -140,7 +140,7 @@ public class SchemaFetchScanNode extends SourceNode {
       template.serialize(stream);
     }
     ReadWriteIOUtils.write(withTags, stream);
-    ReadWriteIOUtils.write(write, stream);
+    ReadWriteIOUtils.write(fuzzy, stream);
   }
 
   public static SchemaFetchScanNode deserialize(ByteBuffer byteBuffer) {
