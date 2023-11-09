@@ -26,6 +26,7 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -74,16 +75,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private void extractTabletInsertion(PipeRealtimeEvent event) {
-    if (!isStartedToSupply
-        || mayWalSizeReachThrottleThreshold()
-        || isTsFileEventCountInQueueExceededLimit()) {
-      // In the following 3 cases, we should not extract any more tablet events. all the data
-      // represented by the tablet events should be carried by the following tsfile event:
-      //  1. The historical extractor has not consumed all the data.
-      //  2. HybridExtractor will first try to do extraction in log mode, and then choose log or
-      //  tsfile mode to continue extracting, but if Wal size > maximum size of wal buffer,
-      //  the write operation will be throttled, so we should not extract any more tablet events.
-      //  3. The number of tsfile events in the pending queue has exceeded the limit.
+    if (canNotUseTabletAnyMore()) {
       event
           .getTsFileEpoch()
           .migrateState(
@@ -223,9 +215,29 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     }
   }
 
+  private boolean canNotUseTabletAnyMore() {
+    // In the following 4 cases, we should not extract any more tablet events. all the data
+    // represented by the tablet events should be carried by the following tsfile event:
+    //  1. The historical extractor has not consumed all the data.
+    //  2. HybridExtractor will first try to do extraction in log mode, and then choose log or
+    //  tsfile mode to continue extracting, but if Wal size > maximum size of wal buffer,
+    //  the write operation will be throttled, so we should not extract any more tablet events.
+    //  3. The number of pinned memtables has reached the dangerous threshold.
+    //  4. The number of tsfile events in the pending queue has exceeded the limit.
+    return !isStartedToSupply
+        || mayWalSizeReachThrottleThreshold()
+        || mayMemTablePinnedCountReachDangerousThreshold()
+        || isTsFileEventCountInQueueExceededLimit();
+  }
+
   private boolean mayWalSizeReachThrottleThreshold() {
     return 3 * WALManager.getInstance().getTotalDiskUsage()
         > IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
+  }
+
+  private boolean mayMemTablePinnedCountReachDangerousThreshold() {
+    return PipeResourceManager.wal().getPinnedWalCount()
+        >= PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
   }
 
   private boolean isTsFileEventCountInQueueExceededLimit() {
@@ -286,8 +298,15 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         .getTsFileEpoch()
         .migrateState(
             this,
-            state ->
-                (state.equals(TsFileEpoch.State.EMPTY)) ? TsFileEpoch.State.USING_TABLET : state);
+            state -> {
+              if (!state.equals(TsFileEpoch.State.EMPTY)) {
+                return state;
+              }
+
+              return canNotUseTabletAnyMore()
+                  ? TsFileEpoch.State.USING_TSFILE
+                  : TsFileEpoch.State.USING_TABLET;
+            });
 
     final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
     switch (state) {

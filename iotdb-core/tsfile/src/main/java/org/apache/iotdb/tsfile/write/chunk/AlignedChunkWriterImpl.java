@@ -419,6 +419,11 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
+  public boolean isEmpty() {
+    return timeChunkWriter.getPointNum() + timeChunkWriter.getPageWriter().getPointNumber() == 0;
+  }
+
+  @Override
   public boolean checkIsUnsealedPageOverThreshold(
       long size, long pointNum, boolean returnTrueIfPageEmpty) {
     if ((returnTrueIfPageEmpty && timeChunkWriter.getPageWriter().getPointNumber() == 0)
