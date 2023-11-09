@@ -87,6 +87,12 @@ public class PipeMetaSyncer {
   }
 
   private synchronized void sync() {
+    if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
+      LOGGER.warn(
+          "PipeTaskCoordinatorLock is held by another thread, skip this round of sync to avoid procedure and rpc accumulation as much as possible");
+      return;
+    }
+
     final ProcedureManager procedureManager = configManager.getProcedureManager();
 
     boolean somePipesNeedRestarting = false;
@@ -96,12 +102,6 @@ public class PipeMetaSyncer {
             == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
       somePipesNeedRestarting = autoRestartWithLock();
       pipeAutoRestartRoundCounter.set(0);
-    }
-
-    if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
-      LOGGER.warn(
-          "PipeTaskCoordinatorLock is held by another thread, skip this round of sync to avoid procedure and rpc accumulation as much as possible");
-      return;
     }
 
     final TSStatus status = procedureManager.pipeMetaSync();
