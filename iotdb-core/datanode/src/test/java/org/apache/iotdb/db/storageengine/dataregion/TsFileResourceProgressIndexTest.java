@@ -97,8 +97,7 @@ public class TsFileResourceProgressIndexTest {
   @Test
   public void testProgressIndexRecorder() {
     HybridProgressIndex hybridProgressIndex =
-        new HybridProgressIndex(
-            ProgressIndexType.SIMPLE_PROGRESS_INDEX.getType(), new SimpleProgressIndex(3, 4));
+        new HybridProgressIndex(new SimpleProgressIndex(3, 4));
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(6, 6));
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
         new RecoverProgressIndex(1, new SimpleProgressIndex(1, 2)));
@@ -215,8 +214,7 @@ public class TsFileResourceProgressIndexTest {
     final IoTProgressIndex ioTProgressIndex = new IoTProgressIndex(1, 123L);
     final RecoverProgressIndex recoverProgressIndex =
         new RecoverProgressIndex(1, new SimpleProgressIndex(2, 2));
-    final HybridProgressIndex hybridProgressIndex =
-        new HybridProgressIndex(ProgressIndexType.IOT_PROGRESS_INDEX.getType(), ioTProgressIndex);
+    final HybridProgressIndex hybridProgressIndex = new HybridProgressIndex(ioTProgressIndex);
 
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(recoverProgressIndex);
 
@@ -244,12 +242,10 @@ public class TsFileResourceProgressIndexTest {
 
     int hybridProgressIndexNum = 100;
     IntStream.range(0, hybridProgressIndexNum)
+        .forEach(i -> progressIndexList.add(new HybridProgressIndex(new IoTProgressIndex(i, 0L))));
+    IntStream.range(0, hybridProgressIndexNum)
         .forEach(
-            i ->
-                progressIndexList.add(
-                    new HybridProgressIndex(
-                        ProgressIndexType.IOT_PROGRESS_INDEX.getType(),
-                        new IoTProgressIndex(i, 0L))));
+            i -> progressIndexList.add(new HybridProgressIndex(MinimumProgressIndex.INSTANCE)));
 
     Collections.shuffle(progressIndexList);
     progressIndexList.sort(ProgressIndex::topologicalCompareTo);
@@ -321,7 +317,6 @@ public class TsFileResourceProgressIndexTest {
             i -> {
               HybridProgressIndex hybridProgressIndex =
                   new HybridProgressIndex(
-                      ProgressIndexType.IOT_PROGRESS_INDEX.getType(),
                       new IoTProgressIndex(
                           random.nextInt(peerIdRange), (long) random.nextInt(searchIndexRange)));
               if (random.nextInt(2) == 1) {

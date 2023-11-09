@@ -153,7 +153,7 @@ public abstract class ProgressIndex {
    *     progress index
    * @return the minimum progress index after the first progress index and the second progress index
    */
-  public static ProgressIndex blendProgressIndex(
+  protected static ProgressIndex blendProgressIndex(
       ProgressIndex progressIndex1, ProgressIndex progressIndex2) {
     if (progressIndex1 == null && progressIndex2 == null) {
       return MinimumProgressIndex.INSTANCE;
@@ -165,7 +165,7 @@ public abstract class ProgressIndex {
       return progressIndex1; // progressIndex1 is not null
     }
 
-    return new HybridProgressIndex(progressIndex1.getType().getType(), progressIndex1)
+    return new HybridProgressIndex(progressIndex1)
         .updateToMinimumIsAfterProgressIndex(progressIndex2);
   }
 
@@ -174,6 +174,8 @@ public abstract class ProgressIndex {
    * to sum and compare the size of the tuples of each total ordered relation of progress index.
    * This method maintains the relationship of progress index in the isAfter relationship. It is
    * mainly used for topologically sorting the progress index.
+   *
+   * <p>Notice:
    */
   protected static class TotalOrderSumTuple implements Comparable<TotalOrderSumTuple> {
     private final ImmutableList<Long> tuple;

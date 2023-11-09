@@ -32,6 +32,7 @@ import java.nio.ByteBuffer;
 public class MinimumProgressIndex extends ProgressIndex {
 
   public static final MinimumProgressIndex INSTANCE = new MinimumProgressIndex();
+  private static final TotalOrderSumTuple TOTAL_ORDER_SUM_TUPLE = new TotalOrderSumTuple();
 
   private MinimumProgressIndex() {}
 
@@ -83,7 +84,7 @@ public class MinimumProgressIndex extends ProgressIndex {
 
   @Override
   public TotalOrderSumTuple getTotalOrderSumTuple() {
-    return new TotalOrderSumTuple();
+    return TOTAL_ORDER_SUM_TUPLE;
   }
 
   public static MinimumProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
