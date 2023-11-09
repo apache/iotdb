@@ -185,7 +185,7 @@ public class CommonConfig {
 
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
 
-  private boolean pipeMemoryManagementEnabled = true;
+  private boolean pipeMemoryManagementEnabled = false;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
   private int pipeMemoryAllocateMaxRetries = 10;
   private long pipeMemoryAllocateMinSizeInBytes = 32;
