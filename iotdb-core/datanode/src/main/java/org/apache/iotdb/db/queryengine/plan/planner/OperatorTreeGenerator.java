@@ -64,6 +64,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TagAggregation
 import org.apache.iotdb.db.queryengine.execution.operator.process.TopKOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BooleanConstantFill;
@@ -71,6 +72,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.FloatConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.IntConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.LongConstantFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter.FixedIntervalFillFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity.IdentityFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity.IdentityLinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.DoubleLinearFill;
@@ -227,6 +229,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -934,7 +937,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       case PREVIOUS:
         context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
         return new FillOperator(
-            operatorContext, getPreviousFill(inputColumns, inputDataTypes), child);
+            operatorContext, getPreviousFill(inputColumns, inputDataTypes, descriptor.getTimeDurationThreshold()), child);
       case LINEAR:
         context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
         return new LinearFillOperator(
@@ -978,27 +981,36 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return constantFill;
   }
 
-  private IFill[] getPreviousFill(int inputColumns, List<TSDataType> inputDataTypes) {
+  private IFill[] getPreviousFill(int inputColumns, List<TSDataType> inputDataTypes, TimeDuration timeDurationThreshold) {
+    IFillFilter filter;
+    if (timeDurationThreshold == null) {
+      filter = IFillFilter.TRUE;
+    } else if (!timeDurationThreshold.containsMonth()) {
+      filter = new FixedIntervalFillFilter(timeDurationThreshold.nonMonthDuration);
+    } else {
+
+    }
+
     IFill[] previousFill = new IFill[inputColumns];
     for (int i = 0; i < inputColumns; i++) {
       switch (inputDataTypes.get(i)) {
         case BOOLEAN:
-          previousFill[i] = new BooleanPreviousFill();
+          previousFill[i] = new BooleanPreviousFill(filter);
           break;
         case TEXT:
-          previousFill[i] = new BinaryPreviousFill();
+          previousFill[i] = new BinaryPreviousFill(filter);
           break;
         case INT32:
-          previousFill[i] = new IntPreviousFill();
+          previousFill[i] = new IntPreviousFill(filter);
           break;
         case INT64:
-          previousFill[i] = new LongPreviousFill();
+          previousFill[i] = new LongPreviousFill(filter);
           break;
         case FLOAT:
-          previousFill[i] = new FloatPreviousFill();
+          previousFill[i] = new FloatPreviousFill(filter);
           break;
         case DOUBLE:
-          previousFill[i] = new DoublePreviousFill();
+          previousFill[i] = new DoublePreviousFill(filter);
           break;
         default:
           throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));

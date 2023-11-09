@@ -50,7 +50,7 @@ public class ${className} implements IFill {
   }
 
   @Override
-  public Column fill(Column valueColumn) {
+  public Column fill(TimeColumn timeColumn, Column valueColumn) {
     int size = valueColumn.getPositionCount();
     // if this valueColumn doesn't have any null value, or it's empty, just return itself;
     if (!valueColumn.mayHaveNull() || size == 0) {

@@ -1782,7 +1782,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     FillComponent fillComponent = queryStatement.getFillComponent();
     analysis.setFillDescriptor(
-        new FillDescriptor(fillComponent.getFillPolicy(), fillComponent.getFillValue()));
+        new FillDescriptor(fillComponent.getFillPolicy(), fillComponent.getFillValue(), fillComponent.getTimeDurationThreshold()));
   }
 
   private void analyzeDataPartition(

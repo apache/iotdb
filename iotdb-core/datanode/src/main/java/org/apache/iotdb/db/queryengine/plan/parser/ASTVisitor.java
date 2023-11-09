@@ -1667,12 +1667,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       fillComponent.setFillPolicy(FillPolicy.LINEAR);
     } else if (ctx.PREVIOUS() != null) {
       fillComponent.setFillPolicy(FillPolicy.PREVIOUS);
+
     } else if (ctx.constant() != null) {
       fillComponent.setFillPolicy(FillPolicy.VALUE);
       Literal fillValue = parseLiteral(ctx.constant());
       fillComponent.setFillValue(fillValue);
     } else {
       throw new SemanticException("Unknown FILL type.");
+    }
+    if (ctx.interval != null) {
+      if (fillComponent.getFillPolicy() != FillPolicy.PREVIOUS) {
+        throw new SemanticException("Only FILL(PREVIOUS) support specifying the time duration threshold.");
+      }
+      fillComponent.setTimeDurationThreshold(DateTimeUtils.constructTimeDuration(ctx.interval.getText()));
     }
     return fillComponent;
   }

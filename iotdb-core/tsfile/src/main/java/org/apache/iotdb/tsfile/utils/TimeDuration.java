@@ -191,4 +191,12 @@ public class TimeDuration implements Serializable {
   public int hashCode() {
     return Objects.hash(monthDuration, nonMonthDuration);
   }
+
+  @Override
+  public String toString() {
+    return "TimeDuration{" +
+        (monthDuration > 0 ?  monthDuration + "mo, " : "") +
+        (nonMonthDuration > 0 ? nonMonthDuration : "")+
+        '}';
+  }
 }

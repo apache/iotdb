@@ -215,6 +215,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Fill-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Policy: %s", node.getFillDescriptor().getFillPolicy()));
+    if (node.getFillDescriptor().getTimeDurationThreshold() != null) {
+      boxValue.add(String.format("TimeDurationThreshold: %s", node.getFillDescriptor().getTimeDurationThreshold()));
+    }
     return render(node, boxValue, context);
   }
 

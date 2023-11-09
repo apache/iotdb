@@ -17,12 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process.fill;
+package org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter;
 
-import org.apache.iotdb.tsfile.access.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
 
-public interface IFill {
+public class MonthIntervalFillFilter implements IFillFilter {
 
-  Column fill(TimeColumn timeColumn, Column valueColumn);
+  // month part of time duration
+  public final int monthDuration;
+  // non-month part of time duration, its precision is same as current time_precision
+  public final long nonMonthDuration;
+
+  public MonthIntervalFillFilter(int monthDuration, long nonMonthDuration) {
+    this.monthDuration = monthDuration;
+    this.nonMonthDuration = nonMonthDuration;
+  }
+
+  @Override
+  public boolean needFill(long time, long previousTime) {
+    long smaller = Math.min(time, previousTime);
+    long greater = Math.max(time, previousTime);
+
+    return false;
+  }
 }
