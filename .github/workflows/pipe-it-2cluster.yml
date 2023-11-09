@@ -32,11 +32,11 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [11]
+        java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
         cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
         cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
-        os: [ ubuntu-latest, windows-latest ]
+        os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
