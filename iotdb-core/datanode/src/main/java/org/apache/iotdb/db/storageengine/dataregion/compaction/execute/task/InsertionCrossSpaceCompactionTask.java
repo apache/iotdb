@@ -22,7 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
@@ -34,7 +33,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 
 import java.io.File;
 import java.io.IOException;
@@ -149,19 +147,13 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
       prepareTargetFiles();
 
+      validateCompactionResult(
+          Collections.emptyList(),
+          Collections.singletonList(unseqFileToInsert),
+          Collections.singletonList(targetFile));
+
       replaceTsFileInMemory(
           Collections.singletonList(unseqFileToInsert), Collections.singletonList(targetFile));
-
-      if (!TsFileValidator.getInstance()
-          .validateTsFilesIsHasNoOverlap(
-              tsFileManager.getOrCreateSequenceListByTimePartition(timePartition))) {
-        LOGGER.error(
-            "Failed to pass compaction validation, source un seq files is: {}, target files is {}",
-            unseqFileToInsert,
-            targetFile);
-        IoTDBDescriptor.getInstance().getConfig().setEnableInsertionCrossSpaceCompaction(false);
-        throw new CompactionValidationFailedException("Failed to pass compaction validation");
-      }
 
       lockWrite(Collections.singletonList(unseqFileToInsert));
       CompactionUtils.deleteCompactionModsFile(selectedSeqFiles, selectedUnseqFiles);

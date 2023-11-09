@@ -458,10 +458,10 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     task.start();
 
     for (TsFileResource resource : seqResources) {
-      Assert.assertTrue(resource.getModFile().exists());
+      Assert.assertFalse(resource.getModFile().exists());
     }
     for (TsFileResource resource : unseqResources) {
-      Assert.assertTrue(resource.getModFile().exists());
+      Assert.assertFalse(resource.getModFile().exists());
     }
     for (TsFileResource resource : targetResources) {
       resource.setFile(

@@ -196,6 +196,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         CompactionUtils.combineModsInCrossCompaction(
             selectedSequenceFiles, selectedUnsequenceFiles, targetTsfileResourceList);
 
+        validateCompactionResult(
+            selectedSequenceFiles, selectedUnsequenceFiles, targetTsfileResourceList);
+
         // update tsfile resource in memory
         tsFileManager.replace(
             selectedSequenceFiles,
@@ -212,8 +215,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             compactionLogger.force();
           }
         }
-
-        validateTsFileResource(targetTsfileResourceList, true);
 
         lockWrite(selectedSequenceFiles);
         lockWrite(selectedUnsequenceFiles);
