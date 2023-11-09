@@ -17,29 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.itbase.env;
+package org.apache.iotdb.db.exception;
 
-public interface BaseNodeWrapper {
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  void createNodeDir();
+public class LoadReadOnlyException extends IoTDBException {
 
-  void createLogDir();
+  public static final String MESSAGE =
+      "Current system mode is read only, does not support load file";
 
-  void destroyDir();
-
-  void start();
-
-  void stop();
-
-  String getIp();
-
-  int getPort();
-
-  int getMetricPort();
-
-  String getId();
-
-  String getIpAndPortString();
-
-  void dumpJVMSnapshot(String testCaseName);
+  public LoadReadOnlyException() {
+    super(MESSAGE, TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
+  }
 }

@@ -799,9 +799,6 @@ public class IoTDBConfig {
 
   private float udfCollectorMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
 
-  // time in nanosecond precision when starting up
-  private long startUpNanosecond = System.nanoTime();
-
   /** Unit: byte */
   private int thriftMaxFrameSize = 536870912;
 
@@ -1402,7 +1399,7 @@ public class IoTDBConfig {
     return systemDir;
   }
 
-  void setSystemDir(String systemDir) {
+  public void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
   }
 
@@ -1426,7 +1423,7 @@ public class IoTDBConfig {
     return queryDir;
   }
 
-  void setQueryDir(String queryDir) {
+  public void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
   }
 
@@ -2510,10 +2507,6 @@ public class IoTDBConfig {
 
   public void setPrimitiveArraySize(int primitiveArraySize) {
     this.primitiveArraySize = primitiveArraySize;
-  }
-
-  public long getStartUpNanosecond() {
-    return startUpNanosecond;
   }
 
   public int getThriftMaxFrameSize() {
