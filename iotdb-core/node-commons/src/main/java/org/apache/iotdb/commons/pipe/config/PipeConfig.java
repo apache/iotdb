@@ -71,6 +71,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
   }
 
+  public long getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds() {
+    return COMMON_CONFIG.getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
+  }
+
   /////////////////////////////// Extractor ///////////////////////////////
 
   public int getPipeExtractorAssignerDisruptorRingBufferSize() {
@@ -161,6 +165,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
 
+  public int getPipeMaxAllowedPinnedMemTableCount() {
+    return COMMON_CONFIG.getPipeMaxAllowedPinnedMemTableCount();
+  }
+
   /////////////////////////////// Memory ///////////////////////////////
 
   public boolean getPipeMemoryManagementEnabled() {
@@ -205,6 +213,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeSubtaskExecutorPendingQueueMaxBlockingTimeMs: {}",
         getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs());
+    LOGGER.info(
+        "PipeSubtaskExecutorCronHeartbeatEventIntervalSeconds: {}",
+        getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds());
 
     LOGGER.info(
         "PipeExtractorAssignerDisruptorRingBufferSize: {}",
@@ -244,6 +255,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
         getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
+    LOGGER.info("PipeMaxAllowedPinnedMemTableCount: {}", getPipeMaxAllowedPinnedMemTableCount());
 
     LOGGER.info("PipeMemoryManagementEnabled: {}", getPipeMemoryManagementEnabled());
     LOGGER.info("PipeMemoryAllocateMaxRetries: {}", getPipeMemoryAllocateMaxRetries());
