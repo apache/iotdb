@@ -31,7 +31,7 @@
             <includes>
                 <include>org.apache.iotdb:library-udf:jar:${project.version}</include>
             </includes>
-            <outputDirectory>ext/udf</outputDirectory>
+            <outputDirectory/>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
             <unpack>false</unpack>
         </dependencySet>
@@ -39,11 +39,24 @@
     <fileSets>
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/library-udf/src/assembly/tools</directory>
-            <outputDirectory>tools</outputDirectory>
+            <outputDirectory/>
             <fileMode>0755</fileMode>
         </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/licenses</directory>
+            <outputDirectory>licenses</outputDirectory>
+        </fileSet>
     </fileSets>
-    <componentDescriptors>
-        <componentDescriptor>common-files.xml</componentDescriptor>
-    </componentDescriptors>
+    <files>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/LICENSE-binary</source>
+            <outputDirectory>licenses</outputDirectory>
+            <destName>LICENSE</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/NOTICE-binary</source>
+            <outputDirectory>licenses</outputDirectory>
+            <destName>NOTICE</destName>
+        </file>
+    </files>
 </assembly>

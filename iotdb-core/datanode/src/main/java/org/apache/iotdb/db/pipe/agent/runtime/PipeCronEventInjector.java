@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 
 import org.slf4j.Logger;
@@ -35,7 +36,8 @@ public class PipeCronEventInjector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeCronEventInjector.class);
 
-  private static final int CRON_EVENT_INJECTOR_INTERVAL_SECONDS = 30;
+  private static final long CRON_EVENT_INJECTOR_INTERVAL_SECONDS =
+      PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
 
   private static final ScheduledExecutorService CRON_EVENT_INJECTOR_EXECUTOR =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(

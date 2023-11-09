@@ -67,6 +67,7 @@ public class IoTDBMetricManager extends AbstractMetricManager {
     DistributionStatisticConfig distributionStatisticConfig =
         DistributionStatisticConfig.builder()
             .percentiles(0.5, 0.99)
+            .bufferLength(2)
             .build()
             .merge(defaultHistogramConfig);
 
@@ -106,7 +107,7 @@ public class IoTDBMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public Timer createTimer(MetricInfo metricInfo) {
+  public Timer createTimer() {
     // set pauseDetector
     PauseDetector pauseDetector = new NoPauseDetector();
 
