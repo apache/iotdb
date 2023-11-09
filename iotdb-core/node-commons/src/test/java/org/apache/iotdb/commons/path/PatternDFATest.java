@@ -151,24 +151,6 @@ public class PatternDFATest {
   }
 
   @Test
-  @Ignore
-  public void printFASketch4() throws IllegalPathException {
-    // Map<AcceptEvent, IFATransition>
-    PathPatternTree patternTree = new PathPatternTree();
-    for (int i = 0; i < 100; i++) {
-      for (int j = 0; j < 300; j++) {
-        patternTree.appendFullPath(new PartialPath("root.sg.d_" + i + ".s_" + j));
-      }
-    }
-    patternTree.constructTree();
-    long start = System.currentTimeMillis();
-    for (int i = 0; i < 1; i++) {
-      IPatternFA patternDFA = new PatternDFA(patternTree);
-    }
-    System.out.println("construct time cost: " + (System.currentTimeMillis() - start));
-  }
-
-  @Test
   public void testMatchFullPath() throws IllegalPathException {
     PartialPath p1 = new PartialPath("root.sg1.d1.*");
 

@@ -50,8 +50,6 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   private final ISchemaRegion schemaRegion;
   private final boolean withTags;
-  private final boolean fuzzy;
-
   private boolean isFinished = false;
 
   public SchemaFetchScanOperator(
@@ -60,15 +58,13 @@ public class SchemaFetchScanOperator implements SourceOperator {
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       ISchemaRegion schemaRegion,
-      boolean withTags,
-      boolean fuzzy) {
+      boolean withTags) {
     this.sourceId = planNodeId;
     this.operatorContext = context;
     this.patternTree = patternTree;
     this.schemaRegion = schemaRegion;
     this.templateMap = templateMap;
     this.withTags = withTags;
-    this.fuzzy = fuzzy;
   }
 
   @Override
@@ -106,10 +102,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   private TsBlock fetchSchema() throws MetadataException {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    long startTime = System.currentTimeMillis();
-    schemaTree.appendMeasurementPaths(
-        schemaRegion.fetchSchema(patternTree, templateMap, withTags, fuzzy));
-    System.out.println("fetch schema time cost: " + (System.currentTimeMillis() - startTime));
+    schemaTree.appendMeasurementPaths(schemaRegion.fetchSchema(patternTree, templateMap, withTags));
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {

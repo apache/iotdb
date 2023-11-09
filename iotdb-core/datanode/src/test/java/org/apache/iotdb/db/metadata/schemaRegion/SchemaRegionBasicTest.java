@@ -178,13 +178,13 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
     long startTime;
     startTime = System.currentTimeMillis();
-    for (int i = 0; i < 5000; i++) {
+    for (int i = 0; i < 1000; i++) {
       schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false, true);
     }
     System.out.println(
         "cost time without optimization: " + (System.currentTimeMillis() - startTime));
     startTime = System.currentTimeMillis();
-    for (int i = 0; i < 5000; i++) {
+    for (int i = 0; i < 1000; i++) {
       schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false, false);
     }
     System.out.println("cost time with optimization: " + (System.currentTimeMillis() - startTime));

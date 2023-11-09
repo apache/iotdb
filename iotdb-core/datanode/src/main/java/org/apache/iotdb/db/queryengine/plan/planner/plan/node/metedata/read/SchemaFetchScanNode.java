@@ -50,22 +50,19 @@ public class SchemaFetchScanNode extends SourceNode {
   private final Map<Integer, Template> templateMap;
   private final boolean withTags;
   private TRegionReplicaSet schemaRegionReplicaSet;
-  private final boolean fuzzy;
 
   public SchemaFetchScanNode(
       PlanNodeId id,
       PartialPath storageGroup,
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
-      boolean withTags,
-      boolean fuzzy) {
+      boolean withTags) {
     super(id);
     this.storageGroup = storageGroup;
     this.patternTree = patternTree;
     this.patternTree.constructTree();
     this.templateMap = templateMap;
     this.withTags = withTags;
-    this.fuzzy = fuzzy;
   }
 
   public PartialPath getStorageGroup() {
@@ -80,10 +77,6 @@ public class SchemaFetchScanNode extends SourceNode {
     return templateMap;
   }
 
-  public boolean isFuzzy() {
-    return fuzzy;
-  }
-
   @Override
   public List<PlanNode> getChildren() {
     return Collections.emptyList();
@@ -95,7 +88,7 @@ public class SchemaFetchScanNode extends SourceNode {
   @Override
   public PlanNode clone() {
     return new SchemaFetchScanNode(
-        getPlanNodeId(), storageGroup, patternTree, templateMap, withTags, fuzzy);
+        getPlanNodeId(), storageGroup, patternTree, templateMap, withTags);
   }
 
   @Override
@@ -140,7 +133,6 @@ public class SchemaFetchScanNode extends SourceNode {
       template.serialize(stream);
     }
     ReadWriteIOUtils.write(withTags, stream);
-    ReadWriteIOUtils.write(fuzzy, stream);
   }
 
   public static SchemaFetchScanNode deserialize(ByteBuffer byteBuffer) {
@@ -156,10 +148,8 @@ public class SchemaFetchScanNode extends SourceNode {
       templateMap.put(template.getId(), template);
     }
     boolean withTags = ReadWriteIOUtils.readBool(byteBuffer);
-    boolean wrire = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SchemaFetchScanNode(
-        planNodeId, storageGroup, patternTree, templateMap, withTags, wrire);
+    return new SchemaFetchScanNode(planNodeId, storageGroup, patternTree, templateMap, withTags);
   }
 
   @Override

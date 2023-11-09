@@ -197,10 +197,7 @@ public interface ISchemaRegion {
       throws MetadataException;
 
   List<MeasurementPath> fetchSchema(
-      PathPatternTree patternTree,
-      Map<Integer, Template> templateMap,
-      boolean withTags,
-      boolean fuzzy)
+      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException;
 
   // endregion

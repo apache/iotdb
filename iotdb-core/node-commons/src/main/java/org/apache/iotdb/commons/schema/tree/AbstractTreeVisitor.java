@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.schema.tree;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.IPatternFA;
@@ -123,8 +124,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
       if (IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(pathNode)) {
         // ** node
         usingDFA = true;
-      } else if (pathNode.length() > 1
-          && pathNode.contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+      } else if (pathNode.length() > 1 && PathPatternUtil.hasWildcard(pathNode)) {
         // regex node
         usingDFA = false;
         break;

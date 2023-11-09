@@ -34,18 +34,13 @@ public class SchemaFetchStatement extends Statement {
   private final PathPatternTree patternTree;
   private final Map<Integer, Template> templateMap;
   private final boolean withTags;
-  private final boolean fuzzy;
 
   public SchemaFetchStatement(
-      PathPatternTree patternTree,
-      Map<Integer, Template> templateMap,
-      boolean withTags,
-      boolean fuzzy) {
+      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags) {
     super();
     this.patternTree = patternTree;
     this.templateMap = templateMap;
     this.withTags = withTags;
-    this.fuzzy = fuzzy;
     setType(StatementType.FETCH_SCHEMA);
   }
 
@@ -55,10 +50,6 @@ public class SchemaFetchStatement extends Statement {
 
   public Map<Integer, Template> getTemplateMap() {
     return templateMap;
-  }
-
-  public boolean isFuzzy() {
-    return fuzzy;
   }
 
   @Override

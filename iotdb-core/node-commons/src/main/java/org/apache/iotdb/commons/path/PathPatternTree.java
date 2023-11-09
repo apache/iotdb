@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PathPatternNode.VoidSerializer;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -45,7 +46,6 @@ public class PathPatternTree {
 
   // set the default value to TRUE to ensure correctness
   private boolean useWildcard = true;
-
   private boolean containWildcard = false;
 
   public PathPatternTree(boolean useWildcard) {
@@ -56,6 +56,14 @@ public class PathPatternTree {
   public PathPatternTree() {
     this.root = new PathPatternNode<>(IoTDBConstant.PATH_ROOT, VoidSerializer.getInstance());
     this.pathPatternList = new LinkedList<>();
+  }
+
+  public boolean isContainWildcard() {
+    return containWildcard;
+  }
+
+  public void setContainWildcard(boolean containWildcard) {
+    this.containWildcard = containWildcard;
   }
 
   public PathPatternNode<Void, VoidSerializer> getRoot() {
@@ -301,16 +309,19 @@ public class PathPatternTree {
   public void serialize(PublicBAOS outputStream) throws IOException {
     constructTree();
     root.serialize(outputStream);
+    ReadWriteIOUtils.write(containWildcard, outputStream);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
     constructTree();
     root.serialize(stream);
+    ReadWriteIOUtils.write(containWildcard, stream);
   }
 
   public void serialize(ByteBuffer buffer) {
     constructTree();
     root.serialize(buffer);
+    ReadWriteIOUtils.write(containWildcard, buffer);
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -327,6 +338,7 @@ public class PathPatternTree {
         PathPatternNode.deserializeNode(buffer, VoidSerializer.getInstance());
     PathPatternTree deserializedPatternTree = new PathPatternTree();
     deserializedPatternTree.setRoot(root);
+    deserializedPatternTree.setContainWildcard(ReadWriteIOUtils.readBool(buffer));
     return deserializedPatternTree;
   }
 
