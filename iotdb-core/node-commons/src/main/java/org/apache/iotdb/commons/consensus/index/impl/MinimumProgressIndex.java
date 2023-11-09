@@ -29,7 +29,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public class MinimumProgressIndex implements ProgressIndex {
+public class MinimumProgressIndex extends ProgressIndex {
 
   public static final MinimumProgressIndex INSTANCE = new MinimumProgressIndex();
 
@@ -83,7 +83,7 @@ public class MinimumProgressIndex implements ProgressIndex {
 
   @Override
   public TotalOrderSumTuple getTotalOrderSumTuple() {
-    return new TotalOrderSumTuple(0L);
+    return new TotalOrderSumTuple();
   }
 
   public static MinimumProgressIndex deserializeFrom(ByteBuffer byteBuffer) {

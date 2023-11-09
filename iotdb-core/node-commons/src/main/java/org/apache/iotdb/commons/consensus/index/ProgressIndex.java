@@ -29,7 +29,6 @@ import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -42,13 +41,13 @@ import java.util.stream.LongStream;
  * progress index is considered to be composed of an n-tuple of total order relations
  * (S<sub>1</sub>,S<sub>2</sub>,S<sub>3</sub>,.... ,S<sub>n</sub>).
  */
-public interface ProgressIndex {
+public abstract class ProgressIndex {
 
   /** Serialize this progress index to the given byte buffer. */
-  void serialize(ByteBuffer byteBuffer);
+  public abstract void serialize(ByteBuffer byteBuffer);
 
   /** Serialize this progress index to the given output stream. */
-  void serialize(OutputStream stream) throws IOException;
+  public abstract void serialize(OutputStream stream) throws IOException;
 
   /**
    * A.isAfter(B) is true if and only if every tuple member in A is strictly greater than the
@@ -58,7 +57,7 @@ public interface ProgressIndex {
    * @return true if and only if this progress index is strictly greater than the given consensus
    *     index
    */
-  boolean isAfter(@Nonnull ProgressIndex progressIndex);
+  public abstract boolean isAfter(@Nonnull ProgressIndex progressIndex);
 
   /**
    * A.isAfter(B) is true if and only if every tuple member in A is the same as the corresponding
@@ -67,7 +66,7 @@ public interface ProgressIndex {
    * @param progressIndex the progress index to be compared
    * @return true if and only if this progress index is equal to the given progress index
    */
-  boolean equals(ProgressIndex progressIndex);
+  public abstract boolean equals(ProgressIndex progressIndex);
 
   /**
    * A.equals(B) is true if and only if A, B are both {@link ProgressIndex} and A.equals(({@link
@@ -77,7 +76,18 @@ public interface ProgressIndex {
    * @return true if and only if this progress index is equal to the given object
    */
   @Override
-  boolean equals(Object obj);
+  public boolean equals(Object obj) {
+    if (obj == null) {
+      return false;
+    }
+    if (this == obj) {
+      return true;
+    }
+    if (!(obj instanceof ProgressIndex)) {
+      return false;
+    }
+    return this.equals((ProgressIndex) obj);
+  }
 
   /**
    * Define the isEqualOrAfter relation, A.isEqualOrAfter(B) if and only if each tuple member in A
@@ -100,12 +110,10 @@ public interface ProgressIndex {
    * @param progressIndex the progress index to be compared
    * @return the minimum progress index after the given progress index and this progress index
    */
-  ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex);
+  public abstract ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex);
 
-  /**
-   * @return the type of this progress index
-   */
-  ProgressIndexType getType();
+  /** @return the type of this progress index */
+  public abstract ProgressIndexType getType();
 
   /**
    * Get the sum of the tuples of each total order relation of the progress index, which is used for
@@ -114,7 +122,13 @@ public interface ProgressIndex {
    * @return The sum of the tuples corresponding to all the total order relations contained in the
    *     progress index.
    */
-  TotalOrderSumTuple getTotalOrderSumTuple();
+  public abstract TotalOrderSumTuple getTotalOrderSumTuple();
+
+  public final int topologicalCompareTo(ProgressIndex progressIndex) {
+    return progressIndex == null
+        ? 1
+        : getTotalOrderSumTuple().compareTo(progressIndex.getTotalOrderSumTuple());
+  }
 
   /**
    * Blend two progress index together, the result progress index should satisfy:
@@ -139,7 +153,7 @@ public interface ProgressIndex {
    *     progress index
    * @return the minimum progress index after the first progress index and the second progress index
    */
-  static ProgressIndex blendProgressIndex(
+  public static ProgressIndex blendProgressIndex(
       ProgressIndex progressIndex1, ProgressIndex progressIndex2) {
     if (progressIndex1 == null && progressIndex2 == null) {
       return MinimumProgressIndex.INSTANCE;
@@ -160,14 +174,8 @@ public interface ProgressIndex {
    * to sum and compare the size of the tuples of each total ordered relation of progress index.
    * This method maintains the relationship of progress index in the isAfter relationship. It is
    * mainly used for topologically sorting the progress index.
-   *
-   * @param progressIndexList immutable tuple list
    */
-  static void topologicalSort(List<ProgressIndex> progressIndexList) {
-    progressIndexList.sort(Comparator.comparing(ProgressIndex::getTotalOrderSumTuple));
-  }
-
-  class TotalOrderSumTuple implements Comparable<TotalOrderSumTuple> {
+  protected static class TotalOrderSumTuple implements Comparable<TotalOrderSumTuple> {
     private final ImmutableList<Long> tuple;
 
     public TotalOrderSumTuple(Long... args) {

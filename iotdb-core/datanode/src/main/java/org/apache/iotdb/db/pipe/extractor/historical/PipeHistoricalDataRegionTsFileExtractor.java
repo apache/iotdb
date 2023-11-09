@@ -45,7 +45,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -293,7 +292,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             });
 
         resourceList.sort(
-            (Comparator.comparing(o -> o.getMaxProgressIndex().getTotalOrderSumTuple())));
+            (o1, o2) -> o1.getMaxProgressIndex().topologicalCompareTo(o2.getMaxProgressIndex()));
         pendingQueue = new ArrayDeque<>(resourceList);
 
         LOGGER.info(

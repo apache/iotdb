@@ -143,7 +143,7 @@ public class TsFileResourceProgressIndexTest {
     // TODO: wait for implements of ProgressIndex.deserializeFrom
   }
 
-  public static class MockProgressIndex implements ProgressIndex {
+  public static class MockProgressIndex extends ProgressIndex {
     private final int type;
     private int val;
 
@@ -231,6 +231,54 @@ public class TsFileResourceProgressIndexTest {
   }
 
   @Test
+  public void testProgressIndexMinimumProgressIndexTopologicalSort() {
+    List<ProgressIndex> progressIndexList = new ArrayList<>();
+
+    int ioTProgressIndexNum = 100;
+    IntStream.range(0, ioTProgressIndexNum)
+        .forEach(i -> progressIndexList.add(new IoTProgressIndex(i, 0L)));
+
+    int minimumProgressIndexNum = 100;
+    IntStream.range(0, minimumProgressIndexNum)
+        .forEach(i -> progressIndexList.add(MinimumProgressIndex.INSTANCE));
+
+    int hybridProgressIndexNum = 100;
+    IntStream.range(0, hybridProgressIndexNum)
+        .forEach(
+            i ->
+                progressIndexList.add(
+                    new HybridProgressIndex(
+                        ProgressIndexType.IOT_PROGRESS_INDEX.getType(),
+                        new IoTProgressIndex(i, 0L))));
+
+    Collections.shuffle(progressIndexList);
+    progressIndexList.sort(ProgressIndex::topologicalCompareTo);
+
+    int size = progressIndexList.size();
+    for (int i = 0; i < size - 1; i++) {
+      int finalI = i;
+      for (int j = i; j < size; j++) {
+        if (progressIndexList.get(i).isAfter(progressIndexList.get(j))) {
+          System.out.println("progressIndexList.get(i) = " + progressIndexList.get(i));
+          System.out.println("i = " + i);
+          System.out.println(
+              "progressIndexList.get(i).getTotalOrderSumTuple() = "
+                  + progressIndexList.get(i).getTotalOrderSumTuple());
+          System.out.println("progressIndexList.get(j) = " + progressIndexList.get(j));
+          System.out.println("j = " + j);
+          System.out.println(
+              "progressIndexList.get(j).getTotalOrderSumTuple() = "
+                  + progressIndexList.get(j).getTotalOrderSumTuple());
+          System.out.println(System.lineSeparator());
+        }
+      }
+      Assert.assertTrue(
+          IntStream.range(i, size)
+              .noneMatch(j -> progressIndexList.get(finalI).isAfter(progressIndexList.get(j))));
+    }
+  }
+
+  @Test
   public void testProgressIndexTopologicalSort() {
     Random random = new Random();
     List<ProgressIndex> progressIndexList = new ArrayList<>();
@@ -294,7 +342,13 @@ public class TsFileResourceProgressIndexTest {
             });
 
     Collections.shuffle(progressIndexList);
-    ProgressIndex.topologicalSort(progressIndexList);
+    final long startTime = System.currentTimeMillis();
+    progressIndexList.sort(ProgressIndex::topologicalCompareTo);
+    final long costTime = System.currentTimeMillis() - startTime;
+    System.out.println("ProgressIndex List Size = " + progressIndexList.size());
+    System.out.println("sort time = " + costTime + "ms");
+    System.out.println(
+        ("Sort speed = " + (double) (costTime) / ((double) (progressIndexList.size())) + "ms/s"));
 
     int size = progressIndexList.size();
     for (int i = 0; i < size - 1; i++) {
@@ -311,13 +365,7 @@ public class TsFileResourceProgressIndexTest {
           System.out.println(
               "progressIndexList.get(j).getTotalOrderSumTuple() = "
                   + progressIndexList.get(j).getTotalOrderSumTuple());
-          System.out.println(
-              "progressIndexList.get(i).getTotalOrderSumTuple().compareTo(progressIndexList.get(j).getTotalOrderSumTuple()) = "
-                  + progressIndexList
-                      .get(i)
-                      .getTotalOrderSumTuple()
-                      .compareTo(progressIndexList.get(j).getTotalOrderSumTuple()));
-          System.out.println();
+          System.out.println(System.lineSeparator());
         }
       }
       Assert.assertTrue(
