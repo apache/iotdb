@@ -128,6 +128,7 @@ class RatisConsensus implements IConsensus {
 
   private final RatisConfig config;
   private final RetryPolicy<RaftClientReply> readRetryPolicy;
+  private final RetryPolicy<RaftClientReply> writeRetryPolicy;
 
   private final RatisMetricSet ratisMetricSet;
   private final TConsensusGroupType consensusGroupType;
@@ -152,6 +153,18 @@ class RatisConsensus implements IConsensus {
     this.readRetryPolicy =
         RetryPolicy.<RaftClientReply>newBuilder()
             .setRetryHandler(c -> !c.isSuccess() && c.getException() instanceof ReadIndexException)
+            .setMaxAttempts(this.config.getImpl().getRetryTimesMax())
+            .setWaitTime(
+                TimeDuration.valueOf(
+                    this.config.getImpl().getRetryWaitMillis(), TimeUnit.MILLISECONDS))
+            .build();
+    this.writeRetryPolicy =
+        RetryPolicy.<RaftClientReply>newBuilder()
+            // currently, we only retry when ResourceUnavailableException is caught
+            .setRetryHandler(
+                reply ->
+                    !reply.isSuccess()
+                        && (reply.getException() instanceof ResourceUnavailableException))
             .setMaxAttempts(this.config.getImpl().getRetryTimesMax())
             .setWaitTime(
                 TimeDuration.valueOf(
@@ -200,24 +213,12 @@ class RatisConsensus implements IConsensus {
     }
   }
 
-  private boolean shouldRetry(RaftClientReply reply) {
-    // currently, we only retry when ResourceUnavailableException is caught
-    return !reply.isSuccess() && (reply.getException() instanceof ResourceUnavailableException);
-  }
-
   /** launch a consensus write with retry mechanism */
   private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
       throws IOException {
     RaftClientReply reply = null;
     try {
-      reply =
-          Retriable.attempt(
-              caller,
-              this::shouldRetry,
-              config.getImpl().getRetryTimesMax(),
-              TimeDuration.valueOf(config.getImpl().getRetryWaitMillis(), TimeUnit.MILLISECONDS),
-              () -> caller,
-              logger);
+      reply = Retriable.attempt(caller, writeRetryPolicy, () -> caller, logger);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.debug("{}: interrupted when retrying for write request {}", this, caller);

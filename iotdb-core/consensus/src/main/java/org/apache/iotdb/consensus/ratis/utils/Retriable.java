@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.ratis.utils;
 
 import org.apache.ratis.util.Preconditions;
@@ -68,13 +69,10 @@ public class Retriable {
         return ret;
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        if (log != null && log.isDebugEnabled()) {
-          log.debug("{}: interrupted when waiting for retry", name.get());
+        if (log != null && log.isWarnEnabled()) {
+          log.warn("{}: interrupted when waiting for retry", name.get());
         }
-        if (maxAttempts != -1 && i == maxAttempts) {
-          // throws out the InterruptedException if it's the last chance to retry
-          throw e;
-        }
+        throw e;
       }
     }
   }
