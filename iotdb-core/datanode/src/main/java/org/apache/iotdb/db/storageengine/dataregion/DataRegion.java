@@ -60,13 +60,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.service.SettleService;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
@@ -2122,18 +2125,29 @@ public class DataRegion implements IDataRegionForQuery {
     // sort the time partition from largest to smallest
     timePartitions.sort(Comparator.reverseOrder());
 
+    CompactionScheduleSummary summary = new CompactionScheduleSummary();
     if (IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction()) {
       trySubmitCount += executeInsertionCompaction(timePartitions);
+      summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
     }
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
     try {
       for (long timePartition : timePartitions) {
-        trySubmitCount += CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
+        trySubmitCount +=
+            CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
       }
     } catch (Throwable e) {
       logger.error("Meet error in compaction schedule.", e);
     }
+    logger.info(
+        "[CompactionScheduler][{}] selected sequence InnerSpaceCompactionTask num is {}, selected unsequence InnerSpaceCompactionTask num is {}, selected CrossSpaceCompactionTask num is {}, selected InsertionCrossSpaceCompactionTask num is {}",
+        dataRegionId,
+        summary.getSubmitSeqInnerSpaceCompactionTaskNum(),
+        summary.getSubmitUnseqInnerSpaceCompactionTaskNum(),
+        summary.getSubmitCrossSpaceCompactionTaskNum(),
+        summary.getSubmitInsertionCrossSpaceCompactionTaskNum());
+    CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(summary);
     return trySubmitCount;
   }
 

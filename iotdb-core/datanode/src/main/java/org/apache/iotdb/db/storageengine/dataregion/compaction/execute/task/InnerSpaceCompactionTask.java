@@ -171,12 +171,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     recoverMemoryStatus = true;
     LOGGER.info(
         "{}-{} [Compaction] {} InnerSpaceCompaction task starts with {} files, "
-            + "total file size is {} MB.",
+            + "total file size is {} MB, memory cost is {} MB",
         storageGroupName,
         dataRegionId,
         sequence ? "Sequence" : "Unsequence",
         selectedTsFileResourceList.size(),
-        selectedFileSize / 1024 / 1024);
+        selectedFileSize / 1024 / 1024,
+        memoryCost == 0 ? 0 : (double) memoryCost / 1024 / 1024);
     boolean isSuccess = true;
 
     try {
@@ -381,7 +382,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  protected List<TsFileResource> getAllSourceTsFiles() {
+  public List<TsFileResource> getAllSourceTsFiles() {
     return this.selectedTsFileResourceList;
   }
 

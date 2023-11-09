@@ -98,7 +98,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   protected boolean needRecoverTaskInfoFromLogFile;
 
   @Override
-  protected List<TsFileResource> getAllSourceTsFiles() {
+  public List<TsFileResource> getAllSourceTsFiles() {
     return Stream.concat(selectedSeqFiles.stream(), selectedUnseqFiles.stream())
         .collect(Collectors.toList());
   }
