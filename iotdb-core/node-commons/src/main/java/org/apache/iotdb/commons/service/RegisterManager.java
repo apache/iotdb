@@ -48,7 +48,13 @@ public class RegisterManager {
       }
     }
     iServices.add(service);
+    long startTime = System.currentTimeMillis();
     service.start();
+    long endTime = System.currentTimeMillis();
+    logger.info(
+        "The {} service is started successfully, which takes {} ms.",
+        service.getID().getName(),
+        (endTime - startTime));
   }
 
   /** stop all service and clear iService list. */
