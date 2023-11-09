@@ -235,7 +235,7 @@ public class TsFileResourceProgressIndexTest {
     Random random = new Random();
     List<ProgressIndex> progressIndexList = new ArrayList<>();
 
-    int ioTProgressIndexNum = 10, peerIdRange = 3, searchIndexRange = 1000;
+    int ioTProgressIndexNum = 10000, peerIdRange = 3, searchIndexRange = 100000;
     IntStream.range(0, ioTProgressIndexNum)
         .forEach(
             i ->
@@ -243,7 +243,7 @@ public class TsFileResourceProgressIndexTest {
                     new IoTProgressIndex(
                         random.nextInt(peerIdRange), (long) random.nextInt(searchIndexRange))));
 
-    int simpleProgressIndexNum = 10, rebootTimesRange = 3, memtableFlushOrderIdRange = 1000;
+    int simpleProgressIndexNum = 10000, rebootTimesRange = 3, memtableFlushOrderIdRange = 100000;
     IntStream.range(0, simpleProgressIndexNum)
         .forEach(
             i ->
@@ -252,7 +252,7 @@ public class TsFileResourceProgressIndexTest {
                         random.nextInt(rebootTimesRange),
                         random.nextInt(memtableFlushOrderIdRange))));
 
-    int recoverProgressIndexNum = 10, dataNodeIdRange = 3;
+    int recoverProgressIndexNum = 10000, dataNodeIdRange = 3;
     IntStream.range(0, recoverProgressIndexNum)
         .forEach(
             i ->
@@ -263,11 +263,11 @@ public class TsFileResourceProgressIndexTest {
                             random.nextInt(rebootTimesRange),
                             random.nextInt(memtableFlushOrderIdRange)))));
 
-    int minimumProgressIndexNum = 10;
+    int minimumProgressIndexNum = 10000;
     IntStream.range(0, minimumProgressIndexNum)
         .forEach(i -> progressIndexList.add(MinimumProgressIndex.INSTANCE));
 
-    int hybridProgressIndexNum = 10;
+    int hybridProgressIndexNum = 10000;
     IntStream.range(0, hybridProgressIndexNum)
         .forEach(
             i -> {

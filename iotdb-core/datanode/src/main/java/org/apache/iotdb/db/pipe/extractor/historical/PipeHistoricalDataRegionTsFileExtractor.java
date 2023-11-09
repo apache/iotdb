@@ -238,6 +238,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     }
 
     dataRegion.writeLock("Pipe: start to extract historical TsFile");
+    final long startHistoricalExtractionTime = System.currentTimeMillis();
     try {
       synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
         final long lastFlushedByPipeTime =
@@ -291,17 +292,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
               }
             });
 
-        // progress index topological sort
         resourceList.sort(
             (Comparator.comparing(o -> o.getMaxProgressIndex().getTotalOrderSumTuple())));
         pendingQueue = new ArrayDeque<>(resourceList);
 
         LOGGER.info(
             "Pipe: start to extract historical TsFile, data region {}, "
-                + "sequence file count {}, unsequence file count {}",
+                + "sequence file count {}, unsequence file count {}, historical extraction time {} ms",
             dataRegionId,
             sequenceTsFileResources.size(),
-            unsequenceTsFileResources.size());
+            unsequenceTsFileResources.size(),
+            System.currentTimeMillis() - startHistoricalExtractionTime);
       } finally {
         tsFileManager.readUnlock();
       }

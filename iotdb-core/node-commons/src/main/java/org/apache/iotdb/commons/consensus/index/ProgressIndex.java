@@ -35,6 +35,13 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
+/**
+ * The progress index is designed to express the progress on multiple two independent causal chains.
+ * For example, all writes/updates/deletions within a single consensus group form a complete causal
+ * chain. Since strict total order relations can be defined on each of these causal chains, the
+ * progress index is considered to be composed of an n-tuple of total order relations
+ * (S<sub>1</sub>,S<sub>2</sub>,S<sub>3</sub>,.... ,S<sub>n</sub>).
+ */
 public interface ProgressIndex {
 
   /** Serialize this progress index to the given byte buffer. */
@@ -44,7 +51,8 @@ public interface ProgressIndex {
   void serialize(OutputStream stream) throws IOException;
 
   /**
-   * A.isAfter(B) is true if and only if A is strictly greater than B.
+   * A.isAfter(B) is true if and only if every tuple member in A is strictly greater than the
+   * corresponding tuple member in B in its corresponding total order relation。
    *
    * @param progressIndex the progress index to be compared
    * @return true if and only if this progress index is strictly greater than the given consensus
@@ -53,7 +61,8 @@ public interface ProgressIndex {
   boolean isAfter(@Nonnull ProgressIndex progressIndex);
 
   /**
-   * A.equals(B) is true if and only if A is equal to B
+   * A.isAfter(B) is true if and only if every tuple member in A is the same as the corresponding
+   * tuple member in B in its corresponding total order relation.
    *
    * @param progressIndex the progress index to be compared
    * @return true if and only if this progress index is equal to the given progress index
@@ -61,7 +70,8 @@ public interface ProgressIndex {
   boolean equals(ProgressIndex progressIndex);
 
   /**
-   * A.equals(B) is true if and only if A is equal to B
+   * A.equals(B) is true if and only if A, B are both {@link ProgressIndex} and A.equals(({@link
+   * ProgressIndex})B) is true.
    *
    * @param obj the object to be compared
    * @return true if and only if this progress index is equal to the given object
@@ -70,13 +80,16 @@ public interface ProgressIndex {
   boolean equals(Object obj);
 
   /**
-   * C = A.updateToMinimumIsAfterProgressIndex(B) where C should satisfy:
+   * Define the isEqualOrAfter relation, A.isEqualOrAfter(B) if and only if each tuple member in A
+   * is greater than or equal to B in the corresponding total order relation.
    *
-   * <p>(C.equals(A) || C.isAfter(A)) is true
+   * <p>C = A.updateToMinimumIsAfterProgressIndex(B) should be satisfied:
    *
-   * <p>(C.equals(B) || C.isAfter(B)) is true
+   * <p>C.isEqualOrAfter(A) is true,
    *
-   * <p>There is no D, such that D satisfies the above conditions and C.isAfter(D) is true
+   * <p>C.isEqualOrAfter(B) is true
+   *
+   * <p>there is no D such that C.isEqualOrAfter(D) is true.
    *
    * <p>The implementation of this function should be reflexive, that is
    * A.updateToMinimumIsAfterProgressIndex(B).equals(B.updateToMinimumIsAfterProgressIndex(A)) is
@@ -89,9 +102,18 @@ public interface ProgressIndex {
    */
   ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex);
 
-  /** @return the type of this progress index */
+  /**
+   * @return the type of this progress index
+   */
   ProgressIndexType getType();
 
+  /**
+   * Get the sum of the tuples of each total order relation of the progress index, which is used for
+   * topological sorting of the progress index.
+   *
+   * @return The sum of the tuples corresponding to all the total order relations contained in the
+   *     progress index.
+   */
   TotalOrderSumTuple getTotalOrderSumTuple();
 
   /**
@@ -133,6 +155,14 @@ public interface ProgressIndex {
         .updateToMinimumIsAfterProgressIndex(progressIndex2);
   }
 
+  /**
+   * Each total ordered relation of the progress index should be a tuple. This class defines a way
+   * to sum and compare the size of the tuples of each total ordered relation of progress index.
+   * This method maintains the relationship of progress index in the isAfter relationship. It is
+   * mainly used for topologically sorting the progress index.
+   *
+   * @param progressIndexList immutable tuple list
+   */
   static void topologicalSort(List<ProgressIndex> progressIndexList) {
     progressIndexList.sort(Comparator.comparing(ProgressIndex::getTotalOrderSumTuple));
   }
