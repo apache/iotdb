@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.commons.io.FileUtils;
@@ -85,7 +86,7 @@ public class PipeInfoTest {
     connectorAttributes.put("host", "127.0.0.1");
     connectorAttributes.put("port", "6667");
 
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(new MinimumProgressIndex(), 1);
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
     pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
@@ -99,7 +100,7 @@ public class PipeInfoTest {
     CreatePipePluginPlan createPipePluginPlan =
         new CreatePipePluginPlan(
             new PipePluginMeta(pluginName, "org.apache.iotdb.TestJar", false, "test.jar", "???"),
-            new Binary("123"));
+            new Binary("123", TSFileConfig.STRING_CHARSET));
     pipeInfo.getPipePluginInfo().createPipePlugin(createPipePluginPlan);
 
     pipeInfo.processTakeSnapshot(snapshotDir);
@@ -120,7 +121,7 @@ public class PipeInfoTest {
     extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(new MinimumProgressIndex(), 1);
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
     pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
@@ -147,7 +148,7 @@ public class PipeInfoTest {
     CreatePipePluginPlan createPipePluginPlan =
         new CreatePipePluginPlan(
             new PipePluginMeta(pluginName, "org.apache.iotdb.TestJar", false, "test.jar", "???"),
-            new Binary("123"));
+            new Binary("123", TSFileConfig.STRING_CHARSET));
     pipeInfo.getPipePluginInfo().createPipePlugin(createPipePluginPlan);
 
     // Drop pipe plugin test plugin

@@ -78,7 +78,7 @@ while true; do
             shift 2
         ;;
         --help)
-            echo "Usage: $0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-D <name=value>] [-c] [-e sql] [-maxPRC <PRC size>]"
+            echo "Usage: $0 [-h <ip>] [-p <port>] [-u <username>] [-pw <password>] [-D <name=value>] [-c] [-e sql]"
             exit 0
         ;;
         "")
@@ -126,8 +126,28 @@ else
     JAVA=java
 fi
 
+# Determine the sort of JVM we'll be running on.
+java_ver_output=`"$JAVA" -version 2>&1`
+jvmver=`echo "$java_ver_output" | grep '[openjdk|java] version' | awk -F'"' 'NR==1 {print $2}' | cut -d\- -f1`
+JVM_VERSION=${jvmver%_*}
+
+version_arr=(${JVM_VERSION//./ })
+
+illegal_access_params=""
+#GC log path has to be defined here because it needs to access IOTDB_HOME
+if [ "${version_arr[0]}" = "1" ] ; then
+    # Java 8
+    MAJOR_VERSION=${version_arr[1]}
+else
+    #JDK 11 and others
+    MAJOR_VERSION=${version_arr[0]}
+    # Add argLine for Java 11 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
+    illegal_access_params="$illegal_access_params --add-opens=java.base/java.lang=ALL-UNNAMED"
+fi
+
+
 set -o noglob
 iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-cli.xml"
-exec "$JAVA" $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
+exec "$JAVA" $iotdb_cli_params $illegal_access_params -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
 
 exit $?

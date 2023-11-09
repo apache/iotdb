@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -55,6 +56,7 @@ import org.apache.iotdb.confignode.manager.UDFManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.PipeManager;
@@ -165,7 +167,6 @@ public class NodeManager {
 
     ratisConfig.setDataLogUnsafeFlushEnable(conf.isDataRegionRatisLogUnsafeFlushEnable());
     ratisConfig.setSchemaLogUnsafeFlushEnable(conf.isSchemaRegionRatisLogUnsafeFlushEnable());
-    ratisConfig.setDataRegionLogForceSyncNum(conf.getDataRegionRatisLogForceSyncNum());
 
     ratisConfig.setDataLogSegmentSizeMax(conf.getDataRegionRatisLogSegmentSizeMax());
     ratisConfig.setSchemaLogSegmentSizeMax(conf.getSchemaRegionRatisLogSegmentSizeMax());
@@ -174,6 +175,11 @@ public class NodeManager {
     ratisConfig.setSchemaGrpcFlowControlWindow(conf.getSchemaRegionRatisGrpcFlowControlWindow());
     ratisConfig.setDataRegionGrpcLeaderOutstandingAppendsMax(
         conf.getDataRegionRatisGrpcLeaderOutstandingAppendsMax());
+    ratisConfig.setSchemaRegionGrpcLeaderOutstandingAppendsMax(
+        conf.getSchemaRegionRatisGrpcLeaderOutstandingAppendsMax());
+
+    ratisConfig.setDataRegionLogForceSyncNum(conf.getDataRegionRatisLogForceSyncNum());
+    ratisConfig.setSchemaRegionLogForceSyncNum(conf.getSchemaRegionRatisLogForceSyncNum());
 
     ratisConfig.setDataLeaderElectionTimeoutMin(
         conf.getDataRegionRatisRpcLeaderElectionTimeoutMinMs());
@@ -203,6 +209,11 @@ public class NodeManager {
 
     ratisConfig.setSchemaRegionRatisLogMax(conf.getSchemaRegionRatisLogMax());
     ratisConfig.setDataRegionRatisLogMax(conf.getDataRegionRatisLogMax());
+
+    ratisConfig.setSchemaRegionPeriodicSnapshotInterval(
+        conf.getSchemaRegionRatisPeriodicSnapshotInterval());
+    ratisConfig.setDataRegionPeriodicSnapshotInterval(
+        conf.getDataRegionRatisPeriodicSnapshotInterval());
 
     dataSet.setRatisConfig(ratisConfig);
   }
@@ -258,6 +269,13 @@ public class NodeManager {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
     }
 
+    // Init HeartbeatCache
+    getLoadManager()
+        .forceUpdateNodeCache(
+            NodeType.DataNode,
+            dataNodeId,
+            NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+
     // update datanode's versionInfo
     UpdateVersionInfoPlan updateVersionInfoPlan =
         new UpdateVersionInfoPlan(req.getVersionInfo(), dataNodeId);
@@ -268,7 +286,7 @@ public class NodeManager {
     }
 
     // Bind DataNode metrics
-    PartitionMetrics.bindDataNodePartitionMetrics(
+    PartitionMetrics.bindDataNodePartitionMetricsWhenUpdate(
         MetricService.getInstance(), configManager, dataNodeId);
 
     // Adjust the maximum RegionGroup number of each StorageGroup
@@ -458,7 +476,7 @@ public class NodeManager {
     List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes();
     if (registeredDataNodes != null) {
       registeredDataNodes.forEach(
-          (registeredDataNode) -> {
+          registeredDataNode -> {
             TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
             int dataNodeId = registeredDataNode.getLocation().getDataNodeId();
             dataNodeInfo.setDataNodeId(dataNodeId);
@@ -526,7 +544,7 @@ public class NodeManager {
     List<TConfigNodeLocation> registeredConfigNodes = this.getRegisteredConfigNodes();
     if (registeredConfigNodes != null) {
       registeredConfigNodes.forEach(
-          (configNodeLocation) -> {
+          configNodeLocation -> {
             TConfigNodeInfo info = new TConfigNodeInfo();
             int configNodeId = configNodeLocation.getConfigNodeId();
             info.setConfigNodeId(configNodeId);

@@ -23,7 +23,7 @@ services:
     container_name: iotdb-confignode
     environment:
       - cn_internal_address=iotdb-1
-      - cn_target_config_node_list=iotdb-1:10710
+      - cn_seed_config_node=iotdb-1:10710
       - cn_internal_port=10710
       - cn_consensus_port=10720
       - schema_replication_factor=3
@@ -41,7 +41,7 @@ services:
     environment:
       - dn_rpc_address=iotdb-1
       - dn_internal_address=iotdb-1
-      - dn_target_config_node_list=iotdb-1:10710
+      - dn_seed_config_node=iotdb-1:10710
       - dn_rpc_port=6667
       - dn_mpp_data_exchange_port=10740
       - dn_schema_region_consensus_port=10750

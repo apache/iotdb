@@ -22,11 +22,12 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,27 +37,26 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionLogExtractor.class);
 
-  // This queue is used to store pending events extracted by the method extract(). The method
-  // supply() will poll events from this queue and send them to the next pipe plugin.
-  private final UnboundedBlockingPendingQueue<Event> pendingQueue;
+  @Override
+  protected void doExtract(PipeRealtimeEvent event) {
+    final Event eventToExtract = event.getEvent();
 
-  public PipeRealtimeDataRegionLogExtractor() {
-    this.pendingQueue = new UnboundedBlockingPendingQueue<>();
+    if (eventToExtract instanceof TabletInsertionEvent) {
+      extractTabletInsertion(event);
+    } else if (eventToExtract instanceof TsFileInsertionEvent) {
+      extractTsFileInsertion(event);
+    } else if (eventToExtract instanceof PipeHeartbeatEvent) {
+      extractHeartbeat(event);
+    } else {
+      throw new UnsupportedOperationException(
+          String.format(
+              "Unsupported event type %s for hybrid realtime extractor %s",
+              eventToExtract.getClass(), this));
+    }
   }
 
-  @Override
-  public void extract(PipeRealtimeEvent event) {
-    if (event.getEvent() instanceof PipeHeartbeatEvent) {
-      extractHeartbeat(event);
-      return;
-    }
-
+  private void extractTabletInsertion(PipeRealtimeEvent event) {
     event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TABLET);
-
-    if (!(event.getEvent() instanceof TabletInsertionEvent)) {
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
-      return;
-    }
 
     if (!pendingQueue.waitedOffer(event)) {
       // this would not happen, but just in case.
@@ -70,15 +70,48 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
       PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
       // ignore this event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
+    }
+  }
+
+  private void extractTsFileInsertion(PipeRealtimeEvent event) {
+    if (!((PipeTsFileInsertionEvent) event.getEvent()).getIsLoaded()) {
+      // only loaded tsfile can be extracted by this extractor. Ignore this event.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
+      return;
+    }
+
+    event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
+
+    if (!pendingQueue.waitedOffer(event)) {
+      // this would not happen, but just in case.
+      // pendingQueue is unbounded, so it should never reach capacity.
+      final String errorMessage =
+          String.format(
+              "extract: pending queue of PipeRealtimeDataRegionLogExtractor %s "
+                  + "has reached capacity, discard loaded tsFile event %s, current state %s",
+              this, event, event.getTsFileEpoch().getState(this));
+      LOGGER.error(errorMessage);
+      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+
+      // ignore this event.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
     }
   }
 
   private void extractHeartbeat(PipeRealtimeEvent event) {
-    if (pendingQueue.peekLast() instanceof PipeHeartbeatEvent) {
-      // if the last event in the pending queue is a heartbeat event, we should not extract any more
+    // Record the pending queue size before trying to put heartbeatEvent into queue
+    ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
+
+    Event lastEvent = pendingQueue.peekLast();
+    if (lastEvent instanceof PipeRealtimeEvent
+        && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent
+        && (((PipeHeartbeatEvent) ((PipeRealtimeEvent) lastEvent).getEvent()).isShouldPrintMessage()
+            || !((PipeHeartbeatEvent) event.getEvent()).isShouldPrintMessage())) {
+      // If the last event in the pending queue is a heartbeat event, we should not extract any more
       // heartbeat events to avoid OOM when the pipe is stopped.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+      // Besides, the printable event has higher priority to stay in queue to enable metrics report.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
       return;
     }
 
@@ -95,13 +128,14 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
       // pipe progress.
 
       // ignore this event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
     }
   }
 
   @Override
   public boolean isNeedListenToTsFile() {
-    return false;
+    // Only listen to loaded tsFiles
+    return true;
   }
 
   @Override
@@ -133,7 +167,8 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
         PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }
 
-      realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+      realtimeEvent.decreaseReferenceCount(
+          PipeRealtimeDataRegionLogExtractor.class.getName(), false);
 
       if (suppliedEvent != null) {
         return suppliedEvent;
@@ -144,11 +179,5 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
     // means the pending queue is empty.
     return null;
-  }
-
-  @Override
-  public void close() throws Exception {
-    super.close();
-    pendingQueue.clear();
   }
 }

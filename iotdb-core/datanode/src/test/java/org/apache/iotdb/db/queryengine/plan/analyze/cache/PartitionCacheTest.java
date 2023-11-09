@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
@@ -165,12 +166,16 @@ public class PartitionCacheTest {
             Arrays.asList("root.sg1.d1", "root.sg1.d2"),
             Arrays.asList("root.sg2.d1", "root.sg2.d2"));
     for (List<String> searchDevices : existedDevicesInOneStorageGroup) {
-      storageGroupToDeviceMap = partitionCache.getStorageGroupToDevice(searchDevices, false, false);
+      storageGroupToDeviceMap =
+          partitionCache.getStorageGroupToDevice(
+              searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(1, storageGroupToDeviceMap.size());
       for (List<String> devices : storageGroupToDeviceMap.values()) {
         assertEquals(2, devices.size());
       }
-      deviceToStorageGroupMap = partitionCache.getDeviceToStorageGroup(searchDevices, false, false);
+      deviceToStorageGroupMap =
+          partitionCache.getDeviceToStorageGroup(
+              searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(2, deviceToStorageGroupMap.size());
     }
     // test devices in two database
@@ -179,12 +184,16 @@ public class PartitionCacheTest {
             Arrays.asList("root.sg1.d1", "root.sg2.d2"),
             Arrays.asList("root.sg1.d1", "root.sg2.d2"));
     for (List<String> searchDevices : existedDevicesInMultiStorageGroup) {
-      storageGroupToDeviceMap = partitionCache.getStorageGroupToDevice(searchDevices, false, false);
+      storageGroupToDeviceMap =
+          partitionCache.getStorageGroupToDevice(
+              searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(2, storageGroupToDeviceMap.size());
       for (List<String> devices : storageGroupToDeviceMap.values()) {
         assertEquals(1, devices.size());
       }
-      deviceToStorageGroupMap = partitionCache.getDeviceToStorageGroup(searchDevices, false, false);
+      deviceToStorageGroupMap =
+          partitionCache.getDeviceToStorageGroup(
+              searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(2, deviceToStorageGroupMap.size());
     }
     // test missed devices in storageGroupCache
@@ -194,17 +203,25 @@ public class PartitionCacheTest {
             Arrays.asList("root.sg.d1", "root.sg.d2"),
             Arrays.asList("root.sg3.**", "root.sg4.**"));
     for (List<String> searchDevices : nonExistedDevices) {
-      storageGroupToDeviceMap = partitionCache.getStorageGroupToDevice(searchDevices, false, false);
+      storageGroupToDeviceMap =
+          partitionCache.getStorageGroupToDevice(
+              searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(0, storageGroupToDeviceMap.size());
-      deviceToStorageGroupMap = partitionCache.getDeviceToStorageGroup(searchDevices, false, false);
+      deviceToStorageGroupMap =
+          partitionCache.getDeviceToStorageGroup(
+              searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(0, deviceToStorageGroupMap.size());
     }
     // test invalid all cache
     partitionCache.invalidAllCache();
     List<String> oneDeviceList = Collections.singletonList("root.sg1.d1");
-    storageGroupToDeviceMap = partitionCache.getStorageGroupToDevice(oneDeviceList, false, false);
+    storageGroupToDeviceMap =
+        partitionCache.getStorageGroupToDevice(
+            oneDeviceList, false, false, AuthorityChecker.SUPER_USER);
     assertEquals(0, storageGroupToDeviceMap.size());
-    deviceToStorageGroupMap = partitionCache.getDeviceToStorageGroup(oneDeviceList, false, false);
+    deviceToStorageGroupMap =
+        partitionCache.getDeviceToStorageGroup(
+            oneDeviceList, false, false, AuthorityChecker.SUPER_USER);
     assertEquals(0, deviceToStorageGroupMap.size());
   }
 

@@ -83,6 +83,12 @@ public class WALEntryHandler {
     walNode.unpinMemTable(memTableId);
   }
 
+  public InsertNode getInsertNodeViaCacheIfPossible() {
+    return value instanceof InsertNode
+        ? (InsertNode) value
+        : walEntryPosition.readByteBufferOrInsertNodeViaCacheDirectly().getRight();
+  }
+
   /**
    * Get this handler's value.
    *
@@ -111,16 +117,12 @@ public class WALEntryHandler {
       }
     }
 
-    final InsertNode node = isHardlink ? readFromHardlinkFile() : readFromOriginalWALFile();
+    final InsertNode node = isHardlink ? readFromHardlinkWALFile() : readFromOriginalWALFile();
     if (node == null) {
       throw new WALPipeException(
           String.format("Fail to get the wal value of the position %s.", walEntryPosition));
     }
     return node;
-  }
-
-  public InsertNode getInsertNodeViaCacheIfPossible() {
-    return value instanceof InsertNode ? (InsertNode) value : null;
   }
 
   public ByteBuffer getByteBuffer() throws WALPipeException {
@@ -146,15 +148,15 @@ public class WALEntryHandler {
 
   private InsertNode readFromOriginalWALFile() throws WALPipeException {
     try {
-      return walEntryPosition.readInsertNodeViaCache();
+      return walEntryPosition.readInsertNodeViaCacheAfterCanRead();
     } catch (Exception e) {
       throw new WALPipeException("Fail to get value because the file content isn't correct.", e);
     }
   }
 
-  private InsertNode readFromHardlinkFile() throws WALPipeException {
+  private InsertNode readFromHardlinkWALFile() throws WALPipeException {
     try {
-      return walEntryPosition.readInsertNodeViaCache();
+      return walEntryPosition.readInsertNodeViaCacheAfterCanRead();
     } catch (Exception e) {
       throw new WALPipeException("Fail to get value because the file content isn't correct.", e);
     }
@@ -162,35 +164,32 @@ public class WALEntryHandler {
 
   private ByteBuffer readByteBufferFromWALFile() throws WALPipeException {
     try {
-      return walEntryPosition.readByteBufferViaCache();
+      return walEntryPosition.readByteBufferViaCacheAfterCanRead();
     } catch (Exception e) {
       throw new WALPipeException("Fail to get value because the file content isn't correct.", e);
     }
+  }
+
+  public void setWalNode(WALNode walNode, long memTableId) {
+    this.walNode = walNode;
+    this.memTableId = memTableId;
+    walEntryPosition.setWalNode(walNode, memTableId);
   }
 
   public long getMemTableId() {
     return memTableId;
   }
 
-  public void setMemTableId(long memTableId) {
-    this.memTableId = memTableId;
-  }
-
-  public void setWalNode(WALNode walNode) {
-    this.walNode = walNode;
-    this.walEntryPosition.setWalNode(walNode);
-  }
-
-  public WALEntryPosition getWalEntryPosition() {
-    return walEntryPosition;
-  }
-
   public void setEntryPosition(long walFileVersionId, long position) {
-    this.walEntryPosition.setEntryPosition(walFileVersionId, position);
+    this.walEntryPosition.setEntryPosition(walFileVersionId, position, value);
     this.value = null;
     synchronized (this) {
       this.notifyAll();
     }
+  }
+
+  public WALEntryPosition getWalEntryPosition() {
+    return walEntryPosition;
   }
 
   public int getSize() {

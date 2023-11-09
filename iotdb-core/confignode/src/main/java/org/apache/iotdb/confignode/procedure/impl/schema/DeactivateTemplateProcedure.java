@@ -103,7 +103,7 @@ public class DeactivateTemplateProcedure
             setFailure(
                 new ProcedureException(
                     new IoTDBException(
-                        "Target schema Template is not activated on any path matched by given path pattern",
+                        "Target Device Template is not activated on any path matched by given path pattern",
                         TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode())));
             return Flow.NO_MORE_STATE;
           }

@@ -34,8 +34,11 @@ import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.Last
 
 public class LastQueryCollectNode extends MultiChildProcessNode {
 
-  public LastQueryCollectNode(PlanNodeId id) {
+  private boolean containsLastTransformNode;
+
+  public LastQueryCollectNode(PlanNodeId id, boolean containsLastTransformNode) {
     super(id);
+    this.containsLastTransformNode = containsLastTransformNode;
   }
 
   public LastQueryCollectNode(PlanNodeId id, List<PlanNode> children) {
@@ -54,7 +57,7 @@ public class LastQueryCollectNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new LastQueryCollectNode(getPlanNodeId());
+    return new LastQueryCollectNode(getPlanNodeId(), containsLastTransformNode);
   }
 
   @Override
@@ -99,11 +102,19 @@ public class LastQueryCollectNode extends MultiChildProcessNode {
 
   public static LastQueryCollectNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LastQueryCollectNode(planNodeId);
+    return new LastQueryCollectNode(planNodeId, false);
   }
 
   @Override
   public void setChildren(List<PlanNode> children) {
     this.children = children;
+  }
+
+  public boolean isContainsLastTransformNode() {
+    return this.containsLastTransformNode;
+  }
+
+  public void setContainsLastQueryTransformNode() {
+    this.containsLastTransformNode = true;
   }
 }

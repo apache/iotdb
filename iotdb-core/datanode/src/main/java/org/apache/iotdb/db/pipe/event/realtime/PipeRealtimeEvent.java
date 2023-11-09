@@ -99,12 +99,20 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean decreaseReferenceCount(String holderMessage) {
+  public boolean decreaseReferenceCount(String holderMessage, boolean shouldReport) {
     // This method must be overridden, otherwise during the real-time data extraction stage, the
-    // current PipeRealtimeEvent rather than the member variable EnrichedEvent will increase
+    // current PipeRealtimeEvent rather than the member variable EnrichedEvent will decrease
     // the reference count, resulting in errors in the reference count of the EnrichedEvent
     // contained in this PipeRealtimeEvent during the processor and connector stages.
-    return event.decreaseReferenceCount(holderMessage);
+    return event.decreaseReferenceCount(holderMessage, shouldReport);
+  }
+
+  @Override
+  public boolean clearReferenceCount(String holderMessage) {
+    // This method must be overridden, otherwise during the real-time data extraction stage, the
+    // current PipeRealtimeEvent rather than the member variable EnrichedEvent will clear
+    // the reference count.
+    return event.clearReferenceCount(holderMessage);
   }
 
   @Override
@@ -115,6 +123,15 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   @Override
   public ProgressIndex getProgressIndex() {
     return event.getProgressIndex();
+  }
+
+  /**
+   * If pipe's pattern is database-level, then no need to parse event by pattern cause pipes are
+   * data-region-level.
+   */
+  @Override
+  public void skipParsingPattern() {
+    event.skipParsingPattern();
   }
 
   @Override

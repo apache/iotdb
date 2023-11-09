@@ -30,7 +30,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -61,18 +62,45 @@ public class ShowClusterDetailsTask implements IConfigTask {
       TNodeVersionInfo versionInfo) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(nodeId);
-    builder.getColumnBuilder(1).writeBinary(new Binary(NODE_TYPE_CONFIG_NODE));
-    builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
-    builder.getColumnBuilder(3).writeBinary(new Binary(internalAddress));
+    builder
+        .getColumnBuilder(1)
+        .writeBinary(new Binary(NODE_TYPE_CONFIG_NODE, TSFileConfig.STRING_CHARSET));
+    if (nodeStatus == null) {
+      builder.getColumnBuilder(2).appendNull();
+    } else {
+      builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus, TSFileConfig.STRING_CHARSET));
+    }
+    if (internalAddress == null) {
+      builder.getColumnBuilder(3).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(3)
+          .writeBinary(new Binary(internalAddress, TSFileConfig.STRING_CHARSET));
+    }
     builder.getColumnBuilder(4).writeInt(internalPort);
-    builder.getColumnBuilder(5).writeBinary(new Binary(Integer.toString(configConsensusPort)));
-    builder.getColumnBuilder(6).writeBinary(new Binary(""));
-    builder.getColumnBuilder(7).writeBinary(new Binary(""));
-    builder.getColumnBuilder(8).writeBinary(new Binary(""));
-    builder.getColumnBuilder(9).writeBinary(new Binary(""));
-    builder.getColumnBuilder(10).writeBinary(new Binary(""));
-    builder.getColumnBuilder(11).writeBinary(new Binary(versionInfo.getVersion()));
-    builder.getColumnBuilder(12).writeBinary(new Binary(versionInfo.getBuildInfo()));
+    builder
+        .getColumnBuilder(5)
+        .writeBinary(
+            new Binary(Integer.toString(configConsensusPort), TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(6).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(7).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(8).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(9).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(10).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    if (versionInfo == null || versionInfo.getVersion() == null) {
+      builder.getColumnBuilder(11).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(11)
+          .writeBinary(new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
+    }
+    if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+      builder.getColumnBuilder(12).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(12)
+          .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
+    }
     builder.declarePosition();
   }
 
@@ -91,18 +119,55 @@ public class ShowClusterDetailsTask implements IConfigTask {
       TNodeVersionInfo versionInfo) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(nodeId);
-    builder.getColumnBuilder(1).writeBinary(new Binary(NODE_TYPE_DATA_NODE));
-    builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
-    builder.getColumnBuilder(3).writeBinary(new Binary(internalAddress));
+    builder
+        .getColumnBuilder(1)
+        .writeBinary(new Binary(NODE_TYPE_DATA_NODE, TSFileConfig.STRING_CHARSET));
+    if (nodeStatus == null) {
+      builder.getColumnBuilder(2).appendNull();
+    } else {
+      builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus, TSFileConfig.STRING_CHARSET));
+    }
+    if (internalAddress == null) {
+      builder.getColumnBuilder(3).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(3)
+          .writeBinary(new Binary(internalAddress, TSFileConfig.STRING_CHARSET));
+    }
     builder.getColumnBuilder(4).writeInt(internalPort);
-    builder.getColumnBuilder(5).writeBinary(new Binary(""));
-    builder.getColumnBuilder(6).writeBinary(new Binary(rpcAddress));
-    builder.getColumnBuilder(7).writeBinary(new Binary(Integer.toString(rpcPort)));
-    builder.getColumnBuilder(8).writeBinary(new Binary(Integer.toString(dataConsensusPort)));
-    builder.getColumnBuilder(9).writeBinary(new Binary(Integer.toString(schemaConsensusPort)));
-    builder.getColumnBuilder(10).writeBinary(new Binary(Integer.toString(mppPort)));
-    builder.getColumnBuilder(11).writeBinary(new Binary(versionInfo.getVersion()));
-    builder.getColumnBuilder(12).writeBinary(new Binary(versionInfo.getBuildInfo()));
+    builder.getColumnBuilder(5).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    if (rpcAddress == null) {
+      builder.getColumnBuilder(6).appendNull();
+    } else {
+      builder.getColumnBuilder(6).writeBinary(new Binary(rpcAddress, TSFileConfig.STRING_CHARSET));
+    }
+    builder
+        .getColumnBuilder(7)
+        .writeBinary(new Binary(Integer.toString(rpcPort), TSFileConfig.STRING_CHARSET));
+    builder
+        .getColumnBuilder(8)
+        .writeBinary(new Binary(Integer.toString(dataConsensusPort), TSFileConfig.STRING_CHARSET));
+    builder
+        .getColumnBuilder(9)
+        .writeBinary(
+            new Binary(Integer.toString(schemaConsensusPort), TSFileConfig.STRING_CHARSET));
+    builder
+        .getColumnBuilder(10)
+        .writeBinary(new Binary(Integer.toString(mppPort), TSFileConfig.STRING_CHARSET));
+    if (versionInfo == null || versionInfo.getVersion() == null) {
+      builder.getColumnBuilder(11).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(11)
+          .writeBinary(new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
+    }
+    if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+      builder.getColumnBuilder(12).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(12)
+          .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
+    }
     builder.declarePosition();
   }
 

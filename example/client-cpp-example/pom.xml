@@ -24,17 +24,26 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-examples</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <artifactId>client-cpp-example</artifactId>
     <name>IoTDB: Example: CPP Client</name>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>client-cpp</artifactId>
+            <version>${project.version}</version>
+            <type>pom</type>
+            <!-- We don't really want to include it, we just want to make sure it's built first -->
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
     <!-- TODO: Change the build so it doesn't copy the CMakeLists.txt into the target directory directly. -->
     <build>
         <plugins>
             <plugin>
                 <groupId>com.coderplus.maven.plugins</groupId>
                 <artifactId>copy-rename-maven-plugin</artifactId>
-                <version>1.0.1</version>
                 <executions>
                     <execution>
                         <id>copy-thrift-source</id>
@@ -70,10 +79,10 @@
                 <executions>
                     <execution>
                         <id>unpack-client</id>
-                        <phase>generate-sources</phase>
                         <goals>
                             <goal>unpack</goal>
                         </goals>
+                        <phase>generate-sources</phase>
                         <configuration>
                             <artifactItems>
                                 <artifactItem>
@@ -90,10 +99,10 @@
                     </execution>
                     <execution>
                         <id>unpack-thrift</id>
-                        <phase>generate-sources</phase>
                         <goals>
                             <goal>unpack</goal>
                         </goals>
+                        <phase>generate-sources</phase>
                         <configuration>
                             <artifactItems>
                                 <artifactItem>
@@ -116,10 +125,10 @@
                 <executions>
                     <execution>
                         <id>cmake-generate</id>
-                        <phase>compile</phase>
                         <goals>
                             <goal>generate</goal>
                         </goals>
+                        <phase>compile</phase>
                         <configuration>
                             <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}</sourcePath>
@@ -131,10 +140,10 @@
                     </execution>
                     <execution>
                         <id>cmake-compile</id>
-                        <phase>compile</phase>
                         <goals>
                             <goal>compile</goal>
                         </goals>
+                        <phase>compile</phase>
                         <configuration>
                             <config>${cmake.build.type}</config>
                             <!-- The directory where the "generate" step generated the build configuration -->
@@ -145,14 +154,4 @@
             </plugin>
         </plugins>
     </build>
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>client-cpp</artifactId>
-            <version>${project.version}</version>
-            <type>pom</type>
-            <!-- We don't really want to include it, we just want to make sure it's built first -->
-            <scope>provided</scope>
-        </dependency>
-    </dependencies>
 </project>

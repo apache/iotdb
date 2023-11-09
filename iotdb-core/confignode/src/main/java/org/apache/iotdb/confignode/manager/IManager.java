@@ -51,12 +51,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
@@ -69,14 +67,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -101,16 +100,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.util.List;
@@ -183,13 +176,6 @@ public interface IManager {
    * @return CQManager instance
    */
   CQManager getCQManager();
-
-  /**
-   * Get ModelManager.
-   *
-   * @return ModelManager instance
-   */
-  ModelManager getModelManager();
 
   /**
    * Get PipeManager.
@@ -343,7 +329,8 @@ public interface IManager {
    *
    * @return TSchemaNodeManagementResp
    */
-  TSchemaNodeManagementResp getNodePathsPartition(PartialPath partialPath, Integer level);
+  TSchemaNodeManagementResp getNodePathsPartition(
+      PartialPath partialPath, PathPatternTree scope, Integer level);
 
   /**
    * Get DataPartition.
@@ -386,8 +373,6 @@ public interface IManager {
    * @return TConfigNodeRegisterResp
    */
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req);
-
-  TSStatus restartConfigNode(TConfigNodeRestartReq req);
 
   /**
    * Create peer in new node to build consensus group.
@@ -480,6 +465,8 @@ public interface IManager {
 
   void addMetrics();
 
+  void removeMetrics();
+
   /** Show (data/schemaengine) regions. */
   DataSet showRegion(GetRegionInfoListPlan getRegionInfoListPlan);
 
@@ -492,10 +479,10 @@ public interface IManager {
   /**
    * Show StorageGroup.
    *
-   * @param getStorageGroupPlan GetStorageGroupPlan, including path patterns about StorageGroups
+   * @param req TShowDatabaseReq
    * @return TShowStorageGroupResp
    */
-  TShowDatabaseResp showDatabase(GetDatabasePlan getStorageGroupPlan);
+  TShowDatabaseResp showDatabase(TGetDatabaseReq req);
 
   /**
    * Create schemaengine template.
@@ -531,10 +518,10 @@ public interface IManager {
   /**
    * show paths set schemaengine template xx.
    *
-   * @param req String
+   * @param req req
    * @return TGetPathsSetTemplatesResp
    */
-  TGetPathsSetTemplatesResp getPathsSetTemplate(String req);
+  TGetPathsSetTemplatesResp getPathsSetTemplate(TGetPathsSetTemplatesReq req);
 
   /** Deactivate schemaengine template. */
   TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req);
@@ -602,7 +589,7 @@ public interface IManager {
   TGetAllPipeInfoResp getAllPipeInfo();
 
   /**
-   * Get RegionId。used for Show cluster slots information in
+   * Get RegionId. used for Show cluster slots information in
    * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
    *
    * @return TGetRegionIdResp.
@@ -644,24 +631,6 @@ public interface IManager {
   TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req);
 
   TSStatus transfer(List<TDataNodeLocation> newUnknownDataList);
-
-  /** Create a model. */
-  TSStatus createModel(TCreateModelReq req);
-
-  /** Drop a model. */
-  TSStatus dropModel(TDropModelReq req);
-
-  /** Return the model table. */
-  TShowModelResp showModel(TShowModelReq req);
-
-  /** Return the trail table. */
-  TShowTrailResp showTrail(TShowTrailReq req);
-
-  /** Update the model info. */
-  TSStatus updateModelInfo(TUpdateModelInfoReq req);
-
-  /** Update the model state. */
-  TSStatus updateModelState(TUpdateModelStateReq req);
 
   /** Set space quota. */
   TSStatus setSpaceQuota(TSetSpaceQuotaReq req);

@@ -29,8 +29,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator.TsFileName;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
@@ -84,15 +84,20 @@ public class CompactionFileGeneratorUtils {
     if (sequence) {
       return new TsFileResource(
           new File(
-              TestConstant.BASE_OUTPUT_PATH.concat(
-                  index
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + index
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + 0
-                      + ".tsfile")));
+              TestConstant.BASE_OUTPUT_PATH
+                  .concat("database")
+                  .concat(File.separator)
+                  .concat("regionId")
+                  .concat(File.separator)
+                  .concat(
+                      index
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + index
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + 0
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + 0
+                          + ".tsfile")));
     } else {
       return new TsFileResource(
           new File(

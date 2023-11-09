@@ -26,12 +26,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class PipeEnrichedInsertBaseStatement extends InsertBaseStatement {
 
@@ -67,12 +68,7 @@ public class PipeEnrichedInsertBaseStatement extends InsertBaseStatement {
 
   @Override
   public boolean isQuery() {
-    return insertBaseStatement.isQuery();
-  }
-
-  @Override
-  public boolean isAuthenticationRequired() {
-    return insertBaseStatement.isAuthenticationRequired();
+    return !Objects.isNull(insertBaseStatement) && insertBaseStatement.isQuery();
   }
 
   @Override

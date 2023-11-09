@@ -23,8 +23,8 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -41,7 +41,7 @@ public class MemTableFlushTaskTest {
 
   private RestorableTsFileIOWriter writer;
   private String storageGroup = "storage_group1";
-  private String dataRegionId = "DataRegion-1";
+  private String dataRegionId = "1";
   private String filePath =
       TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
   private IMemTable memTable;
@@ -52,7 +52,7 @@ public class MemTableFlushTaskTest {
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     writer = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(filePath));
-    memTable = new PrimitiveMemTable();
+    memTable = new PrimitiveMemTable(storageGroup, dataRegionId);
   }
 
   @After

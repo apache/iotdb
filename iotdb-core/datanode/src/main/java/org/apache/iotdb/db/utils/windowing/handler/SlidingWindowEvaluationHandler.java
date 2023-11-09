@@ -25,6 +25,7 @@ import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
 import org.apache.iotdb.db.utils.windowing.runtime.WindowEvaluationTaskPoolManager;
 import org.apache.iotdb.db.utils.windowing.window.EvictableBatchList;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 public abstract class SlidingWindowEvaluationHandler {
 
@@ -108,7 +109,7 @@ public abstract class SlidingWindowEvaluationHandler {
     }
     maxTime = timestamp;
 
-    data.putBinary(timestamp, Binary.valueOf(value));
+    data.putBinary(timestamp, BytesUtils.valueOf(value));
     createEvaluationTaskIfNecessary(timestamp);
   }
 

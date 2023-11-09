@@ -32,6 +32,10 @@ public class CachedSchemaEngineStatistics extends MemSchemaEngineStatistics {
   private final AtomicLong unpinnedMNodeNum = new AtomicLong(0);
   private final AtomicLong pinnedMNodeNum = new AtomicLong(0);
 
+  public CachedSchemaEngineStatistics() {
+    needLog = false;
+  }
+
   public void updatePinnedMNodeNum(long delta) {
     this.pinnedMNodeNum.addAndGet(delta);
   }

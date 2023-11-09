@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-examples</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <artifactId>udf-example</artifactId>
     <name>IoTDB: Example: UDF</name>
@@ -42,8 +42,8 @@
             <build>
                 <plugins>
                     <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
-                        <version>3.1.0</version>
                         <configuration>
                             <descriptorRefs>
                                 <descriptorRef>jar-with-dependencies</descriptorRef>
@@ -52,12 +52,12 @@
                         <executions>
                             <execution>
                                 <id>make-assembly</id>
-                                <!-- this is used for inheritance merges -->
-                                <phase>package</phase>
                                 <!-- bind to the packaging phase -->
                                 <goals>
                                     <goal>single</goal>
                                 </goals>
+                                <!-- this is used for inheritance merges -->
+                                <phase>package</phase>
                             </execution>
                         </executions>
                     </plugin>

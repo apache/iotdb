@@ -18,12 +18,16 @@
  */
 package org.apache.iotdb.flink.sql.function;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.flink.sql.common.Options;
 import org.apache.iotdb.flink.sql.common.Utils;
+import org.apache.iotdb.flink.sql.exception.IllegalIoTDBPathException;
 import org.apache.iotdb.flink.sql.wrapper.SchemaWrapper;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
@@ -44,9 +48,9 @@ public class IoTDBSinkFunction implements SinkFunction<RowData> {
   private final List<String> nodeUrls;
   private final String user;
   private final String password;
-  private final String device;
   private final boolean aligned;
-  private final List<String> measurements;
+  private final Map<String, List<String>> deviceMeasurementMap;
+  private final List<String> fields;
   private final List<TSDataType> dataTypes;
   private static final Map<DataType, TSDataType> TYPE_MAP = new HashMap<>();
 
@@ -68,11 +72,10 @@ public class IoTDBSinkFunction implements SinkFunction<RowData> {
     nodeUrls = Arrays.asList(options.get(Options.NODE_URLS).split(","));
     user = options.get(Options.USER);
     password = options.get(Options.PASSWORD);
-    device = options.get(Options.DEVICE);
     aligned = options.get(Options.ALIGNED);
     // Get measurements and data types from schema
-    measurements =
-        schema.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
+    fields = schema.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
+    deviceMeasurementMap = parseFieldNames(fields);
     dataTypes = schema.stream().map(field -> TYPE_MAP.get(field.f1)).collect(Collectors.toList());
   }
 
@@ -87,32 +90,31 @@ public class IoTDBSinkFunction implements SinkFunction<RowData> {
     if (rowData.getRowKind().equals(RowKind.INSERT)
         || rowData.getRowKind().equals(RowKind.UPDATE_AFTER)) {
       long timestamp = rowData.getLong(0);
-      ArrayList<String> measurementsOfRow = new ArrayList<>();
-      ArrayList<TSDataType> dataTypesOfRow = new ArrayList<>();
-      ArrayList<Object> values = new ArrayList<>();
-      for (int i = 0; i < this.measurements.size(); i++) {
-        Object value = Utils.getValue(rowData, schema.get(i).f1, i + 1);
-        if (value == null) {
-          continue;
+      for (Map.Entry<String, List<String>> entry : deviceMeasurementMap.entrySet()) {
+        ArrayList<String> measurementsOfRow = new ArrayList<>();
+        ArrayList<TSDataType> dataTypesOfRow = new ArrayList<>();
+        ArrayList<Object> values = new ArrayList<>();
+        for (String measurement : entry.getValue()) {
+          int indexInSchema = fields.indexOf(String.format("%s.%s", entry.getKey(), measurement));
+          Object value = Utils.getValue(rowData, schema.get(indexInSchema).f1, indexInSchema + 1);
+          if (value == null) {
+            continue;
+          }
+          measurementsOfRow.add(measurement);
+          dataTypesOfRow.add(this.dataTypes.get(indexInSchema));
+          values.add(value);
         }
-        measurementsOfRow.add(this.measurements.get(i));
-        dataTypesOfRow.add(this.dataTypes.get(i));
-        values.add(value);
-      }
-      // insert data
-      if (aligned) {
-        session.insertAlignedRecord(device, timestamp, measurementsOfRow, dataTypesOfRow, values);
-      } else {
-        session.insertRecord(device, timestamp, measurementsOfRow, dataTypesOfRow, values);
+        // insert data
+        if (aligned) {
+          session.insertAlignedRecord(
+              entry.getKey(), timestamp, measurementsOfRow, dataTypesOfRow, values);
+        } else {
+          session.insertRecord(
+              entry.getKey(), timestamp, measurementsOfRow, dataTypesOfRow, values);
+        }
       }
     } else if (rowData.getRowKind().equals(RowKind.DELETE)) {
-      ArrayList<String> paths = new ArrayList<>();
-      for (String measurement : measurements) {
-        paths.add(String.format("%s.%s", device, measurement));
-      }
-      session.deleteData(paths, rowData.getLong(0));
-    } else if (rowData.getRowKind().equals(RowKind.UPDATE_BEFORE)) {
-      // do nothing
+      session.deleteData(fields, rowData.getLong(0));
     }
   }
 
@@ -121,5 +123,21 @@ public class IoTDBSinkFunction implements SinkFunction<RowData> {
     if (session != null) {
       session.close();
     }
+  }
+
+  private Map<String, List<String>> parseFieldNames(List<String> fieldNames) {
+    HashMap<String, List<String>> resultMap = new HashMap<>();
+    for (String fieldName : fieldNames) {
+      try {
+        String[] nodes = PathUtils.splitPathToDetachedNodes(fieldName);
+        String measurement = nodes[nodes.length - 1];
+        String device = StringUtils.join(Arrays.copyOfRange(nodes, 0, nodes.length - 1), '.');
+        resultMap.putIfAbsent(device, new ArrayList<>());
+        resultMap.get(device).add(measurement);
+      } catch (IllegalPathException e) {
+        throw new IllegalIoTDBPathException(e.getMessage());
+      }
+    }
+    return resultMap;
   }
 }

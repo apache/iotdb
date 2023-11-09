@@ -71,7 +71,7 @@ public class MessageDigestEncryptTest {
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.getPrivileges().add(j);
-        users[i].getPrivilegeList().add(pathPrivilege);
+        users[i].getPathPrivilegeList().add(pathPrivilege);
         users[i].getRoleList().add("role" + j);
       }
     }

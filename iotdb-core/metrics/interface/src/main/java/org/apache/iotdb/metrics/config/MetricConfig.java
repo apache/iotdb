@@ -20,7 +20,6 @@
 package org.apache.iotdb.metrics.config;
 
 import org.apache.iotdb.metrics.utils.InternalReporterType;
-import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.NodeType;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -37,9 +36,6 @@ import java.util.Objects;
 
 public class MetricConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricConfig.class);
-  /** The type of the implementation of metric framework. */
-  private MetricFrameType metricFrameType = MetricFrameType.MICROMETER;
-
   /** The list of reporters provide metrics for external tool. */
   private List<ReporterType> metricReporterList = Collections.emptyList();
 
@@ -79,14 +75,6 @@ public class MetricConfig {
     } catch (Exception e) {
       LOGGER.warn("Failed to get pid, because ", e);
     }
-  }
-
-  public MetricFrameType getMetricFrameType() {
-    return metricFrameType;
-  }
-
-  public void setMetricFrameType(MetricFrameType metricFrameType) {
-    this.metricFrameType = metricFrameType;
   }
 
   public List<ReporterType> getMetricReporterList() {
@@ -180,7 +168,6 @@ public class MetricConfig {
 
   /** Copy properties from another metric config. */
   public void copy(MetricConfig newMetricConfig) {
-    metricFrameType = newMetricConfig.getMetricFrameType();
     metricReporterList = newMetricConfig.getMetricReporterList();
     metricLevel = newMetricConfig.getMetricLevel();
     asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
@@ -196,8 +183,7 @@ public class MetricConfig {
       return false;
     }
     MetricConfig anotherMetricConfig = (MetricConfig) obj;
-    return metricFrameType.equals(anotherMetricConfig.getMetricFrameType())
-        && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
+    return metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())
         && prometheusReporterPort.equals(anotherMetricConfig.getPrometheusReporterPort())
@@ -208,7 +194,6 @@ public class MetricConfig {
   @Override
   public int hashCode() {
     return Objects.hash(
-        metricFrameType,
         metricReporterList,
         metricLevel,
         asyncCollectPeriodInSecond,

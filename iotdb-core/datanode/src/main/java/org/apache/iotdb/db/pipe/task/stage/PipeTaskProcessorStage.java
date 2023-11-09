@@ -62,11 +62,13 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       TConsensusGroupId dataRegionId,
       EventSupplier pipeExtractorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
+    // Convert the value of `PROCESSOR_KEY` to lowercase for matching `DO_NOTHING_PROCESSOR`
     final PipeProcessor pipeProcessor =
         pipeProcessorParameters
                 .getStringOrDefault(
                     PipeProcessorConstant.PROCESSOR_KEY,
                     BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
+                .toLowerCase()
                 .equals(BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
             ? new DoNothingProcessor()
             : PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
@@ -85,12 +87,20 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       throw new PipeException(e.getMessage(), e);
     }
 
-    final String taskId = pipeName + "_" + dataRegionId;
+    // Should add creation time in taskID, because subtasks are stored in the hashmap
+    // PipeProcessorSubtaskWorker.subtasks, and deleted subtasks will be removed by
+    // a timed thread. If a pipe is deleted and created again before its subtask is
+    // removed, the new subtask will have the same pipeName and dataRegionId as the
+    // old one, so we need creationTime to make their hash code different in the map.
+    final String taskId = pipeName + "_" + dataRegionId.getId() + "_" + creationTime;
     final PipeEventCollector pipeConnectorOutputEventCollector =
         new PipeEventCollector(pipeConnectorOutputPendingQueue);
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,
+            creationTime,
+            pipeName,
+            dataRegionId.getId(),
             pipeExtractorInputEventSupplier,
             pipeProcessor,
             pipeConnectorOutputEventCollector);

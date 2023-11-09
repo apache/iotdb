@@ -269,6 +269,9 @@ public class SharedTsBlockQueue {
     if (!blocked.isDone()) {
       blocked.set(null);
     }
+    if (!canAddTsBlock.isDone()) {
+      canAddTsBlock.set(null);
+    }
     if (blockedOnMemory != null) {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
     }
@@ -305,6 +308,9 @@ public class SharedTsBlockQueue {
     if (!blocked.isDone()) {
       blocked.cancel(true);
     }
+    if (!canAddTsBlock.isDone()) {
+      canAddTsBlock.set(null);
+    }
     if (blockedOnMemory != null) {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
     }
@@ -329,6 +335,9 @@ public class SharedTsBlockQueue {
     closed = true;
     if (!blocked.isDone()) {
       blocked.setException(t);
+    }
+    if (!canAddTsBlock.isDone()) {
+      canAddTsBlock.set(null);
     }
     if (blockedOnMemory != null) {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);

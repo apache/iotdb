@@ -28,10 +28,12 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
@@ -42,7 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSc
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -115,7 +117,7 @@ public class ClusterTemplateManager implements ITemplateManager {
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
-            "Failed to execute create schema template {} in config node, status is {}.",
+            "Failed to execute create device template {} in config node, status is {}.",
             statement.getName(),
             tsStatus);
       }
@@ -227,7 +229,7 @@ public class ClusterTemplateManager implements ITemplateManager {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
-            "Failed to execute set schema template {} on path {} in config node, status is {}.",
+            "Failed to execute set device template {} on path {} in config node, status is {}.",
             name,
             path,
             tsStatus);
@@ -239,11 +241,13 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   @Override
-  public List<PartialPath> getPathsSetTemplate(String name) {
+  public List<PartialPath> getPathsSetTemplate(String name, PathPatternTree scope) {
     List<PartialPath> listPath = new ArrayList<>();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetPathsSetTemplatesResp resp = configNodeClient.getPathsSetTemplate(name);
+      TGetPathsSetTemplatesResp resp =
+          configNodeClient.getPathsSetTemplate(
+              new TGetPathsSetTemplatesReq(name, scope.serialize()));
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         if (resp.getPathList() != null) {
           resp.getPathList()
@@ -635,6 +639,10 @@ public class ClusterTemplateManager implements ITemplateManager {
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  public Integer getTemplateId(String templateName) {
+    return templateNameMap.get(templateName);
   }
 
   @TestOnly

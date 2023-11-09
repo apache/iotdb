@@ -20,7 +20,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-connector</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <artifactId>iotdb-grafana-plugin</artifactId>
     <packaging>pom</packaging>
@@ -31,7 +31,6 @@
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
-                <version>1.12.1</version>
                 <executions>
                     <execution>
                         <id>install node and yarn</id>
@@ -84,30 +83,30 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
-                <version>1.3</version>
                 <executions>
                     <execution>
                         <id>test</id>
-                        <phase>package</phase>
                         <goals>
                             <goal>run</goal>
                         </goals>
+                        <phase>package</phase>
                         <configuration>
-                            <tasks>
+                            <target>
                                 <condition property="osFamily" value="windows">
                                     <os family="windows"/>
                                 </condition>
                                 <condition property="osFamily" value="unix">
                                     <os family="unix"/>
                                 </condition>
-                                <exec executable="C:\\Windows\\System32\\cmd.exe" osfamily="windows">
+                                <exec executable="C:\\Windows\\System32\\cmd.exe" failonerror="true" osfamily="windows">
                                     <arg line="/c backend-compile.bat"/>
                                 </exec>
-                                <exec executable="/bin/bash" osfamily="unix">
+                                <exec executable="/bin/bash" failonerror="true" osfamily="unix">
                                     <arg line="-c ./backend-compile.sh"/>
                                 </exec>
-                            </tasks>
+                            </target>
                         </configuration>
                     </execution>
                 </executions>

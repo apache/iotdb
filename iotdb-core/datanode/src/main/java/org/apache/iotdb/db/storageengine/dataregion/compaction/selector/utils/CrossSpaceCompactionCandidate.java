@@ -21,14 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -232,118 +228,6 @@ public class CrossSpaceCompactionCandidate {
         this.seqFiles.add(seqFile);
       }
       this.atLeastOneSeqFileSelected = true;
-    }
-  }
-
-  public static class TsFileResourceCandidate {
-    @SuppressWarnings("squid:S1104")
-    public TsFileResource resource;
-
-    @SuppressWarnings("squid:S1104")
-    public boolean selected;
-
-    @SuppressWarnings("squid:S1104")
-    public boolean isValidCandidate;
-
-    private Map<String, DeviceInfo> deviceInfoMap;
-
-    private boolean hasDetailedDeviceInfo;
-
-    protected TsFileResourceCandidate(TsFileResource tsFileResource) {
-      this.resource = tsFileResource;
-      this.selected = false;
-      // although we do the judgement here, the task should be validated before executing because
-      // the status of file may be changed after the task is submitted to queue
-      this.isValidCandidate = tsFileResource.getStatus() == TsFileResourceStatus.NORMAL;
-    }
-
-    /**
-     * The TsFile is unsealed means there may be more data which will be inserted into this file.
-     *
-     * @return Whether the TsFile is unsealed.
-     */
-    protected boolean unsealed() {
-      return resource.getStatus() == TsFileResourceStatus.UNCLOSED;
-    }
-
-    private void prepareDeviceInfos() throws IOException {
-      if (deviceInfoMap != null) {
-        return;
-      }
-      deviceInfoMap = new LinkedHashMap<>();
-      if (resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
-        // deserialize resource file
-        resource.readLock();
-        try {
-          if (!resource.resourceFileExists()) {
-            hasDetailedDeviceInfo = false;
-            return;
-          }
-          DeviceTimeIndex timeIndex = resource.buildDeviceTimeIndex();
-          for (String deviceId : timeIndex.getDevices()) {
-            deviceInfoMap.put(
-                deviceId,
-                new DeviceInfo(
-                    deviceId, timeIndex.getStartTime(deviceId), timeIndex.getEndTime(deviceId)));
-          }
-        } finally {
-          resource.readUnlock();
-        }
-      } else {
-        for (String deviceId : resource.getDevices()) {
-          deviceInfoMap.put(
-              deviceId,
-              new DeviceInfo(
-                  deviceId, resource.getStartTime(deviceId), resource.getEndTime(deviceId)));
-        }
-      }
-      hasDetailedDeviceInfo = true;
-    }
-
-    public void markAsSelected() {
-      this.selected = true;
-    }
-
-    protected List<DeviceInfo> getDevices() throws IOException {
-      prepareDeviceInfos();
-      return new ArrayList<>(deviceInfoMap.values());
-    }
-
-    protected DeviceInfo getDeviceInfoById(String deviceId) throws IOException {
-      prepareDeviceInfos();
-      return deviceInfoMap.get(deviceId);
-    }
-
-    protected boolean containsDevice(String deviceId) throws IOException {
-      prepareDeviceInfos();
-      return deviceInfoMap.containsKey(deviceId);
-    }
-
-    protected boolean hasDetailedDeviceInfo() throws IOException {
-      prepareDeviceInfos();
-      return hasDetailedDeviceInfo;
-    }
-
-    protected boolean mayHasOverlapWithUnseqFile(DeviceInfo unseqFileDeviceInfo)
-        throws IOException {
-      prepareDeviceInfos();
-      long endTime =
-          containsDevice(unseqFileDeviceInfo.deviceId)
-              ? getDeviceInfoById(unseqFileDeviceInfo.deviceId).endTime
-              : resource.getFileEndTime();
-      return unseqFileDeviceInfo.startTime <= endTime;
-    }
-  }
-
-  protected static class DeviceInfo {
-    protected String deviceId;
-    protected long startTime;
-    protected long endTime;
-
-    public DeviceInfo(String deviceId, long startTime, long endTime) {
-      this.deviceId = deviceId;
-      this.startTime = startTime;
-      this.endTime = endTime;
     }
   }
 }

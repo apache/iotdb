@@ -35,6 +35,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Locale;
 
 import static org.junit.Assert.fail;
 
@@ -99,6 +100,7 @@ public class FrequencyIT {
       for (int i = 0; i < ITERATION_TIMES; ++i) {
         statement.execute(
             String.format(
+                Locale.ENGLISH,
                 "insert into root.vehicle.d1(timestamp,s1,s2,s3) values(%d,%f,%f,%f)",
                 (long) (i + 1) * DELTA_T,
                 Math.sin(i % PERIOD_1 * 2 * pi / (double) PERIOD_1),

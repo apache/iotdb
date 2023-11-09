@@ -44,7 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -209,6 +209,11 @@ public class Analysis {
   // timeseries, otherwise it will be null
   private Ordering timeseriesOrderingForLastQuery = null;
 
+  // Key: non-writable view expression, Value: corresponding source expressions
+  private Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap;
+
+  private Set<Expression> lastQueryBaseExpressions;
+
   // header of result dataset
   private DatasetHeader respDatasetHeader;
 
@@ -263,18 +268,19 @@ public class Analysis {
   // can use statistics to skip
   private boolean lastLevelUseWildcard = false;
 
+  // if `order by limit N align by device` query use topK optimization
+  private boolean useTopKNode = false;
+
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
-    // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
-    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), null);
+    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), timefilter);
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
-    // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
-    return dataPartition.getDataRegionReplicaSet(deviceName, null);
+    return dataPartition.getDataRegionReplicaSet(deviceName, globalTimeFilter);
   }
 
   public Statement getStatement() {
@@ -346,7 +352,7 @@ public class Analysis {
       return null;
     }
     TSDataType type = expressionTypes.get(NodeRef.of(expression));
-    checkArgument(type != null, "Expression not analyzed: %s", expression);
+    checkArgument(type != null, "Expression is not analyzed: %s", expression);
     return type;
   }
 
@@ -728,6 +734,23 @@ public class Analysis {
     this.timeseriesOrderingForLastQuery = timeseriesOrderingForLastQuery;
   }
 
+  public Set<Expression> getLastQueryBaseExpressions() {
+    return this.lastQueryBaseExpressions;
+  }
+
+  public void setLastQueryBaseExpressions(Set<Expression> lastQueryBaseExpressions) {
+    this.lastQueryBaseExpressions = lastQueryBaseExpressions;
+  }
+
+  public Map<Expression, List<Expression>> getLastQueryNonWritableViewSourceExpressionMap() {
+    return this.lastQueryNonWritableViewSourceExpressionMap;
+  }
+
+  public void setLastQueryNonWritableViewSourceExpressionMap(
+      Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap) {
+    this.lastQueryNonWritableViewSourceExpressionMap = lastQueryNonWritableViewSourceExpressionMap;
+  }
+
   public Map<String, List<String>> getOutputDeviceToQueriedDevicesMap() {
     return outputDeviceToQueriedDevicesMap;
   }
@@ -747,6 +770,14 @@ public class Analysis {
 
   public void setLastLevelUseWildcard(boolean lastLevelUseWildcard) {
     this.lastLevelUseWildcard = lastLevelUseWildcard;
+  }
+
+  public boolean isUseTopKNode() {
+    return useTopKNode;
+  }
+
+  public void setUseTopKNode() {
+    this.useTopKNode = true;
   }
 
   public void setDeviceList(List<PartialPath> deviceList) {

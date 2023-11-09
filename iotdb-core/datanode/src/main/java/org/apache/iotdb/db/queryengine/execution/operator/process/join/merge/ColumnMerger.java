@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.join.merge;
 
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 /** used to merge columns belonging to same series into one column. */

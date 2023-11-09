@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import java.io.File;
@@ -44,6 +46,7 @@ public class LoadTsFileStatement extends Statement {
 
   private final List<File> tsFiles;
   private final List<TsFileResource> resources;
+  private final List<Long> writePointCountList;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath);
@@ -53,6 +56,7 @@ public class LoadTsFileStatement extends Statement {
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
+    this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
 
     if (file.isFile()) {
@@ -77,6 +81,7 @@ public class LoadTsFileStatement extends Statement {
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
+    this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
   }
 
@@ -151,9 +156,23 @@ public class LoadTsFileStatement extends Statement {
     return resources;
   }
 
+  public void addWritePointCount(long writePointCount) {
+    writePointCountList.add(writePointCount);
+  }
+
+  public long getWritePointCount(int resourceIndex) {
+    return writePointCountList.get(resourceIndex);
+  }
+
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    // no need to check here, it will be checked in process phase
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

@@ -45,7 +45,6 @@ keyWords
     | AS
     | ASC
     | ATTRIBUTES
-    | AUTO
     | BEFORE
     | BEGIN
     | BETWEEN
@@ -77,6 +76,7 @@ keyWords
     | DATABASES
     | DATANODEID
     | DATANODES
+    | DATASET
     | DEACTIVATE
     | DEBUG
     | DELETE
@@ -84,7 +84,6 @@ keyWords
     | DESCRIBE
     | DETAILS
     | DEVICE
-    | DEVICEID
     | DEVICES
     | DISABLE
     | DISCARD
@@ -110,6 +109,7 @@ keyWords
     | GRANT
     | GROUP
     | HAVING
+    | HYPERPARAMETERS
     | IN
     | INDEX
     | INFO
@@ -132,8 +132,6 @@ keyWords
     | MERGE
     | METADATA
     | MIGRATE
-    | MODEL
-    | MODELS
     | NAN
     | NODEID
     | NODES
@@ -146,6 +144,7 @@ keyWords
     | OFF
     | OFFSET
     | ON
+    | OPTIONS
     | OR
     | ORDER
     | ONSUCCESS
@@ -197,8 +196,10 @@ keyWords
     | SETTLE
     | SGLEVEL
     | SHOW
+    | SINK
     | SLIMIT
     | SOFFSET
+    | SOURCE
     | SPACE
     | STORAGE
     | START
@@ -224,7 +225,6 @@ keyWords
     | TOLERANCE
     | TOP
     | TRACING
-    | TRAILS
     | TRIGGER
     | TRIGGERS
     | TRUE
@@ -251,4 +251,6 @@ keyWords
     | WITHOUT
     | WRITABLE
     | WRITE
+    | AUDIT
+    | OPTION
     ;

@@ -53,7 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParame
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -143,7 +143,7 @@ public class QueryLogicalPlanUtil {
 
     LastQueryNode lastQueryNode =
         new LastQueryNode(
-            queryId.genPlanNodeId(), sourceNodeList, TimeFilter.gt(100), Ordering.ASC);
+            queryId.genPlanNodeId(), sourceNodeList, TimeFilter.gt(100), Ordering.ASC, false);
 
     querySQLs.add(sql);
     sqlToPlanMap.put(sql, lastQueryNode);

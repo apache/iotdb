@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
@@ -39,6 +43,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private String newPassword;
   private String[] privilegeList;
   private List<PartialPath> nodeNameList;
+  private boolean grantOpt;
 
   /**
    * Constructor with AuthorType.
@@ -95,6 +100,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         this.setType(StatementType.LIST_ROLE);
         break;
       default:
+        throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }
   }
 
@@ -161,6 +167,14 @@ public class AuthorStatement extends Statement implements IConfigStatement {
     this.nodeNameList = nodeNameList;
   }
 
+  public boolean getGrantOpt() {
+    return grantOpt;
+  }
+
+  public void setGrantOpt(boolean grantOpt) {
+    this.grantOpt = grantOpt;
+  }
+
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitAuthor(this, context);
@@ -190,7 +204,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         queryType = QueryType.READ;
         break;
       default:
-        throw new IllegalArgumentException("Unknown operator: " + authorType);
+        throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }
     return queryType;
   }
@@ -198,5 +212,125 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   @Override
   public List<PartialPath> getPaths() {
     return nodeNameList != null ? nodeNameList : Collections.emptyList();
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    switch (authorType) {
+      case CREATE_USER:
+        if (AuthorityChecker.SUPER_USER.equals(this.userName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot create user has same name with admin user");
+        }
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        return AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            PrivilegeType.MANAGE_USER);
+
+      case UPDATE_USER:
+        // users can change passwords of themselves
+        if (AuthorityChecker.SUPER_USER.equals(userName) || this.userName.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        return AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            PrivilegeType.MANAGE_USER);
+
+      case DROP_USER:
+        if (AuthorityChecker.SUPER_USER.equals(this.userName) || this.userName.equals(userName)) {
+          return AuthorityChecker.getTSStatus(false, "Cannot drop admin user or yourself");
+        }
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        return AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            PrivilegeType.MANAGE_USER);
+
+      case LIST_USER:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        return AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            PrivilegeType.MANAGE_USER);
+
+      case LIST_USER_PRIVILEGE:
+        if (AuthorityChecker.SUPER_USER.equals(userName) || userName.equals(this.userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        return AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            PrivilegeType.MANAGE_USER);
+
+      case LIST_ROLE_PRIVILEGE:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        if (!AuthorityChecker.checkRole(userName, roleName)) {
+          return AuthorityChecker.getTSStatus(
+              AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE.ordinal()),
+              PrivilegeType.MANAGE_ROLE);
+        } else {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+
+      case LIST_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        if (this.userName != null && userName.equals(this.userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        } else {
+          return AuthorityChecker.getTSStatus(
+              AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE.ordinal()),
+              PrivilegeType.MANAGE_ROLE);
+        }
+
+      case CREATE_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(this.roleName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot create role has same name with admin user");
+        }
+      case DROP_ROLE:
+      case GRANT_USER_ROLE:
+      case REVOKE_USER_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        return AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE.ordinal()),
+            PrivilegeType.MANAGE_ROLE);
+
+      case REVOKE_USER:
+      case GRANT_USER:
+        if (AuthorityChecker.SUPER_USER.equals(this.userName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant/revoke privileges of admin user");
+        }
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        return AuthorityChecker.getOptTSStatus(
+            AuthorityChecker.checkGrantOption(userName, privilegeList, nodeNameList),
+            "Has no permission to execute "
+                + authorType
+                + ", please ensure you have these privileges and the grant option is TRUE when granted");
+
+      case GRANT_ROLE:
+      case REVOKE_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        return AuthorityChecker.getOptTSStatus(
+            AuthorityChecker.checkGrantOption(userName, privilegeList, nodeNameList),
+            "Has no permission to execute "
+                + authorType
+                + ", please ensure you have these privileges and the grant option is TRUE when granted");
+      default:
+        throw new IllegalArgumentException("Unknown authorType: " + authorType);
+    }
   }
 }

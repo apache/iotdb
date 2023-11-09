@@ -19,16 +19,21 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
+import org.apache.iotdb.tsfile.access.Column;
+import org.apache.iotdb.tsfile.access.ColumnBuilder;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.io.IOException;
 import java.util.regex.Pattern;
 
 public class UDTFMatches implements UDTF {
@@ -46,11 +51,37 @@ public class UDTFMatches implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     pattern = Pattern.compile(parameters.getString("regex"));
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.BOOLEAN);
+    configurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.BOOLEAN);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     collector.putBoolean(row.getTime(), pattern.matcher(row.getString(0)).matches());
+  }
+
+  @Override
+  public Object transform(Row row) throws IOException {
+    if (row.isNull(0)) {
+      return null;
+    }
+    return pattern.matcher(row.getString(0)).matches();
+  }
+
+  @Override
+  public void transform(Column[] columns, ColumnBuilder builder) throws Exception {
+    Binary[] inputs = columns[0].getBinaries();
+    boolean[] isNulls = columns[0].isNull();
+
+    int count = columns[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (isNulls[i]) {
+        builder.appendNull();
+      } else {
+        String str = inputs[i].getStringValue(TSFileConfig.STRING_CHARSET);
+        builder.writeBoolean(pattern.matcher(str).matches());
+      }
+    }
   }
 }

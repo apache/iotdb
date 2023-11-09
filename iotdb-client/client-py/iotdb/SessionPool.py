@@ -31,15 +31,25 @@ logger = logging.getLogger("IoTDB")
 
 
 class PoolConfig(object):
-    def __init__(self, host: str = None, port: str = None, user_name: str = None, password: str = None,
-                 node_urls: list = None,
-                 fetch_size: int = DEFAULT_FETCH_SIZE, time_zone: str = DEFAULT_TIME_ZONE,
-                 max_retry: int = DEFAULT_MAX_RETRY, enable_compression: bool = False):
+    def __init__(
+        self,
+        host: str = None,
+        port: str = None,
+        user_name: str = None,
+        password: str = None,
+        node_urls: list = None,
+        fetch_size: int = DEFAULT_FETCH_SIZE,
+        time_zone: str = DEFAULT_TIME_ZONE,
+        max_retry: int = DEFAULT_MAX_RETRY,
+        enable_compression: bool = False,
+    ):
         self.host = host
         self.port = port
         if node_urls is None:
             if host is None or port is None:
-                raise ValueError("(host,port) and node_urls cannot be None at the same time.")
+                raise ValueError(
+                    "(host,port) and node_urls cannot be None at the same time."
+                )
             node_urls = []
         self.node_urls = node_urls
         self.user_name = user_name
@@ -51,8 +61,9 @@ class PoolConfig(object):
 
 
 class SessionPool(object):
-
-    def __init__(self, pool_config: PoolConfig, max_pool_size: int, wait_timeout_in_ms: int):
+    def __init__(
+        self, pool_config: PoolConfig, max_pool_size: int, wait_timeout_in_ms: int
+    ):
         self.__pool_config = pool_config
         self.__max_pool_size = max_pool_size
         self.__wait_timeout_in_ms = wait_timeout_in_ms / 1000
@@ -63,13 +74,23 @@ class SessionPool(object):
 
     def __construct_session(self) -> Session:
         if len(self.__pool_config.node_urls) > 0:
-            session = Session.init_from_node_urls(self.__pool_config.node_urls, self.__pool_config.user_name,
-                                                  self.__pool_config.password, self.__pool_config.fetch_size,
-                                                  self.__pool_config.time_zone)
+            session = Session.init_from_node_urls(
+                self.__pool_config.node_urls,
+                self.__pool_config.user_name,
+                self.__pool_config.password,
+                self.__pool_config.fetch_size,
+                self.__pool_config.time_zone,
+            )
 
         else:
-            session = Session(self.__pool_config.host, self.__pool_config.port, self.__pool_config.user_name,
-                              self.__pool_config.password, self.__pool_config.fetch_size, self.__pool_config.time_zone)
+            session = Session(
+                self.__pool_config.host,
+                self.__pool_config.port,
+                self.__pool_config.user_name,
+                self.__pool_config.password,
+                self.__pool_config.fetch_size,
+                self.__pool_config.time_zone,
+            )
 
         session.open(self.__pool_config.enable_compression)
         return session
@@ -97,8 +118,11 @@ class SessionPool(object):
                     break
                 else:
                     if time.time() - start > self.__wait_timeout_in_ms:
-                        raise TimeoutError("Wait to get session timeout in SessionPool, current pool size: {0}"
-                                           .format(self.__max_pool_size))
+                        raise TimeoutError(
+                            "Wait to get session timeout in SessionPool, current pool size: {0}".format(
+                                self.__max_pool_size
+                            )
+                        )
                     time.sleep(1)
             session = self.__poll_session()
 
@@ -115,7 +139,9 @@ class SessionPool(object):
     def put_back(self, session: Session):
 
         if self.__closed:
-            raise ConnectionError("SessionPool has already been closed, please close the session manually.")
+            raise ConnectionError(
+                "SessionPool has already been closed, please close the session manually."
+            )
 
         if session.is_open():
             self.__queue.put(session)
@@ -134,7 +160,9 @@ class SessionPool(object):
         logger.info("SessionPool has been closed successfully.")
 
 
-def create_session_pool(pool_config: PoolConfig, max_pool_size: int, wait_timeout_in_ms: int) -> SessionPool:
+def create_session_pool(
+    pool_config: PoolConfig, max_pool_size: int, wait_timeout_in_ms: int
+) -> SessionPool:
     if max_pool_size <= 0:
         max_pool_size = multiprocessing.cpu_count() * DEFAULT_MULTIPIE
     return SessionPool(pool_config, max_pool_size, wait_timeout_in_ms)

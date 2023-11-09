@@ -21,13 +21,13 @@ package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.FileGenerator;
@@ -125,7 +125,7 @@ public class TsFileSequenceReaderTest {
       List<ChunkMetadata> metadataList = chunkMetadataMap.get("s" + id);
       int numOfPoints = 0;
       for (ChunkMetadata metadata : metadataList) {
-        numOfPoints += metadata.getNumOfPoints();
+        numOfPoints += (int) metadata.getNumOfPoints();
       }
       Assert.assertEquals(res[i], numOfPoints);
     }
@@ -167,9 +167,10 @@ public class TsFileSequenceReaderTest {
     }
 
     // read tsfile with selfCheck method
-    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
-    Assert.assertEquals(
-        TsFileCheckStatus.COMPLETE_FILE,
-        reader.selfCheck(new HashMap<>(), new ArrayList<>(), false));
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
+      Assert.assertEquals(
+          TsFileCheckStatus.COMPLETE_FILE,
+          reader.selfCheck(new HashMap<>(), new ArrayList<>(), false));
+    }
   }
 }

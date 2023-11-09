@@ -20,11 +20,15 @@
 package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.pipe.api.event.Event;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -34,12 +38,16 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public abstract class EnrichedEvent implements Event {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(EnrichedEvent.class);
+
   private final AtomicInteger referenceCount;
 
   protected final PipeTaskMeta pipeTaskMeta;
 
   private final String pattern;
-  private final boolean isPatternParsed;
+
+  protected boolean isPatternParsed;
+  protected boolean isTimeParsed = true;
 
   protected EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
     referenceCount = new AtomicInteger(0);
@@ -76,21 +84,44 @@ public abstract class EnrichedEvent implements Event {
   public abstract boolean internallyIncreaseResourceReferenceCount(String holderMessage);
 
   /**
-   * Decrease the reference count of this event. If the reference count is decreased to 0, the event
-   * can be recycled and the data stored in the event is not safe to use, the processing progress of
-   * the event should be reported to the pipe task meta.
+   * Decrease the reference count of this event by 1. If the reference count is decreased to 0, the
+   * event can be recycled and the data stored in the event is not safe to use, the processing
+   * progress of the event should be reported to the pipe task meta.
    *
    * @param holderMessage the message of the invoker
    * @return true if the reference count is decreased successfully, false otherwise
    */
-  public boolean decreaseReferenceCount(String holderMessage) {
+  public boolean decreaseReferenceCount(String holderMessage, boolean shouldReport) {
     boolean isSuccessful = true;
     synchronized (this) {
       if (referenceCount.get() == 1) {
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
-        reportProgress();
+        if (shouldReport) {
+          reportProgress();
+        }
       }
-      referenceCount.decrementAndGet();
+      final int newReferenceCount = referenceCount.decrementAndGet();
+      if (newReferenceCount < 0) {
+        LOGGER.warn("reference count is decreased to {}.", newReferenceCount);
+      }
+    }
+    return isSuccessful;
+  }
+
+  /**
+   * Decrease the reference count of this event to 0, to release the event directly. The event can
+   * be recycled and the data stored in the event is not safe to use.
+   *
+   * @param holderMessage the message of the invoker
+   * @return true if the reference count is decreased successfully, false otherwise
+   */
+  public boolean clearReferenceCount(String holderMessage) {
+    boolean isSuccessful = true;
+    synchronized (this) {
+      if (referenceCount.get() >= 1) {
+        isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
+      }
+      referenceCount.set(0);
     }
     return isSuccessful;
   }
@@ -106,7 +137,9 @@ public abstract class EnrichedEvent implements Event {
 
   protected void reportProgress() {
     if (pipeTaskMeta != null) {
-      pipeTaskMeta.updateProgressIndex(getProgressIndex());
+      final ProgressIndex progressIndex = getProgressIndex();
+      pipeTaskMeta.updateProgressIndex(
+          progressIndex == null ? MinimumProgressIndex.INSTANCE : progressIndex);
     }
   }
 
@@ -130,8 +163,16 @@ public abstract class EnrichedEvent implements Event {
     return pattern == null ? PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE : pattern;
   }
 
-  public boolean shouldParsePattern() {
-    return !isPatternParsed;
+  /**
+   * If pipe's pattern is database-level, then no need to parse event by pattern cause pipes are
+   * data-region-level.
+   */
+  public void skipParsingPattern() {
+    isPatternParsed = true;
+  }
+
+  public boolean shouldParsePatternOrTime() {
+    return !isPatternParsed || !isTimeParsed;
   }
 
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
@@ -140,6 +181,8 @@ public abstract class EnrichedEvent implements Event {
   public void reportException(PipeRuntimeException pipeRuntimeException) {
     if (pipeTaskMeta != null) {
       PipeAgent.runtime().report(pipeTaskMeta, pipeRuntimeException);
+    } else {
+      LOGGER.warn("Attempt to report pipe exception to a null PipeTaskMeta.", pipeRuntimeException);
     }
   }
 

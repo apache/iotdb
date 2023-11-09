@@ -67,8 +67,7 @@ public class DataNodeInternalRPCService extends ThriftService
               config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new InternalServiceThriftHandler(),
-              // TODO: hard coded compress strategy
-              false);
+              config.isRpcThriftCompressionEnable());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

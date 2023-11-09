@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -90,19 +91,20 @@ public class CreateRegionGroupsProcedure
         break;
       case SHUNT_REGION_REPLICAS:
         persistPlan = new CreateRegionGroupsPlan();
+        persistPlan.setCreateTime(CommonDateTimeUtils.currentTime());
         OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
         // Filter those RegionGroups that created successfully
         createRegionGroupsPlan
             .getRegionGroupMap()
             .forEach(
-                (storageGroup, regionReplicaSets) ->
+                (database, regionReplicaSets) ->
                     regionReplicaSets.forEach(
                         regionReplicaSet -> {
                           if (!failedRegionReplicaSets.containsKey(
                               regionReplicaSet.getRegionId())) {
                             // A RegionGroup was created successfully when
                             // all RegionReplicas were created successfully
-                            persistPlan.addRegionGroup(storageGroup, regionReplicaSet);
+                            persistPlan.addRegionGroup(database, regionReplicaSet);
                             LOGGER.info(
                                 "[CreateRegionGroups] All replicas of RegionGroup: {} are created successfully!",
                                 regionReplicaSet.getRegionId());
@@ -114,7 +116,7 @@ public class CreateRegionGroupsProcedure
                                 <= (regionReplicaSet.getDataNodeLocationsSize() - 1) / 2) {
                               // A RegionGroup can provide service as long as there are more than
                               // half of the RegionReplicas created successfully
-                              persistPlan.addRegionGroup(storageGroup, regionReplicaSet);
+                              persistPlan.addRegionGroup(database, regionReplicaSet);
 
                               // Build recreate tasks
                               failedRegionReplicas
@@ -123,11 +125,11 @@ public class CreateRegionGroupsProcedure
                                       targetDataNode -> {
                                         RegionCreateTask createTask =
                                             new RegionCreateTask(
-                                                targetDataNode, storageGroup, regionReplicaSet);
+                                                targetDataNode, database, regionReplicaSet);
                                         if (TConsensusGroupType.DataRegion.equals(
                                             regionReplicaSet.getRegionId().getType())) {
                                           try {
-                                            createTask.setTTL(env.getTTL(storageGroup));
+                                            createTask.setTTL(env.getTTL(database));
                                           } catch (DatabaseNotExistsException e) {
                                             LOGGER.error("Can't get TTL", e);
                                           }

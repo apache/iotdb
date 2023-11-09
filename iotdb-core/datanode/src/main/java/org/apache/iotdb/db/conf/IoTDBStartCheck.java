@@ -60,6 +60,7 @@ public class IoTDBStartCheck {
   private boolean isFirstStart = false;
 
   private final File propertiesFile;
+  private final File oldPropertiesFile;
   private final File tmpPropertiesFile;
 
   private final Properties properties = new Properties();
@@ -138,9 +139,12 @@ public class IoTDBStartCheck {
       }
     }
 
-    propertiesFile =
+    oldPropertiesFile =
         SystemFileFactory.INSTANCE.getFile(
             IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
+    propertiesFile =
+        SystemFileFactory.INSTANCE.getFile(
+            config.getSystemDir() + File.separator + PROPERTIES_FILE_NAME);
     tmpPropertiesFile =
         SystemFileFactory.INSTANCE.getFile(
             IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME + ".tmp");
@@ -222,6 +226,24 @@ public class IoTDBStartCheck {
     // in cluster mode, check consensus dir
     if (config.isClusterMode()) {
       DirectoryChecker.getInstance().registerDirectory(new File(config.getConsensusDir()));
+    }
+  }
+
+  /**
+   * The location of system.properties has been adjusted from SHCEMA_DIR to the system directory.
+   * During a restart, it is necessary to check if the file exists in the old location. If it does,
+   * move the file to the new location.
+   *
+   * @throws IOException If copy fail or delete fail
+   */
+  public void checkOldSystemConfig() throws IOException {
+    if (oldPropertiesFile.exists()) {
+      FileUtils.copyFile(oldPropertiesFile, propertiesFile);
+      FileUtils.delete(oldPropertiesFile);
+      logger.info(
+          "system.properties file has been moved successfully: {} -> {}",
+          oldPropertiesFile.getAbsolutePath(),
+          propertiesFile.getAbsolutePath());
     }
   }
 
@@ -356,8 +378,8 @@ public class IoTDBStartCheck {
     }
 
     reloadProperties();
-
-    try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
+    FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString());
+    try {
       properties.setProperty(IoTDBConstant.CLUSTER_NAME, clusterName);
       properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
@@ -365,6 +387,10 @@ public class IoTDBStartCheck {
       if (propertiesFile.exists()) {
         Files.delete(propertiesFile.toPath());
       }
+    } finally {
+      tmpFOS.flush();
+      tmpFOS.getFD().sync();
+      tmpFOS.close();
     }
     // rename system.properties.tmp to system.properties
     FileUtils.moveFile(tmpPropertiesFile, propertiesFile);

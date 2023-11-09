@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -26,7 +27,7 @@ import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -50,6 +51,12 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
+import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
+import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSeriesPrivilege;
+import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -133,8 +140,7 @@ public class IOTDBLoadTsFileIT {
 
       statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_0));
       statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_1));
-    } catch (IoTDBSQLException e) {
-      LOGGER.info(String.format("delete storage group message : %s", e.getMessage()));
+    } catch (IoTDBSQLException ignored) {
     }
   }
 
@@ -283,6 +289,71 @@ public class IOTDBLoadTsFileIT {
         Assert.fail("Parse result set error.");
       }
     }
+  }
+
+  @Test
+  public void testAuth() throws Exception {
+    createUser("test", "test123");
+
+    // device 0, device 1, sg 0
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "test1-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_0,
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_00,
+              SchemaConfig.MEASUREMENT_01,
+              SchemaConfig.MEASUREMENT_02,
+              SchemaConfig.MEASUREMENT_03));
+      generator.registerAlignedTimeseries(
+          SchemaConfig.DEVICE_1,
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_10,
+              SchemaConfig.MEASUREMENT_11,
+              SchemaConfig.MEASUREMENT_12,
+              SchemaConfig.MEASUREMENT_13));
+      generator.generateData(SchemaConfig.DEVICE_0, 10000, PARTITION_INTERVAL / 10_000, false);
+      generator.generateData(SchemaConfig.DEVICE_1, 10000, PARTITION_INTERVAL / 10_000, true);
+    }
+
+    // device 2, device 3, device4, sg 1
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "test2-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_2, Arrays.asList(SchemaConfig.MEASUREMENT_20));
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_3, Arrays.asList(SchemaConfig.MEASUREMENT_30));
+      generator.registerAlignedTimeseries(
+          SchemaConfig.DEVICE_4, Arrays.asList(SchemaConfig.MEASUREMENT_40));
+      generator.generateData(SchemaConfig.DEVICE_2, 10000, PARTITION_INTERVAL / 10_000, false);
+      generator.generateData(SchemaConfig.DEVICE_3, 10000, PARTITION_INTERVAL / 10_000, false);
+      generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, true);
+    }
+
+    assertNonQueryTestFail(
+        String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
+        "No permissions for this operation, please add privilege WRITE_DATA",
+        "test",
+        "test123");
+
+    grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.**");
+
+    assertNonQueryTestFail(
+        String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
+        "Auto create or verify schema error when executing statement LoadTsFileStatement",
+        "test",
+        "test123");
+
+    grantUserSystemPrivileges("test", PrivilegeType.MANAGE_DATABASE);
+
+    assertNonQueryTestFail(
+        String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
+        "Auto create or verify schema error when executing statement LoadTsFileStatement",
+        "test",
+        "test123");
+
+    grantUserSystemPrivileges("test", PrivilegeType.WRITE_SCHEMA);
+
+    executeNonQuery(
+        String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()), "test", "test123");
   }
 
   @Test
@@ -570,7 +641,7 @@ public class IOTDBLoadTsFileIT {
 
   @Test
   public void testLoadWithEmptyTsFile() throws Exception {
-    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {}
+    try (TsFileGenerator ignored = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {}
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -580,6 +651,39 @@ public class IOTDBLoadTsFileIT {
       try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
         Assert.assertFalse(resultSet.next());
       }
+    }
+  }
+
+  @Test
+  public void testLoadTsFileWithWrongTimestampPrecision() throws Exception {
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_0,
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_00,
+              SchemaConfig.MEASUREMENT_01,
+              SchemaConfig.MEASUREMENT_02,
+              SchemaConfig.MEASUREMENT_03));
+      generator.registerAlignedTimeseries(
+          SchemaConfig.DEVICE_1,
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_10,
+              SchemaConfig.MEASUREMENT_11,
+              SchemaConfig.MEASUREMENT_12,
+              SchemaConfig.MEASUREMENT_13));
+      // generate ns timestamp
+      generator.generateData(
+          SchemaConfig.DEVICE_0, 100000, PARTITION_INTERVAL / 10_000, false, 1694689856546000000L);
+      generator.generateData(
+          SchemaConfig.DEVICE_1, 100000, PARTITION_INTERVAL / 10_000, true, 1694689856546000000L);
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute(String.format("load \"%s\"", tmpDir.getAbsolutePath()));
+    } catch (IoTDBSQLException e) {
+      Assert.assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
     }
   }
 

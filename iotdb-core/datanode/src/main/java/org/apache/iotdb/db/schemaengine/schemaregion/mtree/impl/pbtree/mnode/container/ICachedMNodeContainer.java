@@ -40,6 +40,8 @@ public interface ICachedMNodeContainer extends IMNodeContainer<ICachedMNode> {
 
   boolean hasChildInBuffer(String name);
 
+  boolean hasChildrenInBuffer();
+
   Iterator<ICachedMNode> getChildrenIterator();
 
   Iterator<ICachedMNode> getChildrenBufferIterator();
@@ -74,6 +76,6 @@ public interface ICachedMNodeContainer extends IMNodeContainer<ICachedMNode> {
   }
 
   static ICachedMNodeContainer getBelongedContainer(ICachedMNode node) {
-    return (ICachedMNodeContainer) node.getParent().getChildren();
+    return getCachedMNodeContainer(node.getParent());
   }
 }

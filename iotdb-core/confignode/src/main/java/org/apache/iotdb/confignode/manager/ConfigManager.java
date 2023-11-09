@@ -30,6 +30,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -38,6 +39,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -89,7 +91,6 @@ import org.apache.iotdb.confignode.manager.pipe.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
-import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
@@ -102,15 +103,14 @@ import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
@@ -124,14 +124,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -157,20 +158,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -237,9 +232,6 @@ public class ConfigManager implements IManager {
   /** CQ. */
   private final CQManager cqManager;
 
-  /** ML Model. */
-  private final ModelManager modelManager;
-
   /** Pipe */
   private final PipeManager pipeManager;
 
@@ -262,7 +254,6 @@ public class ConfigManager implements IManager {
     UDFInfo udfInfo = new UDFInfo();
     TriggerInfo triggerInfo = new TriggerInfo();
     CQInfo cqInfo = new CQInfo();
-    ModelInfo modelInfo = new ModelInfo();
     PipeInfo pipeInfo = new PipeInfo();
     QuotaInfo quotaInfo = new QuotaInfo();
 
@@ -277,7 +268,6 @@ public class ConfigManager implements IManager {
             udfInfo,
             triggerInfo,
             cqInfo,
-            modelInfo,
             pipeInfo,
             quotaInfo);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
@@ -285,14 +275,17 @@ public class ConfigManager implements IManager {
     // Build the manager module
     this.nodeManager = new NodeManager(this, nodeInfo);
     this.clusterSchemaManager =
-        new ClusterSchemaManager(this, clusterSchemaInfo, new ClusterSchemaQuotaStatistics());
+        new ClusterSchemaManager(
+            this,
+            clusterSchemaInfo,
+            new ClusterSchemaQuotaStatistics(
+                COMMON_CONF.getSeriesLimitThreshold(), COMMON_CONF.getDeviceLimitThreshold()));
     this.partitionManager = new PartitionManager(this, partitionInfo);
     this.permissionManager = new PermissionManager(this, authorInfo);
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.cqManager = new CQManager(this);
-    this.modelManager = new ModelManager(this, modelInfo);
     this.pipeManager = new PipeManager(this, pipeInfo);
 
     // 1. keep PipeManager initialization before LoadManager initialization, because
@@ -435,15 +428,23 @@ public class ConfigManager implements IManager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       List<TConfigNodeLocation> configNodeLocations = getNodeManager().getRegisteredConfigNodes();
       configNodeLocations.sort(Comparator.comparingInt(TConfigNodeLocation::getConfigNodeId));
-      List<TDataNodeLocation> dataNodeInfoLocations =
+      List<TDataNodeLocation> dataNodeLocations =
           getNodeManager().getRegisteredDataNodes().stream()
               .map(TDataNodeConfiguration::getLocation)
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
-      Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
       Map<Integer, TNodeVersionInfo> nodeVersionInfo = getNodeManager().getNodeVersionInfo();
+      Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
+      configNodeLocations.forEach(
+          configNodeLocation ->
+              nodeStatus.putIfAbsent(
+                  configNodeLocation.getConfigNodeId(), NodeStatus.Unknown.toString()));
+      dataNodeLocations.forEach(
+          dataNodeLocation ->
+              nodeStatus.putIfAbsent(
+                  dataNodeLocation.getDataNodeId(), NodeStatus.Unknown.toString()));
       return new TShowClusterResp(
-          status, configNodeLocations, dataNodeInfoLocations, nodeStatus, nodeVersionInfo);
+          status, configNodeLocations, dataNodeLocations, nodeStatus, nodeVersionInfo);
     } else {
       return new TShowClusterResp(
           status, new ArrayList<>(), new ArrayList<>(), new HashMap<>(), new HashMap<>());
@@ -684,15 +685,12 @@ public class ConfigManager implements IManager {
     // Build GetOrCreateSchemaPartitionPlan
     Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     for (String devicePath : devicePaths) {
-      if (!devicePath.contains("*")) {
-        // Only check devicePaths that without "*"
-        for (String database : databases) {
-          if (PathUtils.isStartWith(devicePath, database)) {
-            partitionSlotsMap
-                .computeIfAbsent(database, key -> new ArrayList<>())
-                .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
-            break;
-          }
+      for (String database : databases) {
+        if (PathUtils.isStartWith(devicePath, database)) {
+          partitionSlotsMap
+              .computeIfAbsent(database, key -> new ArrayList<>())
+              .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
+          break;
         }
       }
     }
@@ -756,11 +754,13 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaNodeManagementResp getNodePathsPartition(PartialPath partialPath, Integer level) {
+  public TSchemaNodeManagementResp getNodePathsPartition(
+      PartialPath partialPath, PathPatternTree scope, Integer level) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       GetNodePathsPartitionPlan getNodePathsPartitionPlan = new GetNodePathsPartitionPlan();
       getNodePathsPartitionPlan.setPartialPath(partialPath);
+      getNodePathsPartitionPlan.setScope(scope);
       if (null != level) {
         getNodePathsPartitionPlan.setLevel(level);
       }
@@ -931,11 +931,6 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public ModelManager getModelManager() {
-    return modelManager;
-  }
-
-  @Override
   public PipeManager getPipeManager() {
     return pipeManager;
   }
@@ -987,6 +982,63 @@ public class ConfigManager implements IManager {
     }
   }
 
+  public TAuthizedPatternTreeResp fetchAuthizedPatternTree(String username, int permission) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      try {
+        return permissionManager.fetchAuthizedPTree(username, permission);
+      } catch (AuthException e) {
+        TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
+        status.setCode(e.getCode().getStatusCode()).setMessage(e.getMessage());
+        resp.setStatus(status);
+        return resp;
+      }
+    } else {
+      TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
+      resp.setStatus(status);
+      return resp;
+    }
+  }
+
+  public void checkUserPathPrivilege() {
+    permissionManager.checkUserPathPrivilege();
+  }
+
+  public TPermissionInfoResp checkUserPrivilegeGrantOpt(
+      String username, List<PartialPath> paths, int permission) {
+    TSStatus status = confirmLeader();
+    TPermissionInfoResp resp = new TPermissionInfoResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      try {
+        resp = permissionManager.checkUserPrivilegeGrantOpt(username, paths, permission);
+      } catch (AuthException e) {
+        status.setCode(e.getCode().getStatusCode()).setMessage(e.getMessage());
+        resp.setStatus(status);
+        return resp;
+      }
+    } else {
+      resp.setStatus(status);
+    }
+    return resp;
+  }
+
+  public TPermissionInfoResp checkRoleOfUser(String username, String rolename) {
+    TSStatus status = confirmLeader();
+    TPermissionInfoResp resp = new TPermissionInfoResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      try {
+        resp = permissionManager.checkRoleOfUser(username, rolename);
+      } catch (AuthException e) {
+        status.setCode(e.getCode().getStatusCode()).setMessage(e.getMessage());
+        resp.setStatus(status);
+        return resp;
+      }
+    } else {
+      resp.setStatus(status);
+    }
+    return resp;
+  }
+
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     final int ERROR_STATUS_NODE_ID = -1;
@@ -1009,28 +1061,6 @@ public class ConfigManager implements IManager {
     }
 
     return new TConfigNodeRegisterResp().setStatus(status).setConfigNodeId(ERROR_STATUS_NODE_ID);
-  }
-
-  @Override
-  public TSStatus restartConfigNode(TConfigNodeRestartReq req) {
-    TSStatus status = confirmLeader();
-    // Notice: The Seed-ConfigNode must also have the privilege to do Node restart check.
-    // Otherwise, the IoTDB-cluster will not have the ability to restart from scratch.
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || ConfigNodeDescriptor.getInstance().isSeedConfigNode()
-        || SystemPropertiesUtils.isSeedConfigNode()) {
-      status =
-          ClusterNodeStartUtils.confirmNodeRestart(
-              NodeType.ConfigNode,
-              req.getClusterName(),
-              req.getConfigNodeLocation().getConfigNodeId(),
-              req.getConfigNodeLocation(),
-              this);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
-      }
-    }
-    return status;
   }
 
   public TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req) {
@@ -1405,9 +1435,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TShowDatabaseResp showDatabase(GetDatabasePlan getDatabasePlan) {
+  public TShowDatabaseResp showDatabase(TGetDatabaseReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      PathPatternTree scope =
+          req.getScopePatternTree() == null
+              ? SchemaConstant.ALL_MATCH_SCOPE
+              : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
+      GetDatabasePlan getDatabasePlan = new GetDatabasePlan(req.getDatabasePathPattern(), scope);
       return getClusterSchemaManager().showDatabase(getDatabasePlan);
     } else {
       return new TShowDatabaseResp().setStatus(status);
@@ -1438,6 +1473,12 @@ public class ConfigManager implements IManager {
   public void addMetrics() {
     MetricService.getInstance().addMetricSet(new NodeMetrics(getNodeManager()));
     MetricService.getInstance().addMetricSet(new PartitionMetrics(this));
+  }
+
+  @Override
+  public void removeMetrics() {
+    MetricService.getInstance().removeMetricSet(new NodeMetrics(getNodeManager()));
+    MetricService.getInstance().removeMetricSet(new PartitionMetrics(this));
   }
 
   @Override
@@ -1483,10 +1524,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TGetPathsSetTemplatesResp getPathsSetTemplate(String req) {
+  public TGetPathsSetTemplatesResp getPathsSetTemplate(TGetPathsSetTemplatesReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.getPathsSetTemplate(req);
+      PathPatternTree scope =
+          req.getScopePatternTree() == null
+              ? SchemaConstant.ALL_MATCH_SCOPE
+              : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
+      return clusterSchemaManager.getPathsSetTemplate(req.getTemplateName(), scope);
     } else {
       return new TGetPathsSetTemplatesResp(status);
     }
@@ -1513,7 +1558,7 @@ public class ConfigManager implements IManager {
       return RpcUtils.getStatus(
           TSStatusCode.TEMPLATE_NOT_SET,
           String.format(
-              "Schema Template %s is not set on any prefix path of %s",
+              "Device Template %s is not set on any prefix path of %s",
               req.getTemplateName(), patternList));
     }
 
@@ -1532,7 +1577,7 @@ public class ConfigManager implements IManager {
         return RpcUtils.getStatus(
             TSStatusCode.TEMPLATE_NOT_SET,
             String.format(
-                "Schema Template %s is not set on any prefix path of %s",
+                "Device Template %s is not set on any prefix path of %s",
                 req.getTemplateName(), patternList));
       }
 
@@ -1829,54 +1874,6 @@ public class ConfigManager implements IManager {
     }
 
     return transferResult;
-  }
-
-  @Override
-  public TSStatus createModel(TCreateModelReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.createModel(req)
-        : status;
-  }
-
-  @Override
-  public TSStatus dropModel(TDropModelReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.dropModel(req)
-        : status;
-  }
-
-  @Override
-  public TShowModelResp showModel(TShowModelReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.showModel(req)
-        : new TShowModelResp(status, Collections.emptyList());
-  }
-
-  @Override
-  public TShowTrailResp showTrail(TShowTrailReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.showTrail(req)
-        : new TShowTrailResp(status, Collections.emptyList());
-  }
-
-  @Override
-  public TSStatus updateModelInfo(TUpdateModelInfoReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.updateModelInfo(req)
-        : status;
-  }
-
-  @Override
-  public TSStatus updateModelState(TUpdateModelStateReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.updateModelState(req)
-        : status;
   }
 
   @Override

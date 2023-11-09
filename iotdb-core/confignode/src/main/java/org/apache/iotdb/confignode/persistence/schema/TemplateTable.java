@@ -25,8 +25,8 @@ import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateExceptio
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -221,13 +221,18 @@ public class TemplateTable {
     }
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
     templateReadWriteLock.writeLock().lock();
-    try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
-        BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
-      serialize(outputStream);
-      outputStream.flush();
-      fileOutputStream.flush();
-      outputStream.close();
-      fileOutputStream.close();
+
+    try {
+      FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
+      BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
+      try {
+        serialize(outputStream);
+      } finally {
+        outputStream.flush();
+        fileOutputStream.getFD().sync();
+        outputStream.close();
+      }
+
       return tmpFile.renameTo(snapshotFile);
     } finally {
       for (int retry = 0; retry < 5; retry++) {

@@ -33,9 +33,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -72,40 +72,48 @@ public class ShowThrottleQuotaTask implements IConfigTask {
         for (Map.Entry<ThrottleType, TTimedQuota> entry :
             throttleQuota.getValue().getThrottleLimit().entrySet()) {
           builder.getTimeColumnBuilder().writeLong(0L);
-          builder.getColumnBuilder(0).writeBinary(Binary.valueOf(throttleQuota.getKey()));
-          builder.getColumnBuilder(1).writeBinary(Binary.valueOf(toThrottleType(entry.getKey())));
+          builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(throttleQuota.getKey()));
+          builder
+              .getColumnBuilder(1)
+              .writeBinary(BytesUtils.valueOf(toThrottleType(entry.getKey())));
           builder
               .getColumnBuilder(2)
-              .writeBinary(Binary.valueOf(toQuotaLimit(entry.getKey(), entry.getValue())));
-          builder.getColumnBuilder(3).writeBinary(Binary.valueOf(toRequestType(entry.getKey())));
+              .writeBinary(BytesUtils.valueOf(toQuotaLimit(entry.getKey(), entry.getValue())));
+          builder
+              .getColumnBuilder(3)
+              .writeBinary(BytesUtils.valueOf(toRequestType(entry.getKey())));
           builder.declarePosition();
         }
         if (throttleQuota.getValue().getMemLimit() != 0) {
           builder.getTimeColumnBuilder().writeLong(0L);
-          builder.getColumnBuilder(0).writeBinary(Binary.valueOf(throttleQuota.getKey()));
+          builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(throttleQuota.getKey()));
           builder
               .getColumnBuilder(1)
-              .writeBinary(Binary.valueOf(IoTDBConstant.MEMORY_SIZE_PER_READ));
+              .writeBinary(BytesUtils.valueOf(IoTDBConstant.MEMORY_SIZE_PER_READ));
           builder
               .getColumnBuilder(2)
               .writeBinary(
-                  Binary.valueOf(
+                  BytesUtils.valueOf(
                       throttleQuota.getValue().getMemLimit() / IoTDBConstant.KB / IoTDBConstant.KB
                           + IoTDBConstant.MB_UNIT));
-          builder.getColumnBuilder(3).writeBinary(Binary.valueOf(IoTDBConstant.REQUEST_TYPE_READ));
+          builder
+              .getColumnBuilder(3)
+              .writeBinary(BytesUtils.valueOf(IoTDBConstant.REQUEST_TYPE_READ));
           builder.declarePosition();
         }
 
         if (throttleQuota.getValue().getCpuLimit() != 0) {
           builder.getTimeColumnBuilder().writeLong(0L);
-          builder.getColumnBuilder(0).writeBinary(Binary.valueOf(throttleQuota.getKey()));
+          builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(throttleQuota.getKey()));
           builder
               .getColumnBuilder(1)
-              .writeBinary(Binary.valueOf(IoTDBConstant.CPU_NUMBER_PER_READ));
+              .writeBinary(BytesUtils.valueOf(IoTDBConstant.CPU_NUMBER_PER_READ));
           builder
               .getColumnBuilder(2)
-              .writeBinary(Binary.valueOf(throttleQuota.getValue().getCpuLimit() + ""));
-          builder.getColumnBuilder(3).writeBinary(Binary.valueOf(IoTDBConstant.REQUEST_TYPE_READ));
+              .writeBinary(BytesUtils.valueOf(throttleQuota.getValue().getCpuLimit() + ""));
+          builder
+              .getColumnBuilder(3)
+              .writeBinary(BytesUtils.valueOf(IoTDBConstant.REQUEST_TYPE_READ));
           builder.declarePosition();
         }
       }

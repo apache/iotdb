@@ -46,11 +46,15 @@ public abstract class PipeSubtask
   // Used for identifying the subtask
   protected final String taskID;
 
+  // Record these variables to provide corresponding value to tag key of monitoring metrics
+  protected long creationTime;
+
   // For thread pool to execute subtasks
   protected ListeningExecutorService subtaskWorkerThreadPoolExecutor;
 
   // For controlling the subtask execution
   protected final AtomicBoolean shouldStopSubmittingSelf = new AtomicBoolean(true);
+  protected final AtomicBoolean isClosed = new AtomicBoolean(false);
   protected PipeSubtaskScheduler subtaskScheduler;
 
   // For fail-over
@@ -58,9 +62,10 @@ public abstract class PipeSubtask
   protected final AtomicInteger retryCount = new AtomicInteger(0);
   protected Event lastEvent;
 
-  protected PipeSubtask(String taskID) {
+  protected PipeSubtask(String taskID, long creationTime) {
     super();
     this.taskID = taskID;
+    this.creationTime = creationTime;
   }
 
   public abstract void bindExecutors(
@@ -72,19 +77,27 @@ public abstract class PipeSubtask
   public Boolean call() throws Exception {
     boolean hasAtLeastOneEventProcessed = false;
 
-    // If the scheduler allows to schedule, then try to consume an event
-    while (subtaskScheduler.schedule()) {
-      // If the event is consumed successfully, then continue to consume the next event
-      // otherwise, stop consuming
-      if (!executeOnce()) {
-        break;
+    try {
+      // If the scheduler allows to schedule, then try to consume an event
+      while (subtaskScheduler.schedule()) {
+        // If the event is consumed successfully, then continue to consume the next event
+        // otherwise, stop consuming
+        if (!executeOnce()) {
+          break;
+        }
+        hasAtLeastOneEventProcessed = true;
       }
-      hasAtLeastOneEventProcessed = true;
+    } finally {
+      // Reset the scheduler to make sure that the scheduler can schedule again
+      subtaskScheduler.reset();
     }
-    // Reset the scheduler to make sure that the scheduler can schedule again
-    subtaskScheduler.reset();
 
     return hasAtLeastOneEventProcessed;
+  }
+
+  /** Should be synchronized with {@link PipeSubtask#releaseLastEvent} */
+  protected synchronized void setLastEvent(Event event) {
+    lastEvent = event;
   }
 
   /**
@@ -104,6 +117,12 @@ public abstract class PipeSubtask
 
   @Override
   public void onFailure(@NotNull Throwable throwable) {
+    if (isClosed.get()) {
+      LOGGER.info("onFailure in pipe subtask, ignored because pipe is dropped.");
+      releaseLastEvent(false);
+      return;
+    }
+
     if (retryCount.get() == 0) {
       LOGGER.warn(
           "Failed to execute subtask {}({}), because of {}. Will retry for {} times.",
@@ -122,6 +141,16 @@ public abstract class PipeSubtask
           this.getClass().getSimpleName(),
           retryCount.get(),
           MAX_RETRY_TIMES);
+      try {
+        Thread.sleep(1000L * retryCount.get());
+      } catch (InterruptedException e) {
+        LOGGER.warn(
+            "Interrupted when retrying to execute subtask {}({})",
+            taskID,
+            this.getClass().getSimpleName());
+        Thread.currentThread().interrupt();
+      }
+
       submitSelf();
     } else {
       final String errorMessage =
@@ -191,15 +220,18 @@ public abstract class PipeSubtask
     return !shouldStopSubmittingSelf.get();
   }
 
+  // synchronized for close() and releaseLastEvent(). make sure that the lastEvent
+  // will not be updated after pipeProcessor.close() to avoid resource leak
+  // because of the lastEvent is not released.
   @Override
-  public synchronized void close() {
-    releaseLastEvent();
+  public void close() {
+    releaseLastEvent(false);
   }
 
-  protected void releaseLastEvent() {
+  protected synchronized void releaseLastEvent(boolean shouldReport) {
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName());
+        ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName(), shouldReport);
       }
       lastEvent = null;
     }
@@ -207,6 +239,10 @@ public abstract class PipeSubtask
 
   public String getTaskID() {
     return taskID;
+  }
+
+  public long getCreationTime() {
+    return creationTime;
   }
 
   public int getRetryCount() {

@@ -41,8 +41,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -152,6 +152,7 @@ public class OffsetOperatorTest {
                   new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator()),
                   new SingleColumnMerger(new InputLocation(1, 0), new AscTimeComparator())),
               new AscTimeComparator());
+      timeJoinOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       OffsetOperator offsetOperator =
           new OffsetOperator(driverContext.getOperatorContexts().get(3), 100, timeJoinOperator);
@@ -257,6 +258,7 @@ public class OffsetOperatorTest {
                   new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator()),
                   new SingleColumnMerger(new InputLocation(1, 0), new AscTimeComparator())),
               new AscTimeComparator());
+      timeJoinOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       OffsetOperator offsetOperator =
           new OffsetOperator(driverContext.getOperatorContexts().get(3), 0, timeJoinOperator);
@@ -359,6 +361,7 @@ public class OffsetOperatorTest {
                   new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator()),
                   new SingleColumnMerger(new InputLocation(1, 0), new AscTimeComparator())),
               new AscTimeComparator());
+      timeJoinOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       OffsetOperator offsetOperator =
           new OffsetOperator(driverContext.getOperatorContexts().get(3), 500, timeJoinOperator);
@@ -445,6 +448,7 @@ public class OffsetOperatorTest {
                   new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator()),
                   new SingleColumnMerger(new InputLocation(1, 0), new AscTimeComparator())),
               new AscTimeComparator());
+      timeJoinOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       OffsetOperator offsetOperator =
           new OffsetOperator(

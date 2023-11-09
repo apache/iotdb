@@ -34,11 +34,7 @@ import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
-import org.apache.iotdb.it.env.cluster.config.MppClusterConfig;
-import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
-import org.apache.iotdb.it.env.cluster.config.MppConfigNodeConfig;
-import org.apache.iotdb.it.env.cluster.config.MppDataNodeConfig;
-import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
+import org.apache.iotdb.it.env.cluster.config.*;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -46,11 +42,7 @@ import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 import org.apache.iotdb.itbase.env.ClusterConfig;
-import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
-import org.apache.iotdb.itbase.runtime.NodeConnection;
-import org.apache.iotdb.itbase.runtime.ParallelRequestDelegate;
-import org.apache.iotdb.itbase.runtime.RequestDelegate;
-import org.apache.iotdb.itbase.runtime.SerialRequestDelegate;
+import org.apache.iotdb.itbase.runtime.*;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
@@ -67,23 +59,14 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.NODE_NETWORK_TIMEOUT_MS;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.NODE_START_TIMEOUT;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PROBE_TIMEOUT_MS;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_LIB_PATH;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_PATH;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.*;
 import static org.apache.iotdb.jdbc.Config.VERSION;
-import static org.junit.Assert.fail;
 
 public abstract class AbstractEnv implements BaseEnv {
   private static final Logger logger = IoTDBTestLogger.logger;
@@ -94,6 +77,7 @@ public abstract class AbstractEnv implements BaseEnv {
   protected String testMethodName = null;
   protected int index = 0;
   protected long startTime;
+  protected int testWorkingRetryCount = 30;
 
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
@@ -120,7 +104,40 @@ public abstract class AbstractEnv implements BaseEnv {
     return clusterConfig;
   }
 
+  @Override
+  public List<String> getMetricPrometheusReporterContents() {
+    List<String> result = new ArrayList<>();
+    // get all report content of confignodes
+    for (ConfigNodeWrapper configNode : this.configNodeWrapperList) {
+      String configNodeMetricContent =
+          getUrlContent(
+              Config.IOTDB_HTTP_URL_PREFIX
+                  + configNode.getIp()
+                  + ":"
+                  + configNode.getMetricPort()
+                  + "/metrics");
+      result.add(configNodeMetricContent);
+    }
+    // get all report content of datanodes
+    for (DataNodeWrapper dataNode : this.dataNodeWrapperList) {
+      String dataNodeMetricContent =
+          getUrlContent(
+              Config.IOTDB_HTTP_URL_PREFIX
+                  + dataNode.getIp()
+                  + ":"
+                  + dataNode.getMetricPort()
+                  + "/metrics");
+      result.add(dataNodeMetricContent);
+    }
+    return result;
+  }
+
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
+    initEnvironment(configNodesNum, dataNodesNum, 30);
+  }
+
+  protected void initEnvironment(int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
+    this.testWorkingRetryCount = testWorkingRetryCount;
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
 
@@ -147,7 +164,7 @@ public abstract class AbstractEnv implements BaseEnv {
         (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
     seedConfigNodeWrapper.createLogDir();
     seedConfigNodeWrapper.start();
-    String targetConfigNode = seedConfigNodeWrapper.getIpAndPortString();
+    String seedConfigNode = seedConfigNodeWrapper.getIpAndPortString();
     this.configNodeWrapperList.add(seedConfigNodeWrapper);
 
     // Check if the Seed-ConfigNode started successfully
@@ -165,7 +182,7 @@ public abstract class AbstractEnv implements BaseEnv {
       ConfigNodeWrapper configNodeWrapper =
           new ConfigNodeWrapper(
               false,
-              targetConfigNode,
+              seedConfigNode,
               testClassName,
               testMethodName,
               EnvUtils.searchAvailablePorts(),
@@ -190,7 +207,7 @@ public abstract class AbstractEnv implements BaseEnv {
       configNodesDelegate.requestAll();
     } catch (SQLException e) {
       logger.error("Start configNodes failed", e);
-      fail();
+      throw new AssertionError();
     }
 
     List<String> dataNodeEndpoints = new ArrayList<>();
@@ -199,7 +216,7 @@ public abstract class AbstractEnv implements BaseEnv {
     for (int i = 0; i < dataNodesNum; i++) {
       DataNodeWrapper dataNodeWrapper =
           new DataNodeWrapper(
-              targetConfigNode,
+              seedConfigNode,
               testClassName,
               testMethodName,
               EnvUtils.searchAvailablePorts(),
@@ -225,10 +242,10 @@ public abstract class AbstractEnv implements BaseEnv {
       dataNodesDelegate.requestAll();
     } catch (SQLException e) {
       logger.error("Start dataNodes failed", e);
-      fail();
+      throw new AssertionError();
     }
 
-    testWorking();
+    testWorkingNoUnknown();
   }
 
   public String getTestClassName() {
@@ -242,7 +259,26 @@ public abstract class AbstractEnv implements BaseEnv {
     return "UNKNOWN-IT";
   }
 
-  public void testWorking() {
+  private Map<String, Integer> countNodeStatus(Map<Integer, String> nodeStatus) {
+    Map<String, Integer> result = new HashMap<>();
+    nodeStatus.values().forEach(status -> result.put(status, result.getOrDefault(status, 0) + 1));
+    return result;
+  }
+
+  public void testWorkingNoUnknown() {
+    testWorking(nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals));
+  }
+
+  public void testWorkingOneUnknownOtherRunning() {
+    testWorking(
+        nodeStatus -> {
+          Map<String, Integer> count = countNodeStatus(nodeStatus);
+          return count.getOrDefault("Unknown", 0) == 1
+              && count.getOrDefault("Running", 0) == nodeStatus.size() - 1;
+        });
+  }
+
+  public void testWorking(Predicate<Map<Integer, String>> statusCheck) {
     logger.info("Testing DataNode connection...");
     List<String> endpoints =
         dataNodeWrapperList.stream()
@@ -255,7 +291,7 @@ public abstract class AbstractEnv implements BaseEnv {
       testDelegate.addRequest(
           () -> {
             Exception lastException = null;
-            for (int i = 0; i < 30; i++) {
+            for (int i = 0; i < testWorkingRetryCount; i++) {
               try (Connection ignored = getConnection(dataNodeEndpoint, PROBE_TIMEOUT_MS)) {
                 logger.info("Successfully connecting to DataNode: {}.", dataNodeEndpoint);
                 return null;
@@ -271,16 +307,17 @@ public abstract class AbstractEnv implements BaseEnv {
       long startTime = System.currentTimeMillis();
       testDelegate.requestAll();
       if (!configNodeWrapperList.isEmpty()) {
-        checkNodeHeartbeat();
+        checkNodeHeartbeat(statusCheck);
       }
       logger.info("Start cluster costs: {}s", (System.currentTimeMillis() - startTime) / 1000.0);
     } catch (Exception e) {
       logger.error("exception in testWorking of ClusterID, message: {}", e.getMessage(), e);
-      fail("After 30 times retry, the cluster can't work!");
+      throw new AssertionError(
+          String.format("After %d times retry, the cluster can't work!", testWorkingRetryCount));
     }
   }
 
-  private void checkNodeHeartbeat() throws Exception {
+  private void checkNodeHeartbeat(Predicate<Map<Integer, String>> statusCheck) throws Exception {
     logger.info("Testing cluster environment...");
     TShowClusterResp showClusterResp;
     Exception lastException = null;
@@ -305,12 +342,7 @@ public abstract class AbstractEnv implements BaseEnv {
         // Check the status of nodes
         if (flag) {
           Map<Integer, String> nodeStatus = showClusterResp.getNodeStatus();
-          for (String status : nodeStatus.values()) {
-            if (NodeStatus.Unknown.getStatus().equals(status)) {
-              flag = false;
-              break;
-            }
-          }
+          flag = statusCheck.test(nodeStatus);
         }
 
         if (flag) {
@@ -326,6 +358,7 @@ public abstract class AbstractEnv implements BaseEnv {
     if (lastException != null) {
       throw lastException;
     }
+    throw new Exception("Check not pass");
   }
 
   @Override
@@ -388,6 +421,16 @@ public abstract class AbstractEnv implements BaseEnv {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     Session session = new Session(dataNode.getIp(), dataNode.getPort());
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISession getSessionConnection(String userName, String password)
+      throws IoTDBConnectionException {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    Session session = new Session(dataNode.getIp(), dataNode.getPort(), userName, password);
     session.open();
     return session;
   }
@@ -568,6 +611,24 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public IConfigNodeRPCService.Iface getConfigNodeConnection(int index) throws Exception {
+    Exception lastException = null;
+    ConfigNodeWrapper configNodeWrapper = configNodeWrapperList.get(index);
+    for (int i = 0; i < 30; i++) {
+      try {
+        return clientManager.borrowClient(
+            new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()));
+      } catch (Exception e) {
+        lastException = e;
+      }
+      // Sleep 1s before next retry
+      TimeUnit.SECONDS.sleep(1);
+    }
+    throw new IOException(
+        "Failed to get connection to this ConfigNode. Last error: " + lastException);
+  }
+
+  @Override
   public int getLeaderConfigNodeIndex() throws IOException, InterruptedException {
     Exception lastException = null;
     ConfigNodeWrapper lastErrorNode = null;
@@ -699,12 +760,12 @@ public abstract class AbstractEnv implements BaseEnv {
       configNodeDelegate.requestAll();
     } catch (SQLException e) {
       logger.error("Start configNode failed", e);
-      fail();
+      throw new AssertionError();
     }
 
     if (isNeedVerify) {
       // Test whether register success
-      testWorking();
+      testWorkingNoUnknown();
     }
   }
 
@@ -724,12 +785,12 @@ public abstract class AbstractEnv implements BaseEnv {
       dataNodesDelegate.requestAll();
     } catch (SQLException e) {
       logger.error("Start dataNodes failed", e);
-      fail();
+      throw new AssertionError();
     }
 
     if (isNeedVerify) {
       // Test whether register success
-      testWorking();
+      testWorkingNoUnknown();
     }
   }
 

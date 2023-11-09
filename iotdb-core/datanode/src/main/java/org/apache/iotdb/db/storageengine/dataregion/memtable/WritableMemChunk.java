@@ -18,10 +18,14 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
@@ -43,6 +47,8 @@ public class WritableMemChunk implements IWritableMemChunk {
   private TVList list;
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
   private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunk.class);
+
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   public WritableMemChunk(IMeasurementSchema schema) {
     this.schema = schema;
@@ -323,8 +329,16 @@ public class WritableMemChunk implements IWritableMemChunk {
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 
+      TSDataType tsDataType = schema.getType();
+
       // skip duplicated data
       if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
+        long recordSize =
+            MemUtils.getRecordSize(
+                tsDataType,
+                tsDataType == TSDataType.TEXT ? list.getBinary(sortedRowIndex) : null,
+                CONFIG.isEnableMemControl());
+        CompressionRatio.decreaseDuplicatedMemorySize(recordSize);
         continue;
       }
 
@@ -333,7 +347,7 @@ public class WritableMemChunk implements IWritableMemChunk {
         chunkWriterImpl.setLastPoint(true);
       }
 
-      switch (schema.getType()) {
+      switch (tsDataType) {
         case BOOLEAN:
           chunkWriterImpl.write(time, list.getBoolean(sortedRowIndex));
           break;
@@ -353,7 +367,7 @@ public class WritableMemChunk implements IWritableMemChunk {
           chunkWriterImpl.write(time, list.getBinary(sortedRowIndex));
           break;
         default:
-          LOGGER.error("WritableMemChunk does not support data type: {}", schema.getType());
+          LOGGER.error("WritableMemChunk does not support data type: {}", tsDataType);
           break;
       }
     }

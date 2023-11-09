@@ -22,6 +22,25 @@
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%
 
+set PATH="%JAVA_HOME%\bin\";%PATH%
+set "FULL_VERSION="
+set "MAJOR_VERSION="
+set "MINOR_VERSION="
+
+
+for /f tokens^=2-5^ delims^=.-_+^" %%j in ('java -fullversion 2^>^&1') do (
+	set "FULL_VERSION=%%j-%%k-%%l-%%m"
+	IF "%%j" == "1" (
+	    set "MAJOR_VERSION=%%k"
+	    set "MINOR_VERSION=%%l"
+	) else (
+	    set "MAJOR_VERSION=%%j"
+	    set "MINOR_VERSION=%%k"
+	)
+)
+
+set JAVA_VERSION=%MAJOR_VERSION%
+
 if "%OS%" == "Windows_NT" setlocal
 
 pushd %~dp0..
@@ -36,10 +55,18 @@ if NOT DEFINED JAVA_HOME goto :err
 set JAVA_OPTS=-ea^
  -DIOTDB_HOME="%IOTDB_HOME%"
 
-REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
-if EXIST %IOTDB_HOME%\lib (set CLASSPATH=%CLASSPATH%;"%IOTDB_HOME%\lib\*") else set CLASSPATH=%CLASSPATH%;"%IOTDB_HOME%\..\lib\*"
+@REM ***** CLASSPATH library setting *****
+@REM Ensure that any user defined CLASSPATH variables are not used on startup
+if EXIST %IOTDB_HOME%\lib (set CLASSPATH="%IOTDB_HOME%\lib\*") else set CLASSPATH="%IOTDB_HOME%\..\lib\*"
+goto okClasspath
+
+:append
+set CLASSPATH=%CLASSPATH%;%1
+
+goto :eof
 
 REM -----------------------------------------------------------------------------
+:okClasspath
 set PARAMETERS=%*
 
 @REM if "%PARAMETERS%" == "" set PARAMETERS=-h 127.0.0.1 -p 6667 -u root -pw root
@@ -58,7 +85,14 @@ echo %PARAMETERS% | findstr /c:"-h ">nul && (set PARAMETERS=%PARAMETERS%) || (se
 
 echo %PARAMETERS%
 
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %PARAMETERS%
+@REM Add args for Java 11 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
+IF "%JAVA_VERSION%" == "8" (
+    set ILLEGAL_ACCESS_PARAMS=
+) ELSE (
+    set ILLEGAL_ACCESS_PARAMS=--add-opens=java.base/java.lang=ALL-UNNAMED
+)
+
+java %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %PARAMETERS%
 set ret_code=%ERRORLEVEL%
 goto finally
 

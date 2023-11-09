@@ -168,7 +168,9 @@ public class DataRegionConsensusImpl {
                                     .build())
                             .setImpl(
                                 RatisConfig.Impl.newBuilder()
-                                    .setTriggerSnapshotFileSize(CONF.getDataRatisLogMax())
+                                    .setRaftLogSizeMaxThreshold(CONF.getDataRatisLogMax())
+                                    .setForceSnapshotInterval(
+                                        CONF.getDataRatisPeriodicSnapshotInterval())
                                     .build())
                             .setLeaderLogAppender(
                                 RatisConfig.LeaderLogAppender.newBuilder()

@@ -21,10 +21,11 @@ package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 
 import java.util.concurrent.TimeUnit;
 
-public class DoNothingTimer implements Timer, DoNothingMetric {
+public class DoNothingTimer extends AbstractMetricMBean implements Timer, DoNothingMetric {
   @Override
   public void update(long duration, TimeUnit unit) {
     // do nothing

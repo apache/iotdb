@@ -74,6 +74,7 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -163,8 +164,10 @@ public class PartitionInfo implements SnapshotProcessor {
 
     plan.getRegionGroupMap()
         .forEach(
-            (storageGroup, regionReplicaSets) -> {
-              databasePartitionTables.get(storageGroup).createRegionGroups(regionReplicaSets);
+            (database, regionReplicaSets) -> {
+              databasePartitionTables
+                  .get(database)
+                  .createRegionGroups(regionReplicaSets, plan.getCreateTime());
               regionReplicaSets.forEach(
                   regionReplicaSet ->
                       maxRegionId.set(
@@ -849,32 +852,36 @@ public class PartitionInfo implements SnapshotProcessor {
     // snapshot operation.
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
-    try (BufferedOutputStream fileOutputStream =
-            new BufferedOutputStream(
-                Files.newOutputStream(tmpFile.toPath()), PARTITION_TABLE_BUFFER_SIZE);
-        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
+    try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
+        BufferedOutputStream bufferedOutputStream =
+            new BufferedOutputStream(fileOutputStream, PARTITION_TABLE_BUFFER_SIZE);
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(bufferedOutputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
       // serialize nextRegionGroupId
-      ReadWriteIOUtils.write(nextRegionGroupId.get(), fileOutputStream);
+      ReadWriteIOUtils.write(nextRegionGroupId.get(), bufferedOutputStream);
 
       // serialize StorageGroupPartitionTable
-      ReadWriteIOUtils.write(databasePartitionTables.size(), fileOutputStream);
+      ReadWriteIOUtils.write(databasePartitionTables.size(), bufferedOutputStream);
       for (Map.Entry<String, DatabasePartitionTable> storageGroupPartitionTableEntry :
           databasePartitionTables.entrySet()) {
-        ReadWriteIOUtils.write(storageGroupPartitionTableEntry.getKey(), fileOutputStream);
-        storageGroupPartitionTableEntry.getValue().serialize(fileOutputStream, protocol);
+        ReadWriteIOUtils.write(storageGroupPartitionTableEntry.getKey(), bufferedOutputStream);
+        storageGroupPartitionTableEntry.getValue().serialize(bufferedOutputStream, protocol);
       }
 
       // serialize regionCleanList
-      ReadWriteIOUtils.write(regionMaintainTaskList.size(), fileOutputStream);
+      ReadWriteIOUtils.write(regionMaintainTaskList.size(), bufferedOutputStream);
       for (RegionMaintainTask task : regionMaintainTaskList) {
-        task.serialize(fileOutputStream, protocol);
+        task.serialize(bufferedOutputStream, protocol);
       }
 
       // write to file
-      fileOutputStream.flush();
-      fileOutputStream.close();
+      tioStreamTransport.flush();
+      fileOutputStream.getFD().sync();
+
+      // The tmpFile can be renamed only after the stream is closed
+      tioStreamTransport.close();
+
       // rename file
       return tmpFile.renameTo(snapshotFile);
     } finally {

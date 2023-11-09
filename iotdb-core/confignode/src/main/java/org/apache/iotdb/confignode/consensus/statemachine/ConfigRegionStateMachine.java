@@ -59,8 +59,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /** StateMachine for ConfigRegion. */
-public class ConfigRegionStateMachine
-    implements IStateMachine, IStateMachine.EventApi, IStateMachine.RetryPolicy {
+public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRegionStateMachine.class);
 
@@ -115,7 +114,7 @@ public class ConfigRegionStateMachine
     TSStatus result;
     try {
       result = executor.executeNonQueryPlan(plan);
-    } catch (UnknownPhysicalPlanTypeException | AuthException e) {
+    } catch (UnknownPhysicalPlanTypeException e) {
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
@@ -215,6 +214,8 @@ public class ConfigRegionStateMachine
       configManager.getPartitionManager().stopRegionCleaner();
       configManager.getCQManager().stopCQScheduler();
       configManager.getClusterSchemaManager().clearSchemaQuotaCache();
+      // Remove Metric after leader change
+      configManager.removeMetrics();
     }
   }
 
@@ -232,6 +233,9 @@ public class ConfigRegionStateMachine
     configManager.getProcedureManager().shiftExecutor(true);
     configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
     configManager.getPartitionManager().startRegionCleaner();
+    configManager.checkUserPathPrivilege();
+    // Add Metric after leader ready
+    configManager.addMetrics();
 
     // we do cq recovery async for two reasons:
     // 1. For performance: cq recovery may be time-consuming, we use another thread to do it in
@@ -336,7 +340,7 @@ public class ConfigRegionStateMachine
           ConfigPhysicalPlan nextPlan = logReader.next();
           try {
             executor.executeNonQueryPlan(nextPlan);
-          } catch (UnknownPhysicalPlanTypeException | AuthException e) {
+          } catch (UnknownPhysicalPlanTypeException e) {
             LOGGER.error(e.getMessage());
           }
         }

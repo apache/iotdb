@@ -5,16 +5,14 @@ on:
     branches:
       - master
       - "new_*"
-    paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+    paths:
+      - 'iotdb-connector/grafana-plugin/**'
   pull_request:
     branches:
       - master
       - "new_*"
-    paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+    paths:
+      - 'iotdb-connector/grafana-plugin/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -30,6 +28,11 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: "14.x"
+
+      - name: Setup Go environment
+        uses: actions/setup-go@v3
+        with:
+          go-version: "1.20"
 
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path

@@ -40,6 +40,10 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_IP_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_NODE_URLS_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_PORT_KEY;
 
 public abstract class IoTDBConnector implements PipeConnector {
 
@@ -53,41 +57,72 @@ public abstract class IoTDBConnector implements PipeConnector {
   public void validate(PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
     validator.validate(
-        args -> (boolean) args[0] || ((boolean) args[1] && (boolean) args[2]),
+        args ->
+            (boolean) args[0]
+                || ((boolean) args[1] && (boolean) args[2])
+                || (boolean) args[3]
+                || ((boolean) args[4] && (boolean) args[5]),
         String.format(
-            "Either %s or %s:%s must be specified",
-            CONNECTOR_IOTDB_NODE_URLS_KEY, CONNECTOR_IOTDB_IP_KEY, CONNECTOR_IOTDB_PORT_KEY),
+            "One of %s, %s:%s, %s, %s:%s must be specified",
+            CONNECTOR_IOTDB_NODE_URLS_KEY,
+            CONNECTOR_IOTDB_IP_KEY,
+            CONNECTOR_IOTDB_PORT_KEY,
+            SINK_IOTDB_NODE_URLS_KEY,
+            SINK_IOTDB_IP_KEY,
+            SINK_IOTDB_PORT_KEY),
         parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY),
         parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY),
-        parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY));
+        parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY),
+        parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY),
+        parameters.hasAttribute(SINK_IOTDB_IP_KEY),
+        parameters.hasAttribute(SINK_IOTDB_PORT_KEY));
   }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
+    nodeUrls.clear();
+    nodeUrls.addAll(parseNodeUrls(parameters));
+    LOGGER.info("IoTDBConnector nodeUrls: {}", nodeUrls);
+
+    isTabletBatchModeEnabled =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, SINK_IOTDB_BATCH_MODE_ENABLE_KEY),
+            CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
+    LOGGER.info("IoTDBConnector isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
+  }
+
+  protected Set<TEndPoint> parseNodeUrls(PipeParameters parameters) {
     final Set<TEndPoint> givenNodeUrls = new HashSet<>(nodeUrls);
 
     if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)
         && parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY)) {
       givenNodeUrls.add(
           new TEndPoint(
-              parameters.getString(CONNECTOR_IOTDB_IP_KEY),
-              parameters.getInt(CONNECTOR_IOTDB_PORT_KEY)));
+              parameters.getStringByKeys(CONNECTOR_IOTDB_IP_KEY),
+              parameters.getIntByKeys(CONNECTOR_IOTDB_PORT_KEY)));
+    }
+
+    if (parameters.hasAttribute(SINK_IOTDB_IP_KEY)
+        && parameters.hasAttribute(SINK_IOTDB_PORT_KEY)) {
+      givenNodeUrls.add(
+          new TEndPoint(
+              parameters.getStringByKeys(SINK_IOTDB_IP_KEY),
+              parameters.getIntByKeys(SINK_IOTDB_PORT_KEY)));
     }
 
     if (parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)) {
       givenNodeUrls.addAll(
           SessionUtils.parseSeedNodeUrls(
-              Arrays.asList(parameters.getString(CONNECTOR_IOTDB_NODE_URLS_KEY).split(","))));
+              Arrays.asList(parameters.getStringByKeys(CONNECTOR_IOTDB_NODE_URLS_KEY).split(","))));
     }
 
-    nodeUrls.clear();
-    nodeUrls.addAll(givenNodeUrls);
-    LOGGER.info("IoTDBConnector nodeUrls: {}", nodeUrls);
+    if (parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY)) {
+      givenNodeUrls.addAll(
+          SessionUtils.parseSeedNodeUrls(
+              Arrays.asList(parameters.getStringByKeys(SINK_IOTDB_NODE_URLS_KEY).split(","))));
+    }
 
-    isTabletBatchModeEnabled =
-        parameters.getBooleanOrDefault(
-            CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
-    LOGGER.info("IoTDBConnector isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
+    return givenNodeUrls;
   }
 }

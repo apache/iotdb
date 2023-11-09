@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -55,6 +59,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
+
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
     this.measurementIndexMap = new LinkedHashMap<>();
@@ -352,25 +358,39 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     }
 
     List<TSDataType> dataTypes = list.getTsDataTypes();
+    Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
+
     for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
       for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
         // Pair of Time and Index
-        Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
-        if (Objects.nonNull(timeDuplicateInfo)) {
-          lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
+        if (Objects.nonNull(timeDuplicateInfo)
+            && lastValidPointIndexForTimeDupCheck[columnIndex] == null) {
+          lastValidPointIndexForTimeDupCheck[columnIndex] = new Pair<>(Long.MIN_VALUE, null);
         }
         for (int sortedRowIndex = pageRange.get(pageNum * 2);
             sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
             sortedRowIndex++) {
+          TSDataType tsDataType = dataTypes.get(columnIndex);
 
           // skip time duplicated rows
           long time = list.getTime(sortedRowIndex);
           if (Objects.nonNull(timeDuplicateInfo)) {
             if (!list.isNullValue(list.getValueIndex(sortedRowIndex), columnIndex)) {
-              lastValidPointIndexForTimeDupCheck.left = time;
-              lastValidPointIndexForTimeDupCheck.right = list.getValueIndex(sortedRowIndex);
+              lastValidPointIndexForTimeDupCheck[columnIndex].left = time;
+              lastValidPointIndexForTimeDupCheck[columnIndex].right =
+                  list.getValueIndex(sortedRowIndex);
             }
             if (timeDuplicateInfo[sortedRowIndex]) {
+              if (!list.isNullValue(sortedRowIndex, columnIndex)) {
+                long recordSize =
+                    MemUtils.getRecordSize(
+                        tsDataType,
+                        tsDataType == TSDataType.TEXT
+                            ? list.getBinaryByValueIndex(sortedRowIndex, columnIndex)
+                            : null,
+                        CONFIG.isEnableMemControl());
+                CompressionRatio.decreaseDuplicatedMemorySize(recordSize);
+              }
               continue;
             }
           }
@@ -385,15 +405,15 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           // write(T:3,V:null)
 
           int originRowIndex;
-          if (Objects.nonNull(lastValidPointIndexForTimeDupCheck)
-              && (time == lastValidPointIndexForTimeDupCheck.left)) {
-            originRowIndex = lastValidPointIndexForTimeDupCheck.right;
+          if (Objects.nonNull(lastValidPointIndexForTimeDupCheck[columnIndex])
+              && (time == lastValidPointIndexForTimeDupCheck[columnIndex].left)) {
+            originRowIndex = lastValidPointIndexForTimeDupCheck[columnIndex].right;
           } else {
             originRowIndex = list.getValueIndex(sortedRowIndex);
           }
 
           boolean isNull = list.isNullValue(originRowIndex, columnIndex);
-          switch (dataTypes.get(columnIndex)) {
+          switch (tsDataType) {
             case BOOLEAN:
               alignedChunkWriter.writeByColumn(
                   time, list.getBooleanByValueIndex(originRowIndex, columnIndex), isNull);

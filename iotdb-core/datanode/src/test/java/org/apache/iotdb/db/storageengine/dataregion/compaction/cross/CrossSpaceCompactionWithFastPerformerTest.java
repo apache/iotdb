@@ -60,7 +60,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.fail;
 
@@ -420,14 +419,10 @@ public class CrossSpaceCompactionWithFastPerformerTest {
             AbstractCompactionTask compactionTask =
                 new CrossSpaceCompactionTask(
                     0,
-                    new TsFileManager(
-                        "root.compactionTest",
-                        "0",
-                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
+                    getTsFileManager(),
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles(),
                     new FastCompactionPerformer(true),
-                    new AtomicInteger(0),
                     0,
                     0);
             Assert.assertTrue(compactionTask.start());
@@ -724,14 +719,10 @@ public class CrossSpaceCompactionWithFastPerformerTest {
             AbstractCompactionTask compactionTask =
                 new CrossSpaceCompactionTask(
                     0,
-                    new TsFileManager(
-                        "root.compactionTest",
-                        "0",
-                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
+                    getTsFileManager(),
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles(),
                     new FastCompactionPerformer(true),
-                    new AtomicInteger(0),
                     0,
                     0);
             Assert.assertTrue(compactionTask.start());
@@ -1027,14 +1018,10 @@ public class CrossSpaceCompactionWithFastPerformerTest {
             AbstractCompactionTask compactionTask =
                 new CrossSpaceCompactionTask(
                     0,
-                    new TsFileManager(
-                        "root.compactionTest",
-                        "0",
-                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
+                    getTsFileManager(),
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles(),
                     new FastCompactionPerformer(true),
-                    new AtomicInteger(0),
                     0,
                     0);
             Assert.assertTrue(compactionTask.start());
@@ -1055,5 +1042,16 @@ public class CrossSpaceCompactionWithFastPerformerTest {
         }
       }
     }
+  }
+
+  private TsFileManager getTsFileManager() {
+    TsFileManager tsFileManager =
+        new TsFileManager(
+            "root.compactionTest",
+            "0",
+            "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\");
+    tsFileManager.getOrCreateUnsequenceListByTimePartition(0);
+    tsFileManager.getOrCreateSequenceListByTimePartition(0);
+    return tsFileManager;
   }
 }
