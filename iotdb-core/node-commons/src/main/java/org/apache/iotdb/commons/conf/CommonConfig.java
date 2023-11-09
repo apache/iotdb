@@ -185,6 +185,7 @@ public class CommonConfig {
   private int pipeAirGapReceiverPort = 9780;
 
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
+  private int pipeMaxAllowedPinnedMemTableCount = 50;
 
   private boolean pipeMemoryManagementEnabled = true;
   private long pipeMemoryAllocateRetryIntervalMs = 1000;
@@ -750,6 +751,14 @@ public class CommonConfig {
   public void setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
       int pipeExtractorPendingQueueTsfileLimit) {
     this.pipeMaxAllowedPendingTsFileEpochPerDataRegion = pipeExtractorPendingQueueTsfileLimit;
+  }
+
+  public int getPipeMaxAllowedPinnedMemTableCount() {
+    return pipeMaxAllowedPinnedMemTableCount;
+  }
+
+  public void setPipeMaxAllowedPinnedMemTableCount(int pipeMaxAllowedPinnedMemTableCount) {
+    this.pipeMaxAllowedPinnedMemTableCount = pipeMaxAllowedPinnedMemTableCount;
   }
 
   public boolean getPipeMemoryManagementEnabled() {
