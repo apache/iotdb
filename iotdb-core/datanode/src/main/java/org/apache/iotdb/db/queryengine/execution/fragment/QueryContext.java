@@ -27,23 +27,27 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
 
   /**
-   * The key is the path of a ModificationFile and the value is all Modifications in this file. We
-   * use this field because each call of Modification.getModifications() return a copy of the
-   * Modifications, and we do not want it to create multiple copies within a query.
+   * The key is the path of a ModificationFile and the value is Pair(ifModFileExist,
+   * allModificationsInModFile). We use this field because each call of
+   * Modification.getModifications() return a copy of the Modifications, and we do not want it to
+   * create multiple copies within a query.
    */
-  private final Map<String, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
-      new HashMap<>();
+  private final Map<String, Pair<Boolean, PatternTreeMap<Modification, ModsSerializer>>>
+      fileModCache = new HashMap<>();
 
   protected long queryId;
 
@@ -59,11 +63,11 @@ public class QueryContext {
   public QueryContext() {}
 
   public QueryContext(long queryId) {
-    this(queryId, false, System.currentTimeMillis(), "", 0);
+    this(queryId, false, System.currentTimeMillis(), 0);
   }
 
   /** Every time we generate the queryContext, register it to queryTimeManager. */
-  public QueryContext(long queryId, boolean debug, long startTime, String statement, long timeout) {
+  public QueryContext(long queryId, boolean debug, long startTime, long timeout) {
     this.queryId = queryId;
     this.debug = debug;
     this.startTime = startTime;
@@ -76,18 +80,24 @@ public class QueryContext {
    */
   public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
     // if the mods file does not exist, do not add it to the cache
+    Pair<Boolean, PatternTreeMap<Modification, ModsSerializer>> modPair =
+        fileModCache.get(modFile.getFilePath());
+    if (modPair != null && Boolean.FALSE.equals(modPair.getLeft())) {
+      return Collections.emptyList();
+    }
     if (!modFile.exists()) {
+      fileModCache.put(modFile.getFilePath(), new Pair<>(false, null));
       return Collections.emptyList();
     }
 
     PatternTreeMap<Modification, ModsSerializer> allModifications =
-        fileModCache.get(modFile.getFilePath());
+        fileModCache.get(modFile.getFilePath()).getRight();
     if (allModifications == null) {
       allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
       for (Modification modification : modFile.getModificationsIter()) {
         allModifications.append(modification.getPath(), modification);
       }
-      fileModCache.put(modFile.getFilePath(), allModifications);
+      fileModCache.put(modFile.getFilePath(), new Pair<>(true, allModifications));
     }
     return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
   }
