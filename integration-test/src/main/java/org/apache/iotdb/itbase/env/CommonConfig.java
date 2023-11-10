@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.itbase.env;
 
+import java.util.concurrent.TimeUnit;
+
 /** This interface is used to handle properties in iotdb-common.properties. */
 public interface CommonConfig {
 
@@ -78,6 +80,8 @@ public interface CommonConfig {
 
   CommonConfig setTimestampPrecision(String timestampPrecision);
 
+  TimeUnit getTimestampPrecision();
+
   CommonConfig setTimestampPrecisionCheckEnabled(boolean timestampPrecisionCheckEnabled);
 
   CommonConfig setConfigNodeRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold);
@@ -108,9 +112,9 @@ public interface CommonConfig {
 
   CommonConfig setWriteMemoryProportion(String writeMemoryProportion);
 
-  CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel);
+  CommonConfig setClusterTimeseriesLimitThreshold(long clusterTimeseriesLimitThreshold);
 
-  CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold);
+  CommonConfig setClusterDeviceLimitThreshold(long clusterDeviceLimitThreshold);
 
   CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold);
 

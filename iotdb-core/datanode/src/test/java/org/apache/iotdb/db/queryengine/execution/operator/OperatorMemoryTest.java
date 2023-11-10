@@ -95,6 +95,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.type.BooleanType;
 import org.apache.iotdb.tsfile.read.common.type.LongType;
 import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import com.google.common.collect.Sets;
 import org.junit.Test;
@@ -1041,8 +1042,8 @@ public class OperatorMemoryTest {
           new GroupByTimeParameter(
               0,
               2 * maxTsBlockLineNumber,
-              maxTsBlockLineNumber / 100,
-              maxTsBlockLineNumber / 100,
+              new TimeDuration(0, maxTsBlockLineNumber / 100),
+              new TimeDuration(0, maxTsBlockLineNumber / 100),
               true);
       List<AggregationDescriptor> aggregationDescriptors3 =
           Arrays.asList(
@@ -1079,7 +1080,9 @@ public class OperatorMemoryTest {
           seriesAggregationScanOperator3.calculateRetainedSizeAfterCallingNext());
 
       // case4: with group by, total window num > 1000
-      groupByTimeParameter = new GroupByTimeParameter(0, 2 * maxTsBlockLineNumber, 1, 1, true);
+      groupByTimeParameter =
+          new GroupByTimeParameter(
+              0, 2 * maxTsBlockLineNumber, new TimeDuration(0, 1), new TimeDuration(0, 1), true);
       List<AggregationDescriptor> aggregationDescriptors4 =
           Arrays.asList(
               new AggregationDescriptor(
@@ -1117,7 +1120,9 @@ public class OperatorMemoryTest {
           seriesAggregationScanOperator4.calculateRetainedSizeAfterCallingNext());
 
       // case5: over DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES
-      groupByTimeParameter = new GroupByTimeParameter(0, 2 * maxTsBlockLineNumber, 1, 1, true);
+      groupByTimeParameter =
+          new GroupByTimeParameter(
+              0, 2 * maxTsBlockLineNumber, new TimeDuration(0, 1), new TimeDuration(0, 1), true);
       List<AggregationDescriptor> aggregationDescriptors5 =
           Arrays.asList(
               new AggregationDescriptor(
@@ -1246,7 +1251,8 @@ public class OperatorMemoryTest {
                         true),
                     o.getStep())));
 
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 1000, 10, 10, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 1000, new TimeDuration(0, 10), new TimeDuration(0, 10), true);
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, false);
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
@@ -1318,7 +1324,8 @@ public class OperatorMemoryTest {
                         true),
                     o.getStep())));
 
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 1000, 10, 5, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 1000, new TimeDuration(0, 10), new TimeDuration(0, 5), true);
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, false);
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
@@ -1396,7 +1403,8 @@ public class OperatorMemoryTest {
                         true),
                     o.getStep())));
 
-    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 1000, 10, 10, true);
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 1000, new TimeDuration(0, 10), new TimeDuration(0, 10), true);
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, false);
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(

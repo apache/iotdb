@@ -60,13 +60,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.service.SettleService;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
@@ -423,6 +426,10 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       recoverCompaction();
     } catch (Exception e) {
+      // signal wal recover manager to recover this region's files
+      WALRecoverManager.getInstance()
+          .getAllDataRegionScannedLatch()
+          .countDownWithException(e.getMessage());
       throw new DataRegionException(e);
     }
 
@@ -730,6 +737,10 @@ public class DataRegion implements IDataRegionForQuery {
         } catch (IOException e) {
           logger.error("Fail to close TsFile {} when recovering", tsFileResource.getTsFile(), e);
         }
+        if (!TsFileValidator.getInstance().validateTsFile(tsFileResource)) {
+          tsFileResource.remove();
+          return;
+        }
         updateLastFlushTime(tsFileResource, isSeq);
         tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
         FileMetrics.getInstance()
@@ -845,7 +856,8 @@ public class DataRegion implements IDataRegionForQuery {
   public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
     // reject insertions that are out of ttl
     if (!isAlive(insertRowNode.getTime())) {
-      throw new OutOfTTLException(insertRowNode.getTime(), (DateTimeUtils.currentTime() - dataTTL));
+      throw new OutOfTTLException(
+          insertRowNode.getTime(), (CommonDateTimeUtils.currentTime() - dataTTL));
     }
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject(null);
@@ -926,7 +938,8 @@ public class DataRegion implements IDataRegionForQuery {
                   String.format(
                       "Insertion time [%s] is less than ttl time bound [%s]",
                       DateTimeUtils.convertLongToDate(currTime),
-                      DateTimeUtils.convertLongToDate(DateTimeUtils.currentTime() - dataTTL)));
+                      DateTimeUtils.convertLongToDate(
+                          CommonDateTimeUtils.currentTime() - dataTTL)));
           loc++;
           noFailure = false;
         } else {
@@ -937,7 +950,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (loc == insertTabletNode.getRowCount()) {
         throw new OutOfTTLException(
             insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
-            (DateTimeUtils.currentTime() - dataTTL));
+            (CommonDateTimeUtils.currentTime() - dataTTL));
       }
       // before is first start point
       int before = loc;
@@ -1011,7 +1024,7 @@ public class DataRegion implements IDataRegionForQuery {
    * @return whether the given time falls in ttl
    */
   private boolean isAlive(long time) {
-    return dataTTL == Long.MAX_VALUE || (DateTimeUtils.currentTime() - time) <= dataTTL;
+    return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
   }
 
   /**
@@ -1034,8 +1047,8 @@ public class DataRegion implements IDataRegionForQuery {
       boolean sequence,
       TSStatus[] results,
       long timePartitionId) {
-    // return when start >= end
-    if (start >= end) {
+    // return when start >= end or all measurement failed
+    if (start >= end || insertTabletNode.allMeasurementFailed()) {
       return true;
     }
 
@@ -1101,6 +1114,9 @@ public class DataRegion implements IDataRegionForQuery {
   private void insertToTsFileProcessor(
       InsertRowNode insertRowNode, boolean sequence, long timePartitionId)
       throws WriteProcessException {
+    if (insertRowNode.allMeasurementFailed()) {
+      return;
+    }
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
     if (tsFileProcessor == null) {
       return;
@@ -1513,7 +1529,7 @@ public class DataRegion implements IDataRegionForQuery {
       logger.debug("{}: TTL not set, ignore the check", databaseName + "-" + dataRegionId);
       return;
     }
-    long ttlLowerBound = DateTimeUtils.currentTime() - dataTTL;
+    long ttlLowerBound = CommonDateTimeUtils.currentTime() - dataTTL;
     logger.debug(
         "{}: TTL removing files before {}",
         databaseName + "-" + dataRegionId,
@@ -1764,7 +1780,7 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     long timeLowerBound =
-        dataTTL != Long.MAX_VALUE ? DateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
+        dataTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
     context.setQueryTimeLowerBound(timeLowerBound);
 
     for (TsFileResource tsFileResource : tsFileResources) {
@@ -2109,18 +2125,29 @@ public class DataRegion implements IDataRegionForQuery {
     // sort the time partition from largest to smallest
     timePartitions.sort(Comparator.reverseOrder());
 
+    CompactionScheduleSummary summary = new CompactionScheduleSummary();
     if (IoTDBDescriptor.getInstance().getConfig().isEnableInsertionCrossSpaceCompaction()) {
       trySubmitCount += executeInsertionCompaction(timePartitions);
+      summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
     }
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
     try {
       for (long timePartition : timePartitions) {
-        trySubmitCount += CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
+        trySubmitCount +=
+            CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
       }
     } catch (Throwable e) {
       logger.error("Meet error in compaction schedule.", e);
     }
+    logger.info(
+        "[CompactionScheduler][{}] selected sequence InnerSpaceCompactionTask num is {}, selected unsequence InnerSpaceCompactionTask num is {}, selected CrossSpaceCompactionTask num is {}, selected InsertionCrossSpaceCompactionTask num is {}",
+        dataRegionId,
+        summary.getSubmitSeqInnerSpaceCompactionTaskNum(),
+        summary.getSubmitUnseqInnerSpaceCompactionTaskNum(),
+        summary.getSubmitCrossSpaceCompactionTaskNum(),
+        summary.getSubmitInsertionCrossSpaceCompactionTaskNum());
+    CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(summary);
     return trySubmitCount;
   }
 
@@ -2742,7 +2769,8 @@ public class DataRegion implements IDataRegionForQuery {
                       String.format(
                           "Insertion time [%s] is less than ttl time bound [%s]",
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
-                          DateTimeUtils.convertLongToDate(DateTimeUtils.currentTime() - dataTTL))));
+                          DateTimeUtils.convertLongToDate(
+                              CommonDateTimeUtils.currentTime() - dataTTL))));
           continue;
         }
         // init map

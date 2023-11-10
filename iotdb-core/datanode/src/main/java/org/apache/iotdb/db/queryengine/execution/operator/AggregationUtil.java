@@ -68,7 +68,7 @@ public class AggregationUtil {
       boolean ascending,
       boolean outputPartialTimeWindow) {
     if (groupByTimeParameter == null) {
-      return new SingleTimeWindowIterator(0, Long.MAX_VALUE);
+      return new SingleTimeWindowIterator(Long.MIN_VALUE, Long.MAX_VALUE);
     } else {
       return TimeRangeIteratorFactory.getTimeRangeIterator(
           groupByTimeParameter.getStartTime(),
@@ -76,8 +76,6 @@ public class AggregationUtil {
           groupByTimeParameter.getInterval(),
           groupByTimeParameter.getSlidingStep(),
           ascending,
-          groupByTimeParameter.isIntervalByMonth(),
-          groupByTimeParameter.isSlidingStepByMonth(),
           groupByTimeParameter.isLeftCRightO(),
           outputPartialTimeWindow);
     }

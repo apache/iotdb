@@ -83,6 +83,7 @@ public class WALInsertNodeCache {
             .weigher(
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
                     (position, pair) -> position.getSize())
+            .recordStats()
             .build(new WALInsertNodeCacheLoader());
     PipeWALInsertNodeCacheMetrics.getInstance().register(this, dataRegionId);
   }

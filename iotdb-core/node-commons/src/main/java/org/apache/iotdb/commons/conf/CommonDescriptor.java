@@ -230,6 +230,16 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
+    config.setSeriesLimitThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "cluster_timeseries_limit_threshold",
+                String.valueOf(config.getSeriesLimitThreshold()))));
+    config.setDeviceLimitThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "cluster_device_limit_threshold",
+                String.valueOf(config.getDeviceLimitThreshold()))));
   }
 
   private void loadPipeProps(Properties properties) {
@@ -277,6 +287,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_subtask_executor_pending_queue_max_blocking_time_ms",
                 String.valueOf(config.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs()))));
+    config.setPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_subtask_executor_cron_heartbeat_event_interval_seconds",
+                String.valueOf(config.getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds()))));
 
     config.setPipeExtractorAssignerDisruptorRingBufferSize(
         Integer.parseInt(
@@ -382,6 +397,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_pending_tsfile_epoch_per_data_region",
                 String.valueOf(config.getPipeMaxAllowedPendingTsFileEpochPerDataRegion()))));
+    config.setPipeMaxAllowedPinnedMemTableCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_pinned_memtable_count",
+                String.valueOf(config.getPipeMaxAllowedPinnedMemTableCount()))));
 
     config.setPipeMemoryManagementEnabled(
         Boolean.parseBoolean(

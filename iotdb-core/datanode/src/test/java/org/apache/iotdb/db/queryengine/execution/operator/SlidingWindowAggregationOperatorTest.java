@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.TimeDuration;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
@@ -116,7 +117,7 @@ public class SlidingWindowAggregationOperatorTest {
           Collections.singletonList(Collections.singletonList(new InputLocation(0, 7))));
 
   private final GroupByTimeParameter groupByTimeParameter =
-      new GroupByTimeParameter(0, 300, 100, 50, true);
+      new GroupByTimeParameter(0, 300, new TimeDuration(0, 100), new TimeDuration(0, 50), true);
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
