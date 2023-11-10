@@ -32,10 +32,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
