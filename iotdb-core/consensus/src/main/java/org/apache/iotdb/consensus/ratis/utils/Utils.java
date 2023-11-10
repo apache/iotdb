@@ -48,6 +48,7 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 public class Utils {
@@ -318,5 +319,14 @@ public class Utils {
 
     final TimeDuration clientMaxRetryGap = getMaxRetrySleepTime(config.getClient());
     RaftServerConfigKeys.RetryCache.setExpiryTime(properties, clientMaxRetryGap);
+  }
+
+  public static boolean anyOf(BooleanSupplier... conditions) {
+    for (BooleanSupplier condition : conditions) {
+      if (condition.getAsBoolean()) {
+        return true;
+      }
+    }
+    return false;
   }
 }
