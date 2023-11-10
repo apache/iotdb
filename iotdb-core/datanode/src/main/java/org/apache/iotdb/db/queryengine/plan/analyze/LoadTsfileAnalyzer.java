@@ -154,6 +154,7 @@ public class LoadTsfileAnalyzer {
               i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
         }
       } catch (IllegalArgumentException e) {
+        schemaAutoCreatorAndVerifier.clear();
         LOGGER.warn(
             String.format(
                 "Parse file %s to resource error, this TsFile maybe empty.", tsFile.getPath()),
@@ -161,11 +162,13 @@ public class LoadTsfileAnalyzer {
         throw new SemanticException(
             String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
       } catch (AuthException e) {
+        schemaAutoCreatorAndVerifier.clear();
         Analysis analysis = new Analysis();
         analysis.setFinishQueryAfterAnalyze(true);
         analysis.setFailStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
         return analysis;
       } catch (Exception e) {
+        schemaAutoCreatorAndVerifier.clear();
         LOGGER.warn(String.format("Parse file %s to resource error.", tsFile.getPath()), e);
         throw new SemanticException(
             String.format(
@@ -661,6 +664,7 @@ public class LoadTsfileAnalyzer {
     public void clear() {
       tsfileDevice2IsAligned.clear();
       currentBatchDevice2TimeseriesSchemas.clear();
+      currentBatchTimeseriesCount = 0;
       alreadySetDatabases.clear();
     }
   }
