@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PathPatternNode.VoidSerializer;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -60,10 +59,6 @@ public class PathPatternTree {
 
   public boolean isContainWildcard() {
     return containWildcard;
-  }
-
-  public void setContainWildcard(boolean containWildcard) {
-    this.containWildcard = containWildcard;
   }
 
   public PathPatternNode<Void, VoidSerializer> getRoot() {
@@ -144,12 +139,16 @@ public class PathPatternTree {
       PathPatternNode<Void, VoidSerializer> newNode =
           new PathPatternNode<>(pathNodes[i], VoidSerializer.getInstance());
       curNode.addChild(newNode);
-      if (!containWildcard) {
-        containWildcard = PathPatternUtil.hasWildcard(pathNodes[i]);
-      }
+      processNodeName(pathNodes[i]);
       curNode = newNode;
     }
     curNode.markPathPattern(true);
+  }
+
+  private void processNodeName(String nodeName) {
+    if (!containWildcard) {
+      containWildcard = PathPatternUtil.hasWildcard(nodeName);
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -309,19 +308,16 @@ public class PathPatternTree {
   public void serialize(PublicBAOS outputStream) throws IOException {
     constructTree();
     root.serialize(outputStream);
-    ReadWriteIOUtils.write(containWildcard, outputStream);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
     constructTree();
     root.serialize(stream);
-    ReadWriteIOUtils.write(containWildcard, stream);
   }
 
   public void serialize(ByteBuffer buffer) {
     constructTree();
     root.serialize(buffer);
-    ReadWriteIOUtils.write(containWildcard, buffer);
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -334,11 +330,11 @@ public class PathPatternTree {
   }
 
   public static PathPatternTree deserialize(ByteBuffer buffer) {
-    PathPatternNode<Void, VoidSerializer> root =
-        PathPatternNode.deserializeNode(buffer, VoidSerializer.getInstance());
     PathPatternTree deserializedPatternTree = new PathPatternTree();
+    PathPatternNode<Void, VoidSerializer> root =
+        PathPatternNode.deserializeNode(
+            buffer, VoidSerializer.getInstance(), deserializedPatternTree::processNodeName);
     deserializedPatternTree.setRoot(root);
-    deserializedPatternTree.setContainWildcard(ReadWriteIOUtils.readBool(buffer));
     return deserializedPatternTree;
   }
 
