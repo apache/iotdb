@@ -731,7 +731,7 @@ public class MTreeBelowSGMemoryImpl {
     List<MeasurementPath> result = new LinkedList<>();
     try (MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
-            rootNode, patternTree, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+            rootNode, patternTree, store, SchemaConstant.ALL_MATCH_SCOPE) {
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
             path.setMeasurementAlias(node.getAlias());

@@ -848,7 +848,7 @@ public class MTreeBelowSGCachedImpl {
     List<MeasurementPath> result = new LinkedList<>();
     try (MeasurementCollector<Void, ICachedMNode> collector =
         new MeasurementCollector<Void, ICachedMNode>(
-            rootNode, patternTree, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+            rootNode, patternTree, store, SchemaConstant.ALL_MATCH_SCOPE) {
           protected Void collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
             if (node.isPreDeleted()) {
               return null;

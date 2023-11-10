@@ -31,15 +31,6 @@ public class FAFactory {
   private static final int DFA_CACHE_SIZE = 20;
 
   public IPatternFA constructDFA(IPatternFA.Builder builder) {
-    //        if (builder.getPatternTree() != null) {
-    //          if (builder.getPatternTree().equals(SchemaConstant.ALL_MATCH_SCOPE)) {
-    //            // always return the same instance for root.**
-    //            return SchemaConstant.ALL_MATCH_DFA;
-    //          }
-    //          return new PatternDFA(builder.getPatternTree());
-    //        } else {
-    //          return new PatternDFA(builder.getPathPattern(), builder.isPrefixMatch());
-    //        }
     return dfaCache.get(builder);
   }
 
