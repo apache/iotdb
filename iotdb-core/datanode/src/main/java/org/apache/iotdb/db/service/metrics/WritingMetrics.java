@@ -343,6 +343,9 @@ public class WritingMetrics implements IMetricSet {
       "oldest_mem_table_ram_when_cause_flush";
   public static final String FLUSH_TSFILE_SIZE = "flush_tsfile_size";
 
+  private Histogram flushThreholdHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram rejectThreholdHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
   public void bindDataRegionMetrics() {
     List<DataRegion> allDataRegions = StorageEngine.getInstance().getAllDataRegions();
     List<DataRegionId> allDataRegionIds = StorageEngine.getInstance().getAllDataRegionIds();
@@ -651,6 +654,14 @@ public class WritingMetrics implements IMetricSet {
 
   public void recordWALBufferEntriesCount(long count) {
     entriesCountHistogram.update(count);
+  }
+
+  public void recordFlushThreshold(double flushThreshold) {
+    flushThreholdHistogram.update((long) flushThreshold);
+  }
+
+  public void recordRejectThreshold(double rejectThreshold) {
+    rejectThreholdHistogram.update((long) rejectThreshold);
   }
   // endregion
 

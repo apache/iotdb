@@ -613,7 +613,7 @@ public class IoTDBConfig {
   private boolean chunkBufferPoolEnable = false;
 
   /** Switch of creating schema automatically */
-  private boolean enableAutoCreateSchema = true;
+  private boolean enableAutoCreateSchema = false;
 
   /** register time series as which type when receiving boolean string "true" or "false" */
   private TSDataType booleanStringInferType = TSDataType.BOOLEAN;
