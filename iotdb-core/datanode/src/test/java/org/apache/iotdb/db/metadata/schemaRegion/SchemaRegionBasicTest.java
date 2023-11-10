@@ -145,52 +145,6 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
   }
 
   @Test
-  public void testFetchSchemaPerfomance() throws Exception {
-    System.out.println(testParams.getTestModeName());
-    int deviceNum = 100;
-    int measurementNum = 1;
-    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
-    for (int i = 0; i < deviceNum; i++) {
-      for (int j = 0; j < measurementNum; j++) {
-        schemaRegion.createTimeseries(
-            SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-                new PartialPath("root.sg.d" + i + ".s" + j),
-                TSDataType.BOOLEAN,
-                TSEncoding.PLAIN,
-                CompressionType.SNAPPY,
-                null,
-                null,
-                null,
-                null),
-            -1);
-      }
-    }
-    PathPatternTree patternTree = new PathPatternTree();
-    for (int i = 0; i < deviceNum; i++) {
-      for (int j = 0; j < measurementNum; j++) {
-        patternTree.appendFullPath(new PartialPath("root.sg.d" + i + ".s" + j));
-      }
-    }
-    patternTree.constructTree();
-
-    schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false);
-    schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false);
-
-    long startTime;
-    startTime = System.currentTimeMillis();
-    for (int i = 0; i < 1000; i++) {
-      schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false);
-    }
-    System.out.println(
-        "cost time without optimization: " + (System.currentTimeMillis() - startTime));
-    startTime = System.currentTimeMillis();
-    for (int i = 0; i < 1000; i++) {
-      schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false);
-    }
-    System.out.println("cost time with optimization: " + (System.currentTimeMillis() - startTime));
-  }
-
-  @Test
   public void testCreateAlignedTimeseries() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     schemaRegion.createAlignedTimeSeries(
