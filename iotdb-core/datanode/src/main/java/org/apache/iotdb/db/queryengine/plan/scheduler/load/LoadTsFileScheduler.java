@@ -203,8 +203,8 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
+    final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node);
     try {
-      TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node);
       new TsFileSplitter(
               node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData)
           .splitTsFileByDataPartition();
@@ -225,6 +225,8 @@ public class LoadTsFileScheduler implements IScheduler {
       logger.warn(
           String.format("Parse or send TsFile %s error.", node.getTsFileResource().getTsFile()), e);
       return false;
+    } finally {
+      tsFileDataManager.clear();
     }
     return true;
   }
@@ -507,9 +509,11 @@ public class LoadTsFileScheduler implements IScheduler {
           return false;
         }
       }
-
-      replicaSet2Piece.clear();
       return true;
+    }
+
+    private void clear() {
+      replicaSet2Piece.clear();
     }
   }
 
