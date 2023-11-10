@@ -219,7 +219,11 @@ public class DeleteDatabaseProcedure
     } catch (ConsensusException | TException | IOException e) {
       if (isRollbackSupported(state)) {
         setFailure(
-            new ProcedureException("[DeleteDatabaseProcedure] Delete Database failed " + state));
+            new ProcedureException(
+                "[DeleteDatabaseProcedure] Delete database "
+                    + deleteDatabaseSchema.getName()
+                    + " failed "
+                    + state));
       } else {
         LOG.error(
             "[DeleteDatabaseProcedure] Retriable error trying to delete database {}, state {}",

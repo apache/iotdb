@@ -141,16 +141,16 @@ public class UDTFSample implements UDTF {
           for (Point p : output) {
             switch (dataType) {
               case INT32:
-                Util.putValue(collector, dataType, p.getX().longValue(), p.getY().intValue());
+                collector.putInt(p.getX().longValue(), p.getY().intValue());
                 break;
               case INT64:
-                Util.putValue(collector, dataType, p.getX().longValue(), p.getY().longValue());
+                collector.putLong(p.getX().longValue(), p.getY().longValue());
                 break;
               case FLOAT:
-                Util.putValue(collector, dataType, p.getX().longValue(), p.getY().floatValue());
+                collector.putFloat(p.getX().longValue(), p.getY().floatValue());
                 break;
               case DOUBLE:
-                Util.putValue(collector, dataType, p.getX().longValue(), p.getY().doubleValue());
+                collector.putDouble(p.getX().longValue(), p.getY().doubleValue());
                 break;
               default:
                 throw new NoNumberException();

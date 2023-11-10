@@ -31,8 +31,10 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
@@ -44,6 +46,12 @@ public class QueryContext {
    */
   private final Map<String, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
       new HashMap<>();
+
+  /**
+   * If the resource file has added a variable to represent whether the TsFile has been modified,
+   * this variable can be replaced.
+   */
+  private final Set<String> noExistModeFiles = new HashSet<>();
 
   protected long queryId;
 
@@ -59,11 +67,11 @@ public class QueryContext {
   public QueryContext() {}
 
   public QueryContext(long queryId) {
-    this(queryId, false, System.currentTimeMillis(), "", 0);
+    this(queryId, false, System.currentTimeMillis(), 0);
   }
 
   /** Every time we generate the queryContext, register it to queryTimeManager. */
-  public QueryContext(long queryId, boolean debug, long startTime, String statement, long timeout) {
+  public QueryContext(long queryId, boolean debug, long startTime, long timeout) {
     this.queryId = queryId;
     this.debug = debug;
     this.startTime = startTime;
@@ -76,7 +84,11 @@ public class QueryContext {
    */
   public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
     // if the mods file does not exist, do not add it to the cache
+    if (noExistModeFiles.contains(modFile.getFilePath())) {
+      return Collections.emptyList();
+    }
     if (!modFile.exists()) {
+      noExistModeFiles.add(modFile.getFilePath());
       return Collections.emptyList();
     }
 

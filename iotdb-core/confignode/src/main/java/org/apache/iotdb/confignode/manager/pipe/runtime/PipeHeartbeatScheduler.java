@@ -82,6 +82,12 @@ public class PipeHeartbeatScheduler {
       return;
     }
 
+    if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
+      LOGGER.warn(
+          "PipeTaskCoordinatorLock is held by another thread, skip this round of heartbeat to avoid procedure and rpc accumulation as much as possible");
+      return;
+    }
+
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPipeHeartbeatReq request = new TPipeHeartbeatReq(System.currentTimeMillis());
