@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.path.fa.dfa;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternNode;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
@@ -52,8 +53,10 @@ public class PatternDFA implements IPatternFA {
   public PatternDFA(PartialPath pathPattern, boolean isPrefix) {
     // 1. build transition
     boolean wildcard = false;
+    int cnt = 0;
     AtomicInteger transitionIndex = new AtomicInteger();
     for (String node : pathPattern.getNodes()) {
+      cnt++;
       if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
           || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
         wildcard = true;
@@ -80,7 +83,7 @@ public class PatternDFA implements IPatternFA {
     NFAGraph nfaGraph = new NFAGraph(pathPattern, isPrefix, transitionMap);
 
     // 3. NFA to DFA
-    dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
+    dfaGraph = new DFAGraph(nfaGraph, transitionMap.values(), cnt);
     preciseMatchTransitionCached = new HashMap[dfaGraph.getStateSize()];
     batchMatchTransitionCached = new List[dfaGraph.getStateSize()];
   }
@@ -92,40 +95,50 @@ public class PatternDFA implements IPatternFA {
    */
   public PatternDFA(PathPatternTree prefixOrFullPatternTree) {
     // 1. build transition
-    boolean wildcard = false;
     AtomicInteger transitionIndex = new AtomicInteger();
-    for (PartialPath pathPattern : prefixOrFullPatternTree.getAllPathPatterns()) {
-      for (String node : pathPattern.getNodes()) {
-        if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
-            || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
-          wildcard = true;
-        } else {
-          transitionMap.computeIfAbsent(
-              node,
-              i -> {
-                IFATransition transition =
-                    new DFAPreciseTransition(transitionIndex.getAndIncrement(), node);
-                preciseMatchTransitionList.add(transition);
-                return transition;
-              });
-        }
-      }
-    }
+    AtomicInteger count = new AtomicInteger(0);
+
+    boolean wildcard = initTransitionMap(prefixOrFullPatternTree.getRoot(), transitionIndex, count);
     if (wildcard) {
       IFATransition transition =
           new DFAWildcardTransition(
               transitionIndex.getAndIncrement(), new ArrayList<>(transitionMap.keySet()));
       transitionMap.put(transition.getAcceptEvent(), transition);
       batchMatchTransitionList.add(transition);
+      // build NFA
+      NFAGraph nfaGraph = new NFAGraph(prefixOrFullPatternTree, transitionMap);
+      // NFA to DFA
+      dfaGraph = new DFAGraph(nfaGraph, transitionMap.values(), count.get());
+    } else {
+      dfaGraph = new DFAGraph(prefixOrFullPatternTree, transitionMap, count.get());
     }
-
-    // 2. build NFA
-    NFAGraph nfaGraph = new NFAGraph(prefixOrFullPatternTree, transitionMap);
-
-    // 3. NFA to DFA
-    dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
     preciseMatchTransitionCached = new HashMap[dfaGraph.getStateSize()];
     batchMatchTransitionCached = new List[dfaGraph.getStateSize()];
+  }
+
+  private boolean initTransitionMap(
+      PathPatternNode<Void, PathPatternNode.VoidSerializer> node,
+      AtomicInteger transitionIndex,
+      AtomicInteger count) {
+    count.incrementAndGet();
+    boolean wildcard = true;
+    if (!IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node.getName())
+        && !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node.getName())) {
+      transitionMap.computeIfAbsent(
+          node.getName(),
+          i -> {
+            IFATransition transition =
+                new DFAPreciseTransition(transitionIndex.getAndIncrement(), i);
+            preciseMatchTransitionList.add(transition);
+            return transition;
+          });
+      wildcard = false;
+    }
+    for (PathPatternNode<Void, PathPatternNode.VoidSerializer> child :
+        node.getChildren().values()) {
+      wildcard |= initTransitionMap(child, transitionIndex, count);
+    }
+    return wildcard;
   }
 
   public IFAState getNextState(IFAState currentState, String acceptEvent) {
