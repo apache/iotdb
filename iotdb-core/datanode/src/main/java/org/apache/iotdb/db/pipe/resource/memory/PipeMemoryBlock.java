@@ -133,7 +133,7 @@ public class PipeMemoryBlock implements AutoCloseable {
                   < minMemoryUsage.get()) {
         return false;
       }
-      if (shrinkMethod != null) {
+      if (shrinkMethod.get() != null) {
         long oldMemorySizeInBytes = memoryUsageInBytes.get();
         memoryUsageInBytes.set(
             shrinkMethod.get().apply(memoryUsageInBytes.get(), monitoredObject.get()));
@@ -165,7 +165,7 @@ public class PipeMemoryBlock implements AutoCloseable {
               > PipeMemoryManager.TOTAL_MEMORY_SIZE_IN_BYTES) {
         return false;
       }
-      if (extendMethod != null) {
+      if (extendMethod.get() != null) {
         long oldMemorySizeInBytes = memoryUsageInBytes.get();
         memoryUsageInBytes.set(
             extendMethod.get().apply(memoryUsageInBytes.get(), monitoredObject.get()));
