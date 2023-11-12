@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -1287,14 +1288,18 @@ public class IoTDBConfig {
   }
 
   void reloadSystemMetrics() {
-    ArrayList<String> diskDirs = new ArrayList<>();
-    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
-    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getConsensusDir());
-    diskDirs.addAll(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
-    diskDirs.addAll(Arrays.asList(CommonDescriptor.getInstance().getConfig().getWalDirs()));
-    diskDirs.add(CommonDescriptor.getInstance().getConfig().getSyncDir());
-    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir());
-    SystemMetrics.getInstance().setDiskDirs(diskDirs);
+    // Only enable OS-level metrics, if this is wanted.
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    if (commonConfig.isOsMetricsEnabled()) {
+      ArrayList<String> diskDirs = new ArrayList<>();
+      diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
+      diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getConsensusDir());
+      diskDirs.addAll(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+      diskDirs.addAll(Arrays.asList(CommonDescriptor.getInstance().getConfig().getWalDirs()));
+      diskDirs.add(CommonDescriptor.getInstance().getConfig().getSyncDir());
+      diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir());
+      SystemMetrics.getInstance().setDiskDirs(diskDirs);
+    }
   }
 
   // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same with IOTDB_HOME

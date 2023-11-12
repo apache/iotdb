@@ -67,7 +67,7 @@ public class DataNodeMetricsHelper {
     }
     MetricService.getInstance().addMetricSet(ClientManagerMetrics.getInstance());
     initCpuMetrics();
-    initSystemMetrics();
+    initSystemMetrics(enableOsMetrics);
     MetricService.getInstance().addMetricSet(WritingMetrics.getInstance());
 
     // bind query related metrics
@@ -90,16 +90,20 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(PipeMetrics.getInstance());
   }
 
-  private static void initSystemMetrics() {
-    ArrayList<String> diskDirs = new ArrayList<>();
-    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
-    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getConsensusDir());
-    diskDirs.addAll(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
-    diskDirs.addAll(Arrays.asList(CommonDescriptor.getInstance().getConfig().getWalDirs()));
-    diskDirs.add(CommonDescriptor.getInstance().getConfig().getSyncDir());
-    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir());
-    SystemMetrics.getInstance().setDiskDirs(diskDirs);
-    MetricService.getInstance().addMetricSet(SystemMetrics.getInstance());
+  private static void initSystemMetrics(boolean enableOsMetrics) {
+    // Only enable OS-level metrics, if this is wanted.
+    if (enableOsMetrics) {
+      ArrayList<String> diskDirs = new ArrayList<>();
+      diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
+      diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getConsensusDir());
+      diskDirs.addAll(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+      diskDirs.addAll(Arrays.asList(CommonDescriptor.getInstance().getConfig().getWalDirs()));
+      diskDirs.add(CommonDescriptor.getInstance().getConfig().getSyncDir());
+      diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir());
+      SystemMetrics systemMetrics = SystemMetrics.getInstance();
+      systemMetrics.setDiskDirs(diskDirs);
+      MetricService.getInstance().addMetricSet(systemMetrics);
+    }
   }
 
   private static void initCpuMetrics() {

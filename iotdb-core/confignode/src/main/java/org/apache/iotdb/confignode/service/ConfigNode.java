@@ -276,11 +276,16 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   private void initSystemMetrics() {
-    ArrayList<String> diskDirs = new ArrayList<>();
-    diskDirs.add(CONF.getSystemDir());
-    diskDirs.add(CONF.getConsensusDir());
-    SystemMetrics.getInstance().setDiskDirs(diskDirs);
-    MetricService.getInstance().addMetricSet(SystemMetrics.getInstance());
+    // Only enable OS-level metrics, if this is wanted.
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    if (commonConfig.isOsMetricsEnabled()) {
+      ArrayList<String> diskDirs = new ArrayList<>();
+      diskDirs.add(CONF.getSystemDir());
+      diskDirs.add(CONF.getConsensusDir());
+      SystemMetrics systemMetrics = SystemMetrics.getInstance();
+      systemMetrics.setDiskDirs(diskDirs);
+      MetricService.getInstance().addMetricSet(systemMetrics);
+    }
   }
 
   private void initCpuMetrics() {
