@@ -233,7 +233,7 @@ public class PipeMemoryManager {
 
   // Periodically expand the memory, only expand 1 turn to ensure space
   // for new memory
-  void tryExpandAll() {
+  synchronized void tryExpandAll() {
     pipeMemoryBlocks.forEach(PipeMemoryBlock::extend);
   }
 
