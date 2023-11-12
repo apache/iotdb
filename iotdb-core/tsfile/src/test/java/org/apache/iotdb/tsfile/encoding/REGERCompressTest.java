@@ -9,11 +9,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Objects;
+import java.util.*;
 
 import static java.lang.Math.abs;
+import static org.apache.iotdb.tsfile.encoding.KernelDensityEstimation.calculateKernelDensity;
+import static org.apache.iotdb.tsfile.encoding.KernelDensityEstimation.findMinIndex;
 
 public class REGERCompressTest {
     public static int getBitWith(int num) {
@@ -2431,16 +2431,45 @@ public class REGERCompressTest {
         int[][] ts_block;
         int[][] ts_block_value;
         int[][] ts_block_partition;
+
         if (supply_length == 0) {
+            int max_value = Integer.MIN_VALUE;
+            int min_value = Integer.MAX_VALUE;
+
+//            int[] unique = new int[block_size];
             ts_block = new int[block_size][2];
             ts_block_value = new int[block_size][2];
             ts_block_partition = new int[block_size][2];
             for (int j = 0; j < block_size; j++) {
                 ts_block[j][0] = (data[j + i * block_size][0] - min_time);
                 ts_block[j][1] = data[j + i * block_size][1];
+                if(ts_block[j][1]>max_value){
+                    max_value = ts_block[j][1];
+                }
+                if(ts_block[j][1]<min_value){
+                    min_value = ts_block[j][1];
+                }
                 ts_block_value[j][0] =ts_block[j][0];
                 ts_block_value[j][1] =ts_block[j][1];
             }
+            Map<Integer, Integer> data_map = new HashMap<>();
+//            for(int mv=min_value;mv<=max_value;mv++){
+//                data_map.put(mv,0);
+//            }
+            for (int j = 0; j < block_size; j++) {
+                if(data_map.containsKey(ts_block[j][1])){
+                    int tmp = data_map.get(ts_block[j][1]);
+                    tmp++;
+                    data_map.put(ts_block[j][1],tmp);
+                }else{
+                    data_map.put(ts_block[j][1],1);
+                }
+            }
+//            System.out.println(data_map);
+            double[] kernelDensity = calculateKernelDensity(data_map);
+
+            third_value= findMinIndex(kernelDensity);
+            System.out.println("Minimum point: x=" + (Arrays.toString(third_value)));
         } else {
             ts_block = new int[supply_length][2];
             ts_block_value = new int[supply_length][2];
@@ -2478,29 +2507,32 @@ public class REGERCompressTest {
         ts_block_delta_time = ReorderingTimeSeries(ts_block, time_length,  theta_time, segment_size, k);
 
         int pos_ts_block_partition = 0;
-        for (int[] datum : ts_block) {
-            if (datum[1] > third_value[third_value.length - 1]) {
-                ts_block_partition[pos_ts_block_partition][0] = datum[0];
-                ts_block_partition[pos_ts_block_partition][1] = datum[1];
-                pos_ts_block_partition++;
-            }
-        }
-        for (int third_i = third_value.length - 1; third_i > 0; third_i--) {
+        if(third_value.length>0){
             for (int[] datum : ts_block) {
-                if (datum[1] <= third_value[third_i] && datum[1] > third_value[third_i - 1]) {
+                if (datum[1] > third_value[third_value.length - 1]) {
+                    ts_block_partition[pos_ts_block_partition][0] = datum[0];
+                    ts_block_partition[pos_ts_block_partition][1] = datum[1];
+                    pos_ts_block_partition++;
+                }
+            }
+            for (int third_i = third_value.length - 1; third_i > 0; third_i--) {
+                for (int[] datum : ts_block) {
+                    if (datum[1] <= third_value[third_i] && datum[1] > third_value[third_i - 1]) {
+                        ts_block_partition[pos_ts_block_partition][0] = datum[0];
+                        ts_block_partition[pos_ts_block_partition][1] = datum[1];
+                        pos_ts_block_partition++;
+                    }
+                }
+            }
+            for (int[] datum : ts_block) {
+                if (datum[1] <= third_value[0]) {
                     ts_block_partition[pos_ts_block_partition][0] = datum[0];
                     ts_block_partition[pos_ts_block_partition][1] = datum[1];
                     pos_ts_block_partition++;
                 }
             }
         }
-        for (int[] datum : ts_block) {
-            if (datum[1] <= third_value[0]) {
-                ts_block_partition[pos_ts_block_partition][0] = datum[0];
-                ts_block_partition[pos_ts_block_partition][1] = datum[1];
-                pos_ts_block_partition++;
-            }
-        }
+
 
         ts_block_delta_partition = ReorderingTimeSeries(ts_block_partition, raw_length,  theta, segment_size, k);
 
@@ -2514,21 +2546,6 @@ public class REGERCompressTest {
 
 
         int choose = min3(time_length[0], raw_length[0], reorder_length[0]);
-//        ArrayList<Integer> min_index = new ArrayList<>();
-
-//        if (choose == 0) {
-//            raw_length = time_length;
-//
-//            theta = theta_time;
-//        } else if (choose == 1) {
-//            ts_block = ts_block_partition;
-//        } else {
-//            raw_length = reorder_length;
-//            theta = theta_reorder;
-//
-//        }
-
-
 
         int segment_n = (block_size - 1) / segment_size;
         int[][] bit_width_segments = new int[segment_n][2];
@@ -2671,6 +2688,7 @@ public class REGERCompressTest {
 //                }
 //            } else {
 //                System.out.println("Time");
+//        for (int i = 0; i < 1; i++) {
         for (int i = 0; i < block_num; i++) {
             encode_pos = REGERBlockEncoder(data, i, block_size, 0, third_value, segment_size, k, encode_pos, encoded_result,best_order);
         }
@@ -2917,8 +2935,8 @@ public class REGERCompressTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 //        dataset_block_size.add(256);
 
-    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-//        for (int file_i = 0; file_i < 1; file_i++) {
+//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 0; file_i < 1; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
@@ -3005,6 +3023,7 @@ public class REGERCompressTest {
                         String.valueOf(best_order[2])
                 };
                 writer.writeRecord(record);
+                System.out.println(Arrays.toString(best_order));
                 System.out.println(ratio);
 
 //                break;
