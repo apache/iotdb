@@ -60,7 +60,6 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   // limit in buffer size
   protected final PipeMemoryBlock allocatedMemoryBlock;
-  protected final long maxBatchSizeInBytes;
   protected long bufferSize = 0;
 
   protected PipeTransferBatchReqBuilder(PipeParameters parameters) {
@@ -74,18 +73,40 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
         parameters.getLongOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
             CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE);
-    allocatedMemoryBlock = PipeResourceManager.memory().tryAllocate(requestMaxBatchSizeInBytes);
-    maxBatchSizeInBytes = allocatedMemoryBlock.getMemoryUsageInBytes();
-    if (maxBatchSizeInBytes != requestMaxBatchSizeInBytes) {
+
+    allocatedMemoryBlock =
+        PipeResourceManager.memory()
+            .tryAllocate(requestMaxBatchSizeInBytes)
+            .setShrinkMethod(
+                (aLong, o) -> {
+                  // There is no min size, thus the min memory usage and estimated shrink result
+                  // need not to be set
+                  LOGGER.info("The batch size limit has shrunk to {} from {}", aLong / 2, aLong);
+                  return aLong / 2;
+                })
+            .setExtendMethod(
+                (aLong, o) -> {
+                  // This guaranteed that the memory will not exceed the max size, thus
+                  // the max memory usage and estimated extend result need not to be set
+                  long result = Math.min(aLong * 2, requestMaxBatchSizeInBytes);
+                  LOGGER.info("The batch size limit has expanded to {} from {}", result, aLong);
+                  return result;
+                });
+
+    if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {
       LOGGER.info(
           "PipeTransferBatchReqBuilder: the max batch size is adjusted from {} to {}.",
           requestMaxBatchSizeInBytes,
-          maxBatchSizeInBytes);
+          getMaxBatchSizeInBytes());
     }
   }
 
   public List<TPipeTransferReq> getTPipeTransferReqs() {
     return reqs;
+  }
+
+  protected long getMaxBatchSizeInBytes() {
+    return allocatedMemoryBlock.getMemoryUsageInBytes();
   }
 
   public boolean isEmpty() {

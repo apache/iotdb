@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** This cache is used by {@link WALEntryPosition}. */
 public class WALInsertNodeCache {
@@ -64,25 +65,63 @@ public class WALInsertNodeCache {
 
   // ids of all pinned memTables
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
+  private final AtomicInteger cheatFactor = new AtomicInteger(1);
 
   private volatile boolean hasPipeRunning = false;
 
   private WALInsertNodeCache(Integer dataRegionId) {
+    long requestedAllocateSize =
+        (long)
+            Math.min(
+                2 * CONFIG.getWalFileSizeThresholdInByte(),
+                CONFIG.getAllocateMemoryForPipe() * 0.8 / 5);
     allocatedMemoryBlock =
         PipeResourceManager.memory()
-            .tryAllocate(
-                (long)
-                    Math.min(
-                        2 * CONFIG.getWalFileSizeThresholdInByte(),
-                        CONFIG.getAllocateMemoryForPipe() * 0.8 / 5));
+            .tryAllocate(requestedAllocateSize)
+            .setMonitoredObject(cheatFactor)
+            .setShrinkMethod(
+                (aLong, cheat) -> {
+                  ((AtomicInteger) cheat).set(((AtomicInteger) cheat).get() * 2);
+                  LOGGER.info(
+                      "The wal insertNode cache of dataRegion {} has shrunk to {} from {}",
+                      dataRegionId,
+                      aLong / 2,
+                      aLong);
+                  return aLong / 2;
+                })
+            .setExtendMethod(
+                (aLong, cheat) -> {
+                  if (aLong == requestedAllocateSize * 2) {
+                    // Do not print log since this is already the max size
+                    return aLong;
+                  }
+
+                  // This guaranteed that the memory will not exceed the max size, thus
+                  // the max memory usage and estimated extend result need not to be set
+                  long newMemory = Math.min(aLong * 2, requestedAllocateSize * 2);
+                  ((AtomicInteger) cheat)
+                      .set((int) (((AtomicInteger) cheat).get() / (newMemory / aLong)));
+                  LOGGER.info(
+                      "The wal insertNode cache of dataRegion {} has expanded to {} from {}",
+                      dataRegionId,
+                      aLong * 2,
+                      aLong);
+                  return newMemory;
+                });
     isBatchLoadEnabled =
         allocatedMemoryBlock.getMemoryUsageInBytes() >= CONFIG.getWalFileSizeThresholdInByte();
     lruCache =
         Caffeine.newBuilder()
             .maximumWeight(allocatedMemoryBlock.getMemoryUsageInBytes())
             .weigher(
+                // This time we can get "cheatFactor" directly because it itself is an atomic
+                // integer.
+                // If the monitoredObject is a complicated object, and the "shrink" and "expand" are
+                // associated to the operation of the inner object, we should use
+                // "getMonitoredObject"
+                // to avoid concurrency.
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
-                    (position, pair) -> position.getSize())
+                    (position, pair) -> position.getSize() * cheatFactor.get())
             .recordStats()
             .build(new WALInsertNodeCacheLoader());
     PipeWALInsertNodeCacheMetrics.getInstance().register(this, dataRegionId);

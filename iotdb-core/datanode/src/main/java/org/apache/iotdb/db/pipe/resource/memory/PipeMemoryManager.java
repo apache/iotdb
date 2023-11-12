@@ -30,8 +30,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
+import java.util.function.LongUnaryOperator;
 
 public class PipeMemoryManager {
 
@@ -45,12 +46,14 @@ public class PipeMemoryManager {
   private static final long MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS =
       PipeConfig.getInstance().getPipeMemoryAllocateRetryIntervalInMs();
 
-  private static final long TOTAL_MEMORY_SIZE_IN_BYTES =
+  static final long TOTAL_MEMORY_SIZE_IN_BYTES =
       IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForPipe();
   private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES =
       PipeConfig.getInstance().getPipeMemoryAllocateMinSizeInBytes();
 
-  private long usedMemorySizeInBytes = 0;
+  private long usedMemorySizeInBytes;
+  private final List<PipeMemoryBlock> pipeMemoryBlocks = new ArrayList<>();
+  private int lastIndex = 0;
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
@@ -60,11 +63,11 @@ public class PipeMemoryManager {
 
     for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
       if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes) {
-        usedMemorySizeInBytes += sizeInBytes;
-        return new PipeMemoryBlock(sizeInBytes);
+        return registeredMemoryBlock(sizeInBytes);
       }
 
       try {
+        shrink4Allocate(sizeInBytes);
         this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -146,18 +149,17 @@ public class PipeMemoryManager {
   }
 
   public synchronized PipeMemoryBlock tryAllocate(long sizeInBytes) {
-    return tryAllocate(sizeInBytes, (currentSize) -> currentSize * 2 / 3);
+    return tryAllocate(sizeInBytes, currentSize -> currentSize * 2 / 3);
   }
 
   public synchronized PipeMemoryBlock tryAllocate(
-      long sizeInBytes, Function<Long, Long> customAllocateStrategy) {
+      long sizeInBytes, LongUnaryOperator customAllocateStrategy) {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       return new PipeMemoryBlock(sizeInBytes);
     }
 
     if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes) {
-      usedMemorySizeInBytes += sizeInBytes;
-      return new PipeMemoryBlock(sizeInBytes);
+      return registeredMemoryBlock(sizeInBytes);
     }
 
     long sizeToAllocateInBytes = sizeInBytes;
@@ -172,13 +174,12 @@ public class PipeMemoryManager {
             usedMemorySizeInBytes,
             sizeInBytes,
             sizeToAllocateInBytes);
-        usedMemorySizeInBytes += sizeToAllocateInBytes;
-        return new PipeMemoryBlock(sizeToAllocateInBytes);
+        return registeredMemoryBlock(sizeToAllocateInBytes);
       }
 
       sizeToAllocateInBytes =
           Math.max(
-              customAllocateStrategy.apply(sizeToAllocateInBytes),
+              customAllocateStrategy.applyAsLong(sizeToAllocateInBytes),
               MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES);
     }
 
@@ -190,7 +191,44 @@ public class PipeMemoryManager {
         usedMemorySizeInBytes,
         sizeInBytes);
 
-    return new PipeMemoryBlock(0);
+    if (shrink4Allocate(sizeToAllocateInBytes)) {
+      return registeredMemoryBlock(sizeToAllocateInBytes);
+    } else {
+      return new PipeMemoryBlock(0);
+    }
+  }
+
+  private PipeMemoryBlock registeredMemoryBlock(long sizeInBytes) {
+    usedMemorySizeInBytes += sizeInBytes;
+    PipeMemoryBlock returnedMemoryBlock = new PipeMemoryBlock(sizeInBytes);
+    pipeMemoryBlocks.add(returnedMemoryBlock);
+    return returnedMemoryBlock;
+  }
+
+  private boolean shrink4Allocate(long sizeInBytes) {
+    // Shrink if the space is not enough
+    boolean successfullyShrink = false;
+    do {
+      if (lastIndex == pipeMemoryBlocks.size()) {
+        lastIndex = 0;
+      }
+      boolean hasEnoughSpace = false;
+
+      for (; lastIndex < pipeMemoryBlocks.size(); ++lastIndex) {
+        if (pipeMemoryBlocks.get(lastIndex).shrink()) {
+          if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes) {
+            hasEnoughSpace = true;
+            break;
+          }
+          successfullyShrink = true;
+        }
+      }
+
+      if (hasEnoughSpace) {
+        break;
+      }
+    } while (successfullyShrink);
+    return successfullyShrink;
   }
 
   public synchronized void release(PipeMemoryBlock block) {
@@ -198,6 +236,10 @@ public class PipeMemoryManager {
       return;
     }
 
+    if (pipeMemoryBlocks.indexOf(block) <= lastIndex) {
+      lastIndex -= 1;
+    }
+    pipeMemoryBlocks.remove(block);
     usedMemorySizeInBytes -= block.getMemoryUsageInBytes();
     block.markAsReleased();
 
@@ -206,6 +248,11 @@ public class PipeMemoryManager {
 
   public long getUsedMemorySizeInBytes() {
     return usedMemorySizeInBytes;
+  }
+
+  // Never expose it directly to the outside
+  void addUsedMemorySizeInBytes(long addedMemorySizeInBytes) {
+    usedMemorySizeInBytes += addedMemorySizeInBytes;
   }
 
   public long getTotalMemorySizeInBytes() {
