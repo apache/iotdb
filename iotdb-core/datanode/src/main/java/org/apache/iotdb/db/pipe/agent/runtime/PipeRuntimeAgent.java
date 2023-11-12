@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeHardlinkFileDirStartupCleaner;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryExpander;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -47,6 +48,7 @@ public class PipeRuntimeAgent implements IService {
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
   private final PipeCronEventInjector pipeCronEventInjector = new PipeCronEventInjector();
+  private final PipeMemoryExpander pipeMemoryExpander = new PipeMemoryExpander();
 
   private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
       new SimpleConsensusProgressIndexAssigner();
@@ -70,6 +72,7 @@ public class PipeRuntimeAgent implements IService {
     PipeConfig.getInstance().printAllConfigs();
     PipeAgentLauncher.launchPipeTaskAgent();
     pipeCronEventInjector.start();
+    pipeMemoryExpander.start();
 
     isShutdown.set(false);
   }
@@ -82,6 +85,7 @@ public class PipeRuntimeAgent implements IService {
     isShutdown.set(true);
 
     pipeCronEventInjector.stop();
+    pipeMemoryExpander.stop();
     PipeAgent.task().dropAllPipeTasks();
   }
 

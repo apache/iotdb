@@ -231,6 +231,12 @@ public class PipeMemoryManager {
     return successfullyShrink;
   }
 
+  // Periodically expand the memory, only expand 1 turn to ensure space
+  // for new memory
+  void tryExpandAll() {
+    pipeMemoryBlocks.forEach(PipeMemoryBlock::extend);
+  }
+
   public synchronized void release(PipeMemoryBlock block) {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED || block == null || block.isReleased()) {
       return;
