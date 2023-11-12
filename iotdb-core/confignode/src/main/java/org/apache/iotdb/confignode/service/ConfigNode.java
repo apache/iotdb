@@ -260,8 +260,11 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
-    MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
-    MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.CN_ROLE));
+    // Only enable OS-level metrics, if this is wanted.
+    if (CONF.isOsMetricsEnabled()) {
+      MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
+      MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.CN_ROLE));
+    }
     MetricService.getInstance().addMetricSet(JvmGcMonitorMetrics.getInstance());
     MetricService.getInstance().addMetricSet(ClientManagerMetrics.getInstance());
     MetricService.getInstance().addMetricSet(ThreadPoolMetrics.getInstance());
