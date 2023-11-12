@@ -214,6 +214,12 @@ public class CommonConfig {
   // time in nanosecond precision when starting up
   private final long startUpNanosecond = System.nanoTime();
 
+  /**
+   * Configures, if OS-level metrics should be enabled. OS-level metrics can cause problems in some
+   * environments
+   */
+  private boolean osMetricsEnabled = true;
+
   CommonConfig() {
     // Empty constructor
   }
@@ -861,5 +867,13 @@ public class CommonConfig {
 
   public long getStartUpNanosecond() {
     return startUpNanosecond;
+  }
+
+  public boolean isOsMetricsEnabled() {
+    return osMetricsEnabled;
+  }
+
+  public void setOsMetricsEnabled(boolean osMetricsEnabled) {
+    this.osMetricsEnabled = osMetricsEnabled;
   }
 }

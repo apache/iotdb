@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.concurrent.ThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
@@ -261,7 +263,8 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
     // Only enable OS-level metrics, if this is wanted.
-    if (CONF.isOsMetricsEnabled()) {
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    if (commonConfig.isOsMetricsEnabled()) {
       MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
       MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.CN_ROLE));
     }

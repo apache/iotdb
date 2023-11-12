@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -618,7 +619,8 @@ public class DataNode implements DataNodeMBean {
     }
     MetricService.getInstance().startInternalReporter();
     // bind predefined metrics
-    DataNodeMetricsHelper.bind();
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    DataNodeMetricsHelper.bind(commonConfig.isOsMetricsEnabled());
   }
 
   public static TDataNodeLocation generateDataNodeLocation() {

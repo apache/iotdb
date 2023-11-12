@@ -52,7 +52,7 @@ import java.util.List;
 
 public class DataNodeMetricsHelper {
   /** Bind predefined metric sets into DataNode. */
-  public static void bind() {
+  public static void bind(boolean enableOsMetrics) {
     MetricService.getInstance().addMetricSet(new UpTimeMetrics());
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(ThreadPoolMetrics.getInstance());
@@ -60,8 +60,11 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(FileMetrics.getInstance());
     MetricService.getInstance().addMetricSet(CompactionMetrics.getInstance());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
-    MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
-    MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.DN_ROLE));
+    // Only enable OS-level metrics, if this is wanted.
+    if (enableOsMetrics) {
+      MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
+      MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.DN_ROLE));
+    }
     MetricService.getInstance().addMetricSet(ClientManagerMetrics.getInstance());
     initCpuMetrics();
     initSystemMetrics();
