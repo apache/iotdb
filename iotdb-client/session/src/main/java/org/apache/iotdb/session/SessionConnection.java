@@ -162,6 +162,13 @@ public class SessionConnection {
                 session.connectionTimeoutInMs,
                 trustStore,
                 trustStorePwd);
+      } else if (session.enableRPCCompression) {
+        RpcTransportFactory.setUseSnappy(true);
+        RpcTransportFactory.reInit();
+        transport =
+            RpcTransportFactory.INSTANCE.getTransport(
+                // as there is a try-catch already, we do not need to use TSocket.wrap
+                endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs);
       } else {
         transport =
             RpcTransportFactory.INSTANCE.getTransport(

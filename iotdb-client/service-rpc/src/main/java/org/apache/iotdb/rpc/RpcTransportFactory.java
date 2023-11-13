@@ -42,7 +42,7 @@ public class RpcTransportFactory extends TTransportFactory {
 
   private final TTransportFactory inner;
 
-  private RpcTransportFactory(TTransportFactory inner) {
+  public RpcTransportFactory(TTransportFactory inner) {
     this.inner = inner;
   }
 
