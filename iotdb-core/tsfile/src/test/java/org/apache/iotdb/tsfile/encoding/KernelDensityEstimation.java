@@ -53,19 +53,36 @@ public class KernelDensityEstimation {
         static int[] findMinIndex(double[] array) {
             int[] minIndex = new int[array.length];
             int final_min_count = 0;
+            int pre_value = 0;
 //            double preValue = array[0];
 
             for (int i = 1; i < array.length-1; i++) {
                 if (array[i] < array[i-1] && array[i] < array[i+1]) {
-                    minIndex[final_min_count] = i;
-                    final_min_count ++;
+                    if(final_min_count != 0){
+                        if(i>pre_value+32){
+                            minIndex[final_min_count] = i;
+                            final_min_count ++;
+                            pre_value = i;
+                        }
+                    }else{
+                        minIndex[final_min_count] = i;
+                        final_min_count ++;
+                        pre_value = i;
+                    }
                 }
             }
             int[] final_minIndex = new int[final_min_count];
-            if(final_min_count>0){
-                final_minIndex[0] = minIndex[0];
-                System.arraycopy(minIndex, 0, final_minIndex, 0, final_min_count);
-            }
+//            if(final_min_count>0){
+//                final_minIndex[0] = minIndex[0];
+//                int pre_value = minIndex[0];
+//                for(int mv = 1; mv<final_min_count;mv++){
+//                    if(minIndex[mv]-pre_value>16){
+//                        pre_value = minIndex[mv];
+//
+//                    }
+//                }
+            System.arraycopy(minIndex, 0, final_minIndex, 0, final_min_count);
+//            }
             return final_minIndex;
         }
 //    public static void main(String[] args) {

@@ -2543,7 +2543,7 @@ public class REGERTest {
             }
 
         }
-        System.out.println(adjust_count);
+//        System.out.println(adjust_count);
 
         ts_block_delta = getEncodeBitsRegressionNoTrain(ts_block, block_size, raw_length, theta, segment_size);
         int segment_n = (block_size - 1) / segment_size;
@@ -2939,8 +2939,8 @@ public class REGERTest {
         output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
 //        dataset_block_size.add(256);
 
-//    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
-        for (int file_i = 0; file_i < 1; file_i++) {
+    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 0; file_i < 1; file_i++) {
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
 
@@ -2993,7 +2993,7 @@ public class REGERTest {
                 long decodeTime = 0;
                 double ratio = 0;
                 double compressed_size = 0;
-                int repeatTime2 = 1;
+                int repeatTime2 = 100;
                 long s = System.nanoTime();
                 int length = 0;
                 for (int repeat = 0; repeat < repeatTime2; repeat++)
