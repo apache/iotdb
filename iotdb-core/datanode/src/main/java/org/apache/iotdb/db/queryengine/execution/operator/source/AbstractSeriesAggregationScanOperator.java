@@ -37,7 +37,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateAggregationFromRawData;
@@ -389,12 +388,5 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     return !seriesScanUtil.isPageOverlapped()
         && currentPageStatistics.containedByTimeFilter(seriesScanUtil.getGlobalTimeFilter())
         && !seriesScanUtil.currentPageModified();
-  }
-
-  private boolean runWithTimer(Supplier<Boolean> supplier) {
-    long start = System.nanoTime();
-    boolean res = supplier.get();
-    leftRuntimeOfOneNextCall -= (System.nanoTime() - start);
-    return res;
   }
 }
