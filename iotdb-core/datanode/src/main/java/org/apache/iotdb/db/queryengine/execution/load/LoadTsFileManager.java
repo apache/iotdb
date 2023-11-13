@@ -237,6 +237,7 @@ public class LoadTsFileManager {
       this.dataPartition2LastDevice = new HashMap<>();
       this.isClosed = false;
       this.receivedSplitIds = new HashSet<>();
+      this.loadedPartitionNum = new AtomicInteger();
 
       clearDir(taskDir);
     }

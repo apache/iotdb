@@ -255,15 +255,17 @@ public class TsFileSplitSender {
   }
 
   private boolean secondPhase(boolean isFirstPhaseSuccess) {
-    TLoadCommandReq loadCommandReq =
-        new TLoadCommandReq(
-            (isFirstPhaseSuccess ? LoadCommand.EXECUTE : LoadCommand.ROLLBACK).ordinal(), uuid);
-    loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
 
     long p2StartMS = System.currentTimeMillis();
     List<Pair<TRegionReplicaSet, Future<Void>>> loadFutures = new ArrayList<>();
     AtomicBoolean hasTimeout = new AtomicBoolean();
     for (TRegionReplicaSet replicaSet : allReplicaSets) {
+      TLoadCommandReq loadCommandReq =
+          new TLoadCommandReq(
+              (isFirstPhaseSuccess ? LoadCommand.EXECUTE : LoadCommand.ROLLBACK).ordinal(), uuid);
+      loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
+      loadCommandReq.setUseConsensus(true);
+      loadCommandReq.setConsensusGroupId(replicaSet.getRegionId());
       loadFutures.add(
           new Pair<>(
               replicaSet,
