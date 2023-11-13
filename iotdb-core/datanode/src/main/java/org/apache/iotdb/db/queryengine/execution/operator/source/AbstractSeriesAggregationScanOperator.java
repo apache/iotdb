@@ -67,7 +67,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   private final long cachedRawDataSize;
 
   /** maxRuntime of one next() call */
-  private final long maxRuntime;
+  private long maxRuntime;
 
   @SuppressWarnings("squid:S107")
   protected AbstractSeriesAggregationScanOperator(
@@ -82,7 +82,6 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
       long maxReturnSize) {
     this.sourceId = sourceId;
     this.operatorContext = context;
-    maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     this.ascending = ascending;
     this.isGroupByQuery = groupByTimeParameter != null;
     this.seriesScanUtil = seriesScanUtil;
@@ -125,6 +124,9 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   public TsBlock next() throws Exception {
     // start stopwatch
     long start = System.nanoTime();
+    if (maxRuntime <= 0) {
+      maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+    }
 
     while (System.nanoTime() - start < maxRuntime
         && (curTimeRange != null || timeRangeIterator.hasNextTimeRange())
