@@ -326,7 +326,6 @@ public class WALInsertNodeCache {
   @TestOnly
   public void setIsBatchLoadEnabled(boolean isBatchLoadEnabled) {
     this.isBatchLoadEnabled.set(isBatchLoadEnabled);
-    ;
   }
 
   @TestOnly
