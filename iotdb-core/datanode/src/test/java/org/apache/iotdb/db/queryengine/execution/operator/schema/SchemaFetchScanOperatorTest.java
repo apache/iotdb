@@ -147,6 +147,13 @@ public class SchemaFetchScanOperatorTest {
             schemaRegion.fetchSchema(new PartialPath("root.**.s1"), Collections.emptyMap(), false))
         .thenReturn(Arrays.asList(d1s1, d2as1, d2s1));
 
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.**.status"));
+    patternTree.appendPathPattern(new PartialPath("root.**.s1"));
+    patternTree.constructTree();
+    Mockito.when(schemaRegion.fetchSchema(patternTree, Collections.emptyMap(), false))
+        .thenReturn(Arrays.asList(d1s2, d2as2, d2s2, d1s1, d2as1, d2s1));
+
     return schemaRegion;
   }
 }

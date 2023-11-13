@@ -148,6 +148,8 @@ public class IoTConsensusServerImpl {
     // This prevents wal from being piled up if the safelyDeletedSearchIndex is not updated after
     // the restart and Leader migration occurs
     checkAndUpdateSafeDeletedSearchIndex();
+    // see message in logs for details
+    checkAndUpdateSearchIndex();
   }
 
   public IStateMachine getStateMachine() {
@@ -800,6 +802,25 @@ public class IoTConsensusServerImpl {
       consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
     } else {
       consensusReqReader.setSafelyDeletedSearchIndex(getCurrentSafelyDeletedSearchIndex());
+    }
+  }
+
+  public void checkAndUpdateSearchIndex() {
+    long currentSearchIndex = searchIndex.get();
+    long safelyDeletedSearchIndex = getCurrentSafelyDeletedSearchIndex();
+    if (currentSearchIndex < safelyDeletedSearchIndex) {
+      logger.warn(
+          "The searchIndex for this region({}) is smaller than the safelyDeletedSearchIndex when "
+              + "the node is restarted, which means that the data of the current region is not flushed "
+              + "by the wal, but has been synchronized to other nodes. At this point, "
+              + "different replicas have been inconsistent and cannot be automatically recovered. "
+              + "To prevent subsequent logs from marking smaller searchIndex and exacerbating the "
+              + "inconsistency, we manually set the searchIndex({}) to safelyDeletedSearchIndex({}) "
+              + "here to reduce the impact of this problem in the future",
+          consensusGroupId,
+          currentSearchIndex,
+          safelyDeletedSearchIndex);
+      searchIndex.set(safelyDeletedSearchIndex);
     }
   }
 

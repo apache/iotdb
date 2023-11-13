@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.function.Function;
 
 public class PipeMemoryManager {
 
@@ -145,6 +146,11 @@ public class PipeMemoryManager {
   }
 
   public synchronized PipeMemoryBlock tryAllocate(long sizeInBytes) {
+    return tryAllocate(sizeInBytes, (currentSize) -> currentSize * 2 / 3);
+  }
+
+  public synchronized PipeMemoryBlock tryAllocate(
+      long sizeInBytes, Function<Long, Long> customAllocateStrategy) {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       return new PipeMemoryBlock(sizeInBytes);
     }
@@ -171,7 +177,9 @@ public class PipeMemoryManager {
       }
 
       sizeToAllocateInBytes =
-          Math.max(sizeToAllocateInBytes * 2 / 3, MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES);
+          Math.max(
+              customAllocateStrategy.apply(sizeToAllocateInBytes),
+              MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES);
     }
 
     LOGGER.warn(
@@ -202,9 +210,5 @@ public class PipeMemoryManager {
 
   public long getTotalMemorySizeInBytes() {
     return TOTAL_MEMORY_SIZE_IN_BYTES;
-  }
-
-  public double getMemoryUsage() {
-    return (double) usedMemorySizeInBytes / TOTAL_MEMORY_SIZE_IN_BYTES;
   }
 }
