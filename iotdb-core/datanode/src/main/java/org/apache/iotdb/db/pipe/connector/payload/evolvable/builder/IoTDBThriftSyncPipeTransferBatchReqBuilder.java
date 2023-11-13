@@ -59,7 +59,7 @@ public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatc
       bufferSize += req.getBody().length;
     }
 
-    return bufferSize >= maxBatchSizeInBytes
+    return bufferSize >= getMaxBatchSizeInBytes()
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 

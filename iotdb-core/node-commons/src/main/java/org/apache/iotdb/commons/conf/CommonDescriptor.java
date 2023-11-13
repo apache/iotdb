@@ -428,6 +428,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_memory_allocate_for_tsfile_sequence_reader_in_bytes",
                 String.valueOf(config.getPipeMemoryAllocateForTsFileSequenceReaderInBytes()))));
+    config.setPipeMemoryExpanderIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_memory_expander_interval_seconds",
+                String.valueOf(config.getPipeMemoryExpanderIntervalSeconds()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
