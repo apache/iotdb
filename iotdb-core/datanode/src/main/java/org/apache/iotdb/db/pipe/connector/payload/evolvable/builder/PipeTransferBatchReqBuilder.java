@@ -84,7 +84,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
                         "The batch size limit has shrunk from {} to {}.", oldMemory, newMemory))
             .setExpandMethod(
                 (oldMemory) -> Math.min(Math.max(oldMemory, 1) * 2, requestMaxBatchSizeInBytes))
-            .setShrinkCallback(
+            .setExpandCallback(
                 (oldMemory, newMemory) ->
                     LOGGER.info(
                         "The batch size limit has expanded from {} to {}.", oldMemory, newMemory));
