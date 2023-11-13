@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -47,13 +49,14 @@ public class PipeMemoryManager {
   private static final long MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS =
       PipeConfig.getInstance().getPipeMemoryAllocateRetryIntervalInMs();
 
-  static final long TOTAL_MEMORY_SIZE_IN_BYTES =
+  private static final long TOTAL_MEMORY_SIZE_IN_BYTES =
       IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForPipe();
   private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES =
       PipeConfig.getInstance().getPipeMemoryAllocateMinSizeInBytes();
 
   private long usedMemorySizeInBytes;
-  private final Set<PipeMemoryBlock> pipeMemoryBlocks = new HashSet<>();
+
+  private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
@@ -67,7 +70,7 @@ public class PipeMemoryManager {
       }
 
       try {
-        shrink4Allocate(sizeInBytes);
+        tryShrink4Allocate(sizeInBytes);
         this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -183,59 +186,74 @@ public class PipeMemoryManager {
               MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES);
     }
 
-    LOGGER.warn(
-        "tryAllocate: failed to allocate memory, "
-            + "total memory size {} bytes, used memory size {} bytes, "
-            + "requested memory size {} bytes",
-        TOTAL_MEMORY_SIZE_IN_BYTES,
-        usedMemorySizeInBytes,
-        sizeInBytes);
-
-    if (shrink4Allocate(sizeToAllocateInBytes)) {
+    if (tryShrink4Allocate(sizeToAllocateInBytes)) {
+      LOGGER.info(
+          "tryAllocate: allocated memory, "
+              + "total memory size {} bytes, used memory size {} bytes, "
+              + "original requested memory size {} bytes,"
+              + "actual requested memory size {} bytes",
+          TOTAL_MEMORY_SIZE_IN_BYTES,
+          usedMemorySizeInBytes,
+          sizeInBytes,
+          sizeToAllocateInBytes);
       return registeredMemoryBlock(sizeToAllocateInBytes);
     } else {
-      return new PipeMemoryBlock(0);
+      LOGGER.warn(
+          "tryAllocate: failed to allocate memory, "
+              + "total memory size {} bytes, used memory size {} bytes, "
+              + "requested memory size {} bytes",
+          TOTAL_MEMORY_SIZE_IN_BYTES,
+          usedMemorySizeInBytes,
+          sizeInBytes);
+      return registeredMemoryBlock(0);
     }
+  }
+
+  public synchronized boolean tryAllocate(
+      PipeMemoryBlock block, long memoryInBytesNeededToBeAllocated) {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED || block == null || block.isReleased()) {
+      return false;
+    }
+
+    if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= memoryInBytesNeededToBeAllocated) {
+      usedMemorySizeInBytes += memoryInBytesNeededToBeAllocated;
+      block.setMemoryUsageInBytes(block.getMemoryUsageInBytes() + memoryInBytesNeededToBeAllocated);
+      return true;
+    }
+
+    return false;
   }
 
   private PipeMemoryBlock registeredMemoryBlock(long sizeInBytes) {
     usedMemorySizeInBytes += sizeInBytes;
-    PipeMemoryBlock returnedMemoryBlock = new PipeMemoryBlock(sizeInBytes);
-    pipeMemoryBlocks.add(returnedMemoryBlock);
+
+    final PipeMemoryBlock returnedMemoryBlock = new PipeMemoryBlock(sizeInBytes);
+    allocatedBlocks.add(returnedMemoryBlock);
     return returnedMemoryBlock;
   }
 
-  private boolean shrink4Allocate(long sizeInBytes) {
-    // Shrink if the space is not enough
-    boolean successfullyShrink = false;
-    do {
-      boolean hasEnoughSpace = false;
+  private boolean tryShrink4Allocate(long sizeInBytes) {
+    final List<PipeMemoryBlock> shuffledBlocks = new ArrayList<>(allocatedBlocks);
+    Collections.shuffle(shuffledBlocks);
 
-      // Although we prefer fair shrinkage, the "list" container may rather be slow
-      // for us to remove an object, thus we use "set" and leave an unfair shrinkage
-      // here.
-      // We may add priority to PipeMemoryBlock to solve this problem.
-      for (PipeMemoryBlock pipeMemoryBlock : pipeMemoryBlocks) {
-        if (pipeMemoryBlock.shrink()) {
+    while (true) {
+      boolean hasAtLeastOneBlockShrinkable = false;
+      for (final PipeMemoryBlock block : shuffledBlocks) {
+        if (block.shrink()) {
+          hasAtLeastOneBlockShrinkable = true;
           if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes) {
-            hasEnoughSpace = true;
-            break;
+            return true;
           }
-          successfullyShrink = true;
         }
       }
-
-      if (hasEnoughSpace) {
-        break;
+      if (!hasAtLeastOneBlockShrinkable) {
+        return false;
       }
-    } while (successfullyShrink);
-    return successfullyShrink;
+    }
   }
 
-  // Periodically expand the memory, only expand 1 turn to save space
-  // for new memory
   public synchronized void tryExpandAll() {
-    pipeMemoryBlocks.forEach(PipeMemoryBlock::extend);
+    allocatedBlocks.forEach(PipeMemoryBlock::expand);
   }
 
   public synchronized void release(PipeMemoryBlock block) {
@@ -243,20 +261,28 @@ public class PipeMemoryManager {
       return;
     }
 
-    pipeMemoryBlocks.remove(block);
+    allocatedBlocks.remove(block);
     usedMemorySizeInBytes -= block.getMemoryUsageInBytes();
     block.markAsReleased();
 
     this.notifyAll();
   }
 
-  public long getUsedMemorySizeInBytes() {
-    return usedMemorySizeInBytes;
+  public synchronized boolean release(PipeMemoryBlock block, long sizeInBytes) {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED || block == null || block.isReleased()) {
+      return false;
+    }
+
+    usedMemorySizeInBytes -= sizeInBytes;
+    block.setMemoryUsageInBytes(block.getMemoryUsageInBytes() - sizeInBytes);
+
+    this.notifyAll();
+
+    return true;
   }
 
-  // Never expose it directly to the outside
-  void addUsedMemorySizeInBytes(long addedMemorySizeInBytes) {
-    usedMemorySizeInBytes += addedMemorySizeInBytes;
+  public long getUsedMemorySizeInBytes() {
+    return usedMemorySizeInBytes;
   }
 
   public long getTotalMemorySizeInBytes() {

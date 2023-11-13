@@ -21,28 +21,30 @@ package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.BiFunction;
-import java.util.function.LongUnaryOperator;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 public class PipeMemoryBlock implements AutoCloseable {
 
-  private PipeMemoryManager pipeMemoryManager = PipeResourceManager.memory();
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeMemoryBlock.class);
 
-  private AtomicLong memoryUsageInBytes = new AtomicLong(0);
+  private final PipeMemoryManager pipeMemoryManager = PipeResourceManager.memory();
 
-  private ReentrantReadWriteLock objectLock = new ReentrantReadWriteLock();
-  private AtomicReference<Object> monitoredObject = new AtomicReference<>();
+  private final ReentrantLock lock = new ReentrantLock();
 
-  private AtomicReference<LongUnaryOperator> estimatedShrinkResult = new AtomicReference<>();
-  private AtomicReference<BiFunction<Long, Object, Long>> shrinkMethod = new AtomicReference<>();
+  private final AtomicLong memoryUsageInBytes = new AtomicLong(0);
 
-  private AtomicReference<LongUnaryOperator> estimatedExtendResult = new AtomicReference<>();
-  private AtomicReference<BiFunction<Long, Object, Long>> extendMethod = new AtomicReference<>();
-  private AtomicLong minMemoryUsage = new AtomicLong(0);
-  private AtomicLong maxMemoryUsage = new AtomicLong(Long.MAX_VALUE);
+  private final AtomicReference<Function<Long, Long>> shrinkMethod = new AtomicReference<>();
+  private final AtomicReference<BiConsumer<Long, Long>> shrinkCallback = new AtomicReference<>();
+  private final AtomicReference<Function<Long, Long>> expandMethod = new AtomicReference<>();
+  private final AtomicReference<BiConsumer<Long, Long>> expandCallback = new AtomicReference<>();
 
   private volatile boolean isReleased = false;
 
@@ -50,10 +52,102 @@ public class PipeMemoryBlock implements AutoCloseable {
     this.memoryUsageInBytes.set(memoryUsageInBytes);
   }
 
-  // Be sure not to cache this value for memory restriction process such as size limiting, for
-  // it may fluctuate according to the system memory status
   public long getMemoryUsageInBytes() {
     return memoryUsageInBytes.get();
+  }
+
+  public void setMemoryUsageInBytes(long memoryUsageInBytes) {
+    this.memoryUsageInBytes.set(memoryUsageInBytes);
+  }
+
+  public PipeMemoryBlock setShrinkMethod(Function<Long, Long> shrinkMethod) {
+    this.shrinkMethod.set(shrinkMethod);
+    return this;
+  }
+
+  public PipeMemoryBlock setShrinkCallback(BiConsumer<Long, Long> shrinkCallback) {
+    this.shrinkCallback.set(shrinkCallback);
+    return this;
+  }
+
+  public PipeMemoryBlock setExpandMethod(Function<Long, Long> extendMethod) {
+    this.expandMethod.set(extendMethod);
+    return this;
+  }
+
+  public PipeMemoryBlock setExpandCallback(BiConsumer<Long, Long> expandCallback) {
+    this.expandCallback.set(expandCallback);
+    return this;
+  }
+
+  boolean shrink() {
+    if (lock.tryLock()) {
+      try {
+        return doShrink();
+      } finally {
+        lock.unlock();
+      }
+    }
+    return false;
+  }
+
+  private boolean doShrink() {
+    if (shrinkMethod.get() == null) {
+      return false;
+    }
+
+    final long oldMemorySizeInBytes = memoryUsageInBytes.get();
+    final long newMemorySizeInBytes = shrinkMethod.get().apply(memoryUsageInBytes.get());
+
+    final long memoryInBytesCanBeReleased = oldMemorySizeInBytes - newMemorySizeInBytes;
+    if (memoryInBytesCanBeReleased <= 0
+        || !pipeMemoryManager.release(this, memoryInBytesCanBeReleased)) {
+      return false;
+    }
+
+    if (shrinkCallback.get() != null) {
+      try {
+        shrinkCallback.get().accept(oldMemorySizeInBytes, newMemorySizeInBytes);
+      } catch (Exception e) {
+        LOGGER.warn("Failed to execute the shrink callback.", e);
+      }
+    }
+    return true;
+  }
+
+  boolean expand() {
+    if (lock.tryLock()) {
+      try {
+        return doExpand();
+      } finally {
+        lock.unlock();
+      }
+    }
+    return false;
+  }
+
+  private boolean doExpand() {
+    if (expandMethod.get() == null) {
+      return false;
+    }
+
+    final long oldMemorySizeInBytes = memoryUsageInBytes.get();
+    final long newMemorySizeInBytes = expandMethod.get().apply(memoryUsageInBytes.get());
+
+    final long memoryInBytesNeededToBeAllocated = newMemorySizeInBytes - oldMemorySizeInBytes;
+    if (memoryInBytesNeededToBeAllocated <= 0
+        || !pipeMemoryManager.tryAllocate(this, memoryInBytesNeededToBeAllocated)) {
+      return false;
+    }
+
+    if (expandCallback.get() != null) {
+      try {
+        expandCallback.get().accept(oldMemorySizeInBytes, newMemorySizeInBytes);
+      } catch (Exception e) {
+        LOGGER.warn("Failed to execute the expand callback.", e);
+      }
+    }
+    return true;
   }
 
   boolean isReleased() {
@@ -62,123 +156,24 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   void markAsReleased() {
     isReleased = true;
-
-    // help gc
-    monitoredObject = null;
-    estimatedShrinkResult = null;
-    shrinkMethod = null;
-    estimatedExtendResult = null;
-    extendMethod = null;
-    minMemoryUsage = null;
-    maxMemoryUsage = null;
-    memoryUsageInBytes = null;
-    objectLock = null;
-  }
-
-  // Never cache this monitoredObject, to avoid concurrent problem.
-  public Object getMonitoredObject() {
-    objectLock.readLock().lock();
-    try {
-      return monitoredObject.get();
-    } finally {
-      objectLock.readLock().unlock();
-    }
-  }
-
-  public PipeMemoryBlock setEstimatedShrinkResult(LongUnaryOperator operator) {
-    this.estimatedShrinkResult.set(operator);
-    return this;
-  }
-
-  public PipeMemoryBlock setMonitoredObject(Object object) {
-    monitoredObject.set(object);
-    return this;
-  }
-
-  public PipeMemoryBlock setShrinkMethod(BiFunction<Long, Object, Long> shrinkMethod) {
-    this.shrinkMethod.set(shrinkMethod);
-    return this;
-  }
-
-  public PipeMemoryBlock setEstimatedExtendResult(LongUnaryOperator operator) {
-    this.estimatedExtendResult.set(operator);
-    return this;
-  }
-
-  public PipeMemoryBlock setExtendMethod(BiFunction<Long, Object, Long> extendMethod) {
-    this.extendMethod.set(extendMethod);
-    return this;
-  }
-
-  public PipeMemoryBlock setMinMemoryUsage(long minMemoryUsage) {
-    this.minMemoryUsage.set(minMemoryUsage);
-    return this;
-  }
-
-  public PipeMemoryBlock setMaxMemoryUsage(long maxMemoryUsage) {
-    this.maxMemoryUsage.set(maxMemoryUsage);
-    return this;
-  }
-
-  public boolean shrink() {
-    objectLock.writeLock().lock();
-    try {
-      // We assume that sometimes the memory size can not be arbitrarily adjusted,
-      // thus the new memory usage may not be "just" the min one, we first estimate the
-      // memory size and compare it to the min size.
-      if (memoryUsageInBytes.get() < minMemoryUsage.get()
-          || estimatedShrinkResult.get() != null
-              && estimatedShrinkResult.get().applyAsLong(memoryUsageInBytes.get())
-                  < minMemoryUsage.get()) {
-        return false;
-      }
-      if (shrinkMethod.get() != null) {
-        long oldMemorySizeInBytes = memoryUsageInBytes.get();
-        memoryUsageInBytes.set(
-            shrinkMethod.get().apply(memoryUsageInBytes.get(), monitoredObject.get()));
-        // Update at last to avoid potential exception
-        pipeMemoryManager.addUsedMemorySizeInBytes(memoryUsageInBytes.get() - oldMemorySizeInBytes);
-        return true;
-      }
-    } finally {
-      objectLock.writeLock().unlock();
-    }
-    return false;
-  }
-
-  public boolean extend() {
-    objectLock.writeLock().lock();
-    try {
-      // We assume that Sometimes the memory size can not be arbitrarily adjusted,
-      // thus the new memory usage may not be "just" the max one, we first estimate the
-      // memory size and compare it to the max size.
-      long estimatedNewValue = -1;
-      if (estimatedExtendResult.get() != null) {
-        estimatedNewValue = estimatedExtendResult.get().applyAsLong(memoryUsageInBytes.get());
-      }
-      if (memoryUsageInBytes.get() > maxMemoryUsage.get()
-          || estimatedNewValue > maxMemoryUsage.get()
-          || pipeMemoryManager.getTotalMemorySizeInBytes()
-                  - memoryUsageInBytes.get()
-                  + estimatedNewValue
-              > PipeMemoryManager.TOTAL_MEMORY_SIZE_IN_BYTES) {
-        return false;
-      }
-      if (extendMethod.get() != null) {
-        long oldMemorySizeInBytes = memoryUsageInBytes.get();
-        memoryUsageInBytes.set(
-            extendMethod.get().apply(memoryUsageInBytes.get(), monitoredObject.get()));
-        pipeMemoryManager.addUsedMemorySizeInBytes(memoryUsageInBytes.get() - oldMemorySizeInBytes);
-        return true;
-      }
-    } finally {
-      objectLock.writeLock().unlock();
-    }
-    return false;
   }
 
   @Override
   public void close() {
-    pipeMemoryManager.release(this);
+    while (true) {
+      try {
+        if (lock.tryLock(50, TimeUnit.MICROSECONDS)) {
+          try {
+            pipeMemoryManager.release(this);
+            return;
+          } finally {
+            lock.unlock();
+          }
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("Interrupted while waiting for the lock.", e);
+      }
+    }
   }
 }

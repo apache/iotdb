@@ -36,6 +36,7 @@ import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
+import com.google.common.util.concurrent.AtomicDouble;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -50,7 +51,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** This cache is used by {@link WALEntryPosition}. */
 public class WALInsertNodeCache {
@@ -60,17 +61,18 @@ public class WALInsertNodeCache {
 
   // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
   private final PipeMemoryBlock allocatedMemoryBlock;
-  private boolean isBatchLoadEnabled;
+  // Used to adjust the memory usage of the cache
+  private final AtomicDouble memoryUsageCheatFactor = new AtomicDouble(1);
+  private final AtomicBoolean isBatchLoadEnabled = new AtomicBoolean(true);
   private final LoadingCache<WALEntryPosition, Pair<ByteBuffer, InsertNode>> lruCache;
 
   // ids of all pinned memTables
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
-  private final AtomicInteger cheatFactor = new AtomicInteger(1);
 
   private volatile boolean hasPipeRunning = false;
 
   private WALInsertNodeCache(Integer dataRegionId) {
-    long requestedAllocateSize =
+    final long requestedAllocateSize =
         (long)
             Math.min(
                 2 * CONFIG.getWalFileSizeThresholdInByte(),
@@ -78,50 +80,47 @@ public class WALInsertNodeCache {
     allocatedMemoryBlock =
         PipeResourceManager.memory()
             .tryAllocate(requestedAllocateSize)
-            .setMonitoredObject(cheatFactor)
-            .setShrinkMethod(
-                (aLong, cheat) -> {
-                  ((AtomicInteger) cheat).set(((AtomicInteger) cheat).get() * 2);
+            .setShrinkMethod((oldMemory) -> Math.max(oldMemory / 2, 1))
+            .setShrinkCallback(
+                (oldMemory, newMemory) -> {
+                  memoryUsageCheatFactor.set(
+                      memoryUsageCheatFactor.get() * ((double) oldMemory / newMemory));
+                  isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
                   LOGGER.info(
-                      "The wal insertNode cache of dataRegion {} has shrunk to {} from {}",
+                      "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has shrunk from {} to {}.",
                       dataRegionId,
-                      aLong / 2,
-                      aLong);
-                  return aLong / 2;
+                      oldMemory,
+                      newMemory);
                 })
-            .setExtendMethod(
-                (aLong, cheat) -> {
-                  if (aLong == requestedAllocateSize * 2) {
-                    // Do not print log since this is already the max size
-                    return aLong;
-                  }
-
-                  // This guaranteed that the memory will not exceed the max size, thus
-                  // the max memory usage and estimated extend result need not to be set
-                  long newMemory = Math.min(aLong * 2, requestedAllocateSize * 2);
-                  ((AtomicInteger) cheat)
-                      .set((int) (((AtomicInteger) cheat).get() / (newMemory / aLong)));
+            .setExpandMethod(
+                (oldMemory) -> Math.min(Math.max(oldMemory, 1) * 2, requestedAllocateSize))
+            .setExpandCallback(
+                (oldMemory, newMemory) -> {
+                  memoryUsageCheatFactor.set(
+                      memoryUsageCheatFactor.get() / ((double) newMemory / oldMemory));
+                  isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
                   LOGGER.info(
-                      "The wal insertNode cache of dataRegion {} has expanded to {} from {}",
+                      "WALInsertNodeCache allocatedMemoryBlock of dataRegion {} has expanded from {} to {}.",
                       dataRegionId,
-                      aLong * 2,
-                      aLong);
-                  return newMemory;
+                      oldMemory,
+                      newMemory);
                 });
-    isBatchLoadEnabled =
-        allocatedMemoryBlock.getMemoryUsageInBytes() >= CONFIG.getWalFileSizeThresholdInByte();
+    isBatchLoadEnabled.set(
+        allocatedMemoryBlock.getMemoryUsageInBytes() >= CONFIG.getWalFileSizeThresholdInByte());
     lruCache =
         Caffeine.newBuilder()
             .maximumWeight(allocatedMemoryBlock.getMemoryUsageInBytes())
             .weigher(
-                // This time we can get "cheatFactor" directly because it itself is an atomic
-                // integer.
-                // If the monitoredObject is a complicated object, and the "shrink" and "expand" are
-                // associated to the operation of the inner object, we should use
-                // "getMonitoredObject"
-                // to avoid concurrency.
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
-                    (position, pair) -> position.getSize() * cheatFactor.get())
+                    (position, pair) -> {
+                      final long weightInLong =
+                          (long) (position.getSize() * memoryUsageCheatFactor.get());
+                      if (weightInLong <= 0) {
+                        return Integer.MAX_VALUE;
+                      }
+                      final int weightInInt = (int) weightInLong;
+                      return weightInInt != weightInLong ? Integer.MAX_VALUE : weightInInt;
+                    })
             .recordStats()
             .build(new WALInsertNodeCacheLoader());
     PipeWALInsertNodeCacheMetrics.getInstance().register(this, dataRegionId);
@@ -192,7 +191,7 @@ public class WALInsertNodeCache {
     hasPipeRunning = true;
 
     final Pair<ByteBuffer, InsertNode> pair =
-        isBatchLoadEnabled
+        isBatchLoadEnabled.get()
             ? lruCache.getAll(Collections.singleton(position)).get(position)
             : lruCache.get(position);
 
@@ -321,12 +320,13 @@ public class WALInsertNodeCache {
 
   @TestOnly
   public boolean isBatchLoadEnabled() {
-    return isBatchLoadEnabled;
+    return isBatchLoadEnabled.get();
   }
 
   @TestOnly
   public void setIsBatchLoadEnabled(boolean isBatchLoadEnabled) {
-    this.isBatchLoadEnabled = isBatchLoadEnabled;
+    this.isBatchLoadEnabled.set(isBatchLoadEnabled);
+    ;
   }
 
   @TestOnly

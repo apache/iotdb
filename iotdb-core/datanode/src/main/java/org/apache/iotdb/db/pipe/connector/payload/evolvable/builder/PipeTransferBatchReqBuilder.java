@@ -77,25 +77,22 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
     allocatedMemoryBlock =
         PipeResourceManager.memory()
             .tryAllocate(requestMaxBatchSizeInBytes)
-            .setShrinkMethod(
-                (aLong, o) -> {
-                  // There is no min size, thus the min memory usage and estimated shrink result
-                  // need not to be set
-                  LOGGER.info("The batch size limit has shrunk to {} from {}", aLong / 2, aLong);
-                  return aLong / 2;
-                })
-            .setExtendMethod(
-                (aLong, o) -> {
-                  // This guaranteed that the memory will not exceed the max size, thus
-                  // the max memory usage and estimated extend result need not to be set
-                  long result = Math.min(aLong * 2, requestMaxBatchSizeInBytes);
-                  LOGGER.info("The batch size limit has expanded to {} from {}", result, aLong);
-                  return result;
-                });
+            .setShrinkMethod((oldMemory) -> Math.max(oldMemory / 2, 0))
+            .setShrinkCallback(
+                (oldMemory, newMemory) ->
+                    LOGGER.info(
+                        "The batch size limit has shrunk from {} to {}.", oldMemory, newMemory))
+            .setExpandMethod(
+                (oldMemory) -> Math.min(Math.max(oldMemory, 1) * 2, requestMaxBatchSizeInBytes))
+            .setShrinkCallback(
+                (oldMemory, newMemory) ->
+                    LOGGER.info(
+                        "The batch size limit has expanded from {} to {}.", oldMemory, newMemory));
 
     if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {
       LOGGER.info(
-          "PipeTransferBatchReqBuilder: the max batch size is adjusted from {} to {}.",
+          "PipeTransferBatchReqBuilder: the max batch size is adjusted from {} to {} due to the "
+              + "memory restriction",
           requestMaxBatchSizeInBytes,
           getMaxBatchSizeInBytes());
     }
