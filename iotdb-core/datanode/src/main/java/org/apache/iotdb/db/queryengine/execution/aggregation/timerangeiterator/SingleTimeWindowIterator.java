@@ -69,7 +69,8 @@ public class SingleTimeWindowIterator implements ITimeRangeIterator {
 
   @Override
   public long currentOutputTime() {
-    return curTimeRange.getMin();
+    // display time as 0 in aggregation result
+    return curTimeRange.getMin() == Long.MIN_VALUE ? 0 : curTimeRange.getMin();
   }
 
   @Override
