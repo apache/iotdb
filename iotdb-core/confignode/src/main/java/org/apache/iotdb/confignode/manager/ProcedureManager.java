@@ -839,6 +839,27 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus pipeHandleMetaChangeWithBlock(
+      boolean needWriteConsensusOnConfigNodes, boolean needPushPipeMetaToDataNodes) {
+    try {
+      final long procedureId =
+          executor.submitProcedure(
+              new PipeHandleMetaChangeProcedure(
+                  needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes));
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return RpcUtils.SUCCESS_STATUS;
+      } else {
+        return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
   public TSStatus pipeMetaSync() {
     try {
       final long procedureId = executor.submitProcedure(new PipeMetaSyncProcedure());

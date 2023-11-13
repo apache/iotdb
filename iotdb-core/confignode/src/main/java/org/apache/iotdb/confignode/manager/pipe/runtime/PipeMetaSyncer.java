@@ -59,6 +59,12 @@ public class PipeMetaSyncer {
   private final boolean pipeAutoRestartEnabled =
       PipeConfig.getInstance().getPipeAutoRestartEnabled();
 
+  // This variable is used to record whether the sync operation was successful last time when there
+  // was no pipe in CN. If successful, before the next sync operation, if there is still no pipe in
+  // CN, it means that the pipe metadata in DN and CN have been synchronized, and this round of sync
+  // can be safely skipped.
+  private boolean isLastEmptyPipeSyncSuccessful = false;
+
   PipeMetaSyncer(ConfigManager configManager) {
     this.configManager = configManager;
   }
@@ -87,6 +93,13 @@ public class PipeMetaSyncer {
   }
 
   private synchronized void sync() {
+    if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()
+        && isLastEmptyPipeSyncSuccessful) {
+      return;
+    }
+
+    isLastEmptyPipeSyncSuccessful = false;
+
     if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
       LOGGER.warn(
           "PipeTaskCoordinatorLock is held by another thread, skip this round of sync to avoid procedure and rpc accumulation as much as possible");
@@ -104,16 +117,39 @@ public class PipeMetaSyncer {
       pipeAutoRestartRoundCounter.set(0);
     }
 
-    final TSStatus status = procedureManager.pipeMetaSync();
+    final TSStatus metaSyncStatus = procedureManager.pipeMetaSync();
 
     if (somePipesNeedRestarting
-        && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      handleSuccessfulRestartWithLock();
-      procedureManager.pipeHandleMetaChange(true, false);
+        && metaSyncStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      final boolean isRestartSuccessful = handleSuccessfulRestartWithLock();
+      final TSStatus handleMetaChangeStatus =
+          procedureManager.pipeHandleMetaChangeWithBlock(true, false);
+      if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()
+          && isRestartSuccessful
+          && handleMetaChangeStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            "set isLastEmptyPipeSyncSuccessful to true, skip next round of sync if no pipe");
+        isLastEmptyPipeSyncSuccessful = true;
+      }
     }
 
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      procedureManager.pipeHandleMetaChange(true, true);
+    if (!somePipesNeedRestarting
+        && metaSyncStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()) {
+        LOGGER.info(
+            "set isLastEmptyPipeSyncSuccessful to true, skip next round of sync if no pipe");
+        isLastEmptyPipeSyncSuccessful = true;
+      }
+    }
+
+    if (metaSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn("Failed to sync pipe meta. Result status: {}.", metaSyncStatus);
+      final TSStatus handleMetaChangeStatus =
+          procedureManager.pipeHandleMetaChangeWithBlock(true, true);
+      if (handleMetaChangeStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "Failed to handle pipe meta change. Result status: {}.", handleMetaChangeStatus);
+      }
     }
   }
 
@@ -139,15 +175,16 @@ public class PipeMetaSyncer {
     }
   }
 
-  private void handleSuccessfulRestartWithLock() {
+  private boolean handleSuccessfulRestartWithLock() {
     final AtomicReference<PipeTaskInfo> pipeTaskInfo =
         configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
     if (pipeTaskInfo == null) {
       LOGGER.warn("Failed to acquire pipe lock for handling successful restart.");
-      return;
+      return false;
     }
     try {
       pipeTaskInfo.get().handleSuccessfulRestart();
+      return true;
     } finally {
       configManager.getPipeManager().getPipeTaskCoordinator().unlock();
     }
