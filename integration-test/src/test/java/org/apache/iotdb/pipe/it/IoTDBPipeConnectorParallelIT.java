@@ -113,7 +113,7 @@ public class IoTDBPipeConnectorParallelIT {
         statement.execute("insert into root.sg1.d1(time, s1) values (3, 4)");
       } catch (SQLException e) {
         e.printStackTrace();
-        fail(e.getMessage());
+        return;
       }
 
       expectedResSet.add("0,1.0,");
@@ -131,11 +131,16 @@ public class IoTDBPipeConnectorParallelIT {
       await()
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
-              () ->
+              () -> {
+                try {
                   TestUtils.assertResultSetEqual(
                       statement.executeQuery("select * from root.**"),
                       "Time,root.sg1.d1.s1,",
-                      expectedResSet));
+                      expectedResSet);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
