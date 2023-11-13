@@ -187,7 +187,6 @@ public class DriverScheduler implements IDriverScheduler, IService {
             getNextDriverTaskHandleId(),
             (MultilevelPriorityQueue) readyQueue,
             OptionalInt.of(Integer.MAX_VALUE));
-
     List<DriverTask> tasks = new ArrayList<>();
     drivers.forEach(
         driver ->
@@ -363,7 +362,6 @@ public class DriverScheduler implements IDriverScheduler, IService {
       }
 
       timeoutQueue.remove(task.getDriverTaskId());
-
       Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks =
           queryMap.get(task.getDriverTaskId().getQueryId());
       if (queryRelatedTasks != null) {

@@ -138,6 +138,7 @@ public class AggregationUtil {
       aggregator.processTsBlock(inputTsBlock, null, lastIndexToProcess);
     }
     int lastReadRowIndex = lastIndexToProcess + 1;
+
     if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
       return null;
     } else {
