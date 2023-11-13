@@ -29,7 +29,6 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -109,8 +108,6 @@ public class PartitionInfoTest {
 
     // Create a SchemaRegion
     CreateRegionGroupsPlan createRegionGroupsReq = new CreateRegionGroupsPlan();
-    createRegionGroupsReq.setCreateTime(CommonDateTimeUtils.currentTime());
-
     TRegionReplicaSet schemaRegionReplicaSet =
         generateTRegionReplicaSet(
             testFlag.SchemaPartition.getFlag(),
@@ -166,7 +163,6 @@ public class PartitionInfoTest {
 
       // Create a SchemaRegion
       CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
-      createRegionGroupsPlan.setCreateTime(CommonDateTimeUtils.currentTime());
       TRegionReplicaSet schemaRegionReplicaSet =
           generateTRegionReplicaSet(
               testFlag.SchemaPartition.getFlag(),
@@ -177,7 +173,6 @@ public class PartitionInfoTest {
 
       // Create a DataRegion
       createRegionGroupsPlan = new CreateRegionGroupsPlan();
-      createRegionGroupsPlan.setCreateTime(CommonDateTimeUtils.currentTime());
       TRegionReplicaSet dataRegionReplicaSet =
           generateTRegionReplicaSet(
               testFlag.DataPartition.getFlag(),

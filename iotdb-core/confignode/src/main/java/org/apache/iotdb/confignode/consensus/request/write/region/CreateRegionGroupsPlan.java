@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.consensus.request.write.region;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -43,7 +42,6 @@ import java.util.stream.Collectors;
 /** Create regions for specified Databases. */
 public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
 
-  protected long createTime;
   // Map<Database, List<TRegionReplicaSet>>
   protected final Map<String, List<TRegionReplicaSet>> regionGroupMap;
 
@@ -59,14 +57,6 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
 
   public Map<String, List<TRegionReplicaSet>> getRegionGroupMap() {
     return regionGroupMap;
-  }
-
-  public long getCreateTime() {
-    return createTime;
-  }
-
-  public void setCreateTime(long createTime) {
-    this.createTime = createTime;
   }
 
   public void addRegionGroup(String database, TRegionReplicaSet regionReplicaSet) {
@@ -114,8 +104,6 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
           regionReplicaSet ->
               ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, stream));
     }
-
-    stream.writeLong(createTime);
   }
 
   @Override
@@ -132,13 +120,6 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
         regionGroupMap.get(database).add(regionReplicaSet);
       }
     }
-
-    if (buffer.hasRemaining()) {
-      // For compatibility
-      createTime = buffer.getLong();
-    } else {
-      createTime = CommonDateTimeUtils.currentTime();
-    }
   }
 
   @Override
@@ -153,11 +134,11 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
       return false;
     }
     CreateRegionGroupsPlan that = (CreateRegionGroupsPlan) o;
-    return createTime == that.createTime && Objects.equals(regionGroupMap, that.regionGroupMap);
+    return Objects.equals(regionGroupMap, that.regionGroupMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), createTime, regionGroupMap);
+    return Objects.hash(super.hashCode(), regionGroupMap);
   }
 }
