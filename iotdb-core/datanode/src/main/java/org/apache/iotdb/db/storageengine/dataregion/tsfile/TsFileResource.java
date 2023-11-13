@@ -87,6 +87,7 @@ public class TsFileResource {
 
   public static final String RESOURCE_SUFFIX = ".resource";
   public static final String TEMP_SUFFIX = ".temp";
+  public static final String BROKEN_SUFFIX = ".broken";
 
   /** version number */
   public static final byte VERSION_NUMBER = 1;
