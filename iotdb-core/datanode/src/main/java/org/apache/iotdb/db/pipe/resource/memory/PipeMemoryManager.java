@@ -30,8 +30,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.LongUnaryOperator;
 
 public class PipeMemoryManager {
@@ -52,8 +53,7 @@ public class PipeMemoryManager {
       PipeConfig.getInstance().getPipeMemoryAllocateMinSizeInBytes();
 
   private long usedMemorySizeInBytes;
-  private final List<PipeMemoryBlock> pipeMemoryBlocks = new ArrayList<>();
-  private int lastIndex = 0;
+  private final Set<PipeMemoryBlock> pipeMemoryBlocks = new HashSet<>();
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
@@ -209,13 +209,14 @@ public class PipeMemoryManager {
     // Shrink if the space is not enough
     boolean successfullyShrink = false;
     do {
-      if (lastIndex == pipeMemoryBlocks.size()) {
-        lastIndex = 0;
-      }
       boolean hasEnoughSpace = false;
 
-      for (; lastIndex < pipeMemoryBlocks.size(); ++lastIndex) {
-        if (pipeMemoryBlocks.get(lastIndex).shrink()) {
+      // Although we prefer fair shrinkage, the "list" container may rather be slow
+      // for us to remove an object, thus we use "set" and leave an unfair shrinkage
+      // here.
+      // We may add priority to PipeMemoryBlock to solve this problem.
+      for (PipeMemoryBlock pipeMemoryBlock : pipeMemoryBlocks) {
+        if (pipeMemoryBlock.shrink()) {
           if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes) {
             hasEnoughSpace = true;
             break;
@@ -231,9 +232,9 @@ public class PipeMemoryManager {
     return successfullyShrink;
   }
 
-  // Periodically expand the memory, only expand 1 turn to ensure space
+  // Periodically expand the memory, only expand 1 turn to save space
   // for new memory
-  synchronized void tryExpandAll() {
+  public synchronized void tryExpandAll() {
     pipeMemoryBlocks.forEach(PipeMemoryBlock::extend);
   }
 
@@ -242,9 +243,6 @@ public class PipeMemoryManager {
       return;
     }
 
-    if (pipeMemoryBlocks.indexOf(block) <= lastIndex) {
-      lastIndex -= 1;
-    }
     pipeMemoryBlocks.remove(block);
     usedMemorySizeInBytes -= block.getMemoryUsageInBytes();
     block.markAsReleased();
