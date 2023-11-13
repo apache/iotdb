@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
-import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
@@ -69,15 +68,9 @@ public class IoTDBPipeClusterIT {
     receiverEnv = MultiEnvFactory.getEnv(1);
 
     // Avoid hard coding the nodes num and consensus to enable traversal of configurations
-    senderEnv
-        .getConfig()
-        .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true);
+    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
-    receiverEnv
-        .getConfig()
-        .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true);
+    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
