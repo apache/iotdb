@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -67,9 +68,11 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.END_TI
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.WHERE_WRONG_TYPE_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeDeviceViewSpecialProcess;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeExpressionType;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeFill;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeOutput;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.checkDeviceViewInputUniqueness;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.normalizeExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchAggregationExpressions;
@@ -133,7 +136,7 @@ public class TemplatedDeviceAnalyze {
     }
   }
 
-  /** 并行 最上层比如加sort fe 线程管理 */
+  /** add multi-threading impl */
   public Analysis visitQuery() {
 
     long startTime = System.currentTimeMillis();
@@ -165,7 +168,7 @@ public class TemplatedDeviceAnalyze {
     analysis.setDeviceList(deviceList);
 
     // analyzeDeviceToGroupBy(analysis, queryStatement, schemaTree, deviceList);
-    // analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceList);
+    analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceList);
     // analyzeHaving(analysis, queryStatement, schemaTree, deviceList);
     // analyzeDeviceToAggregation(analysis, queryStatement);
     analyzeDeviceToSourceTransform(analysis, queryStatement);
@@ -184,7 +187,7 @@ public class TemplatedDeviceAnalyze {
 
     // analyzeInto(analysis, queryStatement, deviceList, outputExpressions);
     // analyzeGroupByTime(analysis, queryStatement);
-    // analyzeFill(analysis, queryStatement);
+    analyzeFill(analysis, queryStatement);
 
     // generate result set header according to output expressions
     analyzeOutput(analysis, queryStatement, outputExpressions);
@@ -317,6 +320,59 @@ public class TemplatedDeviceAnalyze {
     analysis.setDeviceToSelectExpressions(deviceToSelectExpressions);
 
     return outputExpressions;
+  }
+
+  private void analyzeDeviceToOrderBy(
+      Analysis analysis,
+      QueryStatement queryStatement,
+      ISchemaTree schemaTree,
+      List<PartialPath> deviceSet) {
+    if (!queryStatement.hasOrderByExpression()) {
+      return;
+    }
+
+    Map<String, Set<Expression>> deviceToOrderByExpressions = new LinkedHashMap<>();
+    Map<String, List<SortItem>> deviceToSortItems = new LinkedHashMap<>();
+    // build the device-view outputColumn for the sortNode above the deviceViewNode
+    Set<Expression> deviceViewOrderByExpression = new LinkedHashSet<>();
+    for (PartialPath device : deviceSet) {
+      Set<Expression> orderByExpressionsForOneDevice = new LinkedHashSet<>();
+      for (Expression expressionForItem : queryStatement.getExpressionSortItemList()) {
+        List<Expression> expressions =
+            concatDeviceAndBindSchemaForExpression(expressionForItem, device, schemaTree);
+        if (expressions.isEmpty()) {
+          throw new SemanticException(
+              String.format(
+                  "%s in order by clause doesn't exist.", expressionForItem.getExpressionString()));
+        }
+        if (expressions.size() > 1) {
+          throw new SemanticException(
+              String.format(
+                  "%s in order by clause shouldn't refer to more than one timeseries.",
+                  expressionForItem.getExpressionString()));
+        }
+        expressionForItem = expressions.get(0);
+        TSDataType dataType = analyzeExpressionType(analysis, expressionForItem);
+        if (!dataType.isComparable()) {
+          throw new SemanticException(
+              String.format("The data type of %s is not comparable", dataType));
+        }
+
+        Expression deviceViewExpression = getMeasurementExpression(expressionForItem, analysis);
+        analyzeExpressionType(analysis, deviceViewExpression);
+
+        deviceViewOrderByExpression.add(deviceViewExpression);
+        orderByExpressionsForOneDevice.add(expressionForItem);
+      }
+      deviceToSortItems.put(
+          device.getFullPath(), queryStatement.getUpdatedSortItems(orderByExpressionsForOneDevice));
+      deviceToOrderByExpressions.put(device.getFullPath(), orderByExpressionsForOneDevice);
+    }
+
+    analysis.setOrderByExpressions(deviceViewOrderByExpression);
+    queryStatement.updateSortItems(deviceViewOrderByExpression);
+    analysis.setDeviceToSortItems(deviceToSortItems);
+    analysis.setDeviceToOrderByExpressions(deviceToOrderByExpressions);
   }
 
   private void analyzeDeviceToSourceTransform(Analysis analysis, QueryStatement queryStatement) {

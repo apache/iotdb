@@ -266,12 +266,31 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
+        // examine that if all devices are in same template
+        if (!queryStatement.isAggregationQuery() && !queryStatement.isSelectInto()) {
+          Template template = null;
+          List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
+          for (PartialPath devicePath : devicePatternList) {
+            Map<Integer, Template> templateMap = schemaFetcher.checkAllRelatedTemplate(devicePath);
+            if (templateMap.size() == 1) {
+              if (template == null) {
+                template = templateMap.values().iterator().next();
+              } else {
+                if (templateMap.values().iterator().next().getId() != template.getId()) {
+                  template = null;
+                  break;
+                }
+              }
+            } else {
+              break;
+            }
+          }
 
-        // TODO examine that if all devices are in same template
-        if (!queryStatement.isAggregationQuery()) {
-          return new TemplatedDeviceAnalyze(
-                  analysis, queryStatement, context, schemaTree, partitionFetcher)
-              .visitQuery();
+          if (template != null) {
+            return new TemplatedDeviceAnalyze(
+                    analysis, queryStatement, context, schemaTree, partitionFetcher)
+                .visitQuery();
+          }
         }
 
         List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
@@ -1813,7 +1832,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setGlobalTimeFilter(globalTimeFilter);
   }
 
-  private void analyzeFill(Analysis analysis, QueryStatement queryStatement) {
+  static void analyzeFill(Analysis analysis, QueryStatement queryStatement) {
     if (queryStatement.getFillComponent() == null) {
       return;
     }
