@@ -64,7 +64,6 @@ public class PipeMemoryBlock implements AutoCloseable {
     isReleased = true;
 
     // help gc
-    pipeMemoryManager = null;
     monitoredObject = null;
     estimatedShrinkResult = null;
     shrinkMethod = null;
