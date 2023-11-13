@@ -47,21 +47,26 @@ public class PipePeriodicalJobExecutor {
 
   private static final long CRON_EVENT_INJECTOR_INTERVAL_SECONDS =
       PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
-  private long cronEventInjectRounds = 0;
+  private long cronEventInjectRoundsInterval;
 
   private static final long MEMORY_EXPANDER_INTERVAL_SECONDS =
       PipeConfig.getInstance().getPipeMemoryExpanderIntervalSeconds();
-  private long memoryExpandRounds = 0;
-
-  private long rounds = 0;
+  private long memoryExpandRoundsInterval;
 
   // Currently we use the CRON_EVENT_INJECTOR_INTERVAL_SECONDS as minimum interval
   private static final long EXECUTOR_INTERVAL_SECONDS = CRON_EVENT_INJECTOR_INTERVAL_SECONDS;
+  private long rounds;
 
   private Future<?> executorFuture;
 
   public synchronized void start() {
     if (executorFuture == null) {
+      rounds = 0;
+      cronEventInjectRoundsInterval =
+          Math.max(CRON_EVENT_INJECTOR_INTERVAL_SECONDS / EXECUTOR_INTERVAL_SECONDS, 1);
+      memoryExpandRoundsInterval =
+          Math.max(MEMORY_EXPANDER_INTERVAL_SECONDS / EXECUTOR_INTERVAL_SECONDS, 1);
+
       executorFuture =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
               PERIODICAL_JOB_EXECUTOR,
@@ -74,15 +79,13 @@ public class PipePeriodicalJobExecutor {
   }
 
   private synchronized void execute() {
-    rounds++;
-    long elapsedTime = EXECUTOR_INTERVAL_SECONDS * rounds;
-    // We still judge the cron heartbeat rounds for the generality of EXECUTOR_INTERVAL_SECONDS
-    if (elapsedTime / CRON_EVENT_INJECTOR_INTERVAL_SECONDS > cronEventInjectRounds) {
-      cronEventInjectRounds = elapsedTime / EXECUTOR_INTERVAL_SECONDS;
+    ++rounds;
+
+    if (rounds % cronEventInjectRoundsInterval == 0) {
       PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(false);
     }
-    if (elapsedTime / MEMORY_EXPANDER_INTERVAL_SECONDS > memoryExpandRounds) {
-      memoryExpandRounds = elapsedTime / EXECUTOR_INTERVAL_SECONDS;
+
+    if (rounds % memoryExpandRoundsInterval == 0) {
       PipeResourceManager.memory().tryExpandAll();
     }
   }
