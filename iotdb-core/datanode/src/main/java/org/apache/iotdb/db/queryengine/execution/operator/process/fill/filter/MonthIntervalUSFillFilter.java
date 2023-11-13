@@ -36,14 +36,15 @@ public class MonthIntervalUSFillFilter extends AbstractMonthIntervalFillFilter {
   public boolean needFill(long time, long previousTime) {
     long smaller = Math.min(time, previousTime);
     long greater = Math.max(time, previousTime);
-    Instant instant = Instant.ofEpochSecond(smaller / 1_000_000_000L, smaller % 1_000_000_000L);
+    Instant instant = Instant.ofEpochSecond(smaller / 1_000_000L, smaller % 1_000_000L);
     LocalDateTime localDateTime = LocalDateTime.ofInstant(instant, zone);
     Instant upper =
         localDateTime
             .plusMonths(monthDuration)
             .plus(nonMonthDuration, MICROS)
             .toInstant(zoneOffset);
-    long timeInUs = upper.getLong(ChronoField.MICRO_OF_SECOND) + instant.getEpochSecond();
+    long timeInUs =
+        upper.getLong(ChronoField.MICRO_OF_SECOND) + upper.getEpochSecond() * 1_000_000L;
     return timeInUs >= greater;
   }
 }

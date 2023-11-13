@@ -38,7 +38,8 @@ public class MonthIntervalNSFillFilter extends AbstractMonthIntervalFillFilter {
     LocalDateTime localDateTime = LocalDateTime.ofInstant(instant, zone);
     Instant upper =
         localDateTime.plusMonths(monthDuration).plusNanos(nonMonthDuration).toInstant(zoneOffset);
-    long timeInNs = upper.getLong(ChronoField.NANO_OF_SECOND) + upper.getEpochSecond();
+    long timeInNs =
+        upper.getLong(ChronoField.NANO_OF_SECOND) + upper.getEpochSecond() * 1_000_000_000L;
     return timeInNs >= greater;
   }
 }
