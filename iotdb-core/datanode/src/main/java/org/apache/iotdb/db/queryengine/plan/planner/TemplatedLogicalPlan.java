@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -192,24 +194,45 @@ public class TemplatedLogicalPlan {
       boolean lastLevelUseWildcard) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
 
-    AlignedPath path = new AlignedPath(devicePath);
-    path.setMeasurementList(measurementList);
-    path.addSchemas(schemaList);
+    if (analysis.getTemplateTypes().isDirectAligned()) {
+      AlignedPath path = new AlignedPath(devicePath);
+      path.setMeasurementList(measurementList);
+      path.addSchemas(schemaList);
 
-    AlignedSeriesScanNode alignedSeriesScanNode =
-        new AlignedSeriesScanNode(
-            context.getQueryId().genPlanNodeId(),
-            path,
-            scanOrder,
-            timeFilter,
-            timeFilter,
-            limit,
-            offset,
-            null,
-            lastLevelUseWildcard);
-    sourceNodeList.add(alignedSeriesScanNode);
+      AlignedSeriesScanNode alignedSeriesScanNode =
+          new AlignedSeriesScanNode(
+              context.getQueryId().genPlanNodeId(),
+              path,
+              scanOrder,
+              timeFilter,
+              timeFilter,
+              limit,
+              offset,
+              null,
+              lastLevelUseWildcard);
+      sourceNodeList.add(alignedSeriesScanNode);
+    } else {
+      // TODO fix that not select not all measurements
+      for (int i = 0; i < measurementList.size(); i++) {
+        MeasurementPath measurementPath =
+            new MeasurementPath(devicePath.concatNode(measurementList.get(i)), schemaList.get(i));
+        SeriesScanNode seriesScanNode =
+            new SeriesScanNode(
+                context.getQueryId().genPlanNodeId(),
+                measurementPath,
+                scanOrder,
+                timeFilter,
+                timeFilter,
+                limit,
+                offset,
+                null);
+        sourceNodeList.add(seriesScanNode);
 
-    // just group and put into type provider
+        // TODO does alignedPath need type provider
+        context.getTypeProvider().setType(measurementPath.toString(), schemaList.get(i).getType());
+      }
+    }
+
     // updateTypeProvider(sourceExpressions);
 
     return convergeWithTimeJoin(sourceNodeList, scanOrder);

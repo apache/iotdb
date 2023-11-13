@@ -769,6 +769,10 @@ public class Analysis {
     return deviceToOutputExpressions;
   }
 
+  public void setDeviceToOutputExpressions(Map<String, Set<Expression>> deviceToOutputExpressions) {
+    this.deviceToOutputExpressions = deviceToOutputExpressions;
+  }
+
   public boolean isLastLevelUseWildcard() {
     return lastLevelUseWildcard;
   }
@@ -791,5 +795,9 @@ public class Analysis {
 
   public List<PartialPath> getDeviceList() {
     return deviceList;
+  }
+
+  public boolean isDevicesAllInOneTemplate() {
+    return this.templateTypes != null;
   }
 }

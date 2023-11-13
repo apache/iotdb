@@ -141,7 +141,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       return planBuilder.getRoot();
     }
 
-    if (queryStatement.isAlignByDevice() && !queryStatement.isAggregationQuery()) {
+    if (queryStatement.isAlignByDevice()
+        && analysis.isDevicesAllInOneTemplate()
+        && !queryStatement.isAggregationQuery()) {
       return new TemplatedLogicalPlan(analysis, queryStatement, context).visitQuery();
     }
 

@@ -287,6 +287,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           }
 
           if (template != null) {
+            analysis.setTemplateTypes(template);
             return new TemplatedDeviceAnalyze(
                     analysis, queryStatement, context, schemaTree, partitionFetcher, template)
                 .visitQuery();

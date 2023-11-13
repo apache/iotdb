@@ -117,7 +117,6 @@ public class TemplatedDeviceAnalyze {
     this.context = context;
     this.schemaTree = schemaTree;
     this.partitionFetcher = partitionFetcher;
-    analysis.setTemplateTypes(template);
 
     if (queryStatement.getSelectComponent().getResultColumns().size() == 1) {
       if ("*"
@@ -575,7 +574,6 @@ public class TemplatedDeviceAnalyze {
       }
     }
 
-    Map<String, List<String>> outputDeviceToQueriedDevicesMap = new LinkedHashMap<>();
     for (Map.Entry<String, Set<Expression>> entry : deviceToSourceExpressions.entrySet()) {
       String deviceName = entry.getKey();
       Set<Expression> sourceExpressionsUnderDevice = entry.getValue();
@@ -587,11 +585,9 @@ public class TemplatedDeviceAnalyze {
         throw new SemanticException(
             "Cross-device queries are not supported in ALIGN BY DEVICE queries.");
       }
-      outputDeviceToQueriedDevicesMap.put(deviceName, new ArrayList<>(queriedDevices));
     }
 
     analysis.setDeviceToSourceExpressions(deviceToSourceExpressions);
-    analysis.setOutputDeviceToQueriedDevicesMap(outputDeviceToQueriedDevicesMap);
   }
 
   private void analyzeDataPartition(
