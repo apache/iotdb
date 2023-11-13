@@ -34,7 +34,6 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGr
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -263,9 +262,8 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
       RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
-    ModificationFile modificationFile = tsFileResource.getModFile();
     List<List<Modification>> modifications =
-        context.getPathModifications(modificationFile, partialPath);
+        context.getPathModifications(tsFileResource, partialPath);
 
     List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
@@ -412,8 +410,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
       RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
-    ModificationFile modificationFile = tsFileResource.getModFile();
-    List<Modification> modifications = context.getPathModifications(modificationFile, partialPath);
+    List<Modification> modifications = context.getPathModifications(tsFileResource, partialPath);
 
     List<IChunkMetadata> chunkMetadataList =
         new ArrayList<>(
