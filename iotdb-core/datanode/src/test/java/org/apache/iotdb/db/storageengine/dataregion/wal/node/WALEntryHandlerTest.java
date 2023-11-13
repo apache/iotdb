@@ -268,9 +268,7 @@ public class WALEntryHandlerTest {
             }
 
             // wait until wal flushed
-            Awaitility.await()
-                .until(
-                        walNode::isAllWALEntriesConsumed);
+            Awaitility.await().until(walNode::isAllWALEntriesConsumed);
 
             walFlushListeners.get(0).getWalEntryHandler().pinMemTable();
             walNode.onMemTableFlushed(memTable);
