@@ -42,6 +42,7 @@ import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -234,9 +235,7 @@ public class WALEntryHandlerTest {
     handler.pinMemTable();
     walNode1.onMemTableFlushed(memTable);
     // wait until wal flushed
-    while (!walNode1.isAllWALEntriesConsumed()) {
-      Thread.sleep(50);
-    }
+    Awaitility.await().until(() -> walNode1.isAllWALEntriesConsumed());
     assertEquals(node1, handler.getInsertNode());
   }
 
@@ -269,9 +268,9 @@ public class WALEntryHandlerTest {
             }
 
             // wait until wal flushed
-            while (!walNode1.isAllWALEntriesConsumed() && !walNode2.isAllWALEntriesConsumed()) {
-              Thread.sleep(50);
-            }
+            Awaitility.await()
+                .until(
+                    () -> walNode1.isAllWALEntriesConsumed() && walNode2.isAllWALEntriesConsumed());
 
             walFlushListeners.get(0).getWalEntryHandler().pinMemTable();
             walNode.onMemTableFlushed(memTable);

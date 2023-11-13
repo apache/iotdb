@@ -68,24 +68,19 @@ public class IoTDBPipeClusterIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
+    // Avoid hard coding the nodes num and consensus to enable traversal of configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+        .setAutoCreateSchemaEnabled(true);
 
     receiverEnv
         .getConfig()
         .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+        .setAutoCreateSchemaEnabled(true);
 
-    senderEnv.initClusterEnvironment(3, 3, 180);
-    receiverEnv.initClusterEnvironment(3, 3, 180);
+    senderEnv.initClusterEnvironment();
+    receiverEnv.initClusterEnvironment();
   }
 
   @After
