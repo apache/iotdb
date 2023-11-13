@@ -75,17 +75,17 @@ public class IoTDBFillWithThresholdInMSIT {
         Statement statement = connection.createStatement()) {
 
       String[] ans = {
-          "1675223280000,4,3,4.0,4.0,on,false",
-          "1675223340000,5,5,5.0,5.0,on,true",
-          "1675223400000,6,null,6.0,6.0,null,false",
-          "1675223460000,null,null,null,null,null,null",
-          "1675223520000,null,null,null,null,null,null",
-          "1675223580000,null,null,null,null,null,null",
-          "1675223640000,null,null,null,null,null,null",
-          "1675223700000,null,null,null,null,null,null",
-          "1675223760000,7,7,7.0,null,off,false",
-          "1675223820000,null,null,null,null,null,null",
-          "1675223880000,8,8,8.0,null,on,true"
+        "1675223280000,4,3,4.0,4.0,on,false",
+        "1675223340000,5,5,5.0,5.0,on,true",
+        "1675223400000,6,null,6.0,6.0,null,false",
+        "1675223460000,null,null,null,null,null,null",
+        "1675223520000,null,null,null,null,null,null",
+        "1675223580000,null,null,null,null,null,null",
+        "1675223640000,null,null,null,null,null,null",
+        "1675223700000,null,null,null,null,null,null",
+        "1675223760000,7,7,7.0,null,off,false",
+        "1675223820000,null,null,null,null,null,null",
+        "1675223880000,8,8,8.0,null,on,true"
       };
 
       try (ResultSet set =
@@ -160,13 +160,13 @@ public class IoTDBFillWithThresholdInMSIT {
             "1675223340000,5,5,5.0,5.0,on,true",
             "1675223400000,6,5,6.0,6.0,on,false",
             "1675223460000,6,5,6.0,6.0,on,false",
-            "1675223520000,6,5,6.0,6.0,on,false",
-            "1675223580000,6,5,6.0,6.0,on,false",
-            "1675223640000,6,5,6.0,6.0,on,false",
-            "1675223700000,6,5,6.0,6.0,on,false",
-            "1675223760000,7,7,7.0,6.0,off,false",
-            "1675223820000,7,7,7.0,6.0,off,false",
-            "1675223880000,8,8,8.0,6.0,off,false"
+            "1675223520000,6,null,6.0,6.0,null,false",
+            "1675223580000,null,null,null,null,null,null",
+            "1675223640000,null,null,null,null,null,null",
+            "1675223700000,null,null,null,null,null,null",
+            "1675223760000,7,7,7.0,null,off,false",
+            "1675223820000,7,7,7.0,null,off,false",
+            "1675223880000,8,8,8.0,null,on,true"
           };
 
       try (ResultSet set =
@@ -188,8 +188,7 @@ public class IoTDBFillWithThresholdInMSIT {
                   + set.getString("last_value(root.fillTest.d0.s4)")
                   + ","
                   + set.getString("last_value(root.fillTest.d0.s5)");
-          System.out.println("\"" + row + "\",");
-          //          assertEquals(ans[cnt], row);
+          assertEquals(ans[cnt], row);
           cnt++;
         }
         assertEquals(ans.length, cnt);
