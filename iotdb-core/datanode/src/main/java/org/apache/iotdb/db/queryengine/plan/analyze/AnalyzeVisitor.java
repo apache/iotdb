@@ -1281,9 +1281,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
 
-    Map<String, List<String>> outputDeviceToQueriedDevicesMap = new LinkedHashMap<>();
     for (Map.Entry<String, Set<Expression>> entry : deviceToSourceExpressions.entrySet()) {
-      String deviceName = entry.getKey();
       Set<Expression> sourceExpressionsUnderDevice = entry.getValue();
       Set<String> queriedDevices = new HashSet<>();
       for (Expression expression : sourceExpressionsUnderDevice) {
@@ -1293,11 +1291,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         throw new SemanticException(
             "Cross-device queries are not supported in ALIGN BY DEVICE queries.");
       }
-      outputDeviceToQueriedDevicesMap.put(deviceName, new ArrayList<>(queriedDevices));
     }
 
     analysis.setDeviceToSourceExpressions(deviceToSourceExpressions);
-    analysis.setOutputDeviceToQueriedDevicesMap(outputDeviceToQueriedDevicesMap);
   }
 
   private void analyzeSource(Analysis analysis, QueryStatement queryStatement) {
@@ -1846,10 +1842,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     Set<String> deviceSet = new HashSet<>();
     if (queryStatement.isAlignByDevice()) {
-      deviceSet =
-          analysis.getDeviceList().stream()
-              .map(PartialPath::getFullPath)
-              .collect(Collectors.toSet());
+      deviceSet = analysis.getDeviceToSelectExpressions().keySet();
     } else {
       for (Expression expression : analysis.getSourceExpressions()) {
         deviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));

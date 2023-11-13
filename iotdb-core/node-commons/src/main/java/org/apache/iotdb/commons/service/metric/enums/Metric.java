@@ -126,8 +126,7 @@ public enum Metric {
   PIPE_HEARTBEAT_EVENT("pipe_heartbeat_event"),
   PIPE_WAL_INSERT_NODE_CACHE_HIT_RATE("pipe_wal_insert_node_cache_hit_rate"),
   PIPE_EXTRACTOR_TSFILE_EPOCH_STATE("pipe_extractor_tsfile_epoch_state"),
-  PIPE_MEM_COST("pipe_mem_cost"),
-  PIPE_MEM_USAGE("pipe_mem_usage"),
+  PIPE_MEM("pipe_mem"),
   PIPE_PINNED_MEMTABLE_COUNT("pipe_pinned_memtable_count"),
   PIPE_LINKED_TSFILE_COUNT("pipe_linked_tsfile_count"),
   ;

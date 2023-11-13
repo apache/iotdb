@@ -68,10 +68,6 @@ public class PipeParameterValidator {
       }
     }
 
-    if (canBeOptional) {
-      return this;
-    }
-
     throw new PipeAttributeNotProvidedException(
         String.format("%s should be one of %s", key, Arrays.toString(optionalValues)));
   }

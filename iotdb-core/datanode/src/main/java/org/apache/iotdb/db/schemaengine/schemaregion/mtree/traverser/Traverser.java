@@ -105,6 +105,22 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   }
 
   /**
+   * To traverse subtree under startNode.
+   *
+   * @param startNode denote which tree to traverse by passing its root
+   * @param fullPathTree must not contain any wildcard
+   * @param store MTree store to traverse
+   * @param scope traversing scope
+   */
+  protected Traverser(
+      N startNode, PathPatternTree fullPathTree, IMTreeStore<N> store, PathPatternTree scope) {
+    super(startNode, fullPathTree, scope);
+    this.store = store.getWithReentrantReadLock();
+    initStack();
+    this.startNode = startNode;
+  }
+
+  /**
    * The interface to start the traversal. The node process should be defined before traversal by
    * overriding or implement concerned methods.
    */

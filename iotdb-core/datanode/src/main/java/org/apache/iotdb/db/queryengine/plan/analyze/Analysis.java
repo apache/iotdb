@@ -134,9 +134,6 @@ public class Analysis {
   // the list of device names
   private List<PartialPath> deviceList;
 
-  // map from output device name to queried devices
-  private Map<String, List<String>> outputDeviceToQueriedDevicesMap;
-
   // map from device name to series/aggregation under this device
   private Map<String, Set<Expression>> deviceToSourceExpressions;
 
@@ -766,19 +763,6 @@ public class Analysis {
   public void setLastQueryNonWritableViewSourceExpressionMap(
       Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap) {
     this.lastQueryNonWritableViewSourceExpressionMap = lastQueryNonWritableViewSourceExpressionMap;
-  }
-
-  public Map<String, List<String>> getOutputDeviceToQueriedDevicesMap() {
-    return outputDeviceToQueriedDevicesMap;
-  }
-
-  public void setOutputDeviceToQueriedDevicesMap(
-      Map<String, List<String>> outputDeviceToQueriedDevicesMap) {
-    this.outputDeviceToQueriedDevicesMap = outputDeviceToQueriedDevicesMap;
-  }
-
-  public void setDeviceToOutputExpressions(Map<String, Set<Expression>> deviceToOutputExpressions) {
-    this.deviceToOutputExpressions = deviceToOutputExpressions;
   }
 
   public Map<String, Set<Expression>> getDeviceToOutputExpressions() {
