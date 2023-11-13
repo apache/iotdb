@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.load;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -51,6 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -87,13 +89,13 @@ public class TsFileSplitSender {
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
   // All consensus groups accessed in Phase1 should be notified in Phase2
-  private final Set<TDataNodeLocation> allReplicaSets = new ConcurrentSkipListSet<>();
+  private final Set<TRegionReplicaSet> allReplicaSets = new ConcurrentSkipListSet<>();
   private String uuid;
   private LocationStatistics locationStatistics = new LocationStatistics();
   private boolean isGeneratedByPipe;
   private Map<Pair<LoadTsFilePieceNode, TRegionReplicaSet>, Exception> phaseOneFailures =
       new ConcurrentHashMap<>();
-  private Map<TDataNodeLocation, Exception> phaseTwoFailures = new HashMap<>();
+  private Map<TConsensusGroupId, Exception> phaseTwoFailures = new HashMap<>();
   private long maxSplitSize;
   private PieceNodeSplitter pieceNodeSplitter = new ClusteringMeasurementSplitter(1.0, 10);
   //        private PieceNodeSplitter pieceNodeSplitter = new OrderedMeasurementSplitter();
@@ -190,6 +192,68 @@ public class TsFileSplitSender {
     return success;
   }
 
+  private Void loadInGroup(
+      TRegionReplicaSet replicaSet, TLoadCommandReq loadCommandReq, AtomicBoolean hasTimeout)
+      throws SocketException {
+    Exception locationException = null;
+    for (TDataNodeLocation dataNodeLocation : replicaSet.dataNodeLocations) {
+      logger.info(
+          "Start dispatching Load command for uuid {} to {} of {}",
+          uuid,
+          dataNodeLocation,
+          replicaSet.regionId);
+      TEndPoint endPoint = dataNodeLocation.getInternalEndPoint();
+      boolean loaded = false;
+
+      for (int i = 0; i < MAX_RETRY; i++) {
+        try (SyncDataNodeInternalServiceClient client =
+            internalServiceClientManager.borrowClient(endPoint)) {
+          // record timeout for recalculating max batch size
+          if (statistic.p2Timeout == 0) {
+            statistic.p2Timeout = client.getTimeout();
+          }
+
+          TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
+          if (!loadResp.isAccepted()) {
+            logger.warn(loadResp.message);
+            locationException = new FragmentInstanceDispatchException(loadResp.status);
+          } else {
+            // if any node in this replica set succeeds, it is loaded
+            locationException = null;
+            loaded = true;
+          }
+          break;
+        } catch (ClientManagerException | TException e) {
+          TSStatus status = new TSStatus();
+          status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
+          status.setMessage(
+              "can't connect to node {}, please reset longer dn_connection_timeout_ms "
+                  + "in iotdb-common.properties and restart iotdb."
+                  + endPoint);
+          locationException = new FragmentInstanceDispatchException(status);
+          hasTimeout.set(true);
+        }
+
+        try {
+          Thread.sleep(RETRY_INTERVAL_MS);
+        } catch (InterruptedException e) {
+          locationException = e;
+          break;
+        }
+      }
+
+      if (loaded) {
+        // if any node in this replica set succeeds, it is loaded
+        break;
+      }
+    }
+
+    if (locationException != null) {
+      phaseTwoFailures.put(replicaSet.regionId, locationException);
+    }
+    return null;
+  }
+
   private boolean secondPhase(boolean isFirstPhaseSuccess) {
     TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
@@ -197,63 +261,19 @@ public class TsFileSplitSender {
     loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
 
     long p2StartMS = System.currentTimeMillis();
-    List<Pair<TDataNodeLocation, Future<Void>>> loadFutures = new ArrayList<>();
+    List<Pair<TRegionReplicaSet, Future<Void>>> loadFutures = new ArrayList<>();
     AtomicBoolean hasTimeout = new AtomicBoolean();
-    for (TDataNodeLocation dataNodeLocation : allReplicaSets) {
+    for (TRegionReplicaSet replicaSet : allReplicaSets) {
       loadFutures.add(
           new Pair<>(
-              dataNodeLocation,
-              splitNodeService.submit(
-                  () -> {
-                    logger.info(
-                        "Start dispatching Load command for uuid {} to {}", uuid, dataNodeLocation);
-                    TEndPoint endPoint = dataNodeLocation.getInternalEndPoint();
-                    Exception locationException = null;
-
-                    for (int i = 0; i < MAX_RETRY; i++) {
-                      long timeout = 0;
-                      try (SyncDataNodeInternalServiceClient client =
-                          internalServiceClientManager.borrowClient(endPoint)) {
-                        timeout = client.getTimeout();
-                        TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
-                        if (!loadResp.isAccepted()) {
-                          logger.warn(loadResp.message);
-                          locationException =
-                              new FragmentInstanceDispatchException(loadResp.status);
-                        } else {
-                          locationException = null;
-                        }
-                        break;
-                      } catch (ClientManagerException | TException e) {
-                        TSStatus status = new TSStatus();
-                        status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-                        status.setMessage(
-                            "can't connect to node {}, please reset longer dn_connection_timeout_ms "
-                                + "in iotdb-common.properties and restart iotdb."
-                                + endPoint);
-                        locationException = new FragmentInstanceDispatchException(status);
-                        hasTimeout.set(true);
-                        statistic.p2Timeout = timeout;
-                      }
-                      try {
-                        Thread.sleep(RETRY_INTERVAL_MS);
-                      } catch (InterruptedException e) {
-                        locationException = e;
-                        break;
-                      }
-                    }
-
-                    if (locationException != null) {
-                      phaseTwoFailures.put(dataNodeLocation, locationException);
-                    }
-                    return null;
-                  })));
+              replicaSet,
+              splitNodeService.submit(() -> loadInGroup(replicaSet, loadCommandReq, hasTimeout))));
     }
-    for (Pair<TDataNodeLocation, Future<Void>> loadFuture : loadFutures) {
+    for (Pair<TRegionReplicaSet, Future<Void>> loadFuture : loadFutures) {
       try {
         loadFuture.right.get();
       } catch (InterruptedException | ExecutionException e) {
-        phaseTwoFailures.put(loadFuture.left, e);
+        phaseTwoFailures.put(loadFuture.left.regionId, e);
       }
     }
     statistic.p2TimeMS = System.currentTimeMillis() - p2StartMS;
@@ -308,6 +328,109 @@ public class TsFileSplitSender {
     return true;
   }
 
+  private TTsFilePieceReq genLoadReq(
+      ByteBuffer buffer, TRegionReplicaSet replicaSet, int uncompressedLength) {
+    TTsFilePieceReq loadTsFileReq = new TTsFilePieceReq(buffer, uuid, replicaSet.getRegionId());
+    loadTsFileReq.setUsername(userName);
+    loadTsFileReq.setPassword(password);
+    loadTsFileReq.setCompressionType(compressionType.serialize());
+    loadTsFileReq.setUncompressedLength(uncompressedLength);
+    return loadTsFileReq;
+  }
+
+  private boolean dispatchOneFinalNode(
+      TTsFilePieceReq loadTsFileReq, TRegionReplicaSet replicaSet, TDataNodeLocation location)
+      throws Exception {
+    TRegionReplicaSet relaySet = new TRegionReplicaSet(replicaSet);
+    relaySet.getDataNodeLocations().remove(location);
+    loadTsFileReq.setRelayTargets(relaySet);
+    loadTsFileReq.setNeedSchemaRegistration(true);
+    Exception lastConnectionError = null;
+
+    if (location.getDataNodeId() == 0 && logger.isDebugEnabled()) {
+      locationStatistics.logLocationStatistics();
+      logger.debug("Chose location {}", location.getDataNodeId());
+    }
+    for (int i = 0; i < MAX_RETRY; i++) {
+      try (SyncDataNodeInternalServiceClient client =
+          internalServiceClientManager.borrowClient(location.internalEndPoint)) {
+        TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
+        logger.debug("Response from {}: {}", location.getDataNodeId(), loadResp);
+        if (!loadResp.isAccepted()) {
+          logger.warn(loadResp.message);
+          throw new FragmentInstanceDispatchException(loadResp.status);
+        }
+        return true;
+      } catch (ClientManagerException | TException e) {
+        lastConnectionError = e;
+      }
+
+      try {
+        Thread.sleep(RETRY_INTERVAL_MS);
+      } catch (InterruptedException e) {
+        return false;
+      }
+    }
+    throw lastConnectionError;
+  }
+
+  private boolean dispatchOneFinalNode(LoadTsFilePieceNode node, TRegionReplicaSet replicaSet) {
+    ByteBuffer buffer;
+    long startTime = System.nanoTime();
+    int uncompressedLength;
+    try {
+      buffer = node.serializeToByteBuffer();
+      uncompressedLength = buffer.remaining();
+      buffer = compressBuffer(buffer);
+    } catch (IOException e) {
+      phaseOneFailures.put(new Pair<>(node, replicaSet), e);
+      return false;
+    }
+    long compressingTime = System.nanoTime() - startTime;
+    statistic.compressingTimeNs.addAndGet(compressingTime);
+
+    TTsFilePieceReq loadTsFileReq = genLoadReq(buffer, replicaSet, uncompressedLength);
+    LocationSequencer locationSequencer = createLocationSequencer(replicaSet);
+
+    boolean loadSucceed = false;
+    Exception lastConnectionError = null;
+    TDataNodeLocation currLocation = null;
+    for (TDataNodeLocation location : locationSequencer) {
+      currLocation = location;
+      startTime = System.nanoTime();
+      try {
+        loadSucceed = dispatchOneFinalNode(loadTsFileReq, replicaSet, currLocation);
+      } catch (FragmentInstanceDispatchException e) {
+        phaseOneFailures.put(new Pair<>(node, replicaSet), e);
+        return false;
+      } catch (Exception e) {
+        if (lastConnectionError != null) {
+          logger.debug("Multiple connection error occurred, previous one:", lastConnectionError);
+        }
+        lastConnectionError = e;
+      }
+      if (loadSucceed) {
+        break;
+      }
+    }
+
+    if (!loadSucceed) {
+      String warning = NODE_CONNECTION_ERROR;
+      logger.warn(warning, currLocation, lastConnectionError);
+      TSStatus status = new TSStatus();
+      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
+      status.setMessage(warning + currLocation);
+      phaseOneFailures.put(
+          new Pair<>(node, replicaSet), new FragmentInstanceDispatchException(status));
+      return false;
+    }
+    long timeConsumption = System.nanoTime() - startTime;
+    logger.debug("Time consumption: {}", timeConsumption);
+    locationStatistics.updateThroughput(currLocation, node.getDataSize(), timeConsumption);
+
+    return true;
+  }
+
   private boolean dispatchPieceNodes(
       List<LoadTsFilePieceNode> subNodes, TRegionReplicaSet replicaSet) {
 
@@ -315,94 +438,7 @@ public class TsFileSplitSender {
     List<Boolean> subNodeResults =
         subNodes.stream()
             .parallel()
-            .map(
-                node -> {
-                  ByteBuffer buffer;
-                  long startTime = System.nanoTime();
-                  int uncompressedLength;
-                  try {
-                    buffer = node.serializeToByteBuffer();
-                    uncompressedLength = buffer.remaining();
-                    buffer = compressBuffer(buffer);
-                  } catch (IOException e) {
-                    phaseOneFailures.put(new Pair<>(node, replicaSet), e);
-                    return false;
-                  }
-                  long compressingTime = System.nanoTime() - startTime;
-                  statistic.compressingTimeNs.addAndGet(compressingTime);
-
-                  TTsFilePieceReq loadTsFileReq =
-                      new TTsFilePieceReq(buffer, uuid, replicaSet.getRegionId());
-                  loadTsFileReq.setUsername(userName);
-                  loadTsFileReq.setPassword(password);
-                  loadTsFileReq.setCompressionType(compressionType.serialize());
-                  loadTsFileReq.setUncompressedLength(uncompressedLength);
-                  LocationSequencer locationSequencer = createLocationSequencer(replicaSet);
-
-                  boolean loadSucceed = false;
-                  Exception lastConnectionError = null;
-                  TDataNodeLocation currLocation = null;
-                  for (TDataNodeLocation location : locationSequencer) {
-                    TRegionReplicaSet relaySet = new TRegionReplicaSet(replicaSet);
-                    relaySet.getDataNodeLocations().remove(location);
-                    loadTsFileReq.setRelayTargets(relaySet);
-                    loadTsFileReq.setNeedSchemaRegistration(true);
-
-                    if (location.getDataNodeId() == 0 && logger.isDebugEnabled()) {
-                      locationStatistics.logLocationStatistics();
-                      logger.info("Chose location {}", location.getDataNodeId());
-                    }
-                    currLocation = location;
-                    startTime = System.nanoTime();
-                    for (int i = 0; i < MAX_RETRY; i++) {
-                      try (SyncDataNodeInternalServiceClient client =
-                          internalServiceClientManager.borrowClient(
-                              currLocation.internalEndPoint)) {
-                        TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
-                        logger.debug("Response from {}: {}", location.getDataNodeId(), loadResp);
-                        if (!loadResp.isAccepted()) {
-                          logger.warn(loadResp.message);
-                          phaseOneFailures.put(
-                              new Pair<>(node, replicaSet),
-                              new FragmentInstanceDispatchException(loadResp.status));
-                          return false;
-                        }
-                        loadSucceed = true;
-                        break;
-                      } catch (ClientManagerException | TException e) {
-                        lastConnectionError = e;
-                      }
-
-                      try {
-                        Thread.sleep(RETRY_INTERVAL_MS);
-                      } catch (InterruptedException e) {
-                        return false;
-                      }
-                    }
-
-                    if (loadSucceed) {
-                      break;
-                    }
-                  }
-
-                  if (!loadSucceed) {
-                    String warning = NODE_CONNECTION_ERROR;
-                    logger.warn(warning, currLocation, lastConnectionError);
-                    TSStatus status = new TSStatus();
-                    status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-                    status.setMessage(warning + currLocation);
-                    phaseOneFailures.put(
-                        new Pair<>(node, replicaSet),
-                        new FragmentInstanceDispatchException(status));
-                    return false;
-                  }
-                  long timeConsumption = System.nanoTime() - startTime;
-                  logger.debug("Time consumption: {}", timeConsumption);
-                  locationStatistics.updateThroughput(
-                      currLocation, node.getDataSize(), timeConsumption);
-
-                  return true;
-                })
+            .map(node -> dispatchOneFinalNode(node, replicaSet))
             .collect(Collectors.toList());
     long elapsedTime = System.nanoTime() - start;
     statistic.dispatchNodesTimeNS.addAndGet(elapsedTime);
@@ -411,14 +447,17 @@ public class TsFileSplitSender {
 
   public boolean dispatchOnePieceNode(LoadTsFilePieceNode pieceNode, TRegionReplicaSet replicaSet) {
     long allStart = System.nanoTime();
-    allReplicaSets.addAll(replicaSet.dataNodeLocations);
+    // determine which replicas should receive the P2 message
+    allReplicaSets.add(replicaSet);
 
     List<LoadTsFilePieceNode> subNodes;
+    // split the piece node asynchronously to improve parallelism
     if (splitFutures.size() < MAX_PENDING_PIECE_NODE) {
       splitFutures.add(new Pair<>(submitSplitPieceNode(pieceNode), replicaSet));
       statistic.dispatchNodeTimeNS.addAndGet(System.nanoTime() - allStart);
       return true;
     } else {
+      // wait for the first split task to complete if too many task
       long start = System.nanoTime();
       Pair<Future<List<LoadTsFilePieceNode>>, TRegionReplicaSet> pair = splitFutures.poll();
       try {
@@ -434,6 +473,7 @@ public class TsFileSplitSender {
         logger.error("Unexpected error during splitting node", e);
         return false;
       }
+      // send the split nodes to the replicas
       boolean success = dispatchPieceNodes(subNodes, pair.right);
       statistic.dispatchNodeTimeNS.addAndGet(System.nanoTime() - allStart);
       return success;

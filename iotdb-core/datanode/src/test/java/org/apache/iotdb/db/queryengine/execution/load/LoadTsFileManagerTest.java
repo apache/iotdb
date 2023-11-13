@@ -197,7 +197,7 @@ public class LoadTsFileManagerTest extends TestBase {
       }
     }
 
-    loadTsFileManager.loadAll(req.uuid, false);
+    loadTsFileManager.load(req.uuid, null, false);
 
     return new TLoadResp()
         .setAccepted(true)

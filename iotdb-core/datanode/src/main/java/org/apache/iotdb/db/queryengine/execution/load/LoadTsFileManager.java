@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.load;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -58,6 +59,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
@@ -142,7 +144,7 @@ public class LoadTsFileManager {
     }
   }
 
-  public boolean loadAll(String uuid, boolean isGeneratedByPipe)
+  public boolean load(String uuid, ConsensusGroupId consensusGroupId, boolean isGeneratedByPipe)
       throws IOException, LoadFileException {
     TsFileWriterManager tsFileWriterManager = uuid2WriterManager.get(uuid);
     if (completedTasks.contains(uuid)) {
@@ -151,12 +153,15 @@ public class LoadTsFileManager {
     if (tsFileWriterManager == null) {
       return false;
     }
-    tsFileWriterManager.loadAll(isGeneratedByPipe);
-    clean(uuid);
+    // returns true if all partitions of the task are loaded
+    if (tsFileWriterManager.load(consensusGroupId, isGeneratedByPipe)) {
+      clean(uuid);
+    }
     return true;
   }
 
-  public boolean deleteAll(String uuid) {
+  public boolean delete(String uuid, ConsensusGroupId consensusGroupId)
+      throws LoadFileException, IOException {
     TsFileWriterManager tsFileWriterManager = uuid2WriterManager.get(uuid);
     if (completedTasks.contains(uuid)) {
       return true;
@@ -164,7 +169,10 @@ public class LoadTsFileManager {
     if (tsFileWriterManager == null) {
       return false;
     }
-    clean(uuid);
+    // returns true if all partitions of the task are deleted
+    if (tsFileWriterManager.delete(consensusGroupId)) {
+      clean(uuid);
+    }
     return true;
   }
 
@@ -215,11 +223,13 @@ public class LoadTsFileManager {
   }
 
   private static class TsFileWriterManager {
+
     private final File taskDir;
     private Map<DataPartitionInfo, TsFileIOWriter> dataPartition2Writer;
     private Map<DataPartitionInfo, String> dataPartition2LastDevice;
     private boolean isClosed;
     private Set<Integer> receivedSplitIds;
+    private AtomicInteger loadedPartitionNum;
 
     private TsFileWriterManager(File taskDir) {
       this.taskDir = taskDir;
@@ -289,14 +299,20 @@ public class LoadTsFileManager {
       receivedSplitIds.add(deletionData.getSplitId());
     }
 
-    private synchronized void loadAll(boolean isGeneratedByPipe)
+    /** Returns true if all partitions of this task have been loaded. */
+    private synchronized boolean load(ConsensusGroupId consensusGroupId, boolean isGeneratedByPipe)
         throws IOException, LoadFileException {
       if (isClosed) {
         // this command is a retry and the previous command has loaded the task
         // treat this one as a success
-        return;
+        return true;
       }
       for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
+        if (consensusGroupId != null
+            && !consensusGroupId.equals(entry.getKey().dataRegion.getConsensusGroupId())) {
+          continue;
+        }
+
         TsFileIOWriter writer = entry.getValue();
         if (writer.isWritingChunkGroup()) {
           writer.endChunkGroup();
@@ -305,6 +321,7 @@ public class LoadTsFileManager {
           writer.endFile();
           DataRegion dataRegion = entry.getKey().getDataRegion();
           dataRegion.loadNewTsFile(generateResource(writer), true, isGeneratedByPipe);
+          loadedPartitionNum.incrementAndGet();
 
           MetricService.getInstance()
               .count(
@@ -319,6 +336,30 @@ public class LoadTsFileManager {
                   dataRegion.getDataRegionId());
         }
       }
+      return loadedPartitionNum.get() >= dataPartition2Writer.size();
+    }
+
+    /** Returns true if all partitions of this task have been deleted. */
+    private synchronized boolean delete(ConsensusGroupId consensusGroupId)
+        throws IOException, LoadFileException {
+      if (isClosed) {
+        // this command is a retry and the previous command has loaded the task
+        // treat this one as a success
+        return true;
+      }
+      for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
+        if (consensusGroupId != null
+            && !consensusGroupId.equals(entry.getKey().dataRegion.getConsensusGroupId())) {
+          continue;
+        }
+
+        TsFileIOWriter writer = entry.getValue();
+        if (writer.canWrite()) {
+          writer.close();
+          loadedPartitionNum.incrementAndGet();
+        }
+      }
+      return loadedPartitionNum.get() >= dataPartition2Writer.size();
     }
 
     private TsFileResource generateResource(TsFileIOWriter writer) throws IOException {

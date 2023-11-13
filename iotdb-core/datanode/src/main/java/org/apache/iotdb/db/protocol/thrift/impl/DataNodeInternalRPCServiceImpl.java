@@ -107,6 +107,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadCommandNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
@@ -541,15 +542,29 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TLoadResp sendLoadCommand(TLoadCommandReq req) {
+  public TLoadResp sendLoadCommand(TLoadCommandReq req) throws TException {
     LOGGER.info("Receive load command for {}", req.getUuid());
-
-    return createTLoadResp(
-        StorageEngine.getInstance()
-            .executeLoadCommand(
-                LoadTsFileScheduler.LoadCommand.values()[req.commandType],
-                req.uuid,
-                req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe));
+    ConsensusGroupId consensusGroupId =
+        req.isSetConsensusGroupId()
+            ? ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId)
+            : null;
+    LoadCommandNode loadCommandNode =
+        new LoadCommandNode(
+            new PlanNodeId(req.uuid),
+            LoadTsFileScheduler.LoadCommand.values()[req.commandType],
+            req.uuid,
+            consensusGroupId,
+            req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe);
+    if (req.isUseConsensus()) {
+      try {
+        return createTLoadResp(
+            DataRegionConsensusImpl.getInstance().write(consensusGroupId, loadCommandNode));
+      } catch (ConsensusException e) {
+        throw new TException(e);
+      }
+    } else {
+      return createTLoadResp(StorageEngine.getInstance().executeLoadCommand(loadCommandNode));
+    }
   }
 
   private TLoadResp createTLoadResp(TSStatus resultStatus) {

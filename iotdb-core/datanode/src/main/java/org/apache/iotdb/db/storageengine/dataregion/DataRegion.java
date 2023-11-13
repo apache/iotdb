@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -380,6 +382,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** this class is used to store recovering context. */
   private class DataRegionRecoveryContext {
+
     /** number of files to be recovered. */
     private final long numOfFilesToRecover;
     /** when the change of recoveredFilesNum exceeds this, log check will be triggered. */
@@ -3025,5 +3028,10 @@ public class DataRegion implements IDataRegionForQuery {
   @TestOnly
   public TsFileManager getTsFileManager() {
     return tsFileManager;
+  }
+
+  public ConsensusGroupId getConsensusGroupId() {
+    return ConsensusGroupId.Factory.create(
+        TConsensusGroupType.DataRegion.getValue(), Integer.parseInt(dataRegionId));
   }
 }
