@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,28 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.utils;
+package org.apache.iotdb.metrics.metricsets.net;
 
-public enum MetricLevel {
-  ALL(0),
-  NORMAL(1),
-  IMPORTANT(2),
-  CORE(3),
-  OFF(4);
-
-  /** Level of metric service. */
-  final int level;
-
-  MetricLevel(int level) {
-    this.level = level;
-  }
-
-  public static boolean higherOrEqual(MetricLevel level1, MetricLevel level2) {
-    return level1.level >= level2.level;
-  }
-
-  @Override
-  public String toString() {
-    return name();
-  }
-}
+public class DoNothingNetMetricManager implements INetMetricManager {}

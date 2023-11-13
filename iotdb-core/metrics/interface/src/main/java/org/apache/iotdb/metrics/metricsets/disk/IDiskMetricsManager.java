@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.metrics.metricsets.disk;
 
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -110,14 +113,21 @@ public interface IDiskMetricsManager {
 
   /** Return different implementation of DiskMetricsManager according to OS type. */
   static IDiskMetricsManager getDiskMetricsManager() {
-    String os = System.getProperty("os.name").toLowerCase();
-
-    if (os.startsWith("windows")) {
-      return new WindowsDiskMetricsManager();
-    } else if (os.startsWith("linux")) {
-      return new LinuxDiskMetricsManager();
+    if (MetricConfigDescriptor.getInstance()
+        .getMetricConfig()
+        .getMetricLevel()
+        .equals(MetricLevel.OFF)) {
+      return new DoNothingDiskMetricsManager();
     } else {
-      return new MacDiskMetricsManager();
+      String os = System.getProperty("os.name").toLowerCase();
+
+      if (os.startsWith("windows")) {
+        return new WindowsDiskMetricsManager();
+      } else if (os.startsWith("linux")) {
+        return new LinuxDiskMetricsManager();
+      } else {
+        return new MacDiskMetricsManager();
+      }
     }
   }
 }
