@@ -592,17 +592,13 @@ public class TemplatedDeviceAnalyze {
 
   private void analyzeDataPartition(
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
-    Set<String> deviceSet = new HashSet<>();
-    if (queryStatement.isAlignByDevice()) {
-      deviceSet =
-          analysis.getDeviceList().stream()
-              .map(PartialPath::getFullPath)
-              .collect(Collectors.toSet());
-    } else {
-      for (Expression expression : analysis.getSourceExpressions()) {
-        deviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
-      }
+    if (!queryStatement.isAlignByDevice()) {
+      return;
     }
+
+    // TemplatedDevice has no views, so there is no need to use
+    Set<String> deviceSet =
+        analysis.getDeviceList().stream().map(PartialPath::getFullPath).collect(Collectors.toSet());
     DataPartition dataPartition =
         fetchDataPartitionByDevices(deviceSet, schemaTree, analysis.getGlobalTimeFilter());
     analysis.setDataPartitionInfo(dataPartition);

@@ -272,7 +272,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
           for (PartialPath devicePath : devicePatternList) {
             Map<Integer, Template> templateMap = schemaFetcher.checkAllRelatedTemplate(devicePath);
-            if (templateMap.size() == 1) {
+            if (templateMap != null && templateMap.size() == 1) {
               if (template == null) {
                 template = templateMap.values().iterator().next();
               } else {
@@ -1282,7 +1282,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
 
+    Map<String, String> outputDeviceToQueriedDevicesMap = new LinkedHashMap<>();
     for (Map.Entry<String, Set<Expression>> entry : deviceToSourceExpressions.entrySet()) {
+      String deviceName = entry.getKey();
       Set<Expression> sourceExpressionsUnderDevice = entry.getValue();
       Set<String> queriedDevices = new HashSet<>();
       for (Expression expression : sourceExpressionsUnderDevice) {
@@ -1292,9 +1294,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         throw new SemanticException(
             "Cross-device queries are not supported in ALIGN BY DEVICE queries.");
       }
+      outputDeviceToQueriedDevicesMap.put(deviceName, queriedDevices.iterator().next());
     }
 
     analysis.setDeviceToSourceExpressions(deviceToSourceExpressions);
+    analysis.setOutputDeviceToQueriedDevicesMap(outputDeviceToQueriedDevicesMap);
   }
 
   private void analyzeSource(Analysis analysis, QueryStatement queryStatement) {
@@ -1843,7 +1847,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     Set<String> deviceSet = new HashSet<>();
     if (queryStatement.isAlignByDevice()) {
-      deviceSet = analysis.getDeviceToSelectExpressions().keySet();
+      deviceSet = new HashSet<>(analysis.getOutputDeviceToQueriedDevicesMap().values());
     } else {
       for (Expression expression : analysis.getSourceExpressions()) {
         deviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));

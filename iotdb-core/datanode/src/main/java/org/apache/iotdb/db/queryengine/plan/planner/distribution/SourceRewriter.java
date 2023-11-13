@@ -164,11 +164,19 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     List<DeviceViewSplit> deviceViewSplits = new ArrayList<>();
 
     // Step 1: constructs DeviceViewSplit
+    Map<String, String> outputDeviceToQueriedDevicesMap =
+        analysis.getOutputDeviceToQueriedDevicesMap();
     for (int i = 0; i < node.getDevices().size(); i++) {
       String outputDevice = node.getDevices().get(i);
       PlanNode child = node.getChildren().get(i);
       List<TRegionReplicaSet> regionReplicaSets =
-          new ArrayList<>(analysis.getPartitionInfo(outputDevice, analysis.getGlobalTimeFilter()));
+          analysis.isDevicesAllInOneTemplate()
+              ? new ArrayList<>(
+                  analysis.getPartitionInfo(outputDevice, analysis.getGlobalTimeFilter()))
+              : new ArrayList<>(
+                  analysis.getPartitionInfo(
+                      outputDeviceToQueriedDevicesMap.get(outputDevice),
+                      analysis.getGlobalTimeFilter()));
       deviceViewSplits.add(new DeviceViewSplit(outputDevice, child, regionReplicaSets));
       relatedDataRegions.addAll(regionReplicaSets);
     }

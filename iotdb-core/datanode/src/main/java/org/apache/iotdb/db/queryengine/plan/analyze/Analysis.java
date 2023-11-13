@@ -166,6 +166,9 @@ public class Analysis {
 
   private Map<String, Set<Expression>> deviceToOutputExpressions = new HashMap<>();
 
+  // map from output device name to queried devices
+  private Map<String, String> outputDeviceToQueriedDevicesMap;
+
   // indicates whether DeviceView need special process when rewriteSource in DistributionPlan,
   // you can see SourceRewriter#visitDeviceView to get more information
   private boolean deviceViewSpecialProcess;
@@ -763,6 +766,15 @@ public class Analysis {
   public void setLastQueryNonWritableViewSourceExpressionMap(
       Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap) {
     this.lastQueryNonWritableViewSourceExpressionMap = lastQueryNonWritableViewSourceExpressionMap;
+  }
+
+  public Map<String, String> getOutputDeviceToQueriedDevicesMap() {
+    return outputDeviceToQueriedDevicesMap;
+  }
+
+  public void setOutputDeviceToQueriedDevicesMap(
+      Map<String, String> outputDeviceToQueriedDevicesMap) {
+    this.outputDeviceToQueriedDevicesMap = outputDeviceToQueriedDevicesMap;
   }
 
   public Map<String, Set<Expression>> getDeviceToOutputExpressions() {
