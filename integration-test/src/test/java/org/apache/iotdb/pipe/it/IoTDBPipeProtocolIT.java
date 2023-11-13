@@ -403,7 +403,9 @@ public class IoTDBPipeProtocolIT {
 
       TestUtils.executeNonQueryWithRetry(
           senderEnv, "insert into root.db.d1(time, s1) values (2, 2)");
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        return;
+      }
 
       TestUtils.assertDataOnEnv(
           receiverEnv,

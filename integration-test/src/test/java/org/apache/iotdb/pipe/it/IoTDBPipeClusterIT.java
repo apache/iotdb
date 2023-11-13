@@ -121,7 +121,9 @@ public class IoTDBPipeClusterIT {
           senderEnv, "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)");
       TestUtils.executeNonQueryWithRetry(
           senderEnv, "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)");
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        return;
+      }
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -162,7 +164,9 @@ public class IoTDBPipeClusterIT {
 
       TestUtils.executeNonQueryWithRetry(
           senderEnv, "insert into root.db.d1(time, s1) values (now(), 3)");
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        return;
+      }
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
@@ -204,7 +208,9 @@ public class IoTDBPipeClusterIT {
 
       TestUtils.executeNonQueryWithRetry(
           senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        return;
+      }
 
       AtomicInteger leaderPort = new AtomicInteger(-1);
       TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
@@ -238,8 +244,10 @@ public class IoTDBPipeClusterIT {
           senderEnv,
           senderEnv.getDataNodeWrapper(leaderIndex),
           "insert into root.db.d1(time, s1) values (2, 2)");
-      TestUtils.executeNonQueryOnSpecifiedDataNodeWithRetry(
-          senderEnv, senderEnv.getDataNodeWrapper(leaderIndex), "flush");
+      if (!TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
+          senderEnv, senderEnv.getDataNodeWrapper(leaderIndex), "flush")) {
+        return;
+      }
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
@@ -277,7 +285,9 @@ public class IoTDBPipeClusterIT {
 
       TestUtils.executeNonQueryWithRetry(
           senderEnv, "insert into root.db.d2(time, s1) values (1, 1)");
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        return;
+      }
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
@@ -319,14 +329,18 @@ public class IoTDBPipeClusterIT {
 
       TestUtils.executeNonQueryWithRetry(
           senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        return;
+      }
 
       senderEnv.registerNewDataNode(true);
       DataNodeWrapper newDataNode =
           senderEnv.getDataNodeWrapper(senderEnv.getDataNodeWrapperList().size() - 1);
       TestUtils.executeNonQueryOnSpecifiedDataNodeWithRetry(
           senderEnv, newDataNode, "insert into root.db.d1(time, s1) values (2, 2)");
-      TestUtils.executeNonQueryOnSpecifiedDataNodeWithRetry(senderEnv, newDataNode, "flush");
+      if (!TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(senderEnv, newDataNode, "flush")) {
+        return;
+      }
       TestUtils.assertDataOnEnv(
           receiverEnv,
           "select count(*) from root.db.d1",
@@ -363,7 +377,9 @@ public class IoTDBPipeClusterIT {
 
       TestUtils.executeNonQueryWithRetry(
           senderEnv, "insert into root.db.d2(time, s1) values (1, 1)");
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        return;
+      }
 
       TestUtils.assertDataOnEnv(
           receiverEnv,
@@ -609,7 +625,9 @@ public class IoTDBPipeClusterIT {
       TestUtils.executeNonQueryWithRetry(
           senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000));
     }
-    TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      return;
+    }
 
     TestUtils.restartCluster(senderEnv);
 

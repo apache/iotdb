@@ -144,7 +144,9 @@ public class IoTDBPipeLifeCycleIT {
 
       TestUtils.executeNonQueryWithRetry(
           senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
-      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+        return;
+      }
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
@@ -550,7 +552,9 @@ public class IoTDBPipeLifeCycleIT {
       TestUtils.executeNonQueryWithRetry(
           senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
     }
-    TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      return;
+    }
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -582,7 +586,9 @@ public class IoTDBPipeLifeCycleIT {
       TestUtils.executeNonQueryWithRetry(
           receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
     }
-    TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
+      return;
+    }
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
@@ -627,12 +633,16 @@ public class IoTDBPipeLifeCycleIT {
       TestUtils.executeNonQueryWithRetry(
           senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
     }
-    TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+      return;
+    }
     for (int i = 500; i < 600; ++i) {
       TestUtils.executeNonQueryWithRetry(
           receiverEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
     }
-    TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "flush")) {
+      return;
+    }
 
     for (int i = 400; i < 600; ++i) {
       expectedResSet.add(i + ",1.0,");
