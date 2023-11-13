@@ -27,6 +27,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Objects.requireNonNull;
 
+/**
+ * This class is used to ensure that all the DriverTasks of all the FIs in a query accumulate
+ * scheduling time together, to avoid a single query occupying too much Level0 time due to an excess
+ * of FIs.
+ */
 public class DriverTaskHandle {
 
   private final int driverTaskHandleId;

@@ -66,6 +66,9 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   private final long cachedRawDataSize;
 
+  /** maxRuntime of one next() call */
+  private final long maxRuntime;
+
   @SuppressWarnings("squid:S107")
   protected AbstractSeriesAggregationScanOperator(
       PlanNodeId sourceId,
@@ -79,6 +82,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
       long maxReturnSize) {
     this.sourceId = sourceId;
     this.operatorContext = context;
+    maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     this.ascending = ascending;
     this.isGroupByQuery = groupByTimeParameter != null;
     this.seriesScanUtil = seriesScanUtil;
@@ -114,28 +118,31 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   @Override
   public boolean hasNext() throws Exception {
-    return timeRangeIterator.hasNextTimeRange();
+    return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
   }
 
   @Override
   public TsBlock next() throws Exception {
     // start stopwatch
-    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
 
     while (System.nanoTime() - start < maxRuntime
-        && timeRangeIterator.hasNextTimeRange()
+        && (curTimeRange != null || timeRangeIterator.hasNextTimeRange())
         && !resultTsBlockBuilder.isFull()) {
-      // move to next time window
-      curTimeRange = timeRangeIterator.nextTimeRange();
-
-      // clear previous aggregation result
-      for (Aggregator aggregator : aggregators) {
-        aggregator.reset();
+      if (curTimeRange == null) {
+        // move to the next time window
+        curTimeRange = timeRangeIterator.nextTimeRange();
+        // clear previous aggregation result
+        for (Aggregator aggregator : aggregators) {
+          aggregator.reset();
+        }
       }
 
       // calculate aggregation result on current time window
-      calculateNextAggregationResult();
+      // Keep curTimeRange if the calculation of this timeRange is not done
+      if (calculateAggregationResultForCurrentTimeRange()) {
+        curTimeRange = null;
+      }
     }
 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
@@ -156,32 +163,42 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   @SuppressWarnings("squid:S112")
-  protected void calculateNextAggregationResult() {
+  /** Return true if we have the result of this timeRange. */
+  protected boolean calculateAggregationResultForCurrentTimeRange() {
     try {
       if (calcFromCachedData()) {
         updateResultTsBlock();
-        return;
+        return true;
       }
 
       // read page data firstly
       if (readAndCalcFromPage()) {
         updateResultTsBlock();
-        return;
+        return true;
       }
 
       // read chunk data secondly
       if (readAndCalcFromChunk()) {
         updateResultTsBlock();
-        return;
+        return true;
       }
 
       // read from file
       if (readAndCalcFromFile()) {
         updateResultTsBlock();
-        return;
+        return true;
       }
 
+      // If the TimeRange is (Long.MIN_VALUE, Long.MAX_VALUE), for Aggregators like countAggregator,
+      // we have to consume all the data before we finish the aggregation calculation.
+      if ((inputTsBlock != null && !inputTsBlock.isEmpty())
+          || seriesScanUtil.hasNextPage()
+          || seriesScanUtil.hasNextChunk()
+          || seriesScanUtil.hasNextFile()) {
+        return false;
+      }
       updateResultTsBlock();
+      return true;
     } catch (IOException e) {
       throw new RuntimeException("Error while scanning the file", e);
     }
@@ -214,7 +231,9 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   @SuppressWarnings({"squid:S3776", "squid:S135", "squid:S3740"})
   protected boolean readAndCalcFromFile() throws IOException {
-    while (seriesScanUtil.hasNextFile()) {
+    // start stopwatch
+    long start = System.nanoTime();
+    while (System.nanoTime() - start < maxRuntime && seriesScanUtil.hasNextFile()) {
       if (canUseCurrentFileStatistics()) {
         Statistics fileTimeStatistics = seriesScanUtil.currentFileTimeStatistics();
         if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
@@ -253,7 +272,9 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   @SuppressWarnings({"squid:S3776", "squid:S135", "squid:S3740"})
   protected boolean readAndCalcFromChunk() throws IOException {
-    while (seriesScanUtil.hasNextChunk()) {
+    // start stopwatch
+    long start = System.nanoTime();
+    while (System.nanoTime() - start < maxRuntime && seriesScanUtil.hasNextChunk()) {
       if (canUseCurrentChunkStatistics()) {
         Statistics chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
         if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
@@ -292,7 +313,9 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   @SuppressWarnings({"squid:S3776", "squid:S135", "squid:S3740"})
   protected boolean readAndCalcFromPage() throws IOException {
-    while (seriesScanUtil.hasNextPage()) {
+    // start stopwatch
+    long start = System.nanoTime();
+    while (System.nanoTime() - start < maxRuntime && seriesScanUtil.hasNextPage()) {
       if (canUseCurrentPageStatistics()) {
         Statistics pageTimeStatistics = seriesScanUtil.currentPageTimeStatistics();
         // There is no more eligible points in current time range
