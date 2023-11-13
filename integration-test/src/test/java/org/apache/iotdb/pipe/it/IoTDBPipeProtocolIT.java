@@ -43,9 +43,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+/** Test pipe's basic functionalities under multiple cluster and consensus protocol settings. */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-/** Test pipe's basic functionalities under multiple cluster and consensus protocol settings. */
 public class IoTDBPipeProtocolIT {
 
   private BaseEnv senderEnv;
