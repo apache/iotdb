@@ -77,11 +77,11 @@ public class PipePeriodicalJobExecutor {
     rounds++;
     long elapsedTime = EXECUTOR_INTERVAL_SECONDS * rounds;
     // We still judge the cron heartbeat rounds for the generality of EXECUTOR_INTERVAL_SECONDS
-    if (elapsedTime / CRON_EVENT_INJECTOR_INTERVAL_SECONDS >= cronEventInjectRounds) {
+    if (elapsedTime / CRON_EVENT_INJECTOR_INTERVAL_SECONDS > cronEventInjectRounds) {
       cronEventInjectRounds = elapsedTime / EXECUTOR_INTERVAL_SECONDS;
       PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(false);
     }
-    if (elapsedTime / MEMORY_EXPANDER_INTERVAL_SECONDS >= memoryExpandRounds) {
+    if (elapsedTime / MEMORY_EXPANDER_INTERVAL_SECONDS > memoryExpandRounds) {
       memoryExpandRounds = elapsedTime / EXECUTOR_INTERVAL_SECONDS;
       PipeResourceManager.memory().tryExpandAll();
     }
