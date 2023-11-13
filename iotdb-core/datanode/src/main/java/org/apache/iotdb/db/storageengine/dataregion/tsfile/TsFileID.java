@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.tsfile.utils.FilePathUtils.splitTsFilePath;
 
 public class TsFileID {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileID.class);
 
   public final int regionId;
   public final long timePartitionId;
@@ -54,11 +59,14 @@ public class TsFileID {
         tmpRegionId = Integer.parseInt(pathSegments[pathLength - 3]);
       } catch (NumberFormatException e) {
         // ignore
+        LOGGER.warn("Parse RegionId failed, illegal tsfile path in IoTDB: {}", tsFileAbsolutePath);
       }
       try {
         tmpTimePartitionId = Long.parseLong(pathSegments[pathLength - 2]);
       } catch (NumberFormatException e) {
         // ignore
+        LOGGER.warn(
+            "Parse TimePartitionId failed, illegal tsfile path in IoTDB: {}", tsFileAbsolutePath);
       }
     }
 

@@ -69,8 +69,6 @@ public class ChunkMetadata implements IChunkMetadata {
 
   private Statistics<? extends Serializable> statistics;
 
-  private long ramSize;
-
   private static final int CHUNK_METADATA_FIXED_RAM_SIZE = 93;
 
   // used for SeriesReader to indicate whether it is a seq/unseq timeseries metadata
@@ -108,7 +106,6 @@ public class ChunkMetadata implements IChunkMetadata {
     this.tsDataType = other.tsDataType;
     this.version = other.version;
     this.statistics = other.statistics;
-    this.ramSize = other.ramSize;
     this.isSeq = other.isSeq;
     this.isClosed = other.isClosed;
     this.mask = other.mask;
@@ -273,13 +270,6 @@ public class ChunkMetadata implements IChunkMetadata {
     this.modified = modified;
   }
 
-  public long calculateRamSize() {
-    long memSize = CHUNK_METADATA_FIXED_RAM_SIZE;
-    memSize += RamUsageEstimator.sizeOf(measurementUid);
-    memSize += statistics.calculateRamSize();
-    return memSize;
-  }
-
   public static long calculateRamSize(String measurementId, TSDataType dataType) {
     return CHUNK_METADATA_FIXED_RAM_SIZE
         + RamUsageEstimator.sizeOf(measurementId)
@@ -289,12 +279,11 @@ public class ChunkMetadata implements IChunkMetadata {
   public void mergeChunkMetadata(ChunkMetadata chunkMetadata) {
     Statistics<? extends Serializable> chunkMetadataStatistics = chunkMetadata.getStatistics();
     this.statistics.mergeStatistics(chunkMetadataStatistics);
-    this.ramSize = calculateRamSize();
   }
 
   // it's only used for query cache, measurementUid is from TimeSeriesMetadata
   public long getRetainedSizeInBytes() {
-    return INSTANCE_SIZE + (statistics == null ? 0L : Statistics.getSizeByType(tsDataType));
+    return INSTANCE_SIZE + (statistics == null ? 0L : statistics.getRetainedSizeInBytes());
   }
 
   @Override

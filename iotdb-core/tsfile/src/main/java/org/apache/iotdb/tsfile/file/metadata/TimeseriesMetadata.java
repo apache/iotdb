@@ -282,7 +282,10 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
   // it's only used for query cache, field chunkMetadataListBuffer and chunkMetadataLoader should
   // always be null
   public long getRetainedSizeInBytes() {
-    long retainedSize = INSTANCE_SIZE + sizeOfCharArray(measurementId.length());
+    long retainedSize =
+        INSTANCE_SIZE
+            + sizeOfCharArray(measurementId.length())
+            + (statistics == null ? 0 : statistics.getRetainedSizeInBytes());
     int length = chunkMetadataList == null ? 0 : chunkMetadataList.size();
     if (length > 0) {
       retainedSize += sizeOfObjectArray(length);

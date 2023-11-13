@@ -307,7 +307,7 @@ public class TsFileIOWriter implements AutoCloseable {
   /** end chunk and write some log. */
   public void endCurrentChunk() {
     if (enableMemoryControl) {
-      this.currentChunkMetadataSize += currentChunkMetadata.calculateRamSize();
+      this.currentChunkMetadataSize += currentChunkMetadata.getRetainedSizeInBytes();
     }
     chunkMetadataCount++;
     chunkMetadataList.add(currentChunkMetadata);

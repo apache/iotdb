@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.openjdk.jol.info.ClassLayout;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -31,11 +33,12 @@ import java.util.Objects;
 
 public class BooleanStatistics extends Statistics<Boolean> {
 
+  public static final int INSTANCE_SIZE =
+      ClassLayout.parseClass(BooleanStatistics.class).instanceSize();
+
   private boolean firstValue;
   private boolean lastValue;
   private long sumValue;
-
-  static final int BOOLEAN_STATISTICS_FIXED_RAM_SIZE = 56;
 
   @Override
   public TSDataType getType() {
@@ -46,6 +49,11 @@ public class BooleanStatistics extends Statistics<Boolean> {
   @Override
   public int getStatsSize() {
     return 10;
+  }
+
+  @Override
+  public long getRetainedSizeInBytes() {
+    return INSTANCE_SIZE;
   }
 
   /**
@@ -94,11 +102,6 @@ public class BooleanStatistics extends Statistics<Boolean> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
-  }
-
-  @Override
-  public long calculateRamSize() {
-    return BOOLEAN_STATISTICS_FIXED_RAM_SIZE;
   }
 
   @Override
