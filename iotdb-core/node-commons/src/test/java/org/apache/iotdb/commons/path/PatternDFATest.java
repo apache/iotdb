@@ -51,8 +51,10 @@ public class PatternDFATest {
     PartialPath pathPattern = new PartialPath("root.**.d.s1");
     // 1. build transition
     boolean wildcard = false;
+    int cnt = 0;
     AtomicInteger transitionIndex = new AtomicInteger();
     for (String node : pathPattern.getNodes()) {
+      cnt++;
       if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
           || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
         wildcard = true;
@@ -71,7 +73,7 @@ public class PatternDFATest {
     NFAGraph nfaGraph = new NFAGraph(pathPattern, false, transitionMap);
     nfaGraph.print(transitionMap);
     // 3. NFA to DFA
-    DFAGraph dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
+    DFAGraph dfaGraph = new DFAGraph(nfaGraph, transitionMap.values(), cnt);
     dfaGraph.print(transitionMap);
   }
 
@@ -93,9 +95,11 @@ public class PatternDFATest {
     patternTree.constructTree();
     // 1. build transition
     boolean wildcard = false;
+    int cnt = 0;
     AtomicInteger transitionIndex = new AtomicInteger();
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       for (String node : pathPattern.getNodes()) {
+        cnt++;
         if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
             || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
           wildcard = true;
@@ -115,7 +119,34 @@ public class PatternDFATest {
     NFAGraph nfaGraph = new NFAGraph(patternTree, transitionMap);
     nfaGraph.print(transitionMap);
     // 3. NFA to DFA
-    DFAGraph dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
+    DFAGraph dfaGraph = new DFAGraph(nfaGraph, transitionMap.values(), cnt);
+    dfaGraph.print(transitionMap);
+  }
+
+  @Test
+  @Ignore
+  public void printFASketch3() throws IllegalPathException {
+    // Map<AcceptEvent, IFATransition>
+    Map<String, IFATransition> transitionMap = new HashMap<>();
+    PathPatternTree patternTree = new PathPatternTree();
+    List<PartialPath> partialPathList =
+        Arrays.asList(
+            new PartialPath("root.sg2.d1"),
+            new PartialPath("root.sg2.d1.s1"),
+            new PartialPath("root.sg1.d2.s1"),
+            new PartialPath("root.sg1.d2.s2"),
+            new PartialPath("root.sg1.d2"));
+    AtomicInteger transitionIndex = new AtomicInteger();
+    for (PartialPath pathPattern : partialPathList) {
+      patternTree.appendFullPath(pathPattern);
+      for (String node : pathPattern.getNodes()) {
+        transitionMap.computeIfAbsent(
+            node, i -> new DFAPreciseTransition(transitionIndex.getAndIncrement(), node));
+      }
+    }
+    patternTree.constructTree();
+    //     build DFA directly
+    DFAGraph dfaGraph = new DFAGraph(patternTree, transitionMap, 18);
     dfaGraph.print(transitionMap);
   }
 

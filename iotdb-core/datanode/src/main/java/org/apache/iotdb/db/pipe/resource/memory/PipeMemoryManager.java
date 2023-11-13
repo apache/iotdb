@@ -262,8 +262,4 @@ public class PipeMemoryManager {
   public long getTotalMemorySizeInBytes() {
     return TOTAL_MEMORY_SIZE_IN_BYTES;
   }
-
-  public double getMemoryUsage() {
-    return (double) usedMemorySizeInBytes / TOTAL_MEMORY_SIZE_IN_BYTES;
-  }
 }

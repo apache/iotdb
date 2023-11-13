@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
@@ -828,6 +829,33 @@ public class MTreeBelowSGCachedImpl {
               // only when user query with alias, the alias in path will be set
               path.setMeasurementAlias(node.getAlias());
             }
+            if (withTags) {
+              path.setTagMap(tagGetter.apply(node));
+            }
+            result.add(path);
+            return null;
+          }
+        }) {
+      collector.setTemplateMap(templateMap, nodeFactory);
+      collector.traverse();
+    }
+    return result;
+  }
+
+  public List<MeasurementPath> fetchSchemaWithoutWildcard(
+      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
+      throws MetadataException {
+    List<MeasurementPath> result = new LinkedList<>();
+    try (MeasurementCollector<Void, ICachedMNode> collector =
+        new MeasurementCollector<Void, ICachedMNode>(
+            rootNode, patternTree, store, SchemaConstant.ALL_MATCH_SCOPE) {
+          protected Void collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
+            if (node.isPreDeleted()) {
+              return null;
+            }
+            MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
+            // only when user query with alias, the alias in path will be set
+            path.setMeasurementAlias(node.getAlias());
             if (withTags) {
               path.setTagMap(tagGetter.apply(node));
             }

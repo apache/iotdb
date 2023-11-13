@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.schema.tree;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.IPatternFA;
@@ -123,8 +124,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
       if (IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(pathNode)) {
         // ** node
         usingDFA = true;
-      } else if (pathNode.length() > 1
-          && pathNode.contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+      } else if (pathNode.length() > 1 && PathPatternUtil.hasWildcard(pathNode)) {
         // regex node
         usingDFA = false;
         break;
@@ -134,6 +134,17 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
         usingDFA
             ? new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildDFA()
             : new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
+    this.scopeDFA =
+        scope == null
+            ? SchemaConstant.ALL_MATCH_DFA
+            : (PatternDFA) new IPatternFA.Builder().patternTree(scope).buildDFA();
+    this.allScope = this.scopeDFA == SchemaConstant.ALL_MATCH_DFA;
+  }
+
+  // Notices: PatternTree must not contain any wildcard
+  protected AbstractTreeVisitor(N root, PathPatternTree fullPathTree, PathPatternTree scope) {
+    this.root = root;
+    this.patternFA = new IPatternFA.Builder().patternTree(fullPathTree).buildDFA();
     this.scopeDFA =
         scope == null
             ? SchemaConstant.ALL_MATCH_DFA
