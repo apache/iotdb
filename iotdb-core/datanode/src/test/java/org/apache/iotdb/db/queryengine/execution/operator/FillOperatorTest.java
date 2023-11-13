@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.FillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.DoubleConstantFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter.FixedIntervalFillFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.IntPreviousFill;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.enums.TSDataType;
@@ -361,6 +362,173 @@ public class FillOperatorTest {
               {false, false, false},
               {false, false, false},
               {false, false, false},
+              {false, false, false}
+            }
+          };
+      while (fillOperator.hasNext()) {
+        TsBlock block = fillOperator.next();
+        for (int i = 0; i < block.getPositionCount(); i++) {
+          long expectedTime = i + 1 + count * 10000L;
+          assertEquals(expectedTime, block.getTimeByIndex(i));
+          for (int j = 0; j < 3; j++) {
+            assertEquals(isNull[count][i][j], block.getColumn(j).isNull(i));
+            if (!isNull[count][i][j]) {
+              assertEquals(res[count][i][j], block.getColumn(j).getInt(i));
+            }
+          }
+        }
+        count++;
+      }
+
+      assertTrue(fillOperator.isFinished());
+      assertEquals(3, count);
+
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void batchPreviousFillWithThresholdTest() throws Exception {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+      PlanNodeId planNodeId1 = new PlanNodeId("1");
+      driverContext.addOperatorContext(1, planNodeId1, FillOperator.class.getSimpleName());
+
+      IFill[] fillArray =
+          new IFill[] {
+            new IntPreviousFill(new FixedIntervalFillFilter(2)),
+            new IntPreviousFill(new FixedIntervalFillFilter(100)),
+            new IntPreviousFill(new FixedIntervalFillFilter(1))
+          };
+      FillOperator fillOperator =
+          new FillOperator(
+              driverContext.getOperatorContexts().get(0),
+              fillArray,
+              new Operator() {
+                private int index = 0;
+
+                @Override
+                public OperatorContext getOperatorContext() {
+                  return driverContext.getOperatorContexts().get(0);
+                }
+
+                @Override
+                public TsBlock next() {
+                  int delta = index * 10000;
+                  TsBlockBuilder builder =
+                      new TsBlockBuilder(
+                          ImmutableList.of(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
+                  // 1  1, null, 100
+                  builder.getTimeColumnBuilder().writeLong(1 + delta);
+                  builder.getColumnBuilder(0).writeInt(1 + delta);
+                  builder.getColumnBuilder(1).appendNull();
+                  builder.getColumnBuilder(2).writeInt(100 + delta);
+                  builder.declarePosition();
+                  // 2  2, 20, 200
+                  builder.getTimeColumnBuilder().writeLong(2 + delta);
+                  builder.getColumnBuilder(0).writeInt(2 + delta);
+                  builder.getColumnBuilder(1).writeInt(20 + delta);
+                  builder.getColumnBuilder(2).writeInt(200 + delta);
+                  builder.declarePosition();
+                  // 3  3, 30, null
+                  builder.getTimeColumnBuilder().writeLong(3 + delta);
+                  builder.getColumnBuilder(0).writeInt(3 + delta);
+                  builder.getColumnBuilder(1).writeInt(30 + delta);
+                  builder.getColumnBuilder(2).appendNull();
+                  builder.declarePosition();
+                  // 4  null, 40, null
+                  builder.getTimeColumnBuilder().writeLong(4 + delta);
+                  builder.getColumnBuilder(0).appendNull();
+                  builder.getColumnBuilder(1).writeInt(40 + delta);
+                  builder.getColumnBuilder(2).appendNull();
+                  builder.declarePosition();
+                  // 5  null, null, 500
+                  builder.getTimeColumnBuilder().writeLong(5 + delta);
+                  builder.getColumnBuilder(0).appendNull();
+                  builder.getColumnBuilder(1).appendNull();
+                  builder.getColumnBuilder(2).writeInt(500 + delta);
+                  builder.declarePosition();
+
+                  index++;
+                  return builder.build();
+                }
+
+                @Override
+                public boolean hasNext() {
+                  return index < 3;
+                }
+
+                @Override
+                public boolean isFinished() {
+                  return index >= 3;
+                }
+
+                @Override
+                public long calculateMaxPeekMemory() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateMaxReturnSize() {
+                  return 0;
+                }
+
+                @Override
+                public long calculateRetainedSizeAfterCallingNext() {
+                  return 0;
+                }
+              });
+
+      int count = 0;
+      int[][][] res =
+          new int[][][] {
+            {{1, 0, 100}, {2, 20, 200}, {3, 30, 200}, {3, 40, 0}, {3, 40, 500}},
+            {
+              {10001, 0, 10100},
+              {10002, 10020, 10200},
+              {10003, 10030, 10200},
+              {10003, 10040, 0},
+              {10003, 10040, 10500}
+            },
+            {
+              {20001, 0, 20100},
+              {20002, 20020, 20200},
+              {20003, 20030, 20200},
+              {20003, 20040, 0},
+              {20003, 20040, 20500}
+            }
+          };
+      boolean[][][] isNull =
+          new boolean[][][] {
+            {
+              {false, true, false},
+              {false, false, false},
+              {false, false, false},
+              {false, false, true},
+              {false, false, false}
+            },
+            {
+              {false, true, false},
+              {false, false, false},
+              {false, false, false},
+              {false, false, true},
+              {false, false, false}
+            },
+            {
+              {false, true, false},
+              {false, false, false},
+              {false, false, false},
+              {false, false, true},
               {false, false, false}
             }
           };
