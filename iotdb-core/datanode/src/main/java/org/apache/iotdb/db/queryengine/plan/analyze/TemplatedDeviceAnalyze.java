@@ -37,7 +37,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -111,12 +110,14 @@ public class TemplatedDeviceAnalyze {
       QueryStatement queryStatement,
       MPPQueryContext context,
       ISchemaTree schemaTree,
-      IPartitionFetcher partitionFetcher) {
+      IPartitionFetcher partitionFetcher,
+      Template template) {
     this.analysis = analysis;
     this.queryStatement = queryStatement;
     this.context = context;
     this.schemaTree = schemaTree;
     this.partitionFetcher = partitionFetcher;
+    analysis.setTemplateTypes(template);
 
     if (queryStatement.getSelectComponent().getResultColumns().size() == 1) {
       if ("*"
@@ -127,9 +128,6 @@ public class TemplatedDeviceAnalyze {
                   .get(0)
                   .getExpression()
                   .getOutputSymbol())) {
-
-        Template template = ClusterTemplateManager.getInstance().getAllTemplates().get(0);
-        analysis.setTemplateTypes(template);
 
         isWildCardQuery = true;
       }

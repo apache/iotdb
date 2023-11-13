@@ -76,7 +76,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
@@ -148,9 +147,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   @Override
   public List<PlanNode> visitDeviceView(DeviceViewNode node, DistributionPlanContext context) {
-    checkArgument(
-        node.getDevices().size() == node.getChildren().size(),
-        "size of devices and its children in DeviceViewNode should be same");
+    if (node.getDevices().size() != node.getChildren().size()) {
+      throw new IllegalArgumentException(
+          "size of devices and its children in DeviceViewNode should be same");
+    }
 
     // If the DeviceView is mixed with Function that need to merge data from different Data Region,
     // it should be processed by a special logic.
