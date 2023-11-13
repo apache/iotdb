@@ -74,7 +74,7 @@ public class SessionExample {
             .password("root")
             .version(Version.V_1_0)
             .build();
-    session.open(false);
+    session.open(true);
 
     // set session fetchSize
     session.setFetchSize(10000);
@@ -110,18 +110,18 @@ public class SessionExample {
     //    deleteTimeseries();
     //    setTimeout();
 
-    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
-    sessionEnableRedirect.setEnableQueryRedirection(true);
-    sessionEnableRedirect.open(false);
-
-    // set session fetchSize
-    sessionEnableRedirect.setFetchSize(10000);
-
-    fastLastDataQueryForOneDevice();
-    insertRecord4Redirect();
-    query4Redirect();
-    sessionEnableRedirect.close();
-    session.close();
+//    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+//    sessionEnableRedirect.setEnableQueryRedirection(true);
+//    sessionEnableRedirect.open(false);
+//
+//    // set session fetchSize
+//    sessionEnableRedirect.setFetchSize(10000);
+//
+//    fastLastDataQueryForOneDevice();
+//    insertRecord4Redirect();
+//    query4Redirect();
+//    sessionEnableRedirect.close();
+//    session.close();
   }
 
   private static void createAndDropContinuousQueries()
