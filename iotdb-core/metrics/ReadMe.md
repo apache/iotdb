@@ -20,10 +20,9 @@
 -->
 Metric Module
 
-- In this project, we provide interface and two implementations
+- In this project, we provide interface and its implementation
   - metrics-interface
-  - dropwizard metric
-  - micrometer metric
+  - metrics-core
 - In each implementation, you can use several types of reporter to report metric
   - Jmx Reporter
   - Prometheus Reporter
@@ -59,14 +58,14 @@ Metric Module
    4. Provide the access of metricManager and CompositeReporter.
 
 # 2. Test Report
-We implemented the monitoring framework using Dropwizard and Micrometer respectively, and tested the results as follows:
+We implemented the monitoring framework mainly based on Micrometer, and tested the results as follows:
 
 ## 2.1. Test Environment
 1. Processor：Inter(R) Core(TM) i7-1065G7 CPU
 2. RAM: 32G
 
 ## 2.2. Test Metrics
-1. We use a single thread to create counter and run the test cases separately in two frameworks of Micrometer and Dropwizard. The test metrics as follows:
+1. We use a single thread to create counter and run the test cases. The test metrics as follows:
    1. memory : Memory usage in MB.
    2. create : The time required to create, in ms.
    3. searchInorder : The time required for the sequential query, in ms.
@@ -93,7 +92,7 @@ We implemented the monitoring framework using Dropwizard and Micrometer respecti
 
 ```
 System.setProperty("line.separator", "\n");
-System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources");
+System.setProperty("IOTDB_CONF", "metrics/core/src/test/resources");
 ```
 
 2. Then, you can modify `iotdb-datanode.properties(iotdb-confignode.properties)` as you like, some details:
@@ -103,7 +102,6 @@ System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources"
 | dn(cn)_enable_metric                   | whether enable the module                                                              | true                                |
 | dn(cn)_enable_performance_stat         | Is stat performance of operation latency                                               | true                                |
 | dn(cn)_metric_reporter_list            | the list of reporter                                                                   | JMX, PROMETHEUS, IOTDB              |
-| dn(cn)_metric_frame_type               | The type of metric manager                                                             | DROPWIZARD, MICROMETER              |
 | dn(cn)_metric_level                    | the init level of metrics                                                              | ALL, NORMAL, IMPORTANT, CORE        |
 | dn(cn)_metric_async_collect_period     | The period of the collection of some metrics in asynchronous way, such as tsfile size. | 5                                   |
 
@@ -121,12 +119,10 @@ MetricService.getInstance().count(1, "operation_count", MetricLevel.IMPORTANT, "
 1. implement your MetricService
    1. You need to implement `reloadProperties` to reload properties when running.
 2. implement your MetricManager
-   1. The name of MetricManager should start with `metricFrameType`, MetricService will init manager according to the prefix of class name.
-   2. You need to create `src/main/resources/META-INF/services/org.apache.iotdb.metrics.AbstractMetricManager`，and record your MetricManager class name in this file, such as `org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager`
+   1. You need to implement your metric manager to manage the creation and deletion of your metrics
 3. implement your reporter
    1. You need to implement jmx reporter and prometheus reporter, notice that your jmx bean name should be unified as `org.apache.iotdb.metrics`
-   2. The name of your reporter should also start with `metricFrameType`
-   3. You need to create `src/main/resources/META-INF/services/org.apache.iotdb.metrics.Reporter`，and record your MetricManager class name in this file, such as `org.apache.iotdb.metrics.dropwizard.reporter.DropwizardPrometheusReporter`
+   2. You need to create `src/main/resources/META-INF/services/org.apache.iotdb.metrics.Reporter`，and record your MetricManager class name in this file, such as `org.apache.iotdb.metrics.core.reporter.IoTDBJmxReporter`
 4. implement your specific metric
    1. They are counter, gauge, histogram, histogramSnapshot, rate and timer.
    2. These metrics will be managed by your MetricManager, and reported by your reporter.
