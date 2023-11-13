@@ -99,7 +99,7 @@ public class WALEntryHandler {
     WALEntryValue res = value;
     if (res != null) {
       if (res instanceof InsertNode) {
-        return (InsertNode) value;
+        return (InsertNode) res;
       } else {
         throw new WALPipeException("Fail to get value because the entry type isn't InsertNode.");
       }
