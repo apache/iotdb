@@ -3046,7 +3046,10 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void renameAndHandleError(String originFileName, String newFileName) {
     try {
-      Files.move(Paths.get(originFileName), Paths.get(newFileName));
+      File originFile = new File(originFileName);
+      if (originFile.exists()) {
+        Files.move(originFile.toPath(), Paths.get(newFileName));
+      }
     } catch (IOException e) {
       logger.error("Failed to rename {} to {},", originFileName, newFileName, e);
     }
