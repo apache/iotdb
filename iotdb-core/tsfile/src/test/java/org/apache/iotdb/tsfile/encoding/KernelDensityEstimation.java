@@ -6,25 +6,42 @@ import java.util.Map;
 
 public class KernelDensityEstimation {
         public static void main(String[] args) {
+                // 第一个整数（正数）
+                int int1 = -12345;
+                // 第二个整数（负数）
+                int int2 = -67890;
+
+                // 将两个整数拼接成一个长整型数
+                long combined = ((long) int1 << 32) | (int2 & 0xFFFFFFFFL);
+
+                System.out.println("Combined long value: " + combined);
+
+                // 将长整型数分解回两个整数
+                int originalInt1 = (int) (combined >> 32);
+                int originalInt2 = (int) combined;
+
+                System.out.println("Original Int 1: " + originalInt1);
+                System.out.println("Original Int 2: " + originalInt2);
+
             // 离散分布数据
-            Map<Integer, Integer> discreteDistribution = new HashMap<>();
-            discreteDistribution.put(2, 10);
-            discreteDistribution.put(3, 100);
-            discreteDistribution.put(1, 3);
-            discreteDistribution.put(4, 12);
-
-            // 计算核密度估计
-            double[] kernelDensity = calculateKernelDensity(discreteDistribution);
-
-            // 打印核密度估计
-            System.out.println("Kernel Density Estimation:");
-            for (int i = 0; i < kernelDensity.length; i++) {
-                System.out.println("x=" + (i + 1) + ": " + kernelDensity[i]);
-            }
-
-            // 寻找核密度估计的极小值点
-            int[] minIndex = findMinIndex(kernelDensity);
-            System.out.println("Minimum point: x=" + (Arrays.toString(minIndex)));
+//            Map<Integer, Integer> discreteDistribution = new HashMap<>();
+//            discreteDistribution.put(2, 10);
+//            discreteDistribution.put(3, 100);
+//            discreteDistribution.put(1, 3);
+//            discreteDistribution.put(4, 12);
+//
+//            // 计算核密度估计
+//            double[] kernelDensity = calculateKernelDensity(discreteDistribution);
+//
+//            // 打印核密度估计
+//            System.out.println("Kernel Density Estimation:");
+//            for (int i = 0; i < kernelDensity.length; i++) {
+//                System.out.println("x=" + (i + 1) + ": " + kernelDensity[i]);
+//            }
+//
+//            // 寻找核密度估计的极小值点
+//            int[] minIndex = findMinIndex(kernelDensity);
+//            System.out.println("Minimum point: x=" + (Arrays.toString(minIndex)));
         }
 
         // 计算核密度估计
