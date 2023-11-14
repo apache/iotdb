@@ -31,6 +31,7 @@ public enum BuiltinAggregationFunctionEnum {
   MIN_VALUE("min_value"),
   EXTREME("extreme"),
   FIRST_VALUE("first_value"),
+  VAR_POP("var_pop"),
   LAST_VALUE("last_value"),
   COUNT("count"),
   AVG("avg"),

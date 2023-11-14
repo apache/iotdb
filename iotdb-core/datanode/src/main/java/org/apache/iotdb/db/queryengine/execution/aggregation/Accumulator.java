@@ -40,6 +40,10 @@ public interface Accumulator {
    */
   void addInput(Column[] column, BitMap bitMap, int lastIndex);
 
+  default void removeInput(Column[] partialResult) {
+    throw new UnsupportedOperationException("This type of accumulator does not support remove input!");
+  }
+
   /**
    * For aggregation function like COUNT, SUM, partialResult should be single; But for AVG,
    * last_value, it should be double column with dictionary order.

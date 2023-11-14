@@ -124,6 +124,7 @@ public class SchemaUtils {
         return TSDataType.INT64;
       case SqlConstant.AVG:
       case SqlConstant.SUM:
+      case SqlConstant.VAR_POP:
         return TSDataType.DOUBLE;
       case SqlConstant.LAST_VALUE:
       case SqlConstant.FIRST_VALUE:
@@ -157,6 +158,7 @@ public class SchemaUtils {
       case COUNT_TIME:
       case AVG:
       case TIME_DURATION:
+      case VAR_POP:
         return true;
       default:
         throw new IllegalArgumentException(
@@ -178,6 +180,8 @@ public class SchemaUtils {
         return Collections.singletonList(TAggregationType.MIN_TIME);
       case LAST_VALUE:
         return Collections.singletonList(TAggregationType.MAX_TIME);
+      case VAR_POP:
+        return Collections.singletonList(TAggregationType.VAR_POP);
       case AVG:
         return Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM);
       case TIME_DURATION:

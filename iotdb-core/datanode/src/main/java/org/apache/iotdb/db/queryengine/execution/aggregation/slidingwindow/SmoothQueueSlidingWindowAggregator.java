@@ -27,7 +27,7 @@ import java.util.List;
 
 /**
  * The aggregation result is calculated from all pre-aggregation results in the currently maintained
- * queue when calculating the COUNT, SUM, and AVG.
+ * queue when calculating the COUNT, SUM, AVG and VAR_POP.
  */
 public class SmoothQueueSlidingWindowAggregator extends SlidingWindowAggregator {
   public SmoothQueueSlidingWindowAggregator(
@@ -44,7 +44,7 @@ public class SmoothQueueSlidingWindowAggregator extends SlidingWindowAggregator 
     }
     while (!deque.isEmpty() && !curTimeRange.contains(deque.getFirst().getTime())) {
       PartialAggregationResult partialResult = deque.removeFirst();
-      this.accumulator.addIntermediate(partialResult.opposite());
+      this.accumulator.removeInput(partialResult.getPartialResult());
     }
   }
 

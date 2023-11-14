@@ -286,6 +286,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       "UNSET",
       "UNCOMPRESSED",
       "VALUES",
+      "VAR_POP",
       "VERSION",
       "WHERE",
       "WITH",

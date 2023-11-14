@@ -190,5 +190,6 @@ enum TAggregationType {
   COUNT_IF,
   TIME_DURATION,
   MODE,
-  COUNT_TIME
+  COUNT_TIME,
+  VAR_POP
 }

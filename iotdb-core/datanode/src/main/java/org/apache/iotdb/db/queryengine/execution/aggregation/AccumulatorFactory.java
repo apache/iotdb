@@ -72,6 +72,8 @@ public class AccumulatorFactory {
         return crateModeAccumulator(tsDataType);
       case COUNT_TIME:
         return new CountTimeAccumulator();
+      case VAR_POP:
+        return new VarPopAccumulator(tsDataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
