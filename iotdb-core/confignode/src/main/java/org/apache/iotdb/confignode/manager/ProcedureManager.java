@@ -832,7 +832,7 @@ public class ProcedureManager {
       final long procedureId =
           executor.submitProcedure(
               new PipeHandleMetaChangeProcedure(
-                  needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes));
+                  needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes, false));
       LOGGER.info("PipeHandleMetaChangeProcedure was submitted, procedureId: {}.", procedureId);
     } catch (Exception e) {
       LOGGER.warn("PipeHandleMetaChangeProcedure was failed to submit.", e);
@@ -840,12 +840,16 @@ public class ProcedureManager {
   }
 
   public TSStatus pipeHandleMetaChangeWithBlock(
-      boolean needWriteConsensusOnConfigNodes, boolean needPushPipeMetaToDataNodes) {
+      boolean needWriteConsensusOnConfigNodes,
+      boolean needPushPipeMetaToDataNodes,
+      boolean needUpdateLastSyncedPipeTaskInfoVersion) {
     try {
       final long procedureId =
           executor.submitProcedure(
               new PipeHandleMetaChangeProcedure(
-                  needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes));
+                  needWriteConsensusOnConfigNodes,
+                  needPushPipeMetaToDataNodes,
+                  needUpdateLastSyncedPipeTaskInfoVersion));
       final List<TSStatus> statusList = new ArrayList<>();
       final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);

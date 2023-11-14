@@ -47,16 +47,24 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
 
   private boolean needWriteConsensusOnConfigNodes = false;
   private boolean needPushPipeMetaToDataNodes = false;
+  private boolean needUpdateLastSyncedPipeTaskInfoVersion = false;
+
+  public boolean getNeedUpdateLastSyncedPipeTaskInfoVersion() {
+    return needUpdateLastSyncedPipeTaskInfoVersion;
+  }
 
   public PipeHandleMetaChangeProcedure() {
     super();
   }
 
   public PipeHandleMetaChangeProcedure(
-      boolean needWriteConsensusOnConfigNodes, boolean needPushPipeMetaToDataNodes) {
+      boolean needWriteConsensusOnConfigNodes,
+      boolean needPushPipeMetaToDataNodes,
+      boolean needUpdateLastSyncedPipeTaskInfoVersion) {
     super();
     this.needWriteConsensusOnConfigNodes = needWriteConsensusOnConfigNodes;
     this.needPushPipeMetaToDataNodes = needPushPipeMetaToDataNodes;
+    this.needUpdateLastSyncedPipeTaskInfoVersion = needUpdateLastSyncedPipeTaskInfoVersion;
   }
 
   @Override
@@ -153,6 +161,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
 
     ReadWriteIOUtils.write(needWriteConsensusOnConfigNodes, stream);
     ReadWriteIOUtils.write(needPushPipeMetaToDataNodes, stream);
+    ReadWriteIOUtils.write(needUpdateLastSyncedPipeTaskInfoVersion, stream);
   }
 
   @Override
@@ -161,6 +170,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
 
     needWriteConsensusOnConfigNodes = ReadWriteIOUtils.readBool(byteBuffer);
     needPushPipeMetaToDataNodes = ReadWriteIOUtils.readBool(byteBuffer);
+    needUpdateLastSyncedPipeTaskInfoVersion = ReadWriteIOUtils.readBool(byteBuffer);
   }
 
   @Override
@@ -173,11 +183,15 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
     }
     PipeHandleMetaChangeProcedure that = (PipeHandleMetaChangeProcedure) o;
     return needWriteConsensusOnConfigNodes == that.needWriteConsensusOnConfigNodes
-        && needPushPipeMetaToDataNodes == that.needPushPipeMetaToDataNodes;
+        && needPushPipeMetaToDataNodes == that.needPushPipeMetaToDataNodes
+        && needUpdateLastSyncedPipeTaskInfoVersion == that.needUpdateLastSyncedPipeTaskInfoVersion;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes);
+    return Objects.hash(
+        needWriteConsensusOnConfigNodes,
+        needPushPipeMetaToDataNodes,
+        needUpdateLastSyncedPipeTaskInfoVersion);
   }
 }

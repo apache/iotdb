@@ -64,7 +64,7 @@ public class PipeMetaSyncer {
   // no pipe in CN and PipeTaskInfo has not been modified during this period, it means the pipe
   // metadata in DN has already been synced with CN, so this round of sync can be safely skipped.
   private boolean isLastEmptyPipeSyncSuccessful = false;
-  private long lastEmptyPipeSyncWriteLockAcquiredCount = 0;
+  private long lastSyncedPipeTaskInfoVersion = 0;
 
   PipeMetaSyncer(ConfigManager configManager) {
     this.configManager = configManager;
@@ -96,11 +96,8 @@ public class PipeMetaSyncer {
   private synchronized void sync() {
     if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()
         && isLastEmptyPipeSyncSuccessful
-        && lastEmptyPipeSyncWriteLockAcquiredCount
-            == configManager
-                .getPipeManager()
-                .getPipeTaskCoordinator()
-                .getWriteLockAcquiredCount()) {
+        && lastSyncedPipeTaskInfoVersion
+            == configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfoVersion()) {
       return;
     }
 
@@ -108,7 +105,7 @@ public class PipeMetaSyncer {
 
     if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
       LOGGER.warn(
-          "PipeTaskCoordinatorLock is held by another thread, skip this round of sync to avoid procedure and rpc accumulation as much as possible.");
+          "PipeTaskCoordinatorLock is held by another thread, skip this round of sync to avoid procedure and rpc accumulation as much as possible");
       return;
     }
 
@@ -126,35 +123,32 @@ public class PipeMetaSyncer {
     final TSStatus metaSyncStatus = procedureManager.pipeMetaSync();
 
     if (metaSyncStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      boolean canSkipNextSync = false;
+      boolean canSkipSync = false;
 
       if (somePipesNeedRestarting) {
         final boolean isRestartSuccessful = handleSuccessfulRestartWithLock();
         final TSStatus handleMetaChangeStatus =
-            procedureManager.pipeHandleMetaChangeWithBlock(true, false);
+            procedureManager.pipeHandleMetaChangeWithBlock(true, false, true);
         if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()
             && isRestartSuccessful
             && handleMetaChangeStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          canSkipNextSync = true;
+          canSkipSync = true;
         }
       } else {
         if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()) {
-          canSkipNextSync = true;
+          canSkipSync = true;
         }
       }
 
-      // When the sync operation succeeded while there was no pipe in CN, we need to set the
-      // isLastEmptyPipeSyncSuccessful variable and record the version of PipeTaskInfo at that time.
-      if (canSkipNextSync) {
-        LOGGER.info("Skip next round of sync if no pipe and no modification on PipeTaskInfo.");
+      if (canSkipSync) {
+        LOGGER.info(
+            "Skips all following rounds of sync until cluster has pipe task or PipeTaskInfo has been updated");
         isLastEmptyPipeSyncSuccessful = true;
-        lastEmptyPipeSyncWriteLockAcquiredCount =
-            configManager.getPipeManager().getPipeTaskCoordinator().getWriteLockAcquiredCount();
       }
     } else {
       LOGGER.warn("Failed to sync pipe meta. Result status: {}.", metaSyncStatus);
       final TSStatus handleMetaChangeStatus =
-          procedureManager.pipeHandleMetaChangeWithBlock(true, true);
+          procedureManager.pipeHandleMetaChangeWithBlock(true, true, false);
       if (handleMetaChangeStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Failed to handle pipe meta change. Result status: {}.", handleMetaChangeStatus);
@@ -197,5 +191,9 @@ public class PipeMetaSyncer {
     } finally {
       configManager.getPipeManager().getPipeTaskCoordinator().unlock();
     }
+  }
+
+  public void setLastSyncedPipeTaskInfoVersion(long version) {
+    this.lastSyncedPipeTaskInfoVersion = version;
   }
 }

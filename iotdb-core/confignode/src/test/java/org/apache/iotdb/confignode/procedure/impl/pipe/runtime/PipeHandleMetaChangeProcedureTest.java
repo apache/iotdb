@@ -38,7 +38,7 @@ public class PipeHandleMetaChangeProcedureTest {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    PipeHandleMetaChangeProcedure proc = new PipeHandleMetaChangeProcedure(true, false);
+    PipeHandleMetaChangeProcedure proc = new PipeHandleMetaChangeProcedure(true, false, false);
 
     try {
       proc.serialize(outputStream);
