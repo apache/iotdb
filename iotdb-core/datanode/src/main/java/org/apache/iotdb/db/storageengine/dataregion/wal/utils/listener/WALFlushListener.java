@@ -24,7 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 /** This class helps judge whether wal is flushed to the storage device. */
 public class WALFlushListener extends AbstractResultListener {
-  // handler for pipeline, only exists then value is InsertNode
+  // handler for pipeline, only exists when value is InsertNode
   private final WALEntryHandler walEntryHandler;
 
   public WALFlushListener(boolean wait, WALEntryValue value) {
