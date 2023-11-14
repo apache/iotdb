@@ -19,14 +19,19 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -60,12 +65,14 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final EnrichedEvent sourceEvent; // used to report progress
 
   private boolean isSelfHoldReader = false;
-  private TsFileSequenceReader tsFileSequenceReader;
-  private TsFileReader tsFileReader;
+  private final PipeMemoryBlock allocatedMemoryBlock;
+
+  private final TsFileSequenceReader tsFileSequenceReader;
+  private final TsFileReader tsFileReader;
 
   private final Iterator<Map.Entry<String, List<String>>> deviceMeasurementsMapIterator;
-  private Map<String, Boolean> deviceIsAlignedMap;
-  private Map<String, TSDataType> measurementDataTypeMap;
+  private final Map<String, Boolean> deviceIsAlignedMap;
+  private final Map<String, TSDataType> measurementDataTypeMap;
 
   public TsFileInsertionDataContainer(File tsFile, String pattern, long startTime, long endTime)
       throws IOException {
@@ -92,6 +99,11 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     this.sourceEvent = sourceEvent;
 
     try {
+      allocatedMemoryBlock =
+              PipeResourceManager.memory()
+                      .forceAllocate(
+                              PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
+  
       tsFileSequenceReader = PipeResourceManager.tsfile().getTsFileSequenceReaderFromCache(tsFile);
       if (tsFileSequenceReader == null) {
         // TsFileSequenceReader is not in cache, we need to create it here and close it later.
@@ -253,5 +265,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     } catch (IOException e) {
       LOGGER.warn("Failed to close TsFileSequenceReader", e);
     }
+
+    allocatedMemoryBlock.close();
   }
 }

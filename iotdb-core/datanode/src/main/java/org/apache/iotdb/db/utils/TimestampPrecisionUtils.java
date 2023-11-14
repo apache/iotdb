@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 public class TimestampPrecisionUtils {
   static String TIMESTAMP_PRECISION =
       CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
-  private static boolean isTimestampPrecisionCheckEnabled =
+  private static final boolean isTimestampPrecisionCheckEnabled =
       CommonDescriptor.getInstance().getConfig().isTimestampPrecisionCheckEnabled();
 
   @FunctionalInterface
@@ -34,28 +34,33 @@ public class TimestampPrecisionUtils {
     R apply(T1 t1, T2 t2);
   }
 
-  private static final ConvertFunction<Long, TimeUnit, Long> convertFunction;
+  private static final ConvertFunction<Long, TimeUnit, Long> convertToCurrPrecisionFunction;
+  public static final TimeUnit currPrecision;
 
   static {
     switch (TIMESTAMP_PRECISION) {
       case "ms":
-        convertFunction = TimeUnit.MILLISECONDS::convert;
+        convertToCurrPrecisionFunction = TimeUnit.MILLISECONDS::convert;
+        currPrecision = TimeUnit.MILLISECONDS;
         break;
       case "us":
-        convertFunction = TimeUnit.MICROSECONDS::convert;
+        convertToCurrPrecisionFunction = TimeUnit.MICROSECONDS::convert;
+        currPrecision = TimeUnit.MICROSECONDS;
         break;
       case "ns":
-        convertFunction = TimeUnit.NANOSECONDS::convert;
+        convertToCurrPrecisionFunction = TimeUnit.NANOSECONDS::convert;
+        currPrecision = TimeUnit.NANOSECONDS;
         break;
         // this case will never reach
       default:
-        convertFunction = null;
+        throw new UnsupportedOperationException(
+            "not supported time_precision: " + TIMESTAMP_PRECISION);
     }
   }
 
   /** convert specific precision timestamp to current precision timestamp */
   public static long convertToCurrPrecision(long sourceTime, TimeUnit sourceUnit) {
-    return convertFunction.apply(sourceTime, sourceUnit);
+    return convertToCurrPrecisionFunction.apply(sourceTime, sourceUnit);
   }
 
   /** check whether the input timestamp match the current system timestamp precision. */

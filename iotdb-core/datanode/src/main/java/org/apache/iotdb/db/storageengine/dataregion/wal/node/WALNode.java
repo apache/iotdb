@@ -50,6 +50,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinExc
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener.Status;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -64,9 +65,9 @@ import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -147,8 +148,7 @@ public class WALNode implements IWALNode {
   private WALFlushListener log(WALEntry walEntry) {
     buffer.write(walEntry);
     // set handler for pipe
-    walEntry.getWalFlushListener().getWalEntryHandler().setMemTableId(walEntry.getMemTableId());
-    walEntry.getWalFlushListener().getWalEntryHandler().setWalNode(this);
+    walEntry.getWalFlushListener().getWalEntryHandler().setWalNode(this, walEntry.getMemTableId());
     return walEntry.getWalFlushListener();
   }
 
@@ -234,7 +234,9 @@ public class WALNode implements IWALNode {
 
     private int recursionTime = 0;
 
-    public DeleteOutdatedFileTask() {}
+    public DeleteOutdatedFileTask() {
+      // Do nothing
+    }
 
     private void init() {
       this.firstValidVersionId = initFirstValidWALVersionId();
@@ -611,9 +613,9 @@ public class WALNode implements IWALNode {
     /** true means filesToSearch and currentFileIndex are outdated, call updateFilesToSearch */
     private boolean needUpdatingFilesToSearch = true;
     /** batch store insert nodes */
-    private final List<IndexedConsensusRequest> insertNodes = new LinkedList<>();
+    private final LinkedList<IndexedConsensusRequest> insertNodes = new LinkedList<>();
     /** iterator of insertNodes */
-    private Iterator<IndexedConsensusRequest> itr = null;
+    private ListIterator<IndexedConsensusRequest> itr = null;
 
     public PlanNodeIterator(long startIndex) {
       this.nextSearchIndex = startIndex;
@@ -775,7 +777,7 @@ public class WALNode implements IWALNode {
 
       // update iterator
       if (!insertNodes.isEmpty()) {
-        itr = insertNodes.iterator();
+        itr = insertNodes.listIterator();
         return true;
       }
       return false;
@@ -833,6 +835,21 @@ public class WALNode implements IWALNode {
             targetIndex,
             targetIndex);
       }
+
+      if (itr != null
+          && itr.hasNext()
+          && insertNodes.get(itr.nextIndex()).getSearchIndex() <= targetIndex
+          && targetIndex <= insertNodes.getLast().getSearchIndex()) {
+        while (itr.hasNext()) {
+          IndexedConsensusRequest request = itr.next();
+          if (targetIndex == request.getSearchIndex()) {
+            itr.previous();
+            nextSearchIndex = targetIndex;
+            return;
+          }
+        }
+      }
+
       reset();
       nextSearchIndex = targetIndex;
     }
@@ -914,7 +931,7 @@ public class WALNode implements IWALNode {
   public void rollWALFile() {
     WALEntry rollWALFileSignal = new WALSignalEntry(WALEntryType.ROLL_WAL_LOG_WRITER_SIGNAL, true);
     WALFlushListener walFlushListener = log(rollWALFileSignal);
-    if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+    if (walFlushListener.waitForResult() == AbstractResultListener.Status.FAILURE) {
       logger.error(
           "Fail to trigger rolling wal node-{}'s wal file log writer.",
           identifier,
@@ -928,6 +945,10 @@ public class WALNode implements IWALNode {
 
   public long getFileNum() {
     return buffer.getFileNum();
+  }
+
+  public int getRegionId(long memtableId) {
+    return checkpointManager.getRegionId(memtableId);
   }
 
   @TestOnly

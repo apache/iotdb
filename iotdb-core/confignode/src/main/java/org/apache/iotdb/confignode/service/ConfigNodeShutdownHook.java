@@ -46,7 +46,7 @@ public class ConfigNodeShutdownHook extends Thread {
 
   @Override
   public void run() {
-    boolean isLeader = ConfigNode.getInstance().getConfigManager().getConsensusManager().isLeader();
+    boolean isLeader = getConfigNodeInstance().getConfigManager().getConsensusManager().isLeader();
 
     try {
       ConfigNode.getInstance().deactivate();
@@ -58,13 +58,13 @@ public class ConfigNodeShutdownHook extends Thread {
       // Set and report shutdown to cluster ConfigNode-leader
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Unknown);
       boolean isReportSuccess = false;
-      TEndPoint targetConfigNode = CONF.getTargetConfigNode();
+      TEndPoint seedConfigNode = CONF.getSeedConfigNode();
       for (int retry = 0; retry < SHUTDOWN_REPORT_RETRY_NUM; retry++) {
         TSStatus result =
             (TSStatus)
                 SyncConfigNodeClientPool.getInstance()
                     .sendSyncRequestToConfigNodeWithRetry(
-                        targetConfigNode,
+                        seedConfigNode,
                         new TConfigNodeLocation(
                             CONF.getConfigNodeId(),
                             new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
@@ -77,7 +77,7 @@ public class ConfigNodeShutdownHook extends Thread {
           break;
         } else if (result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
           // Redirect
-          targetConfigNode = result.getRedirectNode();
+          seedConfigNode = result.getRedirectNode();
         }
       }
       if (!isReportSuccess) {
@@ -92,5 +92,9 @@ public class ConfigNodeShutdownHook extends Thread {
           MemUtils.bytesCntToStr(
               Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
     }
+  }
+
+  protected ConfigNode getConfigNodeInstance() {
+    return ConfigNode.getInstance();
   }
 }

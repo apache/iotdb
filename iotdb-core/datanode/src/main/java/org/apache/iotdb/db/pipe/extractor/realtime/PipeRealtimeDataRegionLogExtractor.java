@@ -22,10 +22,12 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,17 +39,24 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
   @Override
   protected void doExtract(PipeRealtimeEvent event) {
-    if (event.getEvent() instanceof PipeHeartbeatEvent) {
+    final Event eventToExtract = event.getEvent();
+
+    if (eventToExtract instanceof TabletInsertionEvent) {
+      extractTabletInsertion(event);
+    } else if (eventToExtract instanceof TsFileInsertionEvent) {
+      extractTsFileInsertion(event);
+    } else if (eventToExtract instanceof PipeHeartbeatEvent) {
       extractHeartbeat(event);
-      return;
+    } else {
+      throw new UnsupportedOperationException(
+          String.format(
+              "Unsupported event type %s for log realtime extractor %s",
+              eventToExtract.getClass(), this));
     }
+  }
 
+  private void extractTabletInsertion(PipeRealtimeEvent event) {
     event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TABLET);
-
-    if (!(event.getEvent() instanceof TabletInsertionEvent)) {
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
-      return;
-    }
 
     if (!pendingQueue.waitedOffer(event)) {
       // this would not happen, but just in case.
@@ -56,6 +65,31 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
           String.format(
               "extract: pending queue of PipeRealtimeDataRegionLogExtractor %s "
                   + "has reached capacity, discard tablet event %s, current state %s",
+              this, event, event.getTsFileEpoch().getState(this));
+      LOGGER.error(errorMessage);
+      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+
+      // ignore this event.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
+    }
+  }
+
+  private void extractTsFileInsertion(PipeRealtimeEvent event) {
+    if (!((PipeTsFileInsertionEvent) event.getEvent()).getIsLoaded()) {
+      // only loaded tsfile can be extracted by this extractor. Ignore this event.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
+      return;
+    }
+
+    event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
+
+    if (!pendingQueue.waitedOffer(event)) {
+      // this would not happen, but just in case.
+      // pendingQueue is unbounded, so it should never reach capacity.
+      final String errorMessage =
+          String.format(
+              "extract: pending queue of PipeRealtimeDataRegionLogExtractor %s "
+                  + "has reached capacity, discard loaded tsFile event %s, current state %s",
               this, event, event.getTsFileEpoch().getState(this));
       LOGGER.error(errorMessage);
       PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
@@ -100,7 +134,8 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
   @Override
   public boolean isNeedListenToTsFile() {
-    return false;
+    // Only listen to loaded tsFiles
+    return true;
   }
 
   @Override

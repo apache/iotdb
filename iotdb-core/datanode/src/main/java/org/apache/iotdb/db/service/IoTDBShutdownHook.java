@@ -55,6 +55,9 @@ public class IoTDBShutdownHook extends Thread {
 
   @Override
   public void run() {
+    // stop external rpc service firstly.
+    RPCService.getInstance().stop();
+
     // close rocksdb if possible to avoid lose data
     if (SchemaEngineMode.valueOf(CommonDescriptor.getInstance().getConfig().getSchemaEngineMode())
         .equals(SchemaEngineMode.Rocksdb_based)) {
@@ -68,10 +71,13 @@ public class IoTDBShutdownHook extends Thread {
     WALManager.getInstance().waitAllWALFlushed();
 
     // flush data to Tsfile and remove WAL log files
-    if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+    if (!IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     }
-    WALManager.getInstance().deleteOutdatedWALFiles();
+    WALManager.getInstance().deleteOutdatedFilesInWALNodes();
 
     // We did this work because the RatisConsensus recovery mechanism is different from other
     // consensus algorithms, which will replace the underlying storage engine based on its

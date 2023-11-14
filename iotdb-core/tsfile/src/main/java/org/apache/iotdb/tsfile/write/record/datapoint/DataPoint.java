@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.tsfile.write.record.datapoint;
 
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
@@ -78,7 +79,8 @@ public abstract class DataPoint {
           dataPoint = new BooleanDataPoint(measurementId, Boolean.parseBoolean(value));
           break;
         case TEXT:
-          dataPoint = new StringDataPoint(measurementId, new Binary(value));
+          dataPoint =
+              new StringDataPoint(measurementId, new Binary(value, TSFileConfig.STRING_CHARSET));
           break;
         default:
           throw new UnSupportedDataTypeException(

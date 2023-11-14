@@ -32,8 +32,6 @@ import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_CONNECTION_TIMEOUT_MS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_CONSENSUS_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_METRIC_IOTDB_REPORTER_HOST;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_METRIC_IOTDB_REPORTER_PORT;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_METRIC_PROMETHEUS_REPORTER_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_SYSTEM_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.COMMON_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
@@ -70,11 +68,11 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     super(testClassName, testMethodName, portList, clusterIndex, isMultiCluster, startTime);
     this.consensusPort = portList[1];
     this.isSeed = isSeed;
-    String targetConfigNodes;
+    String seedConfigNodes;
     if (isSeed) {
-      targetConfigNodes = getIpAndPortString();
+      seedConfigNodes = getIpAndPortString();
     } else {
-      targetConfigNodes = targetCNs;
+      seedConfigNodes = targetCNs;
     }
     this.defaultNodePropertiesFile =
         EnvUtils.getFilePathFromSysVar(DEFAULT_CONFIG_NODE_PROPERTIES, clusterIndex);
@@ -85,14 +83,10 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     reloadMutableFields();
 
     // initialize immutable properties
-    immutableNodeProperties.setProperty(
-        IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, targetConfigNodes);
+    immutableNodeProperties.setProperty(IoTDBConstant.CN_SEED_CONFIG_NODE, seedConfigNodes);
     immutableNodeProperties.setProperty(CN_SYSTEM_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(CN_CONSENSUS_DIR, MppBaseConfig.NULL_VALUE);
-    immutableNodeProperties.setProperty(
-        CN_METRIC_PROMETHEUS_REPORTER_PORT, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(CN_METRIC_IOTDB_REPORTER_HOST, MppBaseConfig.NULL_VALUE);
-    immutableNodeProperties.setProperty(CN_METRIC_IOTDB_REPORTER_PORT, MppBaseConfig.NULL_VALUE);
   }
 
   @Override
@@ -169,6 +163,8 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     mutableNodeProperties.setProperty(IoTDBConstant.CN_INTERNAL_PORT, String.valueOf(getPort()));
     mutableNodeProperties.setProperty(
         IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(this.consensusPort));
+    mutableNodeProperties.setProperty(
+        IoTDBConstant.CN_METRIC_PROMETHEUS_REPORTER_PORT, String.valueOf(super.getMetricPort()));
   }
 
   @Override

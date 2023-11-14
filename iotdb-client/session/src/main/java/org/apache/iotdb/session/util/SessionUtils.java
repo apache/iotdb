@@ -21,9 +21,10 @@ package org.apache.iotdb.session.util;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.exception.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -254,25 +255,10 @@ public class SessionUtils {
     }
     List<TEndPoint> endPointsList = new ArrayList<>();
     for (String nodeUrl : nodeUrls) {
-      TEndPoint endPoint = parseNodeUrl(nodeUrl);
+      TEndPoint endPoint = UrlUtils.parseTEndPointIpv4AndIpv6Url(nodeUrl);
       endPointsList.add(endPoint);
     }
     return endPointsList;
-  }
-
-  private static TEndPoint parseNodeUrl(String nodeUrl) {
-    TEndPoint endPoint = new TEndPoint();
-    String[] split = nodeUrl.split(":");
-    if (split.length != 2) {
-      throw new NumberFormatException("NodeUrl Incorrect format");
-    }
-    String ip = split[0];
-    try {
-      int rpcPort = Integer.parseInt(split[1]);
-      return endPoint.setIp(ip).setPort(rpcPort);
-    } catch (Exception e) {
-      throw new NumberFormatException("NodeUrl Incorrect format");
-    }
   }
 
   private SessionUtils() {}

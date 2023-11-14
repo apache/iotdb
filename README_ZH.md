@@ -159,7 +159,7 @@ git checkout rel/x.x
 
 ### 只编译 cli
 
-在 iotdb 根目录下执行:
+在 iotdb/iotdb-client 目录下执行:
 
 ```
 > mvn clean package -pl cli -am -DskipTests

@@ -66,9 +66,10 @@ public class PipeTaskCoordinator {
   public AtomicReference<PipeTaskInfo> tryLock() {
     if (pipeTaskCoordinatorLock.tryLock()) {
       pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
+      return pipeTaskInfoHolder;
     }
 
-    return pipeTaskInfoHolder;
+    return null;
   }
 
   /**
@@ -91,6 +92,10 @@ public class PipeTaskCoordinator {
       LOGGER.warn("This thread is not holding the lock.");
       return false;
     }
+  }
+
+  public boolean isLocked() {
+    return pipeTaskCoordinatorLock.isLocked();
   }
 
   /** Caller should ensure that the method is called in the lock {@link #tryLock()}. */

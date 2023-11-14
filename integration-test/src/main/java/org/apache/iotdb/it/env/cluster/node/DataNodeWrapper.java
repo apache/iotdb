@@ -47,7 +47,6 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_DATA_REGION_CON
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_JOIN_CLUSTER_RETRY_INTERVAL_MS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_METRIC_INTERNAL_REPORTER_TYPE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_METRIC_IOTDB_REPORTER_HOST;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_METRIC_PROMETHEUS_REPORTER_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_MPP_DATA_EXCHANGE_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_SCHEMA_REGION_CONSENSUS_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_SYNC_DIR;
@@ -80,7 +79,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   private final String defaultCommonPropertiesFile;
 
   public DataNodeWrapper(
-      String targetConfigNode,
+      String seedConfigNode,
       String testClassName,
       String testMethodName,
       int[] portList,
@@ -109,7 +108,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     immutableCommonProperties.setProperty(
         PIPE_AIR_GAP_RECEIVER_PORT, String.valueOf(this.pipeAirGapReceiverPort));
 
-    immutableNodeProperties.setProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST, targetConfigNode);
+    immutableNodeProperties.setProperty(IoTDBConstant.DN_SEED_CONFIG_NODE, seedConfigNode);
     immutableNodeProperties.setProperty(DN_SYSTEM_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(DN_DATA_DIRS, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(DN_CONSENSUS_DIR, MppBaseConfig.NULL_VALUE);
@@ -117,8 +116,6 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     immutableNodeProperties.setProperty(DN_TRACING_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(DN_SYNC_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(DN_METRIC_IOTDB_REPORTER_HOST, MppBaseConfig.NULL_VALUE);
-    immutableNodeProperties.setProperty(
-        DN_METRIC_PROMETHEUS_REPORTER_PORT, MppBaseConfig.NULL_VALUE);
   }
 
   @Override
@@ -195,6 +192,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     mutableNodeProperties.setProperty(IoTDBConstant.DN_RPC_ADDRESS, super.getIp());
     mutableNodeProperties.setProperty(IoTDBConstant.DN_RPC_PORT, String.valueOf(super.getPort()));
     mutableNodeProperties.setProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, this.internalAddress);
+    mutableNodeProperties.setProperty(
+        IoTDBConstant.DN_METRIC_PROMETHEUS_REPORTER_PORT, String.valueOf(super.getMetricPort()));
     mutableNodeProperties.setProperty(
         IoTDBConstant.DN_INTERNAL_PORT, String.valueOf(this.internalPort));
     mutableNodeProperties.setProperty(

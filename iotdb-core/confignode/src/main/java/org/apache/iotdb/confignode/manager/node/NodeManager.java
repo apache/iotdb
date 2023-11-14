@@ -210,6 +210,11 @@ public class NodeManager {
     ratisConfig.setSchemaRegionRatisLogMax(conf.getSchemaRegionRatisLogMax());
     ratisConfig.setDataRegionRatisLogMax(conf.getDataRegionRatisLogMax());
 
+    ratisConfig.setSchemaRegionPeriodicSnapshotInterval(
+        conf.getSchemaRegionRatisPeriodicSnapshotInterval());
+    ratisConfig.setDataRegionPeriodicSnapshotInterval(
+        conf.getDataRegionRatisPeriodicSnapshotInterval());
+
     dataSet.setRatisConfig(ratisConfig);
   }
 
@@ -471,7 +476,7 @@ public class NodeManager {
     List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes();
     if (registeredDataNodes != null) {
       registeredDataNodes.forEach(
-          (registeredDataNode) -> {
+          registeredDataNode -> {
             TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
             int dataNodeId = registeredDataNode.getLocation().getDataNodeId();
             dataNodeInfo.setDataNodeId(dataNodeId);
@@ -539,7 +544,7 @@ public class NodeManager {
     List<TConfigNodeLocation> registeredConfigNodes = this.getRegisteredConfigNodes();
     if (registeredConfigNodes != null) {
       registeredConfigNodes.forEach(
-          (configNodeLocation) -> {
+          configNodeLocation -> {
             TConfigNodeInfo info = new TConfigNodeInfo();
             int configNodeId = configNodeLocation.getConfigNodeId();
             info.setConfigNodeId(configNodeId);

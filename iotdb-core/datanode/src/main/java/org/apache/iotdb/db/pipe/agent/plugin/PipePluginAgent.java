@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class PipePluginAgent {
@@ -203,7 +204,8 @@ public class PipePluginAgent {
     return (PipeExtractor)
         reflect(
             extractorParameters.getStringOrDefault(
-                PipeExtractorConstant.EXTRACTOR_KEY,
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
   }
 
@@ -216,13 +218,16 @@ public class PipePluginAgent {
   }
 
   public PipeConnector reflectConnector(PipeParameters connectorParameters) {
-    if (!connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_KEY)) {
+    if (!connectorParameters.hasAnyAttributes(
+        PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY)) {
       throw new PipeException(
           "Failed to reflect PipeConnector instance because "
               + "'connector' is not specified in the parameters.");
     }
     return (PipeConnector)
-        reflect(connectorParameters.getString(PipeConnectorConstant.CONNECTOR_KEY));
+        reflect(
+            connectorParameters.getStringByKeys(
+                PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY));
   }
 
   private PipePlugin reflect(String pluginName) {

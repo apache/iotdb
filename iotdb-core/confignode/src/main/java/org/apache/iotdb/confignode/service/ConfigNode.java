@@ -92,7 +92,7 @@ public class ConfigNode implements ConfigNodeMBean {
           ServiceType.CONFIG_NODE.getJmxName());
   private final RegisterManager registerManager = new RegisterManager();
 
-  private ConfigManager configManager;
+  protected ConfigManager configManager;
 
   private ConfigNode() {
     // We do not init anything here, so that we can re-initialize the instance in IT.
@@ -116,7 +116,7 @@ public class ConfigNode implements ConfigNodeMBean {
     try {
       processPid();
       // Add shutdown hook
-      Runtime.getRuntime().addShutdownHook(new ConfigNodeShutdownHook());
+      addShutDownHook();
       // Set up internal services
       setUpInternalServices();
       // Init ConfigManager
@@ -291,7 +291,7 @@ public class ConfigNode implements ConfigNodeMBean {
                 x -> ThreadName.getThreadPoolTheThreadBelongs(x).name()));
   }
 
-  private void initConfigManager() {
+  void initConfigManager() {
     try {
       configManager = new ConfigManager();
     } catch (IOException e) {
@@ -315,11 +315,11 @@ public class ConfigNode implements ConfigNodeMBean {
 
     req.setVersionInfo(new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
 
-    TEndPoint targetConfigNode = CONF.getTargetConfigNode();
-    if (targetConfigNode == null) {
+    TEndPoint seedConfigNode = CONF.getSeedConfigNode();
+    if (seedConfigNode == null) {
       LOGGER.error(
-          "Please set the cn_target_config_node_list parameter in iotdb-confignode.properties file.");
-      throw new StartupException("The targetConfigNode setting in conf is empty");
+          "Please set the cn_seed_config_node parameter in iotdb-confignode.properties file.");
+      throw new StartupException("The seedConfigNode setting in conf is empty");
     }
 
     for (int retry = 0; retry < STARTUP_RETRY_NUM; retry++) {
@@ -328,7 +328,7 @@ public class ConfigNode implements ConfigNodeMBean {
       Object obj =
           SyncConfigNodeClientPool.getInstance()
               .sendSyncRequestToConfigNodeWithRetry(
-                  targetConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
+                  seedConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
 
       if (obj instanceof TConfigNodeRegisterResp) {
         resp = (TConfigNodeRegisterResp) obj;
@@ -347,8 +347,8 @@ public class ConfigNode implements ConfigNodeMBean {
         configManager.initConsensusManager();
         return;
       } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        targetConfigNode = status.getRedirectNode();
-        LOGGER.info("ConfigNode need redirect to  {}, retry {} ...", targetConfigNode, retry);
+        seedConfigNode = status.getRedirectNode();
+        LOGGER.info("ConfigNode need redirect to  {}, retry {} ...", seedConfigNode, retry);
       } else if (status.getCode() == TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode()) {
         LOGGER.warn("The result of register self ConfigNode is {}, retry {} ...", status, retry);
       } else {
@@ -418,6 +418,10 @@ public class ConfigNode implements ConfigNodeMBean {
   public void addMetrics() {
     // Add some Metrics for configManager
     configManager.addMetrics();
+  }
+
+  protected void addShutDownHook() {
+    Runtime.getRuntime().addShutdownHook(new ConfigNodeShutdownHook());
   }
 
   @TestOnly

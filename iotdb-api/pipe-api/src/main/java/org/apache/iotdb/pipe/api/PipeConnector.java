@@ -28,7 +28,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
 /**
- * PipeConnector
+ * PipeConnector (Deprecated since v1.3.0, renamed to PipeSink)
  *
  * <p>PipeConnector is responsible for sending events to sinks.
  *
@@ -63,6 +63,7 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
  * will be called to create a new connection with the sink when the method {@link
  * PipeConnector#heartbeat()} throws exceptions.
  */
+@Deprecated // since v1.3.0, renamed to PipeSink
 public interface PipeConnector extends PipePlugin {
 
   /**

@@ -24,19 +24,28 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-client</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <artifactId>iotdb-python-api</artifactId>
     <name>IoTDB: Client: Python-API</name>
     <description>Python API of IoTDB.</description>
+    <dependencies>
+        <!-- This is just for ensuring the other module is built first -->
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-commons</artifactId>
+            <version>1.3.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
     <build>
         <resources>
             <resource>
+                <filtering>true</filtering>
                 <directory>${basedir}/resources</directory>
                 <includes>
                     <include>setup.py</include>
                 </includes>
-                <filtering>true</filtering>
             </resource>
         </resources>
         <plugins>
@@ -88,11 +97,11 @@
                 <executions>
                     <execution>
                         <id>copy-thrift-python-resources</id>
-                        <!-- here the phase you need -->
-                        <phase>generate-sources</phase>
                         <goals>
                             <goal>copy-resources</goal>
                         </goals>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
                         <configuration>
                             <encoding>utf-8</encoding>
                             <outputDirectory>${basedir}/iotdb/thrift/</outputDirectory>
@@ -112,11 +121,11 @@
                     <!-- Copy License -->
                     <execution>
                         <id>copy-pypi-file-resources</id>
-                        <!-- here the phase you need -->
-                        <phase>generate-sources</phase>
                         <goals>
                             <goal>copy-resources</goal>
                         </goals>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
                         <configuration>
                             <encoding>utf-8</encoding>
                             <outputDirectory>${basedir}/</outputDirectory>
@@ -132,11 +141,11 @@
                     </execution>
                     <execution>
                         <id>copy-setup-file-resources</id>
-                        <!-- here the phase you need -->
-                        <phase>generate-sources</phase>
                         <goals>
                             <goal>copy-resources</goal>
                         </goals>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
                         <configuration>
                             <encoding>utf-8</encoding>
                             <outputDirectory>${basedir}/</outputDirectory>
@@ -172,18 +181,16 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <usedDependencies>
+                        <!-- This dependency is only used for ensuring the build order -->
+                        <usedDependency>org.apache.iotdb:iotdb-thrift-commons</usedDependency>
+                    </usedDependencies>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-commons</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
 </project>

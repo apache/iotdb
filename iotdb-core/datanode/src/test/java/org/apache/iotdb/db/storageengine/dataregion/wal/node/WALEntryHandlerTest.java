@@ -37,10 +37,12 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -95,7 +97,7 @@ public class WALEntryHandlerTest {
     config.setClusterMode(prevIsClusterMode);
     EnvironmentUtils.cleanDir(logDirectory1);
     EnvironmentUtils.cleanDir(logDirectory2);
-    WALInsertNodeCache.getInstance().clear();
+    WALInsertNodeCache.getInstance(1).clear();
   }
 
   @Test(expected = MemTablePinException.class)
@@ -233,9 +235,7 @@ public class WALEntryHandlerTest {
     handler.pinMemTable();
     walNode1.onMemTableFlushed(memTable);
     // wait until wal flushed
-    while (!walNode1.isAllWALEntriesConsumed()) {
-      Thread.sleep(50);
-    }
+    Awaitility.await().until(() -> walNode1.isAllWALEntriesConsumed());
     assertEquals(node1, handler.getInsertNode());
   }
 
@@ -268,9 +268,7 @@ public class WALEntryHandlerTest {
             }
 
             // wait until wal flushed
-            while (!walNode1.isAllWALEntriesConsumed() && !walNode2.isAllWALEntriesConsumed()) {
-              Thread.sleep(50);
-            }
+            Awaitility.await().until(walNode::isAllWALEntriesConsumed);
 
             walFlushListeners.get(0).getWalEntryHandler().pinMemTable();
             walNode.onMemTableFlushed(memTable);
@@ -312,7 +310,7 @@ public class WALEntryHandlerTest {
     columns[2] = 10000L;
     columns[3] = 100;
     columns[4] = false;
-    columns[5] = new Binary("hh" + 0);
+    columns[5] = new Binary("hh" + 0, TSFileConfig.STRING_CHARSET);
 
     InsertRowNode node =
         new InsertRowNode(

@@ -48,6 +48,7 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 public class Utils {
@@ -241,6 +242,7 @@ public class Utils {
     RaftServerConfigKeys.Rpc.setTimeoutMin(properties, config.getRpc().getTimeoutMin());
     RaftServerConfigKeys.Rpc.setTimeoutMax(properties, config.getRpc().getTimeoutMax());
     RaftServerConfigKeys.Rpc.setSleepTime(properties, config.getRpc().getSleepTime());
+    RaftServerConfigKeys.Rpc.setRequestTimeout(properties, config.getRpc().getRequestTimeout());
     RaftClientConfigKeys.Rpc.setRequestTimeout(properties, config.getRpc().getRequestTimeout());
 
     RaftServerConfigKeys.LeaderElection.setLeaderStepDownWaitTime(
@@ -317,5 +319,14 @@ public class Utils {
 
     final TimeDuration clientMaxRetryGap = getMaxRetrySleepTime(config.getClient());
     RaftServerConfigKeys.RetryCache.setExpiryTime(properties, clientMaxRetryGap);
+  }
+
+  public static boolean anyOf(BooleanSupplier... conditions) {
+    for (BooleanSupplier condition : conditions) {
+      if (condition.getAsBoolean()) {
+        return true;
+      }
+    }
+    return false;
   }
 }

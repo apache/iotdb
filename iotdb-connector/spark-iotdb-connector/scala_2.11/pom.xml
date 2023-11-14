@@ -24,13 +24,14 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>spark-iotdb-connector</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <artifactId>spark-iotdb-connector_2.11</artifactId>
     <name>IoTDB: Connector: Apache Spark (Scala 2.11)</name>
     <properties>
-        <scala.library.version>2.11</scala.library.version>
-        <scala.version>2.11.12</scala.version>
+        <scala.library.version>2.11.12</scala.library.version>
+        <scala.version>2.11</scala.version>
+        <!-- It seems spark catalyst is only available till this version -->
         <spark.version>2.4.8</spark.version>
     </properties>
     <build>

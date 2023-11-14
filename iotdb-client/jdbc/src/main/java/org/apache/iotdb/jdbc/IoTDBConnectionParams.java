@@ -41,6 +41,10 @@ public class IoTDBConnectionParams {
 
   private String timeZone = ZoneId.systemDefault().toString();
 
+  private boolean useSSL = false;
+  private String trustStore;
+  private String trustStorePwd;
+
   public IoTDBConnectionParams(String url) {
     this.jdbcUriString = url;
   }
@@ -135,5 +139,29 @@ public class IoTDBConnectionParams {
 
   public String getTimeZone() {
     return this.timeZone;
+  }
+
+  public boolean isUseSSL() {
+    return useSSL;
+  }
+
+  public void setUseSSL(boolean useSSL) {
+    this.useSSL = useSSL;
+  }
+
+  public String getTrustStore() {
+    return trustStore;
+  }
+
+  public void setTrustStore(String trustStore) {
+    this.trustStore = trustStore;
+  }
+
+  public String getTrustStorePwd() {
+    return trustStorePwd;
+  }
+
+  public void setTrustStorePwd(String trustStorePwd) {
+    this.trustStorePwd = trustStorePwd;
   }
 }

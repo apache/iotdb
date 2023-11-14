@@ -132,8 +132,6 @@ keyWords
     | MERGE
     | METADATA
     | MIGRATE
-    | MODEL
-    | MODELS
     | NAN
     | NODEID
     | NODES
@@ -198,8 +196,10 @@ keyWords
     | SETTLE
     | SGLEVEL
     | SHOW
+    | SINK
     | SLIMIT
     | SOFFSET
+    | SOURCE
     | SPACE
     | STORAGE
     | START
@@ -225,7 +225,6 @@ keyWords
     | TOLERANCE
     | TOP
     | TRACING
-    | TRIALS
     | TRIGGER
     | TRIGGERS
     | TRUE

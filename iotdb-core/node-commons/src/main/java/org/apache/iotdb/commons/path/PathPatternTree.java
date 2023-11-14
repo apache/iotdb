@@ -45,6 +45,7 @@ public class PathPatternTree {
 
   // set the default value to TRUE to ensure correctness
   private boolean useWildcard = true;
+  private boolean containWildcard = false;
 
   public PathPatternTree(boolean useWildcard) {
     this();
@@ -54,6 +55,10 @@ public class PathPatternTree {
   public PathPatternTree() {
     this.root = new PathPatternNode<>(IoTDBConstant.PATH_ROOT, VoidSerializer.getInstance());
     this.pathPatternList = new LinkedList<>();
+  }
+
+  public boolean isContainWildcard() {
+    return containWildcard;
   }
 
   public PathPatternNode<Void, VoidSerializer> getRoot() {
@@ -134,9 +139,16 @@ public class PathPatternTree {
       PathPatternNode<Void, VoidSerializer> newNode =
           new PathPatternNode<>(pathNodes[i], VoidSerializer.getInstance());
       curNode.addChild(newNode);
+      processNodeName(pathNodes[i]);
       curNode = newNode;
     }
     curNode.markPathPattern(true);
+  }
+
+  private void processNodeName(String nodeName) {
+    if (!containWildcard) {
+      containWildcard = PathPatternUtil.hasWildcard(nodeName);
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -318,9 +330,10 @@ public class PathPatternTree {
   }
 
   public static PathPatternTree deserialize(ByteBuffer buffer) {
-    PathPatternNode<Void, VoidSerializer> root =
-        PathPatternNode.deserializeNode(buffer, VoidSerializer.getInstance());
     PathPatternTree deserializedPatternTree = new PathPatternTree();
+    PathPatternNode<Void, VoidSerializer> root =
+        PathPatternNode.deserializeNode(
+            buffer, VoidSerializer.getInstance(), deserializedPatternTree::processNodeName);
     deserializedPatternTree.setRoot(root);
     return deserializedPatternTree;
   }

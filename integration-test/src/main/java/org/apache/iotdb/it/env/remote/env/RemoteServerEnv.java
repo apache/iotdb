@@ -46,16 +46,20 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.jdbc.Config.VERSION;
-import static org.junit.Assert.fail;
 
 public class RemoteServerEnv implements BaseEnv {
 
   private final String ip_addr = System.getProperty("RemoteIp", "127.0.0.1");
   private final String port = System.getProperty("RemotePort", "6667");
+  private final String configNodeMetricPort =
+      System.getProperty("RemoteConfigNodeMetricPort", "9091");
+
+  private final String dataNodeMetricPort = System.getProperty("RemoteDataNodeMetricPort", "9093");
   private final String user = System.getProperty("RemoteUser", "root");
   private final String password = System.getProperty("RemotePassword", "root");
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
@@ -69,7 +73,7 @@ public class RemoteServerEnv implements BaseEnv {
       statement.execute("DELETE DATABASE root;");
     } catch (Exception e) {
       e.printStackTrace();
-      fail(e.getMessage());
+      throw new AssertionError(e.getMessage());
     }
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
@@ -99,6 +103,18 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public List<String> getMetricPrometheusReporterContents() {
+    List<String> result = new ArrayList<>();
+    result.add(
+        getUrlContent(
+            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + configNodeMetricPort + "/metrics"));
+    result.add(
+        getUrlContent(
+            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + dataNodeMetricPort + "/metrics"));
+    return result;
+  }
+
+  @Override
   public Connection getConnection(String username, String password) throws SQLException {
     Connection connection = null;
     try {
@@ -108,7 +124,7 @@ public class RemoteServerEnv implements BaseEnv {
               Config.IOTDB_URL_PREFIX + ip_addr + ":" + port, this.user, this.password);
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
-      fail();
+      throw new AssertionError();
     }
     return connection;
   }
@@ -139,7 +155,7 @@ public class RemoteServerEnv implements BaseEnv {
               this.password);
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
-      fail();
+      throw new AssertionError();
     }
     return connection;
   }

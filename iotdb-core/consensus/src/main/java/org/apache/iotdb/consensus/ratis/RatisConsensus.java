@@ -28,9 +28,6 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -51,7 +48,8 @@ import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricSet;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
-import org.apache.iotdb.consensus.ratis.utils.RatisLogMonitor;
+import org.apache.iotdb.consensus.ratis.utils.Retriable;
+import org.apache.iotdb.consensus.ratis.utils.RetryPolicy;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -82,6 +80,7 @@ import org.apache.ratis.protocol.exceptions.ResourceUnavailableException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
+import org.apache.ratis.util.TimeDuration;
 import org.apache.ratis.util.function.CheckedSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,10 +93,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 /** A multi-raft consensus implementation based on Apache Ratis. */
@@ -115,6 +114,8 @@ class RatisConsensus implements IConsensus {
 
   private final IClientManager<RaftGroup, RatisClient> clientManager;
 
+  private final DiskGuardian diskGuardian;
+
   private final Map<RaftGroupId, RaftGroup> lastSeen = new ConcurrentHashMap<>();
 
   private final ClientId localFakeId = ClientId.randomId();
@@ -125,12 +126,9 @@ class RatisConsensus implements IConsensus {
 
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
-  private final ScheduledExecutorService diskGuardian;
-  private final long triggerSnapshotThreshold;
-
   private final RatisConfig config;
-
-  private final RatisLogMonitor monitor = new RatisLogMonitor();
+  private final RetryPolicy<RaftClientReply> readRetryPolicy;
+  private final RetryPolicy<RaftClientReply> writeRetryPolicy;
 
   private final RatisMetricSet ratisMetricSet;
   private final TConsensusGroupType consensusGroupType;
@@ -152,11 +150,28 @@ class RatisConsensus implements IConsensus {
     this.config = config.getRatisConfig();
     this.consensusGroupType = config.getConsensusGroupType();
     this.ratisMetricSet = new RatisMetricSet();
+    this.readRetryPolicy =
+        RetryPolicy.<RaftClientReply>newBuilder()
+            .setRetryHandler(c -> !c.isSuccess() && c.getException() instanceof ReadIndexException)
+            .setMaxAttempts(this.config.getImpl().getRetryTimesMax())
+            .setWaitTime(
+                TimeDuration.valueOf(
+                    this.config.getImpl().getRetryWaitMillis(), TimeUnit.MILLISECONDS))
+            .build();
+    this.writeRetryPolicy =
+        RetryPolicy.<RaftClientReply>newBuilder()
+            // currently, we only retry when ResourceUnavailableException is caught
+            .setRetryHandler(
+                reply ->
+                    !reply.isSuccess()
+                        && (reply.getException() instanceof ResourceUnavailableException))
+            .setMaxAttempts(this.config.getImpl().getRetryTimesMax())
+            .setWaitTime(
+                TimeDuration.valueOf(
+                    this.config.getImpl().getRetryWaitMillis(), TimeUnit.MILLISECONDS))
+            .build();
 
-    this.triggerSnapshotThreshold = this.config.getImpl().getTriggerSnapshotFileSize();
-    diskGuardian =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.RATIS_BG_DISK_GUARDIAN.getName());
+    this.diskGuardian = new DiskGuardian(() -> this, this.config);
 
     clientManager =
         new IClientManager.Factory<RaftGroup, RatisClient>()
@@ -181,14 +196,13 @@ class RatisConsensus implements IConsensus {
   public synchronized void start() throws IOException {
     MetricService.getInstance().addMetricSet(this.ratisMetricSet);
     server.start();
-    startSnapshotGuardian();
+    registerAndStartDiskGuardian();
   }
 
   @Override
   public synchronized void stop() throws IOException {
-    diskGuardian.shutdown();
     try {
-      diskGuardian.awaitTermination(5, TimeUnit.SECONDS);
+      diskGuardian.stop();
     } catch (InterruptedException e) {
       logger.warn("{}: interrupted when shutting down add Executor with exception {}", this, e);
       Thread.currentThread().interrupt();
@@ -199,36 +213,17 @@ class RatisConsensus implements IConsensus {
     }
   }
 
-  private boolean shouldRetry(RaftClientReply reply) {
-    // currently, we only retry when ResourceUnavailableException is caught
-    return !reply.isSuccess() && (reply.getException() instanceof ResourceUnavailableException);
-  }
-
   /** launch a consensus write with retry mechanism */
   private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
       throws IOException {
-
-    final int maxRetryTimes = config.getImpl().getRetryTimesMax();
-    final long waitMillis = config.getImpl().getRetryWaitMillis();
-
-    int retry = 0;
     RaftClientReply reply = null;
-    while (retry < maxRetryTimes) {
-      retry++;
-
-      reply = caller.get();
-      if (!shouldRetry(reply)) {
-        return reply;
-      }
-      logger.debug("{} sending write request with retry = {} and reply = {}", this, retry, reply);
-
-      try {
-        Thread.sleep(waitMillis);
-      } catch (InterruptedException e) {
-        logger.warn("{} retry write sleep is interrupted: {}", this, e);
-        Thread.currentThread().interrupt();
-      }
+    try {
+      reply = Retriable.attempt(caller, writeRetryPolicy, () -> caller, logger);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.debug("{}: interrupted when retrying for write request {}", this, caller);
     }
+
     if (reply == null) {
       return RaftClientReply.newBuilder()
           .setSuccess(false)
@@ -371,7 +366,12 @@ class RatisConsensus implements IConsensus {
     RaftClientReply reply;
     try (AutoCloseable ignored =
         RatisMetricsManager.getInstance().startReadTimer(consensusGroupType)) {
-      reply = server.submitClientRequest(request);
+      reply =
+          Retriable.attempt(
+              () -> server.submitClientRequest(request),
+              readRetryPolicy,
+              () -> readRequest,
+              logger);
     }
 
     // rethrow the exception if the reply is not successful
@@ -601,15 +601,27 @@ class RatisConsensus implements IConsensus {
       logger.info("isLeaderReady checking failed with exception: ", e);
       return false;
     }
-    long startTime = System.currentTimeMillis();
+
+    final long startTime = System.currentTimeMillis();
+    final BooleanSupplier noRetryAtAnyOfFollowingCondition =
+        () ->
+            Utils.anyOf(
+                // this peer is not a leader
+                () -> !divisionInfo.isLeader(),
+                // this peer is a ready leader
+                () -> divisionInfo.isLeader() && divisionInfo.isLeaderReady(),
+                // reaches max retry timeout
+                () -> System.currentTimeMillis() - startTime >= DEFAULT_WAIT_LEADER_READY_TIMEOUT);
+
     try {
-      while (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
-        Thread.sleep(10);
-        long consumedTime = System.currentTimeMillis() - startTime;
-        if (consumedTime >= DEFAULT_WAIT_LEADER_READY_TIMEOUT) {
-          logger.warn("{}: leader is still not ready after {}ms", groupId, consumedTime);
-          return false;
-        }
+      Retriable.attemptUntilTrue(
+          noRetryAtAnyOfFollowingCondition,
+          TimeDuration.valueOf(10, TimeUnit.MILLISECONDS),
+          "waitLeaderReady",
+          logger);
+      if (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
+        logger.warn(
+            "{}: leader is still not ready after {}ms", groupId, DEFAULT_WAIT_LEADER_READY_TIMEOUT);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -676,44 +688,22 @@ class RatisConsensus implements IConsensus {
     }
   }
 
-  private void triggerSnapshotByCustomize() {
+  private void registerAndStartDiskGuardian() {
+    final RatisConfig.Impl implConfig = config.getImpl();
+    // by default, we control disk space
+    diskGuardian.registerChecker(
+        summary -> summary.getTotalSize() > implConfig.getRaftLogSizeMaxThreshold(),
+        TimeDuration.valueOf(implConfig.getCheckAndTakeSnapshotInterval(), TimeUnit.SECONDS));
 
-    for (RaftGroupId raftGroupId : server.getGroupIds()) {
-      File currentDir;
-
-      try {
-        currentDir =
-            server.getDivision(raftGroupId).getRaftStorage().getStorageDir().getCurrentDir();
-      } catch (IOException e) {
-        logger.warn("{}: get division {} failed: ", this, raftGroupId, e);
-        continue;
-      }
-
-      final long currentDirLength = monitor.updateAndGetDirectorySize(currentDir);
-
-      if (currentDirLength >= triggerSnapshotThreshold) {
-        final int filesCount = monitor.getFilesUnder(currentDir).size();
-        logger.info(
-            "{}: take snapshot for region {}, current dir size {}, {} files to be purged",
-            this,
-            raftGroupId,
-            currentDirLength,
-            filesCount);
-
-        try {
-          triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
-          logger.info("Raft group {} took snapshot successfully", raftGroupId);
-        } catch (ConsensusException e) {
-          logger.warn("Raft group {} failed to take snapshot due to", raftGroupId, e);
-        }
-      }
+    // if we force periodic snapshot
+    final long forceSnapshotInterval = implConfig.getForceSnapshotInterval();
+    if (forceSnapshotInterval > 0) {
+      diskGuardian.registerChecker(
+          summary -> true, // just take it!
+          TimeDuration.valueOf(forceSnapshotInterval, TimeUnit.SECONDS));
     }
-  }
 
-  private void startSnapshotGuardian() {
-    final long delay = config.getImpl().getTriggerSnapshotTime();
-    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        diskGuardian, this::triggerSnapshotByCustomize, 0, delay, TimeUnit.SECONDS);
+    diskGuardian.start();
   }
 
   private RaftClientRequest buildRawRequest(

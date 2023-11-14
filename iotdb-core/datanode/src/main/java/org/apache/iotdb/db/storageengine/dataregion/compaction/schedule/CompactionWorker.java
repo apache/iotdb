@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
@@ -54,36 +56,42 @@ public class CompactionWorker implements Runnable {
   @Override
   public void run() {
     while (!Thread.currentThread().isInterrupted()) {
-      processOneCompactionTask();
+      AbstractCompactionTask task;
+      try {
+        task = compactionTaskQueue.take();
+      } catch (InterruptedException e) {
+        log.warn("CompactionThread-{} terminates because interruption", threadId);
+        Thread.currentThread().interrupt();
+        return;
+      }
+      processOneCompactionTask(task);
     }
   }
 
-  private void processOneCompactionTask() {
-    AbstractCompactionTask task;
-    try {
-      task = compactionTaskQueue.take();
-    } catch (InterruptedException e) {
-      log.warn("CompactionThread-{} terminates because interruption", threadId);
-      Thread.currentThread().interrupt();
-      return;
-    }
+  public boolean processOneCompactionTask(AbstractCompactionTask task) {
     long estimatedMemoryCost = 0L;
     boolean memoryAcquired = false;
     boolean fileHandleAcquired = false;
     try {
       if (task == null || !task.isCompactionAllowed()) {
         log.info("Compaction task is not allowed to be executed by TsFileManager. Task {}", task);
-        return;
+        return false;
       }
       if (!task.isDiskSpaceCheckPassed()) {
         log.debug(
             "Compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
-        return;
+        return false;
       }
       task.transitSourceFilesToMerging();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
         estimatedMemoryCost = task.getEstimatedMemoryCost();
-        memoryAcquired = SystemInfo.getInstance().addCompactionMemoryCost(estimatedMemoryCost, 60);
+        CompactionTaskType taskType = task.getCompactionTaskType();
+        memoryAcquired =
+            SystemInfo.getInstance().addCompactionMemoryCost(taskType, estimatedMemoryCost, 60);
+        CompactionMetrics.getInstance()
+            .updateCompactionMemoryMetrics(taskType, estimatedMemoryCost);
+        CompactionMetrics.getInstance()
+            .updateCompactionTaskSelectedFileNum(taskType, task.getAllSourceTsFiles().size());
       }
       fileHandleAcquired =
           SystemInfo.getInstance().addCompactionFileNum(task.getProcessedFileNum(), 60);
@@ -91,6 +99,7 @@ public class CompactionWorker implements Runnable {
       CompactionTaskFuture future = new CompactionTaskFuture(summary);
       CompactionTaskManager.getInstance().recordTask(task, future);
       task.start();
+      return true;
     } catch (FileCannotTransitToCompactingException
         | IOException
         | CompactionMemoryNotEnoughException
@@ -102,14 +111,17 @@ public class CompactionWorker implements Runnable {
     } finally {
       if (task != null) {
         task.resetCompactionCandidateStatusForAllSourceFiles();
+        task.handleTaskCleanup();
       }
       if (memoryAcquired) {
-        SystemInfo.getInstance().resetCompactionMemoryCost(estimatedMemoryCost);
+        SystemInfo.getInstance()
+            .resetCompactionMemoryCost(task.getCompactionTaskType(), estimatedMemoryCost);
       }
       if (fileHandleAcquired) {
         SystemInfo.getInstance().decreaseCompactionFileNumCost(task.getProcessedFileNum());
       }
     }
+    return false;
   }
 
   static class CompactionTaskFuture implements Future<CompactionTaskSummary> {

@@ -42,17 +42,27 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_LOOSE_RANGE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 
 public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDataRegionExtractor {
 
@@ -68,11 +78,14 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private int dataRegionId;
 
   private String pattern;
+  private boolean isDbNameCoveredByPattern = false;
 
   private long historicalDataExtractionStartTime; // Event time
   private long historicalDataExtractionEndTime; // Event time
 
   private long historicalDataExtractionTimeLowerBound; // Arrival time
+
+  private boolean sloppyTimeRange; // true to disable time range filter after extraction
 
   private Queue<TsFileResource> pendingQueue;
 
@@ -95,26 +108,51 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP.putIfAbsent(dataRegionId, 0L);
     }
 
-    pattern = parameters.getStringOrDefault(EXTRACTOR_PATTERN_KEY, EXTRACTOR_PATTERN_DEFAULT_VALUE);
+    pattern =
+        parameters.getStringOrDefault(
+            Arrays.asList(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
+            EXTRACTOR_PATTERN_DEFAULT_VALUE);
+    final DataRegion dataRegion =
+        StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
+    if (dataRegion != null) {
+      final String databaseName = dataRegion.getDatabaseName();
+      if (databaseName != null
+          && pattern.length() <= databaseName.length()
+          && databaseName.startsWith(pattern)) {
+        isDbNameCoveredByPattern = true;
+      }
+    }
 
     // User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
     // enabling the historical data extraction, which may affect the realtime data extraction.
     final boolean isHistoricalExtractorEnabledByUser =
-        parameters.getBooleanOrDefault(EXTRACTOR_HISTORY_ENABLE_KEY, true);
+        parameters.getBooleanOrDefault(
+            Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
+            EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE);
     historicalDataExtractionStartTime =
-        isHistoricalExtractorEnabledByUser && parameters.hasAttribute(EXTRACTOR_HISTORY_START_TIME)
+        isHistoricalExtractorEnabledByUser
+                && parameters.hasAnyAttributes(
+                    EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY)
             ? DateTimeUtils.convertDatetimeStrToLong(
-                parameters.getString(EXTRACTOR_HISTORY_START_TIME), ZoneId.systemDefault())
+                parameters.getStringByKeys(
+                    EXTRACTOR_HISTORY_START_TIME_KEY, SOURCE_HISTORY_START_TIME_KEY),
+                ZoneId.systemDefault())
             : Long.MIN_VALUE;
     historicalDataExtractionEndTime =
-        isHistoricalExtractorEnabledByUser && parameters.hasAttribute(EXTRACTOR_HISTORY_END_TIME)
+        isHistoricalExtractorEnabledByUser
+                && parameters.hasAnyAttributes(
+                    EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY)
             ? DateTimeUtils.convertDatetimeStrToLong(
-                parameters.getString(EXTRACTOR_HISTORY_END_TIME), ZoneId.systemDefault())
+                parameters.getStringByKeys(
+                    EXTRACTOR_HISTORY_END_TIME_KEY, SOURCE_HISTORY_END_TIME_KEY),
+                ZoneId.systemDefault())
             : Long.MAX_VALUE;
 
     // Enable historical extractor by default
     historicalDataExtractionTimeLowerBound =
-        parameters.getBooleanOrDefault(EXTRACTOR_HISTORY_ENABLE_KEY, true)
+        parameters.getBooleanOrDefault(
+                Arrays.asList(EXTRACTOR_HISTORY_ENABLE_KEY, SOURCE_HISTORY_ENABLE_KEY),
+                EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE)
             ? Long.MIN_VALUE
             // We define the realtime data as the data generated after the creation time
             // of the pipe from user's perspective. But we still need to use
@@ -151,6 +189,27 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         }
       }
     }
+
+    sloppyTimeRange =
+        Arrays.stream(
+                parameters
+                    .getStringOrDefault(
+                        Arrays.asList(
+                            EXTRACTOR_HISTORY_LOOSE_RANGE_KEY, SOURCE_HISTORY_LOOSE_RANGE_KEY),
+                        "")
+                    .split(","))
+            .map(String::trim)
+            .map(String::toLowerCase)
+            .collect(Collectors.toSet())
+            .contains("time");
+
+    LOGGER.info(
+        "historical data extraction time range, start time {}({}), end time {}({}), sloppy time range {}",
+        DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
+        historicalDataExtractionStartTime,
+        DateTimeUtils.convertLongToDate(historicalDataExtractionEndTime),
+        historicalDataExtractionEndTime,
+        sloppyTimeRange);
   }
 
   private void flushDataRegionAllTsFiles() {
@@ -178,6 +237,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     }
 
     dataRegion.writeLock("Pipe: start to extract historical TsFile");
+    final long startHistoricalExtractionTime = System.currentTimeMillis();
     try {
       synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
         final long lastFlushedByPipeTime =
@@ -191,7 +251,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       final TsFileManager tsFileManager = dataRegion.getTsFileManager();
       tsFileManager.readLock();
       try {
-        pendingQueue = new ArrayDeque<>(tsFileManager.size(true) + tsFileManager.size(false));
+        final List<TsFileResource> resourceList =
+            new ArrayList<>(tsFileManager.size(true) + tsFileManager.size(false));
 
         final Collection<TsFileResource> sequenceTsFileResources =
             tsFileManager.getTsFileList(true).stream()
@@ -204,7 +265,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
-        pendingQueue.addAll(sequenceTsFileResources);
+        resourceList.addAll(sequenceTsFileResources);
 
         final Collection<TsFileResource> unsequenceTsFileResources =
             tsFileManager.getTsFileList(false).stream()
@@ -217,9 +278,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
-        pendingQueue.addAll(unsequenceTsFileResources);
+        resourceList.addAll(unsequenceTsFileResources);
 
-        pendingQueue.forEach(
+        resourceList.forEach(
             resource -> {
               // Pin the resource, in case the file is removed by compaction or anything.
               // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
@@ -230,12 +291,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
               }
             });
 
+        resourceList.sort(
+            (o1, o2) -> o1.getMaxProgressIndex().topologicalCompareTo(o2.getMaxProgressIndex()));
+        pendingQueue = new ArrayDeque<>(resourceList);
+
         LOGGER.info(
             "Pipe: start to extract historical TsFile, data region {}, "
-                + "sequence file count {}, unsequence file count {}",
+                + "sequence file count {}, unsequence file count {}, historical extraction time {} ms",
             dataRegionId,
             sequenceTsFileResources.size(),
-            unsequenceTsFileResources.size());
+            unsequenceTsFileResources.size(),
+            System.currentTimeMillis() - startHistoricalExtractionTime);
       } finally {
         tsFileManager.readUnlock();
       }
@@ -284,11 +350,16 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         new PipeTsFileInsertionEvent(
             resource,
             false,
+            false,
             pipeTaskMeta,
             pattern,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime,
-            !isTsFileResourceCoveredByTimeRange(resource));
+            !sloppyTimeRange && !isTsFileResourceCoveredByTimeRange(resource));
+    if (isDbNameCoveredByPattern) {
+      event.skipParsingPattern();
+    }
+
     event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
     try {
       PipeResourceManager.tsfile().unpinTsFileResource(resource);
@@ -297,11 +368,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
           "Pipe: failed to unpin TsFileResource after creating event, original path: {}",
           resource.getTsFilePath());
     }
+
     return event;
   }
 
   public synchronized boolean hasConsumedAll() {
     return pendingQueue != null && pendingQueue.isEmpty();
+  }
+
+  @Override
+  public int getPendingQueueSize() {
+    return pendingQueue != null ? pendingQueue.size() : 0;
   }
 
   @Override

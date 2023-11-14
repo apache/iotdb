@@ -103,16 +103,16 @@ public class DeactivateTemplateProcedure
             setFailure(
                 new ProcedureException(
                     new IoTDBException(
-                        "Target schema Template is not activated on any path matched by given path pattern",
+                        "Target Device Template is not activated on any path matched by given path pattern",
                         TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode())));
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
-          LOGGER.info("Invalidate cache of template timeseries {}", requestMessage);
+          LOGGER.info("Invalidate cache of template timeSeries {}", requestMessage);
           invalidateCache(env);
           break;
         case DELETE_DATA:
-          LOGGER.info("Delete data of template timeseries {}", requestMessage);
+          LOGGER.info("Delete data of template timeSeries {}", requestMessage);
           deleteData(env);
           break;
         case DEACTIVATE_TEMPLATE:
@@ -120,19 +120,17 @@ public class DeactivateTemplateProcedure
           deactivateTemplate(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state.toString()));
+          setFailure(new ProcedureException("Unrecognized state " + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          String.format(
-              "DeactivateTemplate-[%s] costs %sms",
-              state.toString(), (System.currentTimeMillis() - startTime)));
+          "DeactivateTemplate-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
     }
   }
 
-  // return the total num of timeseries in schema black list
+  // return the total num of timeSeries in schema black list
   private long constructBlackList(ConfigNodeProcedureEnv env) {
     Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree);
@@ -203,7 +201,7 @@ public class DeactivateTemplateProcedure
         // all dataNodes must clear the related schema cache
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           LOGGER.error(
-              "Failed to invalidate schema cache of template timeseries {}", requestMessage);
+              "Failed to invalidate schema cache of template timeSeries {}", requestMessage);
           setFailure(
               new ProcedureException(new MetadataException("Invalidate schema cache failed")));
           return;
@@ -218,7 +216,7 @@ public class DeactivateTemplateProcedure
     Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
         env.getConfigManager().getRelatedDataRegionGroup(timeSeriesPatternTree);
 
-    // target timeseries has no data or no target timeseres, return directly
+    // target timeSeries has no data or no target timeSeries, return directly
     if (!relatedDataRegionGroup.isEmpty() && !timeSeriesPatternTree.isEmpty()) {
       DeactivateTemplateRegionTaskExecutor<TDeleteDataForDeleteSchemaReq> deleteDataTask =
           new DeactivateTemplateRegionTaskExecutor<>(
@@ -251,17 +249,19 @@ public class DeactivateTemplateProcedure
   protected void rollbackState(
       ConfigNodeProcedureEnv env, DeactivateTemplateState deactivateTemplateState)
       throws IOException, InterruptedException, ProcedureException {
-    DeactivateTemplateRegionTaskExecutor<TRollbackSchemaBlackListWithTemplateReq>
-        rollbackStateTask =
-            new DeactivateTemplateRegionTaskExecutor<>(
-                "roll back schema black list",
-                env,
-                env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
-                DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
-                ((dataNodeLocation, consensusGroupIdList) ->
-                    new TRollbackSchemaBlackListWithTemplateReq(
-                        consensusGroupIdList, dataNodeRequest)));
-    rollbackStateTask.execute();
+    if (deactivateTemplateState == DeactivateTemplateState.CONSTRUCT_BLACK_LIST) {
+      DeactivateTemplateRegionTaskExecutor<TRollbackSchemaBlackListWithTemplateReq>
+          rollbackStateTask =
+              new DeactivateTemplateRegionTaskExecutor<>(
+                  "roll back schema black list",
+                  env,
+                  env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
+                  DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
+                  ((dataNodeLocation, consensusGroupIdList) ->
+                      new TRollbackSchemaBlackListWithTemplateReq(
+                          consensusGroupIdList, dataNodeRequest)));
+      rollbackStateTask.execute();
+    }
   }
 
   @Override

@@ -111,6 +111,16 @@ public class PipeEnrichedLoadTsFileStatement extends LoadTsFileStatement {
   }
 
   @Override
+  public void addWritePointCount(long writePointCount) {
+    loadTsFileStatement.addWritePointCount(writePointCount);
+  }
+
+  @Override
+  public long getWritePointCount(int resourceIndex) {
+    return loadTsFileStatement.getWritePointCount(resourceIndex);
+  }
+
+  @Override
   public List<PartialPath> getPaths() {
     return loadTsFileStatement.getPaths();
   }

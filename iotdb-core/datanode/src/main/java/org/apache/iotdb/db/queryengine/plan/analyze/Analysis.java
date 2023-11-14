@@ -38,14 +38,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByParame
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -221,8 +220,6 @@ public class Analysis {
   // indicate whether the Nodes produce source data are VirtualSourceNodes
   private boolean isVirtualSource = false;
 
-  private ModelInferenceDescriptor modelInferenceDescriptor;
-
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // SELECT INTO Analysis
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -270,6 +267,9 @@ public class Analysis {
   // used for limit and offset push down optimizer, if we select all columns from aligned device, we
   // can use statistics to skip
   private boolean lastLevelUseWildcard = false;
+
+  // if `order by limit N align by device` query use topK optimization
+  private boolean useTopKNode = false;
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -751,14 +751,6 @@ public class Analysis {
     this.lastQueryNonWritableViewSourceExpressionMap = lastQueryNonWritableViewSourceExpressionMap;
   }
 
-  public ModelInferenceDescriptor getModelInferenceDescriptor() {
-    return modelInferenceDescriptor;
-  }
-
-  public void setModelInferenceDescriptor(ModelInferenceDescriptor modelInferenceDescriptor) {
-    this.modelInferenceDescriptor = modelInferenceDescriptor;
-  }
-
   public Map<String, List<String>> getOutputDeviceToQueriedDevicesMap() {
     return outputDeviceToQueriedDevicesMap;
   }
@@ -778,6 +770,14 @@ public class Analysis {
 
   public void setLastLevelUseWildcard(boolean lastLevelUseWildcard) {
     this.lastLevelUseWildcard = lastLevelUseWildcard;
+  }
+
+  public boolean isUseTopKNode() {
+    return useTopKNode;
+  }
+
+  public void setUseTopKNode() {
+    this.useTopKNode = true;
   }
 
   public void setDeviceList(List<PartialPath> deviceList) {

@@ -62,11 +62,18 @@ public class IoTDBConstant {
   public static final String CN_INTERNAL_ADDRESS = "cn_internal_address";
   public static final String DN_INTERNAL_ADDRESS = "dn_internal_address";
 
+  public static final String CN_METRIC_PROMETHEUS_REPORTER_PORT =
+      "cn_metric_prometheus_reporter_port";
+  public static final String DN_METRIC_PROMETHEUS_REPORTER_PORT =
+      "dn_metric_prometheus_reporter_port";
+
   public static final String CN_INTERNAL_PORT = "cn_internal_port";
   public static final String DN_INTERNAL_PORT = "dn_internal_port";
   public static final String CN_CONSENSUS_PORT = "cn_consensus_port";
 
+  public static final String CN_SEED_CONFIG_NODE = "cn_seed_config_node";
   public static final String CN_TARGET_CONFIG_NODE_LIST = "cn_target_config_node_list";
+  public static final String DN_SEED_CONFIG_NODE = "dn_seed_config_node";
   public static final String DN_TARGET_CONFIG_NODE_LIST = "dn_target_config_node_list";
 
   public static final String CLUSTER_NAME = "cluster_name";
@@ -218,8 +225,8 @@ public class IoTDBConstant {
 
   // data folder name
   public static final String DATA_FOLDER_NAME = "data";
-  public static final String SEQUENCE_FLODER_NAME = "sequence";
-  public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
+  public static final String SEQUENCE_FOLDER_NAME = "sequence";
+  public static final String UNSEQUENCE_FOLDER_NAME = "unsequence";
   public static final String FILE_NAME_SEPARATOR = "-";
   public static final String CONSENSUS_FOLDER_NAME = "consensus";
   public static final String SNAPSHOT_FOLDER_NAME = "snapshot";

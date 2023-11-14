@@ -134,14 +134,13 @@ public class TestUtils {
       String[] expectedRetArray,
       DateFormat df,
       String userName,
-      String password) {
+      String password,
+      TimeUnit currPrecision) {
     try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
-      if (df != null) {
-        connection.setClientInfo("time_zone", "+00:00");
-      }
+      connection.setClientInfo("time_zone", "+00:00");
       try (ResultSet resultSet = statement.executeQuery(sql)) {
-        assertResultSetEqual(resultSet, expectedHeader, expectedRetArray, df);
+        assertResultSetEqual(resultSet, expectedHeader, expectedRetArray, df, currPrecision);
       }
     } catch (SQLException e) {
       e.printStackTrace();
@@ -151,7 +150,8 @@ public class TestUtils {
 
   public static void resultSetEqualTest(
       String sql, String expectedHeader, String[] expectedRetArray) {
-    resultSetEqualTest(sql, expectedHeader, expectedRetArray, null, "root", "root");
+    resultSetEqualTest(
+        sql, expectedHeader, expectedRetArray, null, "root", "root", TimeUnit.MILLISECONDS);
   }
 
   public static void resultSetEqualTest(
@@ -174,7 +174,21 @@ public class TestUtils {
     for (String s : expectedHeader) {
       header.append(s).append(",");
     }
-    resultSetEqualTest(sql, header.toString(), expectedRetArray, df, "root", "root");
+    resultSetEqualTest(
+        sql, header.toString(), expectedRetArray, df, "root", "root", TimeUnit.MILLISECONDS);
+  }
+
+  public static void resultSetEqualTest(
+      String sql,
+      String[] expectedHeader,
+      String[] expectedRetArray,
+      DateFormat df,
+      TimeUnit currPrecision) {
+    StringBuilder header = new StringBuilder();
+    for (String s : expectedHeader) {
+      header.append(s).append(",");
+    }
+    resultSetEqualTest(sql, header.toString(), expectedRetArray, df, "root", "root", currPrecision);
   }
 
   public static void resultSetEqualTest(
@@ -188,7 +202,8 @@ public class TestUtils {
     for (String s : expectedHeader) {
       header.append(s).append(",");
     }
-    resultSetEqualTest(sql, header.toString(), expectedRetArray, df, userName, password);
+    resultSetEqualTest(
+        sql, header.toString(), expectedRetArray, df, userName, password, TimeUnit.MILLISECONDS);
   }
 
   public static void resultSetEqualWithDescOrderTest(
@@ -269,7 +284,8 @@ public class TestUtils {
 
   public static void assertResultSetEqual(
       ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray) {
-    assertResultSetEqual(actualResultSet, expectedHeader, expectedRetArray, null);
+    assertResultSetEqual(
+        actualResultSet, expectedHeader, expectedRetArray, null, TimeUnit.MILLISECONDS);
   }
 
   public static void assertResultSetEqual(
@@ -299,7 +315,11 @@ public class TestUtils {
   }
 
   public static void assertResultSetEqual(
-      ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray, DateFormat df) {
+      ResultSet actualResultSet,
+      String expectedHeader,
+      String[] expectedRetArray,
+      DateFormat df,
+      TimeUnit currPrecision) {
     try {
       ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
       StringBuilder header = new StringBuilder();
@@ -312,7 +332,12 @@ public class TestUtils {
       while (actualResultSet.next()) {
         StringBuilder builder = new StringBuilder();
         if (df != null) {
-          builder.append(df.format(Long.parseLong(actualResultSet.getString(1)))).append(",");
+          builder
+              .append(
+                  df.format(
+                      TimeUnit.MILLISECONDS.convert(
+                          Long.parseLong(actualResultSet.getString(1)), currPrecision)))
+              .append(",");
         } else {
           builder.append(actualResultSet.getString(1)).append(",");
         }
@@ -363,6 +388,29 @@ public class TestUtils {
     }
   }
 
+  // This method will not throw failure given that a failure is encountered.
+  // Instead, it return a flag to indicate the result of the execution.
+  public static boolean tryExecuteNonQueryWithRetry(BaseEnv env, String sql) {
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
+      try (Connection connection = env.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute(sql);
+        return true;
+      } catch (SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(10000);
+          } catch (InterruptedException ignored) {
+          }
+        } else {
+          e.printStackTrace();
+          return false;
+        }
+      }
+    }
+    return false;
+  }
+
   public static void executeNonQueryOnSpecifiedDataNodeWithRetry(
       BaseEnv env, DataNodeWrapper wrapper, String sql) {
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
@@ -382,6 +430,30 @@ public class TestUtils {
         }
       }
     }
+  }
+
+  // This method will not throw failure given that a failure is encountered.
+  // Instead, it return a flag to indicate the result of the execution.
+  public static boolean tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
+      BaseEnv env, DataNodeWrapper wrapper, String sql) {
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
+      try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
+          Statement statement = connection.createStatement()) {
+        statement.execute(sql);
+        return true;
+      } catch (SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(10000);
+          } catch (InterruptedException ignored) {
+          }
+        } else {
+          e.printStackTrace();
+          return false;
+        }
+      }
+    }
+    return false;
   }
 
   public static void executeQuery(String sql) {
@@ -507,12 +579,18 @@ public class TestUtils {
       BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failure
       await()
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
-              () ->
+              () -> {
+                try {
                   TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet));
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

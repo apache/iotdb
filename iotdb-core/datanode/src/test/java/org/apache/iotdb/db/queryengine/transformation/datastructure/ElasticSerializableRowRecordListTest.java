@@ -21,8 +21,8 @@ package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import org.junit.After;
 import org.junit.Before;
@@ -106,7 +106,7 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
                 rowRecord[j] = i % 2 == 0;
                 break;
               case TEXT:
-                rowRecord[j] = Binary.valueOf(String.valueOf(i));
+                rowRecord[j] = BytesUtils.valueOf(String.valueOf(i));
                 break;
             }
           }
@@ -139,7 +139,7 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
           assertEquals(expected % 2 == 0, rowRecord[j]);
           break;
         case TEXT:
-          assertEquals(Binary.valueOf(String.valueOf(expected)), rowRecord[j]);
+          assertEquals(BytesUtils.valueOf(String.valueOf(expected)), rowRecord[j]);
           break;
       }
     }
@@ -271,7 +271,7 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
           rowRecord[i] = time % 2 == 0;
           break;
         case TEXT:
-          rowRecord[i] = Binary.valueOf(generateRandomString(byteLength));
+          rowRecord[i] = BytesUtils.valueOf(generateRandomString(byteLength));
           break;
       }
     }

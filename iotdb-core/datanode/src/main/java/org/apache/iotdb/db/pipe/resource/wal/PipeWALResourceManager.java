@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -120,4 +121,10 @@ public abstract class PipeWALResourceManager {
 
   protected abstract void unpinInternal(long memtableId, WALEntryHandler walEntryHandler)
       throws IOException;
+
+  public int getPinnedWalCount() {
+    return Objects.nonNull(memtableIdToPipeWALResourceMap)
+        ? memtableIdToPipeWALResourceMap.size()
+        : 0;
+  }
 }

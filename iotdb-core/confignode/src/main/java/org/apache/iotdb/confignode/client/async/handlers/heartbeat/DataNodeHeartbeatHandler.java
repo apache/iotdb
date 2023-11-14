@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 
+import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
@@ -42,7 +45,8 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
   private final Map<Integer, Long> timeSeriesNum;
   private final Map<Integer, Long> regionDisk;
 
-  private final Consumer<Map<Integer, Long>> schemaQuotaRespProcess;
+  private final Consumer<Map<Integer, Long>> seriesUsageRespProcess;
+  private final Consumer<Map<Integer, Long>> deviceUsageRespProcess;
 
   private final PipeRuntimeCoordinator pipeRuntimeCoordinator;
 
@@ -52,7 +56,8 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
       Map<Integer, Long> deviceNum,
       Map<Integer, Long> timeSeriesNum,
       Map<Integer, Long> regionDisk,
-      Consumer<Map<Integer, Long>> schemaQuotaRespProcess,
+      Consumer<Map<Integer, Long>> seriesUsageRespProcess,
+      Consumer<Map<Integer, Long>> deviceUsageRespProcess,
       PipeRuntimeCoordinator pipeRuntimeCoordinator) {
 
     this.nodeId = nodeId;
@@ -60,7 +65,8 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
     this.deviceNum = deviceNum;
     this.timeSeriesNum = timeSeriesNum;
     this.regionDisk = regionDisk;
-    this.schemaQuotaRespProcess = schemaQuotaRespProcess;
+    this.seriesUsageRespProcess = seriesUsageRespProcess;
+    this.deviceUsageRespProcess = deviceUsageRespProcess;
     this.pipeRuntimeCoordinator = pipeRuntimeCoordinator;
   }
 
@@ -93,26 +99,16 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
               }
             });
 
-    if (heartbeatResp.getRegionDeviceNumMap() != null) {
-      deviceNum.putAll(heartbeatResp.getRegionDeviceNumMap());
+    if (heartbeatResp.getRegionDeviceUsageMap() != null) {
+      deviceNum.putAll(heartbeatResp.getRegionDeviceUsageMap());
+      deviceUsageRespProcess.accept(heartbeatResp.getRegionDeviceUsageMap());
     }
-    if (heartbeatResp.getRegionTimeSeriesNumMap() != null) {
-      timeSeriesNum.putAll(heartbeatResp.getRegionTimeSeriesNumMap());
+    if (heartbeatResp.getRegionSeriesUsageMap() != null) {
+      timeSeriesNum.putAll(heartbeatResp.getRegionSeriesUsageMap());
+      seriesUsageRespProcess.accept(heartbeatResp.getRegionSeriesUsageMap());
     }
     if (heartbeatResp.getRegionDisk() != null) {
       regionDisk.putAll(heartbeatResp.getRegionDisk());
-    }
-    if (heartbeatResp.getSchemaLimitLevel() != null) {
-      switch (heartbeatResp.getSchemaLimitLevel()) {
-        case DEVICE:
-          schemaQuotaRespProcess.accept(heartbeatResp.getRegionDeviceNumMap());
-          break;
-        case TIMESERIES:
-          schemaQuotaRespProcess.accept(heartbeatResp.getRegionTimeSeriesNumMap());
-          break;
-        default:
-          break;
-      }
     }
     if (heartbeatResp.getPipeMetaList() != null) {
       pipeRuntimeCoordinator.parseHeartbeat(nodeId, heartbeatResp.getPipeMetaList());
@@ -121,6 +117,9 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
 
   @Override
   public void onError(Exception e) {
-    // Do nothing
+    if (ThriftClient.isConnectionBroken(e)) {
+      loadCache.forceUpdateNodeCache(
+          NodeType.DataNode, nodeId, NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+    }
   }
 }

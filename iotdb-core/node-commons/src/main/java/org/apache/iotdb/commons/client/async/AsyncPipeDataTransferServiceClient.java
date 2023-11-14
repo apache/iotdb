@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
@@ -127,7 +128,10 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
       return true;
     } catch (Exception e) {
       if (printLogWhenEncounterException) {
-        LOGGER.error("Unexpected exception occurs in {} : {}", this, e.getMessage());
+        LOGGER.error(
+            "Unexpected exception occurs in {}, error msg is {}",
+            this,
+            ExceptionUtils.getRootCause(e).toString());
       }
       return false;
     }

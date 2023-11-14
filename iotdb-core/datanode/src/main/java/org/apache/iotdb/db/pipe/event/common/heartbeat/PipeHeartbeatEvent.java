@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionHybridExtractor;
+import org.apache.iotdb.db.pipe.metric.PipeHeartbeatEventMetrics;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.connection.EnrichedDeque;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
@@ -72,8 +73,12 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     this.shouldPrintMessage = shouldPrintMessage;
   }
 
-  public PipeHeartbeatEvent(String dataRegionId, long timePublished, boolean shouldPrintMessage) {
-    super(null, null);
+  public PipeHeartbeatEvent(
+      PipeTaskMeta pipeTaskMeta,
+      String dataRegionId,
+      long timePublished,
+      boolean shouldPrintMessage) {
+    super(pipeTaskMeta, null);
     this.dataRegionId = dataRegionId;
     this.timePublished = timePublished;
     this.shouldPrintMessage = shouldPrintMessage;
@@ -102,7 +107,8 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
-    return new PipeHeartbeatEvent(dataRegionId, timePublished, shouldPrintMessage);
+    // Should record PipeTaskMeta, for sometimes HeartbeatEvents should report exceptions.
+    return new PipeHeartbeatEvent(pipeTaskMeta, dataRegionId, timePublished, shouldPrintMessage);
   }
 
   @Override
@@ -133,18 +139,24 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public void onAssigned() {
     if (shouldPrintMessage) {
       timeAssigned = System.currentTimeMillis();
+      PipeHeartbeatEventMetrics.getInstance()
+          .recordPublishedToAssignedTime(timeAssigned - timePublished);
     }
   }
 
   public void onProcessed() {
     if (shouldPrintMessage) {
       timeProcessed = System.currentTimeMillis();
+      PipeHeartbeatEventMetrics.getInstance()
+          .recordAssignedToProcessedTime(timeProcessed - timeAssigned);
     }
   }
 
   public void onTransferred() {
     if (shouldPrintMessage) {
       timeTransferred = System.currentTimeMillis();
+      PipeHeartbeatEventMetrics.getInstance()
+          .recordProcessedToTransferredTime(timeTransferred - timeProcessed);
     }
   }
 
@@ -167,13 +179,13 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   public void recordBufferQueueSize(EnrichedDeque<Event> bufferQueue) {
     if (shouldPrintMessage) {
       bufferQueueTabletSize = bufferQueue.getTabletInsertionEventCount();
+      bufferQueueTsFileSize = bufferQueue.getTsFileInsertionEventCount();
       bufferQueueSize = bufferQueue.size();
     }
 
-    bufferQueueTsFileSize = bufferQueue.getTsFileInsertionEventCount();
     if (extractor instanceof PipeRealtimeDataRegionHybridExtractor) {
       ((PipeRealtimeDataRegionHybridExtractor) extractor)
-          .informEventCollectorQueueTsFileSize(bufferQueueTsFileSize);
+          .informProcessorEventCollectorQueueTsFileSize(bufferQueue.getTsFileInsertionEventCount());
     }
   }
 
@@ -182,6 +194,11 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
       connectorQueueTabletSize = pendingQueue.getTabletInsertionEventCount();
       connectorQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();
       connectorQueueSize = pendingQueue.size();
+    }
+
+    if (extractor instanceof PipeRealtimeDataRegionHybridExtractor) {
+      ((PipeRealtimeDataRegionHybridExtractor) extractor)
+          .informConnectorInputPendingQueueTsFileSize(pendingQueue.getTsFileInsertionEventCount());
     }
   }
 

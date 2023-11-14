@@ -46,7 +46,8 @@ public class PipeRuntimeAgent implements IService {
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
-  private final PipeCronEventInjector pipeCronEventInjector = new PipeCronEventInjector();
+  private final PipePeriodicalJobExecutor pipePeriodicalJobExecutor =
+      new PipePeriodicalJobExecutor();
 
   private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
       new SimpleConsensusProgressIndexAssigner();
@@ -59,7 +60,7 @@ public class PipeRuntimeAgent implements IService {
     PipeHardlinkFileDirStartupCleaner.clean();
 
     // clean receiver file dir
-    PipeAgent.receiver().cleanPipeReceiverDir();
+    PipeAgent.receiver().cleanPipeReceiverDirs();
 
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
     simpleConsensusProgressIndexAssigner.start();
@@ -69,7 +70,7 @@ public class PipeRuntimeAgent implements IService {
   public synchronized void start() throws StartupException {
     PipeConfig.getInstance().printAllConfigs();
     PipeAgentLauncher.launchPipeTaskAgent();
-    pipeCronEventInjector.start();
+    pipePeriodicalJobExecutor.start();
 
     isShutdown.set(false);
   }
@@ -81,7 +82,7 @@ public class PipeRuntimeAgent implements IService {
     }
     isShutdown.set(true);
 
-    pipeCronEventInjector.stop();
+    pipePeriodicalJobExecutor.stop();
     PipeAgent.task().dropAllPipeTasks();
   }
 
@@ -102,14 +103,14 @@ public class PipeRuntimeAgent implements IService {
 
   ////////////////////// Recover ProgressIndex Assigner //////////////////////
 
-  public void assignRecoverProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
-    tsFileResource.recoverProgressIndex(
+  public void assignProgressIndexForTsFileLoad(TsFileResource tsFileResource) {
+    tsFileResource.setProgressIndex(
         new RecoverProgressIndex(
             DATA_NODE_ID,
             simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery()));
   }
 
-  public void assignUpdateProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
+  public void assignProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
     tsFileResource.updateProgressIndex(
         new RecoverProgressIndex(
             DATA_NODE_ID,

@@ -28,7 +28,7 @@ import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -55,7 +55,7 @@ public class PipeTsFileResourceManagerTest {
 
   private static final String ROOT_DIR = "target" + File.separator + "PipeTsFileHolderTest";
   private static final String SEQUENCE_DIR =
-      ROOT_DIR + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
+      ROOT_DIR + File.separator + IoTDBConstant.SEQUENCE_FOLDER_NAME;
   private static final String TS_FILE_NAME = SEQUENCE_DIR + File.separator + "test.tsfile";
   private static final String MODS_FILE_NAME = TS_FILE_NAME + ".mods";
 

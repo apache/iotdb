@@ -41,6 +41,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataExecutionVisitor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -193,7 +194,7 @@ public class StorageEngine implements IService {
     isAllSgReady.set(allSgReady);
   }
 
-  public void recover() throws StartupException {
+  public void asyncRecover() throws StartupException {
     setAllSgReady(false);
     cachedThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.STORAGE_ENGINE_CACHED_POOL.getName());
@@ -295,7 +296,7 @@ public class StorageEngine implements IService {
       throw new StorageEngineFailureException(e);
     }
 
-    recover();
+    asyncRecover();
 
     ttlCheckThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.TTL_CHECK.getName());
@@ -552,7 +553,7 @@ public class StorageEngine implements IService {
   public void operateFlush(TFlushReq req) {
     if (req.storageGroups == null) {
       StorageEngine.getInstance().syncCloseAllProcessor();
-      WALManager.getInstance().deleteOutdatedWALFiles();
+      WALManager.getInstance().deleteOutdatedFilesInWALNodes();
     } else {
       for (String storageGroup : req.storageGroups) {
         if (req.isSeq == null) {
@@ -766,6 +767,12 @@ public class StorageEngine implements IService {
   public TSStatus writeLoadTsFileNode(
       DataRegionId dataRegionId, LoadTsFilePieceNode pieceNode, String uuid) {
     TSStatus status = new TSStatus();
+
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      status.setCode(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
+      status.setMessage(LoadReadOnlyException.MESSAGE);
+      return status;
+    }
 
     try {
       getLoadTsFileManager().writeToDataRegion(getDataRegion(dataRegionId), pieceNode, uuid);

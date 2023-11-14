@@ -53,11 +53,12 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -303,6 +304,167 @@ public class DataRegionTest {
   }
 
   @Test
+  public void testEmptyTabletWriteAndSyncClose()
+      throws QueryProcessException, IllegalPathException, WriteProcessException {
+    String[] measurements = new String[2];
+    measurements[0] = "s0";
+    measurements[1] = "s1";
+    TSDataType[] dataTypes = new TSDataType[2];
+    dataTypes[0] = TSDataType.INT32;
+    dataTypes[1] = TSDataType.INT64;
+
+    MeasurementSchema[] measurementSchemas = new MeasurementSchema[2];
+    measurementSchemas[0] = new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN);
+    measurementSchemas[1] = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
+
+    long[] times = new long[100];
+    Object[] columns = new Object[2];
+    columns[0] = new int[100];
+    columns[1] = new long[100];
+    BitMap[] bitMaps = new BitMap[2];
+    bitMaps[0] = new BitMap(100);
+    bitMaps[1] = new BitMap(100);
+
+    for (int r = 0; r < 100; r++) {
+      times[r] = r;
+      bitMaps[0].mark(r);
+      bitMaps[1].mark(r);
+    }
+
+    InsertTabletNode insertTabletNode1 =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.vehicle.d0"),
+            false,
+            measurements,
+            dataTypes,
+            measurementSchemas,
+            times,
+            bitMaps,
+            columns,
+            times.length);
+
+    dataRegion.insertTablet(insertTabletNode1);
+    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+
+    for (int r = 50; r < 149; r++) {
+      times[r - 50] = r;
+      bitMaps[0].mark(r - 50);
+      bitMaps[1].mark(r - 50);
+    }
+
+    InsertTabletNode insertTabletNode2 =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.vehicle.d0"),
+            false,
+            measurements,
+            dataTypes,
+            measurementSchemas,
+            times,
+            bitMaps,
+            columns,
+            times.length);
+
+    dataRegion.insertTablet(insertTabletNode2);
+    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    QueryDataSource queryDataSource =
+        dataRegion.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null);
+
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+  }
+
+  @Test
+  public void testAllMeasurementsFailedTabletWriteAndSyncClose()
+      throws QueryProcessException, IllegalPathException, WriteProcessException {
+    String[] measurements = new String[2];
+    measurements[0] = "s0";
+    measurements[1] = "s1";
+    TSDataType[] dataTypes = new TSDataType[2];
+    dataTypes[0] = TSDataType.INT32;
+    dataTypes[1] = TSDataType.INT64;
+
+    MeasurementSchema[] measurementSchemas = new MeasurementSchema[2];
+    measurementSchemas[0] = new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN);
+    measurementSchemas[1] = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
+
+    long[] times = new long[100];
+    Object[] columns = new Object[2];
+    columns[0] = new int[100];
+    columns[1] = new long[100];
+
+    for (int r = 0; r < 100; r++) {
+      times[r] = r;
+      ((int[]) columns[0])[r] = 1;
+      ((long[]) columns[1])[r] = 1;
+    }
+
+    InsertTabletNode insertTabletNode1 =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.vehicle.d0"),
+            false,
+            measurements,
+            dataTypes,
+            measurementSchemas,
+            times,
+            null,
+            columns,
+            times.length);
+    insertTabletNode1.setFailedMeasurementNumber(2);
+
+    dataRegion.insertTablet(insertTabletNode1);
+    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+
+    for (int r = 50; r < 149; r++) {
+      times[r - 50] = r;
+      ((int[]) columns[0])[r - 50] = 1;
+      ((long[]) columns[1])[r - 50] = 1;
+    }
+
+    InsertTabletNode insertTabletNode2 =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.vehicle.d0"),
+            false,
+            measurements,
+            dataTypes,
+            measurementSchemas,
+            times,
+            null,
+            columns,
+            times.length);
+    insertTabletNode2.setFailedMeasurementNumber(2);
+
+    dataRegion.insertTablet(insertTabletNode2);
+    dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    QueryDataSource queryDataSource =
+        dataRegion.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null);
+
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+  }
+
+  @Test
   public void testSeqAndUnSeqSyncClose()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
     for (int j = 21; j <= 30; j++) {
@@ -330,6 +492,46 @@ public class DataRegionTest {
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+    for (TsFileResource resource : queryDataSource.getUnseqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+  }
+
+  @Test
+  public void testAllMeasurementsFailedRecordSeqAndUnSeqSyncClose()
+      throws WriteProcessException, QueryProcessException, IllegalPathException {
+    for (int j = 21; j <= 30; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
+      rowNode.setFailedMeasurementNumber(1);
+      dataRegion.insert(rowNode);
+      dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    }
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    for (int j = 10; j >= 1; j--) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
+      rowNode.setFailedMeasurementNumber(1);
+      dataRegion.insert(rowNode);
+      dataRegion.asyncCloseAllWorkingTsFileProcessors();
+    }
+
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    QueryDataSource queryDataSource =
+        dataRegion.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null);
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
