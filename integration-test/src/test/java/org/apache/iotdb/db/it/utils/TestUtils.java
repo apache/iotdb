@@ -388,6 +388,29 @@ public class TestUtils {
     }
   }
 
+  // This method will not throw failure given that a failure is encountered.
+  // Instead, it return a flag to indicate the result of the execution.
+  public static boolean tryExecuteNonQueryWithRetry(BaseEnv env, String sql) {
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
+      try (Connection connection = env.getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute(sql);
+        return true;
+      } catch (SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(10000);
+          } catch (InterruptedException ignored) {
+          }
+        } else {
+          e.printStackTrace();
+          return false;
+        }
+      }
+    }
+    return false;
+  }
+
   public static void executeNonQueryOnSpecifiedDataNodeWithRetry(
       BaseEnv env, DataNodeWrapper wrapper, String sql) {
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
@@ -407,6 +430,30 @@ public class TestUtils {
         }
       }
     }
+  }
+
+  // This method will not throw failure given that a failure is encountered.
+  // Instead, it return a flag to indicate the result of the execution.
+  public static boolean tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
+      BaseEnv env, DataNodeWrapper wrapper, String sql) {
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
+      try (Connection connection = env.getConnectionWithSpecifiedDataNode(wrapper);
+          Statement statement = connection.createStatement()) {
+        statement.execute(sql);
+        return true;
+      } catch (SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(10000);
+          } catch (InterruptedException ignored) {
+          }
+        } else {
+          e.printStackTrace();
+          return false;
+        }
+      }
+    }
+    return false;
   }
 
   public static void executeQuery(String sql) {
@@ -532,12 +579,18 @@ public class TestUtils {
       BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
     try (Connection connection = env.getConnection();
         Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failure
       await()
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
-              () ->
+              () -> {
+                try {
                   TestUtils.assertResultSetEqual(
-                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet));
+                      executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

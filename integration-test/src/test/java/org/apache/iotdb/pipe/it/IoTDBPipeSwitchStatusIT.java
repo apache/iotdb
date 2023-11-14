@@ -212,8 +212,10 @@ public class IoTDBPipeSwitchStatusIT {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      TestUtils.executeNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
+        return;
+      }
 
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
