@@ -652,7 +652,7 @@ public class IoTDBPipeClusterIT {
 
     int succeedNum = 0;
     for (int i = 0; i < 100; ++i) {
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
+      if (TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i * 1000))) {
         succeedNum++;
       }
