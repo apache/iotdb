@@ -401,6 +401,13 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     return this;
   }
 
+  @Override
+  public CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs) {
+    setProperty(
+        "driver_task_execution_time_slice_in_ms", String.valueOf(driverTaskExecutionTimeSliceInMs));
+    return this;
+  }
+
   // For part of the log directory
   public String getClusterConfigStr() {
     return fromConsensusFullNameToAbbr(properties.getProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS))
