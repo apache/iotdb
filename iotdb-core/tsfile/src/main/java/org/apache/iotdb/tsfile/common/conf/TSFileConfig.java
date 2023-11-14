@@ -158,8 +158,6 @@ public class TSFileConfig implements Serializable {
 
   private int patternMatchingThreshold = 1000000;
 
-  private int maxLoadingTimeseriesNumber = 2000;
-
   private String hdfsFile = "org.apache.iotdb.hadoop.fileSystem.HDFSFile";
 
   private String hdfsTsFileInput = "org.apache.iotdb.hadoop.fileSystem.HDFSInput";
@@ -474,14 +472,6 @@ public class TSFileConfig implements Serializable {
 
   public void setCustomizedProperties(Properties customizedProperties) {
     this.customizedProperties = customizedProperties;
-  }
-
-  public int getMaxLoadingTimeseriesNumber() {
-    return maxLoadingTimeseriesNumber;
-  }
-
-  public void setMaxLoadingTimeseriesNumber(int maxLoadingTimeseriesNumber) {
-    this.maxLoadingTimeseriesNumber = maxLoadingTimeseriesNumber;
   }
 
   public String getSprintzPredictScheme() {

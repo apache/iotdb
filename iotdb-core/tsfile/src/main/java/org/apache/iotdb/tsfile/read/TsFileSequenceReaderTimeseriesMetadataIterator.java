@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.tsfile.read;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -39,8 +38,7 @@ import java.util.NoSuchElementException;
 public class TsFileSequenceReaderTimeseriesMetadataIterator
     implements Iterator<Map<String, List<TimeseriesMetadata>>> {
 
-  private final int MAX_TIMESERIES_METADATA_COUNT =
-      TSFileDescriptor.getInstance().getConfig().getMaxLoadingTimeseriesNumber();
+  private final int MAX_TIMESERIES_METADATA_COUNT = 2000;
   private final TsFileSequenceReader reader;
   private final List<MetadataIndexEntry> metadataIndexEntryList;
   private final boolean needChunkMetadata;
