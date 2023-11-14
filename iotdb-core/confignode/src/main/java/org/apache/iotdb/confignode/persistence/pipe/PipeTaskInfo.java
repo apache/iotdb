@@ -54,6 +54,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -64,8 +65,14 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private final PipeMetaKeeper pipeMetaKeeper;
 
+  // This variable is used to record the number of times the write lock of PipeMetaKeeper has been
+  // acquired, to indicate the number of times `pipeNameToPipeMetaMap` in PipeMetaKeeper has been
+  // modified.
+  private final AtomicLong writeLockAcquiredCount;
+
   public PipeTaskInfo() {
     this.pipeMetaKeeper = new PipeMetaKeeper();
+    this.writeLockAcquiredCount = new AtomicLong(0);
   }
 
   /////////////////////////////// Lock ///////////////////////////////
@@ -80,10 +87,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private void acquireWriteLock() {
     pipeMetaKeeper.acquireWriteLock();
+    writeLockAcquiredCount.incrementAndGet();
   }
 
   private void releaseWriteLock() {
     pipeMetaKeeper.releaseWriteLock();
+  }
+
+  public long getWriteLockAcquiredCount() {
+    return writeLockAcquiredCount.get();
   }
 
   /////////////////////////////// Validator ///////////////////////////////

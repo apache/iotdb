@@ -170,4 +170,8 @@ public class PipeTaskCoordinator {
   public boolean hasAnyPipe() {
     return !pipeTaskInfo.isEmpty();
   }
+
+  public long getWriteLockAcquiredCount() {
+    return pipeTaskInfo.getWriteLockAcquiredCount();
+  }
 }
