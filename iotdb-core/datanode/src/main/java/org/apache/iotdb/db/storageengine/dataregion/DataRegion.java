@@ -2089,13 +2089,20 @@ public class DataRegion implements IDataRegionForQuery {
   // TODO please consider concurrency with read and insert method.
   private void closeUnsealedTsFileProcessorCallBack(TsFileProcessor tsFileProcessor)
       throws TsFileProcessorException {
-    boolean tsFileNotValid =
-        tsFileProcessor.isEmpty()
-            || !TsFileValidator.getInstance().validateTsFile(tsFileProcessor.getTsFileResource());
+    boolean isEmptyFile =
+        tsFileProcessor.isEmpty() || tsFileProcessor.getTsFileResource().isEmpty();
+    boolean isValidateTsFileFailed = false;
+    if (!isEmptyFile) {
+      isValidateTsFileFailed =
+          !TsFileValidator.getInstance().validateTsFile(tsFileProcessor.getTsFileResource());
+    }
     closeQueryLock.writeLock().lock();
     try {
       tsFileProcessor.close();
-      if (tsFileNotValid) {
+      if (isEmptyFile) {
+        tsFileProcessor.getTsFileResource().remove();
+        tsFileManager.remove(tsFileProcessor.getTsFileResource(), tsFileProcessor.isSequence());
+      } else if (isValidateTsFileFailed) {
         String tsFilePath = tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath();
         renameAndHandleError(tsFilePath, tsFilePath + BROKEN_SUFFIX);
         renameAndHandleError(
@@ -2116,7 +2123,7 @@ public class DataRegion implements IDataRegionForQuery {
     synchronized (closeStorageGroupCondition) {
       closeStorageGroupCondition.notifyAll();
     }
-    if (!tsFileNotValid) {
+    if (!isValidateTsFileFailed) {
       TsFileResource tsFileResource = tsFileProcessor.getTsFileResource();
       FileMetrics.getInstance()
           .addTsFile(
