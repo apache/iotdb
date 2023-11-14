@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.WebSocketConnector
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.WriteBackConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DownSamplingProcessor;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -43,6 +44,7 @@ public enum BuiltinPipePlugin {
 
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
+  DOWN_SAMPLING_PROCESSOR("down-sampling-processor", DownSamplingProcessor.class),
 
   // connectors
   DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),

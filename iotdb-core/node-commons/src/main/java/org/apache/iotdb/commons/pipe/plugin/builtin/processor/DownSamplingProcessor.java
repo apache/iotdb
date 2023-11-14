@@ -17,17 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config.constant;
+package org.apache.iotdb.commons.pipe.plugin.builtin.processor;
 
-public class PipeProcessorConstant {
-
-  public static final String PROCESSOR_KEY = "processor";
-
-  public static final String PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_KEY =
-      "processor.down-sampling.interval-seconds";
-  public static final long PROCESSOR_DOWN_SAMPLING_INTERVAL_SECONDS_DEFAULT_VALUE = 60;
-
-  private PipeProcessorConstant() {
-    throw new IllegalStateException("Utility class");
-  }
-}
+/**
+ * This class is a placeholder and should not be initialized. It represents the Down Sampling
+ * processor. There is a real implementation in the server module but cannot be imported here. The
+ * pipe agent in the server module will replace this class with the real implementation when
+ * initializing the Down Sampling processor.
+ */
+public class DownSamplingProcessor extends PlaceHolderProcessor {}
