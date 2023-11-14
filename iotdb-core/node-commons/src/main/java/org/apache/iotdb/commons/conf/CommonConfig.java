@@ -192,6 +192,7 @@ public class CommonConfig {
   private int pipeMemoryAllocateMaxRetries = 10;
   private long pipeMemoryAllocateMinSizeInBytes = 32;
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = 2 * 1024 * 1024; // 2MB
+  private long pipeMemoryExpanderIntervalSeconds = 3 * 60; // 3Min
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -777,6 +778,14 @@ public class CommonConfig {
       long pipeMemoryAllocateForTsFileSequenceReaderInBytes) {
     this.pipeMemoryAllocateForTsFileSequenceReaderInBytes =
         pipeMemoryAllocateForTsFileSequenceReaderInBytes;
+  }
+
+  public long getPipeMemoryExpanderIntervalSeconds() {
+    return pipeMemoryExpanderIntervalSeconds;
+  }
+
+  public void setPipeMemoryExpanderIntervalSeconds(long pipeMemoryExpanderIntervalSeconds) {
+    this.pipeMemoryExpanderIntervalSeconds = pipeMemoryExpanderIntervalSeconds;
   }
 
   public int getPipeMemoryAllocateMaxRetries() {

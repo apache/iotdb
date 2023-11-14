@@ -195,7 +195,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   public File generateTargetFile() throws IOException {
     String path = unseqFileToInsert.getTsFile().getParentFile().getPath();
-    path = path.replace("unsequence", "sequence");
+    int pos = path.lastIndexOf("unsequence");
+    path = path.substring(0, pos) + "sequence" + path.substring(pos + "unsequence".length());
+
     TsFileNameGenerator.TsFileName tsFileName =
         TsFileNameGenerator.getTsFileName(unseqFileToInsert.getTsFile().getName());
     tsFileName.setTime(timestamp);
