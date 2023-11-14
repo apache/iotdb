@@ -287,4 +287,9 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     return this;
   }
+
+  @Override
+  public CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs) {
+    return this;
+  }
 }

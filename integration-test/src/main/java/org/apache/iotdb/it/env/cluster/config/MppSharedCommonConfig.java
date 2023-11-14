@@ -409,4 +409,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
     return this;
   }
+
+  @Override
+  public CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs) {
+    dnConfig.setDriverTaskExecutionTimeSliceInMs(driverTaskExecutionTimeSliceInMs);
+    cnConfig.setDriverTaskExecutionTimeSliceInMs(driverTaskExecutionTimeSliceInMs);
+    return this;
+  }
 }
