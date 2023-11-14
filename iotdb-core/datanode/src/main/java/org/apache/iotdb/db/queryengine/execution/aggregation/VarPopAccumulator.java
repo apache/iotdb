@@ -9,15 +9,12 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class VarPopAccumulator implements Accumulator {
   private final TSDataType seriesDataType;
-
-  // TODO: Add inner static class
   private long count;
   private double mean;
   private double m2;
@@ -32,12 +29,17 @@ public class VarPopAccumulator implements Accumulator {
       case INT32:
         addIntInput(column, bitMap, lastIndex);
         return;
+      case INT64:
+        addLongInput(column, bitMap, lastIndex);
+        return;
       case FLOAT:
         addFloatInput(column, bitMap, lastIndex);
         return;
       case DOUBLE:
         addDoubleInput(column, bitMap, lastIndex);
         return;
+      case TEXT:
+      case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in aggregation VAR_POP : %s", seriesDataType));
@@ -159,6 +161,21 @@ public class VarPopAccumulator implements Accumulator {
       }
       if (!columns[1].isNull(i)) {
         int value = columns[1].getInt(i);
+        count++;
+        double delta = value - mean;
+        mean += delta / count;
+        m2 += delta * (value - mean);
+      }
+    }
+  }
+
+  private void addLongInput(Column[] columns, BitMap bitmap, int lastIndex) {
+    for (int i = 0; i <= lastIndex; i++) {
+      if (bitmap != null && !bitmap.isMarked(i)) {
+        continue;
+      }
+      if (!columns[1].isNull(i)) {
+        long value = columns[1].getInt(i);
         count++;
         double delta = value - mean;
         mean += delta / count;
