@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -55,6 +56,7 @@ public class IoTDBInsertMultiRowIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxInnerCompactionCandidateFileNum(2);
     EnvFactory.getEnv().initClusterEnvironment();
     initCreateSQLStatement();
     insertData();
@@ -156,6 +158,7 @@ public class IoTDBInsertMultiRowIT {
       st2.execute(
           "INSERT INTO root.t1.d1(timestamp, s1) VALUES (6, 10),(7,12),(8,14),(9,160),(10,null),(11,58)");
     } catch (SQLException e) {
+      e.printStackTrace();
       fail();
     }
   }
@@ -168,6 +171,25 @@ public class IoTDBInsertMultiRowIT {
       fail();
     } catch (SQLException e) {
       assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
+    }
+  }
+
+  @Test
+  public void testInsertMultiRowWithMultiTimePartition() throws Exception {
+    try (Statement st1 = connection.createStatement()) {
+      st1.execute("insert into root.sg1.d1(time,s1) values(604800010,1)");
+      st1.execute("flush");
+      st1.execute("insert into root.sg1.d1(time,s1) values(604799990,1), (604800001,1)");
+      st1.execute("flush");
+      st1.execute("merge");
+      ResultSet rs1 = st1.executeQuery("select s1 from root.sg1.d1");
+      assertTrue(rs1.next());
+      assertEquals(604799990, rs1.getLong("Time"));
+      assertTrue(rs1.next());
+      assertEquals(604800001, rs1.getLong("Time"));
+      assertTrue(rs1.next());
+      assertEquals(604800010, rs1.getLong("Time"));
+      assertFalse(rs1.next());
     }
   }
 }

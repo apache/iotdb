@@ -133,6 +133,10 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
     return measurements;
   }
 
+  public void setMeasurements(String[] measurements) {
+    this.measurements = measurements;
+  }
+
   public TSDataType[] getDataTypes() {
     return dataTypes;
   }
