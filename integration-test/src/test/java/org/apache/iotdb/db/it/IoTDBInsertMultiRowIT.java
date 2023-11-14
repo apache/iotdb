@@ -158,7 +158,6 @@ public class IoTDBInsertMultiRowIT {
       st2.execute(
           "INSERT INTO root.t1.d1(timestamp, s1) VALUES (6, 10),(7,12),(8,14),(9,160),(10,null),(11,58)");
     } catch (SQLException e) {
-      e.printStackTrace();
       fail();
     }
   }
