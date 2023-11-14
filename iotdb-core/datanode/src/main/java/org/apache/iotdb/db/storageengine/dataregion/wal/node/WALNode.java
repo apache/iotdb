@@ -50,6 +50,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinExc
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener.Status;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -233,7 +234,9 @@ public class WALNode implements IWALNode {
 
     private int recursionTime = 0;
 
-    public DeleteOutdatedFileTask() {}
+    public DeleteOutdatedFileTask() {
+      // Do nothing
+    }
 
     private void init() {
       this.firstValidVersionId = initFirstValidWALVersionId();
@@ -928,7 +931,7 @@ public class WALNode implements IWALNode {
   public void rollWALFile() {
     WALEntry rollWALFileSignal = new WALSignalEntry(WALEntryType.ROLL_WAL_LOG_WRITER_SIGNAL, true);
     WALFlushListener walFlushListener = log(rollWALFileSignal);
-    if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+    if (walFlushListener.waitForResult() == AbstractResultListener.Status.FAILURE) {
       logger.error(
           "Fail to trigger rolling wal node-{}'s wal file log writer.",
           identifier,

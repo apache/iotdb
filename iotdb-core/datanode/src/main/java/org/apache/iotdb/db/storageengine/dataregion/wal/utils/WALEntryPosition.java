@@ -47,6 +47,8 @@ public class WALEntryPosition {
   // cache for wal entry
   private WALInsertNodeCache cache = null;
 
+  private static final String ENTRY_NOT_READY_MESSAGE = "This entry isn't ready for read.";
+
   public WALEntryPosition() {}
 
   public WALEntryPosition(String identifier, long walFileVersionId, long position, int size) {
@@ -71,7 +73,7 @@ public class WALEntryPosition {
    */
   public InsertNode readInsertNodeViaCacheAfterCanRead() throws IOException {
     if (!canRead()) {
-      throw new IOException("This entry isn't ready for read.");
+      throw new IOException(ENTRY_NOT_READY_MESSAGE);
     }
     return cache.getInsertNode(this);
   }
@@ -83,7 +85,7 @@ public class WALEntryPosition {
    */
   public ByteBuffer readByteBufferViaCacheAfterCanRead() throws IOException {
     if (!canRead()) {
-      throw new IOException("This entry isn't ready for read.");
+      throw new IOException(ENTRY_NOT_READY_MESSAGE);
     }
     return cache.getByteBuffer(this);
   }
@@ -144,7 +146,7 @@ public class WALEntryPosition {
   /** Return true only when this wal file is sealed. */
   public boolean isInSealedFile() {
     if (walNode == null || !canRead()) {
-      throw new RuntimeException("This entry isn't ready for read.");
+      throw new RuntimeException(ENTRY_NOT_READY_MESSAGE);
     }
     return walFileVersionId < walNode.getCurrentWALFileVersion();
   }
