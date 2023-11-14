@@ -34,7 +34,7 @@ public class EncodeTest {
 //    String output_parent_dir = parent_dir + "vldb\\compression_ratio\\sota_ratio";
 
     String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
-    String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/reger_remove_value";
+    String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/sota_ratio";
     String input_parent_dir = parent_dir + "trans_data/";
 
     ArrayList<String> input_path_list = new ArrayList<>();
