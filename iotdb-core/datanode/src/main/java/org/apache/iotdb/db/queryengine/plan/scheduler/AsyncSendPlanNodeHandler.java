@@ -100,7 +100,6 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
     Throwable rootCause = ExceptionUtils.getRootCause(e);
     // 1. connection broken it means that the remote node may go offline
     // 2. or the method call is time out
-    // 3. or the target node is ReadOnly
     return isConnectionBroken(rootCause) || (e instanceof TimeoutException);
   }
 
