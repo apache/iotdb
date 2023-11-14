@@ -116,7 +116,7 @@ public class TsFileManager {
           sequenceFiles.computeIfAbsent(partitionId, l -> new TsFileResourceList());
       for (int i = seqTsFileResourceList.size() - 1; i >= 0; i--) {
         TsFileResource seqResource = seqTsFileResourceList.get(i);
-        if (seqResource.isClosed()) {
+        if (!seqResource.isClosed()) {
           continue;
         }
         Set<String> deviceSet = seqResource.getDevices();
