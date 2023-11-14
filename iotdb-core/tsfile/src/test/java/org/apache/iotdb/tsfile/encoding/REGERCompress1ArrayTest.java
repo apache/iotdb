@@ -2859,7 +2859,7 @@ public class REGERCompress1ArrayTest {
         for (String value : dataset_name) {
             input_path_list.add(input_parent_dir + value);
             dataset_k.add(1);
-            dataset_block_size.add(128);
+            dataset_block_size.add(1024);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0

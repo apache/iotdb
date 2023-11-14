@@ -30,9 +30,13 @@ public class EncodeTest {
     // "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\sota_ratio";
     //
     // String parent_dir = "C:\\Users\\Jinnsjao Shawl\\Documents\\GitHub\\encoding-reorder\\";
-    String parent_dir = "E:\\vldb-reorder\\encoding-reorder\\";
-    String output_parent_dir = parent_dir + "vldb\\compression_ratio\\sota_ratio";
-    String input_parent_dir = parent_dir + "reorder\\iotdb_test_small\\";
+//    String parent_dir = "E:\\vldb-reorder\\encoding-reorder\\";
+//    String output_parent_dir = parent_dir + "vldb\\compression_ratio\\sota_ratio";
+
+    String parent_dir = "/Users/xiaojinzhao/Documents/GitHub/iotdb/iotdb-core/tsfile/src/test/resources/";
+    String output_parent_dir = "/Users/xiaojinzhao/Documents/GitHub/encoding-reorder/compression_ratio/reger_remove_value";
+    String input_parent_dir = parent_dir + "trans_data/";
+
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<String> dataset_name = new ArrayList<>();
@@ -55,41 +59,29 @@ public class EncodeTest {
       input_path_list.add(input_parent_dir + dataset_name.get(i));
     }
 
-    output_path_list.add(output_parent_dir + "\\CS-Sensors_ratio.csv"); // 0
-    dataset_block_size.add(1024);
-    //    dataset_k.add(5);
-    output_path_list.add(output_parent_dir + "\\Metro-Traffic_ratio.csv"); // 1
-    dataset_block_size.add(512);
-    //    dataset_k.add(7);
-    output_path_list.add(output_parent_dir + "\\USGS-Earthquakes_ratio.csv"); // 2
-    dataset_block_size.add(512);
-    //    dataset_k.add(7);
-    output_path_list.add(output_parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
-    dataset_block_size.add(512);
-    //    dataset_k.add(1);
-    output_path_list.add(output_parent_dir + "\\GW-Magnetic_ratio.csv"); // 4
-    dataset_block_size.add(128);
-    //    dataset_k.add(6);
-    output_path_list.add(output_parent_dir + "\\TY-Fuel_ratio.csv"); // 5
-    dataset_block_size.add(64);
-    //    dataset_k.add(5);
-    output_path_list.add(output_parent_dir + "\\Cyber-Vehicle_ratio.csv"); // 6
-    dataset_block_size.add(128);
-    //    dataset_k.add(4);
-    output_path_list.add(output_parent_dir + "\\Vehicle-Charge_ratio.csv"); // 7
-    dataset_block_size.add(512);
-    //    dataset_k.add(8);
-    output_path_list.add(output_parent_dir + "\\Nifty-Stocks_ratio.csv"); // 8
-    dataset_block_size.add(256);
-    //    dataset_k.add(1);
-    output_path_list.add(output_parent_dir + "\\TH-Climate_ratio.csv"); // 9
-    dataset_block_size.add(512);
-    //    dataset_k.add(2);
-    output_path_list.add(output_parent_dir + "\\TY-Transport_ratio.csv"); // 10
-    dataset_block_size.add(512);
-    //    dataset_k.add(9);
-    output_path_list.add(output_parent_dir + "\\EPM-Education_ratio.csv"); // 11
-    dataset_block_size.add(512);
+    output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
+//        dataset_block_size.add(128);
+
+    output_path_list.add(output_parent_dir + "/Metro-Traffic_ratio.csv");// 1
+//        dataset_block_size.add(4096);
+    output_path_list.add(output_parent_dir + "/USGS-Earthquakes_ratio.csv");// 2
+//        dataset_block_size.add(8192);
+    output_path_list.add(output_parent_dir + "/YZ-Electricity_ratio.csv"); // 3
+    output_path_list.add(output_parent_dir + "/GW-Magnetic_ratio.csv"); //4
+    output_path_list.add(output_parent_dir + "/TY-Fuel_ratio.csv");//5
+//        dataset_block_size.add(8192);
+    output_path_list.add(output_parent_dir + "/Cyber-Vehicle_ratio.csv"); //6
+//        dataset_block_size.add(2048);
+    output_path_list.add(output_parent_dir + "/Vehicle-Charge_ratio.csv");//7
+//        dataset_block_size.add(2048);
+    output_path_list.add(output_parent_dir + "/Nifty-Stocks_ratio.csv");//8
+//        dataset_block_size.add(128);
+    output_path_list.add(output_parent_dir + "/TH-Climate_ratio.csv");//9
+//        dataset_block_size.add(64);
+    output_path_list.add(output_parent_dir + "/TY-Transport_ratio.csv");//10
+//        dataset_block_size.add(64);
+    output_path_list.add(output_parent_dir + "/EPM-Education_ratio.csv");//11
+//        dataset_block_size.add(256);
 
     //        for(int file_i=3;file_i<4;file_i++){
     for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
