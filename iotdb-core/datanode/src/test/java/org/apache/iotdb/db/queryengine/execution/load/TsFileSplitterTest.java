@@ -46,7 +46,7 @@ public class TsFileSplitterTest extends TestBase {
     System.out.printf(
         "%d/%d splits after %dms\n",
         resultSet.size(), expectedChunkNum(), System.currentTimeMillis() - start);
-    assertEquals(resultSet.size(), expectedChunkNum());
+    assertEquals(expectedChunkNum(), resultSet.size());
   }
 
   public boolean consumeSplit(TsFileData data) {

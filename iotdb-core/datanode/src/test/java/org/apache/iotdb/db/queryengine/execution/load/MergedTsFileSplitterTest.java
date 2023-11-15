@@ -64,7 +64,7 @@ public class MergedTsFileSplitterTest extends TestBase {
     }
     System.out.printf(
         "%d splits after %dms\n", resultSet.size(), System.currentTimeMillis() - start);
-    assertEquals(resultSet.size(), expectedChunkNum());
+    assertEquals(expectedChunkNum(), resultSet.size());
   }
 
   public boolean consumeSplit(TsFileData data) {

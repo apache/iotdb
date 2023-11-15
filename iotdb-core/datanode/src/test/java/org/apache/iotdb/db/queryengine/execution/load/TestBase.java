@@ -161,7 +161,7 @@ public class TestBase {
         splitChunkNum += 1;
       }
     }
-    return (splitChunkNum + fileNum) * seriesNum * 2;
+    return (splitChunkNum + fileNum) * seriesNum * deviceNum;
   }
 
   public TLoadResp handleTsFilePieceNode(TTsFilePieceReq req, TEndPoint tEndpoint)
