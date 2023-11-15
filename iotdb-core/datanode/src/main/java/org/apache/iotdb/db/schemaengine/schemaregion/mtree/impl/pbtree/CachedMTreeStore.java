@@ -318,16 +318,16 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    * @param node the modified node
    */
   @Override
-  public void updateMNode(ICachedMNode node, Consumer<ICachedMNode> consumer) {
-    updateMNode(node, consumer, true);
+  public void updateMNode(ICachedMNode node, Consumer<ICachedMNode> operation) {
+    updateMNode(node, operation, true);
   }
 
-  final void updateMNode(ICachedMNode node, Consumer<ICachedMNode> consumer, boolean needLock) {
+  final void updateMNode(ICachedMNode node, Consumer<ICachedMNode> operation, boolean needLock) {
     if (needLock) {
       lock.threadReadLock();
     }
     try {
-      consumer.accept(node);
+      operation.accept(node);
       cacheManager.updateCacheStatusAfterUpdate(node);
     } finally {
       if (needLock) {

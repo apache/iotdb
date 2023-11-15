@@ -99,7 +99,7 @@ public class ConfigMTreeStore implements IMTreeStore<IConfigMNode> {
   }
 
   @Override
-  public void updateMNode(IConfigMNode node, Consumer<IConfigMNode> consumer) {}
+  public void updateMNode(IConfigMNode node, Consumer<IConfigMNode> operation) {}
 
   @Override
   public IDeviceMNode<IConfigMNode> setToEntity(IConfigMNode node) {

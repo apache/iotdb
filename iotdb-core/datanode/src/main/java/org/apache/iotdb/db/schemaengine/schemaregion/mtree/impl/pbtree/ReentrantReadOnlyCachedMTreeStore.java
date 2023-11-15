@@ -83,8 +83,8 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNo
   }
 
   @Override
-  public void updateMNode(ICachedMNode node, Consumer<ICachedMNode> consumer) {
-    store.updateMNode(node, consumer, false);
+  public void updateMNode(ICachedMNode node, Consumer<ICachedMNode> operation) {
+    store.updateMNode(node, operation, false);
   }
 
   @Override
