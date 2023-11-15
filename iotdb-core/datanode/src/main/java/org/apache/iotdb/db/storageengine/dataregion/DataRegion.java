@@ -2864,7 +2864,7 @@ public class DataRegion implements IDataRegionForQuery {
       } catch (WriteProcessException | BatchProcessException e) {
         insertMultiTabletsNode
             .getResults()
-            .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+            .put(i, new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode()));
       }
     }
 
