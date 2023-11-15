@@ -116,7 +116,8 @@ public class DataNodeSchemaCache {
   }
 
   public ClusterSchemaTree get(PartialPath fullPath) {
-    ClusterSchemaTree clusterSchemaTree = deviceUsingTemplateSchemaCache.get(fullPath);
+    ClusterSchemaTree clusterSchemaTree =
+        deviceUsingTemplateSchemaCache.get(fullPath.getDevicePath());
     if (clusterSchemaTree == null || clusterSchemaTree.isEmpty()) {
       return timeSeriesSchemaCache.get(fullPath);
     } else {
@@ -124,8 +125,24 @@ public class DataNodeSchemaCache {
     }
   }
 
-  public ClusterSchemaTree getMatchedSchemaWithTemplate(PartialPath path) {
-    return deviceUsingTemplateSchemaCache.getMatchedSchemaWithTemplate(path);
+  /**
+   * Get schema info under the given device if the device path is a template activated path.
+   *
+   * @param devicePath full path of the device
+   * @return empty if cache miss or the device path is not a template activated path
+   */
+  public ClusterSchemaTree getMatchedSchemaWithTemplate(PartialPath devicePath) {
+    return deviceUsingTemplateSchemaCache.getMatchedSchemaWithTemplate(devicePath);
+  }
+
+  /**
+   * Get schema info under the given full path that must not be a template series.
+   *
+   * @param fullPath full path
+   * @return empty if cache miss
+   */
+  public ClusterSchemaTree getMatchedSchemaWithoutTemplate(PartialPath fullPath) {
+    return timeSeriesSchemaCache.get(fullPath);
   }
 
   public List<Integer> computeWithoutTemplate(ISchemaComputation schemaComputation) {
@@ -159,7 +176,6 @@ public class DataNodeSchemaCache {
    * Store the fetched schema in either the schemaCache or templateSchemaCache, depending on its
    * associated device.
    */
-  // TODO: add test
   public void put(ClusterSchemaTree tree) {
     PartialPath devicePath;
     for (DeviceSchemaInfo deviceSchemaInfo : tree.getAllDevices()) {

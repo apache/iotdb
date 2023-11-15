@@ -195,7 +195,6 @@ public interface ISchemaRegion {
 
   MeasurementPath fetchMeasurementPath(PartialPath fullPath) throws MetadataException;
 
-  // TODO: add test
   ClusterSchemaTree fetchSchema(
       PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException;

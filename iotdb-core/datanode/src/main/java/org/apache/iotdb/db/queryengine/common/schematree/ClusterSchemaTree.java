@@ -522,6 +522,6 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   @Override
   public boolean isEmpty() {
-    return root.getChildren() == null || root.getChildren().size() == 0;
+    return root.getChildren() == null || root.getChildren().isEmpty();
   }
 }

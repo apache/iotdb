@@ -408,9 +408,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
   protected void releaseNodeIterator(Iterator<N> nodeIterator) {}
 
   /**
-   * w Internal-match means the node matches an internal node name of the given path pattern.
-   * root.sg internal match root.sg.**(pattern). This method should be implemented according to
-   * concrete tasks.
+   * Internal-match means the node matches an internal node name of the given path pattern. root.sg
+   * internal match root.sg.**(pattern). This method should be implemented according to concrete
+   * tasks.
    *
    * <p>Return whether the subtree of given node should be processed. If return true, the traversing
    * process will keep traversing the subtree. If return false, the traversing process will skip the

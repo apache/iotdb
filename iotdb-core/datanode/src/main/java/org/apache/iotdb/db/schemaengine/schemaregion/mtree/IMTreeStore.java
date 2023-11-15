@@ -73,6 +73,10 @@ public interface IMTreeStore<N extends IMNode<N>> {
 
   void deleteChild(N parent, String childName) throws MetadataException;
 
+  /**
+   * @param node
+   * @throws MetadataException
+   */
   void updateMNode(N node) throws MetadataException;
 
   IDeviceMNode<N> setToEntity(N node) throws MetadataException;
