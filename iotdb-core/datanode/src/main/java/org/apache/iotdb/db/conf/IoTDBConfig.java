@@ -120,6 +120,8 @@ public class IoTDBConfig {
   /** whether to use Snappy compression before sending data through the network */
   private boolean rpcAdvancedCompressionEnable = false;
 
+  private boolean dataTransportCompressionEnable = false;
+
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
 
@@ -2587,6 +2589,14 @@ public class IoTDBConfig {
   public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
     RpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
+  }
+
+  public boolean isDataTransportCompressionEnable() {
+    return dataTransportCompressionEnable;
+  }
+
+  public void setDataTransportCompressionEnable(boolean dataTransportCompressionEnable) {
+    this.dataTransportCompressionEnable = dataTransportCompressionEnable;
   }
 
   public int getMlogBufferSize() {

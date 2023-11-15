@@ -23,10 +23,10 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
-
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TimeoutChangeableTSnappyFramedTransport;
+
 import org.apache.thrift.TBaseAsyncProcessor;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -212,9 +212,10 @@ public abstract class AbstractThriftServiceThread extends Thread {
       TThreadPoolServer.Args poolArgs =
           initSyncedPoolArgs(processor, threadsName, maxWorkerThreads, timeoutSecond);
       if (compress) {
-        poolArgs.transportFactory(new RpcTransportFactory(
-            new TimeoutChangeableTSnappyFramedTransport.Factory(
-                RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY, RpcUtils.THRIFT_FRAME_MAX_SIZE)));
+        poolArgs.transportFactory(
+            new RpcTransportFactory(
+                new TimeoutChangeableTSnappyFramedTransport.Factory(
+                    RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY, RpcUtils.THRIFT_FRAME_MAX_SIZE)));
       }
       poolServer = new TThreadPoolServer(poolArgs);
       poolServer.setServerEventHandler(serverEventHandler);

@@ -85,7 +85,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
                 config.getRpcMaxConcurrentClientNum(),
                 config.getThriftServerAwaitTimeForStopService(),
                 new RPCServiceThriftHandler(impl),
-                true);
+                config.isDataTransportCompressionEnable());
       }
 
     } catch (RPCServiceException e) {
