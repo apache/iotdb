@@ -208,12 +208,19 @@ public class PipePluginAgent {
   // because a DataNode may have no DataRegion at all when creating pipe
   public void validate(PipeStaticMeta pipeStaticMeta) throws Exception {
     // Only create temporary plugins to save system memory
-    reflectExtractor(pipeStaticMeta.getExtractorParameters())
-        .validate(new PipeParameterValidator(pipeStaticMeta.getExtractorParameters()));
-    reflectProcessor(pipeStaticMeta.getProcessorParameters())
-        .validate(new PipeParameterValidator(pipeStaticMeta.getProcessorParameters()));
-    reflectConnector(pipeStaticMeta.getConnectorParameters())
-        .validate(new PipeParameterValidator(pipeStaticMeta.getConnectorParameters()));
+    try (PipeExtractor temporaryExtractor =
+            reflectExtractor(pipeStaticMeta.getExtractorParameters());
+        PipeProcessor temporaryProcessor =
+            reflectProcessor(pipeStaticMeta.getProcessorParameters());
+        PipeConnector temporaryConnector =
+            reflectConnector(pipeStaticMeta.getConnectorParameters())) {
+      temporaryExtractor.validate(
+          new PipeParameterValidator(pipeStaticMeta.getExtractorParameters()));
+      temporaryProcessor.validate(
+          new PipeParameterValidator(pipeStaticMeta.getProcessorParameters()));
+      temporaryConnector.validate(
+          new PipeParameterValidator(pipeStaticMeta.getConnectorParameters()));
+    }
   }
 
   public PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
