@@ -234,6 +234,14 @@ public class IoTDBDescriptor {
                     Boolean.toString(conf.isRpcAdvancedCompressionEnable()))
                 .trim()));
 
+    conf.setDataTransportCompressionEnable(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "dn_data_transfer_compression_enable",
+                    Boolean.toString(conf.isDataTransportCompressionEnable()))
+                .trim()));
+
     conf.setConnectionTimeoutInMS(
         Integer.parseInt(
             properties
