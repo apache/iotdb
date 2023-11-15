@@ -38,7 +38,7 @@ public class PipeProcessorConstructor extends PipePluginConstructor {
   }
 
   @Override
-  public PipeProcessor reflectPlugin(PipeParameters processorParameters) {
+  PipeProcessor reflectPlugin(PipeParameters processorParameters) {
     return (PipeProcessor)
         reflectPluginByKey(
             processorParameters

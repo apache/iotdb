@@ -90,7 +90,7 @@ public class PipeConnectorConstructor extends PipePluginConstructor {
   }
 
   @Override
-  public PipeConnector reflectPlugin(PipeParameters connectorParameters) {
+  PipeConnector reflectPlugin(PipeParameters connectorParameters) {
     if (!connectorParameters.hasAnyAttributes(
         PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY)) {
       throw new PipeException(

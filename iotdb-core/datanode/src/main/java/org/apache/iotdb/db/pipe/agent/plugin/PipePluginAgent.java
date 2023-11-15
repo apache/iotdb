@@ -204,25 +204,48 @@ public class PipePluginAgent {
     }
   }
 
-  // Validation should has the granularity of "DataNode", not "DataRegion",
-  // because a DataNode may have no DataRegion at all when creating pipe
+  /**
+   * Validation should have the granularity of "DataNode level", not "DataRegion level", because a
+   * DataNode may have no DataRegion at all when creating pipe
+   */
   public void validate(CreatePipeStatement createPipeStatement) throws Exception {
-    // Only create temporary plugins to save system memory
-    try (PipeExtractor temporaryExtractor =
-            reflectExtractor(new PipeParameters(createPipeStatement.getExtractorAttributes()));
-        PipeProcessor temporaryProcessor =
-            reflectProcessor(new PipeParameters(createPipeStatement.getProcessorAttributes()));
-        PipeConnector temporaryConnector =
-            reflectConnector(new PipeParameters(createPipeStatement.getConnectorAttributes()))) {
-      temporaryExtractor.validate(
-          new PipeParameterValidator(
-              new PipeParameters(createPipeStatement.getExtractorAttributes())));
-      temporaryProcessor.validate(
-          new PipeParameterValidator(
-              new PipeParameters(createPipeStatement.getProcessorAttributes())));
-      temporaryConnector.validate(
-          new PipeParameterValidator(
-              new PipeParameters(createPipeStatement.getConnectorAttributes())));
+    final PipeParameters extractorParameters =
+        new PipeParameters(createPipeStatement.getExtractorAttributes());
+    final PipeExtractor temporaryExtractor = reflectExtractor(extractorParameters);
+    try {
+      temporaryExtractor.validate(new PipeParameterValidator(extractorParameters));
+    } finally {
+      try {
+        temporaryExtractor.close();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close temporary extractor: {}", e.getMessage());
+      }
+    }
+
+    final PipeParameters processorParameters =
+        new PipeParameters(createPipeStatement.getProcessorAttributes());
+    final PipeProcessor temporaryProcessor = reflectProcessor(processorParameters);
+    try {
+      temporaryProcessor.validate(new PipeParameterValidator(processorParameters));
+    } finally {
+      try {
+        temporaryProcessor.close();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close temporary processor: {}", e.getMessage());
+      }
+    }
+
+    final PipeParameters connectorParameters =
+        new PipeParameters(createPipeStatement.getConnectorAttributes());
+    final PipeConnector temporaryConnector = reflectConnector(connectorParameters);
+    try {
+      temporaryConnector.validate(new PipeParameterValidator(connectorParameters));
+    } finally {
+      try {
+        temporaryConnector.close();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close temporary connector: {}", e.getMessage());
+      }
     }
   }
 
