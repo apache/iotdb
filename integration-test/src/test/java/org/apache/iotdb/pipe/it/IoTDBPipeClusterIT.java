@@ -248,7 +248,7 @@ public class IoTDBPipeClusterIT {
         fail();
       }
 
-      if (TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
+      if (!TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
           senderEnv,
           senderEnv.getDataNodeWrapper(leaderIndex),
           "insert into root.db.d1(time, s1) values (2, 2)")) {

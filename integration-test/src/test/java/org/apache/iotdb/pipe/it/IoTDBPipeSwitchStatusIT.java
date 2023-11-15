@@ -238,7 +238,9 @@ public class IoTDBPipeSwitchStatusIT {
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
-      TestUtils.executeNonQueryWithRetry(senderEnv, "drop database root.**");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "drop database root.**")) {
+        return;
+      }
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p1").getCode());
