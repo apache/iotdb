@@ -85,6 +85,12 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMaxInnerCompactionCandidateFileNum(
+      int maxInnerCompactionCandidateFileNum) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
     return this;
   }

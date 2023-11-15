@@ -118,6 +118,14 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMaxInnerCompactionCandidateFileNum(
+      int maxInnerCompactionCandidateFileNum) {
+    cnConfig.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+    dnConfig.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+    return this;
+  }
+
+  @Override
   public CommonConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
     cnConfig.setAutoCreateSchemaEnabled(enableAutoCreateSchema);
     dnConfig.setAutoCreateSchemaEnabled(enableAutoCreateSchema);
