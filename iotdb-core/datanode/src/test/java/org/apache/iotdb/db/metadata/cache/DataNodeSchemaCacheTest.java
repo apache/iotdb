@@ -67,14 +67,15 @@ public class DataNodeSchemaCacheTest {
     dataNodeSchemaCache.put((ClusterSchemaTree) generateSchemaTree1());
 
     Map<PartialPath, SchemaCacheEntry> schemaCacheEntryMap =
-        dataNodeSchemaCache.get(device1, measurements).getAllMeasurement().stream()
+        dataNodeSchemaCache.get(device1, measurements).getAllDevices().stream()
+            .flatMap(deviceSchemaInfo -> deviceSchemaInfo.getMeasurementSchemaPathList().stream())
             .collect(
                 Collectors.toMap(
                     o -> new PartialPath(o.getNodes()),
                     o ->
                         new SchemaCacheEntry(
                             "root.sg1",
-                            (MeasurementSchema) o.getMeasurementSchema(),
+                            o.getMeasurementSchema(),
                             o.getTagMap(),
                             o.isUnderAlignedEntity())));
     Assert.assertEquals(
@@ -99,14 +100,15 @@ public class DataNodeSchemaCacheTest {
     dataNodeSchemaCache.put((ClusterSchemaTree) generateSchemaTree2());
 
     schemaCacheEntryMap =
-        dataNodeSchemaCache.get(device1, otherMeasurements).getAllMeasurement().stream()
+        dataNodeSchemaCache.get(device1, otherMeasurements).getAllDevices().stream()
+            .flatMap(deviceSchemaInfo -> deviceSchemaInfo.getMeasurementSchemaPathList().stream())
             .collect(
                 Collectors.toMap(
                     o -> new PartialPath(o.getNodes()),
                     o ->
                         new SchemaCacheEntry(
                             "root.sg1",
-                            (MeasurementSchema) o.getMeasurementSchema(),
+                            o.getMeasurementSchema(),
                             o.getTagMap(),
                             o.isUnderAlignedEntity())));
     Assert.assertEquals(

@@ -45,8 +45,6 @@ public interface ISchemaTree {
    * @param pathPattern the pattern of the target devices.
    * @return A HashSet instance which stores info of the devices matching the given path pattern.
    */
-  List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch);
-
   List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern);
 
   DeviceSchemaInfo searchDeviceSchemaInfo(PartialPath devicePath, List<String> measurements);
@@ -70,6 +68,8 @@ public interface ISchemaTree {
   boolean isEmpty();
 
   void mergeSchemaTree(ISchemaTree schemaTree);
+
+  SchemaTreeType getType();
 
   /**
    * If there is view in this schema tree, return true, else return false.

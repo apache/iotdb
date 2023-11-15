@@ -26,10 +26,10 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -38,13 +38,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
+
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 /**
  * This class takes the responsibility of metadata cache management of all DataRegions under
@@ -160,30 +159,19 @@ public class DataNodeSchemaCache {
    * Store the fetched schema in either the schemaCache or templateSchemaCache, depending on its
    * associated device.
    */
+  // TODO: add test
   public void put(ClusterSchemaTree tree) {
-    Optional<Pair<Template, ?>> templateInfo;
     PartialPath devicePath;
-    Set<PartialPath> templateDevices = new HashSet<>();
-    Set<PartialPath> commonDevices = new HashSet<>();
-    for (MeasurementPath path : tree.getAllMeasurement()) {
-      devicePath = path.getDevicePath();
-      if (templateDevices.contains(devicePath)) {
-        continue;
-      }
-
-      if (commonDevices.contains(devicePath)) {
-        timeSeriesSchemaCache.putSingleMeasurementPath(tree.getBelongedDatabase(path), path);
-        continue;
-      }
-
-      templateInfo = Optional.ofNullable(templateManager.checkTemplateSetInfo(devicePath));
-      if (templateInfo.isPresent()) {
+    for (DeviceSchemaInfo deviceSchemaInfo : tree.getAllDevices()) {
+      devicePath = deviceSchemaInfo.getDevicePath();
+      if (deviceSchemaInfo.getTemplateId() != NON_TEMPLATE) {
         deviceUsingTemplateSchemaCache.put(
-            devicePath, tree.getBelongedDatabase(devicePath), templateInfo.get().left.getId());
-        templateDevices.add(devicePath);
+            devicePath, tree.getBelongedDatabase(devicePath), deviceSchemaInfo.getTemplateId());
       } else {
-        timeSeriesSchemaCache.putSingleMeasurementPath(tree.getBelongedDatabase(path), path);
-        commonDevices.add(devicePath);
+        for (MeasurementPath measurementPath : deviceSchemaInfo.getMeasurementSchemaPathList()) {
+          timeSeriesSchemaCache.putSingleMeasurementPath(
+              tree.getBelongedDatabase(devicePath), measurementPath);
+        }
       }
     }
   }

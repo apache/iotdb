@@ -43,6 +43,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
+import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
@@ -696,25 +697,34 @@ public class MTreeBelowSGMemoryImpl {
   // endregion
 
   // region Interfaces and Implementation for metadata info Query
-
-  public List<MeasurementPath> fetchSchema(
+  public ClusterSchemaTree fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException {
-    List<MeasurementPath> result = new LinkedList<>();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     try (MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+          private final Set<PartialPath> visitedTemplateDevice = new HashSet<>();
 
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
-            MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
-            if (nodes[nodes.length - 1].equals(node.getAlias())) {
-              // only when user query with alias, the alias in path will be set
-              path.setMeasurementAlias(node.getAlias());
+            IDeviceMNode<IMemMNode> deviceMNode = getParentOfNextMatchedNode().getAsDeviceMNode();
+            int templateId = deviceMNode.getSchemaTemplateIdWithState();
+            PartialPath devicePath = deviceMNode.getPartialPath();
+            if (templateId >= 0 && !visitedTemplateDevice.contains(devicePath)) {
+              schemaTree.appendTemplateDevice(
+                  deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
+              visitedTemplateDevice.add(devicePath);
+            } else {
+              MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
+              if (nodes[nodes.length - 1].equals(node.getAlias())) {
+                // only when user query with alias, the alias in path will be set
+                path.setMeasurementAlias(node.getAlias());
+              }
+              if (withTags) {
+                path.setTagMap(tagGetter.apply(node));
+              }
+              schemaTree.appendSingleMeasurementPath(path);
             }
-            if (withTags) {
-              path.setTagMap(tagGetter.apply(node));
-            }
-            result.add(path);
             return null;
           }
         }) {
@@ -722,23 +732,34 @@ public class MTreeBelowSGMemoryImpl {
       collector.setSkipPreDeletedSchema(true);
       collector.traverse();
     }
-    return result;
+    return schemaTree;
   }
 
-  public List<MeasurementPath> fetchSchemaWithoutWildcard(
+  public ClusterSchemaTree fetchSchemaWithoutWildcard(
       PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException {
-    List<MeasurementPath> result = new LinkedList<>();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     try (MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, patternTree, store, SchemaConstant.ALL_MATCH_SCOPE) {
+          private final Set<PartialPath> visitedTemplateDevice = new HashSet<>();
+
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
-            MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
-            path.setMeasurementAlias(node.getAlias());
-            if (withTags) {
-              path.setTagMap(tagGetter.apply(node));
+            IDeviceMNode<IMemMNode> deviceMNode = getParentOfNextMatchedNode().getAsDeviceMNode();
+            int templateId = deviceMNode.getSchemaTemplateIdWithState();
+            PartialPath devicePath = deviceMNode.getPartialPath();
+            if (templateId >= 0 && !visitedTemplateDevice.contains(devicePath)) {
+              schemaTree.appendTemplateDevice(
+                  deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
+              visitedTemplateDevice.add(devicePath);
+            } else {
+              MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
+              path.setMeasurementAlias(node.getAlias());
+              if (withTags) {
+                path.setTagMap(tagGetter.apply(node));
+              }
+              schemaTree.appendSingleMeasurementPath(path);
             }
-            result.add(path);
             return null;
           }
         }) {
@@ -746,7 +767,7 @@ public class MTreeBelowSGMemoryImpl {
       collector.setSkipPreDeletedSchema(true);
       collector.traverse();
     }
-    return result;
+    return schemaTree;
   }
 
   // endregion

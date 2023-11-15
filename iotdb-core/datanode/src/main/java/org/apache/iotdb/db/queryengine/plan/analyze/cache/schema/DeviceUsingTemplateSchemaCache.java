@@ -82,11 +82,7 @@ public class DeviceUsingTemplateSchemaCache {
       IMeasurementSchema measurementSchema = template.getSchema(fullPath.getMeasurement());
       if (measurementSchema != null) {
         schemaTree.appendSingleMeasurement(
-            fullPath,
-            (MeasurementSchema) measurementSchema,
-            null,
-            null,
-            template.isDirectAligned());
+            fullPath, measurementSchema, null, null, template.isDirectAligned());
         schemaTree.setDatabases(Collections.singleton(deviceCacheEntry.getDatabase()));
       }
     }
@@ -186,6 +182,11 @@ public class DeviceUsingTemplateSchemaCache {
               throw new RuntimeException(
                   new UnsupportedOperationException(
                       "Function getSchemaAsLogicalViewSchema is not supported in DeviceUsingTemplateSchemaCache."));
+            }
+
+            @Override
+            public Map<String, String> getTagMap() {
+              return null;
             }
 
             @Override

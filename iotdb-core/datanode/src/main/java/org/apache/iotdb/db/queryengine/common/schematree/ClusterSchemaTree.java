@@ -34,6 +34,8 @@ import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeDevic
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorFactory;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
+import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -44,16 +46,20 @@ import java.io.OutputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode.SCHEMA_ENTITY_NODE;
 import static org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode.SCHEMA_MEASUREMENT_NODE;
 
 public class ClusterSchemaTree implements ISchemaTree {
+  private static final ClusterTemplateManager templateManager =
+      ClusterTemplateManager.getInstance();
 
   private Set<String> databases;
 
@@ -61,6 +67,10 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   /** a flag recording whether there is logical view in this schema tree. */
   private boolean hasLogicalMeasurementPath = false;
+  /** used to judge schema tree type */
+  private boolean hasNormalTimeSeries = false;
+
+  private Map<Integer, Template> templateMap = new HashMap<>();
 
   public ClusterSchemaTree() {
     root = new SchemaInternalNode(PATH_ROOT);
@@ -83,21 +93,18 @@ public class ClusterSchemaTree implements ISchemaTree {
     try (SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
         SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
             root, pathPattern, isPrefixMatch, slimit, soffset)) {
+      visitor.setTemplateMap(templateMap);
       return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
     }
   }
 
   @Override
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern) {
-    try (SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
-        SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
-            root, pathPattern, false, 0, 0)) {
-      return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
-    }
+    return searchMeasurementPaths(pathPattern, 0, 0, false);
   }
 
-  public List<MeasurementPath> getAllMeasurement() {
-    return searchMeasurementPaths(ALL_MATCH_PATTERN, 0, 0, false).left;
+  public List<DeviceSchemaInfo> getAllDevices() {
+    return getMatchedDevices(ALL_MATCH_PATTERN);
   }
 
   /**
@@ -107,19 +114,36 @@ public class ClusterSchemaTree implements ISchemaTree {
    * @return A HashSet instance which stores info of the devices matching the given path pattern.
    */
   @Override
-  public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch) {
+  public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern) {
+    return getMatchedDevices(pathPattern, false);
+  }
+
+  private List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch) {
     try (SchemaTreeDeviceVisitor visitor =
         SchemaTreeVisitorFactory.createSchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch)) {
       return visitor.getAllResult();
     }
   }
 
-  @Override
-  public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern) {
-    try (SchemaTreeDeviceVisitor visitor =
-        SchemaTreeVisitorFactory.createSchemaTreeDeviceVisitor(root, pathPattern, false)) {
-      return visitor.getAllResult();
+  /**
+   * Get measurement schema info from entity node children or template.
+   *
+   * @param entityNode entity node
+   * @param measurement measurement name
+   * @return measurement schema info, null if not found
+   */
+  private IMeasurementSchemaInfo getMeasurementSchemaInfo(
+      SchemaEntityNode entityNode, String measurement) {
+    SchemaNode node = entityNode.getChild(measurement);
+    if (node != null && node.isMeasurement()) {
+      return node.getAsMeasurementNode();
+    } else {
+      Template template = templateMap.get(entityNode.getTemplateId());
+      if (template != null && template.getSchemaMap().containsKey(measurement)) {
+        return new MeasurementSchemaInfo(measurement, template.getSchema(measurement), null, null);
+      }
     }
+    return null;
   }
 
   @Override
@@ -135,29 +159,17 @@ public class ClusterSchemaTree implements ISchemaTree {
       cur = cur.getChild(nodes[i]);
     }
 
-    if (cur == null) {
+    if (cur == null || !cur.isEntity()) {
       return null;
     }
-
-    List<MeasurementSchemaInfo> measurementSchemaInfoList = new ArrayList<>();
-    SchemaNode node;
-    SchemaMeasurementNode measurementNode;
+    SchemaEntityNode entityNode = cur.getAsEntityNode();
+    List<IMeasurementSchemaInfo> measurementSchemaInfoList = new ArrayList<>();
     for (String measurement : measurements) {
-      node = cur.getChild(measurement);
-      if (node == null) {
-        measurementSchemaInfoList.add(null);
-      } else {
-        measurementNode = node.getAsMeasurementNode();
-        measurementSchemaInfoList.add(
-            new MeasurementSchemaInfo(
-                measurementNode.getName(),
-                measurementNode.getSchema(),
-                measurementNode.getAlias()));
-      }
+      measurementSchemaInfoList.add(getMeasurementSchemaInfo(entityNode, measurement));
     }
 
     return new DeviceSchemaInfo(
-        devicePath, cur.getAsEntityNode().isAligned(), measurementSchemaInfoList);
+        devicePath, entityNode.isAligned(), entityNode.getTemplateId(), measurementSchemaInfoList);
   }
 
   public List<Integer> compute(
@@ -173,22 +185,23 @@ public class ClusterSchemaTree implements ISchemaTree {
       }
       cur = cur.getChild(nodes[i]);
     }
-    if (cur == null) {
+    if (cur == null || !cur.isEntity()) {
       return indexOfTargetMeasurements;
     }
+    SchemaEntityNode entityNode = cur.getAsEntityNode();
     boolean firstNonViewMeasurement = true;
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    SchemaNode node;
     for (int index : indexOfTargetMeasurements) {
-      node = cur.getChild(measurements[index]);
-      if (node == null) {
+      IMeasurementSchemaInfo measurementSchemaInfo =
+          getMeasurementSchemaInfo(entityNode, measurements[index]);
+      if (measurementSchemaInfo == null) {
         indexOfMissingMeasurements.add(index);
       } else {
-        if (firstNonViewMeasurement && !node.getAsMeasurementNode().isLogicalView()) {
+        if (firstNonViewMeasurement && !measurementSchemaInfo.isLogicalView()) {
           schemaComputation.computeDevice(cur.getAsEntityNode().isAligned());
           firstNonViewMeasurement = false;
         }
-        schemaComputation.computeMeasurement(index, node.getAsMeasurementNode());
+        schemaComputation.computeMeasurement(index, measurementSchemaInfo);
       }
     }
     return indexOfMissingMeasurements;
@@ -236,10 +249,45 @@ public class ClusterSchemaTree implements ISchemaTree {
         schemaComputation.computeMeasurementOfView(
             realIndex,
             new MeasurementSchemaInfo(
-                measurementPath.getMeasurement(), measurementPath.getMeasurementSchema(), null),
+                measurementPath.getMeasurement(),
+                measurementPath.getMeasurementSchema(),
+                null,
+                measurementPath.getTagMap()),
             measurementPath.isUnderAlignedEntity());
       }
     }
+  }
+
+  /**
+   * Append a template device to the schema tree.
+   *
+   * @param devicePath device path
+   * @param isAligned whether the device is aligned
+   * @param templateId template id
+   * @param template template instance, used to search measurement schema, it can be null if
+   *     write-only
+   */
+  public void appendTemplateDevice(
+      PartialPath devicePath, boolean isAligned, int templateId, Template template) {
+    String[] nodes = devicePath.getNodes();
+    SchemaNode cur = root;
+    SchemaNode child;
+    for (int i = 1; i < nodes.length; i++) {
+      child = cur.getChild(nodes[i]);
+      if (child == null) {
+        if (i == nodes.length - 1) {
+          SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
+          entityNode.setAligned(isAligned);
+          entityNode.setTemplateId(templateId);
+          child = entityNode;
+        } else {
+          child = new SchemaInternalNode(nodes[i]);
+        }
+        cur.addChild(nodes[i], child);
+      }
+      cur = child;
+    }
+    templateMap.putIfAbsent(templateId, template);
   }
 
   public void appendMeasurementPaths(List<MeasurementPath> measurementPathList) {
@@ -248,7 +296,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     }
   }
 
-  private void appendSingleMeasurementPath(MeasurementPath measurementPath) {
+  public void appendSingleMeasurementPath(MeasurementPath measurementPath) {
     appendSingleMeasurement(
         measurementPath,
         measurementPath.getMeasurementSchema(),
@@ -298,6 +346,7 @@ public class ClusterSchemaTree implements ISchemaTree {
       }
       cur = child;
     }
+    hasNormalTimeSeries = true;
   }
 
   @Override
@@ -307,20 +356,48 @@ public class ClusterSchemaTree implements ISchemaTree {
     }
   }
 
+  @Override
+  public SchemaTreeType getType() {
+    if (templateMap.isEmpty()) {
+      return SchemaTreeType.NORMAL;
+    } else if (hasNormalTimeSeries) {
+      return SchemaTreeType.MIXED;
+    } else if (templateMap.size() == 1) {
+      return SchemaTreeType.TEMPLATE_ONLY;
+    } else {
+      return SchemaTreeType.TEMPLATE_MULTI;
+    }
+  }
+
   public void mergeSchemaTree(ClusterSchemaTree schemaTree) {
     this.hasLogicalMeasurementPath =
         this.hasLogicalMeasurementPath || schemaTree.hasLogicalViewMeasurement();
     traverseAndMerge(this.root, null, schemaTree.root);
+    this.templateMap.putAll(schemaTree.templateMap);
+    this.hasNormalTimeSeries |= schemaTree.hasNormalTimeSeries;
   }
 
   private void traverseAndMerge(SchemaNode thisNode, SchemaNode thisParent, SchemaNode thatNode) {
     SchemaNode thisChild;
+    SchemaEntityNode entityNode;
+    // merge template device
+    if (thatNode.isEntity() && thatNode.getAsEntityNode().getTemplateId() != NON_TEMPLATE) {
+      if (thisNode.isEntity()) {
+        entityNode = thisNode.getAsEntityNode();
+      } else {
+        entityNode = new SchemaEntityNode(thisNode.getName());
+        thisParent.replaceChild(thisNode.getName(), entityNode);
+        thisNode = entityNode;
+      }
+      entityNode.setTemplateId(thatNode.getAsEntityNode().getTemplateId());
+    }
+    // merge normal device, internal node and measurement
     for (SchemaNode thatChild : thatNode.getChildren().values()) {
       thisChild = thisNode.getChild(thatChild.getName());
       if (thisChild == null) {
         thisNode.addChild(thatChild.getName(), thatChild);
         if (thatChild.isMeasurement()) {
-          SchemaEntityNode entityNode;
+          SchemaEntityNode thatEntity = thatNode.getAsEntityNode();
           if (thisNode.isEntity()) {
             entityNode = thisNode.getAsEntityNode();
           } else {
@@ -330,7 +407,7 @@ public class ClusterSchemaTree implements ISchemaTree {
           }
 
           if (!entityNode.isAligned()) {
-            entityNode.setAligned(thatNode.getAsEntityNode().isAligned());
+            entityNode.setAligned(thatEntity.isAligned());
           }
           SchemaMeasurementNode measurementNode = thatChild.getAsMeasurementNode();
           if (measurementNode.getAlias() != null) {
@@ -359,6 +436,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     Deque<SchemaNode> stack = new ArrayDeque<>();
     SchemaNode child;
     boolean hasLogicalView = false;
+    Map<Integer, Template> templateMap = new HashMap<>();
 
     while (inputStream.available() > 0) {
       nodeType = ReadWriteIOUtils.readByte(inputStream);
@@ -372,6 +450,10 @@ public class ClusterSchemaTree implements ISchemaTree {
         SchemaInternalNode internalNode;
         if (nodeType == SCHEMA_ENTITY_NODE) {
           internalNode = SchemaEntityNode.deserialize(inputStream);
+          int templateId = internalNode.getAsEntityNode().getTemplateId();
+          if (templateId != NON_TEMPLATE) {
+            templateMap.putIfAbsent(templateId, templateManager.getTemplate(templateId));
+          }
         } else {
           internalNode = SchemaInternalNode.deserialize(inputStream);
         }
@@ -394,6 +476,7 @@ public class ClusterSchemaTree implements ISchemaTree {
       }
     }
     ClusterSchemaTree result = new ClusterSchemaTree(stack.poll());
+    result.templateMap = templateMap;
     result.hasLogicalMeasurementPath = hasLogicalView;
     return result;
   }
