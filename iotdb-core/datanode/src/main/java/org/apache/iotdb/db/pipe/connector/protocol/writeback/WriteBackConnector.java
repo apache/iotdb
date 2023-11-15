@@ -26,7 +26,6 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
-import org.apache.iotdb.db.pipe.connector.protocol.CommittableConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -53,7 +52,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 
-public class WriteBackConnector extends CommittableConnector implements PipeConnector {
+public class WriteBackConnector implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WriteBackConnector.class);
 
@@ -101,13 +100,11 @@ public class WriteBackConnector extends CommittableConnector implements PipeConn
       return;
     }
 
-    generateCommitId((EnrichedEvent) tabletInsertionEvent);
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
     } else {
       doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
     }
-    commit((EnrichedEvent) tabletInsertionEvent);
   }
 
   @Override

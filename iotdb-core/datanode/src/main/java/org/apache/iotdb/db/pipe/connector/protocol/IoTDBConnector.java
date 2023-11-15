@@ -45,7 +45,7 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SIN
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_PORT_KEY;
 
-public abstract class IoTDBConnector extends CommittableConnector implements PipeConnector {
+public abstract class IoTDBConnector implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConnector.class);
 

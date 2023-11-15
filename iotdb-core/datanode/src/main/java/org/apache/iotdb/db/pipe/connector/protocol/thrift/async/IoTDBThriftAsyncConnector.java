@@ -82,7 +82,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
       asyncPipeDataTransferClientManager;
 
-  private final IoTDBThriftSyncConnector retryConnector;
+  private final IoTDBThriftSyncConnector retryConnector = new IoTDBThriftSyncConnector();
   private final PriorityBlockingQueue<Event> retryEventQueue =
       new PriorityBlockingQueue<>(
           11,
@@ -103,8 +103,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
         }
       }
     }
-    retryConnector = new IoTDBThriftSyncConnector();
-    retryConnector.disableCommit();
     asyncPipeDataTransferClientManager = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get();
   }
 
@@ -170,7 +168,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    generateCommitId((EnrichedEvent) tabletInsertionEvent);
     long commitId = ((EnrichedEvent) tabletInsertionEvent).getCommitId();
     if (isTabletBatchModeEnabled) {
       if (tabletBatchBuilder.onEvent(tabletInsertionEvent, commitId)) {
@@ -322,7 +319,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    generateCommitId(pipeTsFileInsertionEvent);
     final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
         new PipeTransferTsFileInsertionEventHandler(pipeTsFileInsertionEvent, this);
 
@@ -485,10 +481,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       } else {
         LOGGER.warn(
             "IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
-      }
-
-      if (event instanceof EnrichedEvent) {
-        commit((EnrichedEvent) event);
       }
 
       retryEventQueue.poll();

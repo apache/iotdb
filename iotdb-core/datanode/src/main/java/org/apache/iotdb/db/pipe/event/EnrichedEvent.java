@@ -1,22 +1,3 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
 package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -24,6 +5,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.commit.PipeEventCommitManager;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -44,13 +26,17 @@ public abstract class EnrichedEvent implements Event {
 
   protected final String pipeName;
   protected final PipeTaskMeta pipeTaskMeta;
+
   public static final long NO_COMMIT_ID = -1;
   private long commitId = NO_COMMIT_ID;
+  private String committerKey;
 
   private final String pattern;
 
   protected boolean isPatternParsed;
   protected boolean isTimeParsed = true;
+
+  private boolean shouldReportOnCommit = false;
 
   protected EnrichedEvent(String pipeName, PipeTaskMeta pipeTaskMeta, String pattern) {
     referenceCount = new AtomicInteger(0);
@@ -101,8 +87,9 @@ public abstract class EnrichedEvent implements Event {
       if (referenceCount.get() == 1) {
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
         if (shouldReport) {
-          reportProgress();
+          this.shouldReportOnCommit = true;
         }
+        PipeEventCommitManager.getInstance().commit(this, committerKey);
       }
       final int newReferenceCount = referenceCount.decrementAndGet();
       if (newReferenceCount < 0) {
@@ -202,5 +189,15 @@ public abstract class EnrichedEvent implements Event {
 
   public long getCommitId() {
     return commitId;
+  }
+
+  public void setCommitterKey(String committerKey) {
+    this.committerKey = committerKey;
+  }
+
+  public void onCommitted() {
+    if (this.shouldReportOnCommit) {
+      reportProgress();
+    }
   }
 }

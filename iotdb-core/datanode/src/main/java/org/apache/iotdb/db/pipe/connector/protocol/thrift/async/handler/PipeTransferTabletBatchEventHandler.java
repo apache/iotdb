@@ -73,8 +73,11 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     }
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      for (Event event : events) {
-        connector.commit(event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
+      for (final Event event : events) {
+        if (event instanceof EnrichedEvent) {
+          ((EnrichedEvent) event)
+              .decreaseReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
+        }
       }
     } else {
       onError(new PipeException(response.getStatus().getMessage()));

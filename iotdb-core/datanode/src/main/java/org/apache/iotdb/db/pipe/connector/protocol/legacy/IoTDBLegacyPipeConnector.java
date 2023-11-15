@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.legacy.TsFilePipeData;
-import org.apache.iotdb.db.pipe.connector.protocol.CommittableConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnectorClient;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -86,7 +85,7 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SIN
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SYNC_CONNECTOR_VERSION_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_USER_KEY;
 
-public class IoTDBLegacyPipeConnector extends CommittableConnector implements PipeConnector {
+public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLegacyPipeConnector.class);
 
@@ -270,13 +269,9 @@ public class IoTDBLegacyPipeConnector extends CommittableConnector implements Pi
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      generateCommitId((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
       doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
-      commit((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      generateCommitId((PipeRawTabletInsertionEvent) tabletInsertionEvent);
       doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
-      commit((PipeRawTabletInsertionEvent) tabletInsertionEvent);
     } else {
       throw new NotImplementedException(
           "IoTDBLegacyPipeConnector only support "
@@ -298,9 +293,7 @@ public class IoTDBLegacyPipeConnector extends CommittableConnector implements Pi
     }
 
     try {
-      generateCommitId((PipeTsFileInsertionEvent) tsFileInsertionEvent);
       doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
-      commit((PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
       throw new PipeConnectionException(
           String.format(

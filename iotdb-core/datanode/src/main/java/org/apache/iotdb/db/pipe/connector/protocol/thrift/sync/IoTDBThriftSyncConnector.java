@@ -257,8 +257,6 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       return;
     }
 
-    generateCommitId((EnrichedEvent) tabletInsertionEvent);
-
     final int clientIndex = nextClientIndex();
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
@@ -274,7 +272,6 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
         } else {
           doTransfer(client, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
         }
-        commit((EnrichedEvent) tabletInsertionEvent);
       }
     } catch (TException e) {
       isClientAlive.set(clientIndex, false);
@@ -311,8 +308,6 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       return;
     }
 
-    generateCommitId((EnrichedEvent) tsFileInsertionEvent);
-
     final int clientIndex = nextClientIndex();
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
@@ -323,7 +318,6 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       }
 
       doTransfer(client, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
-      commit((EnrichedEvent) tsFileInsertionEvent);
     } catch (TException e) {
       isClientAlive.set(clientIndex, false);
 
@@ -360,7 +354,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
               "Transfer PipeTransferTabletBatchReq error, result status %s", resp.status));
     }
 
-    tabletBatchBuilder.onSuccess(this);
+    tabletBatchBuilder.onSuccess();
   }
 
   private void doTransfer(

@@ -76,6 +76,8 @@ public class PipeTransferTsFileInsertionEventHandler
     reader = new RandomAccessFile(tsFile, "r");
 
     isSealSignalSent = new AtomicBoolean(false);
+
+    event.increaseReferenceCount(PipeTransferTsFileInsertionEventHandler.class.getName());
   }
 
   public void transfer(AsyncPipeDataTransferServiceClient client) throws TException, IOException {
@@ -120,7 +122,7 @@ public class PipeTransferTsFileInsertionEventHandler
       } catch (IOException e) {
         LOGGER.warn("Failed to close file reader when successfully transferred file.", e);
       } finally {
-        connector.commit(event);
+        event.decreaseReferenceCount(PipeTransferTsFileInsertionEventHandler.class.getName(), true);
 
         LOGGER.info(
             "Successfully transferred file {}. Request commit id is {}.",

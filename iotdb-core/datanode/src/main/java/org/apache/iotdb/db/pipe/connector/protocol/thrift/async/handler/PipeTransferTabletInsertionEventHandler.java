@@ -49,6 +49,11 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
     this.event = event;
     this.req = req;
     this.connector = connector;
+
+    if (this.event instanceof EnrichedEvent) {
+      ((EnrichedEvent) this.event)
+          .increaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName());
+    }
   }
 
   public void transfer(AsyncPipeDataTransferServiceClient client) throws TException {
@@ -66,8 +71,10 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
       return;
     }
 
-    if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      connector.commit(event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
+    if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && event instanceof EnrichedEvent) {
+      ((EnrichedEvent) event)
+          .decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);
     } else {
       onError(new PipeException(response.getStatus().getMessage()));
     }
