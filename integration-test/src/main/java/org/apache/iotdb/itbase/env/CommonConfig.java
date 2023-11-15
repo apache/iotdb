@@ -129,4 +129,6 @@ public interface CommonConfig {
   CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode);
 
   CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);
+
+  CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs);
 }

@@ -36,7 +36,6 @@ public class MetricConfigTest {
     properties.setProperty("cn_enable_metric", "true");
     properties.setProperty("cn_enable_performance_stat", "true");
     properties.setProperty("cn_metric_reporter_list", "JMX,PROMETHEUS,IOTDB");
-    properties.setProperty("cn_metric_frame_type", "DROPWIZARD");
     properties.setProperty("cn_metric_level", "ALL");
     properties.setProperty("cn_metric_async_collect_period", "10");
     properties.setProperty("cn_metric_prometheus_reporter_port", "9090");
@@ -73,7 +72,6 @@ public class MetricConfigTest {
     properties.setProperty("dn_enable_metric", "true");
     properties.setProperty("dn_enable_performance_stat", "true");
     properties.setProperty("dn_metric_reporter_list", "JMX,PROMETHEUS,IOTDB");
-    properties.setProperty("dn_metric_frame_type", "DROPWIZARD");
     properties.setProperty("dn_metric_level", "ALL");
     properties.setProperty("dn_metric_async_collect_period", "10");
     properties.setProperty("dn_metric_prometheus_reporter_port", "9090");

@@ -61,7 +61,6 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   // limit in buffer size
   protected final PipeMemoryBlock allocatedMemoryBlock;
-  protected final long maxBatchSizeInBytes;
   protected long bufferSize = 0;
 
   protected PipeTransferBatchReqBuilder(PipeParameters parameters) {
@@ -75,13 +74,28 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
         parameters.getLongOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
             CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE);
-    allocatedMemoryBlock = PipeResourceManager.memory().tryAllocate(requestMaxBatchSizeInBytes);
-    maxBatchSizeInBytes = allocatedMemoryBlock.getMemoryUsageInBytes();
-    if (maxBatchSizeInBytes != requestMaxBatchSizeInBytes) {
+
+    allocatedMemoryBlock =
+        PipeResourceManager.memory()
+            .tryAllocate(requestMaxBatchSizeInBytes)
+            .setShrinkMethod((oldMemory) -> Math.max(oldMemory / 2, 0))
+            .setShrinkCallback(
+                (oldMemory, newMemory) ->
+                    LOGGER.info(
+                        "The batch size limit has shrunk from {} to {}.", oldMemory, newMemory))
+            .setExpandMethod(
+                (oldMemory) -> Math.min(Math.max(oldMemory, 1) * 2, requestMaxBatchSizeInBytes))
+            .setExpandCallback(
+                (oldMemory, newMemory) ->
+                    LOGGER.info(
+                        "The batch size limit has expanded from {} to {}.", oldMemory, newMemory));
+
+    if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {
       LOGGER.info(
-          "PipeTransferBatchReqBuilder: the max batch size is adjusted from {} to {}.",
+          "PipeTransferBatchReqBuilder: the max batch size is adjusted from {} to {} due to the "
+              + "memory restriction",
           requestMaxBatchSizeInBytes,
-          maxBatchSizeInBytes);
+          getMaxBatchSizeInBytes());
     }
   }
 
@@ -114,6 +128,10 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   public List<TPipeTransferReq> getTPipeTransferReqs() {
     return reqs;
+  }
+
+  protected long getMaxBatchSizeInBytes() {
+    return allocatedMemoryBlock.getMemoryUsageInBytes();
   }
 
   public boolean isEmpty() {
