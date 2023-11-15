@@ -20,11 +20,13 @@
 package org.apache.iotdb.db.pipe.agent.plugin;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.junit.After;
@@ -76,7 +78,7 @@ public class PipePluginAgentTest {
       Assert.fail();
     }
     Assert.assertEquals(
-        BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginClass(),
+        IoTDBDataRegionExtractor.class,
         agent
             .reflectExtractor(
                 new PipeParameters(
@@ -102,7 +104,7 @@ public class PipePluginAgentTest {
                     }))
             .getClass());
     Assert.assertEquals(
-        BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginClass(),
+        IoTDBThriftAsyncConnector.class,
         agent
             .reflectConnector(
                 new PipeParameters(
