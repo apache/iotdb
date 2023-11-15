@@ -38,14 +38,13 @@ import java.util.NoSuchElementException;
 public class TsFileSequenceReaderTimeseriesMetadataIterator
     implements Iterator<Map<String, List<TimeseriesMetadata>>> {
 
-  private final int MAX_TIMESERIES_METADATA_COUNT = 2000;
+  private static final int MAX_TIMESERIES_METADATA_COUNT = 2000;
   private final TsFileSequenceReader reader;
-  private final List<MetadataIndexEntry> metadataIndexEntryList;
   private final boolean needChunkMetadata;
-  private int currentTimeseriesMetadataCount = 0;
   private ByteBuffer currentBuffer = null;
   private final Deque<MetadataIndexEntryInfo> metadataIndexEntryStack = new ArrayDeque<>();
   private String currentDeviceId;
+  private int currentTimeseriesMetadataCount = 0;
 
   public TsFileSequenceReaderTimeseriesMetadataIterator(
       TsFileSequenceReader reader, boolean needChunkMetadata) throws IOException {
@@ -57,7 +56,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
 
     MetadataIndexNode metadataIndexNode = reader.tsFileMetaData.getMetadataIndex();
     long curEntryEndOffset = metadataIndexNode.getEndOffset();
-    this.metadataIndexEntryList = metadataIndexNode.getChildren();
+    List<MetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
     this.needChunkMetadata = needChunkMetadata;
 
     for (int i = metadataIndexEntryList.size() - 1; i >= 0; i--) {
@@ -70,7 +69,8 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
 
   @Override
   public boolean hasNext() {
-    return !metadataIndexEntryStack.isEmpty();
+    return !metadataIndexEntryStack.isEmpty()
+        || (currentBuffer != null && currentBuffer.hasRemaining());
   }
 
   @Override
@@ -81,21 +81,24 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
 
     Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new HashMap<>();
 
-    while (currentTimeseriesMetadataCount < MAX_TIMESERIES_METADATA_COUNT
-        && !metadataIndexEntryStack.isEmpty()) {
+    while (currentTimeseriesMetadataCount < MAX_TIMESERIES_METADATA_COUNT) {
 
+      /* 1. Check Buffer
+       *  TimeseriesMetataCount has reached the limit in the previous loop and
+       *  maybe there are still some data remained in the buffer.
+       */
       if (currentBuffer != null && currentBuffer.hasRemaining()) {
-        // this case means that timeseriesMetataCount has reached the limit in the previous loop and
-        // there are still some data remained in the buffer.
         timeseriesMetadataMap
             .computeIfAbsent(currentDeviceId, k -> new ArrayList<>())
             .addAll(deserializesTimeseriesMetadata());
       }
 
-      if (currentTimeseriesMetadataCount > MAX_TIMESERIES_METADATA_COUNT) {
+      if (currentTimeseriesMetadataCount >= MAX_TIMESERIES_METADATA_COUNT
+          || metadataIndexEntryStack.isEmpty()) {
         break;
       }
 
+      // 2. Deserialize MetadataIndexEntry
       MetadataIndexEntryInfo indexEntryInfo = metadataIndexEntryStack.pop();
 
       try {
@@ -105,6 +108,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
       }
     }
 
+    // 3. Reset currentTimeseriesMetadataCount
     if (currentTimeseriesMetadataCount >= MAX_TIMESERIES_METADATA_COUNT) {
       currentTimeseriesMetadataCount = 0;
     }
@@ -123,6 +127,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
           metadataIndexEntryInfo.getMetadataIndexEntry(),
           metadataIndexEntryInfo.getEndOffset(),
           timeseriesMetadataMap);
+
     } else {
       deserializeInternalNode(
           metadataIndexEntryInfo.getMetadataIndexEntry(),

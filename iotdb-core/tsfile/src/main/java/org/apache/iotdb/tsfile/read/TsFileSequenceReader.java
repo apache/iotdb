@@ -1050,7 +1050,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param timeseriesMetadataMap map: deviceId -> timeseriesMetadata list
    * @param needChunkMetadata deserialize chunk metadata list or not
    */
-  public void generateMetadataIndex(
+  private void generateMetadataIndex(
       MetadataIndexEntry metadataIndex,
       ByteBuffer buffer,
       String deviceId,
