@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFi
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -200,16 +201,13 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
             .getValueChunkMetadataList()
             .forEach(
                 x -> {
-                  try {
-                    if (x == null) {
-                      valueModifications.add(null);
-                    } else {
-                      valueModifications.add(
-                          getModificationsFromCache(
-                              resource, new PartialPath(deviceId, x.getMeasurementUid())));
-                    }
-                  } catch (IllegalPathException e) {
-                    throw new RuntimeException(e);
+                  if (x == null) {
+                    valueModifications.add(null);
+                  } else {
+                    String pathStr =
+                        deviceId + TsFileConstant.PATH_SEPARATOR + x.getMeasurementUid();
+                    valueModifications.add(
+                        getModificationsFromCache(resource, new PartialPath(pathStr.split("\\."))));
                   }
                 });
 
