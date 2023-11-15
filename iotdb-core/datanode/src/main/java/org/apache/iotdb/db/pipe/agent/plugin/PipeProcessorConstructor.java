@@ -45,6 +45,8 @@ public class PipeProcessorConstructor extends PipePluginConstructor {
                 .getStringOrDefault(
                     PipeProcessorConstant.PROCESSOR_KEY,
                     BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
+                // Convert the value of `PROCESSOR_KEY` to lowercase for matching
+                // `DO_NOTHING_PROCESSOR`
                 .toLowerCase());
   }
 }

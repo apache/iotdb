@@ -98,8 +98,6 @@ public class PipeConnectorConstructor extends PipePluginConstructor {
               + "'connector' is not specified in the parameters.");
     }
 
-    // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase for matching in
-    // `PLUGIN_CONSTRUCTORS`
     return (PipeConnector)
         reflectPluginByKey(
             connectorParameters
@@ -107,6 +105,8 @@ public class PipeConnectorConstructor extends PipePluginConstructor {
                     Arrays.asList(
                         PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
                     BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+                // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase for matching in
+                // `PLUGIN_CONSTRUCTORS`
                 .toLowerCase());
   }
 }

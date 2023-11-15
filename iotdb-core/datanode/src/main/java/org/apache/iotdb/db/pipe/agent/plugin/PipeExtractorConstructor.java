@@ -51,6 +51,8 @@ public class PipeExtractorConstructor extends PipePluginConstructor {
                     Arrays.asList(
                         PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
                     BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+                // Convert the value of `EXTRACTOR_KEY` or `SOURCE_KEY` to lowercase for matching
+                // `IOTDB_EXTRACTOR`
                 .toLowerCase());
   }
 }

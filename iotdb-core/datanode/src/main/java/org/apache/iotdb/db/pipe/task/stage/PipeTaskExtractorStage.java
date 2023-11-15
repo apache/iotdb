@@ -40,7 +40,6 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
       PipeParameters extractorParameters,
       TConsensusGroupId dataRegionId,
       PipeTaskMeta pipeTaskMeta) {
-
     pipeExtractor = PipeAgent.plugin().reflectExtractor(extractorParameters);
 
     // Validate and customize should be called before createSubtask. this allows extractor exposing
