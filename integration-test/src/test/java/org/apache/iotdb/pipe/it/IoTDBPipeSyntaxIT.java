@@ -126,37 +126,28 @@ public class IoTDBPipeSyntaxIT {
   }
 
   @Test
-  public void testRevertParameterOrder() throws Exception {
+  public void testRevertParameterOrder() {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     String receiverIp = receiverDataNode.getIp();
     int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute(
-            String.format(
-                "create pipe p1"
-                    + " with extractor ("
-                    + "'extractor.realtime.mode'='hybrid',"
-                    + "'extractor.history.enable'='false') "
-                    + " with connector ("
-                    + "'connector.batch.enable'='false', "
-                    + "'connector.port'='%s',"
-                    + "'connector.ip'='%s',"
-                    + "'connector'='iotdb-thrift-connector')",
-                receiverPort, receiverIp));
-      } catch (SQLException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
-
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
-      Assert.assertTrue(
-          showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("STOPPED")));
+    try (Connection connection = senderEnv.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe p1"
+                  + " with extractor ("
+                  + "'extractor.realtime.mode'='hybrid',"
+                  + "'extractor.history.enable'='false') "
+                  + " with connector ("
+                  + "'connector.batch.enable'='false', "
+                  + "'connector.port'='%s',"
+                  + "'connector.ip'='%s',"
+                  + "'connector'='iotdb-thrift-connector')",
+              receiverIp, receiverPort));
+      fail();
+    } catch (SQLException ignore) {
     }
   }
 
