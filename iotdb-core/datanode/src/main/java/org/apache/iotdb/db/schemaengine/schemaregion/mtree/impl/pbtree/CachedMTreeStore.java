@@ -52,6 +52,8 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
@@ -316,15 +318,16 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    * @param node the modified node
    */
   @Override
-  public void updateMNode(ICachedMNode node) {
-    updateMNode(node, true);
+  public void updateMNode(ICachedMNode node, Consumer<ICachedMNode> consumer) {
+    updateMNode(node, consumer, true);
   }
 
-  final void updateMNode(ICachedMNode node, boolean needLock) {
+  final void updateMNode(ICachedMNode node, Consumer<ICachedMNode> consumer, boolean needLock) {
     if (needLock) {
       lock.threadReadLock();
     }
     try {
+      consumer.accept(node);
       cacheManager.updateCacheStatusAfterUpdate(node);
     } finally {
       if (needLock) {
@@ -335,23 +338,39 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   @Override
   public IDeviceMNode<ICachedMNode> setToEntity(ICachedMNode node) {
-    IDeviceMNode<ICachedMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
+    AtomicReference<IDeviceMNode<ICachedMNode>> resultReference = new AtomicReference<>(null);
+    updateMNode(
+        node,
+        o -> {
+          IDeviceMNode<ICachedMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
+          resultReference.getAndSet(result);
+        });
+
+    IDeviceMNode<ICachedMNode> result = resultReference.get();
     if (result != node) {
       regionStatistics.addDevice();
       memManager.updatePinnedSize(result.estimateSize() - node.estimateSize());
     }
-    updateMNode(result.getAsMNode());
+
     return result;
   }
 
   @Override
   public ICachedMNode setToInternal(IDeviceMNode<ICachedMNode> entityMNode) {
-    ICachedMNode result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
+    AtomicReference<ICachedMNode> resultReference = new AtomicReference<>(null);
+    updateMNode(
+        entityMNode.getAsMNode(),
+        o -> {
+          ICachedMNode result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
+          resultReference.getAndSet(result);
+        });
+
+    ICachedMNode result = resultReference.get();
     if (result != entityMNode) {
       regionStatistics.deleteDevice();
       memManager.updatePinnedSize(result.estimateSize() - entityMNode.estimateSize());
     }
-    updateMNode(result);
+
     return result;
   }
 
@@ -363,8 +382,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
       return;
     }
 
-    measurementMNode.setAlias(alias);
-    updateMNode(measurementMNode.getAsMNode());
+    updateMNode(measurementMNode.getAsMNode(), o -> o.getAsMeasurementMNode().setAlias(alias));
 
     if (existingAlias != null && alias != null) {
       memManager.updatePinnedSize(alias.length() - existingAlias.length());
