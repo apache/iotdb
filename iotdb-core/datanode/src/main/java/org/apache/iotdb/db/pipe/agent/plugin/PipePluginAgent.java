@@ -211,18 +211,18 @@ public class PipePluginAgent {
     try (PipeExtractor temporaryExtractor =
             reflectExtractor(new PipeParameters(createPipeStatement.getExtractorAttributes()));
         PipeProcessor temporaryProcessor =
-            reflectProcessor(new PipeParameters(createPipeStatement.getExtractorAttributes()));
+            reflectProcessor(new PipeParameters(createPipeStatement.getProcessorAttributes()));
         PipeConnector temporaryConnector =
-            reflectConnector(new PipeParameters(createPipeStatement.getExtractorAttributes()))) {
+            reflectConnector(new PipeParameters(createPipeStatement.getConnectorAttributes()))) {
       temporaryExtractor.validate(
           new PipeParameterValidator(
               new PipeParameters(createPipeStatement.getExtractorAttributes())));
       temporaryProcessor.validate(
           new PipeParameterValidator(
-              new PipeParameters(createPipeStatement.getExtractorAttributes())));
+              new PipeParameters(createPipeStatement.getProcessorAttributes())));
       temporaryConnector.validate(
           new PipeParameterValidator(
-              new PipeParameters(createPipeStatement.getExtractorAttributes())));
+              new PipeParameters(createPipeStatement.getConnectorAttributes())));
     }
   }
 
