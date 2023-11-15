@@ -150,14 +150,8 @@ public abstract class AbstractOperatePipeProcedureV2
         configNodeProcedureEnv
             .getConfigManager()
             .getPipeManager()
-            .getPipeRuntimeCoordinator()
-            .getPipeMetaSyncer()
-            .setLastSyncedPipeTaskInfoVersion(
-                configNodeProcedureEnv
-                    .getConfigManager()
-                    .getPipeManager()
-                    .getPipeTaskCoordinator()
-                    .getPipeTaskInfoVersion());
+            .getPipeTaskCoordinator()
+            .updateLastSyncedVersion();
       }
       configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
       pipeTaskInfo = null;

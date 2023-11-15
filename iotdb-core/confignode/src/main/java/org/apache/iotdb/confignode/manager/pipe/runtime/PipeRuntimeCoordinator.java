@@ -65,10 +65,6 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
     return procedureSubmitter;
   }
 
-  public PipeMetaSyncer getPipeMetaSyncer() {
-    return pipeMetaSyncer;
-  }
-
   @Override
   public void onClusterStatisticsChanged(StatisticsChangeEvent event) {
     pipeLeaderChangeHandler.onClusterStatisticsChanged(event);

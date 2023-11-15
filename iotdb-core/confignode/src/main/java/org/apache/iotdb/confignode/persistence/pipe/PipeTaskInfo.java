@@ -65,14 +65,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private final PipeMetaKeeper pipeMetaKeeper;
 
-  // This variable is used to record the number of times the write lock of PipeMetaKeeper has been
-  // acquired, to indicate the number of times `pipeNameToPipeMetaMap` in PipeMetaKeeper has been
-  // modified.
-  private final AtomicLong writeLockAcquiredCount;
+  private final PipeTaskInfoVersion pipeTaskInfoVersion;
 
   public PipeTaskInfo() {
     this.pipeMetaKeeper = new PipeMetaKeeper();
-    this.writeLockAcquiredCount = new AtomicLong(0);
+    this.pipeTaskInfoVersion = new PipeTaskInfoVersion();
   }
 
   /////////////////////////////// Lock ///////////////////////////////
@@ -87,15 +84,49 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private void acquireWriteLock() {
     pipeMetaKeeper.acquireWriteLock();
-    writeLockAcquiredCount.incrementAndGet();
+    pipeTaskInfoVersion.increaseLatestVersion();
   }
 
   private void releaseWriteLock() {
     pipeMetaKeeper.releaseWriteLock();
   }
 
-  public long getWriteLockAcquiredCount() {
-    return writeLockAcquiredCount.get();
+  /////////////////////////////// Version ///////////////////////////////
+
+  private class PipeTaskInfoVersion {
+
+    private final AtomicLong latestVersion;
+    private long lastSyncedVersion;
+    private boolean isLastSyncedPipeTaskInfoEmpty;
+
+    public PipeTaskInfoVersion() {
+      this.latestVersion = new AtomicLong(0);
+      this.lastSyncedVersion = 0;
+      this.isLastSyncedPipeTaskInfoEmpty = false;
+    }
+
+    public void increaseLatestVersion() {
+      latestVersion.incrementAndGet();
+    }
+
+    public void updateLastSyncedVersion() {
+      lastSyncedVersion = latestVersion.get();
+      isLastSyncedPipeTaskInfoEmpty = pipeMetaKeeper.isEmpty();
+    }
+
+    public boolean isEmptySynced() {
+      return isLastSyncedPipeTaskInfoEmpty
+          && pipeMetaKeeper.isEmpty()
+          && lastSyncedVersion == latestVersion.get();
+    }
+  }
+
+  public void updateLastSyncedVersion() {
+    pipeTaskInfoVersion.updateLastSyncedVersion();
+  }
+
+  public boolean isEmptySynced() {
+    return pipeTaskInfoVersion.isEmptySynced();
   }
 
   /////////////////////////////// Validator ///////////////////////////////

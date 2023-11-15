@@ -63,8 +63,7 @@ public class PipeMetaSyncer {
   // and the version of PipeTaskInfo at that time. Before the next sync operation, if there is still
   // no pipe in CN and PipeTaskInfo has not been modified during this period, it means the pipe
   // metadata in DN has already been synced with CN, so this round of sync can be safely skipped.
-  private boolean isLastEmptyPipeSyncSuccessful = false;
-  private long lastSyncedPipeTaskInfoVersion = 0;
+  private boolean isLastPipeSyncSuccessful = false;
 
   PipeMetaSyncer(ConfigManager configManager) {
     this.configManager = configManager;
@@ -94,14 +93,12 @@ public class PipeMetaSyncer {
   }
 
   private synchronized void sync() {
-    if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()
-        && isLastEmptyPipeSyncSuccessful
-        && lastSyncedPipeTaskInfoVersion
-            == configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfoVersion()) {
+    if (isLastPipeSyncSuccessful
+        && configManager.getPipeManager().getPipeTaskCoordinator().isEmptySynced()) {
       return;
     }
 
-    isLastEmptyPipeSyncSuccessful = false;
+    isLastPipeSyncSuccessful = false;
 
     if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
       LOGGER.warn(
@@ -123,27 +120,22 @@ public class PipeMetaSyncer {
     final TSStatus metaSyncStatus = procedureManager.pipeMetaSync();
 
     if (metaSyncStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      boolean canSkipSync = false;
+      boolean successfulSync = !somePipesNeedRestarting;
 
       if (somePipesNeedRestarting) {
         final boolean isRestartSuccessful = handleSuccessfulRestartWithLock();
         final TSStatus handleMetaChangeStatus =
             procedureManager.pipeHandleMetaChangeWithBlock(true, false, true);
-        if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()
-            && isRestartSuccessful
+        if (isRestartSuccessful
             && handleMetaChangeStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          canSkipSync = true;
-        }
-      } else {
-        if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()) {
-          canSkipSync = true;
+          successfulSync = true;
         }
       }
 
-      if (canSkipSync) {
+      if (successfulSync) {
         LOGGER.info(
-            "Skips all following rounds of sync until cluster has pipe task or PipeTaskInfo has been updated");
-        isLastEmptyPipeSyncSuccessful = true;
+            "After this successful sync, if PipeTaskInfo is empty during this sync and has not been modified afterwards, all subsequent syncs will be skipped");
+        isLastPipeSyncSuccessful = true;
       }
     } else {
       LOGGER.warn("Failed to sync pipe meta. Result status: {}.", metaSyncStatus);
@@ -191,9 +183,5 @@ public class PipeMetaSyncer {
     } finally {
       configManager.getPipeManager().getPipeTaskCoordinator().unlock();
     }
-  }
-
-  public void setLastSyncedPipeTaskInfoVersion(long version) {
-    this.lastSyncedPipeTaskInfoVersion = version;
   }
 }

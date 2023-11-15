@@ -171,7 +171,11 @@ public class PipeTaskCoordinator {
     return !pipeTaskInfo.isEmpty();
   }
 
-  public long getPipeTaskInfoVersion() {
-    return pipeTaskInfo.getWriteLockAcquiredCount();
+  public void updateLastSyncedVersion() {
+    pipeTaskInfo.updateLastSyncedVersion();
+  }
+
+  public boolean isEmptySynced() {
+    return pipeTaskInfo.isEmptySynced();
   }
 }
