@@ -20,18 +20,30 @@
 package org.apache.iotdb.db.pipe.agent.plugin;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.db.pipe.connector.protocol.airgap.IoTDBAirGapConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.legacy.IoTDBLegacyPipeConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.opcua.OpcUaConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.websocket.WebSocketConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.writeback.WriteBackConnector;
+import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -42,7 +54,10 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 public class PipePluginAgent {
 
@@ -50,10 +65,14 @@ public class PipePluginAgent {
 
   private final ReentrantLock lock = new ReentrantLock();
 
+  private static final Map<String, Supplier<PipeConnector>> CONNECTOR_CONSTRUCTORS =
+      new HashMap<>();
+
   private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
 
   public PipePluginAgent() {
     this.pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
+    initConnectorConstructors();
   }
 
   /////////////////////////////// Lock ///////////////////////////////
@@ -200,21 +219,52 @@ public class PipePluginAgent {
     }
   }
 
+  // Validation should has the granularity of "DataNode", not "DataRegion",
+  // because a DataNode may have no DataRegion at all when creating pipe
+  public void validate(PipeStaticMeta pipeStaticMeta) throws Exception {
+    // Only create temporary plugins to save system memory
+    reflectExtractor(pipeStaticMeta.getExtractorParameters())
+        .validate(new PipeParameterValidator(pipeStaticMeta.getExtractorParameters()));
+    reflectProcessor(pipeStaticMeta.getProcessorParameters())
+        .validate(new PipeParameterValidator(pipeStaticMeta.getProcessorParameters()));
+    reflectConnector(pipeStaticMeta.getConnectorParameters())
+        .validate(new PipeParameterValidator(pipeStaticMeta.getConnectorParameters()));
+  }
+
   public PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
-    return (PipeExtractor)
-        reflect(
-            extractorParameters.getStringOrDefault(
+    // Convert the value of `EXTRACTOR_KEY` or `SOURCE_KEY` to lowercase for matching
+    // `IOTDB_EXTRACTOR`
+    final String pluginName =
+        extractorParameters
+            .getStringOrDefault(
                 Arrays.asList(
                     PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
-                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+    return pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            || pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())
+        ? new IoTDBDataRegionExtractor()
+        : (PipeExtractor)
+            reflect(
+                extractorParameters.getStringOrDefault(
+                    Arrays.asList(
+                        PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                    BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
   }
 
   public PipeProcessor reflectProcessor(PipeParameters processorParameters) {
-    return (PipeProcessor)
-        reflect(
-            processorParameters.getStringOrDefault(
+    return processorParameters
+            .getStringOrDefault(
                 PipeProcessorConstant.PROCESSOR_KEY,
-                BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()));
+                BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
+            .toLowerCase()
+            .equals(BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
+        ? new DoNothingProcessor()
+        : (PipeProcessor)
+            reflect(
+                processorParameters.getStringOrDefault(
+                    PipeProcessorConstant.PROCESSOR_KEY,
+                    BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()));
   }
 
   public PipeConnector reflectConnector(PipeParameters connectorParameters) {
@@ -224,10 +274,25 @@ public class PipePluginAgent {
           "Failed to reflect PipeConnector instance because "
               + "'connector' is not specified in the parameters.");
     }
-    return (PipeConnector)
-        reflect(
-            connectorParameters.getStringByKeys(
-                PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY));
+
+    // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase for matching in
+    // `CONNECTOR_CONSTRUCTORS`
+    final String connectorKey =
+        connectorParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+            .toLowerCase();
+
+    return CONNECTOR_CONSTRUCTORS
+        .getOrDefault(
+            connectorKey,
+            () ->
+                (PipeConnector)
+                    reflect(
+                        connectorParameters.getStringByKeys(
+                            PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY)))
+        .get();
   }
 
   private PipePlugin reflect(String pluginName) {
@@ -256,5 +321,52 @@ public class PipePluginAgent {
       LOGGER.warn(errorMessage, e);
       throw new PipeException(errorMessage);
     }
+  }
+
+  private void initConnectorConstructors() {
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
+        IoTDBThriftAsyncConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName(),
+        IoTDBThriftSyncConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
+        IoTDBThriftAsyncConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName(),
+        IoTDBLegacyPipeConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName(), IoTDBAirGapConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.WEBSOCKET_CONNECTOR.getPipePluginName(), WebSocketConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName(), OpcUaConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName(), DoNothingConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName(), WriteBackConnector::new);
+
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(), IoTDBThriftAsyncConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_SYNC_SINK.getPipePluginName(),
+        IoTDBThriftSyncConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_SINK.getPipePluginName(),
+        IoTDBThriftAsyncConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_LEGACY_PIPE_SINK.getPipePluginName(),
+        IoTDBLegacyPipeConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.IOTDB_AIR_GAP_SINK.getPipePluginName(), IoTDBAirGapConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.WEBSOCKET_SINK.getPipePluginName(), WebSocketConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName(), OpcUaConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.DO_NOTHING_SINK.getPipePluginName(), DoNothingConnector::new);
+    CONNECTOR_CONSTRUCTORS.put(
+        BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName(), WriteBackConnector::new);
   }
 }

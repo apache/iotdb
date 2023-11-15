@@ -43,6 +43,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -559,6 +560,13 @@ public class PipeTaskAgent {
       // 2. The pipe with the same name and the same creation time has been dropped before, but the
       //  pipe task meta has not been cleaned up
       dropPipe(pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
+    }
+
+    // Validate before creating pipe task
+    try {
+      PipeAgent.plugin().validate(pipeMetaFromConfigNode.getStaticMeta());
+    } catch (Exception e) {
+      throw new PipeException(e.getMessage(), e);
     }
 
     // Create pipe tasks and trigger create() method for each pipe task

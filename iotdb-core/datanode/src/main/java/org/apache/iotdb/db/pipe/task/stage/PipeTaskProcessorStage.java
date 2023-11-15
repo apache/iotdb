@@ -20,10 +20,7 @@
 package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
@@ -34,7 +31,6 @@ import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -64,20 +60,12 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
     // Convert the value of `PROCESSOR_KEY` to lowercase for matching `DO_NOTHING_PROCESSOR`
     final PipeProcessor pipeProcessor =
-        pipeProcessorParameters
-                .getStringOrDefault(
-                    PipeProcessorConstant.PROCESSOR_KEY,
-                    BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
-                .toLowerCase()
-                .equals(BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
-            ? new DoNothingProcessor()
-            : PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
+        PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
 
-    // validate and customize should be called before createSubtask. this allows extractor exposing
+    // Customize should be called before createSubtask. this allows extractor exposing
     // exceptions in advance.
     try {
-      // 1. validate processor parameters
-      pipeProcessor.validate(new PipeParameterValidator(pipeProcessorParameters));
+      // 1. Skip validation because it has be done in the DataNode scale
 
       // 2. customize processor
       final PipeProcessorRuntimeConfiguration runtimeConfiguration =

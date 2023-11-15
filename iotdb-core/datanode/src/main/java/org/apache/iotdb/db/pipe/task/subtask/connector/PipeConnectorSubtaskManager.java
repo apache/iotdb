@@ -20,23 +20,13 @@
 package org.apache.iotdb.db.pipe.task.subtask.connector;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.db.pipe.connector.protocol.airgap.IoTDBAirGapConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.legacy.IoTDBLegacyPipeConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.opcua.OpcUaConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.websocket.WebSocketConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.writeback.WriteBackConnector;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -47,12 +37,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.function.Supplier;
 
 public class PipeConnectorSubtaskManager {
-
-  private static final Map<String, Supplier<PipeConnector>> CONNECTOR_CONSTRUCTORS =
-      new HashMap<>();
 
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";
@@ -77,15 +63,6 @@ public class PipeConnectorSubtaskManager {
       final List<PipeConnectorSubtaskLifeCycle> pipeConnectorSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
-      // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase for matching in
-      // `CONNECTOR_CONSTRUCTORS`
-      final String connectorKey =
-          pipeConnectorParameters
-              .getStringOrDefault(
-                  Arrays.asList(
-                      PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
-                  BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
-              .toLowerCase();
       // Shared pending queue for all subtasks
       final BoundedBlockingPendingQueue<Event> pendingQueue =
           new BoundedBlockingPendingQueue<>(
@@ -93,16 +70,12 @@ public class PipeConnectorSubtaskManager {
 
       for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
         final PipeConnector pipeConnector =
-            CONNECTOR_CONSTRUCTORS
-                .getOrDefault(
-                    connectorKey,
-                    () -> PipeAgent.plugin().reflectConnector(pipeConnectorParameters))
-                .get();
+            PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
 
-        // 1. Construct, validate and customize PipeConnector, and then handshake (create
+        // 1. Construct and customize PipeConnector, and then handshake (create
         // connection) with the target
         try {
-          pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
+          // Skip validation because it has be done in the DataNode scale
           pipeConnector.customize(
               pipeConnectorParameters, new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment));
           pipeConnector.handshake();
@@ -194,50 +167,7 @@ public class PipeConnectorSubtaskManager {
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
   private PipeConnectorSubtaskManager() {
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName(),
-        IoTDBThriftAsyncConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName(),
-        IoTDBThriftSyncConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
-        IoTDBThriftAsyncConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName(),
-        IoTDBLegacyPipeConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName(), IoTDBAirGapConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.WEBSOCKET_CONNECTOR.getPipePluginName(), WebSocketConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName(), OpcUaConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName(), DoNothingConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName(), WriteBackConnector::new);
-
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName(), IoTDBThriftAsyncConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_THRIFT_SYNC_SINK.getPipePluginName(),
-        IoTDBThriftSyncConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_SINK.getPipePluginName(),
-        IoTDBThriftAsyncConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_LEGACY_PIPE_SINK.getPipePluginName(),
-        IoTDBLegacyPipeConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.IOTDB_AIR_GAP_SINK.getPipePluginName(), IoTDBAirGapConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.WEBSOCKET_SINK.getPipePluginName(), WebSocketConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName(), OpcUaConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.DO_NOTHING_SINK.getPipePluginName(), DoNothingConnector::new);
-    CONNECTOR_CONSTRUCTORS.put(
-        BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName(), WriteBackConnector::new);
+    // Do nothing
   }
 
   private static class PipeSubtaskManagerHolder {

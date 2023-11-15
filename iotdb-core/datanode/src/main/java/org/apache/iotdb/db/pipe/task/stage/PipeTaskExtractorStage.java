@@ -20,20 +20,14 @@
 package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
-import org.apache.iotdb.db.pipe.extractor.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.pipe.api.PipeExtractor;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-
-import java.util.Arrays;
 
 public class PipeTaskExtractorStage extends PipeTaskStage {
 
@@ -45,26 +39,13 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
       PipeParameters extractorParameters,
       TConsensusGroupId dataRegionId,
       PipeTaskMeta pipeTaskMeta) {
-    // Convert the value of `EXTRACTOR_KEY` or `SOURCE_KEY` to lowercase for matching
-    // `IOTDB_EXTRACTOR`
-    final String pluginName =
-        extractorParameters
-            .getStringOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
-                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
-            .toLowerCase();
-    pipeExtractor =
-        pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
-                || pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())
-            ? new IoTDBDataRegionExtractor()
-            : PipeAgent.plugin().reflectExtractor(extractorParameters);
 
-    // Validate and customize should be called before createSubtask. this allows extractor exposing
+    pipeExtractor = PipeAgent.plugin().reflectExtractor(extractorParameters);
+
+    // Customize should be called before createSubtask. this allows extractor exposing
     // exceptions in advance.
     try {
-      // 1. Validate extractor parameters
-      pipeExtractor.validate(new PipeParameterValidator(extractorParameters));
+      // 1. Skip validation because it has be done in the DataNode scale
 
       // 2. Customize extractor
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
