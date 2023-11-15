@@ -80,6 +80,10 @@ public class ClusterSchemaTree implements ISchemaTree {
     this.root = root;
   }
 
+  public void setTemplateMap(Map<Integer, Template> templateMap) {
+    this.templateMap = templateMap;
+  }
+
   /**
    * Return all measurement paths for given path pattern and filter the result by slimit and offset.
    *

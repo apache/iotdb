@@ -22,6 +22,7 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -181,11 +182,9 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
             "root.sg.wf02.s2");
 
     // check fetch schema
-    List<MeasurementPath> schemas =
-        schemaRegion
-            .fetchSchema(ALL_MATCH_SCOPE, templateMap, true)
-            .searchMeasurementPaths(ALL_MATCH_PATTERN)
-            .left;
+    ClusterSchemaTree schemaTree = schemaRegion.fetchSchema(ALL_MATCH_SCOPE, templateMap, true);
+    schemaTree.setTemplateMap(templateMap);
+    List<MeasurementPath> schemas = schemaTree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
     Assert.assertEquals(expectedTimeseries.size(), schemas.size());
     schemas.sort(Comparator.comparing(PartialPath::getFullPath));
     for (int i = 0; i < schemas.size(); i++) {
@@ -226,21 +225,20 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendFullPath(new PartialPath("root.db.d1.s1"));
+
+    ClusterSchemaTree schemaTree =
+        schemaRegion.fetchSchema(
+            patternTree, Collections.singletonMap(templateId, template), false);
+    schemaTree.setTemplateMap(Collections.singletonMap(templateId, template));
     Assert.assertEquals(
-        1,
-        schemaRegion
-            .fetchSchema(patternTree, Collections.singletonMap(templateId, template), false)
-            .searchMeasurementPaths(new PartialPath("root.db.d1.s1"))
-            .left
-            .size());
+        1, schemaTree.searchMeasurementPaths(new PartialPath("root.db.d1.s1")).left.size());
     patternTree = new PathPatternTree();
     patternTree.appendFullPath(new PartialPath("root.db.d1.s3"));
+    schemaTree =
+        schemaRegion.fetchSchema(
+            patternTree, Collections.singletonMap(templateId, template), false);
+    schemaTree.setTemplateMap(Collections.singletonMap(templateId, template));
     Assert.assertEquals(
-        0,
-        schemaRegion
-            .fetchSchema(patternTree, Collections.singletonMap(templateId, template), false)
-            .searchMeasurementPaths(new PartialPath("root.db.d1.s3"))
-            .left
-            .size());
+        0, schemaTree.searchMeasurementPaths(new PartialPath("root.db.d1.s3")).left.size());
   }
 }

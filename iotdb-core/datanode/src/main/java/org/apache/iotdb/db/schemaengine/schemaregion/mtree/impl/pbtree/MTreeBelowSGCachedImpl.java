@@ -826,10 +826,12 @@ public class MTreeBelowSGCachedImpl {
                 getParentOfNextMatchedNode().getAsDeviceMNode();
             int templateId = deviceMNode.getSchemaTemplateIdWithState();
             PartialPath devicePath = deviceMNode.getPartialPath();
-            if (templateId >= 0 && !visitedTemplateDevice.contains(devicePath)) {
-              schemaTree.appendTemplateDevice(
-                  deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
-              visitedTemplateDevice.add(devicePath);
+            if (templateId >= 0) {
+              if (!visitedTemplateDevice.contains(devicePath)) {
+                schemaTree.appendTemplateDevice(
+                    deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
+                visitedTemplateDevice.add(devicePath);
+              }
             } else {
               MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
               if (nodes[nodes.length - 1].equals(node.getAlias())) {
@@ -865,10 +867,12 @@ public class MTreeBelowSGCachedImpl {
                 getParentOfNextMatchedNode().getAsDeviceMNode();
             int templateId = deviceMNode.getSchemaTemplateIdWithState();
             PartialPath devicePath = deviceMNode.getPartialPath();
-            if (templateId >= 0 && !visitedTemplateDevice.contains(devicePath)) {
-              schemaTree.appendTemplateDevice(
-                  deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
-              visitedTemplateDevice.add(devicePath);
+            if (templateId >= 0) {
+              if (!visitedTemplateDevice.contains(devicePath)) {
+                schemaTree.appendTemplateDevice(
+                    deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
+                visitedTemplateDevice.add(devicePath);
+              }
             } else {
               MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
               path.setMeasurementAlias(node.getAlias());
