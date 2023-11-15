@@ -48,6 +48,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -79,8 +80,6 @@ public class Analysis {
 
   // map from output column name (for every node) to its datatype
   private final Map<NodeRef<Expression>, TSDataType> expressionTypes = new LinkedHashMap<>();
-
-  private Template templateTypes;
 
   private boolean finishQueryAfterAnalyze;
 
@@ -274,6 +273,15 @@ public class Analysis {
   // if `order by limit N align by device` query use topK optimization
   private boolean useTopKNode = false;
 
+  // if all devices are set in one template in align by device query, this variable will not be null
+  private Template deviceTemplate;
+  // when deviceTemplate equals to true, if all expressions in this query are measurements, i.e. no
+  // value filter,
+  // no aggregation, no arithmetic expression
+  private boolean allExpressionTimeSeriesOperand = true;
+  private List<String> measurementList;
+  private List<IMeasurementSchema> measurementSchemaList;
+
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
   }
@@ -355,9 +363,10 @@ public class Analysis {
       return null;
     }
 
-    if (templateTypes != null) {
+    if (isDevicesAllInOneTemplate()
+        && (isAllExpressionTimeSeriesOperand() || expression instanceof TimeSeriesOperand)) {
       TimeSeriesOperand seriesOperand = (TimeSeriesOperand) expression;
-      return templateTypes.getSchemaMap().get(seriesOperand.getPath().getMeasurement()).getType();
+      return deviceTemplate.getSchemaMap().get(seriesOperand.getPath().getMeasurement()).getType();
     }
 
     TSDataType type = expressionTypes.get(NodeRef.of(expression));
@@ -682,14 +691,6 @@ public class Analysis {
     return expressionTypes;
   }
 
-  public Template getTemplateTypes() {
-    return this.templateTypes;
-  }
-
-  public void setTemplateTypes(Template template) {
-    this.templateTypes = template;
-  }
-
   public void setOrderByExpressions(Set<Expression> orderByExpressions) {
     this.orderByExpressions = orderByExpressions;
   }
@@ -810,6 +811,38 @@ public class Analysis {
   }
 
   public boolean isDevicesAllInOneTemplate() {
-    return this.templateTypes != null;
+    return this.deviceTemplate != null;
+  }
+
+  public Template getDeviceTemplate() {
+    return this.deviceTemplate;
+  }
+
+  public void setDeviceTemplate(Template template) {
+    this.deviceTemplate = template;
+  }
+
+  public boolean isAllExpressionTimeSeriesOperand() {
+    return allExpressionTimeSeriesOperand;
+  }
+
+  public void setAllExpressionTimeSeriesOperand(boolean allExpressionTimeSeriesOperand) {
+    this.allExpressionTimeSeriesOperand = allExpressionTimeSeriesOperand;
+  }
+
+  public List<String> getMeasurementList() {
+    return this.measurementList;
+  }
+
+  public void setMeasurementList(List<String> measurementList) {
+    this.measurementList = measurementList;
+  }
+
+  public List<IMeasurementSchema> getMeasurementSchemaList() {
+    return this.measurementSchemaList;
+  }
+
+  public void setMeasurementSchemaList(List<IMeasurementSchema> measurementSchemaList) {
+    this.measurementSchemaList = measurementSchemaList;
   }
 }

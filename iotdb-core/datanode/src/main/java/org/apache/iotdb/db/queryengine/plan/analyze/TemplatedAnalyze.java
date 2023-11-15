@@ -26,15 +26,14 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -59,7 +58,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.CONFIG;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE_EXPRESSION;
@@ -69,15 +67,11 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyz
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeExpressionType;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeFill;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeOutput;
-import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.checkDeviceViewInputUniqueness;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.normalizeExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchAggregationExpressions;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchSourceExpressions;
-import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetInGroupByTimeForDevice;
-import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetInGroupByTimeForDevice;
 
 /**
  * This class provides accelerated implementation for multiple devices align by device query. This
@@ -87,89 +81,107 @@ import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushD
  * <p>e.g. for query `SELECT * FROM root.xx.** order by device/time/expression align by device`, the
  * device list of `root.xx.**` must use same template.
  */
-public class TemplatedDeviceAnalyze {
+public class TemplatedAnalyze {
 
-  private static final Logger logger = LoggerFactory.getLogger(TemplatedDeviceAnalyze.class);
+  private static final Logger logger = LoggerFactory.getLogger(TemplatedAnalyze.class);
 
-  private boolean isWildCardQuery;
-
-  private boolean isOriginalMeasurementQuery;
-
-  private Analysis analysis;
-
-  private QueryStatement queryStatement;
-
-  private MPPQueryContext context;
-
-  private ISchemaTree schemaTree;
-
-  private final IPartitionFetcher partitionFetcher;
-
-  public TemplatedDeviceAnalyze(
+  /** examine that if all devices are in same template */
+  public static boolean canBuildPlanUseTemplate(
       Analysis analysis,
       QueryStatement queryStatement,
-      MPPQueryContext context,
-      ISchemaTree schemaTree,
+      ISchemaFetcher schemaFetcher,
       IPartitionFetcher partitionFetcher,
-      Template template) {
-    this.analysis = analysis;
-    this.queryStatement = queryStatement;
-    this.context = context;
-    this.schemaTree = schemaTree;
-    this.partitionFetcher = partitionFetcher;
+      ISchemaTree schemaTree) {
+    if (queryStatement.isAggregationQuery()
+        || queryStatement.isGroupBy()
+        || queryStatement.isGroupByTime()
+        || queryStatement.isSelectInto()) {
+      return false;
+    }
 
-    if (queryStatement.getSelectComponent().getResultColumns().size() == 1) {
-      if ("*"
-          .equals(
-              queryStatement
-                  .getSelectComponent()
-                  .getResultColumns()
-                  .get(0)
-                  .getExpression()
-                  .getOutputSymbol())) {
-
-        isWildCardQuery = true;
+    Template template = null;
+    List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
+    for (PartialPath devicePath : devicePatternList) {
+      Map<Integer, Template> templateMap = schemaFetcher.checkAllRelatedTemplate(devicePath);
+      if (templateMap != null && templateMap.size() == 1) {
+        if (template == null) {
+          template = templateMap.values().iterator().next();
+        } else {
+          if (templateMap.values().iterator().next().getId() != template.getId()) {
+            template = null;
+            break;
+          }
+        }
+      } else {
+        return false;
       }
     }
+
+    List<String> measurementList = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
+    if (template != null) {
+      for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+        Expression expression = resultColumn.getExpression();
+        if ("*".equals(expression.getOutputSymbol())) {
+          for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
+            measurementList.add(entry.getKey());
+            measurementSchemaList.add(entry.getValue());
+          }
+        } else if (expression instanceof TimeSeriesOperand) {
+          String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
+          if (template.getSchemaMap().containsKey(measurement)) {
+            measurementList.add(measurement);
+            measurementSchemaList.add(template.getSchema(measurement));
+          }
+        } else {
+          return false;
+        }
+      }
+    }
+
+    analysis.setDeviceTemplate(template);
+    analysis.setMeasurementList(measurementList);
+    analysis.setMeasurementSchemaList(measurementSchemaList);
+
+    visitQuery(analysis, queryStatement, partitionFetcher, schemaTree);
+
+    return true;
   }
 
   /** add multi-threading impl */
-  public Analysis visitQuery() {
+  public static void visitQuery(
+      Analysis analysis,
+      QueryStatement queryStatement,
+      IPartitionFetcher partitionFetcher,
+      ISchemaTree schemaTree) {
 
     long startTime = System.currentTimeMillis();
 
     List<Pair<Expression, String>> outputExpressions;
 
-    // TODO-1 change the return value of this method, return `deviceList + template`
     List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
     logger.warn("--- [analyzeFrom] : {}ms", System.currentTimeMillis() - startTime);
     startTime = System.currentTimeMillis();
 
-    if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
-      // remove the device which won't appear in resultSet after limit/offset
-      deviceList = pushDownLimitOffsetInGroupByTimeForDevice(deviceList, queryStatement);
-    }
-
-    // TODO-2 optimize for where filter using template
     analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceList);
     logger.warn("--- [analyzeDeviceToWhere] : {}ms", System.currentTimeMillis() - startTime);
     startTime = System.currentTimeMillis();
 
-    outputExpressions = analyzeSelectUseTemplate(analysis, queryStatement, schemaTree, deviceList);
+    // deviceToSelectExpression, deviceToSourceTransformExpression and deviceToOutputExpression is
+    // all no need.
+    outputExpressions = analyzeSelect(analysis, queryStatement);
     logger.warn("--- [analyzeSelect] : {}ms", System.currentTimeMillis() - startTime);
     startTime = System.currentTimeMillis();
 
     if (deviceList.isEmpty()) {
-      return finishQuery(queryStatement, analysis);
+      analysis.setFinishQueryAfterAnalyze(true);
+      return;
     }
     analysis.setDeviceList(deviceList);
 
-    // analyzeDeviceToGroupBy(analysis, queryStatement, schemaTree, deviceList);
     analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceList);
-    // analyzeHaving(analysis, queryStatement, schemaTree, deviceList);
-    // analyzeDeviceToAggregation(analysis, queryStatement);
-    analyzeDeviceToSourceTransform(analysis, queryStatement);
-    analyzeDeviceToSource(analysis, queryStatement);
+    analyzeDeviceToSourceTransform(analysis);
+    analyzeDeviceToSource(analysis);
 
     logger.warn(
         "--- [analyzeDeviceToSource + analyzeDeviceToSourceTransform] : {}ms",
@@ -177,13 +189,11 @@ public class TemplatedDeviceAnalyze {
     startTime = System.currentTimeMillis();
 
     analyzeDeviceViewOutput(analysis, queryStatement);
-    analyzeDeviceViewInput(analysis, queryStatement);
+    analyzeDeviceViewInput(analysis);
 
     logger.warn("--- [analyzeDeviceView] : {}ms", System.currentTimeMillis() - startTime);
     startTime = System.currentTimeMillis();
 
-    // analyzeInto(analysis, queryStatement, deviceList, outputExpressions);
-    // analyzeGroupByTime(analysis, queryStatement);
     analyzeFill(analysis, queryStatement);
 
     // generate result set header according to output expressions
@@ -192,10 +202,8 @@ public class TemplatedDeviceAnalyze {
     startTime = System.currentTimeMillis();
 
     // fetch partition information
-    analyzeDataPartition(analysis, queryStatement, schemaTree);
+    analyzeDataPartition(analysis, schemaTree, partitionFetcher);
     logger.warn("--- [analyzeDataPartition] : {}ms", System.currentTimeMillis() - startTime);
-
-    return analysis;
   }
 
   private static List<PartialPath> analyzeFrom(
@@ -228,6 +236,7 @@ public class TemplatedDeviceAnalyze {
       return;
     }
 
+    analysis.setAllExpressionTimeSeriesOperand(false);
     Map<String, Expression> deviceToWhereExpression = new HashMap<>();
     Iterator<PartialPath> deviceIterator = deviceList.iterator();
     while (deviceIterator.hasNext()) {
@@ -264,47 +273,18 @@ public class TemplatedDeviceAnalyze {
         conJunctions.stream().distinct().collect(Collectors.toList()));
   }
 
-  private static Analysis finishQuery(QueryStatement queryStatement, Analysis analysis) {
-    if (queryStatement.isSelectInto()) {
-      analysis.setRespDatasetHeader(
-          DatasetHeaderFactory.getSelectIntoHeader(queryStatement.isAlignByDevice()));
-    }
-    if (queryStatement.isLastQuery()) {
-      analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
-    }
-    analysis.setFinishQueryAfterAnalyze(true);
-    return analysis;
-  }
-
-  static List<Pair<Expression, String>> analyzeSelectUseTemplate(
-      Analysis analysis,
-      QueryStatement queryStatement,
-      ISchemaTree schemaTree,
-      List<PartialPath> deviceList) {
+  static List<Pair<Expression, String>> analyzeSelect(
+      Analysis analysis, QueryStatement queryStatement) {
 
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
-    Map<String, Set<Expression>> deviceToSelectExpressions = new HashMap<>();
 
-    for (Map.Entry<String, IMeasurementSchema> entry :
-        analysis.getTemplateTypes().getSchemaMap().entrySet()) {
-      String measurementName = entry.getKey();
-      IMeasurementSchema measurementSchema = entry.getValue();
+    for (int i = 0; i < analysis.getMeasurementList().size(); i++) {
+      String measurementName = analysis.getMeasurementList().get(i);
+      IMeasurementSchema measurementSchema = analysis.getMeasurementSchemaList().get(i);
       TimeSeriesOperand measurementPath =
           new TimeSeriesOperand(
               new MeasurementPath(new String[] {measurementName}, measurementSchema));
-      // analyzeExpression(analysis, measurementPath);
       outputExpressions.add(new Pair<>(measurementPath, null));
-      //      for (PartialPath devicePath : deviceList) {
-      //        // TODO how to determine whether a device is aligned device
-      //        TimeSeriesOperand fullPath =
-      //            new TimeSeriesOperand(
-      //                new MeasurementPath(
-      //                    devicePath.concatNode(measurementName), measurementSchema, true));
-      //        // analyzeExpression(analysis, fullPath);
-      //        deviceToSelectExpressions
-      //            .computeIfAbsent(devicePath.getFullPath(), k -> new LinkedHashSet<>())
-      //            .add(fullPath);
-      //      }
     }
 
     Set<Expression> selectExpressions = new LinkedHashSet<>();
@@ -314,12 +294,11 @@ public class TemplatedDeviceAnalyze {
     }
     outputExpressions.forEach(pair -> selectExpressions.add(pair.getLeft()));
     analysis.setSelectExpressions(selectExpressions);
-    analysis.setDeviceToSelectExpressions(deviceToSelectExpressions);
 
     return outputExpressions;
   }
 
-  private void analyzeDeviceToOrderBy(
+  private static void analyzeDeviceToOrderBy(
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
@@ -372,83 +351,8 @@ public class TemplatedDeviceAnalyze {
     analysis.setDeviceToOrderByExpressions(deviceToOrderByExpressions);
   }
 
-  private void analyzeDeviceToSourceTransform(Analysis analysis, QueryStatement queryStatement) {
-    if (queryStatement.isAggregationQuery()) {
-      Map<String, Set<Expression>> deviceToSourceTransformExpressions =
-          analysis.getDeviceToSourceTransformExpressions();
-      Map<String, Set<Expression>> deviceToAggregationExpressions =
-          analysis.getDeviceToAggregationExpressions();
-
-      for (Map.Entry<String, Set<Expression>> entry : deviceToAggregationExpressions.entrySet()) {
-        String deviceName = entry.getKey();
-        Set<Expression> aggregationExpressions = entry.getValue();
-
-        Set<Expression> sourceTransformExpressions =
-            deviceToSourceTransformExpressions.computeIfAbsent(
-                deviceName, k -> new LinkedHashSet<>());
-
-        for (Expression expression : aggregationExpressions) {
-          // if count_time aggregation exist, it can exist only one count_time(*)
-          if (queryStatement.isCountTimeAggregation()) {
-            for (Expression countTimeSourceExpression :
-                ((FunctionExpression) expression).getCountTimeExpressions()) {
-
-              analyzeExpressionType(analysis, countTimeSourceExpression);
-              sourceTransformExpressions.add(countTimeSourceExpression);
-            }
-          } else {
-            // We just process first input Expression of AggregationFunction,
-            // keep other input Expressions as origin
-            // If AggregationFunction need more than one input series,
-            // we need to reconsider the process of it
-            sourceTransformExpressions.add(expression.getExpressions().get(0));
-          }
-        }
-
-        if (queryStatement.hasGroupByExpression()) {
-          sourceTransformExpressions.add(analysis.getDeviceToGroupByExpression().get(deviceName));
-        }
-      }
-    } else {
-      if (isWildCardQuery || isOriginalMeasurementQuery) {
-        analysis.setDeviceToSourceTransformExpressions(analysis.getDeviceToSelectExpressions());
-      } else {
-        updateDeviceToSourceTransformAndOutputExpressions(
-            analysis, analysis.getDeviceToSelectExpressions());
-        if (queryStatement.hasOrderByExpression()) {
-          updateDeviceToSourceTransformAndOutputExpressions(
-              analysis, analysis.getDeviceToOrderByExpressions());
-        }
-      }
-    }
-  }
-
-  private static void updateDeviceToSourceTransformAndOutputExpressions(
-      Analysis analysis, Map<String, Set<Expression>> deviceToSelectExpressions) {
-    // two maps to be updated
-    Map<String, Set<Expression>> deviceToSourceTransformExpressions =
-        analysis.getDeviceToSourceTransformExpressions();
-    Map<String, Set<Expression>> deviceToOutputExpressions =
-        analysis.getDeviceToOutputExpressions();
-
-    for (Map.Entry<String, Set<Expression>> entry : deviceToSelectExpressions.entrySet()) {
-      String deviceName = entry.getKey();
-      Set<Expression> expressions = entry.getValue();
-
-      Set<Expression> normalizedExpressions = new LinkedHashSet<>();
-      for (Expression expression : expressions) {
-        Expression normalizedExpression = normalizeExpression(expression);
-        analyzeExpressionType(analysis, normalizedExpression);
-
-        normalizedExpressions.add(normalizedExpression);
-      }
-      deviceToOutputExpressions
-          .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-          .addAll(expressions);
-      deviceToSourceTransformExpressions
-          .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-          .addAll(normalizedExpressions);
-    }
+  private static void analyzeDeviceToSourceTransform(Analysis analysis) {
+    analysis.setDeviceToSourceTransformExpressions(analysis.getDeviceToSelectExpressions());
   }
 
   private static void analyzeDeviceViewOutput(Analysis analysis, QueryStatement queryStatement) {
@@ -483,129 +387,40 @@ public class TemplatedDeviceAnalyze {
         analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement, analysis));
   }
 
-  private void analyzeDeviceViewInput(Analysis analysis, QueryStatement queryStatement) {
-    if (isWildCardQuery || isOriginalMeasurementQuery) {
-      List<Integer> indexes = new ArrayList<>();
-      // index-0 is `Device`
-      for (int i = 1; i < analysis.getSelectExpressions().size(); i++) {
-        indexes.add(i);
-      }
-      Map<String, List<Integer>> deviceViewInputIndexesMap = new HashMap<>();
-      for (PartialPath devicePath : analysis.getDeviceList()) {
-        deviceViewInputIndexesMap.put(devicePath.getFullPath(), indexes);
-      }
-      analysis.setDeviceViewInputIndexesMap(deviceViewInputIndexesMap);
-      return;
+  private static void analyzeDeviceViewInput(Analysis analysis) {
+    List<Integer> indexes = new ArrayList<>();
+    // index-0 is `Device`
+    for (int i = 1; i < analysis.getSelectExpressions().size(); i++) {
+      indexes.add(i);
     }
-
-    List<String> deviceViewOutputColumns =
-        analysis.getDeviceViewOutputExpressions().stream()
-            .map(Expression::getOutputSymbol)
-            .collect(Collectors.toList());
-
-    Map<String, Set<String>> deviceToOutputColumnsMap = new LinkedHashMap<>();
-    Map<String, Set<Expression>> deviceToOutputExpressions =
-        analysis.getDeviceToOutputExpressions();
-    for (Map.Entry<String, Set<Expression>> entry : deviceToOutputExpressions.entrySet()) {
-      Set<Expression> outputExpressionsUnderDevice = entry.getValue();
-      checkDeviceViewInputUniqueness(outputExpressionsUnderDevice);
-
-      Set<String> outputColumns = new LinkedHashSet<>();
-      if (queryStatement.isOutputEndTime()) {
-        outputColumns.add(ENDTIME);
-      }
-      for (Expression expression : outputExpressionsUnderDevice) {
-        outputColumns.add(getMeasurementExpression(expression, analysis).getOutputSymbol());
-      }
-      deviceToOutputColumnsMap.put(entry.getKey(), outputColumns);
-    }
-
     Map<String, List<Integer>> deviceViewInputIndexesMap = new HashMap<>();
-    for (Map.Entry<String, Set<String>> entry : deviceToOutputColumnsMap.entrySet()) {
-      String deviceName = entry.getKey();
-      List<String> outputsUnderDevice = new ArrayList<>(entry.getValue());
-
-      List<Integer> indexes = new ArrayList<>();
-      for (String output : outputsUnderDevice) {
-        int index = deviceViewOutputColumns.indexOf(output);
-        if (index < 1) {
-          throw new IllegalStateException(
-              String.format(
-                  "output column '%s' is not stored in %s", output, deviceViewOutputColumns));
-        }
-        indexes.add(index);
-      }
-      deviceViewInputIndexesMap.put(deviceName, indexes);
+    for (PartialPath devicePath : analysis.getDeviceList()) {
+      deviceViewInputIndexesMap.put(devicePath.getFullPath(), indexes);
     }
     analysis.setDeviceViewInputIndexesMap(deviceViewInputIndexesMap);
   }
 
-  private void analyzeDeviceToSource(Analysis analysis, QueryStatement queryStatement) {
-    if (isWildCardQuery || isOriginalMeasurementQuery) {
-      analysis.setDeviceToSourceExpressions(analysis.getDeviceToSelectExpressions());
-      analysis.setDeviceToOutputExpressions(analysis.getDeviceToSelectExpressions());
-      return;
-    }
-
-    Map<String, Set<Expression>> deviceToSourceExpressions = new HashMap<>();
-    Map<String, Set<Expression>> deviceToSourceTransformExpressions =
-        analysis.getDeviceToSourceTransformExpressions();
-
-    for (Map.Entry<String, Set<Expression>> entry : deviceToSourceTransformExpressions.entrySet()) {
-      String deviceName = entry.getKey();
-      Set<Expression> sourceTransformExpressions = entry.getValue();
-
-      Set<Expression> sourceExpressions = new LinkedHashSet<>();
-      sourceTransformExpressions.forEach(
-          expression -> sourceExpressions.addAll(searchSourceExpressions(expression)));
-
-      deviceToSourceExpressions.put(deviceName, sourceExpressions);
-    }
-
-    if (queryStatement.hasWhere()) {
-      Map<String, Expression> deviceToWhereExpression = analysis.getDeviceToWhereExpression();
-      for (Map.Entry<String, Expression> deviceWhereExpressionEntry :
-          deviceToWhereExpression.entrySet()) {
-        String deviceName = deviceWhereExpressionEntry.getKey();
-        Expression whereExpression = deviceWhereExpressionEntry.getValue();
-        deviceToSourceExpressions
-            .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-            .addAll(searchSourceExpressions(whereExpression));
-      }
-    }
-
-    for (Map.Entry<String, Set<Expression>> entry : deviceToSourceExpressions.entrySet()) {
-      String deviceName = entry.getKey();
-      Set<Expression> sourceExpressionsUnderDevice = entry.getValue();
-      Set<String> queriedDevices = new HashSet<>();
-      for (Expression expression : sourceExpressionsUnderDevice) {
-        queriedDevices.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
-      }
-      if (queriedDevices.size() > 1) {
-        throw new SemanticException(
-            "Cross-device queries are not supported in ALIGN BY DEVICE queries.");
-      }
-    }
-
-    analysis.setDeviceToSourceExpressions(deviceToSourceExpressions);
+  private static void analyzeDeviceToSource(Analysis analysis) {
+    analysis.setDeviceToSourceExpressions(analysis.getDeviceToSelectExpressions());
+    analysis.setDeviceToOutputExpressions(analysis.getDeviceToSelectExpressions());
   }
 
-  private void analyzeDataPartition(
-      Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
-    if (!queryStatement.isAlignByDevice()) {
-      return;
-    }
-
-    // TemplatedDevice has no views, so there is no need to use
+  private static void analyzeDataPartition(
+      Analysis analysis, ISchemaTree schemaTree, IPartitionFetcher partitionFetcher) {
+    // TemplatedDevice has no views, so there is no need to use outputDeviceToQueriedDevicesMap
     Set<String> deviceSet =
         analysis.getDeviceList().stream().map(PartialPath::getFullPath).collect(Collectors.toSet());
     DataPartition dataPartition =
-        fetchDataPartitionByDevices(deviceSet, schemaTree, analysis.getGlobalTimeFilter());
+        fetchDataPartitionByDevices(
+            deviceSet, schemaTree, analysis.getGlobalTimeFilter(), partitionFetcher);
     analysis.setDataPartitionInfo(dataPartition);
   }
 
-  private DataPartition fetchDataPartitionByDevices(
-      Set<String> deviceSet, ISchemaTree schemaTree, Filter globalTimeFilter) {
+  private static DataPartition fetchDataPartitionByDevices(
+      Set<String> deviceSet,
+      ISchemaTree schemaTree,
+      Filter globalTimeFilter,
+      IPartitionFetcher partitionFetcher) {
     long startTime = System.nanoTime();
     try {
       Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =

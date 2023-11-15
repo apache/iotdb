@@ -21,17 +21,23 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 public class TypeProvider {
 
   private final Map<String, TSDataType> typeMap;
+
+  // measurementList, schemaList is not null only when all devices in one template
+  private List<String> measurementList;
+  private List<IMeasurementSchema> schemaList;
 
   public TypeProvider() {
     this.typeMap = new HashMap<>();
@@ -50,10 +56,6 @@ public class TypeProvider {
     if (dataType != null) {
       this.typeMap.put(symbol, dataType);
     }
-  }
-
-  public boolean containsTypeInfoOf(String path) {
-    return typeMap.containsKey(path);
   }
 
   public void serialize(ByteBuffer byteBuffer) {
@@ -99,5 +101,21 @@ public class TypeProvider {
   @Override
   public int hashCode() {
     return Objects.hash(typeMap);
+  }
+
+  public void setMeasurementList(List<String> measurementList) {
+    this.measurementList = measurementList;
+  }
+
+  public List<String> getMeasurementList() {
+    return this.measurementList;
+  }
+
+  public void setSchemaList(List<IMeasurementSchema> schemaList) {
+    this.schemaList = schemaList;
+  }
+
+  public List<IMeasurementSchema> getSchemaList() {
+    return this.schemaList;
   }
 }

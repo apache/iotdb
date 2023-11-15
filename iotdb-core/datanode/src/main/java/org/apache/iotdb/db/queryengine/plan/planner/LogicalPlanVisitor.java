@@ -123,6 +123,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
   @Override
   public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
+    if (analysis.isDevicesAllInOneTemplate()) {
+      return new TemplatedLogicalPlan(analysis, queryStatement, context).visitQuery();
+    }
+
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
     if (queryStatement.isLastQuery()) {
@@ -139,12 +143,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         planBuilder = planBuilder.planOrderBy(queryStatement.getSortItemList());
       }
       return planBuilder.getRoot();
-    }
-
-    if (queryStatement.isAlignByDevice()
-        && analysis.isDevicesAllInOneTemplate()
-        && !queryStatement.isAggregationQuery()) {
-      return new TemplatedLogicalPlan(analysis, queryStatement, context).visitQuery();
     }
 
     if (queryStatement.isAlignByDevice()) {

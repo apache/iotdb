@@ -49,9 +49,10 @@ public class TemplatedLogicalPlan {
   private Analysis analysis;
   private QueryStatement queryStatement;
   private MPPQueryContext context;
-  // If it's not `select *` query, may change the value of list below
-  List<String> measurementList = null;
-  List<IMeasurementSchema> schemaList = null;
+
+  // TODO if it's not `select *` query, need change the value of list below
+  List<String> measurementList;
+  List<IMeasurementSchema> schemaList;
 
   public TemplatedLogicalPlan(
       Analysis analysis, QueryStatement queryStatement, MPPQueryContext context) {
@@ -61,6 +62,9 @@ public class TemplatedLogicalPlan {
 
     measurementList = new ArrayList<>(analysis.getTemplateTypes().getSchemaMap().keySet());
     schemaList = new ArrayList<>(analysis.getTemplateTypes().getSchemaMap().values());
+
+    context.getTypeProvider().setMeasurementList(measurementList);
+    context.getTypeProvider().setSchemaList(schemaList);
   }
 
   public PlanNode visitQuery() {
@@ -212,7 +216,6 @@ public class TemplatedLogicalPlan {
               lastLevelUseWildcard);
       sourceNodeList.add(alignedSeriesScanNode);
     } else {
-      // TODO fix that not select not all measurements
       for (int i = 0; i < measurementList.size(); i++) {
         MeasurementPath measurementPath =
             new MeasurementPath(devicePath.concatNode(measurementList.get(i)), schemaList.get(i));
@@ -228,8 +231,9 @@ public class TemplatedLogicalPlan {
                 null);
         sourceNodeList.add(seriesScanNode);
 
-        // TODO does alignedPath need type provider
-        context.getTypeProvider().setType(measurementPath.toString(), schemaList.get(i).getType());
+        // why alignedPath not need type provider
+        // context.getTypeProvider().setType(measurementPath.toString(),
+        // schemaList.get(i).getType());
       }
     }
 
@@ -242,15 +246,16 @@ public class TemplatedLogicalPlan {
     if (expressions == null) {
       return;
     }
-    expressions.forEach(
-        expression -> {
-          if (!expression.getExpressionString().equals(DEVICE)
-              && !expression.getExpressionString().equals(ENDTIME)) {
-            context
-                .getTypeProvider()
-                .setType(expression.getExpressionString(), analysis.getType(expression));
-          }
-        });
+
+    for (Expression expression : expressions) {
+      if (expression.getExpressionString().equals(DEVICE)
+          || expression.getExpressionString().equals(ENDTIME)) {
+        continue;
+      }
+      context
+          .getTypeProvider()
+          .setType(expression.getExpressionString(), analysis.getType(expression));
+    }
   }
 
   private PlanNode convergeWithTimeJoin(List<PlanNode> sourceNodes, Ordering mergeOrder) {
