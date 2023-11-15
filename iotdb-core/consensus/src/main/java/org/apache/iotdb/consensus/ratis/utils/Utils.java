@@ -307,11 +307,7 @@ public class Utils {
     RaftServerConfigKeys.Rpc.setFirstElectionTimeoutMax(
         properties, config.getRpc().getFirstElectionTimeoutMax());
 
-    RaftServerConfigKeys.Read.Option option =
-        config.getRead().getReadOption() == RatisConfig.Read.Option.DEFAULT
-            ? RaftServerConfigKeys.Read.Option.DEFAULT
-            : RaftServerConfigKeys.Read.Option.LINEARIZABLE;
-    RaftServerConfigKeys.Read.setOption(properties, option);
+    RaftServerConfigKeys.Read.setOption(properties, RaftServerConfigKeys.Read.Option.LINEARIZABLE);
     RaftServerConfigKeys.Read.setTimeout(properties, config.getRead().getReadTimeout());
 
     RaftServerConfigKeys.setSleepDeviationThreshold(

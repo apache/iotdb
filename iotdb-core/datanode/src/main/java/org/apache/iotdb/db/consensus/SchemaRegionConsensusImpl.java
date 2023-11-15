@@ -140,6 +140,7 @@ public class SchemaRegionConsensusImpl {
                                     .build())
                             .setRead(
                                 RatisConfig.Read.newBuilder()
+                                    .setReadOption(RatisConfig.Read.Option.LINEARIZABLE)
                                     // use thrift connection timeout to unify read timeout
                                     .setReadTimeout(
                                         TimeDuration.valueOf(
