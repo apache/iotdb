@@ -47,11 +47,11 @@ public class PipePluginAgent {
 
   private final ReentrantLock lock = new ReentrantLock();
 
+  private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
+
   private final PipeExtractorConstructor pipeExtractorConstructor;
   private final PipeProcessorConstructor pipeProcessorConstructor;
   private final PipeConnectorConstructor pipeConnectorConstructor;
-
-  private final DataNodePipePluginMetaKeeper pipePluginMetaKeeper;
 
   public PipePluginAgent() {
     this.pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
