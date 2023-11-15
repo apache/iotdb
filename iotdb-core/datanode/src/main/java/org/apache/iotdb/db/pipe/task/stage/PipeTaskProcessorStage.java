@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -62,10 +63,11 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     final PipeProcessor pipeProcessor =
         PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
 
-    // Customize should be called before createSubtask. this allows extractor exposing
+    // Validate and customize should be called before createSubtask. this allows extractor exposing
     // exceptions in advance.
     try {
-      // 1. Skip validation because it has be done in the DataNode scale
+      // 1. validate processor parameters
+      pipeProcessor.validate(new PipeParameterValidator(pipeProcessorParameters));
 
       // 2. customize processor
       final PipeProcessorRuntimeConfiguration runtimeConfiguration =

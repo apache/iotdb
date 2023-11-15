@@ -27,6 +27,7 @@ import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -72,10 +73,10 @@ public class PipeConnectorSubtaskManager {
         final PipeConnector pipeConnector =
             PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
 
-        // 1. Construct and customize PipeConnector, and then handshake (create
+        // 1. Construct, validate and customize PipeConnector, and then handshake (create
         // connection) with the target
         try {
-          // Skip validation because it has be done in the DataNode scale
+          pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
           pipeConnector.customize(
               pipeConnectorParameters, new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment));
           pipeConnector.handshake();
