@@ -148,7 +148,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector.port'='%s',"
                     + "'connector.ip'='%s',"
                     + "'connector'='iotdb-thrift-connector')",
-                receiverIp, receiverPort));
+                receiverPort, receiverIp));
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
