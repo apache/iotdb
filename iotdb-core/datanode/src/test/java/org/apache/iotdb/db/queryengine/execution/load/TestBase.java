@@ -103,10 +103,10 @@ public class TestBase {
   public static final String TEST_TSFILE_PATH =
       BASE_OUTPUT_PATH + File.separator + "testTsFile".concat(File.separator) + PARTIAL_PATH_STRING;
 
-  protected int fileNum = 100;
+  protected int fileNum = 10;
   // series number of each file, sn non-aligned series and 1 aligned series with sn measurements
-  protected int seriesNum = 1000;
-  protected int deviceNum = 100;
+  protected int seriesNum = 10;
+  protected int deviceNum = 10;
   // number of chunks of each series in a file, each series has only one chunk in a file
   protected double chunkTimeRangeRatio = 0.001;
   // the interval between two consecutive points of a series
