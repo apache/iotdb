@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipePlugin;
@@ -206,20 +206,23 @@ public class PipePluginAgent {
 
   // Validation should has the granularity of "DataNode", not "DataRegion",
   // because a DataNode may have no DataRegion at all when creating pipe
-  public void validate(PipeStaticMeta pipeStaticMeta) throws Exception {
+  public void validate(CreatePipeStatement createPipeStatement) throws Exception {
     // Only create temporary plugins to save system memory
     try (PipeExtractor temporaryExtractor =
-            reflectExtractor(pipeStaticMeta.getExtractorParameters());
+            reflectExtractor(new PipeParameters(createPipeStatement.getExtractorAttributes()));
         PipeProcessor temporaryProcessor =
-            reflectProcessor(pipeStaticMeta.getProcessorParameters());
+            reflectProcessor(new PipeParameters(createPipeStatement.getExtractorAttributes()));
         PipeConnector temporaryConnector =
-            reflectConnector(pipeStaticMeta.getConnectorParameters())) {
+            reflectConnector(new PipeParameters(createPipeStatement.getExtractorAttributes()))) {
       temporaryExtractor.validate(
-          new PipeParameterValidator(pipeStaticMeta.getExtractorParameters()));
+          new PipeParameterValidator(
+              new PipeParameters(createPipeStatement.getExtractorAttributes())));
       temporaryProcessor.validate(
-          new PipeParameterValidator(pipeStaticMeta.getProcessorParameters()));
+          new PipeParameterValidator(
+              new PipeParameters(createPipeStatement.getExtractorAttributes())));
       temporaryConnector.validate(
-          new PipeParameterValidator(pipeStaticMeta.getConnectorParameters()));
+          new PipeParameterValidator(
+              new PipeParameters(createPipeStatement.getExtractorAttributes())));
     }
   }
 
