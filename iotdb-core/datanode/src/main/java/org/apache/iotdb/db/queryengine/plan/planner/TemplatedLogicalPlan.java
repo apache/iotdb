@@ -39,7 +39,6 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
@@ -60,8 +59,8 @@ public class TemplatedLogicalPlan {
     this.queryStatement = queryStatement;
     this.context = context;
 
-    measurementList = new ArrayList<>(analysis.getTemplateTypes().getSchemaMap().keySet());
-    schemaList = new ArrayList<>(analysis.getTemplateTypes().getSchemaMap().values());
+    measurementList = new ArrayList<>(analysis.getMeasurementList());
+    schemaList = new ArrayList<>(analysis.getMeasurementSchemaList());
 
     context.getTypeProvider().setMeasurementList(measurementList);
     context.getTypeProvider().setSchemaList(schemaList);
@@ -80,14 +79,8 @@ public class TemplatedLogicalPlan {
                   devicePath,
                   analysis,
                   queryStatement,
-                  analysis.getDeviceToSourceExpressions().get(deviceName),
-                  analysis.getDeviceToSourceTransformExpressions().get(deviceName),
                   analysis.getDeviceToWhereExpression() != null
                       ? analysis.getDeviceToWhereExpression().get(deviceName)
-                      : null,
-                  analysis.getDeviceToAggregationExpressions().get(deviceName),
-                  analysis.getDeviceToGroupByExpression() != null
-                      ? analysis.getDeviceToGroupByExpression().get(deviceName)
                       : null,
                   analysis.getDeviceViewInputIndexesMap().get(deviceName),
                   context));
@@ -115,17 +108,6 @@ public class TemplatedLogicalPlan {
       analysis.setUseTopKNode();
     }
 
-    if (queryStatement.isAggregationQuery()) {
-      planBuilder =
-          planBuilder.planHavingAndTransform(
-              analysis.getHavingExpression(),
-              analysis.getSelectExpressions(),
-              analysis.getOrderByExpressions(),
-              queryStatement.isGroupByTime(),
-              queryStatement.getSelectComponent().getZoneId(),
-              queryStatement.getResultTimeOrder());
-    }
-
     if (!queryStatement.needPushDownSort()) {
       planBuilder =
           planBuilder.planOrderBy(
@@ -139,13 +121,6 @@ public class TemplatedLogicalPlan {
             .planOffset(queryStatement.getRowOffset())
             .planLimit(queryStatement.getRowLimit());
 
-    // plan select into
-    if (queryStatement.isAlignByDevice()) {
-      planBuilder = planBuilder.planDeviceViewInto(analysis.getDeviceViewIntoPathDescriptor());
-    } else {
-      planBuilder = planBuilder.planInto(analysis.getIntoPathDescriptor());
-    }
-
     return planBuilder.getRoot();
   }
 
@@ -153,11 +128,7 @@ public class TemplatedLogicalPlan {
       PartialPath devicePath,
       Analysis analysis,
       QueryStatement queryStatement,
-      Set<Expression> sourceExpressions,
-      Set<Expression> sourceTransformExpressions,
       Expression whereExpression,
-      Set<Expression> aggregationExpressions,
-      Expression groupByExpression,
       List<Integer> deviceViewInputIndexes,
       MPPQueryContext context) {
     return planRawDataSource(
@@ -169,26 +140,6 @@ public class TemplatedLogicalPlan {
         analysis.isLastLevelUseWildcard());
   }
 
-  private long pushDownLimitToScanNode(QueryStatement queryStatement) {
-    // `order by time|device LIMIT N align by device` and no value filter,
-    // can push down limitValue to ScanNode
-    if (queryStatement.isAlignByDevice()
-        && queryStatement.hasLimit()
-        && !analysis.hasValueFilter()
-        && (queryStatement.isOrderByBasedOnDevice() || queryStatement.isOrderByBasedOnTime())) {
-
-      // both `offset` and `limit` exist, push `limit+offset` down as limitValue
-      if (queryStatement.hasOffset()) {
-        return queryStatement.getRowOffset() + queryStatement.getRowLimit();
-      }
-
-      // only `limit` exist, push `limit` down as limitValue
-      return queryStatement.getRowLimit();
-    }
-
-    return 0;
-  }
-
   public PlanNode planRawDataSource(
       PartialPath devicePath,
       Ordering scanOrder,
@@ -198,7 +149,7 @@ public class TemplatedLogicalPlan {
       boolean lastLevelUseWildcard) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
 
-    if (analysis.getTemplateTypes().isDirectAligned()) {
+    if (analysis.getDeviceTemplate().isDirectAligned()) {
       AlignedPath path = new AlignedPath(devicePath);
       path.setMeasurementList(measurementList);
       path.addSchemas(schemaList);
@@ -240,6 +191,26 @@ public class TemplatedLogicalPlan {
     // updateTypeProvider(sourceExpressions);
 
     return convergeWithTimeJoin(sourceNodeList, scanOrder);
+  }
+
+  private long pushDownLimitToScanNode(QueryStatement queryStatement) {
+    // `order by time|device LIMIT N align by device` and no value filter,
+    // can push down limitValue to ScanNode
+    if (queryStatement.isAlignByDevice()
+        && queryStatement.hasLimit()
+        && !analysis.hasValueFilter()
+        && (queryStatement.isOrderByBasedOnDevice() || queryStatement.isOrderByBasedOnTime())) {
+
+      // both `offset` and `limit` exist, push `limit+offset` down as limitValue
+      if (queryStatement.hasOffset()) {
+        return queryStatement.getRowOffset() + queryStatement.getRowLimit();
+      }
+
+      // only `limit` exist, push `limit` down as limitValue
+      return queryStatement.getRowLimit();
+    }
+
+    return 0;
   }
 
   private void updateTypeProvider(Collection<Expression> expressions) {

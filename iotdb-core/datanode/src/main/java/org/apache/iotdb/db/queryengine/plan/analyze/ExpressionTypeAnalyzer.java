@@ -59,10 +59,12 @@ public class ExpressionTypeAnalyzer {
   private ExpressionTypeAnalyzer() {}
 
   public static TSDataType analyzeExpression(Analysis analysis, Expression expression) {
-    if (analysis.getTemplateTypes() != null) {
+    if (analysis.isDevicesAllInOneTemplate()
+        && (analysis.isAllExpressionTimeSeriesOperand()
+            || expression instanceof TimeSeriesOperand)) {
       TimeSeriesOperand seriesOperand = (TimeSeriesOperand) expression;
       return analysis
-          .getTemplateTypes()
+          .getDeviceTemplate()
           .getSchemaMap()
           .get(seriesOperand.getPath().getMeasurement())
           .getType();

@@ -227,6 +227,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -252,6 +254,8 @@ import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.Series
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree. */
 public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperatorTreeGenerator.class);
 
   private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
@@ -1853,7 +1857,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
     List<OutputColumn> outputColumns = generateOutputColumnsFromChildren(node);
     List<ColumnMerger> mergers = createColumnMergers(outputColumns, timeComparator);
-    List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    List<TSDataType> outputColumnTypes =
+        context.getTypeProvider().getMeasurementList() != null
+            ? getOutputColumnTypesOfTimeJoinNode(node)
+            : getOutputColumnTypes(node, context.getTypeProvider());
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new RowBasedTimeJoinOperator(
@@ -2489,6 +2496,24 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return node.getOutputColumnNames().stream()
         .map(typeProvider::getType)
         .collect(Collectors.toList());
+  }
+
+  private List<TSDataType> getOutputColumnTypesOfTimeJoinNode(PlanNode node) {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (PlanNode child : node.getChildren()) {
+      if (child instanceof SeriesScanNode) {
+        dataTypes.add(((SeriesScanNode) child).getSeriesPath().getSeriesType());
+      } else if (child instanceof AlignedSeriesScanNode) {
+        dataTypes.add(((AlignedSeriesScanNode) child).getAlignedPath().getSeriesType());
+      } else if (child instanceof TimeJoinNode) {
+        dataTypes.addAll(getOutputColumnTypesOfTimeJoinNode(child));
+      } else {
+        LOGGER.error(
+            "Unexpected PlanNode in getOutputColumnTypesOfTimeJoinNode, type: {}",
+            child.getOutputColumnNames());
+      }
+    }
+    return dataTypes;
   }
 
   private Operator generateOnlyChildOperator(PlanNode node, LocalExecutionPlanContext context) {
