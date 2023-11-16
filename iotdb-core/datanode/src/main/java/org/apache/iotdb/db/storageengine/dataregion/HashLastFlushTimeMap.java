@@ -192,7 +192,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
     for (Map.Entry<String, Long> entry : updateMap.entrySet()) {
       partitionLatestFlushedTimeForEachDevice
           .computeIfAbsent(partitionId, id -> new HashMap<>())
-          .put(entry.getKey(), entry.getValue());
+          .merge(entry.getKey(), entry.getValue(), Math::max);
       updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(
           partitionId, entry.getKey(), entry.getValue());
       if (globalLatestFlushedTimeForEachDevice.getOrDefault(entry.getKey(), Long.MIN_VALUE)

@@ -35,6 +35,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.io.File;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class ConfigMTreeStore implements IMTreeStore<IConfigMNode> {
@@ -98,7 +99,7 @@ public class ConfigMTreeStore implements IMTreeStore<IConfigMNode> {
   }
 
   @Override
-  public void updateMNode(IConfigMNode node) {}
+  public void updateMNode(IConfigMNode node, Consumer<IConfigMNode> operation) {}
 
   @Override
   public IDeviceMNode<IConfigMNode> setToEntity(IConfigMNode node) {
