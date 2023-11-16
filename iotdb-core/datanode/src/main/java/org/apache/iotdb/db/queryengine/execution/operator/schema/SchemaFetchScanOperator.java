@@ -103,8 +103,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
   }
 
   private TsBlock fetchSchema() throws MetadataException {
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    schemaTree.appendMeasurementPaths(schemaRegion.fetchSchema(patternTree, templateMap, withTags));
+    ClusterSchemaTree schemaTree = schemaRegion.fetchSchema(patternTree, templateMap, withTags);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {

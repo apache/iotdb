@@ -64,6 +64,7 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
     return iMeasurementSchema;
   }
 
+  @Override
   public Map<String, String> getTagMap() {
     return tagMap;
   }

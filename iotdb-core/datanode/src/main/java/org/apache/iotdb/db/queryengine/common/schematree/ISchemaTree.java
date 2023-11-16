@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.common.schematree;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
@@ -45,8 +46,6 @@ public interface ISchemaTree {
    * @param pathPattern the pattern of the target devices.
    * @return A HashSet instance which stores info of the devices matching the given path pattern.
    */
-  List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch);
-
   List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern);
 
   DeviceSchemaInfo searchDeviceSchemaInfo(PartialPath devicePath, List<String> measurements);
@@ -70,6 +69,20 @@ public interface ISchemaTree {
   boolean isEmpty();
 
   void mergeSchemaTree(ISchemaTree schemaTree);
+
+  /**
+   * Check whether this schema tree has normal series(not template series).
+   *
+   * @return true if it has normal series, else false
+   */
+  boolean hasNormalTimeSeries();
+
+  /**
+   * Get all templates being used in this schema tree.
+   *
+   * @return template list
+   */
+  List<Template> getUsingTemplates();
 
   /**
    * If there is view in this schema tree, return true, else return false.

@@ -35,11 +35,6 @@ public class SchemaTreeVisitorFactory {
     return new SchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);
   }
 
-  public static SchemaTreeMeasurementVisitor createSchemaTreeMeasurementVisitor(
-      SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
-    return new SchemaTreeMeasurementVisitor(root, pathPattern, isPrefixMatch);
-  }
-
   public static SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath>
       createSchemaTreeMeasurementVisitor(
           SchemaNode root,
@@ -49,16 +44,6 @@ public class SchemaTreeVisitorFactory {
           int soffset) {
     return new SchemaTreeVisitorWithLimitOffsetWrapper<>(
         new SchemaTreeMeasurementVisitor(root, pathPattern, isPrefixMatch), slimit, soffset);
-  }
-
-  public static SchemaTreeDeviceVisitor createSchemaTreeDeviceVisitor(
-      SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch, PathPatternTree scope) {
-    return new SchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch, scope);
-  }
-
-  public static SchemaTreeMeasurementVisitor createSchemaTreeMeasurementVisitor(
-      SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch, PathPatternTree scope) {
-    return new SchemaTreeMeasurementVisitor(root, pathPattern, isPrefixMatch, scope);
   }
 
   public static SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath>
