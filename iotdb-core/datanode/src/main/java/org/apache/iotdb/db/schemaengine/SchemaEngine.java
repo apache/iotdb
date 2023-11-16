@@ -43,6 +43,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionParams;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionParams;
+import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 
@@ -241,6 +242,7 @@ public class SchemaEngine {
     if (schemaMetricManager != null) {
       schemaMetricManager.clear();
     }
+    ClusterTemplateManager.getInstance().clear();
   }
 
   public ISchemaRegion getSchemaRegion(SchemaRegionId regionId) {

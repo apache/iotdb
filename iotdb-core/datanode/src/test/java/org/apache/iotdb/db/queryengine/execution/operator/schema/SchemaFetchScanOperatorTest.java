@@ -139,20 +139,20 @@ public class SchemaFetchScanOperatorTest {
             true);
     d2as2.setMeasurementAlias("status");
 
-    Mockito.when(
-            schemaRegion.fetchSchema(
-                new PartialPath("root.**.status"), Collections.emptyMap(), false))
-        .thenReturn(Arrays.asList(d1s2, d2as2, d2s2));
-    Mockito.when(
-            schemaRegion.fetchSchema(new PartialPath("root.**.s1"), Collections.emptyMap(), false))
-        .thenReturn(Arrays.asList(d1s1, d2as1, d2s1));
+    ClusterSchemaTree clusterSchemaTree = new ClusterSchemaTree();
+    clusterSchemaTree.appendSingleMeasurementPath(d1s2);
+    clusterSchemaTree.appendSingleMeasurementPath(d2as2);
+    clusterSchemaTree.appendSingleMeasurementPath(d2s2);
+    clusterSchemaTree.appendSingleMeasurementPath(d1s1);
+    clusterSchemaTree.appendSingleMeasurementPath(d2as1);
+    clusterSchemaTree.appendSingleMeasurementPath(d2s1);
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.**.status"));
     patternTree.appendPathPattern(new PartialPath("root.**.s1"));
     patternTree.constructTree();
     Mockito.when(schemaRegion.fetchSchema(patternTree, Collections.emptyMap(), false))
-        .thenReturn(Arrays.asList(d1s2, d2as2, d2s2, d1s1, d2as1, d2s1));
+        .thenReturn(clusterSchemaTree);
 
     return schemaRegion;
   }
