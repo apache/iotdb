@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.tsfile.access.Column;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -304,5 +306,14 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected long getChunkSize(Chunk chunk) {
     return (long) chunk.getHeader().getSerializedSize() + chunk.getHeader().getDataSize();
+  }
+
+  protected void checkPreviousTimestamp(long currentWritingTimestamp, int subTaskId) {
+    if (currentWritingTimestamp <= lastTime[subTaskId]) {
+      throw new CompactionLastTimeCheckFailedException(
+          deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId[subTaskId],
+          currentWritingTimestamp,
+          lastTime[subTaskId]);
+    }
   }
 }

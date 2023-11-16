@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
@@ -58,6 +59,7 @@ public class AlignedSeriesCompactionExecutor {
   private final List<IMeasurementSchema> schemaList;
   private long remainingPointInChunkWriter = 0L;
   private final CompactionTaskSummary summary;
+  private long lastWriteTimestamp = Long.MIN_VALUE;
 
   private final long chunkSizeThreshold =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -178,6 +180,7 @@ public class AlignedSeriesCompactionExecutor {
       while (batchDataIterator.hasNext()) {
         TsPrimitiveType[] pointsData = (TsPrimitiveType[]) batchDataIterator.currentValue();
         long time = batchDataIterator.currentTime();
+        checkAndUpdatePreviousTimestamp(time);
         chunkWriter.write(time, pointsData);
         ++remainingPointInChunkWriter;
 
@@ -201,6 +204,15 @@ public class AlignedSeriesCompactionExecutor {
         || chunkWriter.estimateMaxSeriesMemSize() >= chunkSizeThreshold * schemaList.size()) {
       writer.writeChunk(chunkWriter);
       remainingPointInChunkWriter = 0L;
+    }
+  }
+
+  private void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {
+    if (currentWritingTimestamp <= lastWriteTimestamp) {
+      throw new CompactionLastTimeCheckFailedException(
+          device, currentWritingTimestamp, lastWriteTimestamp);
+    } else {
+      lastWriteTimestamp = currentWritingTimestamp;
     }
   }
 }
