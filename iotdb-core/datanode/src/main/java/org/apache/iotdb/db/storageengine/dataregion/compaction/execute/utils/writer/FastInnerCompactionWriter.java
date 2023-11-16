@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyPageLoader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.access.Column;
 import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -32,6 +35,7 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
@@ -81,9 +85,9 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
    */
   @Override
   public boolean flushAlignedChunk(
-      Chunk timeChunk,
+      LazyChunkLoader timeChunkLoader,
       IChunkMetadata timeChunkMetadata,
-      List<Chunk> valueChunks,
+      List<LazyChunkLoader> valueChunkLoaders,
       List<IChunkMetadata> valueChunkMetadatas,
       int subTaskId)
       throws IOException {
@@ -94,12 +98,17 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       sealChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
     }
     if (chunkPointNumArray[subTaskId] != 0
-        || !checkIsAlignedChunkLargeEnough(timeChunk, valueChunks)) {
+        || !checkIsAlignedChunkLargeEnough(timeChunkLoader, valueChunkLoaders)) {
       // if there is unsealed chunk or current chunk is not large enough, then deserialize the chunk
       return false;
     }
     flushAlignedChunkToFileWriter(
-        fileWriter, timeChunk, timeChunkMetadata, valueChunks, valueChunkMetadatas, subTaskId);
+        fileWriter,
+        timeChunkLoader,
+        timeChunkMetadata,
+        valueChunkLoaders,
+        valueChunkMetadatas,
+        subTaskId);
 
     isEmptyFile = false;
     lastTime[subTaskId] = timeChunkMetadata.getEndTime();
@@ -116,11 +125,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
    * @throws PageException if errors occurred when write data page header
    */
   public boolean flushAlignedPage(
-      ByteBuffer compressedTimePageData,
-      PageHeader timePageHeader,
-      List<ByteBuffer> compressedValuePageDatas,
-      List<PageHeader> valuePageHeaders,
-      int subTaskId)
+      LazyPageLoader timePageLoader, List<LazyPageLoader> valuePageLoaders, int subTaskId)
       throws IOException, PageException {
     boolean isUnsealedPageOverThreshold =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
@@ -128,6 +133,11 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     if (isUnsealedPageOverThreshold) {
       // seal page
       chunkWriters[subTaskId].sealCurrentPage();
+    }
+    PageHeader timePageHeader = timePageLoader.getPageHeader();
+    List<PageHeader> valuePageHeaders = new ArrayList<>(valuePageLoaders.size());
+    for (LazyPageLoader valuePageLoader : valuePageLoaders) {
+      valuePageHeaders.add(valuePageLoader.getPageHeader());
     }
     if (!isUnsealedPageOverThreshold
         || !checkIsAlignedPageLargeEnough(timePageHeader, valuePageHeaders)) {
@@ -137,10 +147,8 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
 
     flushAlignedPageToChunkWriter(
         (AlignedChunkWriterImpl) chunkWriters[subTaskId],
-        compressedTimePageData,
-        timePageHeader,
-        compressedValuePageDatas,
-        valuePageHeaders,
+        timePageLoader,
+        valuePageLoaders,
         subTaskId);
 
     isEmptyFile = false;
@@ -177,15 +185,16 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     return true;
   }
 
-  private boolean checkIsAlignedChunkLargeEnough(Chunk timeChunk, List<Chunk> valueChunks) {
-    if (checkIsChunkLargeEnough(timeChunk)) {
+  private boolean checkIsAlignedChunkLargeEnough(
+      LazyChunkLoader timeChunk, List<LazyChunkLoader> valueChunks) throws IOException {
+    if (checkIsChunkLargeEnough(timeChunk.getChunkMetadata(), timeChunk.loadChunkHeader())) {
       return true;
     }
-    for (Chunk valueChunk : valueChunks) {
-      if (valueChunk == null) {
+    for (LazyChunkLoader valueChunk : valueChunks) {
+      if (valueChunk.isEmpty()) {
         continue;
       }
-      if (checkIsChunkLargeEnough(valueChunk)) {
+      if (checkIsChunkLargeEnough(valueChunk.getChunkMetadata(), valueChunk.loadChunkHeader())) {
         return true;
       }
     }
@@ -197,13 +206,18 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
         || getChunkSize(chunk) >= targetChunkSize;
   }
 
+  private boolean checkIsChunkLargeEnough(ChunkMetadata chunkMetadata, ChunkHeader chunkHeader) {
+    return chunkMetadata.getStatistics().getCount() >= targetChunkPointNum
+        || chunkHeader.getSerializedSize() + chunkHeader.getDataSize() >= targetChunkSize;
+  }
+
   private boolean checkIsAlignedPageLargeEnough(
       PageHeader timePageHeader, List<PageHeader> valuePageHeaders) {
     if (checkIsPageLargeEnough(timePageHeader)) {
       return true;
     }
     for (PageHeader valuePageHeader : valuePageHeaders) {
-      if (valuePageHeader == null) {
+      if (valuePageHeader == null || valuePageHeader.getStatistics() == null) {
         continue;
       }
       if (checkIsPageLargeEnough(valuePageHeader)) {

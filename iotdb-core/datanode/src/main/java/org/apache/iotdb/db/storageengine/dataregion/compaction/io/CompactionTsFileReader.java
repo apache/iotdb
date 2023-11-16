@@ -20,8 +20,12 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyPageLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
@@ -32,7 +36,9 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -174,6 +180,40 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
     long dataSize = readDataSize.get() - before;
     CompactionMetrics.getInstance()
         .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
+  }
+
+  public List<LazyPageLoader> getLazyPageLoadersOfChunk(
+      ChunkMetadata chunkMetadata, ChunkHeader chunkHeader) throws IOException {
+    long chunkDataStartOffset =
+        chunkMetadata.getOffsetOfChunkHeader() + chunkHeader.getSerializedSize();
+    long chunkEndOffset = chunkDataStartOffset + chunkHeader.getDataSize();
+    long index = chunkDataStartOffset;
+    boolean hasPageStatistics =
+        ((byte) (chunkHeader.getChunkType() & 0x3F)) != MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER;
+    List<LazyPageLoader> pageLoaders = new ArrayList<>();
+    tsFileInput.position(index);
+    InputStream inputStream = tsFileInput.wrapAsInputStream();
+    while (index < chunkEndOffset) {
+      PageHeader pageHeader =
+          PageHeader.deserializeFrom(inputStream, chunkHeader.getDataType(), hasPageStatistics);
+      int serializedPageSize = pageHeader.getSerializedPageSize();
+      int headerSize = serializedPageSize - pageHeader.getCompressedSize();
+      if (!hasPageStatistics) {
+        pageHeader.setStatistics(chunkMetadata.getStatistics());
+      }
+      pageLoaders.add(new LazyPageLoader(this, index + headerSize, pageHeader));
+      index += serializedPageSize;
+      inputStream.skip(pageHeader.getCompressedSize());
+    }
+    return pageLoaders;
+  }
+
+  public ByteBuffer readPageWithoutUncompressing(long startOffset, int pageSize)
+      throws IOException {
+    if (pageSize == 0) {
+      return null;
+    }
+    return readData(startOffset, pageSize);
   }
 
   @Override

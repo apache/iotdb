@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.LazyPageLoader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.access.Column;
 import org.apache.iotdb.tsfile.exception.write.PageException;
@@ -93,9 +95,9 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
    */
   @Override
   public boolean flushAlignedChunk(
-      Chunk timeChunk,
+      LazyChunkLoader timeChunkLoader,
       IChunkMetadata timeChunkMetadata,
-      List<Chunk> valueChunks,
+      List<LazyChunkLoader> valueChunkLoaders,
       List<IChunkMetadata> valueChunkMetadatas,
       int subTaskId)
       throws IOException {
@@ -109,9 +111,9 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
     flushAlignedChunkToFileWriter(
         targetFileWriters.get(fileIndex),
-        timeChunk,
+        timeChunkLoader,
         timeChunkMetadata,
-        valueChunks,
+        valueChunkLoaders,
         valueChunkMetadatas,
         subTaskId);
 
@@ -131,12 +133,9 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
    * @throws PageException if errors occurred when write data page header
    */
   public boolean flushAlignedPage(
-      ByteBuffer compressedTimePageData,
-      PageHeader timePageHeader,
-      List<ByteBuffer> compressedValuePageDatas,
-      List<PageHeader> valuePageHeaders,
-      int subTaskId)
+      LazyPageLoader timePageLoader, List<LazyPageLoader> valuePageLoaders, int subTaskId)
       throws IOException, PageException {
+    PageHeader timePageHeader = timePageLoader.getPageHeader();
     checkTimeAndMayFlushChunkToCurrentFile(timePageHeader.getStartTime(), subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
     if (!checkIsPageSatisfied(timePageHeader, fileIndex, subTaskId)) {
@@ -146,10 +145,8 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
     flushAlignedPageToChunkWriter(
         (AlignedChunkWriterImpl) chunkWriters[subTaskId],
-        compressedTimePageData,
-        timePageHeader,
-        compressedValuePageDatas,
-        valuePageHeaders,
+        timePageLoader,
+        valuePageLoaders,
         subTaskId);
 
     // check chunk size and may open a new chunk

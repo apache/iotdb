@@ -45,21 +45,21 @@ import java.nio.channels.WritableByteChannel;
 
 public class TimeChunkWriter {
 
-  private static final Logger logger = LoggerFactory.getLogger(TimeChunkWriter.class);
+  protected static final Logger logger = LoggerFactory.getLogger(TimeChunkWriter.class);
 
-  private final String measurementId;
+  protected final String measurementId;
 
-  private final TSEncoding encodingType;
+  protected final TSEncoding encodingType;
 
-  private final CompressionType compressionType;
+  protected final CompressionType compressionType;
 
   /** all pages of this chunk. */
-  private final PublicBAOS pageBuffer;
+  protected final PublicBAOS pageBuffer;
 
-  private int numOfPages;
+  protected int numOfPages;
 
   /** write data into current page */
-  private TimePageWriter pageWriter;
+  protected TimePageWriter pageWriter;
 
   /** page size threshold. */
   private final long pageSizeThreshold;
@@ -73,12 +73,12 @@ public class TimeChunkWriter {
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
 
   /** statistic of this chunk. */
-  private TimeStatistics statistics;
+  protected TimeStatistics statistics;
 
   /** first page info */
-  private int sizeWithoutStatistic;
+  protected int sizeWithoutStatistic;
 
-  private Statistics<?> firstPageStatistics;
+  protected Statistics<?> firstPageStatistics;
 
   public TimeChunkWriter(
       String measurementId,
