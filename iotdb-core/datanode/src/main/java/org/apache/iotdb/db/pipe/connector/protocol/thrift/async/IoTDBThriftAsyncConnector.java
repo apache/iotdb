@@ -78,9 +78,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftAsyncConnector.class);
 
-  private static final String THRIFT_ERROR_FORMATTER =
-      "Failed to borrow client from client pool or TException when sending to receiver %s:%s.";
-
   private static final AtomicReference<
           IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new AtomicReference<>();
@@ -231,9 +228,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
       pipeTransferTabletBatchEventHandler.transfer(client);
     } catch (Exception ex) {
-      LOGGER.warn(
-          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
-          ex);
+      throw new PipeConnectionException(ex.getMessage(), ex);
     }
   }
 
@@ -246,9 +241,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
       pipeTransferInsertNodeReqHandler.transfer(client);
     } catch (Exception ex) {
-      LOGGER.warn(
-          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
-          ex);
+      throw new PipeConnectionException(ex.getMessage(), ex);
     }
   }
 
@@ -260,9 +253,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
       pipeTransferTabletReqHandler.transfer(client);
     } catch (Exception ex) {
-      LOGGER.warn(
-          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
-          ex);
+      throw new PipeConnectionException(ex.getMessage(), ex);
     }
   }
 
@@ -321,9 +312,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
       pipeTransferTsFileInsertionEventHandler.transfer(client);
     } catch (Exception ex) {
-      LOGGER.warn(
-          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
-          ex);
+      throw new PipeConnectionException(ex.getMessage(), ex);
     }
   }
 
