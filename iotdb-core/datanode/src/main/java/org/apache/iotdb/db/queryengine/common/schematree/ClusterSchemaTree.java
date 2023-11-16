@@ -361,16 +361,13 @@ public class ClusterSchemaTree implements ISchemaTree {
   }
 
   @Override
-  public SchemaTreeType getType() {
-    if (templateMap.isEmpty()) {
-      return SchemaTreeType.NORMAL;
-    } else if (hasNormalTimeSeries) {
-      return SchemaTreeType.MIXED;
-    } else if (templateMap.size() == 1) {
-      return SchemaTreeType.TEMPLATE_ONLY;
-    } else {
-      return SchemaTreeType.TEMPLATE_MULTI;
-    }
+  public boolean hasNormalTimeSeries() {
+    return hasNormalTimeSeries;
+  }
+
+  @Override
+  public List<Template> getUsingTemplates() {
+    return new ArrayList<>(templateMap.values());
   }
 
   public void mergeSchemaTree(ClusterSchemaTree schemaTree) {

@@ -863,7 +863,8 @@ public class ClusterSchemaTreeTest {
         Assert.assertEquals("s" + measurementIndex++, measurementPath.getMeasurement());
       }
     }
-    Assert.assertEquals(SchemaTreeType.TEMPLATE_ONLY, schemaTree1.getType());
+    Assert.assertFalse(schemaTree1.hasNormalTimeSeries());
+    Assert.assertEquals(1, schemaTree1.getUsingTemplates().size());
     Template template2 =
         new Template(
             "t2",
@@ -875,7 +876,8 @@ public class ClusterSchemaTreeTest {
     ClusterSchemaTree schemaTree3 = new ClusterSchemaTree();
     schemaTree3.appendTemplateDevice(new PartialPath("root.sg2.d1"), false, 2, template2);
     schemaTree1.mergeSchemaTree(schemaTree3);
-    Assert.assertEquals(SchemaTreeType.TEMPLATE_MULTI, schemaTree1.getType());
+    Assert.assertFalse(schemaTree1.hasNormalTimeSeries());
+    Assert.assertEquals(2, schemaTree1.getUsingTemplates().size());
     for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
       if (deviceSchemaInfo.getDevicePath().startsWith("root.sg1")) {
         Assert.assertEquals(1, deviceSchemaInfo.getTemplateId());
@@ -898,7 +900,8 @@ public class ClusterSchemaTreeTest {
     schemaTree4.appendSingleMeasurementPath(
         new MeasurementPath("root.sg3.d1.s1", TSDataType.INT32));
     schemaTree1.mergeSchemaTree(schemaTree4);
-    Assert.assertEquals(SchemaTreeType.MIXED, schemaTree1.getType());
+    Assert.assertTrue(schemaTree1.hasNormalTimeSeries());
+    Assert.assertEquals(2, schemaTree1.getUsingTemplates().size());
     for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
       if (deviceSchemaInfo.getDevicePath().startsWith("root.sg1")) {
         Assert.assertEquals(1, deviceSchemaInfo.getTemplateId());
