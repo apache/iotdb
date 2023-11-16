@@ -249,6 +249,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       queryStatement.semanticCheck();
 
       ISchemaTree schemaTree = analyzeSchema(queryStatement, analysis, context);
+
       logger.warn("--- [analyzeSchema] : {}ms", System.currentTimeMillis() - startTime);
 
       // If there is no leaf node in the schema tree, the query should be completed immediately
@@ -265,8 +266,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
-        if (TemplatedAnalyze.canBuildPlanUseTemplate(
-            analysis, queryStatement, schemaFetcher, partitionFetcher, schemaTree)) {
+        if (analysis.isAllDevicesInOneTemplate()
+            && TemplatedAnalyze.canBuildPlanUseTemplate(
+                analysis, queryStatement, schemaFetcher, partitionFetcher, schemaTree)) {
           return analysis;
         }
 
@@ -367,7 +369,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     // request schema fetch API
     long startTime = System.nanoTime();
     ISchemaTree schemaTree = null;
-    Template template = null;
     try {
       logger.debug("[StartFetchSchema]");
       if (queryStatement.isGroupByTag()) {
@@ -375,6 +376,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             schemaFetcher.fetchSchemaWithTags(concatPathRewriter.getPatternTree(), context);
       } else {
         schemaTree = schemaFetcher.fetchSchema(concatPathRewriter.getPatternTree(), context);
+      }
+
+      if (!schemaTree.hasNormalTimeSeries()) {
+        List<Template> templates = schemaTree.getUsingTemplates();
+        if (templates.size() == 1) {
+          analysis.setSchemaTree(schemaTree);
+          analysis.setDeviceTemplate(templates.get(0));
+          return schemaTree;
+        }
       }
 
       // make sure paths in logical view is fetched

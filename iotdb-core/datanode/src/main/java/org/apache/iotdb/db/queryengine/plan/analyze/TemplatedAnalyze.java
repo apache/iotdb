@@ -98,24 +98,25 @@ public class TemplatedAnalyze {
       return false;
     }
 
-    Template template = null;
-    List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
-    for (PartialPath devicePath : devicePatternList) {
-      Map<Integer, Template> templateMap = schemaFetcher.checkAllRelatedTemplate(devicePath);
-      if (templateMap != null && templateMap.size() == 1) {
-        if (template == null) {
-          template = templateMap.values().iterator().next();
-        } else {
-          if (templateMap.values().iterator().next().getId() != template.getId()) {
-            template = null;
-            break;
-          }
-        }
-      } else {
-        return false;
-      }
-    }
+    //    Template template = null;
+    //    List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
+    //    for (PartialPath devicePath : devicePatternList) {
+    //      Map<Integer, Template> templateMap = schemaFetcher.checkAllRelatedTemplate(devicePath);
+    //      if (templateMap != null && templateMap.size() == 1) {
+    //        if (template == null) {
+    //          template = templateMap.values().iterator().next();
+    //        } else {
+    //          if (templateMap.values().iterator().next().getId() != template.getId()) {
+    //            template = null;
+    //            break;
+    //          }
+    //        }
+    //      } else {
+    //        return false;
+    //      }
+    //    }
 
+    Template template = analysis.getDeviceTemplate();
     List<String> measurementList = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
     if (template != null) {
@@ -216,14 +217,13 @@ public class TemplatedAnalyze {
     Set<PartialPath> deviceSet = new HashSet<>();
     for (PartialPath devicePattern : devicePatternList) {
       // get all matched devices
-      // TODO isPrefixMatch可否设置为false? analyzeFrom能否直接返回schemaTree的全部devices?
       deviceSet.addAll(
-          schemaTree.getMatchedDevices(devicePattern, false).stream()
+          schemaTree.getMatchedDevices(devicePattern).stream()
               .map(DeviceSchemaInfo::getDevicePath)
               .collect(Collectors.toList()));
     }
 
-    // TODO 是否一定要排序?  最终的sourceNodeList已经会排序?
+    // TODO need sort?  will sourceNodeList sorted lastly?
     return queryStatement.getResultDeviceOrder() == Ordering.ASC
         ? deviceSet.stream().sorted().collect(Collectors.toList())
         : deviceSet.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
