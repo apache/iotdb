@@ -369,7 +369,7 @@ public class Analysis {
       return null;
     }
 
-    if (isDevicesAllInOneTemplate()
+    if (isAllDevicesInOneTemplate()
         && (isOnlyQueryTemplateMeasurements() || expression instanceof TimeSeriesOperand)) {
       TimeSeriesOperand seriesOperand = (TimeSeriesOperand) expression;
       return deviceTemplate.getSchemaMap().get(seriesOperand.getPath().getMeasurement()).getType();
@@ -820,7 +820,7 @@ public class Analysis {
   // All Queries Devices Set In One Template
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public boolean isDevicesAllInOneTemplate() {
+  public boolean isAllDevicesInOneTemplate() {
     return this.deviceTemplate != null;
   }
 

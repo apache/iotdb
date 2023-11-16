@@ -49,12 +49,6 @@ public class QueryContext {
   private final Map<String, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
       new HashMap<>();
 
-  /**
-   * If the resource file has added a variable to represent whether the TsFile has been modified,
-   * this variable can be replaced.
-   */
-  private final Set<String> noExistModeFiles = new HashSet<>();
-
   protected long queryId;
 
   private long queryTimeLowerBound = Long.MIN_VALUE;

@@ -170,7 +170,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       String outputDevice = node.getDevices().get(i);
       PlanNode child = node.getChildren().get(i);
       List<TRegionReplicaSet> regionReplicaSets =
-          analysis.isDevicesAllInOneTemplate()
+          analysis.isAllDevicesInOneTemplate()
               ? new ArrayList<>(
                   analysis.getPartitionInfo(outputDevice, analysis.getGlobalTimeFilter()))
               : new ArrayList<>(

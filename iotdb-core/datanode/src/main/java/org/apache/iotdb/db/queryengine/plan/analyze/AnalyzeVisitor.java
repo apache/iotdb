@@ -54,7 +54,6 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
-import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
@@ -375,32 +374,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         schemaTree =
             schemaFetcher.fetchSchemaWithTags(concatPathRewriter.getPatternTree(), context);
       } else {
-        // TODO reinforce the judgement condition
-        //        if (queryStatement.isAlignByDevice() && !queryStatement.isAggregationQuery()) {
-        //          for (PartialPath partialPath :
-        // concatPathRewriter.getPatternTree().getAllDevicePaths()) {
-        //            Pair<Template, PartialPath> templateSetInfo =
-        // schemaFetcher.checkTemplateSetInfo(partialPath);
-        //            if (templateSetInfo != null) {
-        //              if (template == null) {
-        //                template = templateSetInfo.getLeft();
-        //              } else if (templateSetInfo.getLeft().getId() != template.getId()) {
-        //                template = null;
-        //                break;
-        //              }
-        //            }
-        //          }
-        //        }
-
-        if (template == null) {
-          schemaTree = schemaFetcher.fetchSchema(concatPathRewriter.getPatternTree(), context);
-        }
+        schemaTree = schemaFetcher.fetchSchema(concatPathRewriter.getPatternTree(), context);
       }
 
       // make sure paths in logical view is fetched
-      if (template == null) {
-        updateSchemaTreeByViews(analysis, schemaTree);
-      }
+      updateSchemaTreeByViews(analysis, schemaTree);
     } finally {
       logger.debug("[EndFetchSchema]");
       QueryPlanCostMetricSet.getInstance()
@@ -408,7 +386,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     analysis.setSchemaTree(schemaTree);
-    return schemaTree == null ? new ClusterSchemaTree() : schemaTree;
+    return schemaTree;
   }
 
   private Analysis finishQuery(QueryStatement queryStatement, Analysis analysis) {
@@ -611,7 +589,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (PartialPath devicePattern : devicePatternList) {
       // get all matched devices
       deviceSet.addAll(
-          schemaTree.getMatchedDevices(devicePattern, false).stream()
+          schemaTree.getMatchedDevices(devicePattern).stream()
               .map(DeviceSchemaInfo::getDevicePath)
               .collect(Collectors.toList()));
     }
@@ -722,7 +700,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return outputExpressions;
   }
 
-  protected static void updateMeasurementToDeviceSelectExpressions(
+  private void updateMeasurementToDeviceSelectExpressions(
       Analysis analysis,
       Map<Expression, Map<String, Expression>> measurementToDeviceSelectExpressions,
       PartialPath device,
@@ -736,7 +714,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  protected static void updateDeviceToSelectExpressions(
+  private void updateDeviceToSelectExpressions(
       Analysis analysis,
       Map<String, Set<Expression>> deviceToSelectExpressions,
       Map<String, Expression> deviceToSelectExpressionsOfOneMeasurement) {
@@ -754,7 +732,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  protected static String analyzeAlias(
+  private String analyzeAlias(
       String resultColumnAlias,
       Expression rawExpression,
       Expression normalizedExpression,
@@ -1454,7 +1432,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setDeviceViewInputIndexesMap(deviceViewInputIndexesMap);
   }
 
-  static void checkDeviceViewInputUniqueness(Set<Expression> outputExpressionsUnderDevice) {
+  private void checkDeviceViewInputUniqueness(Set<Expression> outputExpressionsUnderDevice) {
     Set<Expression> normalizedOutputExpressionsUnderDevice =
         outputExpressionsUnderDevice.stream()
             .map(ExpressionAnalyzer::normalizeExpression)
@@ -2088,7 +2066,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
    * <p>an inconsistent example: select s0 from root.sg1.d1, root.sg1.d2 align by device, return
    * false while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
    */
-  protected static void checkDataTypeConsistencyInAlignByDevice(
+  private void checkDataTypeConsistencyInAlignByDevice(
       Analysis analysis, List<Expression> expressions) {
     TSDataType checkedDataType = analysis.getType(expressions.get(0));
     for (Expression expression : expressions) {
@@ -2109,7 +2087,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  protected static void checkAliasUniqueness(
+  private void checkAliasUniqueness(
       String alias, Map<Expression, Map<String, Expression>> measurementToDeviceSelectExpressions) {
     if (alias != null && measurementToDeviceSelectExpressions.keySet().size() > 1) {
       throw new SemanticException(

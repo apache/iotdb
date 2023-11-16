@@ -59,7 +59,7 @@ public class ExpressionTypeAnalyzer {
   private ExpressionTypeAnalyzer() {}
 
   public static TSDataType analyzeExpression(Analysis analysis, Expression expression) {
-    if (analysis.isDevicesAllInOneTemplate()
+    if (analysis.isAllDevicesInOneTemplate()
         && (analysis.isOnlyQueryTemplateMeasurements()
             || expression instanceof TimeSeriesOperand)) {
       TimeSeriesOperand seriesOperand = (TimeSeriesOperand) expression;

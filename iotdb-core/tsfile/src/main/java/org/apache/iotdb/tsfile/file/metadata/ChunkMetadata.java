@@ -283,7 +283,7 @@ public class ChunkMetadata implements IChunkMetadata {
 
   // it's only used for query cache, measurementUid is from TimeSeriesMetadata
   public long getRetainedSizeInBytes() {
-    return INSTANCE_SIZE + (statistics == null ? 0L : Statistics.getSizeByType(tsDataType));
+    return INSTANCE_SIZE + (statistics == null ? 0L : statistics.getRetainedSizeInBytes());
   }
 
   @Override

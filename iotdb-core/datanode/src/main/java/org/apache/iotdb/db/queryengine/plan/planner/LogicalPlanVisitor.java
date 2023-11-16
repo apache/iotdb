@@ -123,7 +123,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
   @Override
   public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
-    if (analysis.isDevicesAllInOneTemplate()) {
+    if (analysis.isAllDevicesInOneTemplate()) {
       return new TemplatedLogicalPlan(analysis, queryStatement, context).visitQuery();
     }
 
