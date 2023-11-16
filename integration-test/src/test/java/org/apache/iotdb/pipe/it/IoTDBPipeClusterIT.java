@@ -567,13 +567,13 @@ public class IoTDBPipeClusterIT {
     }
   }
 
-  // Currently ignore this test because this test intends to test the behaviour when the sender has
-  // a temporary node joined and then removed, but in reality it just tears it down. In this
-  // circumstance the IT may fail. However, the "remove" method is currently not provided thus
-  // we ignore this test now.
-  @Ignore
+  @Ignore(
+      "Currently ignore this test because this test intends to test the behaviour when the sender has"
+          + " a temporary node joined and then removed, but in reality it just tears it down. In this"
+          + " circumstance the IT may fail. However, the \"remove\" method is currently not provided thus"
+          + " we ignore this test now.")
   @Test
-  public void testNewDataNodeFailureAfterTransferringData() throws Exception {
+  public void testNewDataNodeFailureParallelToTransferringData() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     String receiverIp = receiverDataNode.getIp();
