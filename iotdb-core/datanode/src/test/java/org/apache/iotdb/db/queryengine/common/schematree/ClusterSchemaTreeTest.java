@@ -51,6 +51,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
@@ -865,6 +866,8 @@ public class ClusterSchemaTreeTest {
     }
     Assert.assertFalse(schemaTree1.hasNormalTimeSeries());
     Assert.assertEquals(1, schemaTree1.getUsingTemplates().size());
+    checkDeviceUsingTemplate(
+        schemaTree1, 1, Sets.newSet("root.sg1.v1.d1", "root.sg1.v1.d2", "root.sg1.v1"));
     Template template2 =
         new Template(
             "t2",
@@ -872,12 +875,16 @@ public class ClusterSchemaTreeTest {
             Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32, TSDataType.BOOLEAN),
             Arrays.asList(TSEncoding.RLE, TSEncoding.RLE, TSEncoding.RLE),
             Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.SNAPPY));
-    template1.setId(1);
+    template2.setId(2);
     ClusterSchemaTree schemaTree3 = new ClusterSchemaTree();
     schemaTree3.appendTemplateDevice(new PartialPath("root.sg2.d1"), false, 2, template2);
     schemaTree1.mergeSchemaTree(schemaTree3);
     Assert.assertFalse(schemaTree1.hasNormalTimeSeries());
     Assert.assertEquals(2, schemaTree1.getUsingTemplates().size());
+
+    checkDeviceUsingTemplate(
+        schemaTree1, 1, Sets.newSet("root.sg1.v1.d1", "root.sg1.v1.d2", "root.sg1.v1"));
+    checkDeviceUsingTemplate(schemaTree1, 2, Sets.newSet("root.sg2.d1"));
     for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
       if (deviceSchemaInfo.getDevicePath().startsWith("root.sg1")) {
         Assert.assertEquals(1, deviceSchemaInfo.getTemplateId());
@@ -925,6 +932,17 @@ public class ClusterSchemaTreeTest {
             "s1", deviceSchemaInfo.getMeasurementSchemaPathList().get(0).getMeasurement());
       }
     }
+  }
+
+  private void checkDeviceUsingTemplate(
+      ISchemaTree schemaTree, int templateId, Set<String> expected) {
+    List<PartialPath> deviceUsingTemplate = schemaTree.getDeviceUsingTemplate(templateId);
+    Assert.assertEquals(expected.size(), deviceUsingTemplate.size());
+    for (PartialPath d : deviceUsingTemplate) {
+      Assert.assertTrue(expected.contains(d.getFullPath()));
+      expected.remove(d.getFullPath());
+    }
+    Assert.assertTrue(expected.isEmpty());
   }
 
   @Test
