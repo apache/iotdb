@@ -82,7 +82,6 @@ public class Tablet {
    */
   public Tablet(String deviceId, List<MeasurementSchema> schemas) {
     this(deviceId, schemas, DEFAULT_SIZE);
-    System.out.println(deviceId);
   }
 
   /**
