@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.fill;
 
-import org.apache.iotdb.tsfile.access.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+public interface IFillFilter {
 
-public interface IFill {
+  // always fill
+  IFillFilter TRUE = (time, previousTime) -> true;
 
-  Column fill(TimeColumn timeColumn, Column valueColumn);
+  /**
+   * @param time current timestamp
+   * @param previousTime previous timestamp
+   * @return true if we can fill, otherwise we keep null
+   */
+  boolean needFill(long time, long previousTime);
 }
