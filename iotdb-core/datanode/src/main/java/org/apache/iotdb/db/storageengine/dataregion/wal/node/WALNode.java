@@ -44,7 +44,9 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALSignalEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointManager;
+import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
@@ -122,8 +124,10 @@ public class WALNode implements IWALNode {
     if (!this.logDirectory.exists() && this.logDirectory.mkdirs()) {
       logger.info("create folder {} for wal node-{}.", logDirectory, identifier);
     }
-    this.buffer = new WALBuffer(identifier, logDirectory, startFileVersion, startSearchIndex);
     this.checkpointManager = new CheckpointManager(identifier, logDirectory);
+    this.buffer =
+        new WALBuffer(
+            identifier, logDirectory, checkpointManager, startFileVersion, startSearchIndex);
   }
 
   @Override
@@ -162,7 +166,12 @@ public class WALNode implements IWALNode {
     if (memTable.isSignalMemTable()) {
       return;
     }
-    checkpointManager.makeFlushMemTableCP(memTable.getMemTableId());
+
+    MemTableInfo memTableInfo = new MemTableInfo(memTable, null, -1);
+    Checkpoint checkpoint =
+        new Checkpoint(CheckpointType.FLUSH_MEMORY_TABLE, Collections.singletonList(memTableInfo));
+    buffer.write(new WALInfoEntry(memTable.getMemTableId(), checkpoint));
+
     // remove snapshot info
     memTableSnapshotCount.remove(memTable.getMemTableId());
     // update cost info
@@ -181,7 +190,11 @@ public class WALNode implements IWALNode {
     // use current log version id as first file version id
     long firstFileVersionId = buffer.getCurrentWALFileVersion();
     MemTableInfo memTableInfo = new MemTableInfo(memTable, targetTsFile, firstFileVersionId);
-    checkpointManager.makeCreateMemTableCP(memTableInfo);
+    checkpointManager.makeCreateMemTableCPInMemory(memTableInfo);
+
+    Checkpoint checkpoint =
+        new Checkpoint(CheckpointType.CREATE_MEMORY_TABLE, Collections.singletonList(memTableInfo));
+    buffer.write(new WALInfoEntry(memTable.getMemTableId(), checkpoint));
   }
 
   // region methods for pipe

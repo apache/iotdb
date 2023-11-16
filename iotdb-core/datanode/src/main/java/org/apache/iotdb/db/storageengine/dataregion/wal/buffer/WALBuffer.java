@@ -28,6 +28,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
+import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
@@ -68,6 +70,8 @@ public class WALBuffer extends AbstractWALBuffer {
 
   // whether close method is called
   private volatile boolean isClosed = false;
+  // manage checkpoints
+  private final CheckpointManager checkpointManager;
   // WALEntries
   private final BlockingQueue<WALEntry> walEntries = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
   // lock to provide synchronization for double buffers mechanism, protecting buffers status
@@ -99,13 +103,18 @@ public class WALBuffer extends AbstractWALBuffer {
   private final ExecutorService syncBufferThread;
 
   public WALBuffer(String identifier, String logDirectory) throws FileNotFoundException {
-    this(identifier, logDirectory, 0, 0L);
+    this(identifier, logDirectory, new CheckpointManager(identifier, logDirectory), 0, 0L);
   }
 
   public WALBuffer(
-      String identifier, String logDirectory, long startFileVersion, long startSearchIndex)
+      String identifier,
+      String logDirectory,
+      CheckpointManager checkpointManager,
+      long startFileVersion,
+      long startSearchIndex)
       throws FileNotFoundException {
     super(identifier, logDirectory, startFileVersion, startSearchIndex);
+    this.checkpointManager = checkpointManager;
     currentFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
     allocateBuffers();
     serializeThread =
@@ -174,6 +183,7 @@ public class WALBuffer extends AbstractWALBuffer {
   /** This info class traverses some extra info from serializeThread to syncBufferThread. */
   private static class SerializeInfo {
     final WALMetaData metaData = new WALMetaData();
+    final List<Checkpoint> checkpoints = new ArrayList<>();
     final List<WALFlushListener> fsyncListeners = new ArrayList<>();
     WALFlushListener rollWALFileWriterListener = null;
   }
@@ -242,7 +252,7 @@ public class WALBuffer extends AbstractWALBuffer {
       WRITING_METRICS.recordSerializeWALEntryTotalCost(System.nanoTime() - start);
 
       // call fsync at last and set fsyncListeners
-      if (totalSize > 0) {
+      if (totalSize > 0 || !info.checkpoints.isEmpty()) {
         fsyncWorkingBuffer(currentSearchIndex, currentFileStatus, info);
       }
     }
@@ -264,6 +274,11 @@ public class WALBuffer extends AbstractWALBuffer {
 
     /** Handle a normal info WALEntry. */
     private void handleInfoEntry(WALEntry walEntry) {
+      if (walEntry.getType() == WALEntryType.MEMORY_TABLE_CHECKPOINT) {
+        info.checkpoints.add((Checkpoint) walEntry.getValue());
+        return;
+      }
+
       int size = byteBufferView.position();
       try {
         long start = System.nanoTime();
@@ -472,6 +487,9 @@ public class WALBuffer extends AbstractWALBuffer {
     @Override
     public void run() {
       final long startTime = System.nanoTime();
+
+      makeMemTableCheckpoints();
+
       long walFileVersionId = currentWALFileVersion;
       currentWALFileWriter.updateFileStatus(fileStatus);
 
@@ -542,6 +560,29 @@ public class WALBuffer extends AbstractWALBuffer {
       }
       WRITING_METRICS.recordWALBufferEntriesCount(info.fsyncListeners.size());
       WRITING_METRICS.recordSyncWALBufferCost(System.nanoTime() - startTime, forceFlag);
+    }
+
+    private void makeMemTableCheckpoints() {
+      if (info.checkpoints.isEmpty()) {
+        return;
+      }
+      for (Checkpoint checkpoint : info.checkpoints) {
+        switch (checkpoint.getType()) {
+          case CREATE_MEMORY_TABLE:
+            checkpointManager.makeCreateMemTableCPOnDisk(
+                checkpoint.getMemTableInfos().get(0).getMemTableId());
+            break;
+          case FLUSH_MEMORY_TABLE:
+            checkpointManager.makeFlushMemTableCP(
+                checkpoint.getMemTableInfos().get(0).getMemTableId());
+            break;
+          default:
+            throw new RuntimeException(
+                "Cannot make other checkpoint types in the wal buffer, type is "
+                    + checkpoint.getType());
+        }
+      }
+      checkpointManager.fsyncCheckpointFile();
     }
   }
 
@@ -637,5 +678,9 @@ public class WALBuffer extends AbstractWALBuffer {
     } finally {
       buffersLock.unlock();
     }
+  }
+
+  public CheckpointManager getCheckpointManager() {
+    return checkpointManager;
   }
 }
