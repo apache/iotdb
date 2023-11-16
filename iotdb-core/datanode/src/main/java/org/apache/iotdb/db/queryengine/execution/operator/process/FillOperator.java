@@ -71,7 +71,7 @@ public class FillOperator implements ProcessOperator {
     Column[] valueColumns = new Column[outputColumnCount];
 
     for (int i = 0; i < outputColumnCount; i++) {
-      valueColumns[i] = fillArray[i].fill(block.getColumn(i));
+      valueColumns[i] = fillArray[i].fill(block.getTimeColumn(), block.getColumn(i));
     }
 
     return TsBlock.wrapBlocksWithoutCopy(

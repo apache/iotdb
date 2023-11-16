@@ -23,8 +23,9 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.openjdk.jol.info.ClassLayout;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,12 +33,17 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static io.airlift.slice.SizeOf.sizeOfCharArray;
+
 /** Statistics for string type. */
 public class BinaryStatistics extends Statistics<Binary> {
 
+  public static final int INSTANCE_SIZE =
+      ClassLayout.parseClass(BinaryStatistics.class).instanceSize()
+          + 2 * ClassLayout.parseClass(Binary.class).instanceSize();
+
   private Binary firstValue = new Binary("", TSFileConfig.STRING_CHARSET);
   private Binary lastValue = new Binary("", TSFileConfig.STRING_CHARSET);
-  static final int BINARY_STATISTICS_FIXED_RAM_SIZE = 32;
 
   @Override
   public TSDataType getType() {
@@ -48,6 +54,13 @@ public class BinaryStatistics extends Statistics<Binary> {
   @Override
   public int getStatsSize() {
     return 4 + firstValue.getValues().length + 4 + lastValue.getValues().length;
+  }
+
+  @Override
+  public long getRetainedSizeInBytes() {
+    return INSTANCE_SIZE
+        + sizeOfCharArray(firstValue.getLength())
+        + sizeOfCharArray(lastValue.getLength());
   }
 
   /**
@@ -141,11 +154,6 @@ public class BinaryStatistics extends Statistics<Binary> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
-  }
-
-  @Override
-  public long calculateRamSize() {
-    return RamUsageEstimator.sizeOf(this);
   }
 
   @Override

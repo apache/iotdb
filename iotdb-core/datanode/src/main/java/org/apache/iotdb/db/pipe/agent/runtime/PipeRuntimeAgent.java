@@ -46,7 +46,8 @@ public class PipeRuntimeAgent implements IService {
 
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
-  private final PipeCronEventInjector pipeCronEventInjector = new PipeCronEventInjector();
+  private final PipePeriodicalJobExecutor pipePeriodicalJobExecutor =
+      new PipePeriodicalJobExecutor();
 
   private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
       new SimpleConsensusProgressIndexAssigner();
@@ -69,7 +70,7 @@ public class PipeRuntimeAgent implements IService {
   public synchronized void start() throws StartupException {
     PipeConfig.getInstance().printAllConfigs();
     PipeAgentLauncher.launchPipeTaskAgent();
-    pipeCronEventInjector.start();
+    pipePeriodicalJobExecutor.start();
 
     isShutdown.set(false);
   }
@@ -81,7 +82,7 @@ public class PipeRuntimeAgent implements IService {
     }
     isShutdown.set(true);
 
-    pipeCronEventInjector.stop();
+    pipePeriodicalJobExecutor.stop();
     PipeAgent.task().dropAllPipeTasks();
   }
 

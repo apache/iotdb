@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.tsfile.read.common.block.column.${type.column};
 import org.apache.iotdb.tsfile.access.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 <#if type.dataType == "Binary">
 import org.apache.iotdb.tsfile.utils.Binary;
 </#if>
@@ -50,7 +51,7 @@ public class ${className} implements IFill {
   }
 
   @Override
-  public Column fill(Column valueColumn) {
+  public Column fill(TimeColumn timeColumn, Column valueColumn) {
     int size = valueColumn.getPositionCount();
     // if this valueColumn doesn't have any null value, or it's empty, just return itself;
     if (!valueColumn.mayHaveNull() || size == 0) {

@@ -150,8 +150,7 @@ public class FileLoaderUtils {
                     resource.getTimeIndexType() != 1,
                     context.isDebug());
         if (timeSeriesMetadata != null) {
-          List<Modification> pathModifications =
-              context.getPathModifications(resource.getModFile(), seriesPath);
+          List<Modification> pathModifications = context.getPathModifications(resource, seriesPath);
           timeSeriesMetadata.setModified(!pathModifications.isEmpty());
           timeSeriesMetadata.setChunkMetadataLoader(
               new DiskChunkMetadataLoader(resource, context, filter, pathModifications));
@@ -338,8 +337,7 @@ public class FileLoaderUtils {
     for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
       if (valueTimeSeriesMetadataList.get(i) != null) {
         List<Modification> pathModifications =
-            context.getPathModifications(
-                resource.getModFile(), alignedPath.getPathWithMeasurement(i));
+            context.getPathModifications(resource, alignedPath.getPathWithMeasurement(i));
         valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
         res.add(pathModifications);
         modified = (modified || !pathModifications.isEmpty());

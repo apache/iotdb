@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.tsfile.utils.FilePathUtils.splitTsFilePath;
 
 public class TsFileID {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileID.class);
 
   public final int regionId;
   public final long timePartitionId;
@@ -53,12 +58,12 @@ public class TsFileID {
       try {
         tmpRegionId = Integer.parseInt(pathSegments[pathLength - 3]);
       } catch (NumberFormatException e) {
-        // ignore
+        // ignore, load will get in here
       }
       try {
         tmpTimePartitionId = Long.parseLong(pathSegments[pathLength - 2]);
       } catch (NumberFormatException e) {
-        // ignore
+        // ignore, load will get in here
       }
     }
 
@@ -78,6 +83,7 @@ public class TsFileID {
     String[] names = tsFileName.split(FILE_NAME_SEPARATOR);
     long[] versionArray = new long[2];
     if (names.length != 4) {
+      // ignore,  load will get in here
       return versionArray;
     }
     versionArray[0] = Long.parseLong(names[1]);
