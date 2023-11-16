@@ -125,7 +125,7 @@ public class PipeMetaSyncer {
       if (somePipesNeedRestarting) {
         final boolean isRestartSuccessful = handleSuccessfulRestartWithLock();
         final TSStatus handleMetaChangeStatus =
-            procedureManager.pipeHandleMetaChangeWithBlock(true, false, true);
+            procedureManager.pipeHandleMetaChangeWithBlock(true, false);
         if (isRestartSuccessful
             && handleMetaChangeStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           successfulSync = true;
@@ -140,7 +140,7 @@ public class PipeMetaSyncer {
     } else {
       LOGGER.warn("Failed to sync pipe meta. Result status: {}.", metaSyncStatus);
       final TSStatus handleMetaChangeStatus =
-          procedureManager.pipeHandleMetaChangeWithBlock(true, true, false);
+          procedureManager.pipeHandleMetaChangeWithBlock(true, true);
       if (handleMetaChangeStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Failed to handle pipe meta change. Result status: {}.", handleMetaChangeStatus);
