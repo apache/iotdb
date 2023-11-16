@@ -737,7 +737,7 @@ public class LogicalPlanBuilder {
     }
   }
 
-  private PlanNode convergeWithTimeJoin(List<PlanNode> sourceNodes, Ordering mergeOrder) {
+  protected PlanNode convergeWithTimeJoin(List<PlanNode> sourceNodes, Ordering mergeOrder) {
     PlanNode tmpNode;
     if (sourceNodes.size() == 1) {
       tmpNode = sourceNodes.get(0);

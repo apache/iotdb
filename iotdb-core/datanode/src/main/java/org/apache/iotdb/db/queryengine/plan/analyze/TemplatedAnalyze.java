@@ -29,7 +29,6 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -88,35 +87,22 @@ public class TemplatedAnalyze {
   public static boolean canBuildPlanUseTemplate(
       Analysis analysis,
       QueryStatement queryStatement,
-      ISchemaFetcher schemaFetcher,
       IPartitionFetcher partitionFetcher,
       ISchemaTree schemaTree) {
     if (queryStatement.isAggregationQuery()
         || queryStatement.isGroupBy()
         || queryStatement.isGroupByTime()
-        || queryStatement.isSelectInto()) {
+        || queryStatement.isSelectInto()
+        || schemaTree.hasNormalTimeSeries()) {
       return false;
     }
 
-    //    Template template = null;
-    //    List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
-    //    for (PartialPath devicePath : devicePatternList) {
-    //      Map<Integer, Template> templateMap = schemaFetcher.checkAllRelatedTemplate(devicePath);
-    //      if (templateMap != null && templateMap.size() == 1) {
-    //        if (template == null) {
-    //          template = templateMap.values().iterator().next();
-    //        } else {
-    //          if (templateMap.values().iterator().next().getId() != template.getId()) {
-    //            template = null;
-    //            break;
-    //          }
-    //        }
-    //      } else {
-    //        return false;
-    //      }
-    //    }
+    List<Template> templates = schemaTree.getUsingTemplates();
+    if (templates.size() != 1) {
+      return false;
+    }
 
-    Template template = analysis.getDeviceTemplate();
+    Template template = templates.get(0);
     List<String> measurementList = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
     if (template != null) {
@@ -245,6 +231,7 @@ public class TemplatedAnalyze {
       PartialPath devicePath = deviceIterator.next();
       Expression whereExpression;
       try {
+        // can move this judgement to TemplatedLogicalPlan?
         whereExpression =
             normalizeExpression(analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree));
       } catch (MeasurementNotExistException e) {

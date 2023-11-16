@@ -323,6 +323,24 @@ public class IoTDBAlignByDeviceWithTemplateIT {
   }
 
   @Test
+  public void templateInvalidTest() {
+    // 1. non align by device query
+    String[] expectedHeader = new String[] {"Time,root.sg1.d4.s3,root.sg1.d4.s1,root.sg1.d4.s2"};
+    String[] retArray =
+        new String[] {
+          "1,1111,1111.1,true,", "5,5555,5555.5,false,",
+        };
+    resultSetEqualTest("SELECT * FROM root.sg1.** slimit 3;", expectedHeader, retArray);
+
+    expectedHeader = new String[] {"Time,root.sg2.d4.s3,root.sg2.d4.s1,root.sg2.d4.s2"};
+    retArray =
+        new String[] {
+          "1,1111,1111.1,true,", "5,5555,5555.5,false,",
+        };
+    resultSetEqualTest("SELECT * FROM root.sg2.** slimit 3;", expectedHeader, retArray);
+  }
+
+  @Test
   public void orderByExpressionTest() {}
 
   private static void insertData() {

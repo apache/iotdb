@@ -27,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -108,27 +107,11 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
                 offset,
                 null);
         sourceNodeList.add(seriesScanNode);
-
-        // why alignedPath not need type provider
-        // context.getTypeProvider().setType(measurementPath.toString(),
-        // schemaList.get(i).getType());
       }
     }
 
-    // updateTypeProvider(sourceExpressions);
-
     this.root = convergeWithTimeJoin(sourceNodeList, scanOrder);
     return this;
-  }
-
-  private PlanNode convergeWithTimeJoin(List<PlanNode> sourceNodes, Ordering mergeOrder) {
-    PlanNode tmpNode;
-    if (sourceNodes.size() == 1) {
-      tmpNode = sourceNodes.get(0);
-    } else {
-      tmpNode = new TimeJoinNode(context.getQueryId().genPlanNodeId(), mergeOrder, sourceNodes);
-    }
-    return tmpNode;
   }
 
   public TemplatedLogicalPlanBuilder planFilter(

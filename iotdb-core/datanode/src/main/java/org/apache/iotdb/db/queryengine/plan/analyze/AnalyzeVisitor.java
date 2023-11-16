@@ -204,10 +204,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  protected static final Expression DEVICE_EXPRESSION =
+  static final Expression DEVICE_EXPRESSION =
       TimeSeriesOperand.constructColumnHeaderExpression(DEVICE, TSDataType.TEXT);
 
-  protected static final Expression END_TIME_EXPRESSION =
+  static final Expression END_TIME_EXPRESSION =
       TimeSeriesOperand.constructColumnHeaderExpression(ENDTIME, TSDataType.INT64);
 
   private final List<String> lastQueryColumnNames =
@@ -266,9 +266,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
-        if (analysis.isAllDevicesInOneTemplate()
-            && TemplatedAnalyze.canBuildPlanUseTemplate(
-                analysis, queryStatement, schemaFetcher, partitionFetcher, schemaTree)) {
+        if (TemplatedAnalyze.canBuildPlanUseTemplate(
+            analysis, queryStatement, partitionFetcher, schemaTree)) {
           return analysis;
         }
 
@@ -368,7 +367,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // request schema fetch API
     long startTime = System.nanoTime();
-    ISchemaTree schemaTree = null;
+    ISchemaTree schemaTree;
     try {
       logger.debug("[StartFetchSchema]");
       if (queryStatement.isGroupByTag()) {
@@ -376,15 +375,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             schemaFetcher.fetchSchemaWithTags(concatPathRewriter.getPatternTree(), context);
       } else {
         schemaTree = schemaFetcher.fetchSchema(concatPathRewriter.getPatternTree(), context);
-      }
-
-      if (!schemaTree.hasNormalTimeSeries()) {
-        List<Template> templates = schemaTree.getUsingTemplates();
-        if (templates.size() == 1) {
-          analysis.setSchemaTree(schemaTree);
-          analysis.setDeviceTemplate(templates.get(0));
-          return schemaTree;
-        }
       }
 
       // make sure paths in logical view is fetched

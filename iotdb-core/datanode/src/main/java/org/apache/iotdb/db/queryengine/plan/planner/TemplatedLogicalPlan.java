@@ -30,15 +30,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchSourceExpressions;
 import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanVisitor.pushDownLimitToScanNode;
 
@@ -182,21 +179,5 @@ public class TemplatedLogicalPlan {
     }
 
     return planBuilder.getRoot();
-  }
-
-  private void updateTypeProvider(Collection<Expression> expressions) {
-    if (expressions == null) {
-      return;
-    }
-
-    for (Expression expression : expressions) {
-      if (expression.getExpressionString().equals(DEVICE)
-          || expression.getExpressionString().equals(ENDTIME)) {
-        continue;
-      }
-      context
-          .getTypeProvider()
-          .setType(expression.getExpressionString(), analysis.getType(expression));
-    }
   }
 }
