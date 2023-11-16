@@ -155,7 +155,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  private void updateTypeProvider(Collection<Expression> expressions) {
+  void updateTypeProvider(Collection<Expression> expressions) {
     if (expressions == null) {
       return;
     }

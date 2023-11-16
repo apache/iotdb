@@ -2485,11 +2485,37 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   private List<TSDataType> getInputColumnTypes(PlanNode node, TypeProvider typeProvider) {
-    return node.getChildren().stream()
-        .map(PlanNode::getOutputColumnNames)
-        .flatMap(List::stream)
-        .map(typeProvider::getType)
-        .collect(Collectors.toList());
+    if (typeProvider.getMeasurementList() == null) {
+      return node.getChildren().stream()
+          .map(PlanNode::getOutputColumnNames)
+          .flatMap(List::stream)
+          .map(typeProvider::getType)
+          .collect(Collectors.toList());
+    } else {
+      return getInputColumnTypesUseTemplate(node, typeProvider);
+    }
+  }
+
+  private List<TSDataType> getInputColumnTypesUseTemplate(
+      PlanNode node, TypeProvider typeProvider) {
+    // in template situation, the children of FilterNode/TransformNode can be TimeJoinNode,
+    // ScanNode, any others?
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (PlanNode child : node.getChildren()) {
+      if (child instanceof SeriesScanNode) {
+        dataTypes.add(((SeriesScanNode) child).getSeriesPath().getSeriesType());
+      } else if (child instanceof AlignedSeriesScanNode) {
+        AlignedSeriesScanNode alignedSeriesScanNode = (AlignedSeriesScanNode) child;
+        alignedSeriesScanNode
+            .getAlignedPath()
+            .getSchemaList()
+            .forEach(c -> dataTypes.add(c.getType()));
+        // dataTypes.add(((AlignedSeriesScanNode) child).getAlignedPath().getSeriesType());
+      } else {
+        dataTypes.addAll(getInputColumnTypesUseTemplate(child, typeProvider));
+      }
+    }
+    return dataTypes;
   }
 
   private List<TSDataType> getOutputColumnTypes(PlanNode node, TypeProvider typeProvider) {
@@ -2499,6 +2525,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   private List<TSDataType> getOutputColumnTypesOfTimeJoinNode(PlanNode node) {
+    // the children of TimeJoinNode can only be ScanNode or TimeJoinNode
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PlanNode child : node.getChildren()) {
       if (child instanceof SeriesScanNode) {

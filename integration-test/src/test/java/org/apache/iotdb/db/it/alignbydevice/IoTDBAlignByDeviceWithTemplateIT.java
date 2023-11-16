@@ -62,20 +62,8 @@ public class IoTDBAlignByDeviceWithTemplateIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  protected static void insertData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      for (String sql : sqls) {
-        statement.execute(sql);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
-
   @Test
-  public void selectWildcardTest() {
+  public void selectWildcardNoFilterTest() {
     // 1. original
     String[] expectedHeader = new String[] {"Time,Device,s3,s1,s2"};
     String[] retArray =
@@ -139,60 +127,10 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         "SELECT * FROM root.sg2.** ORDER BY TIME DESC LIMIT 4 ALIGN BY DEVICE;",
         expectedHeader,
         retArray);
-
-    // 4. order by time + time filter
-    retArray =
-        new String[] {
-          "4,root.sg1.d3,44,444.4,true,",
-          "2,root.sg1.d1,2,2.2,false,",
-          "2,root.sg1.d2,22,22.2,false,",
-          "1,root.sg1.d1,1,1.1,false,",
-        };
-    resultSetEqualTest(
-        "SELECT * FROM root.sg1.** WHERE time < 5 ORDER BY TIME DESC LIMIT 4 ALIGN BY DEVICE;",
-        expectedHeader,
-        retArray);
-
-    retArray =
-        new String[] {
-          "4,root.sg2.d3,44,444.4,true,",
-          "2,root.sg2.d1,2,2.2,false,",
-          "2,root.sg2.d2,22,22.2,false,",
-          "1,root.sg2.d1,1,1.1,false,",
-        };
-    resultSetEqualTest(
-        "SELECT * FROM root.sg2.** WHERE time < 5 ORDER BY TIME DESC LIMIT 4 ALIGN BY DEVICE;",
-        expectedHeader,
-        retArray);
-
-    // 5. order by time + value filter
-    retArray =
-        new String[] {
-          "4,root.sg1.d3,44,444.4,true,",
-          "2,root.sg1.d1,2,2.2,false,",
-          "2,root.sg1.d2,22,22.2,false,",
-          "1,root.sg1.d1,1,1.1,false,",
-        };
-    resultSetEqualTest(
-        "SELECT * FROM root.sg1.** WHERE time < 5 ORDER BY TIME DESC LIMIT 4 ALIGN BY DEVICE;",
-        expectedHeader,
-        retArray);
-
-    retArray =
-        new String[] {
-          "4,root.sg2.d3,44,444.4,true,",
-          "2,root.sg2.d1,2,2.2,false,",
-          "2,root.sg2.d2,22,22.2,false,",
-          "1,root.sg2.d1,1,1.1,false,",
-        };
-    resultSetEqualTest(
-        "SELECT * FROM root.sg2.** WHERE time < 5 ORDER BY TIME DESC LIMIT 4 ALIGN BY DEVICE;",
-        expectedHeader,
-        retArray);
   }
 
   @Test
-  public void selectMeasurementTest() {
+  public void selectMeasurementTestNoFilterTest() {
     // 1. original
     String[] expectedHeader = new String[] {"Time,Device,s3,s1"};
     String[] retArray =
@@ -290,9 +228,142 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         expectedHeader,
         retArray);
 
-      expectedHeader = new String[] {"Time"};
-      retArray = new String[] {};
-      resultSetEqualTest("SELECT s_null FROM root.sg1.** ALIGN BY DEVICE;", expectedHeader, retArray);
-      resultSetEqualTest("SELECT s_null FROM root.sg2.** ALIGN BY DEVICE;", expectedHeader, retArray);
+    expectedHeader = new String[] {"Time"};
+    retArray = new String[] {};
+    resultSetEqualTest("SELECT s_null FROM root.sg1.** ALIGN BY DEVICE;", expectedHeader, retArray);
+    resultSetEqualTest("SELECT s_null FROM root.sg2.** ALIGN BY DEVICE;", expectedHeader, retArray);
+  }
+
+  @Test
+  public void selectWildcardWithFilterTest() {
+    // 1. order by time + time filter
+    String[] expectedHeader = new String[] {"Time,Device,s3,s1,s2"};
+    String[] retArray =
+        new String[] {
+          "4,root.sg1.d3,44,444.4,true,",
+          "2,root.sg1.d1,2,2.2,false,",
+          "2,root.sg1.d2,22,22.2,false,",
+          "1,root.sg1.d1,1,1.1,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg1.** WHERE time < 5 ORDER BY TIME DESC LIMIT 4 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "4,root.sg2.d3,44,444.4,true,",
+          "2,root.sg2.d1,2,2.2,false,",
+          "2,root.sg2.d2,22,22.2,false,",
+          "1,root.sg2.d1,1,1.1,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg2.** WHERE time < 5 ORDER BY TIME DESC LIMIT 4 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    // 2. order by time + time filter + value filter
+    retArray =
+        new String[] {
+          "4,root.sg1.d3,44,444.4,true,", "2,root.sg1.d2,22,22.2,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg1.** where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
+            + "ORDER BY TIME DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "4,root.sg2.d3,44,444.4,true,", "2,root.sg2.d2,22,22.2,false,",
+        };
+    resultSetEqualTest(
+        "SELECT * FROM root.sg2.** where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
+            + "ORDER BY TIME DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    // 3. order by time + value filter: s_null > 1
+    retArray = new String[] {};
+    resultSetEqualTest(
+        "SELECT * FROM root.sg1.** WHERE s_null > 1 ALIGN BY DEVICE;", expectedHeader, retArray);
+    resultSetEqualTest(
+        "SELECT * FROM root.sg2.** WHERE s_null > 1 ALIGN BY DEVICE;", expectedHeader, retArray);
+  }
+
+  @Test
+  public void selectMeasurementWithFilterTest() {
+    // 1. order by time + time filter
+    String[] expectedHeader = new String[] {"Time,Device,s3,s2"};
+    String[] retArray =
+        new String[] {
+          "4,root.sg1.d3,44,true,",
+          "2,root.sg1.d1,2,false,",
+          "2,root.sg1.d2,22,false,",
+          "1,root.sg1.d1,1,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg1.** WHERE time < 5 ORDER BY TIME DESC LIMIT 4 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "4,root.sg2.d3,44,true,",
+          "2,root.sg2.d1,2,false,",
+          "2,root.sg2.d2,22,false,",
+          "1,root.sg2.d1,1,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg2.** WHERE time < 5 ORDER BY TIME DESC LIMIT 4 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    // 2. order by time + time filter + value filter
+    retArray =
+        new String[] {
+          "4,root.sg1.d3,44,true,", "2,root.sg1.d2,22,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg1.** where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
+            + "ORDER BY TIME DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "4,root.sg2.d3,44,true,", "2,root.sg2.d2,22,false,",
+        };
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg2.** where time > 1 and time < 5 and s3>=11 and s3<=1111 and s1 != 11.1 "
+            + "ORDER BY TIME DESC ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    // 3. order by time + value filter: s_null > 1
+    retArray = new String[] {};
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg1.** WHERE s_null > 1 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+    resultSetEqualTest(
+        "SELECT s3,s2 FROM root.sg2.** WHERE s_null > 1 ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void orderByExpressionTest() {}
+
+  private static void insertData() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      for (String sql : sqls) {
+        statement.execute(sql);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
   }
 }

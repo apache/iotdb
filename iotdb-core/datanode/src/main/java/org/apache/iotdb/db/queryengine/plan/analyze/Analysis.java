@@ -273,14 +273,18 @@ public class Analysis {
   // if `order by limit N align by device` query use topK optimization
   private boolean useTopKNode = false;
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // All Queries Devices Set In One Template
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
   // if all devices are set in one template in align by device query, this variable will not be null
   private Template deviceTemplate;
-  // when deviceTemplate equals to true, if all expressions in this query are measurements, i.e. no
-  // value filter,
-  // no aggregation, no arithmetic expression
-  private boolean allExpressionTimeSeriesOperand = true;
+  // when deviceTemplate is not empty and all expressions in this query are templated measurements,
+  // i.e. no aggregation and arithmetic expression
+  private boolean onlyOperateTemplateMeasurements = true;
   private List<String> measurementList;
   private List<IMeasurementSchema> measurementSchemaList;
+  private boolean templateWildCardQuery;
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -364,7 +368,7 @@ public class Analysis {
     }
 
     if (isDevicesAllInOneTemplate()
-        && (isAllExpressionTimeSeriesOperand() || expression instanceof TimeSeriesOperand)) {
+        && (isOnlyOperateTemplateMeasurements() || expression instanceof TimeSeriesOperand)) {
       TimeSeriesOperand seriesOperand = (TimeSeriesOperand) expression;
       return deviceTemplate.getSchemaMap().get(seriesOperand.getPath().getMeasurement()).getType();
     }
@@ -810,6 +814,10 @@ public class Analysis {
     return deviceList;
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // All Queries Devices Set In One Template
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
   public boolean isDevicesAllInOneTemplate() {
     return this.deviceTemplate != null;
   }
@@ -822,12 +830,12 @@ public class Analysis {
     this.deviceTemplate = template;
   }
 
-  public boolean isAllExpressionTimeSeriesOperand() {
-    return allExpressionTimeSeriesOperand;
+  public boolean isOnlyOperateTemplateMeasurements() {
+    return onlyOperateTemplateMeasurements;
   }
 
-  public void setAllExpressionTimeSeriesOperand(boolean allExpressionTimeSeriesOperand) {
-    this.allExpressionTimeSeriesOperand = allExpressionTimeSeriesOperand;
+  public void setOnlyOperateTemplateMeasurements(boolean onlyOperateTemplateMeasurements) {
+    this.onlyOperateTemplateMeasurements = onlyOperateTemplateMeasurements;
   }
 
   public List<String> getMeasurementList() {
@@ -844,5 +852,13 @@ public class Analysis {
 
   public void setMeasurementSchemaList(List<IMeasurementSchema> measurementSchemaList) {
     this.measurementSchemaList = measurementSchemaList;
+  }
+
+  public void setTemplateWildCardQuery() {
+    this.templateWildCardQuery = true;
+  }
+
+  public boolean isTemplateWildCardQuery() {
+    return this.templateWildCardQuery;
   }
 }

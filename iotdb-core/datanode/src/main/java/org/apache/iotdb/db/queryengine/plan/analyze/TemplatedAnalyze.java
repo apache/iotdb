@@ -71,7 +71,6 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTim
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.normalizeExpression;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchAggregationExpressions;
 
 /**
  * This class provides accelerated implementation for multiple devices align by device query. This
@@ -126,6 +125,9 @@ public class TemplatedAnalyze {
           for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
             measurementList.add(entry.getKey());
             measurementSchemaList.add(entry.getValue());
+          }
+          if (queryStatement.getSelectComponent().getResultColumns().size() == 1) {
+            analysis.setTemplateWildCardQuery();
           }
         } else if (expression instanceof TimeSeriesOperand) {
           String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
@@ -236,7 +238,7 @@ public class TemplatedAnalyze {
       return;
     }
 
-    analysis.setAllExpressionTimeSeriesOperand(false);
+    analysis.setOnlyOperateTemplateMeasurements(false);
     Map<String, Expression> deviceToWhereExpression = new HashMap<>();
     Iterator<PartialPath> deviceIterator = deviceList.iterator();
     while (deviceIterator.hasNext()) {
@@ -357,30 +359,10 @@ public class TemplatedAnalyze {
 
   private static void analyzeDeviceViewOutput(Analysis analysis, QueryStatement queryStatement) {
     Set<Expression> selectExpressions = analysis.getSelectExpressions();
-    Set<Expression> deviceViewOutputExpressions = new LinkedHashSet<>();
-    if (queryStatement.isAggregationQuery()) {
-      deviceViewOutputExpressions.add(DEVICE_EXPRESSION);
-      if (queryStatement.isOutputEndTime()) {
-        deviceViewOutputExpressions.add(END_TIME_EXPRESSION);
-      }
-      for (Expression selectExpression : selectExpressions) {
-        deviceViewOutputExpressions.addAll(searchAggregationExpressions(selectExpression));
-      }
-      if (queryStatement.hasHaving()) {
-        deviceViewOutputExpressions.addAll(
-            searchAggregationExpressions(analysis.getHavingExpression()));
-      }
-      if (queryStatement.hasOrderByExpression()) {
-        for (Expression orderByExpression : analysis.getOrderByExpressions()) {
-          deviceViewOutputExpressions.addAll(searchAggregationExpressions(orderByExpression));
-        }
-      }
-    } else {
-      // TODO can also just set, instead of addAll in normal process?
-      deviceViewOutputExpressions = selectExpressions;
-      if (queryStatement.hasOrderByExpression()) {
-        deviceViewOutputExpressions.addAll(analysis.getOrderByExpressions());
-      }
+    // TODO if no order by, just set deviceViewOutputExpressions as selectExpressions
+    Set<Expression> deviceViewOutputExpressions = new LinkedHashSet<>(selectExpressions);
+    if (queryStatement.hasOrderByExpression()) {
+      deviceViewOutputExpressions.addAll(analysis.getOrderByExpressions());
     }
     analysis.setDeviceViewOutputExpressions(deviceViewOutputExpressions);
     analysis.setDeviceViewSpecialProcess(
