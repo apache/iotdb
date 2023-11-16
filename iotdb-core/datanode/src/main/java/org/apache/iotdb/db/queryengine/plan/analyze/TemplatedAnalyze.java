@@ -238,7 +238,7 @@ public class TemplatedAnalyze {
       return;
     }
 
-    analysis.setOnlyOperateTemplateMeasurements(false);
+    analysis.setOnlyQueryTemplateMeasurements(false);
     Map<String, Expression> deviceToWhereExpression = new HashMap<>();
     Iterator<PartialPath> deviceIterator = deviceList.iterator();
     while (deviceIterator.hasNext()) {

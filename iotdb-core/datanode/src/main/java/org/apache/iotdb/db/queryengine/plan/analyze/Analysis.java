@@ -281,10 +281,12 @@ public class Analysis {
   private Template deviceTemplate;
   // when deviceTemplate is not empty and all expressions in this query are templated measurements,
   // i.e. no aggregation and arithmetic expression
-  private boolean onlyOperateTemplateMeasurements = true;
+  private boolean onlyQueryTemplateMeasurements = true;
+  // if it is wildcard query
+  private boolean templateWildCardQuery;
+  // all queried measurementList and schemaList in deviceTemplate.
   private List<String> measurementList;
   private List<IMeasurementSchema> measurementSchemaList;
-  private boolean templateWildCardQuery;
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -368,7 +370,7 @@ public class Analysis {
     }
 
     if (isDevicesAllInOneTemplate()
-        && (isOnlyOperateTemplateMeasurements() || expression instanceof TimeSeriesOperand)) {
+        && (isOnlyQueryTemplateMeasurements() || expression instanceof TimeSeriesOperand)) {
       TimeSeriesOperand seriesOperand = (TimeSeriesOperand) expression;
       return deviceTemplate.getSchemaMap().get(seriesOperand.getPath().getMeasurement()).getType();
     }
@@ -830,12 +832,12 @@ public class Analysis {
     this.deviceTemplate = template;
   }
 
-  public boolean isOnlyOperateTemplateMeasurements() {
-    return onlyOperateTemplateMeasurements;
+  public boolean isOnlyQueryTemplateMeasurements() {
+    return onlyQueryTemplateMeasurements;
   }
 
-  public void setOnlyOperateTemplateMeasurements(boolean onlyOperateTemplateMeasurements) {
-    this.onlyOperateTemplateMeasurements = onlyOperateTemplateMeasurements;
+  public void setOnlyQueryTemplateMeasurements(boolean onlyQueryTemplateMeasurements) {
+    this.onlyQueryTemplateMeasurements = onlyQueryTemplateMeasurements;
   }
 
   public List<String> getMeasurementList() {

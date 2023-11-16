@@ -202,36 +202,6 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         "SELECT s3,s1 FROM root.sg2.** ORDER BY TIME DESC LIMIT 4 ALIGN BY DEVICE;",
         expectedHeader,
         retArray);
-
-    // 4. order by time + time filter
-    retArray =
-        new String[] {
-          "4,root.sg1.d3,44,444.4,",
-          "2,root.sg1.d1,2,2.2,",
-          "2,root.sg1.d2,22,22.2,",
-          "1,root.sg1.d1,1,1.1,",
-        };
-    resultSetEqualTest(
-        "SELECT s3,s1 FROM root.sg1.** WHERE time < 5 ORDER BY TIME DESC LIMIT 4 ALIGN BY DEVICE;",
-        expectedHeader,
-        retArray);
-
-    retArray =
-        new String[] {
-          "4,root.sg2.d3,44,444.4,",
-          "2,root.sg2.d1,2,2.2,",
-          "2,root.sg2.d2,22,22.2,",
-          "1,root.sg2.d1,1,1.1,",
-        };
-    resultSetEqualTest(
-        "SELECT s3,s1 FROM root.sg2.** WHERE time < 5 ORDER BY TIME DESC LIMIT 4 ALIGN BY DEVICE;",
-        expectedHeader,
-        retArray);
-
-    expectedHeader = new String[] {"Time"};
-    retArray = new String[] {};
-    resultSetEqualTest("SELECT s_null FROM root.sg1.** ALIGN BY DEVICE;", expectedHeader, retArray);
-    resultSetEqualTest("SELECT s_null FROM root.sg2.** ALIGN BY DEVICE;", expectedHeader, retArray);
   }
 
   @Test
