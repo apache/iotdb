@@ -35,20 +35,20 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileManager {
-  private String storageGroupName;
+  private final String storageGroupName;
   private String dataRegionId;
-  private String storageGroupDir;
+  private final String storageGroupDir;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock resourceListLock = new ReentrantReadWriteLock();
 
   private String writeLockHolder;
   // time partition -> double linked list of tsfiles
-  private TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
-  private TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
+  private final TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
+  private final TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
 
   private boolean allowCompaction = true;
-  private AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
+  private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
   public TsFileManager(String storageGroupName, String dataRegionId, String storageGroupDir) {
     this.storageGroupName = storageGroupName;

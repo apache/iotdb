@@ -22,6 +22,8 @@ import org.apache.iotdb.tsfile.enums.TSDataType;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.openjdk.jol.info.ClassLayout;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -31,13 +33,14 @@ import java.util.Objects;
 /** Statistics for float type. */
 public class FloatStatistics extends Statistics<Float> {
 
+  public static final int INSTANCE_SIZE =
+      ClassLayout.parseClass(FloatStatistics.class).instanceSize();
+
   private float minValue;
   private float maxValue;
   private float firstValue;
   private float lastValue;
   private double sumValue;
-
-  static final int FLOAT_STATISTICS_FIXED_RAM_SIZE = 64;
 
   @Override
   public TSDataType getType() {
@@ -48,6 +51,11 @@ public class FloatStatistics extends Statistics<Float> {
   @Override
   public int getStatsSize() {
     return 24;
+  }
+
+  @Override
+  public long getRetainedSizeInBytes() {
+    return INSTANCE_SIZE;
   }
 
   public void initializeStats(float min, float max, float first, float last, double sum) {
@@ -110,11 +118,6 @@ public class FloatStatistics extends Statistics<Float> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
-  }
-
-  @Override
-  public long calculateRamSize() {
-    return FLOAT_STATISTICS_FIXED_RAM_SIZE;
   }
 
   @Override

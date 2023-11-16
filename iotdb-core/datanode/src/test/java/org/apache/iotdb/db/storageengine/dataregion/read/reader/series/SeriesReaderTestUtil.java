@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.series;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -100,6 +101,7 @@ public class SeriesReaderTestUtil {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
   }
 
