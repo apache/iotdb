@@ -470,26 +470,35 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   /** clear all the data of MTreeStore in memory and disk. */
   @Override
   public void clear() {
-    CacheMemoryManager.getInstance().clearCachedMTreeStore(this);
-    regionStatistics.setCacheManager(null);
-    cacheManager.clear(root);
-    root = null;
-    if (file != null) {
-      try {
-        file.clear();
-        file.close();
-      } catch (MetadataException | IOException e) {
-        logger.error(String.format("Error occurred during PBTree clear, %s", e.getMessage()));
+    lockManager.globalWriteLock();
+    try {
+      CacheMemoryManager.getInstance().clearCachedMTreeStore(this);
+      regionStatistics.setCacheManager(null);
+      cacheManager.clear(root);
+      root = null;
+      if (file != null) {
+        try {
+          file.clear();
+          file.close();
+        } catch (MetadataException | IOException e) {
+          logger.error(String.format("Error occurred during PBTree clear, %s", e.getMessage()));
+        }
       }
+      file = null;
+    } finally {
+      lockManager.globalWriteUnlock();
     }
-    file = null;
   }
 
   @Override
   public boolean createSnapshot(File snapshotDir) {
-    flushVolatileNodes();
-    ensureMemoryStatus();
-    return file.createSnapshot(snapshotDir);
+    lockManager.globalWriteLock();
+    try {
+      flushVolatileNodes(false);
+      return file.createSnapshot(snapshotDir);
+    } finally {
+      lockManager.globalWriteUnlock();
+    }
   }
 
   public static CachedMTreeStore loadFromSnapshot(
@@ -545,7 +554,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   }
 
   /** Sync all volatile nodes to PBTree and execute memory release after flush. */
-  public void flushVolatileNodes() {
+  public void flushVolatileNodes(boolean needLock) {
     try {
       boolean hasVolatileNodes = flushVolatileDBNode();
 
@@ -559,7 +568,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
         PBTreeFlushExecutor flushExecutor;
         while (volatileSubtrees.hasNext()) {
           subtreeRoot = volatileSubtrees.next();
-          flushExecutor = new PBTreeFlushExecutor(subtreeRoot, cacheManager, file, lockManager);
+          flushExecutor =
+              new PBTreeFlushExecutor(subtreeRoot, needLock, cacheManager, file, lockManager);
           flushExecutor.flushVolatileNodes();
         }
 

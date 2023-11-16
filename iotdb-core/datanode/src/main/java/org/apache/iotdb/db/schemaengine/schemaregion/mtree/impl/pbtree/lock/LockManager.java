@@ -24,62 +24,91 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICa
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class LockManager {
 
   private final LockPool lockPool = new LockPool();
 
+  private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+
   public long stampedReadLock(ICachedMNode node) {
+    readWriteLock.readLock().lock();
     return getMNodeLock(node).stampedReadLock();
   }
 
   public void stampedReadUnlock(ICachedMNode node, long stamp) {
     getMNodeLock(node).stampedReadUnlock(stamp);
+    checkAndReleaseMNodeLock(node);
+    readWriteLock.readLock().unlock();
   }
 
   public void threadReadLock(ICachedMNode node) {
+    readWriteLock.readLock().lock();
     getMNodeLock(node).threadReadLock();
   }
 
   public void threadReadLock(ICachedMNode node, boolean prior) {
+    readWriteLock.readLock().lock();
     getMNodeLock(node).threadReadLock(prior);
   }
 
   public void threadReadUnlock(ICachedMNode node) {
-    getMNodeLock(node).threadReadUnlock();
+    node.getLock().threadReadUnlock();
+    checkAndReleaseMNodeLock(node);
+    readWriteLock.readLock().unlock();
   }
 
   public void writeLock(ICachedMNode node) {
+    readWriteLock.readLock().lock();
     getMNodeLock(node).writeLock();
   }
 
   public void writeUnlock(ICachedMNode node) {
-    getMNodeLock(node).writeUnlock();
+    node.getLock().writeUnlock();
+    checkAndReleaseMNodeLock(node);
+    readWriteLock.readLock().unlock();
   }
 
   private StampedWriterPreferredLock getMNodeLock(ICachedMNode node) {
     StampedWriterPreferredLock lock = node.getLock();
     if (lock == null) {
-      lock = lockPool.borrowLock();
-      node.setLock(lock);
+      synchronized (this) {
+        lock = node.getLock();
+        if (lock == null) {
+          lock = lockPool.borrowLock();
+          node.setLock(lock);
+        }
+      }
     }
     return lock;
   }
 
-  private void releaseMNodeLock(ICachedMNode node, StampedWriterPreferredLock lock) {
-    if (lock.isFree()) {
-      node.setLock(null);
-      lockPool.returnLock(lock);
+  private void checkAndReleaseMNodeLock(ICachedMNode node) {
+    StampedWriterPreferredLock lock = node.getLock();
+    if (!lock.isFree()) {
+      return;
     }
+    synchronized (this) {
+      if (lock.isFree()) {
+        node.setLock(null);
+      }
+    }
+    lockPool.returnLock(lock);
+  }
+
+  public void globalWriteLock() {
+    readWriteLock.writeLock().lock();
+  }
+
+  public void globalWriteUnlock() {
+    readWriteLock.writeLock().unlock();
   }
 
   private static class LockPool {
     private static final int LOCK_POOL_CAPACITY = 400;
 
     private final List<StampedWriterPreferredLock> lockList = new LinkedList<>();
-
-    private final AtomicInteger activeLockNum = new AtomicInteger(0);
 
     private LockPool() {
       for (int i = 0; i < LOCK_POOL_CAPACITY; i++) {
@@ -89,7 +118,6 @@ public class LockManager {
 
     private StampedWriterPreferredLock borrowLock() {
       synchronized (lockList) {
-        activeLockNum.getAndIncrement();
         if (lockList.isEmpty()) {
           return new StampedWriterPreferredLock();
         } else {
@@ -100,7 +128,6 @@ public class LockManager {
 
     private void returnLock(StampedWriterPreferredLock lock) {
       synchronized (lockList) {
-        activeLockNum.getAndDecrement();
         if (lockList.size() == LOCK_POOL_CAPACITY) {
           return;
         }

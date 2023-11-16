@@ -39,6 +39,8 @@ public class PBTreeFlushExecutor {
 
   private final ICachedMNode subtreeRoot;
 
+  private final boolean needLock;
+
   private final ICacheManager cacheManager;
 
   private final ISchemaFile file;
@@ -47,10 +49,12 @@ public class PBTreeFlushExecutor {
 
   public PBTreeFlushExecutor(
       ICachedMNode subtreeRoot,
+      boolean needLock,
       ICacheManager cacheManager,
       ISchemaFile file,
       LockManager lockManager) {
     this.subtreeRoot = subtreeRoot;
+    this.needLock = needLock;
     this.cacheManager = cacheManager;
     this.file = file;
     this.lockManager = lockManager;
@@ -83,7 +87,9 @@ public class PBTreeFlushExecutor {
 
       subtreeRoot = subtreeIterator.next();
 
-      lockManager.writeLock(subtreeRoot);
+      if (needLock) {
+        lockManager.writeLock(subtreeRoot);
+      }
       try {
         file.writeMNode(subtreeRoot);
       } catch (MetadataException | IOException e) {
@@ -92,7 +98,9 @@ public class PBTreeFlushExecutor {
         processNotFlushedSubtrees(subtreeRoot, volatileSubtreeStack);
         throw e;
       } finally {
-        lockManager.writeUnlock(subtreeRoot);
+        if (needLock) {
+          lockManager.writeUnlock(subtreeRoot);
+        }
       }
 
       volatileSubtreeStack.push(

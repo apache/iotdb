@@ -257,7 +257,7 @@ public class CacheMemoryManager {
                     store ->
                         CompletableFuture.runAsync(
                             () -> {
-                              store.flushVolatileNodes();
+                              store.flushVolatileNodes(true);
                             },
                             flushTaskProcessor))
                 .toArray(CompletableFuture[]::new))
