@@ -97,6 +97,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
   private IoTDBThriftAsyncPipeTransferBatchReqBuilder tabletBatchBuilder;
+  // Flash-in-the-pan variable, will probably vanish with the incoming "commitId" hierarchy
+  private Event lastEvent;
 
   public IoTDBThriftAsyncConnector() {
     if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
@@ -174,7 +176,11 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    final long requestCommitId = commitIdGenerator.incrementAndGet();
+    final long requestCommitId =
+        lastEvent.equals(tabletInsertionEvent)
+            ? commitIdGenerator.get()
+            : commitIdGenerator.incrementAndGet();
+    lastEvent = tabletInsertionEvent;
 
     if (isTabletBatchModeEnabled) {
       if (tabletBatchBuilder.onEvent(tabletInsertionEvent, requestCommitId)) {
@@ -293,7 +299,12 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    final long requestCommitId = commitIdGenerator.incrementAndGet();
+    final long requestCommitId =
+        lastEvent.equals(pipeTsFileInsertionEvent)
+            ? commitIdGenerator.get()
+            : commitIdGenerator.incrementAndGet();
+    lastEvent = pipeTsFileInsertionEvent;
+
     final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
         new PipeTransferTsFileInsertionEventHandler(
             requestCommitId, pipeTsFileInsertionEvent, this);
