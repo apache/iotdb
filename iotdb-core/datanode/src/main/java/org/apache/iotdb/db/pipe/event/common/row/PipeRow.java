@@ -144,6 +144,11 @@ public class PipeRow implements Row {
   }
 
   @Override
+  public void setNull(int columnIndex) {
+    bitMaps[columnIndex].mark(rowIndex);
+  }
+
+  @Override
   public int size() {
     return valueColumns.length;
   }
@@ -157,6 +162,11 @@ public class PipeRow implements Row {
     }
     throw new PipeParameterNotValidException(
         String.format("column %s not found", columnName.getFullPath()));
+  }
+
+  @Override
+  public String getColumnName(int columnIndex) {
+    return columnNameStringList[columnIndex];
   }
 
   @Override

@@ -130,6 +130,13 @@ public interface Row {
   boolean isNull(int columnIndex);
 
   /**
+   * Set the specified column index to null.
+   *
+   * @param columnIndex index of the specified column
+   */
+  void setNull(int columnIndex);
+
+  /**
    * Returns the number of columns (excluding the timestamp column).
    *
    * @return the number of columns (excluding the timestamp column)
@@ -144,6 +151,15 @@ public interface Row {
    * @throws PipeParameterNotValidException if the given column name is not existed in the Row
    */
   int getColumnIndex(Path columnName) throws PipeParameterNotValidException;
+
+  /**
+   * Returns the actual column name of the given column index.
+   *
+   * @param columnIndex the column index
+   * @return the actual column index of the given column name
+   * @throws PipeParameterNotValidException if the given column name is not existed in the Row
+   */
+  String getColumnName(int columnIndex);
 
   /**
    * Returns the column data types in the Row.
