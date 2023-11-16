@@ -54,7 +54,6 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,8 +78,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftAsyncConnector.class);
 
-  private static final String FAILED_TO_BORROW_CLIENT_FORMATTER =
-      "Failed to borrow client from client pool for receiver %s:%s.";
+  private static final String THRIFT_ERROR_FORMATTER =
+      "Failed to borrow client from client pool or TException when sending to receiver %s:%s.";
 
   private static final AtomicReference<
           IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
@@ -224,21 +223,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     try {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
-
-      try {
-        pipeTransferTabletBatchEventHandler.transfer(client);
-      } catch (TException e) {
-        LOGGER.warn(
-            String.format(
-                "Transfer batched insertion requests to receiver %s:%s error, retrying...",
-                targetNodeUrl.getIp(), targetNodeUrl.getPort()),
-            e);
-      }
+      pipeTransferTabletBatchEventHandler.transfer(client);
     } catch (Exception ex) {
-      pipeTransferTabletBatchEventHandler.onError(ex);
       LOGGER.warn(
-          String.format(
-              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
           ex);
     }
   }
@@ -250,21 +238,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     try {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
-
-      try {
-        pipeTransferInsertNodeReqHandler.transfer(client);
-      } catch (TException e) {
-        LOGGER.warn(
-            String.format(
-                "Transfer insert node to receiver %s:%s error, retrying...",
-                targetNodeUrl.getIp(), targetNodeUrl.getPort()),
-            e);
-      }
+      pipeTransferInsertNodeReqHandler.transfer(client);
     } catch (Exception ex) {
-      pipeTransferInsertNodeReqHandler.onError(ex);
       LOGGER.warn(
-          String.format(
-              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
           ex);
     }
   }
@@ -275,21 +252,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     try {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
-
-      try {
-        pipeTransferTabletReqHandler.transfer(client);
-      } catch (TException e) {
-        LOGGER.warn(
-            String.format(
-                "Transfer tablet to receiver %s:%s error, retrying...",
-                targetNodeUrl.getIp(), targetNodeUrl.getPort()),
-            e);
-      }
+      pipeTransferTabletReqHandler.transfer(client);
     } catch (Exception ex) {
-      pipeTransferTabletReqHandler.onError(ex);
       LOGGER.warn(
-          String.format(
-              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
           ex);
     }
   }
@@ -342,21 +308,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     try {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
-
-      try {
-        pipeTransferTsFileInsertionEventHandler.transfer(client);
-      } catch (TException e) {
-        LOGGER.warn(
-            String.format(
-                "Transfer tsfile to receiver %s:%s error, retrying...",
-                targetNodeUrl.getIp(), targetNodeUrl.getPort()),
-            e);
-      }
+      pipeTransferTsFileInsertionEventHandler.transfer(client);
     } catch (Exception ex) {
-      pipeTransferTsFileInsertionEventHandler.onError(ex);
       LOGGER.warn(
-          String.format(
-              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
           ex);
     }
   }
@@ -384,9 +339,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       }
     } catch (Exception e) {
       throw new PipeConnectionException(
-          String.format(
-              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
-          e);
+          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()), e);
     }
   }
 
