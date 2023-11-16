@@ -339,18 +339,13 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   }
 
   private AsyncPipeDataTransferServiceClient borrowClient(TEndPoint targetNodeUrl)
-      throws PipeConnectionException {
-    try {
-      while (true) {
-        final AsyncPipeDataTransferServiceClient client =
-            asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
-        if (handshakeIfNecessary(targetNodeUrl, client)) {
-          return client;
-        }
+      throws Exception {
+    while (true) {
+      final AsyncPipeDataTransferServiceClient client =
+          asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
+      if (handshakeIfNecessary(targetNodeUrl, client)) {
+        return client;
       }
-    } catch (Exception e) {
-      throw new PipeConnectionException(
-          String.format(THRIFT_ERROR_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()), e);
     }
   }
 
