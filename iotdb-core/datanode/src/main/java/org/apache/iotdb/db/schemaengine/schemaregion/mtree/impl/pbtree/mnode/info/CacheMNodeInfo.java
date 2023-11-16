@@ -19,11 +19,14 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.info;
 
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.BasicMNodeInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.StampedWriterPreferredLock;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
 
 public class CacheMNodeInfo extends BasicMNodeInfo {
 
   private CacheEntry cacheEntry;
+
+  private StampedWriterPreferredLock lock;
 
   public CacheMNodeInfo(String name) {
     super(name);
@@ -35,6 +38,14 @@ public class CacheMNodeInfo extends BasicMNodeInfo {
 
   public void setCacheEntry(CacheEntry cacheEntry) {
     this.cacheEntry = cacheEntry;
+  }
+
+  public StampedWriterPreferredLock getLock() {
+    return lock;
+  }
+
+  public void setLock(StampedWriterPreferredLock lock) {
+    this.lock = lock;
   }
 
   @Override

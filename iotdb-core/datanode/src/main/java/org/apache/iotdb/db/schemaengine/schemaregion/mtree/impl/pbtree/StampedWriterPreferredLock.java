@@ -58,6 +58,9 @@ public class StampedWriterPreferredLock {
   private volatile int writeWait = 0;
 
   private final ThreadLocal<Long> sharedOwnerStamp = new ThreadLocal<>();
+
+  private final int hasCode = super.hashCode();
+
   /**
    * Acquires the stamp-bound read lock. Read lock acquire and release is stamp-bound and supports
    * re-entry by the same stamp. Return a new stamp if no thread holds a write lock; block and wait
@@ -202,7 +205,7 @@ public class StampedWriterPreferredLock {
   }
 
   /** Unlock WriteLock */
-  public void unlockWrite() {
+  public void writeUnlock() {
     lock.lock();
     try {
       writeCnt--;
@@ -216,5 +219,24 @@ public class StampedWriterPreferredLock {
     } finally {
       lock.unlock();
     }
+  }
+
+  public boolean isFree() {
+    lock.lock();
+    try {
+      return readCnt.isEmpty() && readWait == 0 && writeCnt == 0 && writeWait == 0;
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  @Override
+  public int hashCode() {
+    return hasCode;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    return super.equals(obj);
   }
 }

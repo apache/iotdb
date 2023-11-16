@@ -27,6 +27,7 @@ import org.apache.iotdb.db.schemaengine.metric.SchemaEngineCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.CachedMTreeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.IReleaseFlushStrategy;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.ReleaseFlushStrategyNumBasedImpl;
@@ -80,8 +81,9 @@ public class CacheMemoryManager {
    * @param store CachedMTreeStore
    * @return LRUCacheManager
    */
-  public ICacheManager createLRUCacheManager(CachedMTreeStore store, MemManager memManager) {
-    ICacheManager cacheManager = new LRUCacheManager(memManager);
+  public ICacheManager createLRUCacheManager(
+      CachedMTreeStore store, MemManager memManager, LockManager lockManager) {
+    ICacheManager cacheManager = new LRUCacheManager(memManager, lockManager);
     storeList.add(store);
     return cacheManager;
   }
@@ -210,12 +212,7 @@ public class CacheMemoryManager {
                     store ->
                         CompletableFuture.runAsync(
                             () -> {
-                              store.getLock().threadReadLock(true);
-                              try {
-                                executeMemoryRelease(store);
-                              } finally {
-                                store.getLock().threadReadUnlock();
-                              }
+                              executeMemoryRelease(store);
                             },
                             releaseTaskProcessor))
                 .toArray(CompletableFuture[]::new))
@@ -260,13 +257,7 @@ public class CacheMemoryManager {
                     store ->
                         CompletableFuture.runAsync(
                             () -> {
-                              store.getLock().writeLock();
-                              try {
-                                store.flushVolatileNodes();
-                                executeMemoryRelease(store);
-                              } finally {
-                                store.getLock().unlockWrite();
-                              }
+                              store.flushVolatileNodes();
                             },
                             flushTaskProcessor))
                 .toArray(CompletableFuture[]::new))

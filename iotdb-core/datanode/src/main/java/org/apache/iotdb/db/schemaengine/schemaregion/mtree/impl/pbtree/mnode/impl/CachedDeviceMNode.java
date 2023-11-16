@@ -20,6 +20,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.im
 
 import org.apache.iotdb.commons.schema.node.common.AbstractDeviceMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.DeviceInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.StampedWriterPreferredLock;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.basic.CachedBasicMNode;
@@ -39,6 +40,16 @@ public class CachedDeviceMNode extends AbstractDeviceMNode<ICachedMNode, CachedB
   @Override
   public void setCacheEntry(CacheEntry cacheEntry) {
     basicMNode.setCacheEntry(cacheEntry);
+  }
+
+  @Override
+  public StampedWriterPreferredLock getLock() {
+    return basicMNode.getLock();
+  }
+
+  @Override
+  public void setLock(StampedWriterPreferredLock lock) {
+    basicMNode.setLock(lock);
   }
 
   @Override

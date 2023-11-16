@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.schema.node.common.AbstractMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.MeasurementInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.StampedWriterPreferredLock;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.basic.CachedBasicMNode;
@@ -46,6 +47,16 @@ public class CachedMeasurementMNode extends AbstractMeasurementMNode<ICachedMNod
   @Override
   public void setCacheEntry(CacheEntry cacheEntry) {
     basicMNode.setCacheEntry(cacheEntry);
+  }
+
+  @Override
+  public StampedWriterPreferredLock getLock() {
+    return basicMNode.getLock();
+  }
+
+  @Override
+  public void setLock(StampedWriterPreferredLock lock) {
+    basicMNode.setLock(lock);
   }
 
   @Override

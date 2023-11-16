@@ -19,10 +19,15 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode;
 
 import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.StampedWriterPreferredLock;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
 
 public interface ICachedMNode extends IMNode<ICachedMNode> {
   CacheEntry getCacheEntry();
 
   void setCacheEntry(CacheEntry cacheEntry);
+
+  StampedWriterPreferredLock getLock();
+
+  void setLock(StampedWriterPreferredLock lock);
 }

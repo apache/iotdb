@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.ICacheManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
 
@@ -42,11 +43,17 @@ public class PBTreeFlushExecutor {
 
   private final ISchemaFile file;
 
+  private final LockManager lockManager;
+
   public PBTreeFlushExecutor(
-      ICachedMNode subtreeRoot, ICacheManager cacheManager, ISchemaFile file) {
+      ICachedMNode subtreeRoot,
+      ICacheManager cacheManager,
+      ISchemaFile file,
+      LockManager lockManager) {
     this.subtreeRoot = subtreeRoot;
     this.cacheManager = cacheManager;
     this.file = file;
+    this.lockManager = lockManager;
   }
 
   public void flushVolatileNodes() throws MetadataException, IOException {
@@ -76,6 +83,7 @@ public class PBTreeFlushExecutor {
 
       subtreeRoot = subtreeIterator.next();
 
+      lockManager.writeLock(subtreeRoot);
       try {
         file.writeMNode(subtreeRoot);
       } catch (MetadataException | IOException e) {
@@ -83,6 +91,8 @@ public class PBTreeFlushExecutor {
             "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
         processNotFlushedSubtrees(subtreeRoot, volatileSubtreeStack);
         throw e;
+      } finally {
+        lockManager.writeUnlock(subtreeRoot);
       }
 
       volatileSubtreeStack.push(

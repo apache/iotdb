@@ -33,11 +33,9 @@ import java.util.function.Consumer;
 
 public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNode> {
   private final CachedMTreeStore store;
-  private final long readLockStamp;
 
   public ReentrantReadOnlyCachedMTreeStore(CachedMTreeStore store) {
     this.store = store;
-    this.readLockStamp = store.stampedReadLock();
   }
 
   @Override
@@ -130,9 +128,5 @@ public class ReentrantReadOnlyCachedMTreeStore implements IMTreeStore<ICachedMNo
   @Override
   public boolean createSnapshot(File snapshotDir) {
     throw new UnsupportedOperationException("ReadOnlyReentrantMTreeStore");
-  }
-
-  public void unlockRead() {
-    store.stampedReadUnlock(readLockStamp);
   }
 }

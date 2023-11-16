@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotPinnedException;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
@@ -64,13 +65,16 @@ import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mn
  */
 public abstract class CacheManager implements ICacheManager {
 
+  private final LockManager lockManager;
+
   private final MemManager memManager;
 
   // The nodeBuffer helps to quickly locate the volatile subtree
   private final NodeBuffer nodeBuffer = new NodeBuffer();
 
-  protected CacheManager(MemManager memManager) {
+  protected CacheManager(MemManager memManager, LockManager lockManager) {
     this.memManager = memManager;
+    this.lockManager = lockManager;
   }
 
   public void initRootStatus(ICachedMNode root) {
@@ -428,22 +432,27 @@ public abstract class CacheManager implements ICacheManager {
       if (node == null) {
         break;
       }
-      cacheEntry = getCacheEntry(node);
-      // the operation that may change the cache status of a node should be synchronized
-      synchronized (cacheEntry) {
-        if (!cacheEntry.isPinned() && isInNodeCache(cacheEntry)) {
-          getBelongedContainer(node).evictMNode(node.getName());
-          if (node.isMeasurement()) {
-            String alias = node.getAsMeasurementMNode().getAlias();
-            if (alias != null) {
-              node.getParent().getAsDeviceMNode().deleteAliasChild(alias);
+      lockManager.threadReadLock(node.getParent());
+      try {
+        cacheEntry = getCacheEntry(node);
+        // the operation that may change the cache status of a node should be synchronized
+        synchronized (cacheEntry) {
+          if (!cacheEntry.isPinned() && isInNodeCache(cacheEntry)) {
+            getBelongedContainer(node).evictMNode(node.getName());
+            if (node.isMeasurement()) {
+              String alias = node.getAsMeasurementMNode().getAlias();
+              if (alias != null) {
+                node.getParent().getAsDeviceMNode().deleteAliasChild(alias);
+              }
             }
+            removeFromNodeCache(getCacheEntry(node));
+            node.setCacheEntry(null);
+            evictedMNodes.add(node);
+            isSuccess = true;
           }
-          removeFromNodeCache(getCacheEntry(node));
-          node.setCacheEntry(null);
-          evictedMNodes.add(node);
-          isSuccess = true;
         }
+      } finally {
+        lockManager.threadReadUnlock(node.getParent());
       }
     }
 

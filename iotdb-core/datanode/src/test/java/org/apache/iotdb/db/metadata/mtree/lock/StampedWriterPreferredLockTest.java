@@ -63,7 +63,7 @@ public class StampedWriterPreferredLockTest {
                 semaphore.acquire();
                 lock.writeLock();
                 counter.incrementAndGet();
-                lock.unlockWrite();
+                lock.writeUnlock();
               } catch (InterruptedException e) {
                 Assert.fail(e.getMessage());
               }
@@ -93,7 +93,7 @@ public class StampedWriterPreferredLockTest {
                 semaphore.acquire();
                 lock.writeLock();
                 counter.incrementAndGet();
-                lock.unlockWrite();
+                lock.writeUnlock();
               } catch (InterruptedException e) {
                 Assert.fail(e.getMessage());
               }
@@ -128,7 +128,7 @@ public class StampedWriterPreferredLockTest {
                 semaphore.acquire();
                 lock.writeLock();
                 counter.incrementAndGet();
-                lock.unlockWrite();
+                lock.writeUnlock();
               } catch (InterruptedException e) {
                 Assert.fail(e.getMessage());
               }
@@ -156,7 +156,7 @@ public class StampedWriterPreferredLockTest {
         .start();
     // block reader util writer release write lock
     Assert.assertEquals(0, counter.get());
-    lock.unlockWrite();
+    lock.writeUnlock();
     Awaitility.await().atMost(2, TimeUnit.SECONDS).until(() -> counter.get() == 1);
     Assert.assertEquals(1, counter.get());
   }
@@ -172,7 +172,7 @@ public class StampedWriterPreferredLockTest {
               // writer thread will be blocked util main thread release read lock.
               lock.writeLock();
               counter.incrementAndGet();
-              lock.unlockWrite();
+              lock.writeUnlock();
             })
         .start();
     try {
@@ -234,7 +234,7 @@ public class StampedWriterPreferredLockTest {
               } catch (InterruptedException e) {
                 throw new RuntimeException(e);
               }
-              lock.unlockWrite();
+              lock.writeUnlock();
               lock.writeLock();
               counter1.incrementAndGet();
               try {
@@ -243,7 +243,7 @@ public class StampedWriterPreferredLockTest {
                 throw new RuntimeException(e);
               }
               counter2.incrementAndGet();
-              lock.unlockWrite();
+              lock.writeUnlock();
             })
         .start();
     new Thread(
